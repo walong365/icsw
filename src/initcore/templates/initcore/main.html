@@ -1,0 +1,218 @@
+{% load initcore_tags i18n %}
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
+<head>
+    {% block meta %}{% endblock %}
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width,maximum-scale=2.0,user-scalable=yes" />
+
+    {% block javascript %}{% endblock %}
+    {# jQuery and small plugins #}
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery-1.7.1.min.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery.layout-1.3.0-rc29.15.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery.sprintf.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery.strftime.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery.timers-1.2.js"></script>
+    {# tablesorter #}
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/tablesorter/jquery.tablesorter.min.js"></script>
+    {# jqGrid #} 
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jqgrid/grid.locale-en.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jqgrid/jquery.jqGrid.min.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jqgrid_user_functions.js"></script>
+    {# jQuery UI #} 
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery-ui/jquery-ui-1.8.15.custom.min.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery-ui/jquery-ui-timepicker-addon.js"></script>
+    {# jNotify #} 
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jnotify/jNotify.jquery.js"></script>
+    {# dynatree #} 
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/dynatree/jquery.dynatree.min.js"></script>
+    {# superfish #}
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/superfish/superfish.js"></script>
+    
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/init.js"></script>
+    
+    {% include "initcore/main.css" %}
+    {% if session.css_theme and session.font_scale and session.css_file %}
+        <link href="{{ MEDIA_URL }}initcore/css/{{ session.css_theme }}{{ session.font_scale }}/{{ session.css_file }}" rel="stylesheet" type="text/css" />
+    {% else %}
+        <link href="{{ MEDIA_URL }}initcore/css/cupertino/jquery-ui-1.8.5.custom.css" rel="stylesheet" type="text/css" />
+    {% endif %}
+    <link href="{{ MEDIA_URL }}initcore/css/main.css" rel="stylesheet" type="text/css" />
+    <link href="{{ MEDIA_URL }}initcore/lib/tablesorter/tablesorter.css" rel="stylesheet" type="text/css" />
+    <link href="{{ MEDIA_URL }}initcore/lib/jqgrid/ui.jqgrid.css" rel="stylesheet" type="text/css" />
+    <link href="{{ MEDIA_URL }}initcore/lib/jnotify/jNotify.jquery.css" rel="stylesheet" type="text/css" />
+    {# always True #}
+    {% if not session.is_mobile or 1 %}
+        <link href="{{ MEDIA_URL }}initcore/lib/superfish/superfish.css" rel="stylesheet" type="text/css" />
+        <link href="{{ MEDIA_URL }}initcore/lib/dynatree/skin/ui.dynatree.css" rel="stylesheet" type="text/css" />
+    {% else %}
+        <link href="{{ MEDIA_URL }}initcore/lib/superfish/superfish-mobile.css" rel="stylesheet" type="text/css" />
+        <link href="{{ MEDIA_URL }}initcore/lib/dynatree/skin/ui.dynatree.mobile.css" rel="stylesheet" type="text/css" />
+    {% endif %}
+    {% block stylesheets %}{% endblock %}
+    
+    {# General includes #} 
+    {% block includes %}{% endblock %}
+    
+    <title>{% block title %}OLIM{% endblock %}</title>
+</head>
+
+<body bgcolor="#ffffff" style="display:block;">
+{% block body %}
+<div class="ui-layout-north">
+    {# removed, not needed (Phonecall with ZE by AL, 2011-11-12), enable for internal debug purposes #}
+    {% if 0 %}
+        <div class="fp_headline" style="float:left;">
+            <form action="{{ROOT_URL}}i18n/setlang" method="post" id="language_sel_form">
+                {% trans 'Select language:' %}
+                <input name="next" type="hidden" value="" />
+                <select name="language" id="language_sel" class="noresize">
+                {% for lang in LANGUAGES %}
+                    <option value="{{ lang.0 }}" {% ifequal LANGUAGE_CODE lang.0 %} selected="selected"{% endifequal %}>{% trans lang.1 %}</option>
+                {% endfor %}
+                </select>
+            </form>
+        </div>
+        <div class="fp_headline" style="float:right;">
+            {% now "l, j. F Y" %} <span id="cur_time">00:00:00</span>,
+            {% if user.is_authenticated %}
+                {% blocktrans %} You are logged in as <strong>{{ user }}</strong>. {% endblocktrans %} <a href="{% url session:logout %}">{% trans 'Logout' %}</a>
+            {% endif %}
+        </div>
+    {% endif %}
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" height="{% if not session.is_mobile %}27{% else %}33{% endif %}">
+        <tr>
+            <td>
+                <div style="z-index:1000; clear:both; float:left;" id="main_menu_block" class="noresize">
+                    {% get_menu %}
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+{# dropdown dynatree menu, enabled for all user agentsbu #}
+<div style="display:none;left:36px;top:36px;width:300px;border:1px solid #DDDDDD;position:absolute;z-index:1000;background-color:#FFFFFF;" id="dropdown_menu">
+    <div id="dropdown_sidebar" style="margin-top:-15px;margin-bottom:-15px;"></div>
+</div>
+
+{# sidebar, for future enhancements #}
+{% if not session.is_mobile %}
+    <div class="ui-layout-west" id="layout_sidebar">
+        {% include 'initcore/sidebar.html' %}
+    </div>
+{% endif %}
+
+<div class="ui-layout-center " id="pane-center">
+    {% block content %}
+    {% endblock %}
+</div>
+
+{% if debug %}
+    <div class="ui-layout-south" >
+        {% if sql_queries %}
+            {{ sql_queries|length }} SQL queries following:<br>
+            <ul>
+            {% for sql_entry in sql_queries %}<li>{{ sql_entry.time }} : {{ sql_entry.sql }}{% endfor %}
+            </ul>
+        {% else %}
+            no SQL queries issued
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}
+
+</body>
+</html>
+
+<script>
+
+var page_time="{% now "G:i:s" %}";
+
+var dropdown_dynatree_enabled = 0;
+
+function show_menu() {
+    if (dropdown_dynatree_enabled) {
+        add_dropdwon_dynatree_handlers();
+    } else {
+        dropdown_dynatree_enabled = 1;
+        $("div#dropdown_sidebar").load("{% url session:get_menu 'dynatree' %}", function() {
+            $("div#dropdown_sidebar").dynatree({
+                onActivate : function(dtnode) {
+                    if (dtnode.data.href) {
+                        window.location = dtnode.data.href;
+                    }
+                }
+            });
+            add_dropdwon_dynatree_handlers();
+        });
+    };
+}
+
+function add_dropdwon_dynatree_handlers() {
+    $("div#dropdown_menu").css("display", "block");
+    $("body").bind("click", function(event) { 
+        if ($(event.target).parents("div#dropdown_menu").length == 0 && $(event.target).parents().length > 0 ) {
+            $("div#dropdown_menu").css("display", "none");
+            $("body").unbind("click");
+        } 
+    });
+};
+
+function save_layout_state() {
+    $.ajax({
+        url      : "{% url session:save_layout_state %}",
+        data     : {"a" : my_layout.state},
+        dataType : "xml"
+    });
+};
+
+function addHandlers() {
+    $("#main_navigation").superfish({
+        speed : 1,
+        delay : 500
+    }); 
+    var init_font_scale = "{{ session.font_scale }}";
+    if (init_font_scale == "") init_font_scale = 27;
+    $("body,input,ul,select[class!='noresize']").css({fontSize: parseInt(init_font_scale) * 15/100 + 8 });
+    if ($("div.ui-layout-center").length) {
+        my_layout = $("body").layout({
+            applyDefaultStyles  : true,
+            spacing_open        : 6,
+            north__spacing_open : 0,
+            //north__showOverflowOnHover : true,
+            south__size         : 200,
+            south__initClosed   : true,
+            west__initClosed    : {% if request.session.west_closed %}true{% else %}false{% endif %},
+            onopen : function(p_name, a) {
+                save_layout_state();
+                $(window).resize();
+            },
+            onclose : function(p_name) {
+                save_layout_state();
+                $(window).resize();
+            }
+        });
+        my_layout.allowOverflow("north");
+    };
+    //update_time();
+    $("#language_sel").bind("change", function() { $("#language_sel_form").trigger("submit"); });
+    $("#user_sel").bind("change", function() { $("#user_sel_form").trigger("submit"); });
+    // show time
+    //$(document).everyTime(1000, "show_time", function(i) {
+    //    update_time();
+    //});
+    //$(".datePicker").datepicker();
+    //$(".dateTimePicker").datetimepicker();
+
+};
+
+function update_time() {
+    var page_time = new Date();
+    $("span#cur_time").text($.sprintf("%02d:%02d:%02d", page_time.getHours(), page_time.getMinutes(), page_time.getSeconds()));
+};
+
+$(document).ready(addHandlers);
+</script>
