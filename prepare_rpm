@@ -1,0 +1,23 @@
+#!/bin/bash
+. ../devrc
+pushd .
+NAME=package-server
+rpmd=/usr/src/packages
+cp -a ${NAME}.spec ${rpmd}/SPECS
+tar -czvf ${rpmd}/SOURCES/${NAME}.tgz package-server.py package_server_messages.py package-server.rc README LICENSE.GPL install_package.py package_status.py make_package.py
+
+prepare_spec
+cd $rpmd/SPECS
+build_rpm noarch
+install_file
+
+popd
+NAME=package-client
+rpmd=/usr/src/packages
+cp -a ${NAME}.spec ${rpmd}/SPECS
+tar -czvf ${rpmd}/SOURCES/${NAME}.tgz package-client.py package_client_messages.py package-client.rc README LICENSE.GPL
+
+prepare_spec
+cd $rpmd/SPECS
+build_rpm noarch
+install_file
