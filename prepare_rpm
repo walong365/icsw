@@ -1,0 +1,20 @@
+#!/bin/bash
+acd=`pwd`
+. ../devrc
+NAME=mother
+rpmd=/usr/src/packages
+tar -czvf ${rpmd}/SOURCES/${NAME}.tgz mother.py mother mother.cf mother_messages.py README LICENSE.GPL
+prepare_spec
+cd $rpmd/SPECS
+build_rpm noarch
+install_file
+cd $acd
+
+NAME=child
+prepare_spec ${NAME}
+tar -czvf ${rpmd}/SOURCES/${NAME}.tgz Makefile tell_mother.c hoststatus.rc hoststatus.c README LICENSE.GPL
+prepare_spec
+cd $rpmd/SPECS
+build_rpm
+install_file
+
