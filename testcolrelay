@@ -1,0 +1,5 @@
+#!/bin/bash
+
+for i in $(seq 100) ; do
+  ./ccollclient asterix mem &
+done

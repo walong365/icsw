@@ -1,0 +1,38 @@
+#!/bin/bash
+
+warn=`mailq 2>&1 >/dev/null `
+if [ `echo $warn | wc -c ` -gt 1 ] ; then
+    echo "critical $warn"
+else
+    stat=`mailq  2>&1 | tail -1`
+    if [ -f /etc/mta_is_sendmail ] ; then
+	num_mails=$(echo $stat | cut -d ":" -f 2 | tr -d " ")
+	if [ "$num_mails" = "0" ] ; then
+	    echo "ok Mailqueue is empty"
+	else
+	    if [ "$num_mails" -lt 5 ] ; then
+		stat="ok"
+	    elif [ "$num_mails" -lt 20 ] ; then
+		stat="warning"
+	    else
+		stat="error"
+	    fi
+	    echo "$stat $num_mails Mails in queue"
+	fi
+    else
+	echo $stat | grep -i empty >/dev/null && {
+	    echo "ok Mailqueue is empty"
+	} || {
+	    size=`echo $stat | cut -d " " -f 2`
+	    num_mails=`echo $stat | cut -d " " -f 5`
+	    if [ "$num_mails" -lt 5 ] ; then
+		stat="ok"
+	    elif [ "$num_mails" -lt 20 ] ; then
+		stat="warning"
+	    else
+		stat="error"
+	    fi
+	    echo "$stat $num_mails Mails in queue ($size KBs)"
+	}
+    fi
+fi

@@ -1,0 +1,12 @@
+#!/bin/bash
+. ../devrc
+NAME=host-monitoring
+rpmd=/usr/src/packages
+cp -a ${NAME}.spec ${rpmd}/SPECS
+PY_FILES="host-monitoring.py limits.py plugins/* modules/*_mod.py host_monitoring_messages.py start_node.sh stop_node.sh check_node.sh hm_classes.py disable_node.sh"
+tar -czvf ${rpmd}/SOURCES/${NAME}.tgz host-relay.rc host-monitoring.rc ccollclient.c Makefile loadmodules host-monitoring.cf host-relay.cf ${PY_FILES} README LICENSE.GPL
+
+prepare_spec
+cd $rpmd/SPECS
+build_rpm
+install_file
