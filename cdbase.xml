@@ -1,0 +1,3928 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Db flnm="cdbase" nm="cdbase" ver="1.3.4">
+  <VerLbl/>
+  <VerNotes/>
+  <DefTblOpts/>
+  <DocFolder>/usr/local/share/home/local/development/cluster-backbone</DocFolder>
+  <Sch Cm="" nm="schemaA">
+    <Tbl UsSo="1" nm="apc_device">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="apc_device_idx" nm="pkapc_device"/>
+      <Cl au="1" df="" nm="apc_device_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="power_on_delay" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="reboot_delay" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="apc_type" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="version_info" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="num_outlets" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="app_config_con">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="app_config_con_idx" nm="pkapp_config_con"/>
+      <Cl au="1" df="" nm="app_config_con_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="application" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="config" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="app_devgroup_con">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="app_devgroup_con_idx" nm="pkapp_devgroup_con"/>
+      <Cl au="1" df="" nm="app_devgroup_con_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="application" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device_group" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="app_instpack_con">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="app_instpack_con_idx" nm="pkapp_instpack_con"/>
+      <Cl au="1" df="" nm="app_instpack_con_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="application" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="inst_package" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="application">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="application_idx" nm="pkapplication"/>
+      <Cl au="1" df="" nm="application_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="architecture">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="architecture_idx" nm="pkarchitecture"/>
+      <Cl au="1" df="" nm="architecture_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="architecture" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="capability">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=43 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="capability_idx" nm="pkcapability"/>
+      <Cl au="1" df="" nm="capability_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="15" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="mother_capability" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="mother_capability_name" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="15" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="priority" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="defvalue" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="enabled" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="unset" nm="description" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="modulename" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="left_string" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="right_string" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ccl_dgroup_con">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ccl_dgroup_con_idx" nm="pkccl_dgroup_con"/>
+      <Cl au="1" df="" nm="ccl_dgroup_con_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ccl_event" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device_group" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ccl_dloc_con">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ccl_dloc_con_idx" nm="pkccl_dloc_con"/>
+      <Cl au="1" df="" nm="ccl_dloc_con_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ccl_event" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device_location" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ccl_event">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ccl_event_idx" nm="pkccl_event"/>
+      <Cl au="1" df="" nm="ccl_event_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="rrd_data" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device_class" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="threshold" nu="1">
+        <DT ds="Float" en="" id="6" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="threshold_class" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="cluster_event" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="hysteresis" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="disabled" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ccl_event_log">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ccl_event_log_idx" nm="pkccl_event_log"/>
+      <Cl au="1" df="" nm="ccl_event_log_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ccl_event" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="cluster_event" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="passive" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ccl_user_con">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ccl_user_con_idx" nm="pkccl_user_con"/>
+      <Cl au="1" df="" nm="ccl_user_con_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ccl_event" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="user" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="cluster_event">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="cluster_event_idx" nm="pkcluster_event"/>
+      <Cl au="1" df="" nm="cluster_event_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="32" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="ff0f5f" nm="color" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="6" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="command" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="cluster_functionality">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="cluster_functionality_idx" nm="pkcluster_functionality"/>
+      <Cl au="1" df="" nm="cluster_functionality_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="runlevelscripts" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="cluster_functionality_new_config">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="cluster_functionality_new_config_idx" nm="pkcluster_functionality_new_config"/>
+      <Cl au="1" df="" nm="cluster_functionality_new_config_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="cluster_functionality" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="new_config" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="config_blob">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="config_blob_idx" nm="pkconfig_blob"/>
+      <Cl au="1" df="" nm="config_blob_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="new_config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="value" nu="1">
+        <DT ds="BLOB" en="" id="2004" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="config_bool">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="config_bool_idx" nm="pkconfig_bool"/>
+      <Cl au="1" df="" nm="config_bool_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="new_config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="value" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="config_int">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=14 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="config_int_idx" nm="pkconfig_int"/>
+      <Cl au="1" df="" nm="config_int_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="new_config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="value" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="config_script">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="config_script_idx" nm="pkconfig_script"/>
+      <Cl au="1" df="" nm="config_script_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="enabled" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="priority" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="new_config" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="value" nu="1">
+        <DT ds="LongText" en="" id="712" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="error_text" nu="1">
+        <DT ds="LongText" en="" id="712" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="config_str">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=16 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="config_str_idx" nm="pkconfig_str"/>
+      <Cl au="1" df="" nm="config_str_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="new_config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="value" nu="1">
+        <DT ds="LongText" en="" id="712" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="config_type">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="config_type_idx" nm="pkconfig_type"/>
+      <Cl au="1" df="" nm="config_type_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="identifier" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="2" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="identifier" unq="1">
+        <ClNs>identifier</ClNs>
+      </Idx>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_idx" nm="pkdevice"/>
+      <Cl au="1" df="" nm="device_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device_group" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device_type" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="axnumber" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="alias" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="comment" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="snmp_class" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="switch" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="switchport" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="ng_device_templ" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="ng_ext_host" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device_location" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device_class" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="rrd_class" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="save_rrd_vectors" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="etherboot_valid" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="kernel_append" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="newkernel" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="new_kernel" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="actkernel" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="act_kernel" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="act_kernel_build" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="kernelversion" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="stage1_flavour" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="524288" nm="dom0_memory" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="xen_guest" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="newimage" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="new_image" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="actimage" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="act_image" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="imageversion" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="partition_table" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="act_partition_table" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="partdev" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="fixed_partdev" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="bz2_capable" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="newstate" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="rsync" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="rsync_compressed" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="prod_link" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="recvstate" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="reqstate" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="bootnetdevice" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="bootserver" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="reachable_via_bootserver" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="dhcp_mac" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="dhcp_write" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="dhcp_written" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="dhcp_error" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="propagation_level" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="last_install" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="last_boot" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="last_kernel" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="root_passwd" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device_mode" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="relay_device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="nagios_checks" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="show_in_bootcontrol" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="cpu_info" nu="1">
+        <DT ds="LongBLOB" en="" id="709" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Fk deAc="3" nm="fk_device_device_class" prLkCl="device_class_idx" upAc="3">
+        <PrTb mn="0" nm="device_class" oe="1" sch="schemaA" zr="0"/>
+        <CdTb mn="1" nm="device" oe="1" sch="schemaA" zr="1"/>
+        <ClPr cdCl="device_class" prCl="device_class_idx"/>
+      </Fk>
+      <Fk deAc="3" nm="fk_device_device_type" prLkCl="device_type_idx" upAc="3">
+        <PrTb mn="0" nm="device_type" oe="1" sch="schemaA" zr="0"/>
+        <CdTb mn="1" nm="device" oe="1" sch="schemaA" zr="1"/>
+        <ClPr cdCl="device_type" prCl="device_type_idx"/>
+      </Fk>
+      <Idx clu="0" nm="device_group" unq="0">
+        <ClNs>device_group</ClNs>
+      </Idx>
+      <Idx clu="0" nm="fk_device_device_class" unq="0">
+        <ClNs>device_class</ClNs>
+      </Idx>
+      <Idx clu="0" nm="fk_device_device_type" unq="0">
+        <ClNs>device_type</ClNs>
+      </Idx>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_class">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_class_idx" nm="pkdevice_class"/>
+      <Cl au="1" df="" nm="device_class_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="classname" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="priority" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_config">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_config_idx" nm="pkdevice_config"/>
+      <Cl au="1" df="" nm="device_config_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="new_config" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="device" unq="0">
+        <ClNs>device</ClNs>
+      </Idx>
+      <Idx clu="0" nm="new_config" unq="0">
+        <ClNs>new_config</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_connection">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_connection_idx" nm="pkdevice_connection"/>
+      <Cl au="1" df="" nm="device_connection_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="parent" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="child" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_device_selection">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_device_selection_idx" nm="pkdevice_device_selection"/>
+      <Cl au="1" df="" nm="device_device_selection_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device_selection" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_group">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_group_idx" nm="pkdevice_group"/>
+      <Cl au="1" df="" nm="device_group_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="cluster_device_group" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_location">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_location_idx" nm="pkdevice_location"/>
+      <Cl au="1" df="" nm="device_location_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="location" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_relationship">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_relationship_idx" nm="pkdevice_relationship"/>
+      <Cl au="1" df="" nm="device_relationship_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="host_device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="domain_device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="xen" nm="relationship" nu="1">
+        <DT ds="Enum" en="'xen'" id="706" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_rsync_config">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_rsync_config_idx" nm="pkdevice_rsync_config"/>
+      <Cl au="1" df="" nm="device_rsync_config_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="new_config" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0000-00-00 00:00:00" nm="last_rsync_time" nu="1">
+        <DT ds="DateTime" en="" id="700" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="status" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="device" unq="0">
+        <ClNs>device</ClNs>
+      </Idx>
+      <Idx clu="0" nm="new_config" unq="0">
+        <ClNs>new_config</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_selection">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_selection_idx" nm="pkdevice_selection"/>
+      <Cl au="1" df="" nm="device_selection_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="user" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_shape">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_shape_idx" nm="pkdevice_shape"/>
+      <Cl au="1" df="" nm="device_shape_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="x_dim" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="y_dim" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="z_dim" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_type">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=9 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_type_idx" nm="pkdevice_type"/>
+      <Cl au="1" df="" nm="device_type_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="identifier" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="8" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="description" unq="1">
+        <ClNs>description</ClNs>
+      </Idx>
+      <Idx clu="0" nm="identifier" unq="1">
+        <ClNs>identifier</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="device_variable">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="device_variable_idx" nm="pkdevice_variable"/>
+      <Cl au="1" df="" nm="device_variable_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="is_public" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="var_type" nu="0">
+        <DT ds="Enum" en="'s','i','b','d','t'" id="706" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="val_str" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="val_int" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="val_blob" nu="1">
+        <DT ds="BLOB" en="" id="2004" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="val_date" nu="1">
+        <DT ds="DateTime" en="" id="700" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="val_time" nu="1">
+        <DT ds="Time" en="" id="92" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="device" unq="0">
+        <ClNs>device</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="devicelog">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="devicelog_idx" nm="pkdevicelog"/>
+      <Cl au="1" df="" nm="devicelog_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="log_source" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="user" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="log_status" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="text" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="device" unq="0">
+        <ClNs>device</ClNs>
+      </Idx>
+      <Idx clu="0" nm="log_source" unq="0">
+        <ClNs>log_source</ClNs>
+      </Idx>
+      <Idx clu="0" nm="log_status" unq="0">
+        <ClNs>log_status</ClNs>
+      </Idx>
+      <Idx clu="0" nm="user" unq="0">
+        <ClNs>user</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="distribution">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="distribution_idx" nm="pkdistribution"/>
+      <Cl au="1" df="" nm="distribution_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="distribution" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="dmi_entry">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="dmi_entry_idx" nm="pkdmi_entry"/>
+      <Cl au="1" df="" nm="dmi_entry_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="dmi_type" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="handle" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="dmi_length" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="info" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="dmi_ext_key">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="dmi_ext_key_idx" nm="pkdmi_ext_key"/>
+      <Cl au="1" df="" nm="dmi_ext_key_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="dmi_key" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ext_value_string" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="dmi_key" unq="0">
+        <ClNs>dmi_key</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="dmi_key">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="dmi_key_idx" nm="pkdmi_key"/>
+      <Cl au="1" df="" nm="dmi_key_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="dmi_entry" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="key_string" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="value_string" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="dmi_entry" unq="0">
+        <ClNs>dmi_entry</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="extended_log">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="extended_log_idx" nm="pkextended_log"/>
+      <Cl au="1" df="" nm="extended_log_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="devicelog" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="log_source" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="user" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="users" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="subject" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="devicelog" unq="0">
+        <ClNs>devicelog</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="genstuff">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="genstuff_idx" nm="pkgenstuff"/>
+      <Cl au="1" df="" nm="genstuff_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="value" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ggroup">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ggroup_idx" nm="pkggroup"/>
+      <Cl au="1" df="" nm="ggroup_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="active" nu="1">
+        <DT ds="TinyInt" en="" id="-6" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ggroupname" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="gid" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="homestart" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="scratchstart" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="respvname" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="respnname" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="resptitan" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="respemail" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="resptel" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="respcom" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="groupcom" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="ggroupname" unq="1">
+        <ClNs>ggroupname</ClNs>
+      </Idx>
+      <Idx clu="0" nm="gid" unq="1">
+        <ClNs>gid</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ggroupcap">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=42 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ggroupcap_idx" nm="pkggroupcap"/>
+      <Cl au="1" df="" nm="ggroupcap_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ggroup" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="capability" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="capability" unq="0">
+        <ClNs>capability</ClNs>
+      </Idx>
+      <Idx clu="0" nm="ggroup" unq="0">
+        <ClNs>ggroup</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="hopcount">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="hopcount_idx" nm="pkhopcount"/>
+      <Cl au="1" df="" nm="hopcount_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="s_netdevice" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="d_netdevice" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="value" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="trace" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="d_netdevice" unq="0">
+        <ClNs>d_netdevice</ClNs>
+      </Idx>
+      <Idx clu="0" nm="s_netdevice" unq="0">
+        <ClNs>s_netdevice</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="hw_entry">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="hw_entry_idx" nm="pkhw_entry"/>
+      <Cl au="1" df="" nm="hw_entry_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="hw_entry_type" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="iarg0" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="iarg1" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sarg0" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sarg1" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="hw_entry_type">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=6 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="hw_entry_type_idx" nm="pkhw_entry_type"/>
+      <Cl au="1" df="" nm="hw_entry_type_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="identifier" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="8" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="iarg0_descr" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="iarg1_descr" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sarg0_descr" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sarg1_descr" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ibc_connection">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ibc_connection_idx" nm="pkibc_connection"/>
+      <Cl au="1" df="" nm="ibc_connection_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="slave_device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="slave_info" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="blade" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="state" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="32" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="blade_exists" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ibc_device">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ibc_device_idx" nm="pkibc_device"/>
+      <Cl au="1" df="" nm="ibc_device_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="not set" nm="blade_type" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="num_blades" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="image">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="image_idx" nm="pkimage"/>
+      <Cl au="1" df="" nm="image_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="source" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="version" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="release" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="builds" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="build_machine" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="build_lock" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="size_string" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sys_vendor" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sys_version" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sys_release" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="bitcount" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="architecture" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="full_build" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="image_excl">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="image_excl_idx" nm="pkimage_excl"/>
+      <Cl au="1" df="" nm="image_excl_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="image" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="exclude_path" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="valid_for_install" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="valid_for_upgrade" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="inst_package">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="inst_package_idx" nm="pkinst_package"/>
+      <Cl au="1" df="" nm="inst_package_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="package" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="location" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="native" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="last_build" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="present_on_disk" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="package_set" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="package" unq="0">
+        <ClNs>package</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="instp_device">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="instp_device_idx" nm="pkinstp_device"/>
+      <Cl au="1" df="" nm="instp_device_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="inst_package" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="install" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="upgrade" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="del" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="nodeps" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="forceflag" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="status" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0000-00-00 00:00:00" nm="install_time" nu="1">
+        <DT ds="DateTime" en="" id="700" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="error_line_num" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="error_lines" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="device" unq="0">
+        <ClNs>device</ClNs>
+      </Idx>
+      <Idx clu="0" nm="inst_package" unq="0">
+        <ClNs>inst_package</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="kernel">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="kernel_idx" nm="pkkernel"/>
+      <Cl au="1" df="" nm="kernel_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="kernel_version" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="???" nm="major" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="???" nm="minor" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="???" nm="patchlevel" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="version" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="release" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="builds" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="build_machine" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="master_server" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="mother" nm="master_role" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="build_lock" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="config_name" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="???" nm="cpu_arch" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="???" nm="sub_cpu_arch" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="target_dir" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="comment" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="enabled" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="initrd_version" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="initrd_built" nu="1">
+        <DT ds="DateTime" en="" id="700" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="module_list" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="target_module_list" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="xen_host_kernel" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="xen_guest_kernel" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="bitcount" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="stage1_lo_present" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="stage1_cpio_present" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="stage1_cramfs_present" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="stage2_present" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="kernel_build">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="kernel_build_idx" nm="pkkernel_build"/>
+      <Cl au="1" df="" nm="kernel_build_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="kernel" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="build_machine" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="version" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="release" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="kernel_local_info">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="kernel_local_info_idx" nm="pkkernel_local_info"/>
+      <Cl au="1" df="" nm="kernel_local_info_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="kernel" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="mother" nm="syncer_role" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="info_blob" nu="1">
+        <DT ds="BLOB" en="" id="2004" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="kernel_log">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="kernel_log_idx" nm="pkkernel_log"/>
+      <Cl au="1" df="" nm="kernel_log_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="kernel" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="mother" nm="syncer_role" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="log_level" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="log_str" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="log_source">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="log_source_idx" nm="pklog_source"/>
+      <Cl au="1" df="" nm="log_source_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="identifier" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="log_status">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=6 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="log_status_idx" nm="pklog_status"/>
+      <Cl au="1" df="" nm="log_status_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="c" nm="identifier" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="4" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="log_level" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="lvm_lv">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="lvm_lv_idx" nm="pklvm_lv"/>
+      <Cl au="1" df="" nm="lvm_lv_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="partition_table" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="lvm_vg" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="size" nu="1">
+        <DT ds="BigInt" en="" id="-5" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="mountpoint" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="mount_options" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="fs_freq" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="2" nm="fs_passno" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="partition_fs" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="lvm_vg">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="lvm_vg_idx" nm="pklvm_vg"/>
+      <Cl au="1" df="" nm="lvm_vg_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="partition_table" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="mac_ignore">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="mac_ignore_idx" nm="pkmac_ignore"/>
+      <Cl au="1" df="" nm="mac_ignore_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="macadr" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="macbootlog">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="macbootlog_idx" nm="pkmacbootlog"/>
+      <Cl au="1" df="" nm="macbootlog_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="type" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="32" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ip" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="32" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="macadr" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="log_source" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="msoutlet">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="msoutlet_idx" nm="pkmsoutlet"/>
+      <Cl au="1" df="" nm="msoutlet_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="slave_device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="slave_info" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="outlet" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="state" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="32" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="t_power_on_delay" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="t_power_off_delay" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="t_reboot_delay" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="power_on_delay" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="power_off_delay" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="reboot_delay" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="netbotz_picture">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="netbotz_picture_idx" nm="pknetbotz_picture"/>
+      <Cl au="1" df="" nm="netbotz_picture_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="year" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="month" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="day" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="hour" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="minute" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="second" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="path" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="netdevice">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="netdevice_idx" nm="pknetdevice"/>
+      <Cl au="1" df="" nm="netdevice_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="devname" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="12" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00:00:00:00:00:00" nm="macadr" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="59" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="driver_options" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="224" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="speed" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="netdevice_speed" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="driver" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="routing" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="penalty" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="dhcp_device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="ethtool_options" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00:00:00:00:00:00" nm="fake_macadr" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="59" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="network_device_type" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="is_bridge" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="bridge_name" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="device" unq="0">
+        <ClNs>device</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="netdevice_speed">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=6 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="netdevice_speed_idx" nm="pknetdevice_speed"/>
+      <Cl au="1" df="" nm="netdevice_speed_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="speed_bps" nu="1">
+        <DT ds="BigInt" en="" id="-5" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="check_via_ethtool" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="full_duplex" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="netip">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="netip_idx" nm="pknetip"/>
+      <Cl au="1" df="" nm="netip_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ip" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="network" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="netdevice" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="penalty" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="alias" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="alias_excl" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="netdevice" unq="0">
+        <ClNs>netdevice</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="network">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=8 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="network_idx" nm="pknetwork"/>
+      <Cl au="1" df="" nm="network_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="identifier" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="network_type" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="master_network" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="short_names" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="penalty" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="postfix" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="4" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="???" nm="info" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="network" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="15" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="netmask" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="15" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="broadcast" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="15" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0.0.0.0" nm="gateway" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="15" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="gw_pri" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="write_bind_config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="write_other_network_config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0.0.0.0" nm="start_range" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="15" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0.0.0.0" nm="end_range" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="15" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="identifier" unq="1">
+        <ClNs>identifier</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="network_device_type">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=7 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="network_device_type_idx" nm="pknetwork_device_type"/>
+      <Cl au="1" df="" nm="network_device_type_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="identifier" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="mac_bytes" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="identifier" unq="1">
+        <ClNs>identifier</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="network_network_device_type">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=7 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="network_network_device_type_idx" nm="pknetwork_network_device_type"/>
+      <Cl au="1" df="" nm="network_network_device_type_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="network" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="network_device_type" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="network_type">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=6 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="network_type_idx" nm="pknetwork_type"/>
+      <Cl au="1" df="" nm="network_type_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="identifier" nu="0">
+        <DT ds="Char" en="" id="1" ln="1" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="identifier" unq="1">
+        <ClNs>identifier</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="new_config">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="new_config_idx" nm="pknew_config"/>
+      <Cl au="1" df="" nm="new_config_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="priority" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="new_config_type" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="new_config_type">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="new_config_type_idx" nm="pknew_config_type"/>
+      <Cl au="1" df="" nm="new_config_type_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="new_rrd_data">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="new_rrd_data_idx" nm="pknew_rrd_data"/>
+      <Cl au="1" df="" nm="new_rrd_data_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr1" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr2" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr3" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr4" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="unit" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="32" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="info" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="from_snmp" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="base" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="factor" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="i" nm="var_type" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="1" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="device" unq="0">
+        <ClNs>device</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_ccgroup">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_ccgroup_idx" nm="pkng_ccgroup"/>
+      <Cl au="1" df="" nm="ng_ccgroup_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ng_contact" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ng_contactgroup" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_cgservicet">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_cgservicet_idx" nm="pkng_cgservicet"/>
+      <Cl au="1" df="" nm="ng_cgservicet_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ng_contactgroup" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ng_service_templ" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_check_command">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_check_command_idx" nm="pkng_check_command"/>
+      <Cl au="1" df="" nm="ng_check_command_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="new_config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ng_check_command_type" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="ng_service_templ" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="command_line" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_check_command_type">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=12 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_check_command_type_idx" nm="pkng_check_command_type"/>
+      <Cl au="1" df="" nm="ng_check_command_type_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_contact">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_contact_idx" nm="pkng_contact"/>
+      <Cl au="1" df="" nm="ng_contact_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="user" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="snperiod" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="hnperiod" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="snrecovery" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="sncritical" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="snwarning" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="snunknown" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="hnrecovery" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="hndown" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="hnunreachable" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="notify-by-email" nm="sncommand" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="host-notify-by-email" nm="hncommand" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_contactgroup">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_contactgroup_idx" nm="pkng_contactgroup"/>
+      <Cl au="1" df="" nm="ng_contactgroup_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="alias" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_device_contact">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_device_contact_idx" nm="pkng_device_contact"/>
+      <Cl au="1" df="" nm="ng_device_contact_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device_group" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ng_contactgroup" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_device_templ">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_device_templ_idx" nm="pkng_device_templ"/>
+      <Cl au="1" df="" nm="ng_device_templ_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ng_service_templ" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="check-host-alive" nm="ccommand" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="max_attempts" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="ninterval" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ng_period" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="nrecovery" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="ndown" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="nunreachable" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="is_default" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_ext_host">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_ext_host_idx" nm="pkng_ext_host"/>
+      <Cl au="1" df="" nm="ng_ext_host_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="icon_image" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="icon_image_alt" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="vrml_image" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="statusmap_image" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_period">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_period_idx" nm="pkng_period"/>
+      <Cl au="1" df="" nm="ng_period_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="alias" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00:00-24:00" nm="sunrange" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00:00-24:00" nm="monrange" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00:00-24:00" nm="tuerange" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00:00-24:00" nm="wedrange" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00:00-24:00" nm="thurange" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00:00-24:00" nm="frirange" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00:00-24:00" nm="satrange" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_service">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_service_idx" nm="pkng_service"/>
+      <Cl au="1" df="" nm="ng_service_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="alias" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="command" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="parameter1" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="parameter2" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="parameter3" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="parameter4" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="ng_service_templ">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="ng_service_templ_idx" nm="pkng_service_templ"/>
+      <Cl au="1" df="" nm="ng_service_templ_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="volatile" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="nsc_period" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="max_attempts" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="2" nm="check_interval" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="retry_interval" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="ninterval" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="nsn_period" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="nrecovery" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="ncritical" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="nwarning" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="nunknown" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="package">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="package_idx" nm="pkpackage"/>
+      <Cl au="1" df="" nm="package_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="version" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="release" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="architecture" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="size" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="pgroup" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="summary" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="distribution" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="vendor" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="buildtime" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="not set" nm="buildhost" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="not set" nm="packager" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="package_set">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="package_set_idx" nm="pkpackage_set"/>
+      <Cl au="1" df="" nm="package_set_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="partition">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="partition_idx" nm="pkpartition"/>
+      <Cl au="1" df="" nm="partition_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="partition_disc" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="mountpoint" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00" nm="partition_hex" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="2" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="size" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="mount_options" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="pnum" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="bootable" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="fs_freq" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="2" nm="fs_passno" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="partition_fs" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="partition_disc">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="partition_disc_idx" nm="pkpartition_disc"/>
+      <Cl au="1" df="" nm="partition_disc_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="partition_table" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="disc" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="priority" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="partition_fs">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="partition_fs_idx" nm="pkpartition_fs"/>
+      <Cl au="1" df="" nm="partition_fs_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="f" nm="identifier" nu="0">
+        <DT ds="Char" en="" id="1" ln="1" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00" nm="hexid" nu="0">
+        <DT ds="Char" en="" id="1" ln="2" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="partition_table">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="partition_table_idx" nm="pkpartition_table"/>
+      <Cl au="1" df="" nm="partition_table_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="valid" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="modify_bootloader" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="pci_entry">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="pci_entry_idx" nm="pkpci_entry"/>
+      <Cl au="1" df="" nm="pci_entry_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="domain" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="bus" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="slot" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="func" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="vendor" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="6" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="vendorname" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="6" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="devicename" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="class" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="6" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="classname" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="subclass" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="6" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="subclassname" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="revision" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="32" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="device_idx" unq="0">
+        <ClNs>device_idx</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="peer_information">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="peer_information_idx" nm="pkpeer_information"/>
+      <Cl au="1" df="" nm="peer_information_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="s_netdevice" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="d_netdevice" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="penalty" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="pi_connection">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="pi_connection_idx" nm="pkpi_connection"/>
+      <Cl au="1" df="" nm="pi_connection_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="package" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="image" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="install_time" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="rrd_class">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="rrd_class_idx" nm="pkrrd_class"/>
+      <Cl au="1" df="" nm="rrd_class_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="60" nm="step" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="60" nm="heartbeat" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="rrd_data">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="rrd_data_idx" nm="pkrrd_data"/>
+      <Cl au="1" df="" nm="rrd_data_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="rrd_set" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr1" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="63" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr2" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="63" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr3" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="63" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr4" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="63" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="unit" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="32" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="info" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="from_snmp" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="base" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="factor" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="i" nm="var_type" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="1" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="rrd_set" unq="0">
+        <ClNs>rrd_set</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="rrd_data_store">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="rrd_data_store_idx" nm="pkrrd_data_store"/>
+      <Cl au="1" df="" nm="rrd_data_store_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="recv_time" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="data" nu="0">
+        <DT ds="BLOB" en="" id="2004" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="device" unq="0">
+        <ClNs>device</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="rrd_rra">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="rrd_rra_idx" nm="pkrrd_rra"/>
+      <Cl au="1" df="" nm="rrd_rra_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="rrd_class" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="cf" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="steps" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="rows" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0.5" nm="xff" nu="1">
+        <DT ds="Float" en="" id="6" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="rrd_set">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="rrd_set_idx" nm="pkrrd_set"/>
+      <Cl au="1" df="" nm="rrd_set_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="filename" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="device" unq="0">
+        <ClNs>device</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="session_data">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=7 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="session_data_idx" nm="pksession_data"/>
+      <Cl au="1" df="" nm="session_data_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="session_id" nu="0">
+        <DT ds="Char" en="" id="1" ln="32" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="value" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="user_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="remote_addr" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="alias" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="login_time" nu="1">
+        <DT ds="DateTime" en="" id="700" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="logout_time" nu="1">
+        <DT ds="DateTime" en="" id="700" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="forced_logout" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="rebuild_server_routes" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="session_id" unq="1">
+        <ClNs>session_id</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_complex">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_complex_idx" nm="pksge_complex"/>
+      <Cl au="1" df="" nm="sge_complex_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00:10:00" nm="total_time" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="00:10:00" nm="slot_time" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="pe_slots_min" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="pe_slots_max" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="default_queue" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_host">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_host_idx" nm="pksge_host"/>
+      <Cl au="1" df="" nm="sge_host_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="host_name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_job">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=6 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_job_idx" nm="pksge_job"/>
+      <Cl au="1" df="" nm="sge_job_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="???" nm="job_uid" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="jobname" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="jobnum" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="taskid" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="jobowner" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="jobgroup" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="log_path" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_user" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="queue_time" nu="1">
+        <DT ds="DateTime" en="" id="700" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="job_uid" unq="1">
+        <ClNs>job_uid</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_job_run">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=6 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_job_run_idx" nm="pksge_job_run"/>
+      <Cl au="1" df="" nm="sge_job_run_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sge_job" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="sge" nm="account" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_userlist" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_project" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="priority" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="none" nm="granted_pe" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="slots" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="failed" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="unknown" nm="failed_str" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="exit_status" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="masterq" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="start_time" nu="1">
+        <DT ds="DateTime" en="" id="700" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="start_time_sge" nu="1">
+        <DT ds="DateTime" en="" id="700" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="end_time" nu="1">
+        <DT ds="DateTime" en="" id="700" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="end_time_sge" nu="1">
+        <DT ds="DateTime" en="" id="700" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_ru_wallclock" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_cpu" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_mem" nu="1">
+        <DT ds="Float" en="" id="6" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_io" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_iow" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_maxvmem" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_parsed" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="sge_job" unq="0">
+        <ClNs>sge_job</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_log">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_log_idx" nm="pksge_log"/>
+      <Cl au="1" df="" nm="sge_log_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_job" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_queue" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="sge_host" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="log_level" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="log_str" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="sge_host" unq="0">
+        <ClNs>sge_host</ClNs>
+      </Idx>
+      <Idx clu="0" nm="sge_job" unq="0">
+        <ClNs>sge_job</ClNs>
+      </Idx>
+      <Idx clu="0" nm="sge_queue" unq="0">
+        <ClNs>sge_queue</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_pe_host">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_pe_host_idx" nm="pksge_pe_host"/>
+      <Cl au="1" df="" nm="sge_pe_host_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sge_job_run" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="hostname" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="num_slots" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_project">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_project_idx" nm="pksge_project"/>
+      <Cl au="1" df="" nm="sge_project_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="oticket" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="fshare" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_queue">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_queue_idx" nm="pksge_queue"/>
+      <Cl au="1" df="" nm="sge_queue_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="queue_name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_ul_ult">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_ul_ult_idx" nm="pksge_ul_ult"/>
+      <Cl au="1" df="" nm="sge_ul_ult_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sge_userlist" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sge_userlist_type" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_user">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_user_idx" nm="pksge_user"/>
+      <Cl au="1" df="" nm="sge_user_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="oticket" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="fshare" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="default_project" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="cluster_user" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_user_con">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_user_con_idx" nm="pksge_user_con"/>
+      <Cl au="1" df="" nm="sge_user_con_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="user" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sge_config" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_userlist">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_userlist_idx" nm="pksge_userlist"/>
+      <Cl au="1" df="" nm="sge_userlist_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="oticket" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="fshare" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sge_userlist_type">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sge_userlist_type_idx" nm="pksge_userlist_type"/>
+      <Cl au="1" df="" nm="sge_userlist_type_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="snmp_class">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="snmp_class_idx" nm="pksnmp_class"/>
+      <Cl au="1" df="" nm="snmp_class_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="public" nm="read_community" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="private" nm="write_community" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="60" nm="update_freq" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="snmp_config">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="snmp_config_idx" nm="pksnmp_config"/>
+      <Cl au="1" df="" nm="snmp_config_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="new_config" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="snmp_mib" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="device" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="snmp_mib">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="snmp_mib_idx" nm="pksnmp_mib"/>
+      <Cl au="1" df="" nm="snmp_mib_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="descr" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="mib" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="rrd_key" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="unit" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="32" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="base" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="factor" nu="1">
+        <DT ds="Double" en="" id="8" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="i" nm="var_type" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="1" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="status">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=7 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="status_idx" nm="pkstatus"/>
+      <Cl au="1" df="" nm="status_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="status" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="prod_link" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="status" unq="1">
+        <ClNs>status</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="sys_partition">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="sys_partition_idx" nm="pksys_partition"/>
+      <Cl au="1" df="" nm="sys_partition_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="partition_table" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="mountpoint" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="mount_options" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="table_r">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=128 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="table_r_idx" nm="pktable_r"/>
+      <Cl au="1" df="" nm="table_r_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="64" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="name" unq="1">
+        <ClNs>name</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="user">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="user_idx" nm="pkuser"/>
+      <Cl au="1" df="" nm="user_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="active" nu="1">
+        <DT ds="TinyInt" en="" id="-6" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="login" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="uid" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ggroup" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="aliases" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="export" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="export_scr" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="home" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="scratch" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="/bin/false" nm="shell" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="xxxx" nm="password" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="16" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="cluster_contact" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="uservname" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="usernname" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="usertitan" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="useremail" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="userpager" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="usertel" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="usercom" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="login" unq="1">
+        <ClNs>login</ClNs>
+      </Idx>
+      <Idx clu="0" nm="uid" unq="1">
+        <ClNs>uid</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="user_ggroup">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="user_ggroup_idx" nm="pkuser_ggroup"/>
+      <Cl au="1" df="" nm="user_ggroup_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="ggroup" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="user" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="user_var">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="user_var_idx" nm="pkuser_var"/>
+      <Cl au="1" df="" nm="user_var_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="user" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="name" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="63" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="hidden" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="s" nm="type" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="1" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="editable" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="value" nu="1">
+        <DT ds="BLOB" en="" id="2004" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="description" nu="1">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="usercap">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="usercap_idx" nm="pkusercap"/>
+      <Cl au="1" df="" nm="usercap_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="user" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="capability" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Idx clu="0" nm="capability" unq="0">
+        <ClNs>capability</ClNs>
+      </Idx>
+      <Idx clu="0" nm="userx" unq="0">
+        <ClNs>user</ClNs>
+      </Idx>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="vendor">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="vendor_idx" nm="pkvendor"/>
+      <Cl au="1" df="" nm="vendor_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="vendor" nu="0">
+        <DT ds="Text" en="" id="703" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="wc_files">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="wc_files_idx" nm="pkwc_files"/>
+      <Cl au="1" df="" nm="wc_files_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="disk_int" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="config" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="128" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="uid" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="gid" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="mode" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="dest_type" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="1" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="source" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="dest" nu="0">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="error_flag" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="content" nu="1">
+        <DT ds="LongBLOB" en="" id="709" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="xen_device">
+      <TblOpts>ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="xen_device_idx" nm="pkxen_device"/>
+      <Cl au="1" df="" nm="xen_device_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="256" nm="memory" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="256" nm="max_memory" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="linux" nm="builder" nu="1">
+        <DT ds="Enum" en="'hvm','linux'" id="706" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="root=/dev/hda1 xencons=tty 3" nm="cmdline" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="1" nm="vcpus" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+    <Tbl UsSo="1" nm="xen_vbd">
+      <TblOpts>ENGINE=MyISAM DEFAULT CHARSET=latin1</TblOpts>
+      <Pk ClNs="xen_vbd_idx" nm="pkxen_vbd"/>
+      <Cl au="1" df="" nm="xen_vbd_idx" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="xen_device" nu="0">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="phy" nm="vbd_type" nu="1">
+        <DT ds="Enum" en="'phy','nfs','iscsi'" id="706" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sarg0" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sarg1" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sarg2" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="" nm="sarg3" nu="1">
+        <DT ds="VarChar" en="" id="12" ln="255" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="iarg0" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="iarg1" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="iarg2" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="0" nm="iarg3" nu="1">
+        <DT ds="Integer" en="" id="4" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <Cl au="0" df="CURRENT_TIMESTAMP" nm="date" nu="0">
+        <DT ds="TimeStamp" en="" id="93" ln="null" sc="null" sg="1"/>
+      </Cl>
+      <SchTrHis/>
+    </Tbl>
+  </Sch>
+  <Dgm nm="diagramA">
+    <RnCf FtSz="9" lkStgy="KeyToKeyStrategy" zm="1.0">
+      <VbCfg>
+        <Fg ky="Auto Number" vl="0"/>
+        <Fg ky="Check" vl="0"/>
+        <Fg ky="Comment" vl="0"/>
+        <Fg ky="Data Type" vl="1"/>
+        <Fg ky="Default" vl="0"/>
+        <Fg ky="ENUM Values" vl="0"/>
+        <Fg ky="Length" vl="1"/>
+        <Fg ky="Name" vl="1"/>
+        <Fg ky="Nullable" vl="0"/>
+        <Fg ky="Schema Name" vl="0"/>
+        <Fg ky="Signed" vl="0"/>
+      </VbCfg>
+    </RnCf>
+    <TbGl bkCl="ffffffe6" sch="schemaA" tbl="device_class" x="595" y="272"/>
+    <TbGl bkCl="ffffffe6" sch="schemaA" tbl="device_type" x="671" y="588"/>
+    <TbGl bkCl="ffffffe6" sch="schemaA" tbl="device" x="167" y="371"/>
+    <FkGl bkCl="ff000000" nm="schemaA.device.fk_device_device_class"/>
+    <FkGl bkCl="ff000000" nm="schemaA.device.fk_device_device_type"/>
+  </Dgm>
+  <RnmMgr NxRnmId="1"/>
+  <DbDocOptionMgr>
+    <BasicOptionMgr>
+      <Name>db.doc.option.mgr</Name>
+      <BoolOpt lbl="Diagrams" nm="doc.diagrams" on="1" spl="0"/>
+      <BoolOpt lbl="Foreign Keys" nm="doc.fks" on="1" spl="0"/>
+      <BoolOpt lbl="Indexes" nm="doc.indexes" on="1" spl="0"/>
+      <BoolOpt lbl="Overwrite CSS File" nm="doc.overwrite.css" on="1" spl="0"/>
+      <BoolOpt lbl="Procedures" nm="doc.procs" on="1" spl="0"/>
+      <BoolOpt lbl="Schemas" nm="doc.schemas" on="1" spl="0"/>
+      <BoolOpt lbl="Sequences" nm="doc.sequences" on="1" spl="0"/>
+      <BoolOpt lbl="Tables" nm="doc.tables" on="1" spl="0"/>
+      <BoolOpt lbl="Triggers" nm="doc.triggers" on="1" spl="0"/>
+      <BoolOpt lbl="Views" nm="doc.views" on="1" spl="0"/>
+    </BasicOptionMgr>
+  </DbDocOptionMgr>
+</Db>

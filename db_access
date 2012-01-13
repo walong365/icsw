@@ -1,0 +1,11 @@
+# full db-access
+
+full_access=/etc/sysconfig/cluster/mysql.cf
+
+# readonly access
+
+read_only=/etc/sysconfig/cluster/mysql_ro.cf
+
+# default access
+
+default_access=full_access

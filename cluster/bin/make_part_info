@@ -1,0 +1,42 @@
+#!/bin/bash
+
+partdir=/tftpboot/partinfo
+
+[ ! -d $partdir ] && { echo "Partition directory $partdir not found !" ; exit -1 ; }
+
+poslist=""
+for i in ${partdir}/* ; do
+  [ -f $i ] && ` echo $i | grep -v \~ > /dev/null ` && { poslist="${poslist} `basename $i`" ; } 
+done
+
+[ $# -lt 1 ] && { echo "Need partition name (one of$poslist) !" ; exit -1 ; }
+
+pinfo=$1
+cd $partdir
+
+[ ! -f $pinfo ] && { echo "Partition info "$pinfo" not found !" ; exit -1 ; }
+pidir=${pinfo}_d
+
+rm -rf $pidir
+mkdir $pidir
+
+part_disc.py -f $pinfo -v
+part_disc.py -f $pinfo -d > $pidir/device
+part_disc.py -f $pinfo --sfdisk > $pidir/sfdisk
+part_disc.py -f $pinfo -p --fstab > $pidir/fstab
+swapparts=`cat $pidir/fstab | grep swap | tr "\t" " " | cut -d " " -f 1`
+ext2parts=`cat $pidir/fstab | grep ext2 | tr "\t" " " | cut -d " " -f 1`
+reiserfsparts=`cat $pidir/fstab | grep reiserfs | tr "\t" " " | cut -d " " -f 1`
+echo $swapparts > $pidir/swapparts
+echo $ext2parts > $pidir/ext2parts
+echo $reiserfsparts > $pidir/reiserfsparts
+echo "    swap partitions: "$swapparts
+echo "    ext2 partitions: "$ext2parts
+echo "reiserfs partitions: "$reiserfsparts
+cat $pidir/fstab | tr "\t" " " | tr -s " " | egrep -v "^\s*$" | egrep -v "^#" | grep -v swap | grep -v proc | cut -d " " -f 1-2 > $pidir/pfstab
+cat $pidir/pfstab | grep ".* /$" | cut -d " " -f 1 > $pidir/rootpart
+echo "      rootpartition: "`cat $pidir/rootpart`
+
+echo "SQL-part"
+
+part_disc.py -f $pinfo -p -D

@@ -1,0 +1,52 @@
+#! /bin/sh
+#
+# Copyright (c) 2001 init.at
+#
+### BEGIN INIT INFO
+# Provides:      pbs_server
+# Required-Start: autofs
+# Required-Stop:
+# Default-Start: 3 5
+# Default-Stop:
+# Description:   starts the pbs server and maui
+### END INIT INFO
+
+. /etc/rc.config
+
+base=${0##*/}
+link=${base#*[SK][0-9][0-9]}
+
+rc_reset
+
+return=$rc_done
+case "$1" in
+    start)	echo -n "Starting pbs_server"
+	        /usr/local/sbin/pbs_server
+		rc_status -v
+		echo -n "Starting maui"
+		/usr/local/bin/maui
+		rc_status -v
+		return=$rc_done
+		;;
+    stop)	echo -n "Stopping maui"
+		/usr/bin/killall maui
+		rc_status -v
+		echo -n "Stopping pbs_server"
+		/usr/local/bin/qterm -t quick
+		rc_status -v
+		return=$rc_done
+		;;
+    status)     echo -n "Checking pbs_server..."
+		pidofproc pbs_server > /dev/null || rc_failed 2
+		rc_status -v
+		return=$rc_done
+		echo -n "Checking maui..."
+		pidofproc maui > /dev/null || rc_failed 2
+		rc_status -v
+		;;
+    *)		echo "Usage: $0 {start|stop|status}"
+		exit 1
+esac
+
+test "$return" = "$rc_done" || exit 1
+exit 0

@@ -1,0 +1,44 @@
+#! /bin/sh
+ 
+### BEGIN INIT INFO
+# Provides:      pbs_mom
+# Required-Start: autofs
+# Required-Stop:
+# Default-Start: 3 5
+# Default-Stop: 0 2 4 6
+# Description:   starts the OpenPBS machine oriented monitor
+### END INIT INFO
+
+. /etc/rc.status
+ 
+BASE_DIR=/usr/local
+
+[ -f /etc/batch_system ] && cat /etc/batch_system | grep OPENPBS >/dev/null || exit -1
+
+rc_reset
+case "$1" in
+    start)
+        checkproc ${BASE_DIR}/sbin/pbs_mom && {
+            killproc ${BASE_DIR}/sbin/pbs_mom 2> /dev/null
+            echo -n "Re-"
+        }
+        echo -n "Starting pbs_mom"
+        startproc ${BASE_DIR}/sbin/pbs_mom -r || rc_failed
+	rc_status -v
+        ;;
+    stop)
+        echo -n "Shutting down pbs_mom"
+        killproc -TERM ${BASE_DIR}/sbin/pbs_mom || rc_failed
+	rc_status -v
+        ;;
+    restart)
+        $0 stop && $0 start || rc_failed
+        ;;
+    status)
+        checkproc ${BASE_DIR}/sbin/pbs_mom && echo "OK" || echo "pbs_mom down"
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+esac
+rc_exit

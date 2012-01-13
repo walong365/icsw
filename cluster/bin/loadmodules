@@ -1,0 +1,33 @@
+#!/bin/bash
+# Copyright (c) 2001 init.at
+#
+
+. /etc/rc.config
+
+base=${0##*/}
+link=${base#*[SK][0-9][0-9]}
+
+rc_reset
+
+return=$rc_done
+echo -n "Loading modules..."
+unset mods
+if [ -f /etc/modules ] ; then
+  mods=`cat /etc/modules`
+fi
+
+if [ "${mods:-0}" == "0" ] ; then
+  echo -n " no modules to load"
+fi
+echo -n " "
+for mod in $mods ; do
+  modprobe $mod > /dev/null 2>&1 && {
+    echo -n "OK-" ;
+  } || {
+    echo -n "FAILED-" ; rc_failed 2 ;
+  }
+done
+#for mod in $mods ; do
+#  rmmod $mod > /dev/null 2>&1
+#done
+rc_status -v
