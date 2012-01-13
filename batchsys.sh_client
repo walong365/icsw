@@ -1,0 +1,84 @@
+#!/bin/bash
+# Copyright (C) 2005,2006,2007 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+# 
+# This file is part of rms-tools
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+if [ -f ~/.batch_system ] ; then
+    b_list=$(cat ~/.batch_system)
+else
+    if [ ! -f /etc/batch_system ] ; then
+	touch /etc/batch_system 2>/dev/null && {
+	    echo "SGE" >/etc/batch_system >/dev/null
+	}
+    fi
+    [ -f /etc/batch_system ] && b_list=$(cat /etc/batch_system)
+    b_list=${b_list:-SGE}
+fi
+
+# delete openpbs if no /etc/pbs_server is set
+if [ -d /opt/openpbs/sbin ] ; then
+    [ -f /etc/pbs_server ] && export PBS_DEFAULT=`cat /etc/pbs_server`
+else
+    b_list=`echo $b_list | tr " " "\n" | grep -v "OPENPBS"`
+fi
+
+# delete gridengine if no /opt/sge/util directory is found
+if [ -f /etc/sge_root ] && [ -f /etc/sge_cell ] && [ -f /etc/sge_server ] ; then
+    SGE_ROOT=`cat /etc/sge_root`
+    SGE_CELL=`cat /etc/sge_cell`
+    SGE_SERVER=`cat /etc/sge_server`
+    if [ -f $SGE_ROOT/util/arch ] ; then
+	export SGE_ROOT SGE_CELL SGE_SERVER
+	SGE_ARCH=`$SGE_ROOT/util/arch`
+	export SGE_ARCH
+    else
+	b_list=`echo $b_list | tr " " "\n" | grep -v "SGE"`
+    fi
+else
+    b_list=`echo $b_list | tr " " "\n" | grep -v "SGE"`
+fi
+
+# delete pbspro if no /etc/pbs.conf is found
+if [ ! -f /etc/pbs.conf ] ; then
+    b_list=`echo $b_list | tr " " "\n" | grep -v "PBSPRO"`
+fi
+
+pref=`echo $b_list| tr " " "\n" | head -1`
+
+if [ "${pref:-0}" = "PBSPRO" ] ; then
+    source /etc/pbs.conf
+    ADD_PATH=${PBS_EXEC}/bin/
+    ADD_MANPATH=${PBS_EXEC}/man
+    export BATCHSYS_USED=PBSPRO
+elif [ "${pref:-0}" = "OPENPBS" ] ; then
+    export PBS_HOME=/opt/openpbs
+    ADD_PATH=${PBS_HOME}/bin:${PBS_HOME}/sbin
+    ADD_MANPATH=${PBS_HOME}/man
+    export BATCHSYS_USED=OPENPBS
+elif [ "${pref:-0}" = "SGE" ] ; then
+    ADD_PATH=${SGE_ROOT}/bin/${SGE_ARCH}
+    ADD_MANPATH=${SGE_ROOT}/man
+    export BATCHSYS_USED=SGE
+    export SGE_ROOT SGE_CELL
+fi
+
+if [ -n "$ADD_PATH" ] ; then
+    export PATH=$PATH:$ADD_PATH;
+    export MANPATH=$MANPATH:$ADD_MANPATH;
+fi
