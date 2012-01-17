@@ -1,0 +1,926 @@
+#!/usr/bin/python-init -Otu
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2007,2008,2009 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+# 
+# This file is part of python-modules
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FTNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+""" kernel sync tools """
+
+import sys
+import os
+import time
+import threading
+import MySQLdb
+import configfile
+import commands
+import stat
+import process_tools
+import logging_tools
+import mysql_tools
+import pprint
+import server_command
+import gzip
+import hashlib
+import threading_tools
+import net_tools
+import config_tools
+
+KNOWN_INITRD_FLAVOURS = ["lo", "cpio", "cramfs"]
+
+KNOWN_KERNEL_SYNC_COMMANDS = ["check_kernel_dir",
+                              "sync_kernels",
+                              "kernel_sync_data"]
+
+class srv_con_obj(net_tools.buffer_object):
+    # connects to a foreign node
+    def __init__(self, t_queue, dst_ip, add_dict):
+        self.__target_queue = t_queue
+        self.__dst_ip = dst_ip
+        self.__add_dict = add_dict
+        net_tools.buffer_object.__init__(self)
+    def __del__(self):
+        pass
+    def setup_done(self):
+        self.add_to_out_buffer(net_tools.add_proto_1_header(str(self.__add_dict["send_com"]), True))
+    def out_buffer_sent(self, send_len):
+        if send_len == len(self.out_buffer):
+            self.out_buffer = ""
+            self.socket.send_done()
+        else:
+            self.out_buffer = self.out_buffer[send_len:]
+    def add_to_in_buffer(self, what):
+        self.in_buffer += what
+        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
+        if p1_ok:
+            self.__target_queue.put(("srv_ok", (self.__add_dict, p1_data)))
+            self.delete()
+    def report_problem(self, flag, what):
+        self.__target_queue.put(("srv_error", (self.__add_dict, "%s (code %d)" % (what, flag))))
+        #self.__stc.set_host_error(self.__dst_ip, "%s : %s" % (net_tools.net_flag_to_str(flag), what))
+        self.delete()
+
+class kernel(object):
+    # filenames to sync
+    pos_names = ["bzImage",
+                 "modules.tar.bz2",
+                 "initrd_cpio.gz",
+                 "initrd_cramfs.gz",
+                 "initrd_lo.gz",
+                 "modules.tar.bz2",
+                 "xen.gz",
+                 ".comment",
+                 ".config"]
+    def __init__(self, name, root_dir, log_func, dc, config, **args):
+        self.__slots__ = []
+        # meassure the lifetime
+        self.__start_time = time.time()
+        self.__db_idx = 0
+        self.__dc = dc
+        self.__local_master_server = args.get("master_server", 0)
+        self.name = name
+        self.root_dir = root_dir
+        self.__config = config
+        self.path = os.path.normpath("%s/%s" % (self.root_dir, self.name))
+        self.__config_dict = {}
+        self.__log_func = log_func
+        self.__sync_kernel = args.get("sync_kernel", False)
+        if self.__sync_kernel:
+            if not os.path.isdir(self.path):
+                self.log("creating kernel_dir %s" % (self.path))
+                os.makedirs(self.path)
+            self._copy_from_sync_dict(args.get("sync_dict", {}))
+        self.__bz_path = "%s/bzImage" % (self.path)
+        self.__xen_path = "%s/xen.gz" % (self.path)
+        for c_path in ["config", ".config"]:
+            self.__config_path = "%s/%s" % (self.path, c_path)
+            if os.path.isfile(self.__config_path):
+                try:
+                    conf_lines = [y for y in [x.strip() for x in file(self.__config_path, "r").read().split("\n") if x.strip()] if not y.strip().startswith("#")]
+                except:
+                    self.log("error reading config from %s: %s" % (self.__config_path,
+                                                                   process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.__config_dict = dict([x.split("=", 1) for x in conf_lines])
+                    break
+            else:
+                self.__config_path = None
+        self.__initrd_paths = dict([(key, "%s/initrd_%s.gz" % (self.path, key)) for key in KNOWN_INITRD_FLAVOURS])
+        self.__initrd_paths["old"]    = "%s/initrd.gz" % (self.path)
+        self.__initrd_paths["stage2"] = "%s/initrd_stage2.gz" % (self.path)
+        self.__option_dict = {"database" : False}
+        self.__thread_name = threading.currentThread().getName()
+        self.__initrd_built = None
+        if not os.path.isdir(self.path):
+            raise IOError, "kernel_dir %s is not a directory" % (self.path)
+        if not os.path.isfile(self.__bz_path):
+            raise IOError, "kernel_dir %s has no bzImage" % (self.path)
+        #if not [True for initrd_path in self.__initrd_paths.values() if os.path.isfile(initrd_path)]:
+        #    raise IOError, "kernel_dir %s has no initrd*.gz" % (self.path)
+        # init db-Fields
+        self.__checks = []
+        self.__db_kernel = {"name"          : self.name,
+                            "target_dir"    : self.path,
+                            "initrd_built"  : None,
+                            "module_list"   : "",
+                            "master_server" : self.__local_master_server}
+    def _copy_from_sync_dict(self, in_dict):
+        for f_name in self.pos_names:
+            tf_name = "%s/%s" % (self.path, f_name)
+            if f_name in in_dict:
+                md5_name = "%s/.%s_md5" % (self.path, f_name)
+                store = True
+                if os.path.isfile(md5_name):
+                    try:
+                        old_md5 = file(md5_name, "r").read()
+                    except:
+                        pass
+                    else:
+                        new_md5 = hashlib.md5(in_dict[f_name]).hexdigest()
+                        if old_md5 == new_md5:
+                            store = False
+                if store:
+                    try:
+                        # check md5_sum
+                        file(tf_name, "w").write(in_dict[f_name])
+                    except:
+                        self.log("error creating file %s: %s" % (tf_name,
+                                                                 process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        self.log("created file %s" % (tf_name))
+            elif os.path.isfile(tf_name):
+                try:
+                    os.unlink(tf_name)
+                except:
+                    self.log("error removing file %s: %s" % (tf_name,
+                                                             process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("removed file %s" % (tf_name))
+    def get_sync_dict(self):
+        sync_dict = {"name" : self.name}
+        for f_name in self.pos_names:
+            if os.path.isfile("%s/%s" % (self.path, f_name)):
+                sync_dict[f_name] = file("%s/%s" % (self.path, f_name), "r").read()
+        return sync_dict
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, **args):
+        self.__log_func("[kernel %s] %s" % (self.name, what), log_level)
+        if args.get("db_write", False) and self.__db_idx and self.__local_master_server:
+            self.__dc.execute("INSERT INTO kernel_log SET kernel=%s, device=%s, log_level=%s, log_str=%s, syncer_role=%s", (self.__db_idx,
+                                                                                                                            self.__local_master_server,
+                                                                                                                            log_level,
+                                                                                                                            what,
+                                                                                                                            self.__config["SYNCER_ROLE"]))
+    def __getitem__(self, key):
+        return self.__option_dict[key]
+    def check_md5_sums(self):
+        files_to_check = sorted([os.path.normpath("%s/%s" % (self.path, f_name)) for f_name in ["bzImage", "initrd.gz", "xen.gz", "modules.tar.bz2"] +
+                                 ["initrd_%s.gz" % (key) for key in KNOWN_INITRD_FLAVOURS]])
+        md5s_to_check  = dict([(p_name, os.path.normpath("%s/.%s_md5" % (self.path, os.path.basename(p_name)))) for p_name in files_to_check if os.path.exists(p_name)])
+        md5s_to_remove = sorted([md5_file for md5_file in [os.path.normpath("%s/.%s_md5" % (self.path, os.path.basename(p_name))) for p_name in files_to_check if not os.path.exists(p_name)] if os.path.exists(md5_file)])
+        if md5s_to_remove:
+            self.log("removing %s: %s" % (logging_tools.get_plural("MD5 file", len(md5s_to_remove)),
+                                          ", ".join(md5s_to_remove)),
+                     logging_tools.LOG_LEVEL_WARN, db_write=True)
+            for md5_to_remove in md5s_to_remove:
+                md5_name = os.path.basename(md5_to_remove)[1:]
+                if md5_name in self.__option_dict:
+                    del self.__option_dict[md5_name]
+                try:
+                    os.unlink(md5_to_remove)
+                except:
+                    self.log("error remove %s: %s" % (md5_to_remove,
+                                                      process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR, db_write=True)
+        if md5s_to_check:
+            for src_file, md5_file in md5s_to_check.iteritems():
+                md5_name = os.path.basename(md5_file)[1:]
+                new_bz5 = True
+                if os.path.exists(md5_file):
+                    if os.stat(src_file)[stat.ST_MTIME] < os.stat(md5_file)[stat.ST_MTIME]:
+                        new_bz5 = False
+                if new_bz5:
+                    self.log("doing MD5-sum for %s (stored in %s)" % (os.path.basename(src_file), os.path.basename(md5_file)), db_write=True)
+                    self.__option_dict[md5_name] = (hashlib.md5(file(src_file, "r").read())).hexdigest()
+                    file(md5_file, "w").write(self.__option_dict[md5_name])
+                else:
+                    self.__option_dict[md5_name] = file(md5_file, "r").read()
+    def set_db_kernel(self, db_k):
+        self.__db_kernel = db_k
+        self.__option_dict["database"] = True
+        self.__db_idx = db_k["kernel_idx"]
+    def get_db_kernel(self):
+        return self.__db_kernel
+    db_kernel = property(get_db_kernel, set_db_kernel)
+    def move_old_initrd(self):
+        if os.path.isfile(self.__initrd_paths["old"]):
+            c_stat, c_out = commands.getstatusoutput("file -z %s" % (self.__initrd_paths["old"]))
+            if c_stat:
+                self.log("error getting type of old-flavour initrd.gz %s (%d): %s" % (self.__initrd_paths["old"],
+                                                                                      c_stat,
+                                                                                      c_out),
+                         logging_tools.LOG_LEVEL_ERROR, db_write=True)
+            else:
+                old_flavour = c_out.split(":", 1)[1].strip().lower()
+                if old_flavour.count("compressed rom"):
+                    old_flavour_str = "cramfs"
+                elif old_flavour.count("cpio"):
+                    old_flavour_str = "cpio"
+                elif old_flavour.count("ext2"):
+                    old_flavour_str = "lo"
+                else:
+                    old_flavour_str = ""
+                if not old_flavour_str:
+                    self.log("Unable to recognize flavour for %s" % (self.__initrd_paths["old"]),
+                             logging_tools.LOG_LEVEL_WARN,
+                             db_write=True)
+                else:
+                    self.log("Recognized flavour %s for %s" % (old_flavour_str, self.__initrd_paths["old"]), db_write=True)
+                    if os.path.isfile(self.__initrd_paths[old_flavour_str]):
+                        self.log("removing present initrd for flavour (%s) %s" % (old_flavour_str,
+                                                                                  self.__initrd_paths[old_flavour_str]),
+                                 logging_tools.LOG_LEVEL_WARN)
+                        os.unlink(self.__initrd_paths[old_flavour_str])
+                    self.log("moving %s to %s" % (self.__initrd_paths["old"],
+                                                  self.__initrd_paths[old_flavour_str]))
+                    try:
+                        os.rename(self.__initrd_paths["old"],
+                                  self.__initrd_paths[old_flavour_str])
+                    except:
+                        self.log("some error occured: %s" % (process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        self.check_md5_sums()
+    def _update_kernel(self, set_str, set_tuple):
+        if self.__db_idx:
+            if self.__db_kernel["master_server"] == self.__local_master_server:
+                self.__dc.execute("UPDATE kernel SET %s WHERE kernel_idx=%d" % (set_str,
+                                                                                self.__db_idx), set_tuple)
+            else:
+                self.log("not master of kernel", logging_tools.LOG_LEVEL_WARN)
+    def check_initrd(self):
+        # update initrd_built and module_list from initrd.gz
+        # check for presence of stage-files
+        present_dict = {}
+        for initrd_flavour in KNOWN_INITRD_FLAVOURS + ["stage2"]:
+            if initrd_flavour == "stage2":
+                db_name = "stage2_present"
+            else:
+                db_name = "stage1_%s_present" % (initrd_flavour)
+            present_flag = 1 if os.path.isfile(self.__initrd_paths[initrd_flavour]) else 0
+            present_dict[initrd_flavour] = True if present_flag else False
+            self.__db_kernel[db_name] = present_flag
+            self._update_kernel("%s=%%s" % (db_name), (present_flag))
+        if self.__db_kernel["initrd_built"] == None:
+            present_keys = sorted([key for key in ["cpio", "cramfs", "lo"] if present_dict.get(key, False)])
+            if present_keys:
+                self.log("%s for checking initrd: %s" % (logging_tools.get_plural("key", len(present_keys)),
+                                                         ", ".join(["%s (file %s)" % (key, os.path.basename(self.__initrd_paths[key])) for key in present_keys])),
+                         db_write=True)
+                self.__checks.append("initrd")
+                initrd_built = os.stat(self.__initrd_paths[present_keys[0]])[stat.ST_MTIME]
+                self.__db_kernel["initrd_built"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(initrd_built))
+                self._update_kernel("initrd_built=%s", (self.__db_kernel["initrd_built"]))
+                # temporary file and directory
+                tfile_name = "%s/.initrd_check" % (self.__config["TMP_DIR"])
+                tdir_name  = "%s/.initrd_mdir" % (self.__config["TMP_DIR"])
+                if not os.path.isdir(tdir_name):
+                    os.mkdir(tdir_name)
+                checked = False
+                for present_key in present_keys:
+                    check_path = self.__initrd_paths[present_key]
+                    self.log("trying to get modules via %s-flavour (%s)" % (present_key, self.__initrd_paths[key]))
+                    # flavour-dependend mod_list extraction
+                    setup_ok, do_umount = (True, False)
+                    if present_key in ["lo", "cramfs"]:
+                        try:
+                            file(tfile_name, "w").write(gzip.open(check_path, "r").read())
+                        except:
+                            self.log("error reading %s: %s" % (check_path,
+                                                               process_tools.get_except_info()),
+                                     logging_tools.LOG_LEVEL_ERROR)
+                            setup_ok = False
+                        else:
+                            m_com = "mount -o loop %s %s" % (tfile_name, tdir_name)
+                            um_com = "umount %s" % (tdir_name)
+                            cstat, out = commands.getstatusoutput(m_com)
+                            if cstat:
+                                self.log("error mounting tempfile %s to %s: %s" % (tfile_name, tdir_name, out))
+                                setup_ok = False
+                            else:
+                                do_umount = True
+                    else:
+                        # no setup needed for cpio
+                        setup_ok = True
+                    # check list
+                    if setup_ok:
+                        mod_list = set()
+                        if present_key in ["lo", "cramfs"]:
+                            for dir_name, dir_list, file_list in os.walk("%s/lib/modules" % (tdir_name)):
+                                for mod_name in [file_name for file_name in file_list if file_name.endswith(".o") or file_name.endswith(".ko")]:
+                                    mod_list.add(mod_name[:-2] if mod_name.endswith(".o") else mod_name[:-3])
+                            checked = True
+                        else:
+                            c_stat, c_out = commands.getstatusoutput("gunzip -c %s | cpio -t" % (check_path))
+                            if c_stat:
+                                self.log("error getting info crom cpio-archive %s (%d, %s): %s" % (check_path,
+                                                                                                   c_stat,
+                                                                                                   c_out,
+                                                                                                   process_tools.get_except_info()),
+                                         logging_tools.LOG_LEVEL_ERROR)
+                            else:
+                                checked = True
+                                mod_lines = [os.path.basename("/%s" % (line)) for line in c_out.split("\n") if line.startswith("lib/modules") and (line.endswith(".o") or line.endswith(".ko"))]
+                                mod_list = set([mod_name[:-2] if mod_name.endswith(".o") else mod_name[:-3] for mod_name in mod_lines])
+                        mod_list = ",".join(sorted(mod_list))
+                        #print "***", present_key, mod_list
+                        if mod_list:
+                            self.log("found %s: %s" % (logging_tools.get_plural("module", len(mod_list.split(","))),
+                                                       mod_list))
+                        else:
+                            self.log("found no modules")
+                        if self.__db_idx:
+                            if mod_list != self.__db_kernel["module_list"]:
+                                self.__db_kernel["module_list"] = mod_list
+                                self._update_kernel("module_list=%s", (self.__db_kernel["module_list"]))
+                        else:
+                            self.__db_kernel["module_list"] = mod_list
+                            self.__db_kernel["target_module_list"] = mod_list
+                    if do_umount:
+                        c_stat, c_out = commands.getstatusoutput(um_com)
+                        if c_stat:
+                            self.log("error unmounting tempfile %s from %s (%d): %s" % (tfile_name,
+                                                                                        tdir_name,
+                                                                                        c_stat,
+                                                                                        c_out),
+                                     logging_tools.LOG_LEVEL_ERROR)
+                    if checked:
+                        #pass
+                        break
+                if os.path.isdir(tdir_name):
+                    os.rmdir(tdir_name)
+                if os.path.isfile(tfile_name):
+                    os.unlink(tfile_name)
+            else:
+                self.log("not initrd-file found",
+                         logging_tools.LOG_LEVEL_WARN)
+        else:
+            self.log("initrd_built already set")
+    def check_comment(self):
+        self.__checks.append("comment")
+        comment_file = "%s/.comment" % (self.root_dir)
+        if os.path.isfile(comment_file):
+            try:
+                comment = " ".join([x.strip() for x in file(comment_file, "r").read().split("\n")])
+            except:
+                self.log("error reading comment-file '%s'" % (comment_file),
+                         logging_tools.LOG_LEVEL_WARN,
+                         db_write=True)
+                comment = ""
+            else:
+                pass
+        else:
+            comment = ""
+        self.__db_kernel["comment"] = comment
+        self._update_kernel("comment=%s", (self.__db_kernel["comment"]))
+    def check_version_file(self):
+        self.__checks.append("versionfile")
+        kernel_version, k_ver, k_rel = (self.name.split("_")[0], 1, 1)
+        if kernel_version == self.name:
+            config_name = ""
+        else:
+            config_name = self.name[len(kernel_version) + 1 :]
+        build_mach = ""
+        version_file = "%s/.version" % (self.root_dir)
+        if os.path.isfile(version_file):
+            try:
+                version_dict = dict([y.split("=", 1) for y in [x.strip() for x in file(version_file, "r").read().split("\n") if x.count("=")]])
+            except:
+                self.log("error parsing version-file '%s'" % (version_file),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                version_dict = dict([(x.lower(), y) for x, y in version_dict.iteritems()])
+                if version_dict.get("kernelversion", kernel_version) != kernel_version:
+                    self.log("warning: parsed kernel_version '%s' != version_file version '%s', using info from version_file" % (kernel_version, version_dict["kernelversion"]),
+                             logging_tools.LOG_LEVEL_WARN)
+                    kernel_version = version_dict["kernelversion"]
+                if version_dict.get("configname", config_name) != config_name:
+                    self.log("warning: parsed config_name '%s' != version_file config_name '%s', using info from version_file" % (config_name, version_dict["configname"]),
+                             logging_tools.LOG_LEVEL_WARN)
+                    config_name = version_dict["configname"]
+                if "version" in version_dict:
+                    k_ver, k_rel = [int(x) for x in version_dict["version"].split(".", 1)]
+                if "buildmachine" in version_dict:
+                    build_mach = version_dict["buildmachine"].split(".")[0]
+                    self.__option_dict["kernel_is_local"] = (build_mach == self.__config["SERVER_SHORT_NAME"])
+        if config_name:
+            config_name = "/usr/src/configs/.config_%s" % (config_name)
+        self.__db_kernel["kernel_version"] = kernel_version
+        self.__db_kernel["version"] = k_ver
+        self.__db_kernel["release"] = k_rel
+        self.__db_kernel["config_name"] = config_name
+        return build_mach
+    def check_bzimage_file(self):
+        self.__checks.append("bzImage")
+        major, minor, patchlevel = [""] * 3
+        build_mach = ""
+        cstat, out = commands.getstatusoutput("file %s" % (self.__bz_path))
+        if cstat:
+            self.log("error, cannot file '%s' (%d): %s" % (self.__bz_path, cstat, out),
+                     logging_tools.LOG_LEVEL_ERROR,
+                     db_write=True)
+        else:
+            try:
+                for line in [x.strip().lower() for x in out.split(",")]:
+                    if line.startswith("version"):
+                        vers_str = line.split()[1]
+                        vers_parts = vers_str.split(".")
+                        major, minor = (vers_parts.pop(0), vers_parts.pop(0))
+                        patchlevel = ".".join(vers_parts)
+                    if line.count("@"):
+                        build_mach = line.split("@", 1)[1].split(")")[0]
+            except:
+                # FIXME
+                pass
+        self.__db_kernel["major"] = major
+        self.__db_kernel["minor"] = minor
+        self.__db_kernel["patchlevel"] = patchlevel
+        return build_mach
+    def check_kernel_dir(self):
+        # if not in database read values from disk
+        self.log("Checking directory %s ..." % (self.path))
+        self.check_comment()
+        self.check_xen()
+        self.check_config()
+        kernel_build_machine_fvf = self.check_version_file()
+        kernel_build_machine_vfc = self.check_bzimage_file()
+        # determine build_machine
+        if kernel_build_machine_fvf:
+            build_mach = kernel_build_machine_fvf
+        elif kernel_build_machine_vfc:
+            build_mach = kernel_build_machine_vfc
+        elif self.__config.get("SET_DEFAULT_BUILD_MACHINE", False):
+            build_mach = self.__config["SERVER_SHORT_NAME"]
+        else:
+            build_mach = ""
+        build_mach_idx = 0
+        if build_mach:
+            if build_mach:
+                self.__dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (build_mach))
+                if self.__dc.rowcount:
+                    build_mach_idx = self.__dc.fetchone()["device_idx"]
+        self.__db_kernel["build_machine"] = build_mach
+        self.__db_kernel["device"] = build_mach_idx
+    def check_xen(self):
+        self.__db_kernel["xen_host_kernel"] = 1 if os.path.isfile(self.__xen_path) else 0
+        self.__db_kernel["xen_guest_kernel"] = 0
+        if self.__config_dict.get("CONFIG_XEN", False):
+            self.__db_kernel["xen_guest_kernel"] = 1
+        self._update_kernel("xen_host_kernel=%s, xen_guest_kernel=%s", (self.__db_kernel["xen_host_kernel"],
+                                                                        self.__db_kernel["xen_guest_kernel"]))
+    def check_config(self):
+        bc = 0
+        if self.__config_dict:
+            if self.__config_dict.get("CONFIG_X86_64", "n") == "y" or self.__config_dict.get("CONFIG_64BIT", "n") == "y":
+                bc = 64
+            else:
+                bc = 32
+        self.__db_kernel["bitcount"] = bc
+        self._update_kernel("bitcount=%s", (self.__db_kernel["bitcount"]))
+    def set_option_dict_values(self):
+        # local kernel ?
+        self.__option_dict["kernel_is_local"] = (self.__db_kernel["build_machine"] or "").split(".")[0] == self.__config["SERVER_SHORT_NAME"]
+        self.__option_dict["build_machine"] = self.__db_kernel["build_machine"]
+        # initrds found, not used right now
+        for initrd_flavour in ["lo", "cramfs", "cpio"]:
+            self.__option_dict["initrd_flavour_%s" % (initrd_flavour)] = os.path.exists(self.__initrd_paths[initrd_flavour])
+    def store_option_dict(self):
+        # check for kernel_local_info
+        if self.__db_idx and self.__local_master_server:
+            self.__dc.execute("SELECT kernel_local_info_idx FROM kernel_local_info WHERE kernel=%s AND device=%s AND syncer_role=%s", (self.__db_idx,
+                                                                                                                                       self.__local_master_server,
+                                                                                                                                       self.__config["SYNCER_ROLE"]))
+            if self.__dc.rowcount:
+                act_idx = self.__dc.fetchone()["kernel_local_info_idx"]
+                self.__dc.execute("UPDATE kernel_local_info SET info_blob=%s WHERE kernel_local_info_idx=%s", (server_command.sys_to_net(self.__option_dict),
+                                                                                                               act_idx))
+            else:
+                self.__dc.execute("INSERT INTO kernel_local_info SET info_blob=%s, kernel=%s, device=%s, syncer_role=%s", (server_command.sys_to_net(self.__option_dict),
+                                                                                                                           self.__db_idx,
+                                                                                                                           self.__local_master_server,
+                                                                                                                           self.__config["SYNCER_ROLE"]))
+    def insert_into_database(self):
+        self.__checks.append("SQL insert")
+        k_keys = self.__db_kernel.keys()
+        sql_ks, sql_tuple = (", ".join([key == "release" and "`%s`=%%s" % (key) or "%s=%%s" % (key) for key in k_keys]),
+                             tuple([self.__db_kernel[key] for key in k_keys]))
+        self.__dc.execute("INSERT INTO kernel SET %s" % (sql_ks), sql_tuple)
+        self.__db_idx = self.__dc.insert_id()
+        self.log("inserted new kernel at idx %d" % (self.__db_idx),
+                 db_write=True)
+        kb_keys = ["version",
+                   "release",
+                   "build_machine",
+                   "device"]
+        sql_kbs, sql_tuple = (", ".join([key == "release" and "`%s`=%%s" % (key) or "%s=%%s" % (key) for key in kb_keys] + ["kernel=%s"]),
+                              tuple([self.__db_kernel[key] for key in kb_keys] + [self.__db_idx]))
+        self.__dc.execute("INSERT INTO kernel_build SET %s" % (sql_kbs), sql_tuple)
+        self.log("inserted kernel_build at idx %d" % (self.__dc.insert_id()))
+        self.__option_dict["database"] = True
+    def check_for_db_insert(self, ext_opt_dict):
+        ins = False
+        if not self.__option_dict["database"]:
+            # check for insert_all or insert_list
+            if ext_opt_dict["insert_all_found"] or self.name in ext_opt_dict["kernels_to_insert"]:
+                # check for kernel locality
+                kl_ok = self.__option_dict["kernel_is_local"]
+                if not kl_ok:
+                    if self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False) or ext_opt_dict["ignore_kernel_build_machine"]:
+                        self.log("ignore kernel build_machine (global: %s, local: %s)" % (str(self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False)),
+                                                                                          str(ext_opt_dict["ignore_kernel_build_machine"])))
+                        kl_ok = True
+                if not kl_ok:
+                    self.log("kernel is not local (%s)" % (self.__option_dict["build_machine"]),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    ins = True
+        return ins
+    def log_statistics(self):
+        t_diff = time.time() - self.__start_time
+        self.log("needed %s, %s" % (logging_tools.get_diff_time_str(t_diff),
+                                    "%s: %s" % (logging_tools.get_plural("check", len(self.__checks)),
+                                                ", ".join(self.__checks)) if self.__checks else "no checks"))
+    def get_option_dict(self):
+        return self.__option_dict
+        
+class kernel_sync_thread(threading_tools.thread_obj):
+    def __init__(self, config, db_con, **args):
+        # needed keys in config:
+        # TMP_DIR ....................... directory to create temporary files
+        # SET_DEFAULT_BUILD_MACHINE ..... flag, if true sets the build_machine to local machine name
+        # IGNORE_KERNEL_BUILD_MACHINE ... flag, if true discards kernel if build_machine != local machine name
+        # KERNEL_DIR .................... kernel directory, usually /tftpboot/kernels
+        # TFTP_DIR ...................... tftpboot directory (optional)
+        # SQL_ACCESS .................... access string for database
+        # SERVER_SHORT_NAME ............. short name of device
+        # SYNCER_ROLE ................... syncer role, mother or xen
+        self.__db_con = db_con
+        self.__config = config
+        # check log type (queue or direct)
+        self.__log_template, self.__log_queue = (None, None)
+        if args.get("log_type", "queue") == "queue":
+            self.__log_queue = args["log_queue"]
+        else:
+            self.__log_template = logging_tools.get_logger(args["log_name"],
+                                                           args["log_destination"],
+                                                           init_logger=True)
+        threading_tools.thread_obj.__init__(self, "kernel", queue_size=100)
+        self.register_func("check_kernel_dir", self._check_kernel_dir)
+        self.register_func("sync_kernels"    , self._sync_kernels)
+        self.register_func("kernel_sync_data", self._kernel_sync_data)
+        self.register_func("set_net_stuff"   , self._set_net_stuff)
+        self.register_func("srv_ok"          , self._srv_ok)
+        self.register_func("srv_error"       , self._srv_error)
+    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+        if self.__log_queue:
+            self.__log_queue.put(("log", (self.name, what, lev)))
+        else:
+            self.__log_template.log(lev, what)
+    def thread_running(self):
+        self.send_pool_message(("new_pid", (self.name, self.pid)))
+        self.__net_server = None
+        # check for kernel_server info
+        dc = self.__db_con.get_connection(self.__config["SQL_ACCESS"])
+        ks_check = config_tools.server_check(dc=dc, server_type="kernel_server")
+        self.log(ks_check.report(), logging_tools.LOG_LEVEL_OK if ks_check.server_device_idx else logging_tools.LOG_LEVEL_WARN)
+        self.__ks_check = ks_check
+        dc.release()
+        self.log("my role is %s" % (self.__config["SYNCER_ROLE"]))
+        # dicts for sync info
+        # for bookkeeping
+        self.__pending_syncs = {}
+        # information
+        self.__sync_dict = {}
+    def _set_net_stuff(self, ns):
+        self.log("Got net_server")
+        self.__net_server = ns
+    def _kernel_sync_data(self, srv_com):
+        dc = self.__db_con.get_connection(self.__config["SQL_ACCESS"])
+        sync_dict = srv_com.get_option_dict()
+        srv_reply = server_command.server_reply()
+        self.log("got kernel_sync_data for kernel %s" % (sync_dict["name"]))
+        self.__ks_check._check(dc)
+        start_copy = False
+        if not self.__ks_check.server_device_idx:
+            self.log("no kernel_server, skipping sync ...",
+                     logging_tools.LOG_LEVEL_ERROR)
+            srv_reply.set_error_result("no kernel server")
+        elif not self.__net_server:
+            self.log("no net_server set", logging_tools.LOG_LEVEL_ERROR)
+            srv_reply.set_error_result("no net_server set")
+        else:
+            # check if kernel is not in own pending_sync dict
+            if sync_dict["name"] in self.__pending_syncs.keys():
+                log_str = "kernel %s in own pending_sync dict" % (sync_dict["name"])
+                self.log(log_str, logging_tools.LOG_LEVEL_ERROR)
+                srv_reply.set_error_result(log_str)
+            else:
+                dc.execute("SELECT k.* FROM kernel k WHERE k.name=%s", (sync_dict["name"]))
+                if not dc.rowcount:
+                    srv_reply.set_error_result("kernel not found in database")
+                else:
+                    db_rec = dc.fetchone()
+                    start_copy = True
+                    srv_reply.set_ok_result("started sync")
+        srv_com.get_queue().put(("result_ready", (srv_com, srv_reply)))
+        if start_copy:
+            self.log("starting sync for kernel %s" % (sync_dict["name"]))
+            kern_dir = self.__config["KERNEL_DIR"]
+            if not os.path.isdir(kern_dir):
+                try:
+                    os.makedirs(kern_dir)
+                except:
+                    self.log("cannot create kernel_dir %s: %s" % (kern_dir,
+                                                                  process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+            if os.path.isdir(kern_dir):
+                try:
+                    act_kernel = kernel(sync_dict["name"], kern_dir, self.log, dc, self.__config, master_server=self.__ks_check.server_device_idx, sync_kernel=True, sync_dict=sync_dict)
+                except:
+                    self.log("error initialising kernel %s: %s" % (sync_dict["name"],
+                                                                   process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    act_kernel.db_kernel = db_rec
+                    act_kernel.check_md5_sums()
+                    act_kernel.set_option_dict_values()
+                    act_kernel.store_option_dict()
+                    self.log("synced kernel")
+                    del act_kernel
+        dc.release()
+    def _sync_kernels(self, srv_com):
+        dc = self.__db_con.get_connection(self.__config["SQL_ACCESS"])
+        sync_dict = srv_com.get_option_dict()
+        srv_reply = server_command.server_reply()
+        self.log("got sync_kernels request for %s: %s" % (logging_tools.get_plural("kernel", len(sync_dict.keys())),
+                                                          ", ".join(["%s (to %s)" % (key, ",".join(["%s:%s" % (s_name, s_role) for s_name, s_role in sync_dict[key]])) for key in sorted(sync_dict.keys())])))
+        self.__ks_check._check(dc)
+        start_sync = False
+        if not self.__ks_check.server_device_idx:
+            self.log("no kernel_server, skipping sync ...",
+                     logging_tools.LOG_LEVEL_ERROR)
+            srv_reply.set_error_result("no kernel server")
+        elif not self.__net_server:
+            self.log("no net_server set", logging_tools.LOG_LEVEL_ERROR)
+            srv_reply.set_error_result("no net_server set")
+        elif self.__pending_syncs:
+            self.log("some syncs still pending", logging_tools.LOG_LEVEL_ERROR)
+            srv_reply.set_error_result("some syncs still pending")
+        else:
+            start_sync = True
+            srv_reply.set_ok_result("started sync")
+        srv_com.get_queue().put(("result_ready", (srv_com, srv_reply)))
+        if start_sync:
+            all_k_servers = config_tools.device_with_config("kernel_server", dc)
+            all_k_servers.set_key_type("config")
+            def_k_servers = all_k_servers.get("kernel_server", [])
+            self.log("found %s: %s" % (logging_tools.get_plural("kernel_server", len(def_k_servers)),
+                                       ", ".join(sorted([s_struct.short_host_name for s_struct in def_k_servers]))))
+            # build target dict
+            k_target_dict = {}
+            for ks_struct in def_k_servers:
+                ks_name = ks_struct.short_host_name
+                k_target_dict[ks_name] = None
+                t_list = ks_struct.get_route_to_other_device(dc, self.__ks_check)
+                if t_list:
+                    k_target_dict[ks_name] = t_list[0][2][1][0]
+            #pprint.pprint(k_target_dict)
+            dc.execute("SELECT k.* FROM kernel k WHERE %s" % (" OR ".join(["k.name='%s'" % (k_name) for k_name in sync_dict.iterkeys()])))
+            kern_dir = self.__config["KERNEL_DIR"]
+            for db_rec in dc.fetchall():
+                try:
+                    act_kernel = kernel(db_rec["name"], kern_dir, self.log, dc, self.__config, master_server=self.__ks_check.server_device_idx)
+                except:
+                    self.log("error initialising kernel %s: %s" % (db_rec["name"],
+                                                                   process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    act_kernel.db_kernel = db_rec
+                    act_kernel.check_md5_sums()
+                    send_com = server_command.server_command(command="kernel_sync_data",
+                                                             option_dict=act_kernel.get_sync_dict())
+                    self.log("send_com for %s has %s" % (act_kernel.name,
+                                                         logging_tools.get_size_str(len(str(send_com)), long_version=True)))
+                    unreach_list, reach_list = ([], [])
+                    self.__sync_dict[db_rec["name"]] = {"start_time" : time.time()}
+                    # build reach_list
+                    for targ_srv, targ_role in sync_dict[db_rec["name"]]:
+                        if k_target_dict[targ_srv]:
+                            reach_list.append((targ_srv, targ_role))
+                        else:
+                            unreach_list.append((targ_srv, targ_role))
+                    act_kernel.log("starting sync to %s: %s" % (logging_tools.get_plural("target server", len(reach_list)),
+                                                                ", ".join(sorted(["%s:%s" % (s_name, s_role) for s_name, s_role in reach_list])) or "NONE"),
+                                   db_write=True)
+                    if unreach_list:
+                        act_kernel.log("%s unreachable: %s" % (logging_tools.get_plural("target server", len(unreach_list)),
+                                                               ", ".join(sorted(["%s:%s" % (s_name, s_role) for s_name, s_role in unreach_list]))),
+                                       logging_tools.LOG_LEVEL_ERROR,
+                                       db_write=True)
+                    for targ_srv, targ_role in sync_dict[db_rec["name"]]:
+                        if k_target_dict[targ_srv]:
+                            self.__pending_syncs.setdefault(act_kernel.name, []).append((targ_srv, targ_role))
+                            self.log("  syncing kernel %s to %s (role %s, IP %s)" % (act_kernel.name,
+                                                                                     targ_srv,
+                                                                                     targ_role,
+                                                                                     k_target_dict[targ_srv]))
+                            self.__net_server.add_object(net_tools.tcp_con_object(self._new_tcp_con,
+                                                                                  connect_state_call=self._connect_state_call,
+                                                                                  connect_timeout_call=self._connect_timeout,
+                                                                                  target_host=k_target_dict[targ_srv],
+                                                                                  target_port=(8001 if targ_role == "mother" else 8019),
+                                                                                  timeout=20,
+                                                                                  bind_retries=1,
+                                                                                  rebind_wait_time=1, add_data={"server_name" : targ_srv,
+                                                                                                                "server_role" : targ_role,
+                                                                                                                "kernel"      : act_kernel,
+                                                                                                                "send_com"    : send_com}))
+                    del act_kernel
+        dc.release()
+    def _remove_pending_sync(self, act_kernel, s_name, s_role):
+        k_name = act_kernel.name
+        self.__pending_syncs[k_name].remove((s_name, s_role))
+        if not self.__pending_syncs[k_name]:
+            self.log("removing kernel %s from pending_dict" % (k_name))
+            k_dict = self.__sync_dict[k_name]
+            k_dict["end_time"] = time.time()
+            act_kernel.log("syncing done in %s" % (logging_tools.get_diff_time_str(k_dict["end_time"] - k_dict["start_time"])),
+                           db_write=True)
+            del act_kernel
+            del self.__pending_syncs[k_name]
+            if not self.__pending_syncs:
+                self.log("no syncs pending")
+    def _srv_ok(self, (in_dict, recv_str)):
+        try:
+            srv_reply = server_command.server_reply(recv_str)
+        except:
+            in_dict["kernel"].log("error reconstructing srv_reply for %s:%s" % (in_dict["server_name"],
+                                                                                in_dict["server_role"]),
+                                  logging_tools.LOG_LEVEL_ERROR,
+                                  db_write=True)
+            self.log("cannot reconstruct server_reply from recv_str", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            in_dict["kernel"].log("got '%s' from %s:%s" % (srv_reply.get_result(),
+                                                           in_dict["server_name"],
+                                                           in_dict["server_role"]),
+                                  logging_tools.LOG_LEVEL_OK if srv_reply.get_state() == server_command.SRV_REPLY_STATE_OK else logging_tools.LOG_LEVEL_ERROR,
+                                  db_write=True)
+        self._remove_pending_sync(in_dict["kernel"], in_dict["server_name"], in_dict["server_role"])
+    def _srv_error(self, (in_dict, cause)):
+        self.log("got error %s" % (cause),
+                 logging_tools.LOG_LEVEL_ERROR)
+        in_dict["kernel"].log("got error '%s' for %s:%s" % (cause,
+                                                            in_dict["server_name"],
+                                                            in_dict["server_role"]),
+                              logging_tools.LOG_LEVEL_ERROR,
+                              db_write=True)
+        self._remove_pending_sync(in_dict["kernel"], in_dict["server_name"], in_dict["server_role"])
+    def _new_tcp_con(self, sock):
+        return srv_con_obj(self.get_thread_queue(), sock.get_target_host(), sock.get_add_data())
+    def _connect_timeout(self, sock):
+        self.log("error connecting to %s" % (sock.get_target_host()),
+                 logging_tools.LOG_LEVEL_ERROR)
+        # remove references to command_class
+        sock.delete()
+        sock.close()
+    def _connect_state_call(self, **args):
+        if args["state"] == "error":
+            self.log("connect error to %s" % (args["host"]),
+                     logging_tools.LOG_LEVEL_ERROR)
+            #self._result_error(args["socket"].get_add_data()[1], args["host"], "connect error")
+            # remove references to command_class
+            in_dict = args["socket"].get_add_data()
+            in_dict["kernel"].log("cannot connect to %s:%s" % (in_dict["server_name"],
+                                                               in_dict["server_role"]),
+                                  logging_tools.LOG_LEVEL_ERROR,
+                                  db_write=True)
+            self._remove_pending_sync(in_dict["kernel"], in_dict["server_name"], in_dict["server_role"])
+            args["socket"].delete()
+    def _check_kernel_dir(self, srv_com):
+        dc = self.__db_con.get_connection(self.__config["SQL_ACCESS"])
+        self.__ks_check._check(dc)
+        ext_opt_dict = srv_com.get_option_dict()
+        srv_reply = server_command.server_reply()
+        opt_dict = dict([(k, ext_opt_dict.get(k, v)) for k, v in {"ignore_kernel_build_machine" : 0,
+                                                                  "kernels_to_insert"           : [],
+                                                                  "check_list"                  : [],
+                                                                  "insert_all_found"            : False,
+                                                                  "kernels_to_sync"             : {}}.iteritems()])
+        self.log("option_dict has %s: %s" % (logging_tools.get_plural("key", len(opt_dict.keys())),
+                                             ", ".join(["%s (%s, %s)" % (k, str(type(v)), str(v)) for k, v in opt_dict.iteritems()])))
+        kernels_found, problems = ({}, [])
+        # send reply now or do we need more data ?
+        reply_now = (opt_dict["insert_all_found"] == True)
+        # problems are global problems, not kernel local
+        kernels_found = []
+        srv_reply.set_option_dict({"problems"      : problems,
+                                   "kernels_found" : kernels_found})
+        if reply_now:
+            srv_reply.set_ok_result("starting check of kernel_dir")
+            if srv_com.get_queue():
+                srv_com.get_queue().put(("result_ready", (srv_com, srv_reply)))
+        if not self.__ks_check.server_device_idx:
+            self.log("no kernel_server, skipping check ...",
+                     logging_tools.LOG_LEVEL_ERROR)
+            srv_reply.set_error_result("no kernel_server")
+        else:
+            all_k_servers = config_tools.device_with_config("kernel_server", dc)
+            all_k_servers.set_key_type("config")
+            def_k_servers = all_k_servers.get("kernel_server", [])
+            self.log("found %s: %s" % (logging_tools.get_plural("kernel_server", len(def_k_servers)),
+                                       ", ".join(sorted([s_struct.short_host_name for s_struct in def_k_servers]))))
+            dc.execute("SELECT * FROM kernel ORDER BY name")
+            if dc.rowcount > 0:
+                any_found_in_database = True
+                all_kernels = dict([(x["name"], x) for x in dc.fetchall()])
+            else:
+                any_found_in_database = False
+                all_kernels = {}
+            if any_found_in_database:
+                opt_dict["insert_all_found"] = False
+            kct_start = time.time()
+            self.log("Checking for kernels (%d already in database) ..." % (len(all_kernels.keys())))
+            if opt_dict["kernels_to_insert"]:
+                self.log(" - only %s to insert: %s" % (logging_tools.get_plural("kernels", len(opt_dict["kernels_to_insert"])),
+                                                       ", ".join(opt_dict["kernels_to_insert"])))
+            if "TFTP_DIR" in self.__config:
+                if not os.path.isdir(self.__config["TFTP_DIR"]):
+                    self.log("TFTP_DIR '%s' is not a directory" % (self.__config["TFTP_DIR"]), logging_tools.LOG_LEVEL_ERROR)
+                    problems.append("TFTP_DIR '%s' is not a directory" % (self.__config["TFTP_DIR"]))
+            kern_dir = self.__config["KERNEL_DIR"]
+            if not os.path.isdir(kern_dir):
+                self.log("kernel_dir '%s' is not a directory" % (kern_dir), logging_tools.LOG_LEVEL_ERROR)
+                problems.append("kernel_dir '%s' is not a directory" % (kern_dir))
+            else:
+                for entry in os.listdir(kern_dir):
+                    if not opt_dict["check_list"] or entry in opt_dict["check_list"]:
+                        try:
+                            act_kernel = kernel(entry, kern_dir, self.log, dc, self.__config, master_server=self.__ks_check.server_device_idx)
+                        except IOError, what:
+                            self.log("error %s: %s" % (process_tools.get_except_info(),
+                                                       str(what)),
+                                     logging_tools.LOG_LEVEL_ERROR)
+                            problems.append(str(what))
+                        else:
+                            # handle initrd generated by old populate_ramdisk.py
+                            act_kernel.move_old_initrd()
+                            if act_kernel.name in all_kernels.keys():
+                                act_kernel.db_kernel = all_kernels[act_kernel.name]
+                                act_kernel.check_md5_sums()
+                                act_kernel.check_initrd()
+                                # always check comment
+                                act_kernel.check_comment()
+                                # always check for xen
+                                act_kernel.check_xen()
+                                # check config
+                                act_kernel.check_config()
+                            else:
+                                act_kernel.check_md5_sums()
+                                act_kernel.check_kernel_dir()
+                            act_kernel.set_option_dict_values()
+                            # determine if we should insert the kernel into the database
+                            if act_kernel.check_for_db_insert(opt_dict):
+                                act_kernel.insert_into_database()
+                                act_kernel.check_initrd()
+                            act_kernel.store_option_dict()
+                            kernels_found.append(act_kernel.name)
+                            act_kernel.log_statistics()
+                            del act_kernel
+            kct_end = time.time()
+            self.log("checking of kernel_dir took %s" % (logging_tools.get_diff_time_str(kct_end - kct_start)))
+            srv_reply.set_ok_result("check of kernel_dir took %s" % (logging_tools.get_diff_time_str(kct_end - kct_start)))
+        # send reply after term-message
+        if srv_com.get_queue() and not reply_now:
+            srv_com.get_queue().put(("result_ready", (srv_com, srv_reply)))
+        dc.release()
+
+if __name__ == "__main__":
+    print "Loadable module, exiting ..."
+    sys.exit(0)
