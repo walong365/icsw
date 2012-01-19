@@ -69,7 +69,6 @@ COPY_ATTRIBUTES_SS = """<xsl:stylesheet
             <xsl:if test="@table2"><xsl:attribute name="table2"><xsl:value-of select="@table2"/></xsl:attribute></xsl:if>
             
             <xsl:if test="@action"><xsl:attribute name="action"><xsl:value-of select="@action"/></xsl:attribute></xsl:if>
-            <xsl:if test="@actionname"><xsl:attribute name="actionname"><xsl:value-of select="@actionname"/></xsl:attribute></xsl:if>
             
             <xsl:if test="@filter"><xsl:attribute name="filter"><xsl:value-of select="@filter"/></xsl:attribute></xsl:if>
             <xsl:if test="@filter1"><xsl:attribute name="filter1"><xsl:value-of select="@filter1"/></xsl:attribute></xsl:if>
@@ -348,14 +347,14 @@ class menu_resolver_base(object):
     """ Base object for all menu resolvers. Primarily there to document the
     structure of of menu_resolver. """
     def node_to_href(self, node):
-        """ Turn a xml node into a valid href link """
+        """ Take a xml node with a ref attribute and return a valid href link """
         raise NotImplementedError("You have to implement node_to_href")        
     
     def request_to_xpath(self, request):
         raise NotImplementedError("You have to implement request_to_xpath")        
 
 class menu_direct_link_resolver(menu_resolver_base):
-    """ Resolves all links of type *proto://uri* """    
+    """ Resolves all links of type *http|https|ftp://path* """    
     def node_to_href(self, node):
         href = None
         if re.match(r'(http|https|ftp)://.*', node.attrib["ref"]):
