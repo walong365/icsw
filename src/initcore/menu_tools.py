@@ -1,4 +1,5 @@
 #!/usr/bin/python-init -Otu
+import re
 import pdb
 from StringIO import StringIO
 from django.core.urlresolvers import reverse
@@ -357,12 +358,11 @@ class menu_direct_link_resolver(menu_resolver_base):
     """ Resolves all links of type *proto://uri* """    
     def node_to_href(self, node):
         href = None
-        if re.match(r'[http|https|ftp]://.*', node.attrib["ref"]):
+        if re.match(r'(http|https|ftp)://.*', node.attrib["ref"]):
             href = node.attrib["ref"]
         return href
     
     def request_to_xpath(self, request):
-        ref_str = []
-        return ref_str
+        return []
         
         
