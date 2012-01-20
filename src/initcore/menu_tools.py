@@ -14,21 +14,46 @@ COPY_ATTRIBUTES_SS = """<xsl:stylesheet
     version="1.0"
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
     >
+    <xsl:template name="get-attribute">
+        <xsl:param name="node"/>
+        <xsl:param name="attrname"/>
+        <xsl:param name="default"/>
+        <xsl:variable name="parentattr" select="$node/parent::node()/@*[name() = $attrname]" />
+        <xsl:choose>
+            <xsl:when test="$parentattr">
+                <xsl:value-of select="$parentattr"/>
+            </xsl:when>
+            <xsl:when test="$node/parent::node()">
+                <xsl:call-template name="get-attribute">
+                    <xsl:with-param name="node" select="$node/parent::node()"/>
+                    <xsl:with-param name="attrname" select="$attrname"/>
+                    <xsl:with-param name="default" select="$default"/>
+                </xsl:call-template>
+                </xsl:when>
+            <xsl:otherwise>
+                <!-- return default value if no valid parent found -->
+                <xsl:value-of select="$default"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:template>
     <xsl:template name="copy-attribute">
         <xsl:param name="node"/>
         <xsl:param name="attrname"/>
         <xsl:param name="default"/>
-        <xsl:variable name="parentattr" select="$node/ancestor::*/@*[name() = $attrname]" />
+        <xsl:variable name="parentattr">
+            <xsl:call-template name="get-attribute">
+                <xsl:with-param name="node" select="$node"/>
+                <xsl:with-param name="attrname" select="$attrname"/>
+                <xsl:with-param name="default" select="$default"/>
+            </xsl:call-template>
+        </xsl:variable>
         <xsl:variable name="nodeattr" select="$node/@*[name() = $attrname]" />
         <xsl:choose>
             <xsl:when test="$nodeattr">
                 <xsl:attribute name="{$attrname}"><xsl:value-of select="$nodeattr"/></xsl:attribute>
             </xsl:when>
-            <xsl:when test="$parentattr">
-                <xsl:attribute name="{$attrname}"><xsl:value-of select="$parentattr"/></xsl:attribute>
-            </xsl:when>
             <xsl:otherwise>
-                <xsl:attribute name="{$attrname}"><xsl:value-of select="$default"/></xsl:attribute>
+                <xsl:attribute name="{$attrname}"><xsl:value-of select="$parentattr"/></xsl:attribute>
             </xsl:otherwise>
         </xsl:choose>
     </xsl:template>
@@ -247,6 +272,9 @@ class olim_menu(object):
         if kwargs.get("transform", True):
             # first step: copy all attributes
             xml_doc = self._first_trans(xml_doc)
+            #import pprint
+            #pprint.pprint(self._first_trans.error_log)
+            print etree.tostring(xml_doc, pretty_print=True)
             # second step: filter
             xml_doc = self._second_trans(xml_doc)
         return xml_doc
