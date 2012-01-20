@@ -14,6 +14,7 @@ from lxml.builder import E
 
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.contrib.auth.decorators import login_required
@@ -24,7 +25,7 @@ from django.db.models import Q
 from initcore import menu_tools
 from initcore.render_tools import render_me
 from initcore.helper_functions import init_logging
-from initcore.forms import authentication_form, user_config_form
+from initcore.forms import authentication_form, user_config_form, change_password_form
 from initcore.models import user_variable
 
 session_history = None
@@ -59,6 +60,9 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
             request.session.update(get_user_variables(request))
             request.session.update(set_css_values(request))
             request.session.save()
+            if hasattr(request.user, "default_password"):
+                if request.user.check_password(request.user.default_password):
+                    return HttpResponseRedirect(reverse("session:change_password"))
             return HttpResponseRedirect(redirect_to)
         else:
             form = authentication_form(data=dict([(key, value) for key, value in request.POST.iteritems() if key not in ["password"]]))
@@ -69,6 +73,23 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
                                               "next"       : redirect_to,
                                               "app_path"   : reverse("session:login")})()
 
+@init_logging
+@login_required
+def change_password(request):
+    if request.method == "POST":
+        # check
+        _post = request.POST
+        cur_form = change_password_form(_post, username=request.user.username)
+        if cur_form.is_valid():
+            request.user.set_password(cur_form.cleaned_data["password_1"])
+            request.user.save()
+            return HttpResponseRedirect(settings.SITE_ROOT)
+    else:
+        cur_form = change_password_form(username=request.user.username)        
+    return render_me(request, "initcore/change_password.html",
+                     {"password_form" : cur_form,
+                      }).render()
+    
 @init_logging
 def menu_folder(request, *args):
     args = base64.b64decode(args[0])
