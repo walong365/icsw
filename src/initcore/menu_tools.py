@@ -274,7 +274,7 @@ class olim_menu(object):
             xml_doc = self._first_trans(xml_doc)
             #import pprint
             #pprint.pprint(self._first_trans.error_log)
-            print etree.tostring(xml_doc, pretty_print=True)
+            #print etree.tostring(xml_doc, pretty_print=True)
             # second step: filter
             xml_doc = self._second_trans(xml_doc)
         return xml_doc
