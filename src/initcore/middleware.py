@@ -57,9 +57,12 @@ class check_menu_xpath(object):
                             request.session.update({"menu_xpath" : xml_node.getroottree().getpath(xml_node)})
                             request.session.save()
                         else:
-                            print "*** no xml_nodes found for '%s'" % (xpath_str)
+                            #print "*** no xml_nodes found for '%s'" % (xpath_str)
+                            pass
                     else:
-                        print "*** empty ref_str list"
+                        #print "*** empty ref_str list"
+                        pass
             except:
-                print "*** unable to resolve path '%s'" % (request.path), process_tools.get_except_info()
+                #print "*** unable to resolve path '%s'" % (request.path), process_tools.get_except_info()
+                pass
 
