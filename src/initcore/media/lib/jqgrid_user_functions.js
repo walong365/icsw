@@ -42,7 +42,7 @@ function set_colNames_params(jqgrid_params, live_colModel, colNames, show) {
     }
     var result = new Array();
     for (var i = 0; i < jqgrid_params[show][1].length; i++) {
-        if (jqgrid_params[show][1][i] != "") {
+        if (jqgrid_params[show][1][i] != "" && jQuery.inArray(jqgrid_params[show][1][i], names) >= 0) {
             result.push(colNames[jQuery.inArray(jqgrid_params[show][1][i], names)]);
         }
     }
