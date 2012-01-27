@@ -60,6 +60,9 @@ COPY_ATTRIBUTES_SS = """<xsl:stylesheet
     <xsl:template match="menuitem">
         <xsl:param name="node" select="."/>
         <menuitem>
+            <!-- Copy all attributes to let possibly existing MML attributes pass -->
+            <xsl:copy-of select="@*" />
+            <!-- Menu specific attribute overrides -->
             <xsl:call-template name="copy-attribute">
                 <xsl:with-param name="node" select="$node"/>
                 <xsl:with-param name="attrname" select="'role'"/>
@@ -84,55 +87,30 @@ COPY_ATTRIBUTES_SS = """<xsl:stylesheet
             <xsl:if test="@ref"><xsl:attribute name="ref"><xsl:value-of select="@ref"/></xsl:attribute></xsl:if>
             <xsl:if test="@refargs"><xsl:attribute name="refargs"><xsl:value-of select="@refargs"/></xsl:attribute></xsl:if>
             <xsl:if test="@xpath"><xsl:attribute name="xpath"><xsl:value-of select="@xpath"/></xsl:attribute></xsl:if>
-            
-            <!-- meta attributes -->
-            <!-- think about a *clean* way to extract these values from inherit_attributes -->
-            <xsl:if test="@id"><xsl:attribute name="id"><xsl:value-of select="@id"/></xsl:attribute></xsl:if>
-            
+
+            <!--xsl:if test="@id"><xsl:attribute name="id"><xsl:value-of select="@id"/></xsl:attribute></xsl:if>
             <xsl:if test="@table"><xsl:attribute name="table"><xsl:value-of select="@table"/></xsl:attribute></xsl:if>
             <xsl:if test="@table1"><xsl:attribute name="table1"><xsl:value-of select="@table1"/></xsl:attribute></xsl:if>
             <xsl:if test="@table2"><xsl:attribute name="table2"><xsl:value-of select="@table2"/></xsl:attribute></xsl:if>
-            
             <xsl:if test="@action"><xsl:attribute name="action"><xsl:value-of select="@action"/></xsl:attribute></xsl:if>
-            
             <xsl:if test="@filter"><xsl:attribute name="filter"><xsl:value-of select="@filter"/></xsl:attribute></xsl:if>
             <xsl:if test="@filter1"><xsl:attribute name="filter1"><xsl:value-of select="@filter1"/></xsl:attribute></xsl:if>
             <xsl:if test="@filter2"><xsl:attribute name="filter2"><xsl:value-of select="@filter2"/></xsl:attribute></xsl:if>
-            
             <xsl:if test="@sort"><xsl:attribute name="sort"><xsl:value-of select="@sort"/></xsl:attribute></xsl:if>
             <xsl:if test="@sort1"><xsl:attribute name="sort1"><xsl:value-of select="@sort1"/></xsl:attribute></xsl:if>
             <xsl:if test="@sort2"><xsl:attribute name="sort2"><xsl:value-of select="@sort2"/></xsl:attribute></xsl:if>
-            
             <xsl:if test="@list"><xsl:attribute name="list"><xsl:value-of select="@list"/></xsl:attribute></xsl:if>
-            <xsl:if test="@nolist"><xsl:attribute name="nolist"><xsl:value-of select="@nolist"/></xsl:attribute></xsl:if>
             <xsl:if test="@list1"><xsl:attribute name="list1"><xsl:value-of select="@list1"/></xsl:attribute></xsl:if>
-            <xsl:if test="@nolist1"><xsl:attribute name="nolist1"><xsl:value-of select="@nolist1"/></xsl:attribute></xsl:if>
             <xsl:if test="@list2"><xsl:attribute name="list2"><xsl:value-of select="@list2"/></xsl:attribute></xsl:if>
-            <xsl:if test="@nolist2"><xsl:attribute name="nolist2"><xsl:value-of select="@nolist2"/></xsl:attribute></xsl:if>
-            
             <xsl:if test="@edit"><xsl:attribute name="edit"><xsl:value-of select="@edit"/></xsl:attribute></xsl:if>
-            <xsl:if test="@noedit"><xsl:attribute name="noedit"><xsl:value-of select="@noedit"/></xsl:attribute></xsl:if>
-            
             <xsl:if test="@form"><xsl:attribute name="form"><xsl:value-of select="@form"/></xsl:attribute></xsl:if>
-            <xsl:if test="@noform"><xsl:attribute name="noform"><xsl:value-of select="@noform"/></xsl:attribute></xsl:if>
-            <xsl:if test="@form1"><xsl:attribute name="form1"><xsl:value-of select="@form1"/></xsl:attribute></xsl:if>
-            <xsl:if test="@noform1"><xsl:attribute name="noform1"><xsl:value-of select="@noform1"/></xsl:attribute></xsl:if>
+            <xsl:if test="@form1"><xsl:attribute name="form"><xsl:value-of select="@form"/></xsl:attribute></xsl:if>
             <xsl:if test="@form2"><xsl:attribute name="form2"><xsl:value-of select="@form2"/></xsl:attribute></xsl:if>
-            <xsl:if test="@noform2"><xsl:attribute name="noform2"><xsl:value-of select="@noform2"/></xsl:attribute></xsl:if>
-            
             <xsl:if test="@trail"><xsl:attribute name="trail"><xsl:value-of select="@trail"/></xsl:attribute></xsl:if>
-            <xsl:if test="@notrail"><xsl:attribute name="notrail"><xsl:value-of select="@notrail"/></xsl:attribute></xsl:if>
-            
             <xsl:if test="@add"><xsl:attribute name="add"><xsl:value-of select="@add"/></xsl:attribute></xsl:if>
-            <xsl:if test="@noadd"><xsl:attribute name="noadd"><xsl:value-of select="@noadd"/></xsl:attribute></xsl:if>
-            
-            <xsl:if test="@addable"><xsl:attribute name="addable"><xsl:value-of select="@addable"/></xsl:attribute></xsl:if>
-            <xsl:if test="@deleteable"><xsl:attribute name="deleteable"><xsl:value-of select="@deleteable"/></xsl:attribute></xsl:if>
-            <xsl:if test="@editable"><xsl:attribute name="editable"><xsl:value-of select="@editable"/></xsl:attribute></xsl:if>
-            
             <xsl:if test="@key"><xsl:attribute name="key"><xsl:value-of select="@key"/></xsl:attribute></xsl:if>
-            <xsl:if test="@frozen"><xsl:attribute name="frozen"><xsl:value-of select="@frozen"/></xsl:attribute></xsl:if>
-            
+            <xsl:if test="@frozen"><xsl:attribute name="frozen"><xsl:value-of select="@frozen"/></xsl:attribute></xsl:if-->
+
             <xsl:value-of select="$node/text()"/>
             <xsl:apply-templates/>
         </menuitem>
@@ -355,7 +333,7 @@ def get_menu_html(request, is_mobile, for_dynatree):
                     new_el.attrib["name"] = new_el.attrib.get("name", "OLIM")
                 xml_doc.append(new_el)
                 el_type = type(etree.Element("test"))
-                new_el.extend([getattr(E, child.tag)(child.text or u"", 
+                new_el.extend([getattr(E, child.tag)(child.text or u"",
                                                      *[getattr(E, sub_child.tag)(sub_child.text or u"",
                                                                                  *[getattr(E, sub_sub_child.tag)(sub_sub_child.text or u"",
                                                                                                                  **sub_sub_child.attrib) for sub_sub_child in sub_child if type(sub_sub_child) == el_type],
@@ -369,27 +347,26 @@ def get_menu_html(request, is_mobile, for_dynatree):
     return etree.tostring(my_menu.to_html(xml_doc, is_mobile, for_dynatree,
                                           user=unicode(request.user),
                                           menu_xpath=menu_xpath))
-        
+
 
 class menu_resolver_base(object):
     """ Base object for all menu resolvers. Primarily there to document the
     structure of of menu_resolver. """
     def node_to_href(self, node):
         """ Take a xml node with a ref attribute and return a valid href link """
-        raise NotImplementedError("You have to implement node_to_href")        
-    
+        raise NotImplementedError("You have to implement node_to_href")
+
     def request_to_xpath(self, request):
-        raise NotImplementedError("You have to implement request_to_xpath")        
+        raise NotImplementedError("You have to implement request_to_xpath")
 
 class menu_direct_link_resolver(menu_resolver_base):
-    """ Resolves all links of type *http|https|ftp://path* """    
+    """ Resolves all links of type *http|https|ftp://path* """
     def node_to_href(self, node):
         href = None
         if re.match(r'(http|https|ftp)://.*', node.attrib["ref"]):
             href = node.attrib["ref"]
         return href
-    
+
     def request_to_xpath(self, request):
         return []
-        
-        
+
