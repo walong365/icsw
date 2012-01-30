@@ -15,7 +15,7 @@ def require_POST_params(params):
                         return HttpResponseForbidden("Missing parameter %s" % i)
             else:
                 if params not in request.POST:
-                    return HttpResponseForbidden("Missing parameter %s" % i)
+                    return HttpResponseForbidden("Missing parameter %s" % params)
             return func(request, *args, **kwargs)
         return _wrapper
 
