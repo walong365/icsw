@@ -38,7 +38,7 @@ import logging.handlers
 import cPickle
 import socket
 import threading
-if sys.platform in ["linux2"]:
+if sys.platform in ["linux2", "linux3"]:
     import syslog
 try:
     import zmq
@@ -208,7 +208,7 @@ class twisted_log_observer(object):
         
 def get_logger(name, destination, **kwargs):
     """ specify init_logger=True to append init.at to the logname """
-    is_linux = sys.platform in ["linux2"]
+    is_linux = sys.platform in ["linux2", "linux3"]
     if kwargs.get("init_logger", False) and is_linux:
         # force init.at logger
         if not name.startswith("init.at."):
@@ -280,7 +280,7 @@ try:
             logging.LoggerAdapter.__init__(self, logger, extra)
         def process(self, msg, kwargs):
             # add hostname and parent process id (to handle multiprocessing logging)
-            if sys.platform in ["linux2"]:
+            if sys.platform in ["linux2", "linux3"]:
                 kwargs.setdefault("extra", {})
                 kwargs["extra"].setdefault("host", os.uname()[1])
                 kwargs["extra"].setdefault("ppid", os.getppid())

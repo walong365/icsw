@@ -23,7 +23,7 @@
 import sys
 import os
 import os.path
-if sys.platform in ["linux2"]:
+if sys.platform in ["linux2", "linux3"]:
     import pwd
     import grp
     import cpu_database
@@ -1421,7 +1421,7 @@ def fix_files(user, group, f_dict):
                 pass
 
 def is_linux():
-    return sys.platform in ["linux2"]
+    return sys.platform in ["linux2", "linux3"]
 
 def is_windows():
     return not is_linux()
@@ -1446,7 +1446,7 @@ def get_programm_name():
     return p_name
 
 def get_machine_name():
-    if sys.platform in ["linux2"]:
+    if sys.platform in ["linux2", "linux3"]:
         # for linux
         return os.uname()[1]
     else:
