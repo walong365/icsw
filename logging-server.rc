@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2003,2004,2005,2006,2007,2008,2011 init.at
+# Copyright (c) 2003,2004,2005,2006,2007,2008,2011,2012 Andreas Lang-Nevyjel init.at
 #
 #
 # RedHat stuff
@@ -16,6 +16,7 @@
 # Description:   starts logging-server
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else

@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009,2010,2011 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
+# Copyright (C) 2009,2010,2011,2012 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,6 +26,8 @@ from twisted.internet import reactor, task
 from twisted.internet.protocol import ServerFactory, Protocol, DatagramProtocol, Factory
 from twisted.python import log
 import zmq
+# twisted integration
+import txZMQ
 import io_stream_helper
 import logging_server_version
 import logging_tools
@@ -68,15 +70,15 @@ class tcp_log_receiver(Protocol):
         print "gone", reason
 
 class twisted_log_receiver(DatagramProtocol):
-    def __init__(self, t_thread):
-        self.__thread = t_thread
+    def __init__(self, t_process):
+        self.__process = t_process
     def datagramReceived(self, in_str, addr):
         if in_str[0:8].isdigit():
-            self.__thread.log_recv(in_str[8:])
+            self.__process.log_recv(in_str[8:])
         else:
-            self.__thread.log("invalid header", logging_tools.LOG_LEVEL_ERROR)
+            self.__process.log("invalid header", logging_tools.LOG_LEVEL_ERROR)
         
-class twisted_thread(threading_tools.process_obj):
+class twisted_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_socket = self.connect_to_socket("receiver")
         # init twisted reactor
@@ -457,17 +459,18 @@ class log_receiver(threading_tools.process_obj):
         for close_key in self.__handles.keys():
             self.remove_handle(close_key)
 
-class main_thread(threading_tools.process_pool):
+class main_process(threading_tools.process_pool):
     def __init__(self, options):
         self.__options = options
         threading_tools.process_pool.__init__(self, "main", stack_size=2*1024*1024, zmq=True)
+        process_tools.delete_lockfile(global_config["LOCKFILE_NAME"])
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("pong", self._pong)
         self.renice()
         self._init_msi_block()
         self.add_process(log_receiver("receiver"), start=True)
-        self.add_process(twisted_thread("twisted"), twisted=True, start=True)
+        self.add_process(twisted_process("twisted"), twisted=True, start=True)
         self._log_config()
         self._init_network_sockets()
         self.register_timer(self._heartbeat, 30, instant=True)
@@ -519,7 +522,6 @@ class main_thread(threading_tools.process_pool):
             client.bind(io_stream_helper.zmq_socket_name(global_config[h_name], check_ipc_prefix=True))
             os.chmod(io_stream_helper.zmq_socket_name(global_config[h_name]), 0777)
         self.register_poller(client, zmq.POLLIN, self._recv_data)
-        process_tools.delete_lockfile(global_config["LOCKFILE_NAME"])
     def _heartbeat(self):
         #self.send_to_process("twisted", "ping", 0)
         if self.__msi_block:
@@ -608,7 +610,7 @@ def main():
         process_tools.set_handles("logging-server")
     else:
         print "Debugging logging-server"
-    main_thread(options).loop()
+    main_process(options).loop()
     if not options.DEBUG:
         process_tools.handles_write_endline()
     process_tools.delete_lockfile(lockfile_name, None, 0)

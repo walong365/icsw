@@ -2,6 +2,6 @@
 FROM_NAME=pythonerror
 #FROM_ADDR=localhost.localdomain
 # to addr
-TO_ADDR=lang@init.at
+TO_ADDR=lang-nevyjel@init.at
 # mailserver
 MAILSERVER=localhost
