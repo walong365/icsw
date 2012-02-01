@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2003,2004,2005,2011 init.at
+# Copyright (c) 2003,2004,2005,2011,2012 Andreas Lang-Nevyjel init.at
 #
 
 #
@@ -17,6 +17,7 @@
 # Description:   starts meta-server
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
