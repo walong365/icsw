@@ -737,25 +737,8 @@ class thread_pool(object):
                                            logging_tools.get_plural("thread", len(self.__threads.keys())),
                                            logging_tools.get_plural("queue", len(self.__queues.keys())))
 
-class tz_pull_connection(ZmqConnection):
-    socketType = zmq.core.constants.PULL
-    def messageReceived(self, message):
-        """
-        Called on incoming message from ZeroMQ.
-
-        @param message: message data
-        """
-        if len(message) == 2:
-            # compatibility receiving of tag as first part
-            # of multi-part message
-            self.gotMessage(message[1], message[0])
-        else:
-            self.gotMessage(*reversed(message[0].split('\0', 1)))
-    def connectionLost(self, reason):
-        # catch connection lost
-        pass
-    
 class tz_factory(object):
+    """ based on ZmqFactor from /opt/python-init/lib/python/site-packages/txZMQ/factor.py """
     reactor = reactor
     ioThreads = 1
     lingerPeriod = 1
@@ -830,7 +813,9 @@ class process_obj(multiprocessing.Process):
         self.zmq_context = zmq.Context()
         if self.__twisted:
             my_factory = tz_factory(self.zmq_context)
-            new_q = tz_pull_connection(my_factory, ZmqEndpoint("bind", process_tools.get_zmq_ipc_name(self.name)))
+            new_q = ZmqSubConnection(my_factory, ZmqEndpoint("bind", process_tools.get_zmq_ipc_name(self.name)))
+            # no filter
+            new_q.subscribe("")
             new_q.gotMessage = self._recv_message
         else:
             new_q = self.zmq_context.socket(zmq.PULL)
@@ -1051,13 +1036,16 @@ class process_pool(object):
         else:
             t_obj.set_process_pool(self)
             self.__processes[t_obj.getName()] = t_obj
-            process_queue = self.zmq_context.socket(zmq.PUSH)
-            process_queue.connect(process_tools.get_zmq_ipc_name(t_obj.getName()))
             #process_queue.setsockopt(zmq.SNDBUF, 65536)
             #process_queue.setsockopt(zmq.RCVBUF, 65536)
             #process_queue.setsockopt(zmq.HWM, 10)
-            self.__sockets[t_obj.getName()] = process_queue
             t_obj.twisted = kwargs.get("twisted", False)
+##            if t_obj.twisted:
+##                process_queue = tz_push_connection(my_factory, ZmqEndpoint("bind", process_tools.get_zmq_ipc_name(t_obj.getName())))
+##            else:
+            process_queue = self.zmq_context.socket(zmq.PUSH)
+            process_queue.connect(process_tools.get_zmq_ipc_name(t_obj.getName()))
+            self.__sockets[t_obj.getName()] = process_queue
             # set additional attributes
             for key in [sub_key for sub_key in sorted(kwargs.keys()) if sub_key not in ["twisted", "start"]]:
                 self.log("setting attribute '%s' for %s" % (key, t_obj.getName()))

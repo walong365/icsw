@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2001,2002,2003,2004,2005,2006,2007,2009,2010 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2001,2002,2003,2004,2005,2006,2007,2009,2010,2012 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -290,9 +290,9 @@ class meta_server_info(object):
                             ("check_memory"     , "b", True ),
                             ("exe_name"         , "s", None ),
                             ("need_any_pids"    , "b", 0    ),
-                            # how many pids can bee to much
+                            # how many pids can be too much
                             ("fuzzy_ceiling"    , "i", 0    ),
-                            # how many pids can bee to less
+                            # how many pids can be too less
                             ("fuzzy_floor"      , "i", 0    ),
                             # heartbeat timeout, 0 means disabled
                             ("heartbeat_timeout", "i", 0    )]
@@ -645,7 +645,10 @@ def append_pids(name, pid=None, mult=1, mode="a"):
             actp = [int(pid)]
         else:
             actp = pid
-    fname = "/var/run/%s.pid" % (name)
+    if name.startswith("/"):
+        fname = name
+    else:
+        fname = "/var/run/%s.pid" % (name)
     dir_name = os.path.dirname(fname)
     if not os.path.isdir(dir_name):
         try:
@@ -677,7 +680,10 @@ def remove_pids(name, pid=None):
             actp = [int(pid)]
         else:
             actp = pid
-    fname = "/var/run/%s.pid" % (name)
+            if name.startswith("/"):
+                fname = name
+            else:
+                fname = "/var/run/%s.pid" % (name)
     try:
         pid_lines = [x.strip() for x in file(fname, "r").read().split("\n")]
     except:
@@ -698,7 +704,10 @@ def remove_pids(name, pid=None):
             logging_tools.my_syslog("error removing %d pids (%s) to %s" % (len(actp), ",".join(["%d" % (x) for x in actp]), fname))
         
 def delete_pid(name):
-    fname = "/var/run/%s.pid" % (name)
+    if name.startswith("/"):
+        fname = name
+    else:
+        fname = "/var/run/%s.pid" % (name)
     if os.path.isfile(fname):
         try:
             os.unlink(fname)
