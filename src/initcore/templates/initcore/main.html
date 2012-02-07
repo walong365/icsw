@@ -101,7 +101,7 @@
 </div>
 
 {# sidebar, for future enhancements #}
-{% if not session.is_mobile %}
+{% if not session.is_mobile and settings.INITCORE_SIDEBAR %}
     <div class="ui-layout-west" id="layout_sidebar">
         {% include 'initcore/sidebar.html' %}
     </div>
