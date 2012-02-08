@@ -17,6 +17,7 @@
 # Description:   start host-monitoring services
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else

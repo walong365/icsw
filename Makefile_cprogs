@@ -1,0 +1,27 @@
+.SUFFIXES:
+.SUFFIXES: .o .c
+.PHONY: clean all
+comp=gcc
+progs=ccollclient csnmpclient csnmpclientmorph
+
+default: all
+
+clean:
+	rm -f *.o $(progs)
+
+all:	$(progs)
+
+ccollclient: ccollclient.o
+	$(comp) ccollclient.o -o ccollclient
+	strip ccollclient
+
+csnmpclient: csnmpclient.o
+	$(comp) csnmpclient.o -o csnmpclient
+	strip csnmpclient
+
+csnmpclientmorph: csnmpclientmorph.o
+	$(comp) csnmpclientmorph.o -o csnmpclientmorph
+	strip csnmpclientmorph
+
+%.o: %.c
+	$(comp) $< -O3 -c -I. -o $@
