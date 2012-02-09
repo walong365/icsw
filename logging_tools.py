@@ -231,7 +231,7 @@ def get_logger(name, destination, **kwargs):
             if kwargs.get("zmq", False):
                 cur_context = kwargs["context"]
                 pub = cur_context.socket(zmq.PUSH)
-                pub.connect(rewrite_log_destination("%s_zmq" % (act_dest)))
+                pub.connect(rewrite_log_destination(act_dest if act_dest.endswith("_zmq") else "%s_zmq" % (act_dest)))
                 act_logger.addHandler(zmq_handler(pub))
                 pass
             else:

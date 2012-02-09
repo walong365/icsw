@@ -635,6 +635,13 @@ def save_pid(name, pid=None, mult=1):
 
 save_pids = save_pid
 
+RUN_DIR = "/var/run"
+# not needed right now
+##if os.path.isfile("/etc/SuSE-release"):
+##    suse_ver = [line.strip().split()[-1] for line in file("/etc/SuSE-release", "r").read().split("\n") if line.startswith("VERSION")]
+##    if suse_ver == ["12.1"]:
+##        RUN_DIR = "/run"
+    
 def append_pids(name, pid=None, mult=1, mode="a"):
     if pid == None:
         actp = [os.getpid()]
@@ -648,7 +655,7 @@ def append_pids(name, pid=None, mult=1, mode="a"):
     if name.startswith("/"):
         fname = name
     else:
-        fname = "/var/run/%s.pid" % (name)
+        fname = "%s.pid" % (os.path.join(RUN_DIR, name))
     dir_name = os.path.dirname(fname)
     if not os.path.isdir(dir_name):
         try:
@@ -683,7 +690,7 @@ def remove_pids(name, pid=None):
             if name.startswith("/"):
                 fname = name
             else:
-                fname = "/var/run/%s.pid" % (name)
+                fname = "%s.pid" % (os.path.join(RUN_DIR, name))
     try:
         pid_lines = [x.strip() for x in file(fname, "r").read().split("\n")]
     except:
@@ -707,7 +714,7 @@ def delete_pid(name):
     if name.startswith("/"):
         fname = name
     else:
-        fname = "/var/run/%s.pid" % (name)
+        fname = "%s.pid" % (os.path.join(RUN_DIR, name))
     if os.path.isfile(fname):
         try:
             os.unlink(fname)
