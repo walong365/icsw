@@ -3,4 +3,4 @@
 
 # server arguments
 
-SERVER_ARGS=" -r 5 -t 20"
+SERVER_ARGS=" "

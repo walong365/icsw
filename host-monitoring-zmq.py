@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011 Andreas Lang-Nevyjel
+# Copyright (C) 2011,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -37,7 +37,7 @@ import server_command
 import stat
 import net_tools
 from lxml import etree
-import limits
+import host_monitoring.limits
 import argparse
 
 try:
@@ -46,7 +46,7 @@ except ImportError:
     VERSION_STRING = "?.?"
 
 def client_code():
-    import modules
+    from host_monitoring import modules
     #log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=)
     conn_str = "tcp://%s:%d" % (global_config["HOST"],
                                 global_config["COM_PORT"])
@@ -124,7 +124,7 @@ class pending_connection(object):
 class relay_thread(threading_tools.process_pool):
     def __init__(self):
         # copy to access from modules
-        import modules
+        from host_monitoring import modules
         self.modules = modules
         self.global_config = global_config
         self.__log_cache, self.__log_template = ([], None)
@@ -133,7 +133,7 @@ class relay_thread(threading_tools.process_pool):
         pending_connection.init()
         if not global_config["DEBUG"]:
             process_tools.set_handles({"out" : (1, "collrelay.out"),
-                                       "err" : (0, "/var/lib/logging-server/py_err")},
+                                       "err" : (0, "/var/lib/logging-server/py_err_zmq")},
                                       zmq_context=self.zmq_context)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
@@ -403,7 +403,7 @@ class server_thread(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
     def _init_commands(self):
         self.log("init commands")
-        import modules
+        from host_monitoring import modules
         self.module_list = modules.module_list
         self.commands = modules.command_dict
         _init_ok = True
@@ -436,7 +436,7 @@ def main():
     global_config.add_config_entries([
         #("MAILSERVER"          , configfile.str_c_var("localhost", info="Mail Server")),
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log")),
+        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("KILL_RUNNING"        , configfile.bool_c_var(True)),
         ("SERVER_FULL_NAME"    , configfile.str_c_var(long_host_name)),

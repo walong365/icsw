@@ -17,6 +17,7 @@
 # Description:   start host-relay services
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -25,7 +26,7 @@ fi
 . /etc/sysconfig/host-relay
 . /etc/init.d/ics_tools.sh
 
-HOSTMON_BIN=/usr/local/sbin/host-monitoring.py
+HOSTMON_BIN=/usr/local/sbin/host-monitoring-zmq.py
 RELAY_BIN=/usr/local/sbin/collrelay.py
 PYTHON_BIN=/opt/python-init/bin/python
 RELAY_PID=/var/run/collrelay/collrelay.pid

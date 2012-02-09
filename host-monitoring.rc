@@ -26,7 +26,7 @@ fi
 . /etc/sysconfig/host-monitoring
 . /etc/init.d/ics_tools.sh
 
-HOSTMON_BIN=/usr/local/sbin/host-monitoring.py
+HOSTMON_BIN=/usr/local/sbin/host-monitoring-zmq.py
 SERVER_BIN=/usr/local/sbin/collserver.py
 PYTHON_BIN=/opt/python-init/bin/python
 SERVER_PID=/var/run/collserver/collserver.pid
