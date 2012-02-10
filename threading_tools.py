@@ -1006,8 +1006,8 @@ class process_pool(object):
         self.poller_handler[(zmq_socket, sock_type)] = callback
         self.poller.register(zmq_socket, sock_type)
     def unregister_poller(self, zmq_socket, sock_type):
-        self.poller.unregister(zmq_socket)
         del self.poller_handler[(zmq_socket, sock_type)]
+        self.poller.unregister(zmq_socket)
         zmq_socket.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print "process_pool %s (%d) %s: %s" % (self.get_name(),

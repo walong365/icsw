@@ -1,6 +1,6 @@
 #!/opt/python-init/bin/python -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2011 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2011,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -224,6 +224,8 @@ class srv_command(object):
             "pid" : "%d" % (os.getpid())})
     def __unicode__(self):
         return etree.tostring(self.__tree, encoding=unicode)
+    def __del__(self):
+        pass
 
 class command_template(object):
     def __init__(self, *rest_vals, **rest_dict):
