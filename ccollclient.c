@@ -115,40 +115,40 @@ int main (int argc, char** argv) {
         rchar = getopt(argc, argv, "+vfFm:p:n:ht:r:");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
-            case 'p':
-                mbuf->port = strtol(optarg, NULL, 10);
-                break;
-            case 'm':
-                if (index(optarg, ':')) {
-                    strncpy(act_relayer, optarg, (size_t)(index(optarg, ':') - optarg));
-                    strcpy(act_hostname, optarg + (size_t)(index(optarg, ':') - optarg + 1));
-                } else {
-                    strcpy(act_hostname, optarg);
-                }
-                break;
-            case 'r':
-                strcpy(act_relayer, optarg);
-                break;
-            case 't':
-                timeout = strtol(optarg, NULL, 10);
-                break;
-            case 'v':
-                verbose = 1;
-                break;
-            case 'f':
-                mbuf->direct = 1;
-                break;
-            case 'F':
-                mbuf->direct = 2;
-                break;
-            case 'n':
-                ipcnum = strtol(optarg, NULL, 10);
-                break;
-            case 'h':
-            case '?':
-                printf("Usage: ccollclient [-t TIMEOUT] [-r RELAYER] [-m {RELAYER:}HOST] [-p PORT] [-f | -F] [-M] [-n IPC_key] [-h] [-v] command\n");
-                exit(-1);
-                break;
+        case 'p':
+            mbuf->port = strtol(optarg, NULL, 10);
+            break;
+        case 'm':
+            if (index(optarg, ':')) {
+                strncpy(act_relayer, optarg, (size_t)(index(optarg, ':') - optarg));
+                strcpy(act_hostname, optarg + (size_t)(index(optarg, ':') - optarg + 1));
+            } else {
+                strcpy(act_hostname, optarg);
+            }
+            break;
+        case 'r':
+            strcpy(act_relayer, optarg);
+            break;
+        case 't':
+            timeout = strtol(optarg, NULL, 10);
+            break;
+        case 'v':
+            verbose = 1;
+            break;
+        case 'f':
+            mbuf->direct = 1;
+            break;
+        case 'F':
+            mbuf->direct = 2;
+            break;
+        case 'n':
+            ipcnum = strtol(optarg, NULL, 10);
+            break;
+        case 'h':
+        case '?':
+            printf("Usage: ccollclient [-t TIMEOUT] [-r RELAYER] [-m {RELAYER:}HOST] [-p PORT] [-f | -F] [-M] [-n IPC_key] [-h] [-v] command\n");
+            exit(-1);
+            break;
         }
         if (rchar == -1) break;
     }
@@ -164,9 +164,9 @@ int main (int argc, char** argv) {
     if (retcode == STATE_OK) {
         for (idx = optind; idx < argc; idx++) {
             if (idx == optind) {
-            sprintf((char*)act_command, "%s", argv[idx]);
+                sprintf((char*)act_command, "%s", argv[idx]);
             } else {
-            sprintf((char*)act_command, "%s %s", (char*)act_command, argv[idx]);
+                sprintf((char*)act_command, "%s %s", (char*)act_command, argv[idx]);
             }
         }
         //sprintf(ebuff, "Timeout %s ", (char*)mbuf->host.string);
@@ -174,14 +174,14 @@ int main (int argc, char** argv) {
         mbuf->pid = getpid();
         msgid = msgget((key_t) ipcnum, 0);
         if (verbose) {
-            printf("timeout: %d,  DestinationHost: '%s' (relayer: %s),  Port: %d,  direct: %d,  Arguments: '%s'\n", 
-                (int)timeout, (char*)act_hostname, (char*)act_relayer, mbuf->port, mbuf->direct, act_command);
+            printf("timeout: %d,  DestinationHost: '%s' (relayer: %s),  Port: %d,  direct: %d,  Arguments: '%s'\n",
+                   (int)timeout, (char*)act_hostname, (char*)act_relayer, mbuf->port, mbuf->direct, act_command);
             printf("pid: %d,  MessageID: %d\n", mbuf->pid, msgid);
         }
         //syslog (LOG_DAEMON | LOG_ERR, "%d %s %d %s", getpid(), (char*)mbuf->host.string, mbuf->port, (char*)mbuf->command.string);
         if (msgid < 0) {
             if (verbose) {
-            retcode = err_exit(errno, 1, "No IPC-Messagequeue found", 0);
+                retcode = err_exit(errno, 1, "No IPC-Messagequeue found", 0);
             }
         } else {
             // fill ipc-buffer
@@ -212,7 +212,7 @@ int main (int argc, char** argv) {
                     setitimer(ITIMER_REAL, &mytimer, NULL);
                     ret = msgrcv(msgid, mbuf, sizeof(struct my_msg) + STR_LEN, getpid(), 0);
                     if (ret == -1) {
-                       retcode = STATE_CRITICAL;
+                        retcode = STATE_CRITICAL;
                     } else {
                         ret_len = ret;
                         num_cont = 0;

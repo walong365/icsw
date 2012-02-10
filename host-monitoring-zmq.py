@@ -37,7 +37,7 @@ import server_command
 import stat
 import net_tools
 from lxml import etree
-import host_monitoring.limits
+from host_monitoring import limits
 import argparse
 
 try:
@@ -86,40 +86,73 @@ def client_code():
 class pending_connection(object):
     pending = {}
     counter = 0
-    def __init__(self, r_thread, send_xml, src_id, srv_com, com_struct, conn_str):
-        cur_ns, rest = com_struct.handle_commandline([])
+    def __init__(self, r_thread, src_id, srv_com, com_struct, conn_str, xml_input=False):
+        self.__xml_input = xml_input
         self.s_time = time.time()
         self.relayer_thread = r_thread
+        self.srv_com = srv_com
         pending_connection.counter += 1
         self.identity_str = "relay_%d" % (pending_connection.counter)
-        cur_sock = self.relayer_thread.zmq_context.socket(zmq.XREQ)
-        cur_sock.setsockopt(zmq.IDENTITY, self.identity_str)
-        cur_sock.setsockopt(zmq.LINGER, 100)
-        cur_sock.connect(conn_str)
-        cur_sock.send_unicode(unicode(send_xml))
-        pending_connection.pending[cur_sock] = self
-        self.sock = cur_sock
         self.com_struct = com_struct
-        self.ns = cur_ns
+        if com_struct:
+            cur_ns, rest = com_struct.handle_commandline([])
+            self.ns = cur_ns
+            cur_sock = self.relayer_thread.zmq_context.socket(zmq.XREQ)
+            cur_sock.setsockopt(zmq.IDENTITY, self.identity_str)
+            cur_sock.setsockopt(zmq.LINGER, 100)
+            try:
+                cur_sock.connect(conn_str)
+            except:
+                self.sock.close()
+                del self.sock
+                raise
+            cur_sock.send_unicode(unicode(srv_com))
+            pending_connection.pending[cur_sock] = self
+            self.sock = cur_sock
+        else:
+            self.sock = None
         self.src_id = src_id
-        print "pending: %d" % (len(pending_connection.pending))
+        #print "pending: %d" % (len(pending_connection.pending))
     @staticmethod
     def init():
         pending_connection.pending = {}
         pending_connection.counter = 0
+        pending_connection.sockets_to_close = []
     def close(self):
-        del pending_connection.pending[self.sock]
-        self.sock.close()
-        self.relayer_thread.unregister_poller(self.sock, zmq.POLLIN)
-        del self.sock
+        if self.sock:
+            del pending_connection.pending[self.sock]
+            self.relayer_thread.unregister_poller(self.sock, zmq.POLLIN)
+            print "cpc"
+            pending_connection.sockets_to_close.append((time.time(), self.sock))
+            del self.sock
         del self
     def __del__(self):
-        print "dpc #%s" % (self.identity_str)
+        #print "dpc #%s" % (self.identity_str)
+        pass
     def interpret(self, result):
         return self.com_struct.interpret(result, self.ns)
-    def send_result(self, result):
+    def send_result(self, result=None):
         self.relayer_thread.relayer_socket.send_unicode(self.src_id, zmq.SNDMORE)
-        self.relayer_thread.relayer_socket.send_unicode(unicode(result))
+        if result is None:
+            result = self.srv_com
+        if type(result) == type(()):
+            # from interpret
+            if not self.__xml_input:
+                self.relayer_thread.relayer_socket.send_unicode(u"%d\0%s" % (result[0],
+                                                                             result[1]))
+            else:
+                # shortcut
+                self.set_result(result[0], result[1])
+                self.relayer_thread.relayer_socket.send_unicode(unicode(self.srv_com))
+        else:
+            if not self.__xml_input:
+                self.relayer_thread.relayer_socket.send_unicode(u"%s\0%s" % (result["result"].attrib["state"],
+                                                                             result["result"].attrib["reply"]))
+            else:
+                self.relayer_thread.relayer_socket.send_unicode(unicode(result))
+    def set_result(self, state, res_str):
+        self.srv_com["result"] = {"reply" : res_str,
+                                  "state" : "%d" % (state)}
 
 class relay_thread(threading_tools.process_pool):
     def __init__(self):
@@ -177,8 +210,16 @@ class relay_thread(threading_tools.process_pool):
         cur_time = time.time()
         del_nodes = [value for value in pending_connection.pending.itervalues() if abs(value.s_time - cur_time) > 5]
         if del_nodes:
-            print "*", del_nodes
+            print "del pending connections", del_nodes
             [cur_node.close() for cur_node in del_nodes]
+        # not needed ? better check reusing of sockets
+        del_sockets = [value for c_time, value in pending_connection.sockets_to_close if abs(c_time - cur_time) > 2]
+        if del_sockets:
+            print "del pending sockets", del_sockets
+            for del_sock in del_sockets:
+                del_sock.close()
+                del del_sock
+            pending_connection.sockets_to_close = [(c_time, value) for c_time, value in pending_connection.sockets_to_close if abs(c_time - cur_time) <= 2]
     def _init_ipc_sockets(self):
         client = self.zmq_context.socket(zmq.XREP)
         try:
@@ -193,37 +234,68 @@ class relay_thread(threading_tools.process_pool):
             os.chmod(process_tools.get_zmq_ipc_name("receiver")[5:], 0777)
             self.register_poller(client, zmq.POLLIN, self._recv_command)
     def _recv_command(self, zmq_sock):
-        print "RECV"
         src_id = zmq_sock.recv()
         more = zmq_sock.getsockopt(zmq.RCVMORE)
         if more:
             data = zmq_sock.recv()
             more = zmq_sock.getsockopt(zmq.RCVMORE)
-            print data
-            srv_com = server_command.srv_command(source=data)
-            self.log("got command '%s' from '%s'" % (srv_com["command"].text,
-                                                     srv_com["source"].attrib["host"]))
-            self._send_to_client(src_id, srv_com)
+            xml_input = data.startswith("<")
+            srv_com = None
+            if xml_input:
+                srv_com = server_command.srv_command(source=data)
+            else:
+                if data.count(";") > 1:
+                    parts = data.split(";", 2)
+                    com_part = parts[2].split(None, 1)
+                    srv_com = server_command.srv_command(command=com_part.pop(0))
+                    srv_com["host"] = parts[0]
+                    srv_com["port"] = parts[1]
+                    srv_com["arg_list"] = "".join(com_part)
+            if srv_com is not None:
+                self.log("got command '%s' from '%s' (XML: %s)" % (srv_com["command"].text,
+                                                                   srv_com["source"].attrib["host"],
+                                                                   str(xml_input)))
+                self._send_to_client(src_id, srv_com, xml_input)
+            else:
+                self.log("cannot interpret input data '%s' is srv_command" % (data),
+                         logging_tools.LOG_LEVEL_ERROR)
             #zmq_sock.send_unicode(src_id, zmq.SNDMORE)
             #zmq_sock.send_unicode(unicode(result))
         else:
             self.log("cannot receive more data, already got '%s'" % (src_id),
                      logging_tools.LOG_LEVEL_ERROR)
-    def _send_to_client(self, src_id, srv_com):
+    def _send_to_client(self, src_id, srv_com, xml_input):
         # generate new xml from srv_com
-        send_xml = server_command.srv_command(command=srv_com["command"].text)
         target_host, target_port = ("localhost", 2001)
-        conn_str = "tcp://%s:%d" % (target_host,
-                                    target_port)
-        com_struct = self.modules.command_dict[send_xml["command"].text]
-        # handle commandline
-        self.register_poller(pending_connection(self, send_xml, src_id, srv_com, com_struct, conn_str).sock, zmq.POLLIN, self._get_result)
+        conn_str = "tcp://%s:%d" % (srv_com["host"].text,
+                                    int(srv_com["port"].text))
+        com_name = srv_com["command"].text
+        if com_name in self.modules.command_dict:
+            com_struct = self.modules.command_dict[srv_com["command"].text]
+            # handle commandline
+            try:
+                cur_pc = pending_connection(self, src_id, srv_com, com_struct, conn_str, xml_input)
+            except:
+                cur_pc.close()
+            else:
+                self.register_poller(cur_pc.sock, zmq.POLLIN, self._get_result)
+        else:
+            cur_pc = pending_connection(self, src_id, srv_com, None, conn_str, xml_input)
+            self.log("command '%s' not defined" % (com_name), logging_tools.LOG_LEVEL_ERROR)
+            cur_pc.set_result(limits.nag_STATE_CRITICAL,
+                              "unknown command '%s'" % (srv_com["command"].text))
+            cur_pc.send_result()
+            cur_pc.close()
         #result = net_tools.zmq_connection(identity_string).add_connection(conn_str, send_xml)
         #return result
     def _get_result(self, zmq_sock):
         result = server_command.srv_command(source=zmq_sock.recv())
         cur_pc = pending_connection.pending[zmq_sock]
-        cur_pc.send_result(result)
+        try:
+            res_tuple = cur_pc.interpret(result)
+        except:
+            res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
+        cur_pc.send_result(res_tuple)
         cur_pc.close()
     def _close_socket(self, zmq_sock):
         del self.__send_dict[zmq_sock]
@@ -235,9 +307,9 @@ class relay_thread(threading_tools.process_pool):
             exc_info = process_tools.exception_info()
             for log_line in process_tools.exception_info().log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_ERROR)
-            srv_com["result"].attrib.update({
-                "reply" : "caught server exception '%s'" % (process_tools.get_except_info()),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)})
+                srv_com["result"] = {
+                    "reply" : "caught server exception '%s'" % (process_tools.get_except_info()),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)}
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
@@ -330,6 +402,7 @@ class server_thread(threading_tools.process_pool):
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.XREP)
         client.setsockopt(zmq.IDENTITY, "ms")
+        client.setsockopt(zmq.HWM, 256)
         try:
             client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
         except zmq.core.error.ZMQError:
@@ -345,7 +418,6 @@ class server_thread(threading_tools.process_pool):
         if more:
             data = zmq_sock.recv()
             more = zmq_sock.getsockopt(zmq.RCVMORE)
-            print "*", src_id, len(data)
             srv_com = server_command.srv_command(source=data)
             rest_el = srv_com.xpath(None, ".//ns:arguments/ns:rest")
             if rest_el:
@@ -364,13 +436,13 @@ class server_thread(threading_tools.process_pool):
                 srv_com["result"].attrib["reply"] = "version is %s" % (VERSION_STRING)
             elif srv_com["command"].text in self.commands:
                 self._handle_module_command(srv_com, rest_str)
-                #srv_com["result"].attrib.update(["reply"] = "ok got %s" % (srv_com["command"].text)
             else:
                 srv_com["result"].attrib.update(
                     {"reply" : "unknown command '%s'" % (srv_com["command"].text),
                      "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             zmq_sock.send_unicode(src_id, zmq.SNDMORE)
             zmq_sock.send_unicode(unicode(srv_com))
+            del srv_com
         else:
             self.log("cannot receive more data, already got '%s'" % (src_id),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -465,7 +537,7 @@ def main():
     #global_config["FROM_ADDR"] = long_host_name
     global_config.write_file()
     #process_tools.fix_directories("root", "root", [(glob_config["MAIN_DIR"], 0777)])
-    if not options.DEBUG and prog_name in ["collserver"]:
+    if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
         process_tools.become_daemon()
     elif prog_name in ["collserver"]:
         print "Debugging %s on %s" % (prog_name,

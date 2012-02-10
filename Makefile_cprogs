@@ -1,8 +1,15 @@
 .SUFFIXES:
 .SUFFIXES: .o .c
 .PHONY: clean all
+
 comp=gcc
 progs=ccollclient csnmpclient csnmpclientmorph
+
+ifeq ($(shell uname -m), x86_64)
+        LIB_DIR=lib64
+else
+        LIB_DIR=lib
+endif
 
 default: all
 
@@ -15,6 +22,10 @@ ccollclient: ccollclient.o
 	$(comp) ccollclient.o -o ccollclient
 	strip ccollclient
 
+ccollclientzmq: ccollclientzmq.o
+	$(comp) -L/opt/cluster/$(LIB_DIR)/ -lzmq ccollclientzmq.o -o ccollclientzmq
+	strip ccollclientzmq
+
 csnmpclient: csnmpclient.o
 	$(comp) csnmpclient.o -o csnmpclient
 	strip csnmpclient
@@ -24,4 +35,4 @@ csnmpclientmorph: csnmpclientmorph.o
 	strip csnmpclientmorph
 
 %.o: %.c
-	$(comp) $< -O3 -c -I. -o $@
+	$(comp) $< -O3 -c -I. -I/opt/cluster/include -o $@
