@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2009 init.at
+# Copyright (c) 2009,2012 Andreas Lang-Nevyjel init.at
 #
 #
 # RedHat stuff
@@ -17,6 +17,7 @@
 # Description:   start snmp-relay services
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -25,7 +26,7 @@ fi
 [ -f /etc/sysconfig/snmp-relay ] && . /etc/sysconfig/snmp-relay
 . /etc/init.d/ics_tools.sh
 
-RELAY_BIN=/usr/local/sbin/snmp-relay.py
+RELAY_BIN=/opt/cluster/sbin/snmp-relay.py
 PYTHON_BIN=/opt/python-init/bin/python
 RELAY_PID=/var/run/snmp-relay/snmp-relay.pid
 SERVER_DIRS="/var/run/snmp-relay"
