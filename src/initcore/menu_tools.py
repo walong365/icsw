@@ -84,6 +84,8 @@ COPY_ATTRIBUTES_SS = """<xsl:stylesheet
                 <xsl:with-param name="default" select="'all'"/>
             </xsl:call-template>
             <xsl:if test="@name"><xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute></xsl:if>
+            <xsl:if test="@de"><xsl:attribute name="de"><xsl:value-of select="@de"/></xsl:attribute></xsl:if>
+            <xsl:if test="@en"><xsl:attribute name="en"><xsl:value-of select="@en"/></xsl:attribute></xsl:if>
             <xsl:if test="@ref"><xsl:attribute name="ref"><xsl:value-of select="@ref"/></xsl:attribute></xsl:if>
             <xsl:if test="@refargs"><xsl:attribute name="refargs"><xsl:value-of select="@refargs"/></xsl:attribute></xsl:if>
             <xsl:if test="@xpath"><xsl:attribute name="xpath"><xsl:value-of select="@xpath"/></xsl:attribute></xsl:if>
@@ -292,15 +294,25 @@ class olim_menu(object):
             href = reverse("session:menu_folder", args=[base64.b64encode(node.attrib["xpath"])])
         return href
     def _translate_node(self, context, node, *args):
-        return node[0].attrib.get("name", "").strip() or "no name set"
+        cur_lang = self.__kwargs.get("language_code", "de")
+        ret_str = ""
+        for pref in [cur_lang, "de", "name", "en"]:
+            if pref in node[0].attrib:
+                ret_str = node[0].attrib[pref]
+                break
+        return ret_str.strip() or "no name set"
 
 def get_menu_html(request, is_mobile, for_dynatree):
     #print is_mobile, for_dynatree
+    lang_code = request.LANGUAGE_CODE.split("_")[0]
+    lang_code = {"de" : "de",
+                 "en" : "en"}.get(lang_code, "de")
     if is_mobile:
         useragent_list = ["all", "mobile"]
     else:
         useragent_list = ["all", "pc"]
-    my_menu = olim_menu(settings.MENU_XML_DIR, **{"filter_useragent" : useragent_list})
+    my_menu = olim_menu(settings.MENU_XML_DIR, **{"filter_useragent" : useragent_list,
+                                                  "language_code"    : lang_code})
     xml_doc = my_menu.process(codecs.open(settings.MENU_XML_PATH, "r", "utf-8").read())
     if request.session.has_key("menu_xpath"):
         menu_xpath = request.session["menu_xpath"]
