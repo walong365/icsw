@@ -1003,8 +1003,11 @@ class process_pool(object):
             self.__sockets[q_name] = zmq_socket
         return zmq_socket
     def register_poller(self, zmq_socket, sock_type, callback):
-        self.poller_handler[(zmq_socket, sock_type)] = callback
-        self.poller.register(zmq_socket, sock_type)
+        self.poller_handler.setdefault(zmq_socket, {})[sock_type] = callback
+        cur_mask = 0
+        for mask in self.poller_handler[zmq_socket].iterkeys():
+            cur_mask |= mask
+        self.poller.register(zmq_socket, cur_mask)
     def unregister_poller(self, zmq_socket, sock_type):
         del self.poller_handler[(zmq_socket, sock_type)]
         self.poller.unregister(zmq_socket)
@@ -1224,15 +1227,17 @@ class process_pool(object):
                     if self["exit_requested"]:
                         self.stop_running_processes()
                     try:
-                        socks = dict(self.poller.poll(timeout=self.__loop_granularity))
+                        _socks = self.poller.poll(timeout=self.__loop_granularity)
                     except:
                         raise
-                    #print socks
-                    for sock, c_type in socks.iteritems():
-                        if (sock, c_type) in self.poller_handler:
-                            self.poller_handler[(sock, c_type)](sock)
+                    for sock, c_type in _socks:
+                        if sock in self.poller_handler:
+                            if c_type in self.poller_handler[sock]:
+                                self.poller_handler[sock][c_type](sock)
+                            else:
+                                print "???0", sock, c_type
                         else:
-                            print "???", sock, c_type
+                            print "???1", sock, c_type
                     cur_time = time.time()
                     if self.__next_timeout and cur_time > self.__next_timeout:
                         self._handle_timer(cur_time)

@@ -77,7 +77,7 @@ class srv_command(object):
     def __init__(self, **kwargs):
         self.__builder = ElementMaker(namespace=XML_NS)
         if "source" in kwargs:
-            print len(kwargs["source"])
+            #print len(kwargs["source"])
             self.__tree = etree.fromstring(kwargs["source"])
         else:
             self.__tree = self.__builder.ics_batch(
