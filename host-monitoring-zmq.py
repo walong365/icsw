@@ -82,77 +82,220 @@ def client_code():
         ret_state = limits.nag_STATE_CRITICAL
     print ret_str
     return ret_state
-    
+
+BACKLOG_SIZE = 5
+
+class host_connection(object):
+    def __init__(self, conn_str):
+        host_connection.hc_dict[conn_str] = self
+        self.__open = False
+        self.__conn_str = conn_str
+        self.messages = {}
+        new_sock = host_connection.relayer_thread.zmq_context.socket(zmq.XREQ)
+        new_sock.setsockopt(zmq.IDENTITY, "relayer_%s" % (process_tools.get_machine_name()))
+        new_sock.setsockopt(zmq.LINGER, 0)
+        new_sock.setsockopt(zmq.HWM, BACKLOG_SIZE)
+        new_sock.setsockopt(zmq.BACKLOG, BACKLOG_SIZE)
+        self.socket = new_sock
+        host_connection.relayer_thread.register_poller(self.socket, zmq.POLLIN, self._get_result)
+        host_connection.relayer_thread.register_poller(self.socket, zmq.POLLERR, self._error)
+        self.__backlog_counter = 0
+    @staticmethod
+    def init(r_thread):
+        host_connection.relayer_thread = r_thread
+        host_connection.hc_dict = {}
+    @staticmethod
+    def get_hc(conn_str):
+        if conn_str not in host_connection.hc_dict:
+            new_hc = host_connection(conn_str)
+        return host_connection.hc_dict[conn_str]
+    @staticmethod
+    def check_timeout_g():
+        cur_time = time.time()
+        [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict.itervalues()]
+    def check_timeout(self, cur_time):
+        to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time)]
+        for to_mes in to_messages:
+            self.return_error(to_mes, "timeout")
+    def _open(self):
+        if not self.__open:
+            try:
+                self.socket.connect(self.__conn_str)
+            except:
+                raise
+            else:
+                self.__open = True
+        return self.__open
+    def _close(self):
+        if self.__open:
+            self.socket.close()
+            self.__open = False
+    def add_message(self, new_mes):
+        self.messages[new_mes.src_id] = new_mes
+        return new_mes
+    def send(self, host_mes, com_struct):
+        host_mes.set_com_struct(com_struct)
+        try:
+            self._open()
+        except:
+            self.return_error(host_mes,
+                              "error connecting to %s: %s" % (self.__conn_str,
+                                                              process_tools.get_except_info()))
+        else:
+            if self.__backlog_counter == BACKLOG_SIZE:
+                self.return_error(host_mes,
+                                  "connection error (backlog full) for '%s'" % (self.__conn_str))
+                #self._close()
+            else:
+                self.__backlog_counter += 1
+                print "tts0", self.__backlog_counter, BACKLOG_SIZE
+                host_mes.sent = True
+                self.socket.send_unicode(unicode(host_mes.srv_com))
+                print "tts1"
+        print self.messages.keys()
+    def send_result(self, host_mes, result=None):
+        host_connection.relayer_thread.relayer_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
+        host_connection.relayer_thread.relayer_socket.send_unicode(host_mes.get_result(result))
+        del self.messages[host_mes.src_id]
+        print self.messages.keys()
+    def return_error(self, host_mes, error_str):
+        host_mes.set_result(limits.nag_STATE_CRITICAL, error_str)
+        self.send_result(host_mes)
+    def _error(self, zmq_sock):
+        # not needed right now
+        print "****", zmq_sock
+        print dir(zmq_sock)
+        print zmq_sock.getsockopt(zmq.EVENTS)
+        #self._close()
+        #raise zmq.ZMQError()
+#    print zmq_sock.recv()
+    def _get_result(self, zmq_sock):
+        result = server_command.srv_command(source=zmq_sock.recv())
+        #print unicode(result)
+        mes_id = result["relayer_id"].text
+        cur_mes = self.messages[mes_id]
+        if cur_mes.sent:
+            cur_mes.sent = False
+            self.__backlog_counter -= 1
+        try:
+            res_tuple = cur_mes.interpret(result)
+        except:
+            res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
+        self.send_result(cur_mes, res_tuple)
+
+class host_message(object):
+    def __init__(self, com_name, src_id, srv_com, xml_input):
+        self.com_name = com_name
+        self.src_id = src_id
+        self.xml_input = xml_input
+        self.srv_com = srv_com
+        self.srv_com["relayer_id"] = self.src_id
+        self.s_time = time.time()
+        self.sent = False
+    def set_result(self, state, res_str):
+        self.srv_com["result"] = {"reply" : res_str,
+                                  "state" : "%d" % (state)}
+    def set_com_struct(self, com_struct):
+        self.com_struct = com_struct
+        cur_ns, rest = com_struct.handle_commandline([])
+        self.ns = cur_ns
+    def check_timeout(self, cur_time):
+        return abs(cur_time - self.s_time) > 1
+    def get_result(self, result):
+        if result is None:
+            result = self.srv_com
+        if type(result) == type(()):
+            # from interpret
+            if not self.xml_input:
+                ret_str = u"%d\0%s" % (result[0],
+                                       result[1])
+            else:
+                # shortcut
+                self.set_result(result[0], result[1])
+                ret_str = unicode(self.srv_com)
+        else:
+            if not self.xml_input:
+                ret_str = u"%s\0%s" % (result["result"].attrib["state"],
+                                       result["result"].attrib["reply"])
+            else:
+                ret_str = unicode(result)
+        return ret_str
+    def interpret(self, result):
+        return self.com_struct.interpret(result, self.ns)
+        
 class pending_connection(object):
-    pending = {}
-    counter = 0
-    def __init__(self, r_thread, src_id, srv_com, com_struct, conn_str, xml_input=False):
+    def __init__(self, src_id, srv_com, com_struct, conn_str, xml_input=False):
         self.__xml_input = xml_input
         self.s_time = time.time()
-        self.relayer_thread = r_thread
         self.srv_com = srv_com
-        pending_connection.counter += 1
-        self.identity_str = "relay_%d" % (pending_connection.counter)
+        #self.identity_str = "relay"#"relay_%d" % (pending_connection.counter)
         self.com_struct = com_struct
+        srv_com["relayer_id"] = src_id
         if com_struct:
             cur_ns, rest = com_struct.handle_commandline([])
             self.ns = cur_ns
-            cur_sock = self.relayer_thread.zmq_context.socket(zmq.XREQ)
-            cur_sock.setsockopt(zmq.IDENTITY, self.identity_str)
-            cur_sock.setsockopt(zmq.LINGER, 100)
+            cur_sock = pending_connection.get_socket(conn_str)
             try:
-                cur_sock.connect(conn_str)
+                cur_sock.send_unicode(unicode(srv_com))
             except:
-                self.sock.close()
-                del self.sock
+                print "***"
+                self.sock = None
                 raise
-            cur_sock.send_unicode(unicode(srv_com))
-            pending_connection.pending[cur_sock] = self
-            self.sock = cur_sock
+            else:
+                print "s"
+                pending_connection.pending[cur_sock] = self
+                self.sock = cur_sock
+            print "c"
         else:
             self.sock = None
         self.src_id = src_id
         #print "pending: %d" % (len(pending_connection.pending))
     @staticmethod
-    def init():
+    def init(r_thread):
         pending_connection.pending = {}
         pending_connection.counter = 0
-        pending_connection.sockets_to_close = []
+        pending_connection.sockets = {}
+        pending_connection.relayer_thread = r_thread
+    @staticmethod
+    def get_socket(conn_str):
+        print conn_str
+        if conn_str not in pending_connection.sockets:
+            new_sock = pending_connection.relayer_thread.zmq_context.socket(zmq.XREQ)
+            pending_connection.counter += 1
+            new_sock.setsockopt(zmq.IDENTITY, "relayer_%s" % (process_tools.get_machine_name()))
+            new_sock.setsockopt(zmq.LINGER, 100)
+            new_sock.connect(conn_str)
+            pending_connection.sockets[conn_str] = new_sock
+        return pending_connection.sockets[conn_str]
     def close(self):
         if self.sock:
             del pending_connection.pending[self.sock]
-            self.relayer_thread.unregister_poller(self.sock, zmq.POLLIN)
-            print "cpc"
-            pending_connection.sockets_to_close.append((time.time(), self.sock))
+            #pending_connection.relayer_thread.unregister_poller(self.sock, zmq.POLLIN)
+            #print "cpc"
             del self.sock
         del self
     def __del__(self):
         #print "dpc #%s" % (self.identity_str)
         pass
-    def interpret(self, result):
-        return self.com_struct.interpret(result, self.ns)
     def send_result(self, result=None):
-        self.relayer_thread.relayer_socket.send_unicode(self.src_id, zmq.SNDMORE)
+        pending_connection.relayer_thread.relayer_socket.send_unicode(self.src_id, zmq.SNDMORE)
         if result is None:
             result = self.srv_com
         if type(result) == type(()):
             # from interpret
             if not self.__xml_input:
-                self.relayer_thread.relayer_socket.send_unicode(u"%d\0%s" % (result[0],
-                                                                             result[1]))
+                pending_connection.relayer_thread.relayer_socket.send_unicode(u"%d\0%s" % (result[0],
+                                                                                           result[1]))
             else:
                 # shortcut
                 self.set_result(result[0], result[1])
-                self.relayer_thread.relayer_socket.send_unicode(unicode(self.srv_com))
+                pending_connection.relayer_thread.relayer_socket.send_unicode(unicode(self.srv_com))
         else:
             if not self.__xml_input:
-                self.relayer_thread.relayer_socket.send_unicode(u"%s\0%s" % (result["result"].attrib["state"],
-                                                                             result["result"].attrib["reply"]))
+                pending_connection.relayer_thread.relayer_socket.send_unicode(u"%s\0%s" % (result["result"].attrib["state"],
+                                                                                           result["result"].attrib["reply"]))
             else:
-                self.relayer_thread.relayer_socket.send_unicode(unicode(result))
-    def set_result(self, state, res_str):
-        self.srv_com["result"] = {"reply" : res_str,
-                                  "state" : "%d" % (state)}
+                pending_connection.relayer_thread.relayer_socket.send_unicode(unicode(result))
 
 class relay_thread(threading_tools.process_pool):
     def __init__(self):
@@ -163,7 +306,8 @@ class relay_thread(threading_tools.process_pool):
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.renice()
-        pending_connection.init()
+        pending_connection.init(self)
+        host_connection.init(self)
         if not global_config["DEBUG"]:
             process_tools.set_handles({"out" : (1, "collrelay.out"),
                                        "err" : (0, "/var/lib/logging-server/py_err_zmq")},
@@ -207,19 +351,7 @@ class relay_thread(threading_tools.process_pool):
             msi_block = None
         self.__msi_block = msi_block
     def _check_timeout(self):
-        cur_time = time.time()
-        del_nodes = [value for value in pending_connection.pending.itervalues() if abs(value.s_time - cur_time) > 5]
-        if del_nodes:
-            print "del pending connections", del_nodes
-            [cur_node.close() for cur_node in del_nodes]
-        # not needed ? better check reusing of sockets
-        del_sockets = [value for c_time, value in pending_connection.sockets_to_close if abs(c_time - cur_time) > 2]
-        if del_sockets:
-            print "del pending sockets", del_sockets
-            for del_sock in del_sockets:
-                del_sock.close()
-                del del_sock
-            pending_connection.sockets_to_close = [(c_time, value) for c_time, value in pending_connection.sockets_to_close if abs(c_time - cur_time) <= 2]
+        host_connection.check_timeout_g()
     def _init_ipc_sockets(self):
         client = self.zmq_context.socket(zmq.XREP)
         try:
@@ -269,34 +401,35 @@ class relay_thread(threading_tools.process_pool):
         target_host, target_port = ("localhost", 2001)
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
+        cur_hc = host_connection.get_hc(conn_str)
         com_name = srv_com["command"].text
+        cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
         if com_name in self.modules.command_dict:
             com_struct = self.modules.command_dict[srv_com["command"].text]
             # handle commandline
-            try:
-                cur_pc = pending_connection(self, src_id, srv_com, com_struct, conn_str, xml_input)
-            except:
-                cur_pc.close()
-            else:
-                self.register_poller(cur_pc.sock, zmq.POLLIN, self._get_result)
+            cur_hc.send(cur_mes, com_struct)
+            if False:
+                if True:
+                    try:
+                        cur_pc = pending_connection(src_id, srv_com, com_struct, conn_str, xml_input)
+                    except:
+                        err_str = "unable to initiate pending_connection: %s" % (process_tools.get_except_info())
+                        self.log(err_str,
+                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.relayer_socket.send_unicode(src_id, zmq.SNDMORE)
+                        self.relayer_socket.send_unicode(u"%d\0%s" % (limits.nag_STATE_CRITICAL,
+                                                                      err_str))
+                        raise
+                    else:
+                        self.register_poller(cur_pc.sock, zmq.POLLIN, self._get_result)
+                else:
+                    result = com_struct.interpret(net_tools.zmq_connection("relayer").add_connection(conn_str, srv_com), None)
+                    self.relayer_socket.send_unicode(src_id, zmq.SNDMORE)
+                    self.relayer_socket.send_unicode(u"%d\0%s" % (result[0], result[1]))
         else:
-            cur_pc = pending_connection(self, src_id, srv_com, None, conn_str, xml_input)
-            self.log("command '%s' not defined" % (com_name), logging_tools.LOG_LEVEL_ERROR)
-            cur_pc.set_result(limits.nag_STATE_CRITICAL,
-                              "unknown command '%s'" % (srv_com["command"].text))
-            cur_pc.send_result()
-            cur_pc.close()
+            cur_hc.return_error(cur_mes, "command '%s' not defined" % (com_name))
         #result = net_tools.zmq_connection(identity_string).add_connection(conn_str, send_xml)
         #return result
-    def _get_result(self, zmq_sock):
-        result = server_command.srv_command(source=zmq_sock.recv())
-        cur_pc = pending_connection.pending[zmq_sock]
-        try:
-            res_tuple = cur_pc.interpret(result)
-        except:
-            res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
-        cur_pc.send_result(res_tuple)
-        cur_pc.close()
     def _close_socket(self, zmq_sock):
         del self.__send_dict[zmq_sock]
         self.unregister_poller(zmq_sock, zmq.POLLIN)
