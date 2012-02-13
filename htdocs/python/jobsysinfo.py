@@ -240,6 +240,7 @@ class sge_server(object):
         if com_list:
             tools.iterate_s_commands(com_list, self.__action_log)
     def show_running_jobs(self):
+        proc_dict = process_tools.get_proc_list()
         act_dict = dict([(key, value) for key, value in self.__sge_info["qstat"].iteritems() if value.running])
         if act_dict:
             display_list = self._get_display_id_list(act_dict)
@@ -276,8 +277,14 @@ class sge_server(object):
                         print process_tools.get_except_info()
                     else:
                         if full_job_id != rsm_pid:
-                            show_job_id = "%s (%s)" % (full_job_id,
-                                                       rsm_pid)
+                            ppid_list = process_tools.build_ppid_list(proc_dict, int(rsm_pid))
+                            mono_list = [cur_pid for cur_pid in ppid_list if proc_dict[cur_pid]["name"] == "mono"]
+                            if mono_list:
+                                show_job_id = "%s (%s)" % (full_job_id,
+                                                           ",".join(["%d" % (cur_pid) for cur_pid in mono_list[:-1]]))
+                            else:
+                                show_job_id = "%s (%s)" % (full_job_id,
+                                                           ",".join(["%d" % (cur_pid) for cur_pid in ppid_list]))
                     jr_table[None:job_height][0] = html_tools.content(show_job_id, cls="center")
                     jr_table[None][0] = html_tools.content(act_job.get_state(), cls="center")
                     jr_table[None][0] = html_tools.content(act_job["JB_name"], cls="center")
