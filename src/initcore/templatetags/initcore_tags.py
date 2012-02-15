@@ -118,4 +118,8 @@ class init_menu(template.Node):
 
 @register.filter(name="modulo")
 def modulo(v, arg):
-    return not bool(v % arg)
+    return not bool(v % arg)    
+
+@register.filter(name="divide")
+def divide(v, arg):
+    return v / int(arg)
