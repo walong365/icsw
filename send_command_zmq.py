@@ -70,7 +70,7 @@ def main():
         for arg_index, arg in enumerate(other_args):
             if args.verbose:
                 print " arg %2d: %s" % (arg_index, arg)
-                #srv_com["arguments:arg%d" % (arg_index)] = arg
+                srv_com["arguments:arg%d" % (arg_index)] = arg
         srv_com["arg_list"] = " ".join(other_args)
         s_time = time.time()
         client.send_unicode(unicode(srv_com))
