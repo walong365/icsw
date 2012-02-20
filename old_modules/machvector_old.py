@@ -29,14 +29,13 @@ import os.path
 import commands
 import stat
 import time
-from host_monitoring import limits
+import limits
 import configfile
 import logging_tools
 import process_tools
 import threading_tools
 import net_tools
-from host_monitoring import hm_classes
-from lxml import etree
+import hm_classes
 try:
     import bz2
 except:
@@ -48,23 +47,6 @@ COLLECTOR_PORT = 8002
                             
 MONITOR_OBJECT_INFO_LIST = ["load", "mem", "net", "vms", "num"]
 MAX_MONITOR_OBJECTS = 10
-
-class _general(hm_classes.hm_module):
-    class Meta:
-        priority = 5
-    def __init__(self, *args, **kwargs):
-        hm_classes.hm_module.__init__(self, *args, **kwargs)
-        self.__machine_vector = None
-    def init_module(self):
-        self.process_pool.register_timer(self._update_machine_vector, 10, instant=True)
-        self._init_machine_vector()
-    def _init_machine_vector(self):
-        self.machine_vector = machine_vector(self)
-        print self.__machine_vector
-    def init_machine_vector(self, mvect):
-        pass
-    def _update_machine_vector(self):
-        self.machine_vector.update()
 
 class my_modclass(hm_classes.hm_fileinfo):
     def __init__(self, **args):
@@ -374,22 +356,53 @@ class my_subthread(threading_tools.thread_obj):
         else:
             self.__loc_queue.put("error not monitor with id %s" % (mon_id))
 
-class get_mvector_command(hm_classes.hm_command):
-    def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
-    def __call__(self, srv_com, cur_ns):
-        self.module.machine_vector.store_xml(srv_com)
-    def interpret(self, srv_com, cur_ns):
-        cur_vector = srv_com["data:machine_vector"]
-        vector_keys = sorted(srv_com.xpath(cur_vector, ".//ns:mve/@name"))
-        ret_array = ["Machinevector id %s, %s:" % (cur_vector.attrib["version"],
-                                                   logging_tools.get_plural("key", len(vector_keys)))]
-        out_list = logging_tools.new_form_list()
-        for mv_num, mv_key in enumerate(vector_keys):
-            cur_xml = srv_com.xpath(cur_vector, "//ns:mve[@name='%s']" % (mv_key))[0]
-            out_list.append(hm_classes.mvect_entry(cur_xml.attrib.pop("name"), **cur_xml.attrib).get_form_entry(mv_num))
-        ret_array.extend(unicode(out_list).split("\n"))
-        return limits.nag_STATE_OK, "\n".join(ret_array)
+class get_mvector_command(hm_classes.hmb_command):
+    def __init__(self, **args):
+        hm_classes.hmb_command.__init__(self, "get_mvector", **args)
+        self.help_str = "returns the complete machine vector"
+        self.short_server_info = MACHVECTOR_NAME
+        self.long_server_info  = "sets the collector server (big (!) machine) and the send interval"
+        self.net_only = True
+    def server_call(self, cm):
+        try:
+            return "ok %s" % (hm_classes.sys_to_net(self.module_info.send_thread("get_mvector")))
+        except:
+            return "error %s" % (process_tools.get_except_info())
+    def client_call(self, result, parsed_coms):
+        #print cm
+        ret_state = limits.nag_STATE_CRITICAL
+        if result.startswith("ok "):
+            key, mvect = hm_classes.net_to_sys(result[3:])
+            mv_keys_1 = [x[0] for x in mvect]
+            mvect = dict(mvect)
+            mv_keys_2 = sorted(mvect.keys())
+            # mv_keys_1/2 differ !!!
+            ret_str_a = ["Machinevector id %d, %s:" % (key,
+                                                       logging_tools.get_plural("key", len(mv_keys_2)))]
+            if mv_keys_2:
+                if type(mvect[mv_keys_2[0]]) == type({}):
+                    # old style
+                    k_lens = [max(z) for z in zip(*[[len(y) for y in (("%s..." % (x)).split("."))[0:4]] for x in mv_keys_2])]
+                    k_f_str = "".join(["%%-%ds" % (x + 1) for x in k_lens])
+                    for mv_key in mv_keys_2:
+                        in_val = mvect[mv_key]
+                        val, p_str, unit = pretty_print2(in_val)
+                        ret_str_a.append("%-s %s %1s%-6s (%3d) %s" % ((k_f_str % tuple(["%s%s" % (x and "." or "", x) for x in (mv_key.split(".") + ["", "", ""])[0:4]]))[1:],
+                                                                      val,
+                                                                      p_str,
+                                                                      unit,
+                                                                      mv_keys_1.index(mv_key),
+                                                                      build_info_string(mv_key, in_val["i"])))
+                else:
+                    # new style
+                    out_list = logging_tools.new_form_list()
+                    for mv_key in mv_keys_2:
+                        out_list.append(mvect[mv_key].get_form_entry(mv_keys_1.index(mv_key)))
+                    ret_str_a.extend(str(out_list).split("\n"))
+            ret_state, ret_str = (limits.nag_STATE_OK, "\n".join(ret_str_a))
+        else:
+            ret_str = "error : %s" % (result)
+        return ret_state, ret_str
 
 class get_mvector_raw_command(hm_classes.hmb_command):
     def __init__(self, **args):
@@ -551,6 +564,8 @@ class monitor_info_command(hm_classes.hmb_command):
 
 min_update_step = 5
 
+max_cache_size = 20
+
 class alert_object(object):
     def __init__(self, key, logger, num_dp, th_class, th, command):
         self.__key = key
@@ -590,69 +605,69 @@ class alert_object(object):
     def log(self, what):
         self.__logger.info("[mvect / ao %s, cl %s] %s" % (self.__key, self.__th_class, what))
 
-class machine_vector(object):
-    def __init__(self, module):
-        self.module = module
+class mach_vect(object):
+    def __init__(self, log_t, module_dict, module=None):
         # actual dictionary, including full-length dictionary keys
         self.__act_dict = {}
         # actual keys, last keys
         self.__act_keys = []
         # init external_sources
-        #self.init_ext_src()
-        #self.__alert_dict, self.__alert_dict_time = ({}, time.time())
+        self.init_ext_src()
+        # module
+        self.__module = module
+        self.__cache_size = max_cache_size
+        self.__alert_dict, self.__alert_dict_time = ({}, time.time())
         # key is in fact the timestamp
         self.__act_key, self.__changed = (0, True)
-        self.__verbosity = module.process_pool.global_config["VERBOSE"]
-        #self.__module_dict = module_dict
-        for module in module.process_pool.module_list:
-            if hasattr(module, "init_machine_vector"):
-                if self.__verbosity:
-                    self.log("calling init_machine_vector for module '%s'" % (module.name))
+        self.__module_dict = module_dict
+        for mod_name in self.__module_dict.module_keys():
+            actmod = self.__module_dict.get_module(mod_name)
+            if hasattr(actmod, "init_m_vect"):
+                log_t.set_prefix("    init_m_vect(), mod %s: " % (mod_name))
+                log_t.info("Calling init_m_vect()")
                 try:
-                    module.init_machine_vector(self)
+                    actmod.init_m_vect(self, log_t)
                 except:
-                    self.log("error: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
-                    raise
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.module.process_pool.log("[mvect] %s" % (what), log_level)
-##    def check_for_alert_file_change(self, log_t):
-##        if self.__module:
-##            alert_file = self.__module.get_alert_file_name()
-##            if os.path.isfile(alert_file):
-##                last_time, file_time, act_time = (self.__alert_dict_time, os.stat(alert_file)[stat.ST_MTIME], time.time())
-##                if not self.__alert_dict or file_time > last_time:
-##                    self.__alert_dict_time, alert_dict = (act_time, {})
-##                    try:
-##                        a_lines = [[z.strip() for z in y.split(":")] for y in [x.strip() for x in file(alert_file, "r").read().split("\n")] if y]
-##                    except:
-##                        alert_dict = {}
-##                    else:
-##                        alert_dict = {}
-##                        # format of alert lines:
-##                        # key:number_of_datapoints:U|L(upper or lower threshold):threshold:command to execute#
-##                        for line in a_lines:
-##                            if len(line) == 5:
-##                                key, num_dp, th_class, th, command = line
-##                                log_t.info("Trying to parse alert_line '%s' ... " % (":".join(line)))
-##                                try:
-##                                    th_class = th_class.upper()
-##                                    num_dp = int(num_dp)
-##                                    if th_class not in ["U", "L"]:
-##                                        raise ValueError, "threshold_class not U(pper) or L(ower)"
-##                                    th = float(th)
-##                                except:
-##                                    log_t.error(" +++ Cannot parse line : %s" % (process_tools.get_except_info()))
-##                                else:
-##                                    log_t.info(" ... key '%s', %s, threshold_class %s, threshold %.2f, command to execute: '%s'" % (key, logging_tools.get_plural("datapoint", num_dp), {"U" : "Upper", "L" : "Lower"}[th_class], th, command))
-##                                    alert_dict[key] = alert_object(key, log_t, num_dp, th_class, th, command)
-##                            else:
-##                                log_t.error("Cannot parse line %s: %d != 5" % (":".join(line), len(line)))
-##                    self.__alert_dict = alert_dict
-##                    #print "*", last_time,file_time,act_time, self.__alert_dict
-##    def check_for_alerts(self, logger):
-##        for alert_key in [key for key in self.__alert_dict.keys() if key in self.__act_dict.keys()]:
-##            self.__alert_dict[alert_key].add_value(self.__act_dict[alert_key].value)
-    def register_entry(self, name, default, info, unit="1", base=1, factor=1, **kwargs):
+                    log_t.critical("error while calling init_m_vect(): %s" % (process_tools.get_except_info()))
+                log_t.set_prefix()
+    def check_for_alert_file_change(self, log_t):
+        if self.__module:
+            alert_file = self.__module.get_alert_file_name()
+            if os.path.isfile(alert_file):
+                last_time, file_time, act_time = (self.__alert_dict_time, os.stat(alert_file)[stat.ST_MTIME], time.time())
+                if not self.__alert_dict or file_time > last_time:
+                    self.__alert_dict_time, alert_dict = (act_time, {})
+                    try:
+                        a_lines = [[z.strip() for z in y.split(":")] for y in [x.strip() for x in file(alert_file, "r").read().split("\n")] if y]
+                    except:
+                        alert_dict = {}
+                    else:
+                        alert_dict = {}
+                        # format of alert lines:
+                        # key:number_of_datapoints:U|L(upper or lower threshold):threshold:command to execute#
+                        for line in a_lines:
+                            if len(line) == 5:
+                                key, num_dp, th_class, th, command = line
+                                log_t.info("Trying to parse alert_line '%s' ... " % (":".join(line)))
+                                try:
+                                    th_class = th_class.upper()
+                                    num_dp = int(num_dp)
+                                    if th_class not in ["U", "L"]:
+                                        raise ValueError, "threshold_class not U(pper) or L(ower)"
+                                    th = float(th)
+                                except:
+                                    log_t.error(" +++ Cannot parse line : %s" % (process_tools.get_except_info()))
+                                else:
+                                    log_t.info(" ... key '%s', %s, threshold_class %s, threshold %.2f, command to execute: '%s'" % (key, logging_tools.get_plural("datapoint", num_dp), {"U" : "Upper", "L" : "Lower"}[th_class], th, command))
+                                    alert_dict[key] = alert_object(key, log_t, num_dp, th_class, th, command)
+                            else:
+                                log_t.error("Cannot parse line %s: %d != 5" % (":".join(line), len(line)))
+                    self.__alert_dict = alert_dict
+                    #print "*", last_time,file_time,act_time, self.__alert_dict
+    def check_for_alerts(self, logger):
+        for alert_key in [key for key in self.__alert_dict.keys() if key in self.__act_dict.keys()]:
+            self.__alert_dict[alert_key].add_value(self.__act_dict[alert_key].value)
+    def reg_entry(self, name, default, info, unit="1", base=1, factor=1, **kwargs):
         # name is the key (first.second.third.fourth)
         # default is a default value
         # info is a description of the entry
@@ -661,15 +676,53 @@ class machine_vector(object):
         # factor is a number the values have to be multipilicated with in order to lead to a meaningful number (for example memory or df)
         self.__changed = True
         self.__act_dict[name] = hm_classes.mvect_entry(name, default=default, info=info, unit=unit, base=base, factor=factor, mvv_timeout=kwargs.get("mvv_timeout", 300))
-    def get(self, name, default_value=None):
+    def get_entry(self, name, default_value=None):
         return self.__act_dict.get(name, default_value)
-    def __getitem__(self, key):
-        return self.__act_dict[key]
     def has_key(self, key):
         return self.__act_dict.has_key(key)
-    def __contains__(self, key):
-        return key in self.__act_dict
-    def unregister_entry(self, name):
+    def check_changed(self, log_t):
+        if self.__changed:
+            # attention ! dict.keys() != copy.deppcopy(dict).keys()
+            last_keys = [x for x in self.__act_keys]
+            self.__act_keys = sorted(self.__act_dict.keys())
+            vers_file = "/tmp/.machvector_key"
+            self.__changed = False
+            try:
+                old_key = int(open(vers_file, "r").read().split("\n")[0].split()[0].strip())
+            except:
+                old_key = self.__act_key + 1
+                log_t.error("cannot read old mach_vector_key from %s, setting to %d" % (vers_file, old_key))
+            else:
+                log_t.info("read old mach_vector_key %d from %s" % (old_key, vers_file))
+            new_key = int(time.time())
+            if new_key == self.__act_key:
+                new_key += 1
+            self.__act_key = new_key
+            try:
+                open(vers_file, "w").write("%d\n" % (self.__act_key))
+                os.chmod(vers_file, 0640)
+            except:
+                log_t.error("cannot write actual mach_vector_key %d to %s" % (self.__act_key, vers_file))
+            else:
+                log_t.info("wrote actual mach_vector_key %d to %s" % (self.__act_key, vers_file))
+            new_keys  = [x for x in self.__act_keys  if x not in last_keys]
+            lost_keys = [x for x in last_keys if x not in self.__act_keys ]
+            if new_keys:
+                log_t.info("%s: %s" % (logging_tools.get_plural("new key", len(new_keys)),
+                                       ", ".join(sorted(new_keys))))
+            if lost_keys:
+                log_t.info("%s: %s" % (logging_tools.get_plural("lost key", len(lost_keys)),
+                                       ", ".join(sorted(lost_keys))))
+            log_t.info("Machine_vector has changed, setting actual key to %d (%d keys)" % (self.__act_key, len(self.__act_dict)))
+    def get_mvector(self):
+        return (self.__act_key, [(key, self.__act_dict[key]) for key in self.__act_keys])
+    def get_mvector_raw(self):
+        return (self.__act_key, [self.__act_dict[key].value for key in self.__act_keys])
+    def get_send_mvector(self):
+        return (time.time(), self.__act_key, [self.__act_dict[key].value for key in self.__act_keys])
+    #def flush_cache(self, name):
+    #    self.__dict_list[name] = []
+    def unreg_entry(self, name):
         self.__changed = True
         if self.__act_dict.has_key(name):
             #print "Unregister "+name
@@ -677,9 +730,7 @@ class machine_vector(object):
         else:
             print "Error: entry %s not defined" % (name)
             return 0
-    def __setitem__(self, name, value):
-        self.__act_dict[name].update(value)
-    def _reg_update(self, log_t, name, value):
+    def reg_update(self, log_t, name, value):
         if self.__act_dict.has_key(name):
             self.__act_dict[name].update(value)
         else:
@@ -697,54 +748,39 @@ class machine_vector(object):
 #             log_t.log("Error: unknown machvector-name '%s'" % (name), logging_tools.LOG_LEVEL_ERROR)
 #         #print "updates %s with value" % (name), value
 #         return
-    def check_changed(self):
-        if self.__changed:
-            # attention ! dict.keys() != copy.deppcopy(dict).keys()
-            last_keys = [x for x in self.__act_keys]
-            self.__act_keys = sorted(self.__act_dict.keys())
-            self.__changed = False
-            new_key = int(time.time())
-            if new_key == self.__act_key:
-                new_key += 1
-            self.__act_key = new_key
-            new_keys  = [x for x in self.__act_keys  if x not in last_keys]
-            lost_keys = [x for x in last_keys if x not in self.__act_keys ]
-            if new_keys:
-                self.log("%s: %s" % (logging_tools.get_plural("new key", len(new_keys)),
-                                     ", ".join(sorted(new_keys))))
-            if lost_keys:
-                self.log("%s: %s" % (logging_tools.get_plural("lost key", len(lost_keys)),
-                                     ", ".join(sorted(lost_keys))))
-                self.log("Machine_vector has changed, setting actual key to %d (%d keys)" % (self.__act_key, len(self.__act_dict)))
-    def store_xml(self, srv_com):
-        el_builder = srv_com.builder
-        mach_vect = el_builder("machine_vector", version="%d" % (self.__act_key))
-        mach_vect.extend([cur_mve.build_xml(el_builder) for cur_mve in self.__act_dict.itervalues()])
-        srv_com["data"] = mach_vect
-    def get_mvector(self):
-        return (self.__act_key, [(key, self.__act_dict[key]) for key in self.__act_keys])
-    def get_mvector_raw(self):
-        return (self.__act_key, [self.__act_dict[key].value for key in self.__act_keys])
-    def get_send_mvector(self):
-        return (time.time(), self.__act_key, [self.__act_dict[key].value for key in self.__act_keys])
-    #def flush_cache(self, name):
-    #    self.__dict_list[name] = []
+    def max_cache_size(self, name):
+        return self.__cache_size
     def get_actual_key(self):
         return self.__act_key
     def get_act_dict(self):
         return self.__act_dict
-    def update(self):#, esd=""):
-        self.check_changed()
+    def update_vector(self, log_t, esd=""):
+        self.check_changed(log_t)
         # copy ref_dict to act_dict
         [value.update_default() for value in self.__act_dict.itervalues()]
-        #if esd:
-        #    self.check_external_sources(log_t, esd)
-        #self.check_for_alert_file_change(log_t)
-        for module in self.module.process_pool.module_list:
-            if hasattr(module, "update_machine_vector"):
-                module.update_machine_vector(self)
-        self.check_changed()
-        #self.check_for_alerts(log_t)
+#         self.__act_dict = {}
+#         for k in self.__ref_dict.keys():
+#             self.__act_dict[k] = {"d" : self.__ref_dict[k]["default"],
+#                                   "i" : self.__ref_dict[k]["info"],
+#                                   "v" : self.__ref_dict[k]["default"],
+#                                   "u" : self.__ref_dict[k]["unit"],
+#                                   "b" : self.__ref_dict[k]["base"],
+#                                   "f" : self.__ref_dict[k]["factor"]}
+        if esd:
+            self.check_external_sources(log_t, esd)
+        self.check_for_alert_file_change(log_t)
+        for mod_name in self.__module_dict.module_keys():
+            act_mod = self.__module_dict.get_module(mod_name)
+            if hasattr(act_mod, "update_m_vect"):
+                act_mod.update_m_vect(self, log_t)
+        self.check_changed(log_t)
+        self.check_for_alerts(log_t)
+        #for key in self.__dict_list.keys():
+        #    self.__dict_list[key].append((time.time(), self.get_actual_key(), self.__act_keys, self.__act_dict))
+        #    if len(self.__dict_list[key]) > self.__cache_size:
+        #        self.__dict_list[key].pop(0)
+        #pprint.pprint(dict([(k, v["v"]) for k, v in self.__act_dict.iteritems()]))
+        return
     def init_ext_src(self):
         self.ext_src = {}
         self.ext_src_dt = {}

@@ -137,7 +137,7 @@ int main (int argc, char** argv) {
     sprintf(sendbuff, "%s;%d;", host_b, port);
     act_pos = sendbuff;
     for (i = optind; i < argc; i++) {
-        sprintf(sendbuff, "%s%s", sendbuff, argv[i]);
+        sprintf(sendbuff, "%s %s", sendbuff, argv[i]);
 //        if (act_pos != sendbuff) *act_pos++=' ';
 //        act_source = argv[i];
 //        while (*act_source) *act_pos++=*act_source++;

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -22,14 +22,13 @@
 import sys
 import time
 import threading
-from host_monitoring import limits
+import limits
 import copy
-from host_monitoring import hm_classes
+import hm_classes
 import net_tools
 import os.path
 import commands
 import process_tools
-import server_command
 import re
 import logging_tools
 import pprint
@@ -51,92 +50,6 @@ MIN_UPDATE_TIME = 4
 
 REMOTE_PING_FILE = "/etc/sysconfig/host-monitoring.d/remote_ping"
 
-class _general(hm_classes.hm_module):
-    def init_module(self):
-        self.dev_dict = {}
-        self.last_update = time.time()
-    def init_machine_vector(self, mv):
-        self.act_nds = netspeed()#self.bonding_devices)
-    def update_machine_vector(self, mv):
-        try:
-            self._net_int(mv)
-        except:
-            self.log("error in net_int: %s" % (process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
-    def _net_int(self, mvect):
-        act_time = time.time()
-        time_diff = act_time - self.last_update
-        if time_diff < 0:
-            self.log("(net_int) possible clock-skew detected, adjusting (%s since last request)" % (logging_tools.get_diff_time_str(time_diff)),
-                     logging_tools.LOG_LEVEL_WARN)
-            self.last_update = act_time
-        elif time_diff < MIN_UPDATE_TIME:
-            self.log("(net_int) too many update requests, skipping this one (last one %s ago; %d seconds minimum)" % (logging_tools.get_diff_time_str(time_diff),
-                                                                                                                      MIN_UPDATE_TIME),
-                     logging_tools.LOG_LEVEL_WARN)
-        else:
-            self.act_nds.update()
-            self.last_update = time.time()
-        nd_dict = self.act_nds.make_speed_dict()
-        print nd_dict
-        if nd_dict:
-            # add total info
-            total_dict = {}
-            for key, stuff in nd_dict.iteritems():
-                for s_key, s_value in stuff.iteritems():
-                    total_dict.setdefault(s_key, 0)
-                    total_dict[s_key] += s_value
-            nd_dict[TOTAL_DEVICE_NAME] = total_dict
-    ##         import pprint
-    ##         pprint.pprint(nd_dict)
-        for key in [x for x in self.dev_dict.keys() if not nd_dict.has_key(x)]:
-            mvect.unregister_entry("net.%s.rx" % (key))
-            mvect.unregister_entry("net.%s.tx" % (key))
-            if [True for x in DETAIL_DEVICES if key.startswith(x)]:
-                mvect.unregister_entry("net.%s.rxerr"   % (key))
-                mvect.unregister_entry("net.%s.txerr"   % (key))
-                mvect.unregister_entry("net.%s.rxdrop"  % (key))
-                mvect.unregister_entry("net.%s.txdrop"  % (key))
-                mvect.unregister_entry("net.%s.carrier" % (key))
-        for key in [x for x in nd_dict.keys() if not self.dev_dict.has_key(x)]:
-            mvect.register_entry("net.%s.rx" % (key), 0, "bytes per second received by $2"   , "Byte/s", 1024)
-            mvect.register_entry("net.%s.tx" % (key), 0, "bytes per second transmitted by $2", "Byte/s", 1024)
-            if [True for x in DETAIL_DEVICES if key.startswith(x)]:
-                mvect.register_entry("net.%s.rxerr"   % (key), 0, "receive error packets per second on $2"   , "1/s", 1000)
-                mvect.register_entry("net.%s.txerr"   % (key), 0, "transmit error packets per second on $2"  , "1/s", 1000)
-                mvect.register_entry("net.%s.rxdrop"  % (key), 0, "received packets dropped per second on $2", "1/s", 1000)
-                mvect.register_entry("net.%s.txdrop"  % (key), 0, "received packets dropped per second on $2", "1/s", 1000)
-                mvect.register_entry("net.%s.carrier" % (key), 0, "carrier errors per second on $2"          , "1/s", 1000)
-        self.dev_dict = nd_dict
-        for key in self.dev_dict.keys():
-            mvect["net.%s.rx" % (key)] = self.dev_dict[key]["rx"]
-            mvect["net.%s.tx" % (key)] = self.dev_dict[key]["tx"]
-            if [True for x in DETAIL_DEVICES if key.startswith(x)]:
-                mvect["net.%s.rxerr"   % (key)] = self.dev_dict[key]["rxerr"]
-                mvect["net.%s.txerr"   % (key)] = self.dev_dict[key]["txerr"]
-                mvect["net.%s.rxdrop"  % (key)] = self.dev_dict[key]["rxdrop"]
-                mvect["net.%s.txdrop"  % (key)] = self.dev_dict[key]["txdrop"]
-                mvect["net.%s.carrier" % (key)] = self.dev_dict[key]["carrier"]
-        return
-        # check for ping_hosts
-        if not self._mvect_phd_synced:
-            self._mvect_phd_synced = True
-            for key in self._mvect_phd:
-                r_key = key.replace(".", "_")
-                for s_key in ["min", "mean", "max"]:
-                    mvect.reg_entry("ping.%s.%s" % (r_key, s_key), 0.0, "%s latency for %s" % (s_key, self.ping_hosts[key]) , "s", 1000)
-        for key, res in self._mvect_phd.iteritems():
-            r_key = key.replace(".", "_")
-            for s_key in ["min", "mean", "max"]:
-                mvect.reg_update(logger, "ping.%s.%s" % (r_key, s_key), res["latency_%s" % (s_key)] if res["reached"] else None)
-        if self.ping_hosts:
-            self.ping_object.add_icmp_client(net_tools.icmp_client(host_list=self.ping_hosts.keys(),
-                                                                   num_ping=3,
-                                                                   timeout=5.0,
-                                                                   fast_mode=False,
-                                                                   finish_call=self._icmp_finish,
-                                                                   flood_ping=False))
-    
 class my_modclass(hm_classes.hm_fileinfo):
     def __init__(self, **args):
         hm_classes.hm_fileinfo.__init__(self,
@@ -396,12 +309,6 @@ class netspeed(object):
             self.update()
         except:
             pass
-    def __getitem__(self, key):
-        return self.nst[key]
-    def __contains__(self, key):
-        return key in self.nst
-    def keys(self):
-        return self.nst.keys()
     def lock(self):
         self.__o_lock.acquire(1)
     def unlock(self):
@@ -517,29 +424,7 @@ class netspeed(object):
         else:
             self.__a_time = ntime
 
-class net_command(hm_classes.hm_command):
-    info_str = "network information"
-    def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
-        self.parser.add_argument("-w", dest="warn", type=float)
-        self.parser.add_argument("-c", dest="crit", type=float)
-    def __call__(self, srv_com, cur_ns):
-        if not "arguments:arg0" in srv_com:
-            srv_com["result"].attrib.update({"reply" : "missing argument",
-                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
-        else:
-            net_device = srv_com["arguments:arg0"].text.strip()
-            if net_device in self.module.act_nds:
-                print self.module.act_nds[net_device]
-            else:
-                srv_com["result"].attrib.update({"reply" : "netdevice %s not found" % (net_device),
-                                                  "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
-    def interpret(self, srv_com, cur_ns):
-        print "***", cur_ns
-        print unicode(srv_com)
-        return limits.nag_STATE_OK, "ok"
-        
-class net_command_old(hm_classes.hmb_command):
+class net_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "net", **args)
         self.help_str = "returns the througput of netdetive NET"
