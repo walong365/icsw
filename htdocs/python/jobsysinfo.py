@@ -278,7 +278,10 @@ class sge_server(object):
                     else:
                         if full_job_id != rsm_pid:
                             ppid_list = process_tools.build_ppid_list(proc_dict, int(rsm_pid))
-                            mono_list = [cur_pid for cur_pid in ppid_list if proc_dict[cur_pid]["name"] == "mono"]
+                            try:#ue:#cur_pid in proc_dict:
+                                mono_list = [cur_pid for cur_pid in ppid_list if proc_dict[cur_pid]["name"] == "mono"]
+                            except:
+                                mono_list = []
                             if mono_list:
                                 show_job_id = "%s (%s)" % (full_job_id,
                                                            ",".join(["%d" % (cur_pid) for cur_pid in mono_list[:-1]]))
