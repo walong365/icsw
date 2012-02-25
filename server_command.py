@@ -129,6 +129,10 @@ class srv_command(object):
             cur_element.append(value)
         else:
             self._element(value, cur_element)
+    def delete_subtree(self, key):
+        xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
+        for result in self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS}):
+            result.getparent().remove(result)
     def _element(self, value, cur_element=None):
         if cur_element is None:
             cur_element = self.builder("value")
