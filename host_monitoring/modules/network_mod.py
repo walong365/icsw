@@ -33,11 +33,13 @@ import server_command
 import re
 import logging_tools
 import pprint
+from lxml import etree
+from lxml.builder import E
 
 # name of total-device
 TOTAL_DEVICE_NAME = "all"
 # name of bonding info filename
-BONDFILE_NAME = "bondinfo"
+#BONDFILE_NAME = "bondinfo"
 # devices to check
 NET_DEVICES = ["eth", "lo", "myr", "ib", "xenbr", "vmnet", "tun", "tap", TOTAL_DEVICE_NAME]
 # devices for detailed statistics
@@ -78,7 +80,7 @@ class _general(hm_classes.hm_module):
             self.act_nds.update()
             self.last_update = time.time()
         nd_dict = self.act_nds.make_speed_dict()
-        print nd_dict
+        #print nd_dict
         if nd_dict:
             # add total info
             total_dict = {}
@@ -370,19 +372,83 @@ class my_modclass(hm_classes.hm_fileinfo):
                             dev_dict["inet"].append(" ".join(line_parts[1:]))
         return n_dict
 
+ND_HIST_SIZE = 5
+
+class net_device(object):
+    def __init__(self, name, mapping):
+        self.name = name
+        self.nd_mapping = mapping
+        self.nd_keys = set(self.nd_mapping) - set([None])
+        self.invalidate()
+        self.__history = []
+        self.__check_ethtool = any([self.name.startswith(check_name) for check_name in ETHTOOL_DEVICES])
+        self.last_update = time.time() - 3600
+        self.update_ethtool()
+    def invalidate(self):
+        self.found = False
+    def feed(self, cur_line):
+        self.found = True
+        line_dict = dict([(key, long(value)) for key, value in zip(self.nd_mapping, cur_line.split()) if key])
+        if len(self.__history) > ND_HIST_SIZE:
+            self.__history = self.__history[1:]
+        self.__history.append((time.time(), line_dict))
+        #print "*", self.name, self.get_speed()
+    def get_speed(self):
+        res_dict = dict([(key, []) for key in self.nd_keys])
+        if self.__history:
+            last_time, last_dict = self.__history[0]
+            for cur_time, cur_dict in self.__history[1:]:
+                if cur_time > last_time:
+                    diff_time = max(1, cur_time - last_time)
+                    for key in self.nd_keys:
+                        res_dict[key].append(min(1024 * 1024 * 1024 * 1024, max(0, (cur_dict[key] - last_dict[key]) / diff_time)))
+                last_time, last_dict = (cur_time, cur_dict)
+        res_dict = dict([(key, sum(value) / len(value) if len(value) else 0.) for key, value in res_dict.iteritems()])
+        return res_dict
+    def update_ethtool(self):
+        cur_time = time.time()
+        if cur_time > self.last_update + 30:
+            res_dict = {}
+            if self.__check_ethtool:
+                ce_stat, ce_out = commands.getstatusoutput("ethtool %s" % (self.name))
+                if not ce_stat:
+                    res_dict = dict([(key.lower(), value.strip()) for key, value in [line.strip().split(":", 1) for line in ce_out.split("\n") if line.count(":")] if len(value.strip())])
+            self.last_update = cur_time
+            self.ethtool_results = res_dict
+    def get_xml(self, srv_com):
+        cur_speed = self.get_speed()
+        result = srv_com.builder(
+            "device_%s" % (self.name),
+            srv_com.builder("values",
+                            *[srv_com.builder(key, "%.2f" % (value)) for key, value in cur_speed.iteritems()]
+                            )
+        )
+        if self.ethtool_results:
+            result.append(
+                srv_com.builder("ethtool",
+                    *[srv_com.builder("value", value, name=key) for key, value in self.ethtool_results.iteritems()]
+                )
+            )
+        return result
+        
 class netspeed(object):
-    def __init__(self, bonding = None):
+    def __init__(self):#, bonding = None):
+        cur_head = sum([part.split() for part in file("/proc/net/dev", "r").readlines()[1].strip().split("|")], [])
+        if len(cur_head) == 17:
+            self.nd_mapping = ["rx", None, "rxerr", "rxdrop", None, None, None, None,
+                               "tx", None, "txerr", "txdrop", None, None, None, None]
+        else:
+            raise ValueError, "unknown /proc/net/dev layout"
         self.nst_size = 10
         self.__o_time, self.__a_time = (0., time.time() - 1.1)
         self.__o_stat, self.__a_stat = ({}, {})
         self.nst = {}
+        self.devices = {}
         # ethtool info
         self.ethtool_dict = {}
         # extra info (infiniband and so on)
         self.extra_dict = {}
-        self.speed = {}
-        self.__b_array = bonding
-        self.__o_lock = threading.Lock()
+        #self.__b_array = bonding
         self.__idx_dict = {"rx"      : 0,
                            "tx"      : 8,
                            "rxerr"   : 2,
@@ -390,22 +456,20 @@ class netspeed(object):
                            "rxdrop"  : 3,
                            "txdrop"  : 11,
                            "carrier" : 14}
-        self.__keys = self.__idx_dict.keys()
+        self.__keys = set(self.__idx_dict.keys())
         self.__is_xen_host = False
         try:
             self.update()
         except:
             pass
     def __getitem__(self, key):
-        return self.nst[key]
+        return self.devices[key]
+    def __setitem__(self, key, value):
+        self.devices[key] = value
     def __contains__(self, key):
-        return key in self.nst
+        return key in self.devices
     def keys(self):
-        return self.nst.keys()
-    def lock(self):
-        self.__o_lock.acquire(1)
-    def unlock(self):
-        self.__o_lock.release()
+        return self.devices.keys()
     def is_xen_host(self):
         return self.__is_xen_host
     def make_speed_dict(self):
@@ -425,64 +489,65 @@ class netspeed(object):
         return r_dict
     def update(self):
         ntime = time.time()
-        if ntime - self.__a_time > 1:
+        if abs(ntime - self.__a_time) > 1:
             try:
-                ndev_dict = dict([(a0.strip(), [long(y) for y in a1.split()]) for a0, a1 in [x.split(":", 1) for x in file("/proc/net/dev", "r").read().split("\n") if x.count(":")]])
+                line_list = [(dev_name.strip(), dev_stats) for dev_name, dev_stats in [line.split(":", 1) for line in file("/proc/net/dev", "r").read().split("\n") if line.count(":")]]
+                ndev_dict = dict([(dev_name.strip(), [long(cur_val) for cur_val in dev_stats.split()]) for dev_name, dev_stats in [line.split(":", 1) for line in file("/proc/net/dev", "r").read().split("\n") if line.count(":")]])
             except:
                 pass
             else:
+                # invalidate devices
+                for key in self.keys():
+                    self[key].invalidate()
+                for key, value in line_list:
+                    if key not in self:
+                        self[key] = net_device(key, self.nd_mapping)
+                    self[key].feed(value)
+                    self[key].update_ethtool()
                 self.__o_stat, self.__o_time = (self.__a_stat,
                                                 self.__a_time)
                 self.__a_stat, self.__a_time = (dict([(key, dict([(x, value[y]) for x, y in self.__idx_dict.iteritems()])) for key, value in ndev_dict.iteritems()]),
                                                 ntime)
-                # handle bonding devices
-                if self.__b_array:
-                    for bdn, bdl in self.__b_array.iteritems():
-                        add = True
-                        b_vals = dict([(x, 0L) for x in self.__keys])
-                        for bdl_e in bdl:
-                            if not self.__a_stat.has_key(bdl_e):
-                                add = False
-                                break
-                            else:
-                                for k in self.__keys:
-                                    b_vals[k] += self.__a_stat[bdl_e][k]
-                        if add:
-                            self.__a_stat[bdn] = b_vals
-                self.speed = {}
-                tdif = self.__a_time - self.__o_time
-                for ifn, act_io in self.__a_stat.iteritems():
-                    if [True for x in NET_DEVICES if ifn.startswith(x)]:
-                        if self.__o_stat.has_key(ifn):
-                            if ifn.startswith("eth") and self.__o_stat.has_key("p%s" % (ifn)) and self.__a_stat.has_key("p%s" % (ifn)):
-                                old_io, act_io = (self.__o_stat["p%s" % (ifn)],
-                                                  self.__a_stat["p%s" % (ifn)])
-                            else:
-                                old_io = self.__o_stat[ifn]
+                # handle bonding devices, FIXME, take from /sys/class
+##                if self.__b_array:
+##                    for bdn, bdl in self.__b_array.iteritems():
+##                        add = True
+##                        b_vals = dict([(x, 0L) for x in self.__keys])
+##                        for bdl_e in bdl:
+##                            if not self.__a_stat.has_key(bdl_e):
+##                                add = False
+##                                break
+##                            else:
+##                                for k in self.__keys:
+##                                    b_vals[k] += self.__a_stat[bdl_e][k]
+##                        if add:
+##                            self.__a_stat[bdn] = b_vals
+                t_diff = self.__a_time - self.__o_time
+                for if_name, act_io in self.__a_stat.iteritems():
+                    if [True for key in NET_DEVICES if if_name.startswith(key)]:
+                        if if_name in self.__o_stat:
+##                            if if_name.startswith("eth") and self.__o_stat.has_key("p%s" % (if_name)) and self.__a_stat.has_key("p%s" % (if_name)):
+##                                old_io, act_io = (self.__o_stat["p%s" % (if_name)],
+##                                                  self.__a_stat["p%s" % (if_name)])
+##                            else:
+                            old_io = self.__o_stat[if_name]
                             speed = {}
                             for d_name in self.__keys:
                                 sub = act_io[d_name] - old_io[d_name]
                                 while sub < 0:
                                     sub += sys.maxint
-                                if sub > sys.maxint / 8:
-                                    sub = 0
                                 # cap insane values (above 1 TByte)
-                                if sub > 1024 * 1024 * 1024 * 1024:
+                                if sub > max(sys.maxint / 8, 1024 * 1024 * 1024 * 1024):
                                     sub = 0
-                                speed[d_name] = int(sub / tdif)
-                            if self.nst.has_key(ifn):
-                                if len(self.nst[ifn]) > self.nst_size:
-                                    self.nst[ifn].pop(0)
-                                self.nst[ifn].append(speed)
-                            else:
-                                self.nst[ifn] = [speed]
-                            self.speed[ifn] = (max([x["rx"] for x in self.nst[ifn]]),
-                                               max([x["tx"] for x in self.nst[ifn]]))
-                    elif [True for x in XEN_DEVICES if ifn.startswith(x)]:
+                                speed[d_name] = int(sub / t_diff)
+                            if if_name not in self.nst:
+                                self.nst[if_name] = []
+                            if len(self.nst[if_name]) > self.nst_size:
+                                self.nst[if_name].pop(0)
+                            self.nst[if_name].append(speed)
+                    elif [True for x in XEN_DEVICES if if_name.startswith(x)]:
                         self.__is_xen_host = True
                 # remove unknown netdevices from speed_dict
-                for k_ifn in [ifn for ifn in self.speed.iterkeys() if not self.__a_stat.has_key(ifn)]:
-                    del self.speed[k_ifn]
                 self.ethtool_dict, self.extra_dict = ({}, {})
                 for ifn in self.__a_stat.keys():
                     etht_dict = {}
@@ -495,7 +560,7 @@ class netspeed(object):
                             etht_dict = dict([(k.lower().strip(), v.lower().strip()) for k, v in [y for y in [x.strip().split(":", 1) for x in out.split("\n")] if len(y) == 2] if len(v) and k.lower() in ["speed", "duplex", "link detected"]])
                     elif ifn.startswith("ib"):
                         # simple mapping, FIXME
-                        if ifn[2].isdigit():
+                        if ifn[2:].isdigit():
                             port_dir = "/sys/class/infiniband/mthca0/ports/%d" % (int(ifn[2]) + 1)
                             if os.path.isdir(port_dir):
                                 for entry in os.listdir(port_dir):
@@ -521,8 +586,10 @@ class net_command(hm_classes.hm_command):
     info_str = "network information"
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
-        self.parser.add_argument("-w", dest="warn", type=float)
-        self.parser.add_argument("-c", dest="crit", type=float)
+        self.parser.add_argument("-w", dest="warn", type=str)
+        self.parser.add_argument("-c", dest="crit", type=str)
+        self.parser.add_argument("-s", dest="speed", type=str)
+        self.parser.add_argument("-d", dest="duplex", type=str)
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
             srv_com["result"].attrib.update({"reply" : "missing argument",
@@ -530,19 +597,110 @@ class net_command(hm_classes.hm_command):
         else:
             net_device = srv_com["arguments:arg0"].text.strip()
             if net_device in self.module.act_nds:
-                print self.module.act_nds[net_device]
+                srv_com["device"] = self.module.act_nds[net_device].get_xml(srv_com)
             else:
                 srv_com["result"].attrib.update({"reply" : "netdevice %s not found" % (net_device),
-                                                  "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+    def _parse_duplex_str(self, in_dup):
+        if in_dup.lower().count("unk"):
+            return "unknown"
+        elif in_dup.lower()[0] == "f":
+            return "full"
+        elif in_dup.lower()[0] == "h":
+            return "half"
+        else:
+            raise ValueError, "Cannot parse duplex_string '%s'" % (in_dup)
+    def _parse_speed_str(self, in_str):
+        in_str_l = in_str.lower().strip()
+        in_p = re.match("^(?P<num>\d+)\s*(?P<post>\S*)$", in_str_l)
+        if in_p:
+            num, post = (int(in_p.group("num")), in_p.group("post"))
+            pfix = ""
+            for act_pfix in ["k", "m", "g", "t"]:
+                if post.startswith(act_pfix):
+                    pfix = act_pfix
+                    post = post[1:]
+                    break
+            if post.endswith("/s"):
+                per_sec = True
+                post = post[:-2]
+            else:
+                per_sec = False
+            if post in ["byte", "bytes"]:
+                mult = 8
+            elif post in ["b", "bit", "bits", "baud", ""]:
+                mult = 1
+            else:
+                raise ValueError, "Cannot parse postfix '%s' of target_speed" % ("%s%s%s" % (pfix, post, per_sec and "/s" or ""))
+            targ_speed = {""  : 1,
+                          "k" : 1000,
+                          "m" : 1000 * 1000,
+                          "g" : 1000 * 1000 * 1000,
+                          "t" : 1000 * 1000 * 1000 * 1000}[pfix] * num * mult
+            return targ_speed
+        elif in_str_l.startswith("unkn"):
+            return -1
+        else:
+            raise ValueError, "Cannot parse target_speed"
+    def beautify_speed(self, i_val):
+        f_val = float(i_val)
+        if f_val < 500.:
+            return "%.0f B/s" % (f_val)
+        f_val /= 1024.
+        if f_val < 500.:
+            return "%.2f kB/s" % (f_val)
+        f_val /= 1024.
+        if f_val < 500.:
+            return "%.2f MB/s" % (f_val)
+        f_val /= 1024.
+        return "%.2f GB/s" % (f_val)
     def interpret(self, srv_com, cur_ns):
         print "***", cur_ns
-        print unicode(srv_com)
-        return limits.nag_STATE_OK, "ok"
+        dev_name = srv_com["arguments:arg0"].text
+        value_tree = srv_com["device:device_%s:values" % (dev_name)]
+        try:
+            ethtool_tree = srv_com["device:device_%s:ethtool" % (dev_name)]
+        except:
+            ethtool_tree = []
+        value_dict = dict([(el.tag.split("}")[-1], float(el.text)) for el in value_tree])
+        # build ethtool helper dict
+        ethtool_dict = {"link detected" : "yes"}
+        ethtool_dict.update(dict([(el.get("name"), el.text) for el in ethtool_tree]))
+        ethtool_dict["duplex"] = self._parse_duplex_str(ethtool_dict.get("duplex", "unknown"))
+        ethtool_dict["speed"] = self._parse_speed_str(ethtool_dict.get("speed", "unknown"))
+        connected = ethtool_dict["link detected"] == "yes"
+        max_rxtx = max([value_dict["rx"], value_dict["tx"]])
+        if cur_ns.warn:
+            cur_ns.warn = self._parse_speed_str(cur_ns.warn)
+        if cur_ns.crit:
+            cur_ns.crit = self._parse_speed_str(cur_ns.crit)
+        add_errors, add_oks, ret_state = ([], [],
+                                          limits.check_ceiling(max_rxtx, cur_ns.warn, cur_ns.crit))
+        if not connected:
+            add_errors.append("No cable connected?")
+            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+        if cur_ns.speed and connected:
+            target_speed = self._parse_speed_str(cur_ns.speed)
+            if ethtool_dict.get("speed", -1) != -1:
+                if target_speed == ethtool_dict["speed"]:
+                    add_oks.append("target_speed %s" % (ethtool_stuff["speed"]))
+                else:
+                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (self.beautify_speed(targ_speed_bit), ethtool_stuff["speed"]))
+                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            else:
+                add_errors.append("Cannot check target_speed: no ethtool information")
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        return ret_state, "%s, %s rx; %s tx%s%s" % (
+            dev_name,
+            self.beautify_speed(value_dict["rx"]),
+            self.beautify_speed(value_dict["tx"]),
+            add_oks and "; %s" % ("; ".join(add_oks)) or "",
+            add_errors and "; %s" % ("; ".join(add_errors)) or "")
         
 class net_command_old(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "net", **args)
-        self.help_str = "returns the througput of netdetive NET"
+        self.help_str = "returns the througput of netdevice NET"
         self.net_only = True
         self.short_client_info = "-w N1, -c N2, -s target speed, -d duplex"
         self.long_client_info = "sets the warning or critical value to N1/N2"
@@ -650,15 +808,6 @@ class net_command_old(hm_classes.hmb_command):
                 return -1
             else:
                 raise ValueError, "Cannot parse target_speed"
-        def parse_duplex_str(in_dup):
-            if in_dup.lower().count("unk"):
-                return "unknown"
-            elif in_dup.lower()[0] == "f":
-                return "full"
-            elif in_dup.lower()[0] == "h":
-                return "half"
-            else:
-                raise ValueError, "Cannot parse duplex_string '%s'" % (in_dup)
         lim = parsed_coms[0]
         result = hm_classes.net_to_sys(result[3:])
         if result.has_key("rx"):

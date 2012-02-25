@@ -222,6 +222,10 @@ class host_message(object):
     def set_com_struct(self, com_struct):
         self.com_struct = com_struct
         cur_ns, rest = com_struct.handle_commandline((self.srv_com["arg_list"].text or "").split())
+        self.srv_com["arg_list"] = " ".join(rest)
+        self.srv_com.delete_subtree("arguments")
+        for arg_idx, arg in enumerate(rest):
+            self.srv_com["arguments:arg%d" % (arg_idx)] = arg
         self.ns = cur_ns
     def check_timeout(self, cur_time):
         return abs(cur_time - self.s_time) > 1
@@ -523,9 +527,13 @@ class relay_thread(threading_tools.process_pool):
                     srv_com = server_command.srv_command(command=com_part.pop(0))
                     srv_com["host"] = parts[0]
                     srv_com["port"] = parts[1]
-                    for arg_index, arg in enumerate(com_part):
-                        srv_com["arguments:arg%d" % (arg_index)] = arg
-                    srv_com["arg_list"] = " ".join(com_part)
+                    if com_part:
+                        arg_list = com_part[0].split()
+                        for arg_index, arg in enumerate(arg_list):
+                            srv_com["arguments:arg%d" % (arg_index)] = arg
+                    else:
+                        arg_list = []
+                    srv_com["arg_list"] = " ".join(arg_list)
             if srv_com is not None:
                 self.log("got command '%s' for '%s' (XML: %s)" % (srv_com["command"].text,
                                                                   srv_com["host"].text,
