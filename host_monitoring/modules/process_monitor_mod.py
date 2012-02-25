@@ -337,6 +337,28 @@ class procstat_command(hm_classes.hm_command):
                                            ", %d zombie" % (res_dict["fail"]) if res_dict["fail"] else "",
                                            ", %d accepted zombie" % (res_dict["zombie_ok"]) if res_dict["zombie_ok"] else "")
         return ret_state, ret_str
+    def interpret_old(self, result, parsed_coms):
+        result = hm_classes.net_to_sys(result[3:])
+        shit_str = ""
+        ret_str, ret_state = ("OK", limits.nag_STATE_CRITICAL)
+        copy_struct = result.get("struct", None)
+        if result["num_shit"] > 0:
+            shit_str = " (%s)" % (logging_tools.get_plural("dead cron", result["num_shit"]))
+        if result["num_fail"] > 0:
+            zomb_str = " and %s" % (logging_tools.get_plural("Zombie", result["num_fail"]))
+        else:
+            zomb_str = ""
+            ret_state = limits.check_floor(result["num_ok"], parsed_coms.warn, parsed_coms.crit)
+        if result["command"] == "all":
+            rets = "%d processes running%s%s" % (result["num_ok"],
+                                                 zomb_str,
+                                                 shit_str)
+        else:
+            rets = "proc %s has %s running%s%s" % (result["name"],
+                                                   logging_tools.get_plural("instance", result["num_ok"]),
+                                                   zomb_str,
+                                                   shit_str)
+        return ret_state, rets
     def server_call(self, cm):
         if len(cm) > 1:
             return "error only one parameter allowed"
@@ -483,7 +505,7 @@ class proclist_command(hm_classes.hm_command):
         if form_list:
             ret_a.extend(str(form_list).split("\n"))
         return ret_state, "\n".join(ret_a)
-    def client_call(self, result, parsed_coms):
+    def interpret_old(self, result, parsed_coms):
         def draw_tree(m_pid, nest = 0):
             proc_stuff = result[m_pid]
             r_list = [("%s%s" % (" " * nest, m_pid),

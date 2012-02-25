@@ -1238,6 +1238,9 @@ class get_uuid_command(hm_classes.hm_command):
             return limits.nag_STATE_OK, "uuid is %s" % (srv_com["uuid"].text)
         except:
             return limits.nag_STATE_CRITICAL, "uuid not found"
+    def interpret_old(self, result, parsed_coms):
+        act_state = limits.nag_STATE_OK
+        return act_state, "ok uuid is %s" % (result.split()[1])
 
 class swap_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -1256,6 +1259,25 @@ class swap_command(hm_classes.hm_command):
             ret_state = limits.check_ceiling(swap, cur_ns.warn , cur_ns.crit)
             return ret_state, "%d %% of %s swap" % (swap,
                                                     logging_tools.get_size_str(swap_total * 1024))
+    def interpret_old(self, result, parsed_coms):
+        def k_str(i_val):
+            f_val = float(i_val)
+            if f_val < 1024:
+                return "%0.f kB" % (f_val)
+            f_val /= 1024.
+            if f_val < 1024.:
+                return "%.2f MB" % (f_val)
+            f_val /= 1024.
+            return "%.2f GB" % (f_val)
+        result = hm_classes.net_to_sys(result[3:])
+        swaptot, swapfree = (int(result["swaptotal"]), 
+                             int(result["swapfree"]))
+        if swaptot == 0:
+            return limits.nag_STATE_CRITICAL, "%s: no swap space found" % (limits.get_state_str(limits.nag_STATE_CRITICAL))
+        else:
+            swap = 100 * (swaptot - swapfree) / swaptot
+            ret_state = limits.check_ceiling(swap, parsed_coms.warn, parsed_coms.crit)
+            return ret_state, "swapinfo: %d %% of %s swap" % (swap, k_str(swaptot))
 
 class mem_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -1279,6 +1301,37 @@ class mem_command(hm_classes.hm_command):
                                                                           logging_tools.get_size_str(mem_total * 1024),
                                                                           all_p,
                                                                           logging_tools.get_size_str(all_total * 1024))
+    def interpret_old(self, result, parsed_coms):
+        def k_str(i_val):
+            f_val = float(i_val)
+            if f_val < 1024:
+                return "%0.f kB" % (f_val)
+            f_val /= 1024.
+            if f_val < 1024.:
+                return "%.2f MB" % (f_val)
+            f_val /= 1024.
+            return "%.2f GB" % (f_val)
+        result = hm_classes.net_to_sys(result[3:])
+        memtot = int(result["memtotal"])
+        memfree = int(result["memfree"]) + int(result["buffers"]) + int(result["cached"])
+        if memtot == 0:
+            memp = 100
+        else:
+            memp = 100 * (memtot - memfree) / memtot
+        swaptot = int(result["swaptotal"])
+        swapfree = int(result["swapfree"])
+        if swaptot == 0:
+            swapp = 100
+        else:
+            swapp = 100 * (swaptot - swapfree) / swaptot
+        alltot = memtot + swaptot
+        allfree = memfree + swapfree
+        if alltot == 0:
+            allp = 100
+        else: 
+            allp = 100 * (alltot - allfree) / alltot
+        ret_state = limits.check_ceiling(max(allp, memp), parsed_coms.warn, parsed_coms.crit)
+        return ret_state, "meminfo: %d %% of %s phys, %d %% of %s tot" % (memp, k_str(memtot), allp, k_str(alltot))
 
 class sysinfo_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -1376,6 +1429,23 @@ class date_command(hm_classes.hm_command):
                                                                               err_diff)
         elif diff_time > warn_diff:
             return limits.nag_STATE_WARNING, "%s (diff %d > %d seconds)" % (time.ctime(remote_date),
+                                                                                  diff_time,
+                                                                                  warn_diff)
+        else:
+            return limits.nag_STATE_OK, "OK: %s" % (time.ctime(remote_date))
+    def interpret_old(self, result, parsed_coms):
+        warn_diff, err_diff = (10, 5 * 60)
+        local_date = time.time()
+        remote_date = hm_classes.net_to_sys(result[3:])["date"]
+        if type(remote_date) == type(""):
+            remote_date = time.mktime(time.strptime(remote_date))
+        diff_time = int(abs(remote_date - local_date))
+        if diff_time > err_diff:
+            return limits.nag_STATE_CRITICAL, "ERROR: %s (diff %d > %d seconds)" % (time.ctime(remote_date),
+                                                                                    diff_time,
+                                                                                    err_diff)
+        elif diff_time > warn_diff:
+            return limits.nag_STATE_WARNING, "WARN: %s (diff %d > %d seconds)" % (time.ctime(remote_date),
                                                                                   diff_time,
                                                                                   warn_diff)
         else:
@@ -1493,6 +1563,12 @@ class macinfo_command(hm_classes.hm_command):
                                                     ", ".join(sorted(mac_list)))
         else:
             return limits.nag_STATE_CRITICAL, "no macaddresses found"
+    def interpret_old(self, result, parsed_coms):
+        if result.startswith("ok"):
+            net_dict = hm_classes.net_to_sys(result[3:])
+            return limits.nag_STATE_OK, "%d ether-devices found: %s" % (len(net_dict.keys()), ", ".join(["%s (%s)" % (k, net_dict[k]) for k in net_dict.keys()]))
+        else:
+            return limits.nag_STATE_CRITICAL, "error parsing return"
 
 class umount_command(hm_classes.hmb_command):
     def __init__(self, **args):

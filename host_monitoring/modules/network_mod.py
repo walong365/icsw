@@ -696,6 +696,174 @@ class net_command(hm_classes.hm_command):
             self.beautify_speed(value_dict["tx"]),
             add_oks and "; %s" % ("; ".join(add_oks)) or "",
             add_errors and "; %s" % ("; ".join(add_errors)) or "")
+    def interpret_old(self, result, parsed_coms):
+        def b_str(i_val):
+            f_val = float(i_val)
+            if f_val < 500.:
+                return "%.0f B/s" % (f_val)
+            f_val /= 1024.
+            if f_val < 500.:
+                return "%.2f kB/s" % (f_val)
+            f_val /= 1024.
+            if f_val < 500.:
+                return "%.2f MB/s" % (f_val)
+            f_val /= 1024.
+            return "%.2f GB/s" % (f_val)
+        def bit_str(i_val):
+            if i_val < 500:
+                return "%d B/s" % (i_val)
+            i_val /= 1000
+            if i_val < 500:
+                return "%d kB/s" % (i_val)
+            i_val /= 1000
+            if i_val < 500:
+                return "%d MB/s" % (i_val)
+            i_val /= 1000
+            return "%d GB/s" % (i_val)
+        def parse_ib_speed_bit(in_str):
+            # parse speed for ib rate and return bits/sec
+            parts = in_str.split()
+            try:
+                pfix = int(parts.pop(0))
+                pfix *= {"g" : 1000 * 1000 * 1000,
+                         "m" : 1000 * 1000,
+                         "k" : 1000}.get(parts[0][0].lower(), 1)
+            except:
+                raise ValueError, "Cannot parse ib_speed '%s'" % (in_str)
+            return pfix
+        def parse_speed_bit(in_str):
+            in_str_l = in_str.lower().strip()
+            in_p = re.match("^(?P<num>\d+)\s*(?P<post>\S*)$", in_str_l)
+            if in_p:
+                num, post = (int(in_p.group("num")), in_p.group("post"))
+                pfix = ""
+                for act_pfix in ["k", "m", "g", "t"]:
+                    if post.startswith(act_pfix):
+                        pfix = act_pfix
+                        post = post[1:]
+                        break
+                if post.endswith("/s"):
+                    per_sec = True
+                    post = post[:-2]
+                else:
+                    per_sec = False
+                if post in ["byte", "bytes"]:
+                    mult = 8
+                elif post in ["b", "bit", "bits", "baud", ""]:
+                    mult = 1
+                else:
+                    raise ValueError, "Cannot parse postfix '%s' of target_speed" % ("%s%s%s" % (pfix, post, per_sec and "/s" or ""))
+                targ_speed = {""  : 1,
+                              "k" : 1000,
+                              "m" : 1000 * 1000,
+                              "g" : 1000 * 1000 * 1000,
+                              "t" : 1000 * 1000 * 1000 * 1000}[pfix] * num * mult
+                return targ_speed
+            elif in_str_l.startswith("unkn"):
+                return -1
+            else:
+                raise ValueError, "Cannot parse target_speed"
+        def parse_duplex_str(in_dup):
+            if in_dup.lower().count("unk"):
+                return "unknown"
+            elif in_dup.lower()[0] == "f":
+                return "full"
+            elif in_dup.lower()[0] == "h":
+                return "half"
+            else:
+                raise ValueError, "Cannot parse duplex_string '%s'" % (in_dup)
+        result = hm_classes.net_to_sys(result[3:])
+        if result.has_key("rx"):
+            rx_str, tx_str = ("rx", "tx")
+        else:
+            rx_str, tx_str = ("in", "out")
+        maxs = max(result[rx_str], result[tx_str])
+        ret_state = limits.check_ceiling(maxs, parsed_coms.warn, parsed_coms.crit)
+        add_errors, add_oks = ([], [])
+        device = result.get("device", "eth0")
+        ethtool_stuff = result.get("ethtool", {})
+        if ethtool_stuff is None:
+            ethtool_stuff = {}
+        connected = False if ethtool_stuff.get("link detected", "yes") == "no" else True
+        if parsed_coms.speed:
+            if device.startswith("ib"):
+                if ethtool_stuff.has_key("state"):
+                    if ethtool_stuff["state"][0] == "4":
+                        # check if link is up
+                        try:
+                            targ_speed_bit = parse_speed_bit(parsed_coms.speed)
+                        except ValueError:
+                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '%s' for net: %s" % (parsed_coms.speed,
+                                                                                                               process_tools.get_except_info())
+                        else:
+                            if ethtool_stuff.has_key("rate"):
+                                if targ_speed_bit == parse_ib_speed_bit(ethtool_stuff["rate"]):
+                                    add_oks.append("target_speed %s" % (ethtool_stuff["rate"]))
+                                else:
+                                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (bit_str(targ_speed_bit), ethtool_stuff["rate"]))
+                            else:
+                                add_errors.append("no rate entry found")
+                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                    else:
+                        add_errors.append("Link has wrong state (%s)" % (ethtool_stuff["state"]))
+                        ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                else:
+                    # no state, cannot check if up or down
+                    add_errors.append("Cannot check target_speed: no state information")
+                    ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                    connected = False
+            else:
+                if connected:
+                    if ethtool_stuff.has_key("speed"):
+                        try:
+                            targ_speed_bit = parse_speed_bit(parsed_coms.speed)
+                        except ValueError:
+                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '%s' for net: %s" % (parsed_coms.speed,
+                                                                                                               process_tools.get_except_info())
+                        else:
+                            if targ_speed_bit == parse_speed_bit(ethtool_stuff["speed"]):
+                                add_oks.append("target_speed %s" % (ethtool_stuff["speed"]))
+                            else:
+                                if parse_speed_bit(ethtool_stuff["speed"]) == -1:
+                                    connected = False
+                                else:
+                                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (bit_str(targ_speed_bit), ethtool_stuff["speed"]))
+                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                    else:
+                        add_errors.append("Cannot check target_speed: no ethtool information")
+                        ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+        if parsed_coms.duplex and not device.startswith("ib"):
+            if connected:
+                if ethtool_stuff.has_key("duplex"):
+                    try:
+                        targ_duplex = parse_duplex_str(parsed_coms.duplex)
+                    except ValueError:
+                        return limits.nag_STATE_CRITICAL, "Error parsing target_duplex '%s' for net: %s" % (parsed_coms.duplex,
+                                                                                                            process_tools.get_except_info())
+                    else:
+                        if targ_duplex == parse_duplex_str(ethtool_stuff["duplex"]):
+                            add_oks.append("duplex_mode is %s" % (ethtool_stuff["duplex"]))
+                        else:
+                            if connected:
+                                if parse_duplex_str(ethtool_stuff["duplex"]) == "unknown":
+                                    connected = False
+                                else:
+                                    add_errors.append("duplex_mode differ: %s != %s" % (parsed_coms.duplex, ethtool_stuff["duplex"]))
+                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                else:
+                    add_errors.append("Cannot check duplex mode: no ethtool information")
+                    ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+        if not connected:
+            add_errors.append("No cable connected?")
+            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            state = limits.get_state_str(ret_state)
+        report_device = result.get("report_device", device)
+        return ret_state, "%s, %s rx; %s tx%s%s%s" % (device,
+                                                      b_str(result[rx_str]),
+                                                      b_str(result[tx_str]),
+                                                      add_oks and "; %s" % ("; ".join(add_oks)) or "",
+                                                      add_errors and "; %s" % ("; ".join(add_errors)) or "",
+                                                      report_device != device and "; reporting device is %s" % (report_device) or "")
         
 class net_command_old(hm_classes.hmb_command):
     def __init__(self, **args):
@@ -808,7 +976,6 @@ class net_command_old(hm_classes.hmb_command):
                 return -1
             else:
                 raise ValueError, "Cannot parse target_speed"
-        lim = parsed_coms[0]
         result = hm_classes.net_to_sys(result[3:])
         if result.has_key("rx"):
             rx_str, tx_str = ("rx", "tx")

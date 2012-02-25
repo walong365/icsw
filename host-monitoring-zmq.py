@@ -64,7 +64,6 @@ def client_code():
         except ValueError, what:
             ret_state, ret_str = (limits.nag_STATE_CRITICAL, "error parsing: %s" % (what[1]))
         else:
-            print "***", cur_ns, rest
             if hasattr(cur_ns, "arguments"):
                 for arg_index, arg in enumerate(cur_ns.arguments):
                     srv_com["arguments:arg%d" % (arg_index)] = arg
@@ -141,38 +140,41 @@ class host_connection(object):
         self.messages[new_mes.src_id] = new_mes
         return new_mes
     def send(self, host_mes, com_struct):
-        host_mes.set_com_struct(com_struct)
-        if self.socket:
-            try:
-                self._open()
-            except:
-                self.return_error(host_mes,
-                                  "error connecting to %s: %s" % (self.__conn_str,
-                                                                  process_tools.get_except_info()))
-            else:
-                if self.__backlog_counter == BACKLOG_SIZE:
-                    self.return_error(host_mes,
-                                      "connection error (backlog full) for '%s'" % (self.__conn_str))
-                    #self._close()
-                else:
-                    self.__backlog_counter += 1
-                    print "tts0", self.__backlog_counter, BACKLOG_SIZE
-                    host_mes.sent = True
-                    self.socket.send_unicode(unicode(host_mes.srv_com))
-                    print "tts1"
-            print self.messages.keys()
+        try:
+            host_mes.set_com_struct(com_struct)
+        except:
+            self.return_error(host_mes,
+                              "error parsing arguments: %s" % (process_tools.get_except_info()))
         else:
-            # send to twisted-thread for old clients
-            host_connection.relayer_thread.send_to_process(
-                "twisted",
-                "connection",
-                host_mes.src_id,
-                unicode(host_mes.srv_com))
+            if self.socket:
+                try:
+                    self._open()
+                except:
+                    self.return_error(host_mes,
+                                      "error connecting to %s: %s" % (self.__conn_str,
+                                                                      process_tools.get_except_info()))
+                else:
+                    if self.__backlog_counter == BACKLOG_SIZE:
+                        self.return_error(host_mes,
+                                          "connection error (backlog full) for '%s'" % (self.__conn_str))
+                        #self._close()
+                    else:
+                        self.__backlog_counter += 1
+                        #print "tts0", self.__backlog_counter, BACKLOG_SIZE
+                        host_mes.sent = True
+                        self.socket.send_unicode(unicode(host_mes.srv_com))
+                        #print "tts1"
+            else:
+                # send to twisted-thread for old clients
+                host_connection.relayer_thread.send_to_process(
+                    "twisted",
+                    "connection",
+                    host_mes.src_id,
+                    unicode(host_mes.srv_com))
     def send_result(self, host_mes, result=None):
         host_connection.relayer_thread.relayer_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
         host_connection.relayer_thread.relayer_socket.send_unicode(host_mes.get_result(result))
         del self.messages[host_mes.src_id]
-        print self.messages.keys()
     def return_error(self, host_mes, error_str):
         host_mes.set_result(limits.nag_STATE_CRITICAL, error_str)
         self.send_result(host_mes)
@@ -222,6 +224,7 @@ class host_message(object):
     def set_com_struct(self, com_struct):
         self.com_struct = com_struct
         cur_ns, rest = com_struct.handle_commandline((self.srv_com["arg_list"].text or "").split())
+        print "***", cur_ns, rest
         self.srv_com["arg_list"] = " ".join(rest)
         self.srv_com.delete_subtree("arguments")
         for arg_idx, arg in enumerate(rest):
@@ -257,12 +260,19 @@ class host_message(object):
             return self.com_struct.interpret(result, self.ns)
             
     def interpret_old(self, result):
-        server_error = result.xpath(None, ".//ns:result[@state != '0']")
+        if type(result) not in [type("")]:
+            server_error = result.xpath(None, ".//ns:result[@state != '0']")
+        else:
+            server_error = None
         if server_error:
             return (int(server_error[0].attrib["state"]),
-                     server_error[0].attrib["reply"])
+                    server_error[0].attrib["reply"])
         else:
-            return self.com_struct.interpret_old(result, self.ns)
+            if result.startswith("error "):
+                return (limits.nag_STATE_CRITICAL,
+                        result)
+            else:
+                return self.com_struct.interpret_old(result, self.ns)
         
 ##class pending_connection(object):
 ##    def __init__(self, src_id, srv_com, com_struct, conn_str, xml_input=False):
@@ -345,8 +355,9 @@ class tcp_send(Protocol):
     def __init__(self, factory):
         self.factory = factory
     def connectionMade(self):
-        print "***"
         com = self.factory.srv_com["command"].text
+        if self.factory.srv_com["arg_list"].text:
+            com = "%s %s" % (com, self.factory.srv_com["arg_list"].text)
         self.transport.write("%08d%s" % (len(com), com))
     def dataReceived(self, data):
         #print data
@@ -538,8 +549,8 @@ class relay_thread(threading_tools.process_pool):
                 self.log("got command '%s' for '%s' (XML: %s)" % (srv_com["command"].text,
                                                                   srv_com["host"].text,
                                                                   str(xml_input)))
-                #self._send_to_old_client(src_id, srv_com, xml_input)
-                self._send_to_client(src_id, srv_com, xml_input)
+                self._send_to_old_client(src_id, srv_com, xml_input)
+                #self._send_to_client(src_id, srv_com, xml_input)
             else:
                 self.log("cannot interpret input data '%s' is srv_command" % (data),
                          logging_tools.LOG_LEVEL_ERROR)
@@ -556,12 +567,10 @@ class relay_thread(threading_tools.process_pool):
         cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
         if com_name in self.modules.command_dict:
             com_struct = self.modules.command_dict[srv_com["command"].text]
-            
             cur_hc.send(cur_mes, com_struct)
             self.__old_send_lut[cur_mes.src_id] = cur_hc
         else:
             cur_hc.return_error(cur_mes, "command '%s' not defined" % (com_name))
-            
     def _send_to_client(self, src_id, srv_com, xml_input):
         # generate new xml from srv_com
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
