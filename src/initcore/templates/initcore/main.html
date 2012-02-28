@@ -16,26 +16,26 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery.timers-1.2.js"></script>
     {# tablesorter #}
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/tablesorter/jquery.tablesorter.min.js"></script>
-    {# jqGrid #} 
+    {# jqGrid #}
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jqgrid/grid.locale-en.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jqgrid/jquery.jqGrid.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jqgrid_user_functions.js"></script>
-    {# jQuery UI #} 
+    {# jQuery UI #}
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery-ui/jquery-ui-1.8.15.custom.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery-ui/jquery-ui-timepicker-addon.js"></script>
-    {# jNotify #} 
+
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jnotify/jNotify.jquery.js"></script>
-    {# dynatree #} 
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/dynatree/jquery.dynatree.min.js"></script>
-    {# superfish #}
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/superfish/superfish.js"></script>
-    {# simplemodal #}
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery.simplemodal.1.4.2.min.js"></script>
-    {# MEDIA URL for all javascript #} 
+    {# fileupload #}
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery.iframe-transport.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery.fileupload.js"></script>
+    {# MEDIA URL for all javascript #}
     <script language="javascript">var MEDIA_URL = "{{ MEDIA_URL }}";</script>
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/init.js"></script>
     {% block javascript %}{% endblock %}
-    
+
     {% include "initcore/main.css" %}
     {% if session.css_theme and session.font_scale and session.css_file %}
         <link href="{{ MEDIA_URL }}initcore/css/{{ session.css_theme }}{{ session.font_scale }}/{{ session.css_file }}" rel="stylesheet" type="text/css" />
@@ -55,10 +55,10 @@
         <link href="{{ MEDIA_URL }}initcore/lib/dynatree/skin/ui.dynatree.mobile.css" rel="stylesheet" type="text/css" />
     {% endif %}
     {% block stylesheets %}{% endblock %}
-    
-    {# General includes #} 
+
+    {# General includes #}
     {% block includes %}{% endblock %}
-    
+
     <title>{% block title %}OLIM{% endblock %}</title>
 </head>
 
@@ -158,11 +158,11 @@ function show_menu() {
 
 function add_dropdwon_dynatree_handlers() {
     $("div#dropdown_menu").css("display", "block");
-    $("body").bind("click", function(event) { 
+    $("body").bind("click", function(event) {
         if ($(event.target).parents("div#dropdown_menu").length == 0 && $(event.target).parents().length > 0 ) {
             $("div#dropdown_menu").css("display", "none");
             $("body").unbind("click");
-        } 
+        }
     });
 };
 
@@ -178,7 +178,7 @@ function addHandlers() {
     $("#main_navigation").superfish({
         speed : 1,
         delay : 500
-    }); 
+    });
     var init_font_scale = "{{ session.font_scale }}";
     if (init_font_scale == "") init_font_scale = 27;
     $("body,input,ul,select[class!='noresize']").css({fontSize: parseInt(init_font_scale) * 15/100 + 8 });
