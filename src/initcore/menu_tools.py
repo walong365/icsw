@@ -279,6 +279,8 @@ class olim_menu(object):
                     continue
                 if filter_key in self.list_attribs:
                     value_list = node.attrib[filter_key].split(",")
+                    if value_list == [""]:
+                        continue
                     if not set(filter_value) & set(value_list):
                         keep_node = False
                 elif node.attrib[filter_key] not in filter_value:
