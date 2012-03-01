@@ -66,7 +66,8 @@ COPY_ATTRIBUTES_SS = """<xsl:stylesheet
             <xsl:call-template name="copy-attribute">
                 <xsl:with-param name="node" select="$node"/>
                 <xsl:with-param name="attrname" select="'role'"/>
-                <xsl:with-param name="default" select="'olim.admin'"/>
+                <!--xsl:with-param name="default" select="'olim.admin'"/-->
+                <xsl:with-param name="default" select="''"/>
             </xsl:call-template>
             <xsl:call-template name="copy-attribute">
                 <xsl:with-param name="node" select="$node"/>
