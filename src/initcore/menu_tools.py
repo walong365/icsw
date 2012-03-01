@@ -235,8 +235,10 @@ class olim_menu(object):
         my_ns["get_href"]       = self._get_href
         my_ns["translate_node"] = self._translate_node
         self.__kwargs = kwargs
+        # Attributes that contain a list of values (for filtering)
+        self.list_attribs = ("role", )
         self.menu_resolvers = []
-        if hasattr(settings, "MENU_XML_RESOLVERS") and isinstance(settings.MENU_XML_RESOLVERS, tuple):
+        if hasattr(settings, "MENU_XML_RESOLVERS") and isinstance(settings.MENU_XML_RESOLVERS, (tuple, list)):
             for resolver in settings.MENU_XML_RESOLVERS:
                 file_name = ".".join(resolver.split(".")[0:-1])
                 class_name = resolver.split(".")[-1]
@@ -271,7 +273,14 @@ class olim_menu(object):
             if type(filter_value) != type([]):
                 filter_value = [filter_value]
             if filter_key in node.attrib:
-                if node.attrib[filter_key] not in filter_value:
+                # Admin roles get everything
+                if filter_key == "role" and (set(filter_value) & set(settings.MML_ADMIN_ROLES)):
+                    continue
+                if filter_key in self.list_attribs:
+                    value_list = node.attrib[filter_key].split(",")
+                    if not set(filter_value) & set(value_list):
+                        keep_node = False
+                elif node.attrib[filter_key] not in filter_value:
                     keep_node = False
         return keep_node
     def _get_href(self, context, node, *args):
@@ -311,8 +320,13 @@ def get_menu_html(request, is_mobile, for_dynatree):
         useragent_list = ["all", "mobile"]
     else:
         useragent_list = ["all", "pc"]
-    my_menu = olim_menu(settings.MENU_XML_DIR, **{"filter_useragent" : useragent_list,
-                                                  "language_code"    : lang_code})
+    if hasattr(request, "session"):
+        current_role = request.session.get("OLIM_ROLE", None)
+    else:
+        current_role = None
+    my_menu = olim_menu(settings.MENU_XML_DIR, **{"filter_useragent": useragent_list,
+                                                  "language_code": lang_code,
+                                                  "filter_role": current_role})
     xml_doc = my_menu.process(codecs.open(settings.MENU_XML_PATH, "r", "utf-8").read())
     if request.session.has_key("menu_xpath"):
         menu_xpath = request.session["menu_xpath"]
