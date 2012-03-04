@@ -43,7 +43,7 @@ class PingSocket:
     def open_icmp_socket(self):
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW,socket.IPPROTO_ICMP)
-            self.socket.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,262144)
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 262144)
             #self.socket.setsockopt(socket.SOL_SOCKET,socket.SO_WRTBUF,262144)
             #self.socket.setsockopt(socket.SOL_SOCKET,socket.SO_BROADCAST,1)
             self.socket.setblocking(0)

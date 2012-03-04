@@ -929,7 +929,7 @@ class process_pool(object):
         self.__processes = {}
         self.zmq_context = zmq.Context()
         self.poller = zmq.Poller()
-        self.__loop_granularity = kwargs.get("loop_granularity", 1000)
+        self.loop_granularity = kwargs.get("loop_granularity", 1000)
         self.__timer_list, self.__next_timeout = ([], None)
         self.queue_name = process_tools.get_zmq_ipc_name("internal")
         self.add_zmq_socket(self.queue_name)
@@ -955,6 +955,12 @@ class process_pool(object):
         self.process_init()
         self.set_stack_size(kwargs.get("stack_size", DEFAULT_STACK_SIZE))
         self.__processes_stopped = set()
+    @property
+    def loop_granularity(self):
+        return self.__loop_granularity
+    @loop_granularity.setter
+    def loop_granularity(self, val):
+        self.__loop_granularity = val
     def renice(self, nice_level=16):
         try:
             os.nice(self.pid)
@@ -977,6 +983,12 @@ class process_pool(object):
             s_time = s_time + timeout
         self.__timer_list.append((timeout, s_time, cb_func))
         self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+    def unregister_timer(self, ut_cb_func):
+        new_tl = []
+        for cur_to, t_time, cb_func in self.__timer_list:
+            if cb_func != ut_cb_func:
+                new_tl.append((cur_to, t_time, cb_func))
+        self.__timer_list = new_tl
     def _handle_timer(self, cur_time):
         new_tl, t_funcs = ([], [])
         for cur_to, t_time, cb_func in self.__timer_list:

@@ -227,7 +227,7 @@ class srv_command(object):
             "host" : os.uname()[1],
             "pid" : "%d" % (os.getpid())})
     def __unicode__(self):
-        return etree.tostring(self.__tree, encoding=unicode)
+        return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)
     def __del__(self):
         pass
 
