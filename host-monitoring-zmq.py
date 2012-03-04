@@ -420,7 +420,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
     def __getitem__(self, key):
         return self.__work_dict[key]
     def __delitem__(self, key):
-        for seq_key in self.__work_dict[key]:
+        for seq_key in self.__work_dict[key]["sent_list"].keys():
             if seq_key in self.__seqno_dict:
                 del self.__seqno_dict[seq_key]
         del self.__work_dict[key]
@@ -862,7 +862,7 @@ class server_thread(threading_tools.process_pool):
                 else:
                     if not self.__delayed:
                         self.register_timer(self._check_delayed, 0.1)
-                        self.loop_granularity = 0.1
+                        self.loop_granularity = 10.0
                     if delayed.Meta.twisted:
                         self.send_to_process("twisted",
                                              *delayed.run())
@@ -896,7 +896,7 @@ class server_thread(threading_tools.process_pool):
                     new_list.append(cur_del)
         self.__delayed = new_list
         if not len(self.__delayed):
-            self.loop_granularity = 1.0
+            self.loop_granularity = 1000.0
             self.unregister_timer(self._check_delayed)
     def _handle_module_command(self, srv_com, rest_str):
         cur_com = self.commands[srv_com["command"].text]

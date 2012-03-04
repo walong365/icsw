@@ -1426,12 +1426,12 @@ class load_command(hm_classes.hm_command):
 class uptime_command(hm_classes.hm_command):
     info_string = "update information"
     def __call__(self, srv_com, cur_ns):
-        cur_sps = hm_classes.subprocess_struct(srv_com, "ps auxw", self._process)
-        return cur_sps
-        return hm_classes.subprocess_struct(srv_com, "ps auxw ; sleep 10")
-    def _process(self, sps):
-        print sps.read()
-        srv_com = sps.srv_com
+##        cur_sps = hm_classes.subprocess_struct(srv_com, "ps auxw", self._process)
+##        return cur_sps
+##        return hm_classes.subprocess_struct(srv_com, "ps auxw ; sleep 10")
+##    def _process(self, sps):
+##        print sps.read()
+##        srv_com = sps.srv_com
         upt_data = [int(float(value)) for value in open("/proc/uptime", "r").read().strip().split()]
         srv_com["uptime"] = "%d" % (upt_data[0])
         if len(upt_data) > 1:
