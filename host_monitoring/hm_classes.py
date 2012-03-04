@@ -26,6 +26,9 @@ import time
 import logging_tools
 import process_tools
 import argparse
+import subprocess
+import server_command
+import zmq
 
 def net_to_sys(in_val):
     try:
@@ -39,6 +42,51 @@ def net_to_sys(in_val):
 
 def sys_to_net(in_val):
     return cPickle.dumps(in_val)
+
+class subprocess_struct(object):
+    def __init__(self, srv_com, com_line, cb_func=None):
+        self.srv_com = srv_com
+        self.command = srv_com["command"].text
+        self.command_line = com_line
+        self.popen = None
+        self.cb_func = cb_func
+        self._init_time = time.time()
+        # if not a popen call
+        self.terminated = False
+    def run(self):
+        self.start_time = time.time()
+        self.popen = subprocess.Popen(self.command_line, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    def set_send_stuff(self, src_id, zmq_sock):
+        self.src_id = src_id
+        self.zmq_sock = zmq_sock
+    def read(self):
+        return self.popen.stdout.read()
+    def poll(self):
+        return self.popen.poll()
+    def process(self):
+        if self.cb_func:
+            self.cb_func(self)
+        else:
+            self.srv_com["result"].attrib.update({
+                "reply" : "default process() call",
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+    def terminate(self):
+        self.popen.kill()
+        self.srv_com["result"].attrib.update({
+            "reply" : "runtime (%s) exceeded" % (logging_tools.get_plural("second", self.Meta.max_runtime)),
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+    def send_return(self):
+        self.zmq_sock.send_unicode(self.src_id, zmq.SNDMORE)
+        self.zmq_sock.send_unicode(unicode(self.srv_com))
+        del self.srv_com
+        del self.zmq_sock
+        if self.popen:
+            del self.popen
+    class Meta:
+        max_usage = 2
+        twisted = False
+        max_runtime = 300
+        use_popen = True
 
 class hm_module(object):
     class Meta:

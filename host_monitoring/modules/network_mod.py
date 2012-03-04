@@ -582,6 +582,94 @@ class netspeed(object):
         else:
             self.__a_time = ntime
 
+class ping_sp_struct(hm_classes.subprocess_struct):
+    seq_num = 0
+    def __init__(self, srv_com, target_host, num_pings, timeout):
+        hm_classes.subprocess_struct.__init__(self, srv_com, "")
+        self.target_host, self.num_pings, self.timeout = (target_host, num_pings, timeout)
+        ping_sp_struct.seq_num += 1
+        self.seq_str = "ping_%d" % (ping_sp_struct.seq_num)
+    def run(self):
+        self.tart_time = time.time()
+        return ("ping", self.seq_str, self.target_host, self.num_pings, self.timeout)
+    def process(self, *args):
+        id_str, num_sent, num_received, time_field, error_str = args
+        self.terminated = True
+        cur_b = self.srv_com.builder
+        self.srv_com["result"] = cur_b("ping_result",
+                                       error_str,
+                                       cur_b("times",
+                                             *[cur_b("time", "%.4f" % (cur_time)) for cur_time in time_field]),
+                                       target=self.target_host,
+                                       num_sent="%d" % (num_sent),
+                                       num_received="%d" % (num_received))
+        self.send_return()
+        self.terminated = True
+    class Meta:
+        max_usage = 128
+        twisted = True
+        use_popen = False
+ 
+class ping_command(hm_classes.hm_command):
+    info_str = "ping command"
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+    def __call__(self, srv_com, cur_ns):
+        args = cur_ns.arguments
+        if len(args) == 3:
+            target_host, num_pings, timeout = args
+        elif len(args) == 2:
+            target_host, num_pings = args
+            timeout = 5.0
+        elif len(args) == 1:
+            target_host = args
+            num_pings, timeout = (3, 5)
+        else:
+            srv_com["result"].attrib.update({"reply" : "wrong number of arguments (%d)" % (len(args)),
+                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            cur_sps, target_host = (None, None)
+        if target_host:
+            num_pings, timeout = (int(num_pings),
+                                  float(timeout))
+            cur_sps = ping_sp_struct(srv_com, target_host, num_pings, timeout)
+        return cur_sps
+    def interpret(self, srv_com, cur_ns):
+        ping_res = srv_com["result:ping_result"]
+        target = ping_res.attrib["target"]
+        if ping_res.text:
+            return limits.nag_STATE_CRITICAL, "%s: %s" % (target, ping_res.text)
+        else:
+            time_f = map(float, srv_com.xpath(ping_res, "ns:times/ns:time/text()"))
+            if time_f:
+                max_time, min_time, mean_time = (max(time_f),
+                                                 min(time_f),
+                                                 sum(time_f) / len(time_f))
+            else:
+                max_time, min_time, mean_time = (None, None, None)
+            num_sent, num_received = (int(ping_res.attrib["num_sent"]),
+                                      int(ping_res.attrib["num_received"]))
+            if num_sent == num_received:
+                ret_state = limits.nag_STATE_OK
+            elif num_received == 0:
+                ret_state = limits.nag_STATE_WARNING
+            else:
+                ret_state = limits.nag_STATE_CRITICAL
+            if num_received == 0:
+                return ret_state, "%s: no reply (%s sent)" % (target,
+                                                              logging_tools.get_plural("packet", num_sent))
+            else:
+                if mean_time is not None:
+                    if mean_time < 0.01:
+                        time_info = "%.2f ms mean time" % (1000 * mean_time)
+                    else:
+                        time_info = "%.4f s mean time" % (mean_time)
+                else:
+                    time_info = "no time info"
+                return ret_state, "%s: %d of %d (%s)" % (target,
+                                                         num_received,
+                                                         num_sent,
+                                                         time_info)
+    
 class net_command(hm_classes.hm_command):
     info_str = "network information"
     def __init__(self, name):

@@ -23,8 +23,9 @@
 """ host-monitoring, with 0MQ and twisted support """
 
 from twisted.internet import reactor, task
-from twisted.internet.protocol import ClientFactory, Protocol, Factory
+from twisted.internet.protocol import ClientFactory, Protocol, Factory, DatagramProtocol
 from twisted.python import log
+from twisted.pair import ip, rawudp, ethernet
 import zmq
 import sys
 import os
@@ -42,6 +43,9 @@ import net_tools
 from lxml import etree
 from host_monitoring import limits
 import argparse
+import subprocess
+import icmp_twisted
+import pprint
 
 try:
     from host_monitoring_version import VERSION_STRING
@@ -68,7 +72,8 @@ def client_code():
                 for arg_index, arg in enumerate(cur_ns.arguments):
                     srv_com["arguments:arg%d" % (arg_index)] = arg
             srv_com["arguments:rest"] = " ".join(rest)
-            result = net_tools.zmq_connection(global_config["IDENTITY_STRING"]).add_connection(conn_str, srv_com)
+            result = net_tools.zmq_connection("%s:%d" % (global_config["IDENTITY_STRING"],
+                                                         os.getpid())).add_connection(conn_str, srv_com)
             if result:
                 error_result = result.xpath(None, ".//ns:result[@state != '0']")
                 if error_result:
@@ -402,10 +407,100 @@ class tcp_factory(ClientFactory):
     def __del__(self):
         return "del tcp_factory"
 
+class hm_icmp_protocol(icmp_twisted.icmp_protocol):
+    def __init__(self, tw_process, log_template):
+        self.__log_template = log_template
+        icmp_twisted.icmp_protocol.__init__(self)
+        self.__work_dict, self.__seqno_dict = ({}, {})
+        self.__twisted_process = tw_process
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, "[icmp] %s" % (what))
+    def __setitem__(self, key, value):
+        self.__work_dict[key] = value
+    def __getitem__(self, key):
+        return self.__work_dict[key]
+    def __delitem__(self, key):
+        for seq_key in self.__work_dict[key]:
+            if seq_key in self.__seqno_dict:
+                del self.__seqno_dict[seq_key]
+        del self.__work_dict[key]
+    def ping(self, seq_str, target, num_pings, timeout):
+        self.log("ping to %s (%d, %.2f) [%s]" % (target, num_pings, timeout, seq_str))
+        cur_time = time.time()
+        self[seq_str] = {"host"       : target,
+                         "num"        : num_pings,
+                         "timeout"    : timeout,
+                         "start"      : cur_time,
+                         # time between pings
+                         "slide_time" : 0.1,
+                         "sent"       : 0,
+                         "recv_ok"    : 0,
+                         "recv_fail"  : 0,
+                         "error_list" : [],
+                         "sent_list"  : {},
+                         "recv_list"  : {}}
+        self._update()
+    def _update(self):
+        cur_time = time.time()
+        del_keys = []
+        for key, value in self.__work_dict.iteritems():
+            if value["sent"] < value["num"]:
+                if value["sent_list"]:
+                    # send if last send was at least slide_time ago
+                    to_send = max(value["sent_list"].values()) + value["slide_time"] < cur_time or value["recv_ok"] == value["sent"]
+                else:
+                    # always send
+                    to_send = True
+                if to_send:
+                    value["sent"] += 1
+                    try:
+                        self.send_echo(value["host"])
+                    except:
+                        value["error_list"].append(process_tools.get_except_info())
+                        self.log("error sending to %s: %s" % (value["host"],
+                                                              ", ".join(value["error_list"])),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        value["sent_list"][self.echo_seqno] = cur_time
+                        self.__seqno_dict[self.echo_seqno] = key
+                        reactor.callLater(value["slide_time"] + 0.001, self._update)
+                        reactor.callLater(value["timeout"] + value["slide_time"] * value["num"] + 0.001, self._update)
+            # check for timeout
+            for seq_to in [s_key for s_key, s_value in value["sent_list"].iteritems() if abs(s_value - cur_time) > value["timeout"]]:
+                value["recv_fail"] += 1
+                value["recv_list"][seq_to] = None
+            # check for ping finish
+            if value["error_list"] or (value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"]):
+                all_times = [value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) != None]
+                self.__twisted_process.send_ping_result(key, value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
+                del_keys.append(key)
+        for del_key in del_keys:
+            del self[del_key]
+        #pprint.pprint(self.__work_dict)
+    def received(self, dgram):
+        if dgram.packet_type == 0:
+            seqno, success = (dgram.seqno, True)
+        else:
+            seqno, success = (0, False)
+        if seqno not in self.__seqno_dict:
+            self.log("got result with unknown seqno %d" % (seqno),
+                     logging_tools.LOG_LEVEL_ERROR)
+        else:
+            value = self[self.__seqno_dict[seqno]]
+            if not seqno in value["recv_list"]:
+                value["recv_list"][seqno] = time.time()
+                value["recv_%s" % ("ok" if success else "fail")] += 1
+        self._update()
+        
 class twisted_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__relayer_socket = self.connect_to_socket("internal")
+        my_observer = logging_tools.twisted_log_observer(global_config["LOG_NAME"],
+                                                         global_config["LOG_DESTINATION"])
+        log.startLoggingWithObserver(my_observer, setStdout=False)
+        self.icmp_protocol = hm_icmp_protocol(self, self.__log_template)
+        reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
         # init twisted reactor
         #self._got_udp = udp_log_receiver()
         #tcp_factory = Factory()
@@ -414,18 +509,22 @@ class twisted_process(threading_tools.process_obj):
         #reactor.listenTCP(8004, tcp_factory)
         #log_recv = twisted_log_receiver(self)
         self.register_func("connection", self._connection)
+        self.register_func("ping", self._ping)
     def _connection(self, src_id, srv_com, *args, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
-        print srv_com
         try:
             cur_con = reactor.connectTCP(srv_com["host"].text, int(srv_com["port"].text), tcp_factory(self, src_id, srv_com))
         except:
-            print process_tools.get_except_info()
+            print "exception in _connection (twisted_process): ", process_tools.get_except_info()
         #self.send_pool_message("pong", cur_idx)
+    def _ping(self, *args, **kwargs):
+        self.icmp_protocol.ping(*args)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def send_result(self, src_id, srv_com, data):
         self.send_to_socket(self.__relayer_socket, ["twisted_result", src_id, srv_com, data])
+    def send_ping_result(self, *args):
+        self.send_to_socket(self.__relayer_socket, ["twisted_ping_result"] + list(args))
 
 class relay_thread(threading_tools.process_pool):
     def __init__(self):
@@ -669,12 +768,14 @@ class server_thread(threading_tools.process_pool):
             process_tools.set_handles({"out" : (1, "host-monitoring.out"),
                                        "err" : (0, "/var/lib/logging-server/py_err")},
                                       zmq_context=self.zmq_context)
+        self.add_process(twisted_process("twisted"), twisted=True, start=True)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
         self._init_msi_block()
         self._init_network_sockets()
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
+        self.register_func("twisted_ping_result", self._twisted_ping_result)
         self._show_config()
         if not self._init_commands():
             self._sigint("error init")
@@ -731,33 +832,78 @@ class server_thread(threading_tools.process_pool):
                 rest_str = rest_el[0].text or u""
             else:
                 rest_str = u""
+            # is a delayed command
+            delayed = False
             self.log("got command '%s' from '%s'" % (srv_com["command"].text,
                                                      srv_com["source"].attrib["host"]))
-            
             srv_com.update_source()
+            cur_com = srv_com["command"].text
             srv_com["result"] = {"state" : server_command.SRV_REPLY_STATE_OK,
                                  "reply" : "ok"}
-            if srv_com["command"].text == "status":
+            if cur_com == "status":
                 srv_com["result"].attrib["reply"] = "ok process is running"
-            elif srv_com["command"].text == "version":
+            elif cur_com == "version":
                 srv_com["result"].attrib["reply"] = "version is %s" % (VERSION_STRING)
-            elif srv_com["command"].text in self.commands:
-                self._handle_module_command(srv_com, rest_str)
+            elif cur_com in self.commands:
+                delayed = self._handle_module_command(srv_com, rest_str)
             else:
                 srv_com["result"].attrib.update(
-                    {"reply" : "unknown command '%s'" % (srv_com["command"].text),
+                    {"reply" : "unknown command '%s'" % (cur_com),
                      "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
-            zmq_sock.send_unicode(src_id, zmq.SNDMORE)
-            zmq_sock.send_unicode(unicode(srv_com))
-            del srv_com
+            if delayed:
+                # delayed is a subprocess_struct
+                delayed.set_send_stuff(src_id, zmq_sock)
+                com_usage = len([True for cur_del in self.__delayed if cur_del.command == cur_com])
+                if com_usage > delayed.Meta.max_usage:
+                    srv_com["result"].attrib.update(
+                        {"reply" : "delay limit reached for '%s'" % (cur_com),
+                         "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                    delayed = None
+                else:
+                    if not self.__delayed:
+                        self.register_timer(self._check_delayed, 0.1)
+                        self.loop_granularity = 0.1
+                    if delayed.Meta.twisted:
+                        self.send_to_process("twisted",
+                                             *delayed.run())
+                    else:
+                        delayed.run()
+                    self.__delayed.append(delayed)
+            if not delayed:
+                zmq_sock.send_unicode(src_id, zmq.SNDMORE)
+                zmq_sock.send_unicode(unicode(srv_com))
+                del srv_com
         else:
             self.log("cannot receive more data, already got '%s'" % (src_id),
                      logging_tools.LOG_LEVEL_ERROR)
+    def _check_delayed(self):
+        cur_time = time.time()
+        new_list = []
+        for cur_del in self.__delayed:
+            if cur_del.Meta.use_popen:
+                if cur_del.poll() is not None:
+                    print "finished"
+                    cur_del.process()
+                    cur_del.send_return()
+                elif abs(cur_time - cur_del._init_time) > cur_del.Meta.max_runtime:
+                    self.log("delay_object runtime exceeded, stopping")
+                    cur_del.terminate()
+                    cur_del.send_return()
+                else:
+                    new_list.append(cur_del)
+            else:
+                if not cur_del.terminated:
+                    new_list.append(cur_del)
+        self.__delayed = new_list
+        if not len(self.__delayed):
+            self.loop_granularity = 1.0
+            self.unregister_timer(self._check_delayed)
     def _handle_module_command(self, srv_com, rest_str):
         cur_com = self.commands[srv_com["command"].text]
+        sp_struct = None
         try:
             cur_ns = cur_com.handle_server_commandline(rest_str.split())
-            cur_com(srv_com, cur_ns)
+            sp_struct = cur_com(srv_com, cur_ns)
         except:
             exc_info = process_tools.exception_info()
             for log_line in process_tools.exception_info().log_lines:
@@ -765,6 +911,12 @@ class server_thread(threading_tools.process_pool):
             srv_com["result"].attrib.update({
                 "reply" : "caught server exception '%s'" % (process_tools.get_except_info()),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)})
+        return sp_struct
+    def _twisted_ping_result(self, src_proc, src_id, *args):
+        ping_id = args[0]
+        for cur_del in self.__delayed:
+            if cur_del.seq_str == ping_id:
+                cur_del.process(*args)
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
@@ -782,6 +934,7 @@ class server_thread(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
     def _init_commands(self):
         self.log("init commands")
+        self.__delayed = []
         from host_monitoring import modules
         self.module_list = modules.module_list
         self.commands = modules.command_dict

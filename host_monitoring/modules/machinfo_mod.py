@@ -44,6 +44,7 @@ import tempfile
 import base64
 import bz2
 import server_command
+import subprocess
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -1229,6 +1230,34 @@ class df_command(hm_classes.hm_command):
                                                                max_part,
                                                                max_stuff["mountpoint"],
                                                                logging_tools.get_plural("partition", len(all_parts)))
+    def interpret_old(self, result, parsed_coms):
+        result = hm_classes.net_to_sys(result[3:])
+        if result.has_key("perc"):
+            # single-partition result
+            ret_state = limits.check_ceiling(result["perc"], parsed_coms.warn, parsed_coms.crit)
+            if result.has_key("mapped_disk"):
+                part_str = "%s (is %s)" % (result["mapped_disk"], result["part"])
+            else:
+                part_str = result["part"]
+            return ret_state, "%.0f %% (%s of %s%s) used on %s" % (result["perc"],
+                                                                   self._get_size_str(result["used"]),
+                                                                   self._get_size_str(result["total"]),
+                                                                   ", mp %s" % (result["mountpoint"]) if result.has_key("mountpoint") else "",
+                                                                   part_str)
+        else:
+            # all-partition result
+            max_stuff = {"perc" : -1}
+            all_parts = sorted(result.keys())
+            for part_name in all_parts:
+                d_stuff = result[part_name]
+                if d_stuff["perc"] > max_stuff["perc"]:
+                    max_stuff = d_stuff
+                    max_part = part_name
+            ret_state = limits.check_ceiling(max_stuff["perc"], parsed_coms.warn, parsed_coms.crit)
+            return ret_state, "%.0f %% used on %s (%s, %s)" % (max_stuff["perc"],
+                                                               max_part,
+                                                               max_stuff["mountpoint"],
+                                                               logging_tools.get_plural("partition", len(all_parts)))
 
 class get_uuid_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
@@ -1397,6 +1426,12 @@ class load_command(hm_classes.hm_command):
 class uptime_command(hm_classes.hm_command):
     info_string = "update information"
     def __call__(self, srv_com, cur_ns):
+        cur_sps = hm_classes.subprocess_struct(srv_com, "ps auxw", self._process)
+        return cur_sps
+        return hm_classes.subprocess_struct(srv_com, "ps auxw ; sleep 10")
+    def _process(self, sps):
+        print sps.read()
+        srv_com = sps.srv_com
         upt_data = [int(float(value)) for value in open("/proc/uptime", "r").read().strip().split()]
         srv_com["uptime"] = "%d" % (upt_data[0])
         if len(upt_data) > 1:
