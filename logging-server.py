@@ -279,7 +279,7 @@ class log_receiver(threading_tools.process_obj):
             if in_str == "meta-server-test":
                 log_com, ret_str, python_log_com = (None, "", False)
             else:
-                raise ValueError, "Unable to dePickle or deMarshal string (%s)" % (str(in_str[0:10]))
+                raise ValueError, "Unable to dePickle or deMarshal string (%s)" % (unicode(in_str[0:10]))
         return log_com, ret_str, python_log_com
     def get_python_handle(self, record):
         log_strs = []
@@ -530,7 +530,8 @@ class main_process(threading_tools.process_pool):
         self.send_to_process("receiver", "update")
     def _recv_data(self, zmq_socket):
         #zmq_socket.recv()
-        self.send_to_process("receiver", "log_recv", zmq_socket.recv())
+        in_data = zmq_socket.recv()
+        self.send_to_process("receiver", "log_recv", in_data)
     def process_start(self, src_process, src_pid):
         process_tools.append_pids("logserver/logserver", src_pid, mult=3)
         if self.__msi_block:
