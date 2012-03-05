@@ -219,3 +219,6 @@ td.meta_model_value {
 .ui-widget-content a {
     color: #0000ff !important ;
 }
+
+.noborder { border: none; }
+.disabled-hover { /* dummyclass for fake disabled but hoverable elements */ }
