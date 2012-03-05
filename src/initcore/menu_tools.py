@@ -298,7 +298,8 @@ class olim_menu(object):
                 if not href:
                     # If all registered resolvers found nothing, do standard resolving
                     href = reverse(node.attrib["ref"], args=[part.strip() for part in node.attrib.get("refargs", "").split(",") if part.strip()])
-            except:
+            except Exception as e:
+                print e
                 href = reverse("session:menu_folder", args=[base64.b64encode(node.attrib["xpath"])])
             else:
                 pass
