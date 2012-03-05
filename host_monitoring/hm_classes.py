@@ -48,21 +48,41 @@ class subprocess_struct(object):
         self.srv_com = srv_com
         self.command = srv_com["command"].text
         self.command_line = com_line
+        self.multi_command = type(self.command_line) == type([])
+        self.com_num = 0
         self.popen = None
         self.cb_func = cb_func
         self._init_time = time.time()
         # if not a popen call
         self.terminated = False
     def run(self):
-        self.start_time = time.time()
-        self.popen = subprocess.Popen(self.command_line, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        if self.multi_command:
+            self.cur_comline = self.command_line[self.com_num]
+            self.com_num += 1
+        else:
+            self.cur_comline = self.command_line
+        self.popen = subprocess.Popen(self.cur_comline, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     def set_send_stuff(self, src_id, zmq_sock):
         self.src_id = src_id
         self.zmq_sock = zmq_sock
     def read(self):
         return self.popen.stdout.read()
-    def poll(self):
-        return self.popen.poll()
+    def finished(self):
+        self.cur_result = self.popen.poll()
+        fin = False
+        if self.cur_result is not None:
+            if self.multi_command:
+                if self.cb_func:
+                    self.cb_func(self, self.com_num - 1)
+                if self.com_num == len(self.command_line):
+                    # last command
+                    fin = True
+                else:
+                    # next command
+                    self.run()
+            else:
+                fin = True
+        return fin
     def process(self):
         if self.cb_func:
             self.cb_func(self)

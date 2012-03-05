@@ -1418,7 +1418,6 @@ class load_command(hm_classes.hm_command):
         load5  = float(result["load5"])
         load15 = float(result["load15"])
         maxload = max(load1, load5, load15)
-        print parsed_coms
         ret_state = limits.check_ceiling(maxload, parsed_coms.warn, parsed_coms.crit)
         ret_str = "load (1/5/15): %.2f %.2f %.2f" % (load1, load5, load15)
         return ret_state, ret_str

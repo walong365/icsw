@@ -234,6 +234,7 @@ class host_message(object):
         self.srv_com.delete_subtree("arguments")
         for arg_idx, arg in enumerate(rest):
             self.srv_com["arguments:arg%d" % (arg_idx)] = arg
+        self.srv_com["arguments:rest"] = " ".join(rest)
         self.ns = cur_ns
     def check_timeout(self, cur_time):
         return abs(cur_time - self.s_time) > 1
@@ -497,7 +498,9 @@ class twisted_process(threading_tools.process_obj):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__relayer_socket = self.connect_to_socket("internal")
         my_observer = logging_tools.twisted_log_observer(global_config["LOG_NAME"],
-                                                         global_config["LOG_DESTINATION"])
+                                                         global_config["LOG_DESTINATION"],
+                                                         zmq=True,
+                                                         context=self.zmq_context)
         log.startLoggingWithObserver(my_observer, setStdout=False)
         self.icmp_protocol = hm_icmp_protocol(self, self.__log_template)
         reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
@@ -526,12 +529,25 @@ class twisted_process(threading_tools.process_obj):
     def send_ping_result(self, *args):
         self.send_to_socket(self.__relayer_socket, ["twisted_ping_result"] + list(args))
 
+class my_cached_file(process_tools.cached_file):
+    def __init__(self, name, **kwargs):
+        self.hosts = set()
+        process_tools.cached_file.__init__(self, name, **kwargs)
+    def changed(self):
+        if self.content:
+            self.hosts = set([cur_line.strip() for cur_line in self.content.strip().split("\n") if cur_line.strip() and not cur_line.strip().startswith("#")])
+        else:
+            self.hosts = set()
+        print self, self.hosts
+        
 class relay_thread(threading_tools.process_pool):
     def __init__(self):
         # copy to access from modules
         from host_monitoring import modules
         self.modules = modules
         self.global_config = global_config
+        self.__verbose = global_config["VERBOSE"]
+        print "verb", self.__verbose
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.renice()
@@ -546,6 +562,7 @@ class relay_thread(threading_tools.process_pool):
         self.add_process(twisted_process("twisted"), twisted=True, start=True)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
+        self._init_filecache()
         self._init_msi_block()
         self._init_ipc_sockets()
         self.register_exception("int_error", self._sigint)
@@ -565,6 +582,10 @@ class relay_thread(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+    def _init_filecache(self):
+        self.__new_clients, self.__old_clients = (my_cached_file("/tmp/.new_clients", log_handle=self.log),
+                                                  my_cached_file("/tmp/.old_clients", log_handle=self.log))
+        self.__use_new_code = False
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
@@ -621,6 +642,8 @@ class relay_thread(threading_tools.process_pool):
             os.chmod(process_tools.get_zmq_ipc_name("receiver")[5:], 0777)
             self.register_poller(client, zmq.POLLIN, self._recv_command)
     def _recv_command(self, zmq_sock):
+        self.__old_clients.update()
+        self.__new_clients.update()
         src_id = zmq_sock.recv()
         more = zmq_sock.getsockopt(zmq.RCVMORE)
         if more:
@@ -648,8 +671,17 @@ class relay_thread(threading_tools.process_pool):
                 self.log("got command '%s' for '%s' (XML: %s)" % (srv_com["command"].text,
                                                                   srv_com["host"].text,
                                                                   str(xml_input)))
-                self._send_to_old_client(src_id, srv_com, xml_input)
-                #self._send_to_client(src_id, srv_com, xml_input)
+                # decide which code to use
+                if srv_com["host"].text in self.__new_clients.hosts:
+                    self._send_to_client(src_id, srv_com, xml_input)
+                elif srv_com["host"].text in self.__old_clients.hosts:
+                    self._send_to_old_client(src_id, srv_com, xml_input)
+                elif self.__use_new_code:
+                    # fallback new
+                    self._send_to_client(src_id, srv_com, xml_input)
+                else:
+                    # fallback old
+                    self._send_to_old_client(src_id, srv_com, xml_input)
             else:
                 self.log("cannot interpret input data '%s' is srv_command" % (data),
                          logging_tools.LOG_LEVEL_ERROR)
@@ -881,7 +913,7 @@ class server_thread(threading_tools.process_pool):
         new_list = []
         for cur_del in self.__delayed:
             if cur_del.Meta.use_popen:
-                if cur_del.poll() is not None:
+                if cur_del.finished():
                     print "finished"
                     cur_del.process()
                     cur_del.send_return()

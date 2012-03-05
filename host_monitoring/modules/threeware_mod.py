@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -21,61 +21,18 @@
 import sys
 import re
 import commands
-from host_monitoring import limits
-from host_monitoring import hm_classes
+from host_monitoring import limits, hm_classes
 import os
 import os.path
 import time
 import logging_tools
+import server_command
 
 TW_EXEC = "/sbin/tw_cli"
 
-class my_modclass(hm_classes.hm_fileinfo):
-    def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "threeware",
-                                        "provides a interface to check the status of threeware-cards",
-                                        **args)
-    def init(self, mode, logger, basedir_name, **args):
-        self.__last_ctrl_check = (-1, -1)
-        if mode == "i":
-            self.ctrl_dict = None
-    def needs_hourly_wakeup_call(self):
-        return True
-    def hourly_wakeup_call(self, logger):
-        act_hour, act_day = (time.localtime()[3],
-                             time.localtime()[6])
-        # check every Friday at 02:00
-        if (act_day == 4 and act_hour == 2):
-            if self.__last_ctrl_check != (act_day, act_hour):
-                ret_str = self.check_exec()
-                if ret_str.startswith("ok"):
-                    self.__last_ctrl_check = (act_day, act_hour)
-                    ctrl_list = self.ctrl_dict.keys()
-                    to_check = []
-                    for c_name in ctrl_list:
-                        c_stuff = self.check_controller(c_name)
-                        c_type = c_stuff.get("type", "6200")
-                        if c_type.startswith("6"):
-                            logger.warning("skipping verify for 6xxx (local is a %s) - version controllers" % (c_type))
-                        else:
-                            for u_name, u_stuff in c_stuff["units"].iteritems():
-                                if u_stuff["status"].lower() == "ok":
-                                    to_check.append((c_type, c_name, u_name))
-                                else:
-                                    logger.warning("skipping verify for unit u%s on %s (%s, status is %s)" % (u_name, c_name, c_type, u_stuff["status"]))
-                    if to_check:
-                        logger.info("checking %s: %s" % (logging_tools.get_plural("unit", len(to_check)),
-                                                         ", ".join(["u%s on %s (type %s)" % (u, c, t) for t, c, u in to_check])))
-                        for c_type, c_name, u_name in to_check:
-                            com_str = "%s maint verify %s u%s" % (TW_EXEC, c_name, u_name)
-                            stat, out = commands.getstatusoutput(com_str)
-                            if stat:
-                                logger.error("'%s' gave (%d) %s" % (com_str, stat, out))
-                            else:
-                                logger.info("'%s' gave %s" % (com_str, out))
-                else:
-                    logger.error(ret_str)
+class _general(hm_classes.hm_module):
+    def init_module(self):
+        self.ctrl_dict = None
     def check_exec(self):
         if os.path.isfile(TW_EXEC):
             return "ok"
@@ -198,27 +155,127 @@ class my_modclass(hm_classes.hm_fileinfo):
                                         ctrl_dict["units"][pm.group("unit")]["ports"].append(pm.group("num"))
         return ctrl_dict
 
-class tw_status_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "tw_status", **args)
-        self.help_str = "returns the status of installed threeware-controllers"
-        self.is_immediate = False
-        self.cache_timeout = 60
-    def server_call(self, cm):
-        ret_str = self.module_info.check_exec()
-        if ret_str.startswith("ok"):
-            ret_str = self.module_info.update_ctrl_dict()
-            if ret_str.startswith("ok"):
-                if cm:
-                    ctrl_list = [x for x in cm if x in self.module_info.ctrl_dict.keys()]
-                else:
-                    ctrl_list = self.module_info.ctrl_dict.keys()
-                ret_dict = {}
-                for ctrl_id in ctrl_list:
-                    ret_dict[ctrl_id] = self.module_info.check_controller(ctrl_id)
-                ret_str = "ok %s" % (hm_classes.sys_to_net(ret_dict))
-        return ret_str
-    def client_call(self, result, parsed_coms):
+class tw_status_command(hm_classes.hm_command):
+    info_string = "3ware controller information"
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+    def __call__(self, srv_com, cur_ns):
+        if self.module.check_exec().startswith("ok"):
+            self.module.update_ctrl_dict()
+            if "arguments:arg0" in srv_com:
+                ctrl_list = [srv_com["arguments:arg0"].text]
+            else:
+                ctrl_list = self.module.ctrl_dict.keys()
+            if ctrl_list:
+                return hm_classes.subprocess_struct(srv_com, ["%s info %s" % (TW_EXEC, ctrl_id) for ctrl_id in ctrl_list], cb_func=self._cb_func)
+            else:
+                srv_com["result"].attrib.update({"reply" : "emptry controller list",
+                                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+        else:
+            srv_com["result"].attrib.update({"reply" : "monitoring tool '%s' missing" % (TW_EXEC),
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+    def _cb_func(self, sps_struct, cur_num=None):
+        if cur_num is not None:
+            ctrl_result = {}
+            ctrl_id = sps_struct.cur_comline.split()[-1]
+            if sps_struct.cur_result:
+                ctrl_result["error"] = "%s gave %d" % (sps_struct.cur_comline, sps_struct.cur_result)
+            else:
+                ctrl_result["error"] = "ok"
+                lines = [line.strip() for line in sps_struct.read().split("\n") if line.strip()]
+                num_units, num_ports = (0, 0)
+                l_mode = "c"
+                if lines:
+                    if lines[0].lower().strip().startswith("unit"):
+                        # new format
+                        if lines[0].lower().count("rcmpl"):
+                            # new tw_cli
+                            u2_match = u2_1_match
+                        else:
+                            # old tw_cli
+                            u2_match = u2_0_match
+                        for line in lines:
+                            um = u2_match.match(line)
+                            pm = p2_match.match(line)
+                            bm = bbu_match.match(line)
+                            if um:
+                                ctrl_result["units"][um.group("num")] = {
+                                    "raid"   : um.group("raid").strip(),
+                                    "size"   : "%s GB" % (um.group("size").strip()),
+                                    "ports"  : [],
+                                    "status" : um.group("status").strip(),
+                                    "cmpl"   : um.group("cmpl")}
+                            elif pm:
+                                ctrl_result["ports"][pm.group("num")] = {
+                                    "status" : pm.group("status").strip(),
+                                    "unit"   : pm.group("unit")}
+                                if ctrl_result["units"].has_key(pm.group("unit")):
+                                    ctrl_result["units"][pm.group("unit")]["ports"].append(pm.group("num"))
+                            elif bm:
+                                ctrl_result["bbu"] = dict([(key, bm.group(key)) for key in [
+                                    "onlinestate",
+                                    "ready",
+                                    "status",
+                                    "volt",
+                                    "temp"]])
+                    else:
+                        for line in lines:
+                            if line.startswith("# of unit"):
+                                uc_m = re.match("^# of units\s*:\s*(\d+).*$", line)
+                                if uc_m:
+                                    num_units = uc_m.group(1)
+                                l_mode = "u"
+                            elif line.startswith("# of port"):
+                                l_mode = "p"
+                                pc_m = re.match("^# of ports\s*:\s*(\d+).*$", line)
+                                if num_units and pc_m:
+                                    num_ports = pc_m.group(1)
+                            elif l_mode == "u":
+                                um = unit_match.match(line)
+                                if um:
+                                    cmpl_str, stat_str = ("???",
+                                                          um.group("status").strip())
+                                    if stat_str.lower().startswith("rebuil"):
+                                        # try to exctract rebuild_percentage
+                                        pc_m = re.match("^(?P<stat>\S+)\s+\((?P<perc>\d+)%\)$", stat_str)
+                                        if pc_m:
+                                            stat_str = pc_m.group("stat")
+                                            cmpl_str = pc_m.group("perc")
+                                    ctrl_result["units"][um.group("num")] = {
+                                        "raid"   : um.group("raid").strip(),
+                                        "size"   : um.group("size").strip(),
+                                        "blocks" : um.group("blocks").strip(),
+                                        "ports"  : [],
+                                        "status" : stat_str,
+                                        "cmpl"   : cmpl_str}
+                            elif l_mode == "p":
+                                pm = port_match.match(line)
+                                if pm:
+                                    ctrl_result["ports"][pm.group("num")] = {"info"   : pm.group("info").strip(),
+                                                                             "status" : pm.group("status").strip()}
+                                    if ctrl_result["units"].has_key(pm.group("unit")):
+                                        ctrl_result["units"][pm.group("unit")]["ports"].append(pm.group("num"))
+            sps_struct.srv_com.set_dictionary("result:ctrl_%s" % (ctrl_id), ctrl_result)
+        else:
+            pass
+##    def server_call(self, cm):
+##        ret_str = self.module_info.check_exec()
+##        if ret_str.startswith("ok"):
+##            ret_str = self.module_info.update_ctrl_dict()
+##            if ret_str.startswith("ok"):
+##                if cm:
+##                    ctrl_list = [x for x in cm if x in self.module_info.ctrl_dict.keys()]
+##                else:
+##                    ctrl_list = self.module_info.ctrl_dict.keys()
+##                ret_dict = {}
+##                for ctrl_id in ctrl_list:
+##                    ret_dict[ctrl_id] = self.module_info.check_controller(ctrl_id)
+##                ret_str = "ok %s" % (hm_classes.sys_to_net(ret_dict))
+##        return ret_str
+    def interpret(self, srv_com, cur_ns):
+        print unicode(srv_com)
+        print cur_ns
+    def interpret_old(self, result, parsed_coms):
         if result.startswith("ok "):
             tw_dict = hm_classes.net_to_sys(result[3:])
             if tw_dict.has_key("units"):
@@ -278,14 +335,14 @@ class tw_status_command(hm_classes.hmb_command):
                 ret_list.append("no controller found")
                 num_error = 1
             if num_error:
-                ret_state, ret_str = (limits.nag_STATE_CRITICAL, "ERROR")
+                ret_state = limits.nag_STATE_CRITICAL
             elif num_warn:
-                ret_state, ret_str = (limits.nag_STATE_WARNING, "WARNING")
+                ret_state = limits.nag_STATE_WARNING
             else:
-                ret_state, ret_str = (limits.nag_STATE_OK, "OK")
-            return ret_state, "%s: %s" % (ret_str, ", ".join(ret_list))
+                ret_state = limits.nag_STATE_OK
+            return ret_state, ", ".join(ret_list)
         else:
-            return limits.nag_STATE_CRITICAL, "error %s" % (resulto)
+            return limits.nag_STATE_CRITICAL, "error %s" % (result)
 
 if __name__ == "__main__":
     print "This is a loadable module."

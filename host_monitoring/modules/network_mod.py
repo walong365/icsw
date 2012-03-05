@@ -622,7 +622,7 @@ class ping_command(hm_classes.hm_command):
             target_host, num_pings = args
             timeout = 5.0
         elif len(args) == 1:
-            target_host = args
+            target_host = args[0]
             num_pings, timeout = (3, 5)
         else:
             srv_com["result"].attrib.update({"reply" : "wrong number of arguments (%d)" % (len(args)),
@@ -630,7 +630,7 @@ class ping_command(hm_classes.hm_command):
             cur_sps, target_host = (None, None)
         if target_host:
             num_pings, timeout = (int(num_pings),
-                                  float(timeout))
+                                  max(0.1, float(timeout)))
             cur_sps = ping_sp_struct(srv_com, target_host, num_pings, timeout)
         return cur_sps
     def interpret(self, srv_com, cur_ns):
@@ -743,7 +743,6 @@ class net_command(hm_classes.hm_command):
         f_val /= 1024.
         return "%.2f GB/s" % (f_val)
     def interpret(self, srv_com, cur_ns):
-        print "***", cur_ns
         dev_name = srv_com["arguments:arg0"].text
         value_tree = srv_com["device:device_%s:values" % (dev_name)]
         try:
