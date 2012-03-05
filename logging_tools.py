@@ -235,6 +235,8 @@ def get_logger(name, destination, **kwargs):
                 act_logger.addHandler(zmq_handler(pub))
                 pass
             else:
+                if act_dest.count("zmq"):
+                    raise ValueError, "requested ZMQ-type destination '%s' without ZMQ-Protocol" % (act_dest)
                 if act_dest.startswith("uds:"):
                     if is_linux:
                         # linux, ok

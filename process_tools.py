@@ -602,6 +602,8 @@ class cached_file(object):
             self.__log_handle(what, log_level)
         else:
             logging_tools.my_syslog(what, log_level)
+    def changed(self):
+        pass
     def update(self):
         if os.path.exists(self.__name):
             try:
@@ -611,6 +613,7 @@ class cached_file(object):
                                                      get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
                 self.content = None
+                self.changed()
             else:
                 update, act_time = (True, time.time())
                 if self.__last_stat and self.__last_update:
@@ -624,11 +627,15 @@ class cached_file(object):
                         self.log("error reading from %s: %s" % (self.__name,
                                                                 get_except_info()),
                                  logging_tools.LOG_LEVEL_ERROR)
-                        content = None
+                        self.content = None
+                        self.changed()
                     else:
                         self.content = content
+                        self.changed()
         else:
+            self.log("file '%s' does not exist" % (self.__name), logging_tools.LOG_LEVEL_ERROR)
             self.content = None
+            self.changed()
         
 def save_pid(name, pid=None, mult=1):
     return append_pids(name, pid=pid, mult=mult, mode="w")
