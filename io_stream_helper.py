@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2009,2010,2011 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2009,2010,2011,2012 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -87,6 +87,8 @@ class io_stream(object):
             self.__zmq_sock.send(cPickle.dumps(t_dict))
     def close(self):
         del self.__protocol
+    def flush(self):
+        pass
     def __del__(self):
         pass
 
