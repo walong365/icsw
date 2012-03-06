@@ -547,7 +547,6 @@ class relay_thread(threading_tools.process_pool):
         self.modules = modules
         self.global_config = global_config
         self.__verbose = global_config["VERBOSE"]
-        print "verb", self.__verbose
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.renice()
@@ -825,12 +824,12 @@ class server_thread(threading_tools.process_pool):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
-        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=2)
+        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3)
         if True:#not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("collserver")
             msi_block.add_actual_pid(mult=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/host-monitoring start"
             msi_block.stop_command = "/etc/init.d/host-monitoring force-stop"
             msi_block.kill_pids = True
@@ -839,6 +838,11 @@ class server_thread(threading_tools.process_pool):
         else:
             msi_block = None
         self.__msi_block = msi_block
+    def process_start(self, src_process, src_pid):
+        process_tools.append_pids(self.__pid_name, src_pid, mult=3)
+        if self.__msi_block:
+            self.__msi_block.add_actual_pid(src_pid, mult=3)
+            self.__msi_block.save_block()
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.XREP)
         client.setsockopt(zmq.IDENTITY, "ms")
@@ -962,6 +966,7 @@ class server_thread(threading_tools.process_pool):
             self.log("Config : %s" % (conf))
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)
+        print "***", self.__pid_name
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
     def _init_commands(self):

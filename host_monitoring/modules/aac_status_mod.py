@@ -20,8 +20,7 @@
 
 import sys
 import commands
-from host_monitoring import limits
-from host_monitoring import hm_classes
+from host_monitoring import limits, hm_classes
 import os
 import os.path
 import logging_tools
@@ -29,15 +28,9 @@ import pprint
 
 ARCCONF_BIN = "/usr/sbin/arcconf"
 
-class my_modclass(hm_classes.hm_fileinfo):
-    def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "aac_status",
-                                        "provides a interface to check the status of ips-driven controllers (ServerRAID)",
-                                        **args)
-    def init(self, mode, logger, basedir_name, **args):
-        if mode == "i":
-            self.__ctrl_dict = {}
+class _general(hm_classes.hm_module):
+    def init_module(self):
+        self.__ctrl_dict = {}
     def _exec_command(self, com, logger):
         stat, out = commands.getstatusoutput(com)
         if stat:
@@ -153,12 +146,9 @@ class my_modclass(hm_classes.hm_fileinfo):
 def get_short_state(in_state):
     return in_state.lower()
 
-class aac_status_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "aac_status", **args)
-        self.help_str = "returns the status of the connected IPS-devices"
-        self.cache_timeout = 600
-        self.is_immediate = False
+class aac_status_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
     def server_call(self, cm):
         if not os.path.isfile(ARCCONF_BIN):
             return "error no arcconf-binary found in %s" % (os.path.dirname(ARCCONF_BIN))
