@@ -326,17 +326,18 @@ class usv_server_stuff(bg_stuff):
         apc_dict = self.do_apc_call()
         if apc_dict:
             for key, value in apc_dict.iteritems():
-                first_v = value.split()[0]
-                if key == "linev":
-                    ret_list.append("usv.volt.line:f:%.2f" % (float(first_v)))
-                elif key == "loadpct":
-                    ret_list.append("usv.percent.load:f:%.2f" % (float(first_v)))
-                elif key == "bcharge":
-                    ret_list.append("usv.percent.charge:f:%.2f" % (float(first_v)))
-                elif key == "timeleft":
-                    ret_list.append("usv.time.left:f:%.2f" % (float(first_v)))
-                elif key == "itemp":
-                    ret_list.append("usv.temp.int:f:%.2f" % (float(first_v)))
+                if value.split():
+                    first_v = value.split()[0]
+                    if key == "linev":
+                        ret_list.append("usv.volt.line:f:%.2f" % (float(first_v)))
+                    elif key == "loadpct":
+                        ret_list.append("usv.percent.load:f:%.2f" % (float(first_v)))
+                    elif key == "bcharge":
+                        ret_list.append("usv.percent.charge:f:%.2f" % (float(first_v)))
+                    elif key == "timeleft":
+                        ret_list.append("usv.time.left:f:%.2f" % (float(first_v)))
+                    elif key == "itemp":
+                        ret_list.append("usv.temp.int:f:%.2f" % (float(first_v)))
         return ret_list
 
 class quota_line(object):
