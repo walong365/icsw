@@ -275,7 +275,6 @@ class olim_menu(object):
                 filter_value = [filter_value]
             if filter_key in node.attrib:
                 # Admin roles get everything
-                print filter_key, filter_value
                 if filter_key == "role" and (set(filter_value) & set(settings.MML_ADMIN_ROLES)):
                     continue
                 if filter_key in self.list_attribs:
