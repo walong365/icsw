@@ -28,6 +28,8 @@ from initcore.helper_functions import init_logging
 from initcore.forms import authentication_form, user_config_form, change_password_form
 from initcore.models import user_variable
 
+from edmdb.models import olimhcm_oetiperson, olimhcm_oetirole, olimhcm_oetipersonoetirole, olimcrm_person
+
 session_history = None
 
 @login_required
@@ -59,6 +61,7 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
             auth.login(request, form.get_user())
             request.session.update(get_user_variables(request))
             request.session.update(set_css_values(request))
+            request.session.update(get_user_role(request, form.get_user()))
             request.session.save()
             if hasattr(request.user, "default_password"):
                 if request.user.check_password(request.user.default_password):
@@ -85,11 +88,11 @@ def change_password(request):
             request.user.save()
             return HttpResponseRedirect(settings.SITE_ROOT)
     else:
-        cur_form = change_password_form(username=request.user.username)        
+        cur_form = change_password_form(username=request.user.username)
     return render_me(request, "initcore/change_password.html",
                      {"password_form" : cur_form,
                       }).render()
-    
+
 @init_logging
 def menu_folder(request, *args):
     args = base64.b64decode(args[0])
@@ -98,7 +101,7 @@ def menu_folder(request, *args):
     request.session.update({"menu_xpath" : args})
     request.session.save()
     return render_me(request, "initcore/main.html")()
-   
+
 @init_logging
 @login_required
 def get_menu(request, *args):
@@ -130,7 +133,7 @@ def set_color_scheme(request, *args):
     request.session.update(set_css_values(request))
     request.session.save()
     return HttpResponseRedirect(redirect_to)
-    
+
 @init_logging
 @login_required
 def set_mobile(request):
@@ -230,6 +233,20 @@ def scale_rgb(rgb_specs, fact, diff):
     ret_val = tuple([min(max(val * fact + diff * val * val / (255 * 255), 0), 255) for val in rgb_specs])
     return ret_val
 
+def get_user_role(request, user):
+    try:
+        oetiperson = olimhcm_oetiperson.objects.get(username=request.user.username)
+    except olimhcm_oetiperson.DoesNotExist:
+        res =  {"OLIM_ROLE": ()}
+    else:
+        person2role = olimhcm_oetipersonoetirole.objects.filter(rf_oetiperson=oetiperson.pk)
+        roles = []
+        for i in person2role:
+            role = olimhcm_oetirole.objects.get(pk=i.rf_oetirole)
+            roles.append(role.rolename)
+        res = {"OLIM_ROLE": roles}
+    return res
+
 @login_required
 def get_user_variables(request, var_name=None):
     if type(request) == User:
@@ -272,4 +289,4 @@ def overview(request, first_char=""):
 
 @login_required
 def admin(request, first_char=""):
-    return render_me(request, "initcore/admin_page.html")()    
+    return render_me(request, "initcore/admin_page.html")()

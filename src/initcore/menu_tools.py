@@ -271,10 +271,11 @@ class olim_menu(object):
         for filter_key, filter_value in dict([(key.split("_", 1)[1], value) for key, value in self.__kwargs.iteritems() if key.startswith("filter_")]).iteritems():
             # debug print
             # print node.attrib["name"], filter_key, filter_value, node.attrib.get(filter_key, "???")
-            if type(filter_value) != type([]):
+            if not isinstance(filter_value, (list, tuple)):
                 filter_value = [filter_value]
             if filter_key in node.attrib:
                 # Admin roles get everything
+                print filter_key, filter_value
                 if filter_key == "role" and (set(filter_value) & set(settings.MML_ADMIN_ROLES)):
                     continue
                 if filter_key in self.list_attribs:
