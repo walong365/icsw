@@ -66,6 +66,8 @@ class config_proxy(BaseProxy):
         return self._callmethod("name")
     def get_argument_stuff(self):
         return self._callmethod("get_argument_stuff")
+    def get_pid(self):
+        return self._callmethod("get_pid")
         
 class _conf_var(object):
     argparse_type = None
@@ -432,6 +434,8 @@ class configuration(object):
         if message:
             print message
         self.exit_code = 2
+    def get_pid(self):
+        return os.getpid()
     def get_argument_stuff(self):
         return {"positional_arguments" : self.positional_arguments,
                 "other_arguments"      : self.other_arguments,
@@ -474,7 +478,7 @@ class configuration(object):
         else:
             return options
 
-config_manager.register("config", configuration, config_proxy, exposed=["parse_file", "add_config_entries", "get_log", "handle_commandline", "__getitem__", "__setitem__", "write_file", "get_config_info", "name", "get_argument_stuff"])
+config_manager.register("config", configuration, config_proxy, exposed=["parse_file", "add_config_entries", "get_log", "handle_commandline", "__getitem__", "__setitem__", "write_file", "get_config_info", "name", "get_argument_stuff", "get_pid"])
 cur_manager = config_manager()
 
 def get_global_config(c_name):

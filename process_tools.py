@@ -1189,29 +1189,34 @@ def build_ppid_list(p_dict, pid=None):
             ppid_list.append(pid)
     return ppid_list
 
-def build_kill_dict(name):
+def build_kill_dict(name, exclude_list):
     # process dict
     pdict = get_proc_list()
     # list of parent pids (up to init)
     ppl = build_ppid_list(pdict, os.getpid())
     kill_dict = {}
     for pid, p_struct in pdict.iteritems():
-        if name.startswith(p_struct["name"]) and pid not in ppl:
+        if name.startswith(p_struct["name"]) and pid not in ppl and pid not in exclude_list:
             kill_dict[pid] = p_struct["name"]
     return kill_dict
 
-def kill_running_processes(p_name=None, do_syslog=True, **args):
+def kill_running_processes(p_name=None, **kwargs):
     my_pid = os.getpid()
+    exclude_pids = kwargs.get("exclude", [])
+    kill_sig = kwargs.get("kill_signal", 9)
+    if type(exclude_pids) != type([]):
+        exclude_pids = [exclude_pids]
     if p_name is None:
         p_name = file("/proc/%d/status" % (my_pid), "r").readline().strip().split()[1]
-    kill_sig = args.get("kill_signal", 9)
-    log_lines = ["my_pid is %d, searching for process '%s' to kill, kill_signal is %d" % (my_pid,
-                                                                                          p_name,
-                                                                                          kill_sig)]
-    kill_dict = build_kill_dict(p_name)
+    log_lines = ["my_pid is %d, searching for process '%s' to kill, kill_signal is %d, exclude_list is %s" % (
+        my_pid,
+        p_name,
+        kill_sig,
+        "empty" if not exclude_pids else ", ".join(["%d" % (exc_pid) for exc_pid in sorted(exclude_pids)]))]
+    kill_dict = build_kill_dict(p_name, exclude_pids)
     if kill_dict:
         for pid, name in kill_dict.iteritems():
-            if name not in args.get("ignore_names", []):
+            if name not in kwargs.get("ignore_names", []):
                 log_str = "%s (%d): Trying to kill pid %d (%s) with signal %d ..." % (p_name,
                                                                                       my_pid,
                                                                                       pid,
@@ -1224,8 +1229,8 @@ def kill_running_processes(p_name=None, do_syslog=True, **args):
                 else:
                     log_lines.append("%s ok" % (log_str))
     else:
-        log_lines.append("  kill_dict is empty")
-    if do_syslog:
+        log_lines[-1] = "%s, nothing to do" % (log_lines[-1])
+    if kwargs.get("do_syslog", True):
         for log_line in log_lines:
             logging_tools.my_syslog(log_line)
     return log_lines
