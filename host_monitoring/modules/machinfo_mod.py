@@ -26,12 +26,11 @@ import os
 import re
 import time
 import posix
-from host_monitoring import limits
 import pci_database
 import cpu_database
 import process_tools
 import commands
-from host_monitoring import hm_classes
+from host_monitoring import hm_classes, limits
 import pprint
 import logging_tools
 import uuid_tools

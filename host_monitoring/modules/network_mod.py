@@ -208,7 +208,7 @@ class my_modclass(hm_classes.hm_fileinfo):
         try:
             self._net_int(mv, logger)
         except int_error:
-            print process_tools.get_except_info()
+            print "update_m_vect: %s" % (process_tools.get_except_info())
     def _net_int(self, mvect, logger):
         act_time = time.time()
         time_diff = act_time - self.last_update

@@ -90,14 +90,13 @@ def client_code():
     print ret_str
     return ret_state
 
-BACKLOG_SIZE = 5
-
 class host_connection(object):
     def __init__(self, conn_str, **kwargs):
         host_connection.hc_dict[conn_str] = self
         self.__open = False
         self.__conn_str = conn_str
         self.messages = {}
+        self.__backlog_size = kwargs["backlog_size"]
         dummy_con = kwargs.get("dummy_connection", False)
         if dummy_con:
             self.socket = None
@@ -105,16 +104,17 @@ class host_connection(object):
             new_sock = host_connection.relayer_thread.zmq_context.socket(zmq.XREQ)
             new_sock.setsockopt(zmq.IDENTITY, "relayer_%s" % (process_tools.get_machine_name()))
             new_sock.setsockopt(zmq.LINGER, 0)
-            new_sock.setsockopt(zmq.HWM, BACKLOG_SIZE)
-            new_sock.setsockopt(zmq.BACKLOG, BACKLOG_SIZE)
+            new_sock.setsockopt(zmq.HWM, host_connection.backlog_size)
+            new_sock.setsockopt(zmq.BACKLOG, host_connection.backlog_size)
             self.socket = new_sock
             host_connection.relayer_thread.register_poller(self.socket, zmq.POLLIN, self._get_result)
             host_connection.relayer_thread.register_poller(self.socket, zmq.POLLERR, self._error)
             self.__backlog_counter = 0
     @staticmethod
-    def init(r_thread):
+    def init(r_thread, backlog_size):
         host_connection.relayer_thread = r_thread
         host_connection.hc_dict = {}
+        host_connection.backlog_size = backlog_size
     @staticmethod
     def get_hc(conn_str, **kwargs):
         if conn_str not in host_connection.hc_dict:
@@ -159,7 +159,7 @@ class host_connection(object):
                                       "error connecting to %s: %s" % (self.__conn_str,
                                                                       process_tools.get_except_info()))
                 else:
-                    if self.__backlog_counter == BACKLOG_SIZE:
+                    if self.__backlog_counter == host_connection.backlog_size:
                         self.return_error(host_mes,
                                           "connection error (backlog full) for '%s'" % (self.__conn_str))
                         #self._close()
@@ -185,12 +185,11 @@ class host_connection(object):
         self.send_result(host_mes)
     def _error(self, zmq_sock):
         # not needed right now
-        print "****", zmq_sock
+        print "**** _error", zmq_sock
         print dir(zmq_sock)
         print zmq_sock.getsockopt(zmq.EVENTS)
         #self._close()
         #raise zmq.ZMQError()
-#    print zmq_sock.recv()
     def _get_result(self, zmq_sock):
         self._handle_result(server_command.srv_command(source=zmq_sock.recv()))
     def _handle_result(self, result):
@@ -538,7 +537,6 @@ class my_cached_file(process_tools.cached_file):
             self.hosts = set([cur_line.strip() for cur_line in self.content.strip().split("\n") if cur_line.strip() and not cur_line.strip().startswith("#")])
         else:
             self.hosts = set()
-        print self, self.hosts
         
 class relay_thread(threading_tools.process_pool):
     def __init__(self):
@@ -551,7 +549,7 @@ class relay_thread(threading_tools.process_pool):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.renice()
         #pending_connection.init(self)
-        host_connection.init(self)
+        host_connection.init(self, global_config["BACKLOG_SIZE"])
         # init lut
         self.__old_send_lut = {}
         if not global_config["DEBUG"]:
@@ -1008,6 +1006,7 @@ def main():
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("KILL_RUNNING"        , configfile.bool_c_var(True)),
+        ("BACKLOG_SIZE"        , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
         ("SERVER_FULL_NAME"    , configfile.str_c_var(long_host_name)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name,
@@ -1023,20 +1022,17 @@ def main():
             ("HOST"    , configfile.str_c_var("localhost", help_string="host to connect to"))
         ])
     global_config.parse_file()
-    # import modules
-    # modules = addon_modules("modules")
     options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
                                                                                   VERSION_STRING),
                                                add_writeback_option=prog_name in ["collserver"],
                                                positional_arguments=prog_name in ["collclient"],
                                                partial=prog_name in ["collclient"])
-    # always set FROM_ADDR
-    #global_config["FROM_ADDR"] = long_host_name
     global_config.write_file()
-    #process_tools.fix_directories("root", "root", [(glob_config["MAIN_DIR"], 0777)])
+    if global_config["KILL_RUNNING"]:
+        process_tools.kill_running_processes(exclude=global_config.get_pid())
     if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
         process_tools.become_daemon()
-    elif prog_name in ["collserver"]:
+    elif prog_name in ["collserver", "collrelay"]:
         print "Debugging %s on %s" % (prog_name,
                                       global_config["SERVER_FULL_NAME"])
     if prog_name == "collserver":

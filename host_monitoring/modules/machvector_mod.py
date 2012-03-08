@@ -60,7 +60,7 @@ class _general(hm_classes.hm_module):
         self._init_machine_vector()
     def _init_machine_vector(self):
         self.machine_vector = machine_vector(self)
-        print self.__machine_vector
+        print "_init_machine_vector: ", self.__machine_vector
     def init_machine_vector(self, mvect):
         pass
     def _update_machine_vector(self):
