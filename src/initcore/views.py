@@ -63,9 +63,6 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
             request.session.update(set_css_values(request))
             request.session.update(get_user_role(request, form.get_user()))
             request.session.save()
-            if hasattr(request.user, "default_password"):
-                if request.user.check_password(request.user.default_password):
-                    return HttpResponseRedirect(reverse("session:change_password"))
             return HttpResponseRedirect(redirect_to)
         else:
             form = authentication_form(data=dict([(key, value) for key, value in request.POST.iteritems() if key not in ["password"]]))
