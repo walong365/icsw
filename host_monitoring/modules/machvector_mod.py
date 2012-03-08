@@ -54,13 +54,11 @@ class _general(hm_classes.hm_module):
         priority = 5
     def __init__(self, *args, **kwargs):
         hm_classes.hm_module.__init__(self, *args, **kwargs)
-        self.__machine_vector = None
     def init_module(self):
         self.process_pool.register_timer(self._update_machine_vector, 10, instant=True)
         self._init_machine_vector()
     def _init_machine_vector(self):
         self.machine_vector = machine_vector(self)
-        print "_init_machine_vector: ", self.__machine_vector
     def init_machine_vector(self, mvect):
         pass
     def _update_machine_vector(self):

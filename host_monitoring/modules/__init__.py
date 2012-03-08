@@ -19,10 +19,11 @@ for mod_name in __all__:
         _new_hm_list.append((new_hm_mod.Meta().priority, new_hm_mod))
 
 _new_hm_list.sort(reverse=True)
-print _new_hm_list
+
+IMPORT_ERRORS = []
+
 for _pri, new_hm_mod in _new_hm_list:
     new_mod = new_hm_mod.obj
-    print new_hm_mod.Meta().priority
     module_list.append(new_hm_mod)
     #if hasattr(new_mod, "init_m_vect"):
     #    getattr(new_mod, "init_m_vect")()
@@ -31,7 +32,6 @@ for _pri, new_hm_mod in _new_hm_list:
         try:
             new_hm_mod.add_command(loc_com, getattr(new_mod, loc_com))
         except:
-            print "*", loc_com, process_tools.get_except_info()
+            IMPORT_ERRORS.append((new_mod.__name__, loc_com, process_tools.get_except_info()))
         #print getattr(getattr(new_mod, loc_com), "info_string", "???")
     command_dict.update(new_hm_mod.commands)
-    
