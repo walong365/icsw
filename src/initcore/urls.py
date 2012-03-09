@@ -16,4 +16,5 @@ urlpatterns = patterns(
     url(r"^set_colorscheme/(\S+)/$", "set_color_scheme", name="set_color_scheme"),
     url(r"^menu_folder/(\S+)/$", "menu_folder", name="menu_folder"),
     url(r"^layout/set_state/$", "save_layout_state", name="save_layout_state"),
+    url(r"^store_jqgrid_user_params/$", "store_jqgrid_user_params", name="store_jqgrid_user_params"),
 )

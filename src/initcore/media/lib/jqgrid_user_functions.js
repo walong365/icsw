@@ -14,12 +14,6 @@ function set_colModel_params(jqgrid_params, colModel, show) {
                 if (jQuery.inArray(jqgrid_params[show][1][i], names) >= 0) {
                     colModel[jQuery.inArray(jqgrid_params[show][1][i], names)].hidden = false;                
                     result.push(colModel[jQuery.inArray(jqgrid_params[show][1][i], names)]);
-                } else {
-                    if (jqgrid_params[show][1][i] == "email") {
-                        jqgrid_params[show][1][i] = "email_1";
-                        colModel[jQuery.inArray(jqgrid_params[show][1][i], names)].hidden = false;                
-                        result.push(colModel[jQuery.inArray(jqgrid_params[show][1][i], names)]);
-                    }
                 }
             }
         }
@@ -101,7 +95,7 @@ function get_jqgrid_params(params) {
 }
 
 /** save changed jqgrid params in the db and set the changes "on_the_fly" in jqgrid_params */
-function save_jqgrid_params(element, jqgrid_params, name, show) {
+function save_jqgrid_params(url, element, jqgrid_params, name, show) {
     if (show === undefined) { show = 0; }
     if (element) {
         var jqG_params = element.getGridParam();
@@ -112,8 +106,8 @@ function save_jqgrid_params(element, jqgrid_params, name, show) {
                 params = params + jqG_params.colModel[i].name;
             }
         }
-        $.ajax({
-            url      : URL_STORE_JQGRID_USER_PARAMS,
+        jQuery.ajax({
+            url      : url,
             type     : "POST",
             dataType : "html",
             data     : {"name"      : name,
@@ -135,7 +129,7 @@ function save_jqgrid_params(element, jqgrid_params, name, show) {
     return jqgrid_params;
 }
 
-/** return the index id from colum with name in    colModel */
+/** return the index id from colum with name in colModel */
 function get_col_id_by_name(name, colModel) {
     for (var i = 0; i < colModel.length; i++) {
         if (colModel[i].name===name) {

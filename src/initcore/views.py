@@ -280,6 +280,33 @@ def store_user_variable(request, var_name, var_value=None, default=None):
     request.session[var_name] = act_var.load()
     return act_var
 
+def get_jqgrid_user_params(request, name, grid_num=1):
+    result = []
+    for u_num in xrange(grid_num):
+        u_name = "%s%d" % (name, u_num)
+        params = get_user_variables(request, u_name)
+        print u_name, params
+        if params.get(u_name):
+            result.append(params.get(u_name))
+        else:
+            result.append({"rowNum"  : u"10", "columns" : []})
+    return " ".join([":".join([res["rowNum"], ",".join(res["columns"])]) for res in result])
+
+def store_jqgrid_user_params(request):
+    if request.POST["params"].split(" ") == []:
+        HttpResponse(etree.tostring(E.error("error on saving user params, params string is empty")), mimetype="application/xml")
+    if request.POST["name"]:
+        grid_num = "0"
+        if request.POST["grid_num"]:
+            grid_num = request.POST["grid_num"]
+        print "# name", request.POST["name"]
+        print "# grid_num", request.POST["grid_num"]
+        print "# rowNum", request.POST["rowNum"]
+        print "# columns", request.POST["params"].split(" ")
+        store_user_variable(request, "%s%s" % (request.POST["name"], grid_num), {"rowNum"  : request.POST["rowNum"],
+                                                                                 "columns" : request.POST["params"].split(" ")})
+    return HttpResponse(etree.tostring(E.succsess("user params saved")), mimetype="application/xml")
+
 @login_required
 def overview(request, first_char=""):
     return render_me(request, "initcore/welcome_page.html")()
