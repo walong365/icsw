@@ -74,7 +74,9 @@ def decompress(in_str, **kwargs):
     return ret_struct
 
 class srv_command(object):
+    srvc_open = 0
     def __init__(self, **kwargs):
+        srv_command.srvc_open += 1
         self.__builder = ElementMaker(namespace=XML_NS)
         if "source" in kwargs:
             #print len(kwargs["source"])
@@ -229,6 +231,7 @@ class srv_command(object):
     def __unicode__(self):
         return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)
     def __del__(self):
+        srv_command.srvc_open -= 1
         pass
 
 class command_template(object):

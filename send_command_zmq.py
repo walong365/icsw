@@ -49,7 +49,7 @@ def main():
     other_args = args.arguments + other_args
     identity_str = process_tools.zmq_identity_str(args.identity_string)
     zmq_context = zmq.Context(1)
-    client = zmq_context.socket(zmq.XREQ)
+    client = zmq_context.socket(zmq.DEALER)
     client.setsockopt(zmq.IDENTITY, identity_str)
     client.setsockopt(zmq.LINGER, args.timeout)
     if args.protocoll == "ipc":
@@ -88,8 +88,12 @@ def main():
             if args.verbose:
                 print "XML response:"
                 print etree.tostring(srv_reply.tree, pretty_print=True)
-            print srv_reply["result"].attrib["reply"]
-            ret_state = int(srv_reply["result"].attrib["state"])
+            if "result" in srv_reply:
+                print srv_reply["result"].attrib["reply"]
+                ret_state = int(srv_reply["result"].attrib["state"])
+            else:
+                print "no result tag found in reply"
+                ret_state = -1
     client.close()
     sys.exit(ret_state)
 

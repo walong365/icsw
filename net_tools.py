@@ -92,7 +92,7 @@ class zmq_connection(object):
         del self.poller_handler[zmq_socket]
         self.poller.unregister(zmq_socket)
     def add_connection(self, conn_str, command, **kwargs):
-        new_sock = self.context.socket(zmq.XREQ)
+        new_sock = self.context.socket(zmq.DEALER)
         new_sock.setsockopt(zmq.LINGER, self.__linger_time)
         #print new_sock.getsockopt(zmq.NOBLOCK)
         #new_sock.setsockopt(zmq.NOBLOCK, 1)

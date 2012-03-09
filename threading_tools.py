@@ -1021,7 +1021,9 @@ class process_pool(object):
             cur_mask |= mask
         self.poller.register(zmq_socket, cur_mask)
     def unregister_poller(self, zmq_socket, sock_type):
-        del self.poller_handler[(zmq_socket, sock_type)]
+        del self.poller_handler[zmq_socket][sock_type]
+        if not self.poller_handler[zmq_socket]:
+            del self.poller_handler[zmq_socket]
         self.poller.unregister(zmq_socket)
         zmq_socket.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
