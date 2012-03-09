@@ -147,11 +147,13 @@ int main (int argc, char** argv) {
     if (!strlen(sendbuff)) err_exit("Nothing to send!\n");
     //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));
     void *context = zmq_init(1);
-    void *requester = zmq_socket(context, ZMQ_XREQ);
+    void *requester = zmq_socket(context, ZMQ_DEALER);
     char* identity_str;
+    int linger = 100;
     identity_str = (char*)malloc(1000);
     sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
     zmq_setsockopt(requester, ZMQ_IDENTITY, identity_str, strlen(identity_str));
+    zmq_setsockopt(requester, ZMQ_LINGER, &linger, sizeof(linger));
     alrmsigact = (struct sigaction*)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
         free(host_b);
@@ -168,16 +170,15 @@ int main (int argc, char** argv) {
         setitimer(ITIMER_REAL, &mytimer, NULL);
         // send
         zmq_connect(requester, "ipc:///var/log/cluster/sockets/collrelay/receiver");//host_b);
-        zmq_msg_t request;
+        zmq_msg_t request, reply;
         if (verbose) {
-            printf("send buffer has %d bytes, nodename is '%s', servicename is '%s', pid is %d\n", strlen(sendbuff), myuts.nodename, SERVICE_NAME, getpid());
+            printf("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', pid is %d\n", strlen(sendbuff), identity_str, myuts.nodename, SERVICE_NAME, getpid());
         };
         zmq_msg_init_size (&request, strlen(sendbuff));
         memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
         zmq_send(requester, &request, 0);
         zmq_msg_close(&request);
         // receive
-        zmq_msg_t reply;
         zmq_msg_init(&reply);
         zmq_recv(requester, &reply, 0);
         int reply_size = zmq_msg_size(&reply);
@@ -187,7 +188,10 @@ int main (int argc, char** argv) {
         zmq_msg_close(&reply);
         retcode = strtol(recv_buffer, NULL, 10);
         printf("%s\n", recv_buffer + 2);
+        free(recv_buffer);
     }
+    zmq_close(requester);
+    zmq_term(context);
     free(sendbuff);
     free(host_b);
     exit(retcode);

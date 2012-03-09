@@ -1388,6 +1388,21 @@ class sysinfo_command(hm_classes.hm_command):
                 else:
                     ret_str += ", no image info"
             return limits.nag_STATE_OK, ret_str
+    def interpret_old(self, result, parsed_coms):
+        result = hm_classes.net_to_sys(result[3:])
+        need_keys = ["vendor", "version", "arch"]
+        mis_keys = [k for k in need_keys if not result.has_key(k)]
+        if mis_keys:
+            return limits.nag_STATE_CRITICAL, "%s missing : %s" % (logging_tools.get_plural("key", len(mis_keys)), ", ".join(mis_keys))
+        else:
+            ret_str = "Distribution is %s version %s on an %s" % (result["vendor"], result["version"], result["arch"])
+            if "imageinfo" in result.keys():
+                ii_dict = result["imageinfo"]
+                if ii_dict.has_key("image_name") and ii_dict.has_key("image_version"):
+                    ret_str += ", image is %s (version %s)" % (ii_dict["image_name"], ii_dict["image_version"])
+                else:
+                    ret_str += ", no image info"
+            return limits.nag_STATE_OK, ret_str
         
 class load_command(hm_classes.hm_command):
     info_string = "load information"
@@ -1445,7 +1460,7 @@ class uptime_command(hm_classes.hm_command):
                                                             up_m)
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
-        return limits.nag_STATE_OK, "OK: Up for %s days, %s hours and %s mins" % (result["up_days"], result["up_hours"], result["up_minutes"])
+        return limits.nag_STATE_OK, "up for %s days, %s hours and %s mins" % (result["up_days"], result["up_hours"], result["up_minutes"])
 
 class date_command(hm_classes.hm_command):
     info_string = "return date"
@@ -1458,14 +1473,14 @@ class date_command(hm_classes.hm_command):
         diff_time = int(abs(remote_date - local_date))
         if diff_time > err_diff:
             return limits.nag_STATE_CRITICAL, "%s (diff %d > %d seconds)" % (time.ctime(remote_date),
-                                                                              diff_time,
-                                                                              err_diff)
+                                                                             diff_time,
+                                                                             err_diff)
         elif diff_time > warn_diff:
             return limits.nag_STATE_WARNING, "%s (diff %d > %d seconds)" % (time.ctime(remote_date),
-                                                                                  diff_time,
-                                                                                  warn_diff)
+                                                                            diff_time,
+                                                                            warn_diff)
         else:
-            return limits.nag_STATE_OK, "OK: %s" % (time.ctime(remote_date))
+            return limits.nag_STATE_OK, "%s" % (time.ctime(remote_date))
     def interpret_old(self, result, parsed_coms):
         warn_diff, err_diff = (10, 5 * 60)
         local_date = time.time()
@@ -1474,15 +1489,15 @@ class date_command(hm_classes.hm_command):
             remote_date = time.mktime(time.strptime(remote_date))
         diff_time = int(abs(remote_date - local_date))
         if diff_time > err_diff:
-            return limits.nag_STATE_CRITICAL, "ERROR: %s (diff %d > %d seconds)" % (time.ctime(remote_date),
-                                                                                    diff_time,
-                                                                                    err_diff)
+            return limits.nag_STATE_CRITICAL, "%s (diff %d > %d seconds)" % (time.ctime(remote_date),
+                                                                             diff_time,
+                                                                             err_diff)
         elif diff_time > warn_diff:
-            return limits.nag_STATE_WARNING, "WARN: %s (diff %d > %d seconds)" % (time.ctime(remote_date),
-                                                                                  diff_time,
-                                                                                  warn_diff)
+            return limits.nag_STATE_WARNING, "%s (diff %d > %d seconds)" % (time.ctime(remote_date),
+                                                                            diff_time,
+                                                                            warn_diff)
         else:
-            return limits.nag_STATE_OK, "OK: %s" % (time.ctime(remote_date))
+            return limits.nag_STATE_OK, "%s" % (time.ctime(remote_date))
 
 class general_command(hm_classes.hmb_command):
     def __init__(self, **args):

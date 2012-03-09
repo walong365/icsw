@@ -96,12 +96,11 @@ class host_connection(object):
         self.__open = False
         self.__conn_str = conn_str
         self.messages = {}
-        self.__backlog_size = kwargs["backlog_size"]
         dummy_con = kwargs.get("dummy_connection", False)
         if dummy_con:
             self.socket = None
         else:
-            new_sock = host_connection.relayer_thread.zmq_context.socket(zmq.XREQ)
+            new_sock = host_connection.relayer_thread.zmq_context.socket(zmq.ROUTER)
             new_sock.setsockopt(zmq.IDENTITY, "relayer_%s" % (process_tools.get_machine_name()))
             new_sock.setsockopt(zmq.LINGER, 0)
             new_sock.setsockopt(zmq.HWM, host_connection.backlog_size)
@@ -124,9 +123,14 @@ class host_connection(object):
     def check_timeout_g():
         cur_time = time.time()
         [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict.itervalues()]
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        host_connection.relayer_thread.log("[hc] %s" % (what), log_level)
     def check_timeout(self, cur_time):
         to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time)]
         for to_mes in to_messages:
+            if self.socket:
+                self.__backlog_counter -= 1
+                print "*** blc ", self.__backlog_counter
             self.return_error(to_mes, "timeout")
     def _open(self):
         if not self.__open:
@@ -161,10 +165,14 @@ class host_connection(object):
                 else:
                     if self.__backlog_counter == host_connection.backlog_size:
                         self.return_error(host_mes,
-                                          "connection error (backlog full) for '%s'" % (self.__conn_str))
+                                          "connection error (backlog full [%d.%d]) for '%s'" % (
+                                              self.__backlog_counter,
+                                              host_connection.backlog_size,
+                                              self.__conn_str))
                         #self._close()
                     else:
                         self.__backlog_counter += 1
+                        #if self.__conn_str == 
                         #print "tts0", self.__backlog_counter, BACKLOG_SIZE
                         host_mes.sent = True
                         self.socket.send_unicode(unicode(host_mes.srv_com))
@@ -180,6 +188,7 @@ class host_connection(object):
         host_connection.relayer_thread.relayer_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
         host_connection.relayer_thread.relayer_socket.send_unicode(host_mes.get_result(result))
         del self.messages[host_mes.src_id]
+        del host_mes
     def return_error(self, host_mes, error_str):
         host_mes.set_result(limits.nag_STATE_CRITICAL, error_str)
         self.send_result(host_mes)
@@ -195,23 +204,29 @@ class host_connection(object):
     def _handle_result(self, result):
         #print unicode(result)
         mes_id = result["relayer_id"].text
-        cur_mes = self.messages[mes_id]
-        if cur_mes.sent:
-            cur_mes.sent = False
-            self.__backlog_counter -= 1
-        try:
-            res_tuple = cur_mes.interpret(result)
-        except:
-            res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
-        self.send_result(cur_mes, res_tuple)
+        if mes_id in self.messages:
+            cur_mes = self.messages[mes_id]
+            if cur_mes.sent:
+                cur_mes.sent = False
+                self.__backlog_counter -= 1
+            try:
+                res_tuple = cur_mes.interpret(result)
+            except:
+                res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
+            self.send_result(cur_mes, res_tuple)
+        else:
+            self.log("unknown id '%s' in _handle_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
     def _handle_old_result(self, mes_id, result):
         #print unicode(result)
-        cur_mes = self.messages[mes_id]
-        try:
-            res_tuple = cur_mes.interpret_old(result)
-        except:
-            res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
-        self.send_result(cur_mes, res_tuple)
+        if mes_id in self.messages:
+            cur_mes = self.messages[mes_id]
+            try:
+                res_tuple = cur_mes.interpret_old(result)
+            except:
+                res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
+            self.send_result(cur_mes, res_tuple)
+        else:
+            self.log("unknown id '%s' in _handle_old_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
 
 class host_message(object):
     def __init__(self, com_name, src_id, srv_com, xml_input):
@@ -228,7 +243,7 @@ class host_message(object):
     def set_com_struct(self, com_struct):
         self.com_struct = com_struct
         cur_ns, rest = com_struct.handle_commandline((self.srv_com["arg_list"].text or "").split())
-        print "***", cur_ns, rest
+        #print "***", cur_ns, rest
         self.srv_com["arg_list"] = " ".join(rest)
         self.srv_com.delete_subtree("arguments")
         for arg_idx, arg in enumerate(rest):
@@ -263,7 +278,6 @@ class host_message(object):
                     server_error[0].attrib["reply"])
         else:
             return self.com_struct.interpret(result, self.ns)
-            
     def interpret_old(self, result):
         if type(result) not in [type("")]:
             server_error = result.xpath(None, ".//ns:result[@state != '0']")
@@ -278,6 +292,9 @@ class host_message(object):
                         result)
             else:
                 return self.com_struct.interpret_old(result, self.ns)
+    def __del__(self):
+        del self.srv_com
+        pass
         
 ##class pending_connection(object):
 ##    def __init__(self, src_id, srv_com, com_struct, conn_str, xml_input=False):
@@ -357,12 +374,14 @@ class tcp_send(Protocol):
     #def __init__(self, log_recv):
         #Protocol.__init__(self)
         #self.__log_recv = log_recv
-    def __init__(self, factory):
+    def __init__(self, factory, src_id, srv_com):
         self.factory = factory
+        self.src_id = src_id
+        self.srv_com = srv_com
     def connectionMade(self):
-        com = self.factory.srv_com["command"].text
-        if self.factory.srv_com["arg_list"].text:
-            com = "%s %s" % (com, self.factory.srv_com["arg_list"].text)
+        com = self.srv_com["command"].text
+        if self.srv_com["arg_list"].text:
+            com = "%s %s" % (com, self.srv_com["arg_list"].text)
         self.transport.write("%08d%s" % (len(com), com))
     def dataReceived(self, data):
         #print data
@@ -370,40 +389,51 @@ class tcp_send(Protocol):
         if data[0:8].isdigit():
             d_len = int(data[0:8])
             if len(data) == d_len + 8:
-                self.factory.received(data[8:])
+                self.factory.received(self, data[8:])
             else:
                 self.factory.log("wrong message length", logging_tools.LOG_LEVEL_ERROR)
         else:
             self.factory.log("protocol error ", logging_tools.LOG_LEVEL_ERROR)
         self.transport.loseConnection()
     def __del__(self):
-        print "del tcp_send"
+        #print "del tcp_send"
+        pass
 
 class tcp_factory(ClientFactory):
     # handling of tcp_factor freeing not implemented right now, FIXME
-    def __init__(self, t_process, src_id, srv_com):
+    def __init__(self, t_process):
         self.twisted_process = t_process
-        self.src_id = src_id
-        self.srv_com = srv_com
+        self.__to_send = {}
+        self.noisy = False
+    def add_to_send(self, src_id, srv_com):
+        cur_id = "%s:%d" % (srv_com["host"].text, int(srv_com["port"].text))
+        self.__to_send.setdefault(cur_id, []).append((src_id, srv_com))
     def connectionLost(self, reason):
         print "gone", reason
     def buildProtocol(self, addr):
-        return tcp_send(self)
+        cur_id = "%s:%d" % (addr.host, addr.port)
+        if cur_id in self.__to_send:
+            send_tuple = self.__to_send[cur_id].pop()
+            if not self.__to_send[cur_id]:
+                del self.__to_send[cur_id]
+            return tcp_send(self, *send_tuple)
+        else:
+            raise SyntaxError, "nothing found to send for '%s'" % (cur_id)
     def clientConnectionLost(self, connector, reason):
         if str(reason).lower().count("closed cleanly"):
             pass
         else:
-            self.twisted_process.log("[tcp] %s: %s" % (str(connector).strip(),
-                                                       str(reason).strip()),
-                                     logging_tools.LOG_LEVEL_ERROR)
+            self.log("%s: %s" % (str(connector).strip(),
+                                 str(reason).strip()),
+                     logging_tools.LOG_LEVEL_ERROR)
     def clientConnectionFailed(self, connector, reason):
-        self.twisted_process.log("[tcp] %s: %s" % (str(connector).strip(),
-                                                   str(reason).strip()),
-                                 logging_tools.LOG_LEVEL_ERROR)
+        self.log("%s: %s" % (str(connector).strip(),
+                             str(reason).strip()),
+                 logging_tools.LOG_LEVEL_ERROR)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.twisted_process.log("[tcp] %s" % (what), log_level)
-    def received(self, data):
-        self.twisted_process.send_result(self.src_id, unicode(self.srv_com), data)
+    def received(self, cur_proto, data):
+        self.twisted_process.send_result(cur_proto.src_id, unicode(cur_proto.srv_com), data)
     def __del__(self):
         return "del tcp_factory"
 
@@ -505,6 +535,7 @@ class twisted_process(threading_tools.process_obj):
         reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
         # init twisted reactor
         #self._got_udp = udp_log_receiver()
+        self.tcp_factory = tcp_factory(self)
         #tcp_factory = Factory()
         #tcp_factory.protocol = tcp_log_receiver
         #reactor.listenUDP(8004, self._got_udp)
@@ -515,7 +546,8 @@ class twisted_process(threading_tools.process_obj):
     def _connection(self, src_id, srv_com, *args, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
         try:
-            cur_con = reactor.connectTCP(srv_com["host"].text, int(srv_com["port"].text), tcp_factory(self, src_id, srv_com))
+            self.tcp_factory.add_to_send(src_id, srv_com)
+            cur_con = reactor.connectTCP(srv_com["host"].text, int(srv_com["port"].text), self.tcp_factory)
         except:
             print "exception in _connection (twisted_process): ", process_tools.get_except_info()
         #self.send_pool_message("pong", cur_idx)
@@ -561,7 +593,7 @@ class relay_thread(threading_tools.process_pool):
         self.install_signal_handlers()
         self._init_filecache()
         self._init_msi_block()
-        self._init_ipc_sockets()
+        self._init_ipc_sockets(close_socket=True)
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
         self.register_timer(self._check_timeout, 1)
@@ -594,7 +626,7 @@ class relay_thread(threading_tools.process_pool):
             msi_block.add_actual_pid(mult=3)
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
             msi_block.start_command = "/etc/init.d/host-relay start"
-            msi_block.stop_command = "/etc/init.d/host-relay force-stop"
+            msi_block.stop_command  = "/etc/init.d/host-relay force-stop"
             msi_block.kill_pids = True
             #msi_block.heartbeat_timeout = 60
             msi_block.save_block()
@@ -625,27 +657,55 @@ class relay_thread(threading_tools.process_pool):
     def send_result(self, src_id, ret_str):
         self.relayer_socket.send_unicode(src_id, zmq.SNDMORE)
         self.relayer_socket.send_unicode(ret_str)
-    def _init_ipc_sockets(self):
-        client = self.zmq_context.socket(zmq.XREP)
+    def _init_ipc_sockets(self, close_socket=False):
+        sock_name = process_tools.get_zmq_ipc_name("receiver")
+        file_name = sock_name[5:]
+        self.log("init ipc_socket '%s'" % (sock_name))
+        if os.path.exists(file_name) and close_socket:
+            self.log("removing previous file")
+            try:
+                os.unlink(file_name)
+            except:
+                self.log("... %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+        wait_iter = 0
+        while os.path.exists(file_name) and wait_iter < 100:
+            self.log("socket %s still exists, waiting" % (sock_name))
+            time.sleep(0.1)
+            wait_iter += 1
+        client = self.zmq_context.socket(zmq.ROUTER)
         try:
-            process_tools.bind_zmq_socket(client, process_tools.get_zmq_ipc_name("receiver"))
+            process_tools.bind_zmq_socket(client, sock_name)
+            #client.bind("tcp://*:8888")
         except zmq.core.error.ZMQError:
-            self.log("error binding %s: %s" % (process_tools.get_zmq_ipc_name("receiver"),
+            self.log("error binding %s: %s" % (sock_name,
                                                process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_CRITICAL)
             raise
         else:
             self.relayer_socket = client
-            os.chmod(process_tools.get_zmq_ipc_name("receiver")[5:], 0777)
+            backlog_size = global_config["BACKLOG_SIZE"]
+            os.chmod(file_name, 0777)
+            self.relayer_socket.setsockopt(zmq.LINGER, 0)
+            #self.relayer_socket.setsockopt(zmq.HWM, backlog_size)
             self.register_poller(client, zmq.POLLIN, self._recv_command)
+        self.__num_messages = 0
     def _recv_command(self, zmq_sock):
         self.__old_clients.update()
         self.__new_clients.update()
-        src_id = zmq_sock.recv()
-        more = zmq_sock.getsockopt(zmq.RCVMORE)
-        if more:
-            data = zmq_sock.recv()
-            more = zmq_sock.getsockopt(zmq.RCVMORE)
+        in_data = []
+        while True:
+            in_data.append(zmq_sock.recv())
+            if not zmq_sock.getsockopt(zmq.RCVMORE):
+                break
+        if len(in_data) == 2:
+            src_id, data = in_data
+            # FIXME
+##            print "got", len(src_id), src_id, data
+##            self.relayer_socket.send(src_id, zmq.SNDMORE)
+##            self.relayer_socket.send(data)
+##            print "sent"
+##            return
+            # FIXME
             xml_input = data.startswith("<")
             srv_com = None
             if xml_input:
@@ -685,8 +745,14 @@ class relay_thread(threading_tools.process_pool):
             #zmq_sock.send_unicode(src_id, zmq.SNDMORE)
             #zmq_sock.send_unicode(unicode(result))
         else:
-            self.log("cannot receive more data, already got '%s'" % (src_id),
+            self.log("wrong count of input data frames: %d, first one is %s" % (len(in_data),
+                                                                               in_data[0]),
                      logging_tools.LOG_LEVEL_ERROR)
+        self.__num_messages += 1
+        if self.__num_messages > 10000:
+            self.unregister_poller(self.relayer_socket, zmq.POLLIN)
+            self.relayer_socket.close()
+            self._init_ipc_sockets()
     def _send_to_old_client(self, src_id, srv_com, xml_input):
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
@@ -694,7 +760,7 @@ class relay_thread(threading_tools.process_pool):
         com_name = srv_com["command"].text
         cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
         if com_name in self.modules.command_dict:
-            com_struct = self.modules.command_dict[srv_com["command"].text]
+            com_struct = self.modules.command_dict[com_name]
             cur_hc.send(cur_mes, com_struct)
             self.__old_send_lut[cur_mes.src_id] = cur_hc
         else:
@@ -765,7 +831,7 @@ class relay_thread(threading_tools.process_pool):
         self.module_list = self.modules.module_list
         self.commands = self.modules.command_dict
         self.log("modules import errors:", logging_tools.LOG_LEVEL_ERROR)
-        for mod_name, com_name, error_str in modules.IMPORT_ERRORS:
+        for mod_name, com_name, error_str in self.modules.IMPORT_ERRORS:
             self.log("%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str), logging_tools.LOG_LEVEL_ERROR)
         _init_ok = True
         for call_name, add_self in [("register_server", True),
@@ -845,7 +911,7 @@ class server_thread(threading_tools.process_pool):
             self.__msi_block.add_actual_pid(src_pid, mult=3)
             self.__msi_block.save_block()
     def _init_network_sockets(self):
-        client = self.zmq_context.socket(zmq.XREP)
+        client = self.zmq_context.socket(zmq.ROUTER)
         client.setsockopt(zmq.IDENTITY, "ms")
         client.setsockopt(zmq.HWM, 256)
         try:

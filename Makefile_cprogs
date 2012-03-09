@@ -35,4 +35,4 @@ csnmpclientmorph: csnmpclientmorph.o
 	strip csnmpclientmorph
 
 %.o: %.c
-	$(comp) $< -O3 -c -I. -I/opt/cluster/include -o $@
+	$(comp) $< -O1 -c -I. -I/opt/cluster/include -o $@
