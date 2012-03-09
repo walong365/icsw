@@ -285,7 +285,6 @@ def get_jqgrid_user_params(request, name, grid_num=1):
     for u_num in xrange(grid_num):
         u_name = "%s%d" % (name, u_num)
         params = get_user_variables(request, u_name)
-        print u_name, params
         if params.get(u_name):
             result.append(params.get(u_name))
         else:
@@ -299,10 +298,6 @@ def store_jqgrid_user_params(request):
         grid_num = "0"
         if request.POST["grid_num"]:
             grid_num = request.POST["grid_num"]
-        print "# name", request.POST["name"]
-        print "# grid_num", request.POST["grid_num"]
-        print "# rowNum", request.POST["rowNum"]
-        print "# columns", request.POST["params"].split(" ")
         store_user_variable(request, "%s%s" % (request.POST["name"], grid_num), {"rowNum"  : request.POST["rowNum"],
                                                                                  "columns" : request.POST["params"].split(" ")})
     return HttpResponse(etree.tostring(E.succsess("user params saved")), mimetype="application/xml")
