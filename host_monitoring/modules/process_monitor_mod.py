@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2009,2010,2011 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2009,2010,2011,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -303,7 +303,7 @@ class procstat_command(hm_classes.hm_command):
         self.server_parser.add_argument("-f", dest="filter", action="store_true", default=False)
         self.parser.add_argument("-w", dest="warn", type=int, default=0)
         self.parser.add_argument("-c", dest="crit", type=int, default=0)
-        self.parser.add_argument("-Z", dest="zombie", type=bool, default=False, action="store_true")
+        self.parser.add_argument("-Z", dest="zombie", default=False, action="store_true")
     def __call__(self, srv_com, cur_ns):
         p_dict = process_tools.get_proc_list()
         if cur_ns.arguments:

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2010 lang-nevyjel@init.at
+# Copyright (C) 2010,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -20,8 +20,7 @@
 
 import sys
 import commands
-from host_monitoring import limits
-from host_monitoring import hm_classes
+from host_monitoring import limits, hm_classes
 import os
 import os.path
 import logging_tools
@@ -30,14 +29,7 @@ import pprint
 import process_tools
 from lxml import etree
 
-class my_modclass(hm_classes.hm_fileinfo):
-    def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "heartbeat",
-                                        "provides a interface to check for linux-HA",
-                                        **args)
-    def init(self, mode, logger, basedir_name, **args):
-        pass
+class _general(hm_classes.hm_module):
     def _exec_command(self, com, logger):
         stat, out = commands.getstatusoutput(com)
         if stat:
@@ -45,12 +37,13 @@ class my_modclass(hm_classes.hm_fileinfo):
             out = ""
         return out.split("\n")
                     
-class corosync_status(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "corosync_status", **args)
-        self.help_str = "checks status of corosync"
-    def server_call(self, cm):
-        return "ok %s" % (hm_classes.sys_to_net(self.module_info._exec_command("/usr/sbin/corosync-cfgtool -s", self.logger)))
+class corosync_status_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        srv_com["corosync_status"] = self.module._exec_command("/usr/sbin/corosync-cfgtool -s", self.logger)
+    def interpret(self, srv_com, cur_ns): 
+        return self._interpret(srv_com["corosync_status"], cur_ns)
+    def interpret_old(self, result, cur_ns):
+        return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
     def _parse_lines(self, lines):
         r_dict = {"node_id" : "???",
                   "rings"   : {}}
@@ -70,39 +63,58 @@ class corosync_status(hm_classes.hmb_command):
                     if key in r_dict["rings"][cur_ring_id]:
                         r_dict["rings"][cur_ring_id][key] = value.strip()
         return r_dict
-    def client_call(self, result, parsed_coms):
-        if result.startswith("ok "):
-            r_lines = hm_classes.net_to_sys(result[3:])
-            hb_dict = self._parse_lines(r_lines)
-            ret_state, out_f = (limits.nag_STATE_OK, ["node_id is %s" % (hb_dict["node_id"])])
-            ring_keys = sorted(hb_dict["rings"].keys())
-            if ring_keys:
-                for ring_key in ring_keys:
-                    ring_dict = hb_dict["rings"][ring_key]
-                    ring_stat = ring_dict["status"]
-                    match_str = "ring %d" % (ring_key)
-                    if ring_stat.lower().startswith(match_str):
-                        ring_stat = ring_stat[len(match_str) : ].strip()
-                    out_f.append("ring %d: id %s, %s" % (ring_key,
-                                                         ring_dict["id"],
-                                                         ring_stat))
-                    if not ring_stat.lower().count("no faults"):
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-            else:
-                out_f.append("no rings defined")
-                ret_state = max(ret_state, limits.nag_STATE_WARNING)
-            return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
-                                          ", ".join(out_f))
+    def _interpret(self, r_lines, parsed_coms):
+        hb_dict = self._parse_lines(r_lines)
+        ret_state, out_f = (limits.nag_STATE_OK, ["node_id is %s" % (hb_dict["node_id"])])
+        ring_keys = sorted(hb_dict["rings"].keys())
+        if ring_keys:
+            for ring_key in ring_keys:
+                ring_dict = hb_dict["rings"][ring_key]
+                ring_stat = ring_dict["status"]
+                match_str = "ring %d" % (ring_key)
+                if ring_stat.lower().startswith(match_str):
+                    ring_stat = ring_stat[len(match_str) : ].strip()
+                out_f.append("ring %d: id %s, %s" % (ring_key,
+                                                     ring_dict["id"],
+                                                     ring_stat))
+                if not ring_stat.lower().count("no faults"):
+                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         else:
-            return limits.nag_STATE_CRITICAL, result
+            out_f.append("no rings defined")
+            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+        return ret_state, ", ".join(out_f)
 
-class heartbeat_status(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "heartbeat_status", **args)
-        self.help_str = "checks status of heartbeat"
-    def server_call(self, cm):
-        return "ok %s" % (hm_classes.sys_to_net({"host"   : process_tools.get_machine_name(),
-                                                 "output" : self.module_info._exec_command("/usr/sbin/crm_mon -1", self.logger)}))
+class heartbeat_status_command(hm_classes.hm_command):
+    def server_call(self, srv_com, cur_ns):
+        srv_com.set_dictionary("heartbeat_info", {"host"   : process_tools.get_machine_name(),
+                                                  "output" : self.module_info._exec_command("/usr/sbin/crm_mon -1", self.logger)})
+    def interpret_old(self, result, parsed_coms):
+        return self._interpret(hm_classes.net_to_sys(result[3:]), parsed_coms)
+    def _interpret(self, r_dict, parsed_coms):
+        if type(r_dict) == type([]):
+            r_dict = {"output" : r_dict,
+                      "host"   : ""}
+        hb_dict = self._parse_lines(r_dict)
+        ret_state, out_f = (limits.nag_STATE_OK, [])
+        out_f.append("stack is %s (%s), DC is %s" % (hb_dict["stack"],
+                                                     hb_dict["version"],
+                                                     hb_dict["current_dc"]))
+        for online in [False, True]:
+            nodes = [name for name, stuff in hb_dict["nodes"].iteritems() if stuff["online"] == online]
+            if nodes:
+                out_f.append("%s(%d): [%s]" % ("online" if online else "offline",
+                                               len(nodes),
+                                               logging_tools.compress_list(nodes)))
+                if not online:
+                    ret_state = max(ret_state, limits.nag_STATE_WARNING)
+        for res_name in sorted(hb_dict["resources"]):
+            stuff = hb_dict["resources"][res_name]
+            if "node" in stuff:
+                out_f.append("%s on %s" % (res_name,
+                                           stuff["node"]))
+            else:
+                out_f.append(res_name)
+        return ret_state, ", ".join(out_f)
     def _parse_lines(self, in_dict, **kwargs):
         only_local_resources = kwargs.get("only_local_resources", True)
         local_node = in_dict["host"]
@@ -149,37 +161,6 @@ class heartbeat_status(hm_classes.hmb_command):
                                                                      "status" : res_status,
                                                                      "node"   : res_node}
         return r_dict
-    def client_call_ext(self, **kwargs):
-        result = kwargs["return_string"]
-        if result.startswith("ok "):
-            r_dict = hm_classes.net_to_sys(result[3:])
-            if type(r_dict) == type([]):
-                r_dict = {"output" : r_dict,
-                          "host"   : ""}
-            hb_dict = self._parse_lines(r_dict)
-            ret_state, out_f = (limits.nag_STATE_OK, [])
-            out_f.append("stack is %s (%s), DC is %s" % (hb_dict["stack"],
-                                                         hb_dict["version"],
-                                                         hb_dict["current_dc"]))
-            for online in [False, True]:
-                nodes = [name for name, stuff in hb_dict["nodes"].iteritems() if stuff["online"] == online]
-                if nodes:
-                    out_f.append("%s(%d): [%s]" % ("online" if online else "offline",
-                                                   len(nodes),
-                                                   logging_tools.compress_list(nodes)))
-                    if not online:
-                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
-            for res_name in sorted(hb_dict["resources"]):
-                stuff = hb_dict["resources"][res_name]
-                if "node" in stuff:
-                    out_f.append("%s on %s" % (res_name,
-                                               stuff["node"]))
-                else:
-                    out_f.append(res_name)
-            return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
-                                          ", ".join(out_f))
-        else:
-            return limits.nag_STATE_CRITICAL, result
 
 if __name__ == "__main__":
     print "This is a loadable module."

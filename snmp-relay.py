@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2009,2010,2011 Andreas Lang-Nevyjel
+# Copyright (C) 2009,2010,2011,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -55,13 +55,12 @@ except ImportError:
 STR_LEN = 256
 DEBUG_LOG_TIME = 15
 
-class snmp_helper_thread(threading_tools.thread_obj):
-    def __init__(self, thread_num, g_config, logger, thread_name, mother_thread_queue):
-        self.__thread_num = thread_num
-        self.__glob_config = g_config
-        self.__logger = logger
-        self.__mother_thread_queue = mother_thread_queue
-        threading_tools.thread_obj.__init__(self, thread_name, queue_size=500)
+class snmp_helper_thread(threading_tools.process_obj):
+    def process_init(self):
+        self.__thread_num = 0#thread_num
+        self.__log_template = logger.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        #self.__mother_thread_queue = mother_thread_queue
+        #threading_tools.thread_obj.__init__(self, thread_name, queue_size=500)
         self.register_func("fetch_snmp", self._fetch_snmp)
         self._init_dispatcher()
     def oid_pretty_print(self, oids):
@@ -72,10 +71,8 @@ class snmp_helper_thread(threading_tools.thread_obj):
         self.__disp.registerTransport(udp.domainName, udp.UdpSocketTransport().openClientMode())
         self.__disp.registerRecvCbFun(self._recv_func)
         self.__disp.registerTimerCbFun(self._timer_func)
-    def thread_running(self):
-        self.__mother_thread_queue.put(("new_pid", self.pid))
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__logger.log(lev, what)
+    #def thread_running(self):
+    #    self.__mother_thread_queue.put(("new_pid", self.pid))
     def _fetch_snmp(self, act_scheme):
         self._set_target(act_scheme)
         self._clear_errors()
@@ -84,19 +81,19 @@ class snmp_helper_thread(threading_tools.thread_obj):
         for key, header_list in kh_list:
             if self.run_ok() and header_list:
                 if key == "T":
-                    if self.__glob_config["VERBOSE"] > 1:
+                    if global_config["VERBOSE"] > 1:
                         self.log("bulk-walk tables (%s): %s" % (self.__net_obj.name, self.oid_pretty_print(header_list)))
                     self.get_tables(header_list)
-                    if self.__glob_config["VERBOSE"] > 1:
+                    if global_config["VERBOSE"] > 1:
                         self.log("bulk-walk tables: done")
                 else:
-                    if self.__glob_config["VERBOSE"] > 1:
+                    if global_config["VERBOSE"] > 1:
                         self.log("get tables (%s): %s" % (self.__net_obj.name, self.oid_pretty_print(header_list)))
                     self.get_tables(header_list, single_values=True)
-                    if self.__glob_config["VERBOSE"] > 1:
+                    if global_config["VERBOSE"] > 1:
                         self.log("get tables: done")
                 if self.run_ok():
-                    if self.__glob_config["VERBOSE"] > 1:
+                    if global_config["VERBOSE"] > 1:
                         self.log("(%s) for host %s (%s): %s" % (key,
                                                                 self.__net_obj.name,
                                                                 logging_tools.get_plural("table header", len(header_list)),
@@ -280,8 +277,7 @@ class snmp_helper_thread(threading_tools.thread_obj):
 
 
 class timer_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, msi_block, logger):
-        self.__glob_config  = glob_config
+    def __init__(self, msi_block, logger):
         self.__logger       = logger
         self.__msi_block    = msi_block
         threading_tools.thread_obj.__init__(self, "timer", queue_size=100, loop_function=self._run)
@@ -304,8 +300,7 @@ class timer_thread(threading_tools.thread_obj):
         
     
 class flush_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, message_q, logger):
-        self.__glob_config  = glob_config
+    def __init__(self, message_q, logger):
         self.__logger       = logger
         self.__message_queue = message_q
         threading_tools.thread_obj.__init__(self, "flush", queue_size=100)
@@ -345,8 +340,7 @@ class flush_thread(threading_tools.thread_obj):
             self.__finish_list = new_flist
 
 class relay_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, flush_queue, mes_queue, logger):
-        self.__glob_config = glob_config
+    def __init__(self, flush_queue, mes_queue, logger):
         self.__logger      = logger
         threading_tools.thread_obj.__init__(self, "relay", queue_size=100)
         self.__message_queue  = mes_queue
@@ -368,8 +362,8 @@ class relay_thread(threading_tools.thread_obj):
     def thread_running(self):
         self.__net_server, self.__ping_object = (None, None)
         self.send_pool_message(("new_pid", self.pid))
-        self.__glob_config.add_config_dict({"LONG_LEN" : configfile.int_c_var(struct.calcsize("@l")),
-                                            "INT_LEN"  : configfile.int_c_var(struct.calcsize("@i"))})
+        #self.__glob_config.add_config_dict({"LONG_LEN" : configfile.int_c_var(struct.calcsize("@l")),
+        #                                    "INT_LEN"  : configfile.int_c_var(struct.calcsize("@i"))})
         self._init_threads(12)
     def _new_pid(self, what):
         self.send_pool_message(("new_pid", what))
@@ -393,7 +387,7 @@ class relay_thread(threading_tools.thread_obj):
     def _get_host_object(self, host_name, snmp_community, snmp_version):
         host_tuple = (host_name, snmp_community, snmp_version)
         if not self.__host_objects.has_key(host_tuple):
-            self.__host_objects[host_tuple] = snmp_relay_schemes.net_object(self.log, self.__glob_config["VERBOSE"], host_name, snmp_community, snmp_version)
+            self.__host_objects[host_tuple] = snmp_relay_schemes.net_object(self.log, global_config["VERBOSE"], host_name, snmp_community, snmp_version)
         return self.__host_objects[host_tuple]
     def _init_threads(self, num_threads):
         self.log("Spawning %s" % (logging_tools.get_plural("parser_thread", num_threads)))
@@ -406,7 +400,7 @@ class relay_thread(threading_tools.thread_obj):
     def _spawn_thread(self, idx):
         pt_name = "snmp_%d" % (idx)
         self.log("starting helper thread %s" % (pt_name))
-        self.__snmp_queues[pt_name] = {"queue"      : self.get_thread_pool().add_thread(snmp_helper_thread(idx, self.__glob_config, self.__logger, pt_name, self.get_thread_queue()), start_thread=True).get_thread_queue(),
+        self.__snmp_queues[pt_name] = {"queue"      : self.get_thread_pool().add_thread(snmp_helper_thread(idx, pt_name, self.get_thread_queue()), start_thread=True).get_thread_queue(),
                                        "used"       : 0,
                                        "call_count" : 0,
                                        # flag if thread is running
@@ -449,7 +443,7 @@ class relay_thread(threading_tools.thread_obj):
     def _start_snmp_fetch(self, scheme):
         free_threads = sorted([key for key, value in self.__snmp_queues.iteritems() if not value["used"] and value["running"]])
         cache_ok, num_cached, num_refresh, num_pending, num_hot_enough = scheme.pre_snmp_start(self.log)
-        if self.__glob_config["VERBOSE"] > 1:
+        if global_config["VERBOSE"] > 1:
             self.log("%sinfo for %s: %s" % ("[F] " if num_refresh else "[I] ",
                                             scheme.net_obj.name,
                                             ", ".join(["%d %s" % (cur_num, info_str) for cur_num, info_str in [(num_cached, "cached"),
@@ -471,7 +465,7 @@ class relay_thread(threading_tools.thread_obj):
             scheme.snmp_end(self.log)
     def _new_ipc_request(self, (data, init_time)):
         act_time = time.time()
-        if self.__glob_config["VERBOSE"] > 0 and abs(act_time - self.__last_log_time) > DEBUG_LOG_TIME:
+        if global_config["VERBOSE"] > 0 and abs(act_time - self.__last_log_time) > DEBUG_LOG_TIME:
             self.__last_log_time = act_time
             self.log("queue statistics : %s" % (", ".join(["%s: %d of %d" % (q_name, q_struct["queue"].qsize(), q_struct["queue"].maxsize) for q_name, q_struct in
                                                            self.__snmp_queues.iteritems() if q_struct["queue"].qsize()]) or "all empty"))
@@ -491,7 +485,7 @@ class relay_thread(threading_tools.thread_obj):
                     scheme = os.path.basename(scheme)
                 act_scheme = self.__all_schemes.get(scheme, None)
                 if act_scheme:
-                    if self.__glob_config["VERBOSE"] > 1:
+                    if global_config["VERBOSE"] > 1:
                         self.log("got request for scheme %s (host %s, community %s, version %d, pid %d)" % (scheme,
                                                                                                             host,
                                                                                                             snmp_community,
@@ -545,7 +539,7 @@ class relay_thread(threading_tools.thread_obj):
     def _send_return_message(self, pid, init_time, ret_state, ret_str):
         #print "shm", self.__ret_str, self.__ret_code
         #print "Sending ipc_return to pid %d (code %d)" % (return_pid, ret_code)
-        if self.__glob_config["VERBOSE"] > 1:
+        if global_config["VERBOSE"] > 1:
             self.log("sending return for pid %d (state %d, %s, %s)" % (pid,
                                                                        ret_state,
                                                                        logging_tools.get_plural("byte", len(ret_str)),
@@ -576,7 +570,6 @@ class relay_thread(threading_tools.thread_obj):
         
 class relay_thread_pool(threading_tools.thread_pool):
     def __init__(self, glob_config, logger):
-        self.__glob_config = glob_config
         self.__logger      = logger
         threading_tools.thread_pool.__init__(self, "main", blocking_loop=False)
         process_tools.save_pid("snmp-relay/snmp-relay")
@@ -594,29 +587,29 @@ class relay_thread_pool(threading_tools.thread_pool):
         elif not api:
             self._int_error("api (SNMP) not defined (unable to create my_asynsock_dispatcher)")
         else:
-            self.__flush_queue        = self.add_thread(flush_thread(self.__glob_config, self.__message_queue, self.__logger),
+            self.__flush_queue        = self.add_thread(flush_thread(self.__message_queue),
                                                         start_thread=True).get_thread_queue()
-            self.__relay_thread_queue = self.add_thread(relay_thread(self.__glob_config, self.__flush_queue, self.__message_queue, self.__logger),
+            self.__relay_thread_queue = self.add_thread(relay_thread(self.__flush_queue, self.__message_queue),
                                                         start_thread=True).get_thread_queue()
             if self.__msi_block:
-                self.__timer_thread = timer_thread(self.__glob_config, self.__msi_block, self.__logger)
+                self.__timer_thread = timer_thread(self.__msi_block)
                 self.add_thread(self.__timer_thread, start_thread=True)
             else:
                 self.__timer_thread = None
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         self.__logger.log(lev, what)
     def _log_config(self):
-        self.log("Basic turnaround-time is %d seconds" % (self.__glob_config["MAIN_TIMER"]))
-        self.log("basedir_name is '%s'" % (self.__glob_config["BASEDIR_NAME"]))
+        self.log("Basic turnaround-time is %d seconds" % (global_config["MAIN_TIMER"]))
+        self.log("basedir_name is '%s'" % (global_config["BASEDIR_NAME"]))
         self.log("Config info:")
-        for line, log_level in self.__glob_config.get_log(clear=True):
+        for line, log_level in global_config.get_log(clear=True):
             self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = self.__glob_config.get_config_info()
+        conf_info = global_config.get_config_info()
         self.log("Found %d valid config-lines:" % (len(conf_info)))
         for conf in conf_info:
             self.log("Config : %s" % (conf))
     def _init_msi_block(self):
-        if self.__glob_config["DAEMONIZE"]:
+        if global_config["DAEMONIZE"]:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("snmp-relay")
             msi_block.add_actual_pid()
@@ -704,11 +697,11 @@ class relay_thread_pool(threading_tools.thread_pool):
                          logging_tools.LOG_LEVEL_WARN)
             else:
                 pyipc.removeIPC(message_q)
-        if self.__glob_config["IPC_SNMP_KEY"] > 0:
+        if global_config["IPC_SNMP_KEY"] > 0:
             try:
-                message_q = pyipc.MessageQueue(self.__glob_config["IPC_SNMP_KEY"], pyipc.IPC_CREAT | 0666)
+                message_q = pyipc.MessageQueue(global_config["IPC_SNMP_KEY"], pyipc.IPC_CREAT | 0666)
             except:
-                self.log("Can't allocate given IPC MessageKey %d" % (self.__glob_config["IPC_SNMP_KEY"]),
+                self.log("Can't allocate given IPC MessageKey %d" % (global_config["IPC_SNMP_KEY"]),
                          logging_tools.LOG_LEVEL_CRITICAL)
                 ret_code = limits.nag_STATE_CRITICAL
             else:
@@ -730,14 +723,14 @@ class relay_thread_pool(threading_tools.thread_pool):
                         except:
                             pass
                     else:
-                        self.__glob_config["IPC_SNMP_KEY"] = act_key
+                        global_config["IPC_SNMP_KEY"] = act_key
                 else:
-                    self.__glob_config["IPC_SNMP_KEY"] = act_key
-                if self.__glob_config["IPC_SNMP_KEY"] > 0:
+                    global_config["IPC_SNMP_KEY"] = act_key
+                if global_config["IPC_SNMP_KEY"] > 0:
                     success = True
                     self.__message_queue = message_q
                     break
-            if not self.__glob_config["IPC_SNMP_KEY"]:
+            if not global_config["IPC_SNMP_KEY"]:
                 self.log("Can't allocate an IPC MessageQueue in the key range [ %d : %d ]" % (first_key, last_key), logging_tools.LOG_LEVEL_CRITICAL)
         if success:
             # write relay-key
@@ -751,16 +744,16 @@ class relay_thread_pool(threading_tools.thread_pool):
                              logging_tools.LOG_LEVEL_ERROR)
             # now (re-)create it
             try:
-                file(key_f_name, "w").write("%d\n" % (self.__glob_config["IPC_SNMP_KEY"]))
+                file(key_f_name, "w").write("%d\n" % (global_config["IPC_SNMP_KEY"]))
             except:
-                self.log("Can't write IPC MessageQueue-key %d to file %s: %s" % (self.__glob_config["IPC_SNMP_KEY"],
+                self.log("Can't write IPC MessageQueue-key %d to file %s: %s" % (global_config["IPC_SNMP_KEY"],
                                                                                  key_f_name,
                                                                                  process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
             else:
-                self.log("wrote IPC MessageQueue-key %d to file %s" % (self.__glob_config["IPC_SNMP_KEY"], key_f_name))
-            if self.__glob_config["VERBOSE"]:
-                self.log("allocated IPC MessageQueue with key %d" % (self.__glob_config["IPC_SNMP_KEY"]))
+                self.log("wrote IPC MessageQueue-key %d to file %s" % (global_config["IPC_SNMP_KEY"], key_f_name))
+            if global_config["VERBOSE"]:
+                self.log("allocated IPC MessageQueue with key %d" % (global_config["IPC_SNMP_KEY"]))
         return success
     def loop_function(self):
         if self["exit_requested"]:
@@ -775,7 +768,7 @@ class relay_thread_pool(threading_tools.thread_pool):
                 pass
             else:
                 act_time = time.time()
-                if self.__glob_config["VERBOSE"] > 0 and abs(act_time - self.__last_log_time) > DEBUG_LOG_TIME:
+                if global_config["VERBOSE"] > 0 and abs(act_time - self.__last_log_time) > DEBUG_LOG_TIME:
                     self.__last_log_time = act_time
                     self.log("queue statistics : %s" % (", ".join(["%s: %d of %d" % (q_name, q_struct.qsize(), q_struct.maxsize) for q_name, q_struct in
                                                                    [("flush"  , self.__flush_queue),
@@ -800,12 +793,12 @@ class relay_thread_pool(threading_tools.thread_pool):
         try:
             self.__pyipc_mod.removeIPC(self.__message_queue)
         except:
-            self.log("unable to destroy the message-queue with MessageKey %d (after flushing %d messages): %s" % (self.__glob_config["IPC_SNMP_KEY"],
+            self.log("unable to destroy the message-queue with MessageKey %d (after flushing %d messages): %s" % (global_config["IPC_SNMP_KEY"],
                                                                                                                   nflush,
                                                                                                                   process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_WARN)
         else:
-            self.log("destroyed the message-queue with MessageKey %d (%d messages flushed)" % (self.__glob_config["IPC_SNMP_KEY"], nflush))
+            self.log("destroyed the message-queue with MessageKey %d (%d messages flushed)" % (global_config["IPC_SNMP_KEY"], nflush))
         try:
             os.unlink(self.__message_key_file_name)
         except:
@@ -828,7 +821,7 @@ class my_options(optparse.OptionParser):
         self.add_option("-v", dest="verbose", default=0, action="count", help="increase verbosity [%default]")
         self.add_option("-V", action="callback", callback=self.show_version, help="show Version")
         self.add_option("-l", dest="show_log_queue", default=False, action="store_true", help="show logging output [%default]")
-        self.add_option("-b", dest="basedir_name", type="str", default="/etc/sysconfig/snmp-relay.d", help="base name for various config files [%default]")
+        #self.add_option("-b", dest="basedir_name", type="str", default="/etc/sysconfig/snmp-relay.d", help="base name for various config files [%default]")
         self.add_option("-t", dest="main_timer", type="int", default=60, help="set main timer [%default]")
         # relayer options
         relayer_group = optparse.OptionGroup(self, "relayer options")
@@ -850,48 +843,38 @@ class my_options(optparse.OptionParser):
         self.__glob_config["MAIN_TIMER"]     = int(options.main_timer)
         self.__glob_config["BASEDIR_NAME"]   = options.basedir_name
         return options, args
+
+global_config = configfile.get_global_config(process_tools.get_programm_name())
         
 def main():
     # read global configfile
-    glob_config = configfile.configuration("snmprelay", {"BASEDIR_NAME"    : configfile.str_c_var("/etc/sysconfig/snmp-relay.d"),
-                                                         "VERBOSE"         : configfile.int_c_var(0),
-                                                         "DAEMONIZE"       : configfile.bool_c_var(True),
-                                                         "MAIN_TIMER"      : configfile.int_c_var(60),
-                                                         "IPC_SNMP_KEY"    : configfile.int_c_var(0),
-                                                         "PROGRAM_NAME"    : configfile.str_c_var("not set"),
-                                                         "LONG_HOST_NAME"  : configfile.str_c_var("not set"),
-                                                         "LOG_NAME"        : configfile.str_c_var("snmp-relay"),
-                                                         "LOG_DESTINATION" : configfile.str_c_var("uds:/var/lib/logging-server/py_log")})
-    glob_config.parse_file("/etc/sysconfig/snmp-relay")
-    glob_config["LONG_HOST_NAME"] = socket.getfqdn(socket.gethostname())
-    glob_config["PROGRAM_NAME"] = os.path.basename(sys.argv[0])
+    global_config.add_config_entries([
+        ("BASEDIR_NAME"    , configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
+        ("DEBUG"           , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("VERBOSE"         , configfile.int_c_var(0)),
+        ("DAEMONIZE"       , configfile.bool_c_var(True)),
+        ("MAIN_TIMER"      , configfile.int_c_var(60, help_string="main timer [%(default)d]")),
+        #("IPC_SNMP_KEY"    , configfile.int_c_var(0)),
+        ("LOG_NAME"        , configfile.str_c_var("snmp-relay")),
+        ("LOG_DESTINATION" , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq"))])
+    global_config.parse_file()
     loc_options, loc_args = my_options(glob_config).parse()
     # determine module_path
     logger = logging_tools.get_logger(glob_config["LOG_NAME"],
                                       glob_config["LOG_DESTINATION"],
                                       init_logger=True)
     if loc_options.kill_running:
-        process_tools.kill_running_processes(glob_config["PROGRAM_NAME"])
+        process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
     handledict = {"out"    : (1, "snmp-relay.out"),
                   "err"    : (0, "/var/lib/logging-server/py_err"),
                   "strict" : 0}
     process_tools.renice()
-    if glob_config["DAEMONIZE"]:
+    if global_config["DAEMONIZE"] and not global_config["DEBUG"]:
         process_tools.become_daemon()
-        hc_ok = process_tools.set_handles(handledict)
+        #hc_ok = process_tools.set_handles(handledict)
     else:
-        hc_ok = 1
         print "Debugging snmp-relayer"
-    if hc_ok:
-        thread_pool = relay_thread_pool(glob_config, logger)
-        thread_pool.thread_loop()
-        ret_code = limits.nag_STATE_OK
-    else:
-        print "Cannot modify handles, exiting..."
-        ret_code = limits.nag_STATE_CRITICAL
-    if glob_config["DAEMONIZE"] and hc_ok != 2:
-        process_tools.handles_write_endline()
-    logger.info("CLOSE")
+    ret_code = relay_thread_pool().loop()
     sys.exit(ret_code)
 
 if __name__ == "__main__":

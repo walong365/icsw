@@ -62,6 +62,9 @@ def client_code():
     com_name = arg_list.pop(0)
     if com_name in modules.command_dict:
         srv_com = server_command.srv_command(command=com_name)#" ".join(arg_list))
+        for src_key, dst_key in [("HOST", "host"),
+                                 ("COM_PORT", "port")]:
+            srv_com[dst_key] = global_config[src_key]
         com_struct = modules.command_dict[com_name]
         try:
             cur_ns, rest = com_struct.handle_commandline(arg_list)
@@ -100,8 +103,10 @@ class host_connection(object):
         if dummy_con:
             self.socket = None
         else:
-            new_sock = host_connection.relayer_thread.zmq_context.socket(zmq.ROUTER)
-            new_sock.setsockopt(zmq.IDENTITY, "relayer_%s" % (process_tools.get_machine_name()))
+            new_sock = host_connection.relayer_thread.zmq_context.socket(zmq.DEALER)
+            id_str = "relayer_%s_%s" % (process_tools.get_machine_name(),
+                                        conn_str)
+            new_sock.setsockopt(zmq.IDENTITY, id_str)
             new_sock.setsockopt(zmq.LINGER, 0)
             new_sock.setsockopt(zmq.HWM, host_connection.backlog_size)
             new_sock.setsockopt(zmq.BACKLOG, host_connection.backlog_size)
@@ -291,7 +296,11 @@ class host_message(object):
                 return (limits.nag_STATE_CRITICAL,
                         result)
             else:
-                return self.com_struct.interpret_old(result, self.ns)
+                # copy host, hacky hack
+                self.com_struct.NOGOOD_srv_com = self.srv_com
+                ret_value = self.com_struct.interpret_old(result, self.ns)
+                del self.com_struct.NOGOOD_srv_com
+                return ret_value
     def __del__(self):
         del self.srv_com
         pass
@@ -378,6 +387,7 @@ class tcp_send(Protocol):
         self.factory = factory
         self.src_id = src_id
         self.srv_com = srv_com
+        self.__header_size = None
     def connectionMade(self):
         com = self.srv_com["command"].text
         if self.srv_com["arg_list"].text:
@@ -386,15 +396,24 @@ class tcp_send(Protocol):
     def dataReceived(self, data):
         #print data
         #self.log_recv.datagramReceived(data, None)
-        if data[0:8].isdigit():
-            d_len = int(data[0:8])
-            if len(data) == d_len + 8:
-                self.factory.received(self, data[8:])
+        if self.__header_size is None:
+            if data[0:8].isdigit():
+                d_len = int(data[0:8])
+                self.__header_size = d_len
+                self.__data = ""
+                self._received(data)
             else:
-                self.factory.log("wrong message length", logging_tools.LOG_LEVEL_ERROR)
+                self.factory.log("protocol error ", logging_tools.LOG_LEVEL_ERROR)
+                self.transport.loseConnection()
         else:
-            self.factory.log("protocol error ", logging_tools.LOG_LEVEL_ERROR)
-        self.transport.loseConnection()
+            self._received(data)
+    def _received(self, data):
+        self.__data = "%s%s" % (self.__data, data)
+        if len(self.__data) == self.__header_size + 8:
+            self.factory.received(self, self.__data[8:])
+            self.transport.loseConnection()
+        else:
+            self.factory.log("got %d of %d bytes, waiting for more" % (len(self.__data), self.__header_size + 8))
     def __del__(self):
         #print "del tcp_send"
         pass
@@ -411,14 +430,7 @@ class tcp_factory(ClientFactory):
     def connectionLost(self, reason):
         print "gone", reason
     def buildProtocol(self, addr):
-        cur_id = "%s:%d" % (addr.host, addr.port)
-        if cur_id in self.__to_send:
-            send_tuple = self.__to_send[cur_id].pop()
-            if not self.__to_send[cur_id]:
-                del self.__to_send[cur_id]
-            return tcp_send(self, *send_tuple)
-        else:
-            raise SyntaxError, "nothing found to send for '%s'" % (cur_id)
+        return tcp_send(self, *self._remove_tuple(addr))
     def clientConnectionLost(self, connector, reason):
         if str(reason).lower().count("closed cleanly"):
             pass
@@ -430,6 +442,16 @@ class tcp_factory(ClientFactory):
         self.log("%s: %s" % (str(connector).strip(),
                              str(reason).strip()),
                  logging_tools.LOG_LEVEL_ERROR)
+        self._remove_tuple(connector)
+    def _remove_tuple(self, connector):
+        cur_id = "%s:%d" % (connector.host, connector.port)
+        if cur_id in self.__to_send:
+            send_tuple = self.__to_send[cur_id].pop()
+            if not self.__to_send[cur_id]:
+                del self.__to_send[cur_id]
+            return send_tuple
+        else:
+            raise SyntaxError, "nothing found to send for '%s'" % (cur_id)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.twisted_process.log("[tcp] %s" % (what), log_level)
     def received(self, cur_proto, data):
@@ -619,12 +641,12 @@ class relay_thread(threading_tools.process_pool):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
-        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=2)
+        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3)
         if True:#not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("collrelay")
             msi_block.add_actual_pid(mult=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/host-relay start"
             msi_block.stop_command  = "/etc/init.d/host-relay force-stop"
             msi_block.kill_pids = True
@@ -633,6 +655,11 @@ class relay_thread(threading_tools.process_pool):
         else:
             msi_block = None
         self.__msi_block = msi_block
+    def process_start(self, src_process, src_pid):
+        process_tools.append_pids(self.__pid_name, src_pid, mult=3)
+        if self.__msi_block:
+            self.__msi_block.add_actual_pid(src_pid, mult=3)
+            self.__msi_block.save_block()
     def _check_timeout(self):
         host_connection.check_timeout_g()
     def _twisted_result(self, src_proc, proc_id, src_id, srv_com, data_str):
@@ -749,7 +776,7 @@ class relay_thread(threading_tools.process_pool):
                                                                                in_data[0]),
                      logging_tools.LOG_LEVEL_ERROR)
         self.__num_messages += 1
-        if self.__num_messages > 10000:
+        if self.__num_messages > 1000:
             self.unregister_poller(self.relayer_socket, zmq.POLLIN)
             self.relayer_socket.close()
             self._init_ipc_sockets()
@@ -1101,7 +1128,7 @@ def main():
                                                partial=prog_name in ["collclient"])
     global_config.write_file()
     if global_config["KILL_RUNNING"]:
-        process_tools.kill_running_processes(exclude=global_config.get_pid())
+        process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
     if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
         process_tools.become_daemon()
     elif prog_name in ["collserver", "collrelay"]:
