@@ -32,6 +32,7 @@ from lxml.builder import E, ElementMaker
 import marshal
 import base64
 import bz2
+import datetime
 try:
     import cPickle as pickle
 except ImportError:
@@ -97,6 +98,9 @@ class srv_command(object):
         if tag_name.count("/"):
             tag_name = tag_name.replace("/", "__slash__")
             kwargs["escape_slash"] = "1"
+        if tag_name.count("@"):
+            tag_name = tag_name.replace("@", "__atsign__")
+            kwargs["escape_atsign"] = "1"
         return getattr(self.__builder, tag_name)(*args, **kwargs)
     @property
     def tree(self):
@@ -117,7 +121,7 @@ class srv_command(object):
         else:
             raise KeyError, "key %s not found in srv_command" % (key)
     def _to_unicode(self, value):
-        if type(value) == type(True):
+        if type(value) == bool:
             return ("True" if value else "False", "bool")
         elif type(value) in [type(0), type(0L)]:
             return ("%d" % (value), "int")
@@ -147,18 +151,29 @@ class srv_command(object):
         elif type(value) == type(None):
             cur_element.text = None
             cur_element.attrib["type"] = "none"
+        elif type(value) == datetime.date:
+            cur_element.text = value.isoformat()
+            cur_element.attrib["type"] = "date"
+        elif type(value) == datetime.datetime:
+            cur_element.text = value.isoformat()
+            cur_element.attrib["type"] = "datetime"
+        elif type(value) == bool:
+            cur_element.text = str(value)
+            cur_element.attrib["type"] = "bool"
         else:
             raise ValueError, "_element: unknown value type '%s'" % (type(value))
         return cur_element
 ##    def _escape_key(self, key_str):
 ##        return key_str.replace("/", "r")
+    def _escape_key(self, key_str):
+        return key_str.replace("/", "__slash__").replace("@", "__atsign__")
     def _create_element(self, key):
         """ creates all element(s) down to key.split(":") """
         xpath_str = "/ns:ics_batch"
         cur_element = self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS})[0]
         for cur_key in key.split(":"):
-            xpath_str = "%s/ns:%s" % (xpath_str, cur_key.replace("/", "__slash__"))
-            full_key = "{%s}%s" % (XML_NS, cur_key.replace("/", "__slash__"))
+            xpath_str = "%s/ns:%s" % (xpath_str, self._escape_key(cur_key))
+            full_key = "{%s}%s" % (XML_NS, self._escape_key(cur_key))
             sub_el = cur_element.find("./%s" % (full_key))
             if sub_el is not None:
                 cur_element = sub_el
@@ -194,6 +209,8 @@ class srv_command(object):
                 key = int(key[7:])
             if "escape_slash" in sub_el.attrib:
                 key = key.replace("__slash__", "/")
+            if "escape_atsign" in sub_el.attrib:
+                key = key.replace("__atsign__", "@")
             if not sub_el.attrib:
                 value = srv_command.tree_to_dict(sub_el)
             else:
@@ -212,6 +229,11 @@ class srv_command(object):
             value = int(value)
         elif el_type == "bool":
             value = bool(value)
+        elif el_type == "date":
+            value_dt = datetime.datetime.strptime(value, "%Y-%m-%d")
+            value = datetime.date(value_dt.year, value_dt.month, value_dt.day)
+        elif el_type == "datetime":
+            value = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
         else:
             pass
         return value

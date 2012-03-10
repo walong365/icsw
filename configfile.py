@@ -66,8 +66,6 @@ class config_proxy(BaseProxy):
         return self._callmethod("name")
     def get_argument_stuff(self):
         return self._callmethod("get_argument_stuff")
-    def get_pid(self):
-        return self._callmethod("get_pid")
         
 class _conf_var(object):
     argparse_type = None
@@ -434,8 +432,6 @@ class configuration(object):
         if message:
             print message
         self.exit_code = 2
-    def get_pid(self):
-        return os.getpid()
     def get_argument_stuff(self):
         return {"positional_arguments" : self.positional_arguments,
                 "other_arguments"      : self.other_arguments,
