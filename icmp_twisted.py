@@ -283,7 +283,7 @@ class icmp_port(base.BasePort):
 
 class icmp_protocol(protocol.AbstractDatagramProtocol):
     def __init__(self):
-        self.echo_seqno = 0L
+        self.echo_seqno = 32700L
     def datagram_received(self, datagram, addr):
         self.received(self.parse_datagram(datagram))
     def received(self, dgram):
@@ -308,9 +308,9 @@ class icmp_protocol(protocol.AbstractDatagramProtocol):
             raise NotImplementedError("Decoding of type '%d' datagrams not supported" % (packet_type))
         return dgram
     def send_echo(self, addr, data="icmp_twisted.py data", ident=None):
-        self.echo_seqno = (self.echo_seqno + 1) & 0xffff
+        self.echo_seqno = (self.echo_seqno + 1) & 0x7fff
         if ident is None:
-            ident = os.getpid() & 0xFFFF
+            ident = os.getpid() & 0x7FFF
         dgram = icmp_echo(data=data, ident=ident, seqno=self.echo_seqno)
         return self.transport.write(dgram.packed(), (addr, 0))
     

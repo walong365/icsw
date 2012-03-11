@@ -782,6 +782,8 @@ class process_obj(multiprocessing.Process):
         # run flag
         # process priority: when stopping processes start with the lowest priority and end with the highest
         self["priority"] = kwargs.get("priority", 0)
+        # copy kwargs for reference
+        self.start_kwargs = kwargs
     @property
     def twisted(self):
         return self.__twisted
