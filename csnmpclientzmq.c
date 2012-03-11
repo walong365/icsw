@@ -39,7 +39,7 @@
 #define STATE_OK 0
 #define STATE_WARNING 1
 #define STATE_CRITICAL 2
-#define SERVICE_NAME "cczmq"
+#define SERVICE_NAME "sczmq"
 
 /* internal buffer sizes */
 #define ERRSTR_SIZE 512
@@ -73,10 +73,10 @@ void mysigh(int dummy) {
 }
 
 int main (int argc, char** argv) {
-    int ret, num, inlen, file, i/*, time*/, port, rchar, verbose, quiet, retcode, timeout, host_written;
+    int ret, num, inlen, file, i/*, time*/, rchar, verbose, quiet, retcode, timeout, host_written, snmp_version;
     struct in_addr sia;
     struct hostent *h;
-    char *iobuff, *sendbuff, *host_b, *act_pos, *act_source, *act_bp;
+    char *iobuff, *sendbuff, *host_b, *act_pos, *act_source, *act_bp, *snmp_community;
     struct itimerval mytimer;
     struct sigaction *alrmsigact;
     struct utsname myuts;
@@ -84,25 +84,23 @@ int main (int argc, char** argv) {
     retcode = STATE_CRITICAL;
 
     timeout = 10;
-    port = 2001;
     verbose = 0;
     quiet = 0;
     host_written = 0;
+    snmp_version = 1;
     h = NULL;
     // get uts struct
     uname(&myuts);
     sendbuff = (char*)malloc(SENDBUFF_SIZE);
     host_b = (char*)malloc(SENDBUFF_SIZE);
+    snmp_community = (char*)malloc(2000);
     sendbuff[0] = 0;
-    host_b[0] = 0;
-    sprintf(host_b, "localhost");
+    strcpy(host_b, "localhost");
+    strcpy(snmp_community, "public");
     while (1) {
-        rchar = getopt(argc, argv, "+vm:p:ht:q");
+        rchar = getopt(argc, argv, "+vm:ht:qC:V:");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
-        case 'p':
-            port = strtol(optarg, NULL, 10);
-            break;
         case 'm':
             sprintf(host_b, "%s", optarg);
             //h = gethostbyname(optarg);
@@ -114,13 +112,19 @@ int main (int argc, char** argv) {
         case 'v':
             verbose = 1;
             break;
+        case 'V':
+            snmp_version = strtol(optarg, NULL, 10);
+            break;
+        case 'C':
+            strcpy(snmp_community, optarg);
+            break;
         case 'q':
             quiet = 1;
             break;
         case 'h':
         case '?':
-            printf("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-q] command\n", basename(argv[0]));
-            printf("  defaults: port=%d, timeout=%d\n", port, timeout);
+            printf("Usage: %s [-t TIMEOUT] [-m HOST] [-C COMMUNITY] [-V VERSION] [-h] [-v] [-q] command\n", basename(argv[0]));
+            printf("  defaults: community=%s, version=%d, timeout=%d\n", snmp_community, snmp_version, timeout);
             free(host_b);
             exit(STATE_CRITICAL);
             break;
@@ -130,7 +134,7 @@ int main (int argc, char** argv) {
     //printf("%s\n", host_b);
     /*  errno = 0;*/
     //if (!h) err_exit("Wrong host or no host given!\n");
-    sprintf(sendbuff, "%s;%d;", host_b, port);
+    sprintf(sendbuff, "%s;%d;%s;", host_b, snmp_version, snmp_community);
     act_pos = sendbuff;
     for (i = optind; i < argc; i++) {
         sprintf(sendbuff, "%s %s", sendbuff, argv[i]);
@@ -165,7 +169,7 @@ int main (int argc, char** argv) {
         mytimer.it_value.tv_usec = 0;
         setitimer(ITIMER_REAL, &mytimer, NULL);
         // send
-        zmq_connect(requester, "ipc:///var/log/cluster/sockets/collrelay/receiver");//host_b);
+        zmq_connect(requester, "ipc:///var/log/cluster/sockets/snmp_relay/receiver");
         zmq_msg_t request, reply;
         if (verbose) {
             printf("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', pid is %d\n", strlen(sendbuff), identity_str, myuts.nodename, SERVICE_NAME, getpid());

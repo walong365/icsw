@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -33,6 +33,102 @@ import process_tools
 import threading_tools
 import Queue
 import net_tools
+
+class _general(hm_classes.hm_module):
+    def _parse_ecd(self, in_str):
+        # parse exclude_checkdate, ecd has the form [WHHMM][-WHHMM]
+        # W ... weekday, 1 ... monday, 7 ... sunday
+        if in_str.count("-"):
+            start_str, end_str = in_str.strip().split("-")
+            if not len(start_str):
+                start_str = None
+            if not len(end_str):
+                end_str = None
+        else:
+            start_str, end_str = (in_str.strip(), None)
+        return (self._parse_ecd2(start_str), self._parse_ecd2(end_str))
+    def _parse_ecd2(self, in_str):
+        if in_str is None:
+            return in_str
+        else:
+            if len(in_str) != 5 or not in_str.isdigit():
+                raise SyntaxError, "exclude_checkdate '%s' has wrong form (not WHHMM)" % (in_str)
+            weekday, hour, minute = (int(in_str[0]),
+                                     int(in_str[1:3]),
+                                     int(in_str[3:5]))
+            if weekday < 1 or weekday > 7:
+                raise SyntaxError, "exclude_checkdate '%s' has invalid weekday" % (in_str)
+            if hour < 0 or hour > 23:
+                raise SyntaxError, "exclude_checkdate '%s' has invalid hour" % (in_str)
+            if minute < 0 or minute > 59:
+                raise SyntaxError, "exclude_checkdate '%s' has invalid minute" % (in_str)
+            return (weekday, hour, minute)
+
+class check_file_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        self.parser.add_argument("--mod", dest="mod_diff_time", type=int)
+        self.parser.add_argument("--size", dest="min_file_size", type=int)
+        self.parser.add_argument("--exclude-checkdate", dest="exclude_checkdate", type=str)
+    def __call__(self, srv_com, cur_ns):
+        if not "arguments:arg0" in srv_com:
+            srv_com["result"].attrib.update({"reply" : "need filename",
+                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+        else:
+            file_name = srv_com["arguments:arg0"].text.strip()
+            if os.path.isfile(file_name):
+                f_stat = os.stat(file_name)
+                srv_com.set_dictionary("stat_result", {
+                    "file"       : file_name,
+                    "stat"       : f_stat,
+                    "local_time" : time.time()})
+            else:
+                srv_com["stat_result"].attrib.update({
+                    "reply" : "file '%s' not found" % (file_name),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+    def interpret(self, srv_com, cur_ns):
+        return self._interpret(srv_com["stat_result"], cur_ns)
+    def interpret_old(self, result, cur_ns):
+        return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
+    def _interpret(self, f_dict, cur_ns):
+        ret_state = limits.nag_STATE_OK
+        file_stat = f_dict["stat"]
+        add_array = ["size %s" % (logging_tools.get_size_str(file_stat[stat.ST_SIZE]))]
+        act_time = time.localtime()
+        act_time = (act_time.tm_wday + 1,
+                    act_time.tm_hour,
+                    act_time.tm_min)
+        act_time = act_time[2] + 60 * (act_time[1] + 24 * act_time[0])
+        in_exclude_range = False
+        if cur_ns.exclude_checkdate:
+            for s_time, e_time in cur_ns.exclude_checkdate:
+                if s_time:
+                    s_time = s_time[2] + 60 * (s_time[1] + 24 * s_time[0])
+                if e_time:
+                    e_time = e_time[2] + 60 * (e_time[1] + 24 * e_time[0])
+                if s_time and e_time:
+                    if s_time <= act_time and act_time <= e_time:
+                        in_exclude_range = True
+                if s_time:
+                    if s_time <= act_time:
+                        in_exclude_range = True
+                if e_time:
+                    if act_time <= e_time:
+                        in_exclude_range = True
+        if in_exclude_range:
+            add_array.append("in exclude_range")
+        else:
+            if cur_ns.mod_diff_time:
+                md_time = abs(file_stat[stat.ST_MTIME] - f_dict["local_time"])
+                if md_time > cur_ns.mod_diff_time:
+                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    add_array.append("changed %s ago > %s" % (logging_tools.get_diff_time_str(md_time),
+                                                              logging_tools.get_diff_time_str(cur_ns.mod_diff_time)))
+                else:
+                    add_array.append("changed %s ago < %s" % (logging_tools.get_diff_time_str(md_time),
+                                                              logging_tools.get_diff_time_str(cur_ns.mod_diff_time)))
+        return ret_state, "file %s %s" % (f_dict["file"],
+                                          ", ".join(add_array))
 
 class my_modclass(hm_classes.hm_fileinfo):
     def __init__(self, **args):
@@ -500,71 +596,6 @@ class check_dir(hm_classes.hmb_command):
             dir_stat = f_dict["stat"]
             return ret_state, "%s dir %s exists" % (limits.get_state_str(ret_state),
                                                     f_dict["dir"])
-
-class check_file(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "check_file", **args)
-        self.help_str = "checks a file for last change time"
-        self.short_client_info = "[--mod difftime in seconds] [--size minimum size] [--exclude-checkdate ] file"
-        self.long_client_info = "file checker"
-        self.short_client_opts = ""
-        self.long_client_opts = ["mod=", "size=", "exclude-checkdate="]
-    def server_call(self, cm):
-        if len(cm) < 1:
-            return "error need filename"
-        file_name = cm[0]
-        if os.path.isfile(file_name):
-            f_stat = os.stat(file_name)
-            return "ok %s" % (hm_classes.sys_to_net({"file"       : file_name,
-                                                     "stat"       : f_stat,
-                                                     "local_time" : time.time()}))
-        else:
-            return "error file %s not found" % (file_name)
-    def client_call(self, result, parsed_coms):
-        if result.startswith("error"):
-            return limits.nag_STATE_CRITICAL, result
-        else:
-            f_dict = hm_classes.net_to_sys(result[3:])
-            ret_state = limits.nag_STATE_OK
-            file_stat = f_dict["stat"]
-            opt_dict = parsed_coms[1]
-            add_array = ["size %s" % (logging_tools.get_size_str(file_stat[stat.ST_SIZE]))]
-            act_time = time.localtime()
-            act_time = (act_time.tm_wday + 1,
-                        act_time.tm_hour,
-                        act_time.tm_min)
-            act_time = act_time[2] + 60 * (act_time[1] + 24 * act_time[0])
-            in_exclude_range = False
-            if opt_dict["exclude_checkdate"]:
-                for s_time, e_time in opt_dict["exclude_checkdate"]:
-                    if s_time:
-                        s_time = s_time[2] + 60 * (s_time[1] + 24 * s_time[0])
-                    if e_time:
-                        e_time = e_time[2] + 60 * (e_time[1] + 24 * e_time[0])
-                    if s_time and e_time:
-                        if s_time <= act_time and act_time <= e_time:
-                            in_exclude_range = True
-                    if s_time:
-                        if s_time <= act_time:
-                            in_exclude_range = True
-                    if e_time:
-                        if act_time <= e_time:
-                            in_exclude_range = True
-            if in_exclude_range:
-                add_array.append("in exclude_range")
-            else:
-                if opt_dict["mod_diff_time"]:
-                    md_time = abs(file_stat[stat.ST_MTIME] - f_dict["local_time"])
-                    if md_time > opt_dict["mod_diff_time"]:
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                        add_array.append("changed %s ago > %s" % (logging_tools.get_diff_time_str(md_time),
-                                                                  logging_tools.get_diff_time_str(opt_dict["mod_diff_time"])))
-                    else:
-                        add_array.append("changed %s ago < %s" % (logging_tools.get_diff_time_str(md_time),
-                                                                  logging_tools.get_diff_time_str(opt_dict["mod_diff_time"])))
-            return ret_state, "%s file %s %s" % (limits.get_state_str(ret_state),
-                                                 f_dict["file"],
-                                                 ", ".join(add_array))
 
 if __name__ == "__main__":
     print "This is a loadable module."

@@ -29,6 +29,7 @@ import argparse
 import subprocess
 import server_command
 import zmq
+import types
 
 def net_to_sys(in_val):
     try:
@@ -57,35 +58,50 @@ class subprocess_struct(object):
         self.terminated = False
     def run(self):
         if self.multi_command:
-            self.cur_comline = self.command_line[self.com_num]
-            self.com_num += 1
+            if self.command_line:
+                self.cur_comline = self.command_line[self.com_num]
+                self.com_num += 1
+            else:
+                self.cur_comline = None
         else:
             self.cur_comline = self.command_line
-        self.popen = subprocess.Popen(self.cur_comline, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        if self.cur_comline:
+            self.popen = subprocess.Popen(self.cur_comline, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     def set_send_stuff(self, src_id, zmq_sock):
         self.src_id = src_id
         self.zmq_sock = zmq_sock
     def read(self):
-        return self.popen.stdout.read()
+        if self.popen:
+            return self.popen.stdout.read()
+        else:
+            return None
     def finished(self):
-        self.cur_result = self.popen.poll()
-        fin = False
-        if self.cur_result is not None:
-            if self.multi_command:
-                if self.cb_func:
-                    self.cb_func(self, self.com_num - 1)
-                if self.com_num == len(self.command_line):
-                    # last command
-                    fin = True
+        if self.cur_comline is None:
+            self.cur_result = 0
+            # empty list of commands
+            fin = True
+        else:
+            self.cur_result = self.popen.poll()
+            fin = False
+            if self.cur_result is not None:
+                if self.multi_command:
+                    if self.cb_func:
+                        self.cb_func(self, self.com_num - 1)
+                    if self.com_num == len(self.command_line):
+                        # last command
+                        fin = True
+                    else:
+                        # next command
+                        self.run()
                 else:
-                    # next command
-                    self.run()
-            else:
-                fin = True
+                    fin = True
         return fin
     def process(self):
         if self.cb_func:
-            self.cb_func(self)
+            if self.multi_command:
+                self.cb_func(self, self.com_num)
+            else:
+                self.cb_func(self)
         else:
             self.srv_com["result"].attrib.update({
                 "reply" : "default process() call",
@@ -116,11 +132,12 @@ class hm_module(object):
         self.obj = mod_obj
         self.__commands = {}
     def add_command(self, com_name, call_obj):
-        if com_name.endswith("_command"):
-            com_name = com_name[:-8]
-        new_co = call_obj(com_name)
-        new_co.module = self
-        self.__commands[com_name] = new_co
+        if type(call_obj) == type:
+            if com_name.endswith("_command"):
+                com_name = com_name[:-8]
+            new_co = call_obj(com_name)
+            new_co.module = self
+            self.__commands[com_name] = new_co
     @property
     def commands(self):
         return self.__commands

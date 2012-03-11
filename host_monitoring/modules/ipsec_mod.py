@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009 lang-nevyjel@init.at
+# Copyright (C) 2008,2009,2012 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -20,8 +20,7 @@
 
 import sys
 import commands
-from host_monitoring import limits
-from host_monitoring import hm_classes
+from host_monitoring import limits, hm_classes
 import os
 import os.path
 import logging_tools
@@ -29,16 +28,11 @@ import process_tools
 import pprint
 import time
 import socket
+import server_command
 
-class my_modclass(hm_classes.hm_fileinfo):
-    def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "ipsec_status",
-                                        "provides a interface to check the status of IPSec",
-                                        **args)
-    def init(self, mode, logger, basedir_name, **args):
-        if mode == "i":
-            self._find_ipsec_command()
+class _general(hm_classes.hm_module):
+    def init_module(self):
+        self._find_ipsec_command()
     def _find_ipsec_command(self):
         self.__ipsec_command = ""
         for s_dir in ["/bin", "/usr/bin", "/sbin", "/usr/sbin"]:
@@ -99,32 +93,37 @@ class my_modclass(hm_classes.hm_fileinfo):
                         con_dict[con_key]["sa_dict"].setdefault(("#%d" % (sa_key), port_num), []).extend(parts)
         return con_dict
 
-class ipsec_status_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "ipsec_status", **args)
-        self.help_str = "returns the status of configured IPSec tunnels"
-    def server_call(self, cm):
-        con_dict = self.module_info._update_ipsec_status()
-        return "ok %s" % (hm_classes.sys_to_net(con_dict))
-    def client_call_ext(self, **args):
-        result = args["return_string"]
-        if result.startswith("ok "):
-            con_dict = hm_classes.net_to_sys(result[3:])
+class ipsec_status_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+    def __call__(self, srv_com, cur_ns):
+        srv_com.set_dictionary("ipsec_status", self.module._update_ipsec_status())
+    def interpret(self, srv_com, cur_ns):
+        con_dict = server_command.srv_command.tree_to_dict(srv_com["ipsec_status"])
+        return self._interpret(con_dict, cur_ns)
+    def interpret_old(self, result, parsed_coms):
+        con_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(con_dict, parsed_coms)
+    def _interpret(self, con_dict, cur_ns):
+        if cur_ns.arguments:
+            first_arg = cur_ns.arguments[0]
         else:
-            con_dict = {}
-        if not args["args"]:
+            first_arg = None
+        if not first_arg:
             # overview
-            ret_state, ret_list = (limits.nag_STATE_OK, [])
-            for con_name in sorted(con_dict):
-                if "erouted" in con_dict[con_name]["flags"]:
-                    ret_list.append("%s ok" % (con_name))
-                else:
-                    ret_list.append("%s is not erouted" % (con_name))
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-            return ret_state, "%s %s" % (limits.get_state_str(ret_state),
-                                         ", ".join(ret_list))
-        elif con_dict.has_key(args["args"][0]):
-            con_stuff = con_dict[args["args"][0]]
+            if con_dict:
+                ret_state, ret_list = (limits.nag_STATE_OK, [])
+                for con_name in sorted(con_dict):
+                    if "erouted" in con_dict[con_name]["flags"]:
+                        ret_list.append("%s ok" % (con_name))
+                    else:
+                        ret_list.append("%s is not erouted" % (con_name))
+                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                return ret_state, ", ".join(ret_list)
+            else:
+                return limits.nag_STATE_WARNING, "no connections defined"
+        elif con_dict.has_key(first_arg):
+            con_stuff = con_dict[first_arg]
             ret_state, ret_list = (limits.nag_STATE_OK, [])
             if "erouted" in con_stuff["flags"]:
                 ret_list.append("is erouted")
@@ -134,12 +133,10 @@ class ipsec_status_command(hm_classes.hmb_command):
             else:
                 ret_list.append("is not erouted")
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-            return ret_state, "%s connection %s: %s" % (limits.get_state_str(ret_state),
-                                                        args["args"][0],
-                                                        ", ".join(ret_list))
-            
+            return ret_state, "connection %s: %s" % (first_arg,
+                                                     ", ".join(ret_list))
         else:
-            return limits.nag_STATE_CRITICAL, "error connection '%s' not found (defined: %s)" % (args["args"][0],
+            return limits.nag_STATE_CRITICAL, "error connection '%s' not found (defined: %s)" % (first_arg,
                                                                                                  ", ".join(sorted(con_dict)) or "none")
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 .PHONY: clean all
 
 comp=gcc
-progs=ccollclient csnmpclient csnmpclientmorph
+progs=ccollclient csnmpclient csnmpclientmorph csnmpclientzmq
 
 ifeq ($(shell uname -m), x86_64)
         LIB_DIR=lib64
@@ -29,6 +29,10 @@ ccollclientzmq: ccollclientzmq.o
 csnmpclient: csnmpclient.o
 	$(comp) csnmpclient.o -o csnmpclient
 	strip csnmpclient
+
+csnmpclientzmq: csnmpclientzmq.o
+	$(comp) -L/opt/cluster/$(LIB_DIR)/ -lzmq csnmpclientzmq.o -o csnmpclientzmq
+	strip csnmpclientzmq
 
 csnmpclientmorph: csnmpclientmorph.o
 	$(comp) csnmpclientmorph.o -o csnmpclientmorph

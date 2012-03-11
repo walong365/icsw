@@ -303,7 +303,7 @@ class procstat_command(hm_classes.hm_command):
         self.server_parser.add_argument("-f", dest="filter", action="store_true", default=False)
         self.parser.add_argument("-w", dest="warn", type=int, default=0)
         self.parser.add_argument("-c", dest="crit", type=int, default=0)
-        self.parser.add_argument("-Z", dest="zombie", default=False, action="store_true")
+        self.parser.add_argument("-Z", dest="zombie", default=False, action="store_true", help="ignore zombie processes")
     def __call__(self, srv_com, cur_ns):
         p_dict = process_tools.get_proc_list()
         if cur_ns.arguments:
@@ -322,6 +322,8 @@ class procstat_command(hm_classes.hm_command):
             if value["state"] == "Z":
                 if value["name"].lower() in zombie_ok_list:
                     res_dict["zombie_ok"] += 1
+                elif cur_ns.zombie:
+                    res_dict["ok"] += 1
                 else:
                     res_dict["fail"] += 1
             else:
@@ -343,6 +345,9 @@ class procstat_command(hm_classes.hm_command):
         shit_str = ""
         ret_str, ret_state = ("OK", limits.nag_STATE_CRITICAL)
         copy_struct = result.get("struct", None)
+        if parsed_coms.zombie:
+            result["num_ok"] += result["num_fail"]
+            result["num_fail"] = 0
         if result["num_shit"] > 0:
             shit_str = " (%s)" % (logging_tools.get_plural("dead cron", result["num_shit"]))
         if result["num_fail"] > 0:

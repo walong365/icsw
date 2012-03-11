@@ -85,7 +85,7 @@ class corosync_status_command(hm_classes.hm_command):
         return ret_state, ", ".join(out_f)
 
 class heartbeat_status_command(hm_classes.hm_command):
-    def server_call(self, srv_com, cur_ns):
+    def __call__(self, srv_com, cur_ns):
         srv_com.set_dictionary("heartbeat_info", {"host"   : process_tools.get_machine_name(),
                                                   "output" : self.module_info._exec_command("/usr/sbin/crm_mon -1", self.logger)})
     def interpret_old(self, result, parsed_coms):

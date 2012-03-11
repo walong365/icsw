@@ -23,7 +23,7 @@ import time
 import sys
 import logging_tools
 import process_tools
-import limits
+from host_monitoring import limits
 import optparse
 import cStringIO
 import pprint
@@ -43,7 +43,6 @@ class net_object(object):
         self.snmp_version = snmp_version
         self.__cache_tree = {}
         self.__pending_requests = set()
-        self.__lock = threading.Lock()
         self.__oid_times = {}
         self.__time_steps = {}
         self.__oid_cache_defaults = {}
@@ -101,10 +100,6 @@ class net_object(object):
             "expires" : time.time() + self.__oid_cache_defaults[oid_t]["timeout"],
             "refresh" : time.time() + self.__oid_cache_defaults[oid_t]["refresh"],
             "tree"    : tree}
-    def lock(self):
-        self.__lock.acquire()
-    def release(self):
-        self.__lock.release()
     def snmp_tree_valid(self, oid):
         return (oid in self.__cache_tree and self.__cache_tree[oid]["expires"] > time.time())
     def get_snmp_tree(self, oid):
@@ -157,16 +152,17 @@ class snmp_scheme(object):
         # public stuff
         self.snmp_dict = {}
         self.net_obj = kwargs["net_obj"]
-        self.ret_queue = kwargs["ret_queue"]
-        self.__pid = kwargs["pid"]
+        self.envelope = kwargs["envelope"]
         self.__errors = []
         self.__missing_headers = []
-        self.__return_sent = False
+        self.return_sent = False
         self.__req_list = []
         self.transform_single_key = False
         self.__info_tuple = ()
     def __del__(self):
         pass
+    def proc_data(self):
+        return [self.net_obj.snmp_version, self.net_obj.name, self.net_obj.snmp_community, self.envelope, self.transform_single_key] + self.snmp_start()
     def parse_options(self, options, **args):
         old_stdout, old_stderr = (sys.stdout, sys.stderr)
         act_io = cStringIO.StringIO()
@@ -209,7 +205,7 @@ class snmp_scheme(object):
             # list of oids we need and oids already pending
             act_oids, pending_oids = (set(self.__hv_mapping.keys()), set())
             # check for caching and already pending requests
-            self.net_obj.lock()
+            #self.net_obj.lock()
             #self.net_obj.register_oids(self.__hv_mapping.keys(), log_com)
             self.net_obj.register_oids(log_com, act_oids)
             cache_ok = all([True if oid_struct.cache_it and self.net_obj.snmp_tree_valid(wf_oid) else False for wf_oid, oid_struct in self.__hv_mapping.iteritems()])
@@ -233,7 +229,7 @@ class snmp_scheme(object):
             elif not act_oids:
                 self._send_cache_warn()
             self.net_obj.add_to_pending_requests(act_oids)
-            self.net_obj.release()
+            #self.net_obj.release()
             self.__act_oids = act_oids
             self.__waiting_for, self.__received = (self.__act_oids,
                                                    set())
@@ -251,7 +247,7 @@ class snmp_scheme(object):
     def snmp_end(self, log_com):
         self.parser.destroy()
         # remove all waiting headers from pending_list
-        self.net_obj.lock()
+        #self.net_obj.lock()
         self.net_obj.remove_from_pending_requests(self.__waiting_for)
         self.__waiting_for = self.__waiting_for.difference(self.__received)
         if self.__waiting_for:
@@ -261,10 +257,10 @@ class snmp_scheme(object):
             for recv in self.__received:
                 if self.__hv_mapping[recv].cache_it:
                     self.net_obj.save_snmp_tree(self.__hv_mapping[recv], self.snmp_dict[recv])
-        self.net_obj.release()
+        #self.net_obj.release()
         #print "SNMP_ENDG", self.__missing_headers, self.__errors
         #pprint.pprint(self.snmp_dict)
-        if not self.__return_sent:
+        if not self.return_sent:
             if self.__missing_headers or self.__errors:
                 self._send_error_return()
             else:
@@ -298,8 +294,9 @@ class snmp_scheme(object):
                                                    ", ".join([".".join(["%d" % (part) for part in oid]) for oid in self.__missing_headers]) or "none")
         self.send_return(limits.nag_STATE_CRITICAL, err_str, True)
     def send_return(self, ret_state, ret_str, log_it=False):
-        self.__return_sent = True
-        self.ret_queue.put(("snmp_result", (self.__pid, self.__init_time, ret_state, ret_str, log_it)))
+        self.return_sent = True
+        self.return_tuple = (ret_state, ret_str, log_it)
+        ####self.ret_queue.put(("snmp_result", (self.__pid, self.__init_time, ret_state, ret_str, log_it)))
     # helper functions
     def _simplify_keys(self, in_dict):
         # changes all keys from (x,) to x
@@ -328,15 +325,20 @@ class snmp_scheme(object):
         return self.snmp_dict
     @snmp.setter
     def snmp(self, in_value):
-        header, key, value = in_value
-        if header in self.__waiting_for:
-            self.__received.add(header)
-            if self.__single_value:
-                self.snmp_dict[header] = value
-            else:
-                if self.transform_single_key and len(key) == 1:
-                    key = key[0]
-                self.snmp_dict.setdefault(header, {})[key] = value
+        if type(in_value) == type({}):
+            self.__received |= set(in_value.keys())
+            # set complete dict
+            self.snmp_dict = in_value
+        else:
+            header, key, value = in_value
+            if header in self.__waiting_for:
+                self.__received.add(header)
+                if self.__single_value:
+                    self.snmp_dict[header] = value
+                else:
+                    if self.transform_single_key and len(key) == 1:
+                        key = key[0]
+                    self.snmp_dict.setdefault(header, {})[key] = value
 
 class load_scheme(snmp_scheme):
     def __init__(self, **args):

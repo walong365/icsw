@@ -217,27 +217,16 @@ class mail_log_object(file_object):
             pass
         return act_event
         
-class my_modclass(hm_classes.hm_fileinfo):
-    def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "mail_monitor",
-                                        "monitors various values of the mail-subsystem",
-                                        **args)
-        self.priority = 10
-#        self.has_own_thread = True
-#    def start_thread(self, log_name, log_dest):
-#        self.__local_queue = Queue.Queue(10)
-#        act_st = my_subthread(log_name, log_dest, self.__local_queue, self.__check_kerio, self.__kerio_main_dir)
-#        self.__thread_queue = act_st.get_thread_queue()
-#        return act_st
-#    def send_thread(self, what):
-#        self.__thread_queue.put(what)
-    def init_m_vect(self, mv, logger):
+class _general(hm_classes.hm_module):
+    class Meta:
+        priority = 10
+    def init_machine_vector(self, mv):
         self.__maillog_object = mail_log_object()
         self.__maillog_object.parse_lines()
         self.__act_snapshot, self.__check_time = ({}, time.time())
         self.__num_mails = 0
-        mv.reg_entry("mail.waiting", 0, "number of mails in mail-queue")
+        self.__check_kerio = False
+        mv.register_entry("mail.waiting", 0, "number of mails in mail-queue")
     def get_num_mails(self):
         return self.__num_mails
     def ext_num_mails(self, mail_coms):
@@ -276,12 +265,12 @@ class my_modclass(hm_classes.hm_fileinfo):
                         self.log("unknown format_str '%s'" % (format_str),
                                  logging_tools.LOG_LEVEL_ERROR)
         return ret_dict
-    def update_m_vect(self, mv, logger):
+    def update_machine_vector(self, mv):
         if self.__check_kerio:
-            self._do_kerio_stuff(mv, logger)
+            self._do_kerio_stuff(mv)
         else:
-            self._do_postfix_stuff(mv, logger)
-    def _do_kerio_stuff(self, mv, logger):
+            self._do_postfix_stuff(mv)
+    def _do_kerio_stuff(self, mv):
         stat_file = "%s/mailserver/stats.dat" % (self.__kerio_main_dir)
         if os.path.isfile(stat_file):
             try:
@@ -332,18 +321,18 @@ class my_modclass(hm_classes.hm_fileinfo):
                             mv.reg_entry(key, 0., info, "1/min")
                         diff_value = value - self.__last_kerio_dict.get(key, value)
                         mv.reg_update(logger, key, float(diff_value * 60. / diff_time))
-    def _do_postfix_stuff(self, mv, logger):
+    def _do_postfix_stuff(self, mv):
         act_snapshot, act_time = (self.__maillog_object.parse_lines(), time.time())
         diff_time = max(1, abs(act_time - self.__check_time))
         for key, value in act_snapshot.iteritems():
             if not self.__act_snapshot.has_key(key):
-                mv.reg_entry("mail.%s" % (key), 0., self.__maillog_object.get_info_str(key), "1/min")
+                mv.register_entry("mail.%s" % (key), 0., self.__maillog_object.get_info_str(key), "1/min")
                 diff_value = value
             else:
                 diff_value = value - self.__act_snapshot[key]
-            mv.reg_update(logger, "mail.%s" % (key), float(diff_value * 60. / diff_time))
+            mv["mail.%s" % (key)] = float(diff_value * 60. / diff_time)
         self.__act_snapshot, self.__check_time = (act_snapshot, act_time)
-        mv.reg_update(logger, "mail.waiting", self.get_num_mails())
+        mv["mail.waiting"] = self.get_num_mails()
     #def _get_mail_queue_entries(self):
         #self.__num_mails = 0
         #stat, out = commands.getstatusoutput("mailq")
@@ -362,46 +351,45 @@ class my_modclass(hm_classes.hm_fileinfo):
                         #line_parts = last_line.split()
                         #if line_parts[-2].isdigit():
                             #self.__num_mails = int(line_parts[-2])
-    def process_server_args(self, glob_config, logger):
-        self.__check_kerio, self.__kerio_main_dir = (False, "")
-        if glob_config["CHECK_KERIO"]:
-            # search for kerio in the usual places
-            for s_dir in ["/opt/kerio/"]:
-                if os.path.isfile("%s/mailserver/stats.dat" % (s_dir)):
-                    self.__last_kerio_check, self.__last_kerio_dict = (0, {})
-                    self.__check_kerio, self.__kerio_main_dir = (True, s_dir)
-                    break
-        return (True, "")
-    def process_client_args(self, opts, hmb):
-        ok, why = (1, "")
-        my_lim = limits.limits()
-        for opt, arg in opts:
-            if hmb.name in ["mailq", "ext_mailq"]:
-                if opt == "-w":
-                    if my_lim.set_warn_val(arg) == 0:
-                        ok, why = (0, "Can't parse warning value !")
-                if opt == "-c":
-                    if my_lim.set_crit_val(arg) == 0:
-                        ok, why = (0, "Can't parse critical value !")
-        return ok, why, [my_lim]
+##    def process_server_args(self, glob_config, logger):
+##        self.__check_kerio, self.__kerio_main_dir = (False, "")
+##        if glob_config["CHECK_KERIO"]:
+##            # search for kerio in the usual places
+##            for s_dir in ["/opt/kerio/"]:
+##                if os.path.isfile("%s/mailserver/stats.dat" % (s_dir)):
+##                    self.__last_kerio_check, self.__last_kerio_dict = (0, {})
+##                    self.__check_kerio, self.__kerio_main_dir = (True, s_dir)
+##                    break
+##        return (True, "")
+##    def process_client_args(self, opts, hmb):
+##        ok, why = (1, "")
+##        my_lim = limits.limits()
+##        for opt, arg in opts:
+##            if hmb.name in ["mailq", "ext_mailq"]:
+##                if opt == "-w":
+##                    if my_lim.set_warn_val(arg) == 0:
+##                        ok, why = (0, "Can't parse warning value !")
+##                if opt == "-c":
+##                    if my_lim.set_crit_val(arg) == 0:
+##                        ok, why = (0, "Can't parse critical value !")
+##        return ok, why, [my_lim]
 
-class mailq_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "mailq", **args)
-        self.help_str = "checks the number of mails in the mail queue"
-        self.short_client_info = " -w NUM1 -c NUM2"
-        self.long_client_info = "warning and critical values for the mailsystem"
-        self.short_client_opts = "w:c:"
-    def server_call(self, cm):
-        return "ok %s" % (hm_classes.sys_to_net({"mails" : self.module_info.get_num_mails()}))
-    def client_call(self, result, parsed_coms):
-        lim = parsed_coms[0]
-        result = hm_classes.net_to_sys(result[3:])
-        raw_output = lim.get_add_flag("R")
-        ret_str, ret_state = ("OK", limits.nag_STATE_CRITICAL)
-        if not raw_output:
-            ret_state, ret_str = lim.check_ceiling(result["mails"])
-            result = "%s: %s in queue" % (ret_str, logging_tools.get_plural("mail", result["mails"]))
+class mailq_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name)
+        self.parser.add_argument("-w", dest="warn", type=int)
+        self.parser.add_argument("-c", dest="crit", type=int)
+    def __call__(self, srv_com, cur_ns):
+        srv_com["num_mails"] = self.module.get_num_mails()
+    def interpret(self, srv_com, cur_ns):
+        num_mails = srv_com["num_mails"]
+        return self._interpret(num_mails, cur_ns)
+    def interpret_old(self, result, cur_ns):
+        num_mails = hm_classes.net_to_sys(result[3:])["mails"]
+        return self._interpret(num_mails, cur_ns)
+    def _interpret(self, num_mails, cur_ns):
+        ret_state = limits.check_ceiling(num_mails, cur_ns.warn, cur_ns.crit)
+        result = "%s in queue" % (logging_tools.get_plural("mail", num_mails))
         return ret_state, result
     
 class ext_mailq_command(hm_classes.hmb_command):

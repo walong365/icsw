@@ -629,7 +629,7 @@ class ping_command(hm_classes.hm_command):
                                               "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             cur_sps, target_host = (None, None)
         if target_host:
-            num_pings, timeout = (int(num_pings),
+            num_pings, timeout = (min(32, max(1, int(num_pings))),
                                   max(0.1, float(timeout)))
             cur_sps = ping_sp_struct(srv_com, target_host, num_pings, timeout)
         return cur_sps
@@ -770,9 +770,9 @@ class net_command(hm_classes.hm_command):
             target_speed = self._parse_speed_str(cur_ns.speed)
             if ethtool_dict.get("speed", -1) != -1:
                 if target_speed == ethtool_dict["speed"]:
-                    add_oks.append("target_speed %s" % (ethtool_stuff["speed"]))
+                    add_oks.append("target_speed %s" % (ethtool_dict["speed"]))
                 else:
-                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (self.beautify_speed(targ_speed_bit), ethtool_stuff["speed"]))
+                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (self.beautify_speed(targ_speed_bit), ethtool_dict["speed"]))
                     ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             else:
                 add_errors.append("Cannot check target_speed: no ethtool information")

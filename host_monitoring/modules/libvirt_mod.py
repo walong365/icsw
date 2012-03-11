@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2010 lang-nevyjel@init.at
+# Copyright (C) 2010,2012 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -20,8 +20,7 @@
 
 import sys
 import commands
-from host_monitoring import limits
-from host_monitoring import hm_classes
+from host_monitoring import limits, hm_classes
 import os
 import os.path
 import logging_tools
@@ -34,14 +33,7 @@ try:
 except:
     libvirt_tools = None
 
-class my_modclass(hm_classes.hm_fileinfo):
-    def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "libvirt",
-                                        "provides a interface to check for libvirt (virsh)",
-                                        **args)
-    def init(self, mode, logger, basedir_name, **args):
-        pass
+class _general(hm_classes.hm_module):
     def _exec_command(self, com, logger):
         stat, out = commands.getstatusoutput(com)
         if stat:
@@ -49,111 +41,111 @@ class my_modclass(hm_classes.hm_fileinfo):
             out = ""
         return out.split("\n")
                     
-class libvirt_status(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "libvirt_status", **args)
-        self.help_str = "checks if libvirt is running"
-    def server_call(self, cm):
+class libvirt_status_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
         if libvirt_tools:
             cur_lvc = libvirt_tools.libvirt_connection(log_com=self.log)
             ret_dict = cur_lvc.get_status()
             cur_lvc.close()
         else:
             ret_dict = {}
-        return "ok %s" % (hm_classes.sys_to_net(ret_dict))
-    def client_call(self, result, parsed_coms):
-        if result.startswith("ok "):
-            r_dict = hm_classes.net_to_sys(result[3:])
-            ret_state, out_f = (limits.nag_STATE_OK, [])
-            if "info" in r_dict:
-                out_f.append("type is %s, version is %d.%d on an %s" % (
-                    r_dict["type"],
-                    (r_dict["version"] / 1000),
-                    r_dict["version"] % 1000,
-                    r_dict["info"][0]))
-            else:
-                ret_state = limits.nag_STATE_CRITICAL
-                out_f.append("libvirt is not running")
-            return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
-                                          ", ".join(out_f))
+            srv_com.set_dictionary("libvirt", ret_dict)
+    def interpret(self, srv_com, cur_ns):
+        r_dict = server_command.srv_command.tree_to_dict(srv_com["libvirt"])
+        return self._interpret(r_dict, cur_ns)
+    def interpret_old(self, result, parsed_coms):
+        r_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(r_dict, parsed_coms)
+    def _interpret(self, r_dict, cur_ns):
+        ret_state, out_f = (limits.nag_STATE_OK, [])
+        if "info" in r_dict:
+            out_f.append("type is %s, version is %d.%d on an %s" % (
+                r_dict["type"],
+                (r_dict["version"] / 1000),
+                r_dict["version"] % 1000,
+                r_dict["info"][0]))
         else:
-            return limits.nag_STATE_CRITICAL, result
+            ret_state = limits.nag_STATE_CRITICAL
+            out_f.append("libvirt is not running")
+        return ret_state, ", ".join(out_f)
 
-class domain_overview(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "domain_overview", **args)
-        self.help_str = "get domain overview"
-    def server_call(self, cm):
+class domain_overview_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
         if libvirt_tools:
             cur_lvc = libvirt_tools.libvirt_connection(log_com=self.log)
             ret_dict = cur_lvc.domain_overview()
             cur_lvc.close()
         else:
             ret_dict = {}
-        return "ok %s" % (hm_classes.sys_to_net(ret_dict))
-    def client_call(self, result, parsed_coms):
-        if result.startswith("ok "):
-            dom_dict = hm_classes.net_to_sys(result[3:])
-            ret_state, out_f = (limits.nag_STATE_OK, [])
-            if "running" in dom_dict and "defined" in dom_dict:
-                pass
-            else:
-                # reorder old-style retunr
-                dom_dict = {"running" : dom_dict,
-                            "defined" : {}}
-            r_dict = dom_dict["running"]
-            d_dict = dom_dict["defined"]
-            # generate name lookup
-            name_lut = dict([(value["name"], key) for key, value in r_dict.iteritems()])
-            all_names = sorted(name_lut.keys())
-            for act_name in all_names:
-                n_dict = r_dict[name_lut[act_name]]
-                out_f.append("%s [#%d, %s]" % (act_name, name_lut[act_name],
-                                               logging_tools.get_plural("CPU", n_dict["info"][3])))
-            out_f.append("%s: %s" % (logging_tools.get_plural("defined", len(d_dict)),
-                                     ", ".join(sorted(d_dict.keys())) or "none"))
-            return ret_state, "%s running: %s; %s" % (limits.get_state_str(ret_state),
-                                                      logging_tools.get_plural("domain", len(all_names)),
-                                                      ", ".join(out_f))
+            srv_com.set_dictionary("domain_overview", ret_dict)
+    def interpret(self, srv_com, cur_ns):
+        r_dict = server_command.srv_command.tree_to_dict(srv_com["domain_overview"])
+        return self._interpret(r_dict, cur_ns)
+    def interpret_old(self, result, parsed_coms):
+        r_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(r_dict, parsed_coms)
+    def _interpret(self, dom_dict, cur_ns):
+        ret_state, out_f = (limits.nag_STATE_OK, [])
+        if "running" in dom_dict and "defined" in dom_dict:
+            pass
         else:
-            return limits.nag_STATE_CRITICAL, result
+            # reorder old-style retunr
+            dom_dict = {"running" : dom_dict,
+                        "defined" : {}}
+        r_dict = dom_dict["running"]
+        d_dict = dom_dict["defined"]
+        # generate name lookup
+        name_lut = dict([(value["name"], key) for key, value in r_dict.iteritems()])
+        all_names = sorted(name_lut.keys())
+        for act_name in all_names:
+            n_dict = r_dict[name_lut[act_name]]
+            out_f.append("%s [#%d, %s]" % (act_name, name_lut[act_name],
+                                           logging_tools.get_plural("CPU", n_dict["info"][3])))
+        out_f.append("%s: %s" % (logging_tools.get_plural("defined", len(d_dict)),
+                                 ", ".join(sorted(d_dict.keys())) or "none"))
+        return ret_state, "running: %s; %s" % (logging_tools.get_plural("domain", len(all_names)),
+                                               ", ".join(out_f))
 
-class domain_status(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "domain_status", **args)
-        self.help_str = "get domain status"
-    def server_call(self, cm):
-        if libvirt_tools:
-            cur_lvc = libvirt_tools.libvirt_connection(log_com=self.log)
-            ret_dict = cur_lvc.domain_status(cm)
-            cur_lvc.close()
+class domain_status_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+    def __call__(self, srv_com, cur_ns):
+        if not "arguments:arg0" in srv_com:
+            srv_com["result"].attrib.update({"reply" : "missing argument",
+                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
-            ret_dict = {}
-        return "ok %s" % (hm_classes.sys_to_net(ret_dict))
-    def client_call(self, result, parsed_coms):
-        if result.startswith("ok "):
-            r_dict = hm_classes.net_to_sys(result[3:])
-            ret_state, out_f = (limits.nag_STATE_OK, [])
-            if r_dict["desc"]:
-                xml_doc = etree.fromstring(r_dict["desc"])
-                out_f.append("%s, memory %s, %s, %s, VNC port is %d" % (
-                    xml_doc.find(".//name").text,
-                    logging_tools.get_size_str(int(xml_doc.find(".//memory").text) * 1024),
-                    logging_tools.get_plural("disk", len(xml_doc.findall(".//disk"))),
-                    logging_tools.get_plural("iface", len(xml_doc.findall(".//interface"))),
-                    int(xml_doc.find(".//graphics").attrib["port"]) - 5900
-                ))
+            if libvirt_tools:
+                cur_lvc = libvirt_tools.libvirt_connection(log_com=self.log)
+                ret_dict = cur_lvc.domain_status(srv_com["arguments:arg0"].text)
+                cur_lvc.close()
             else:
-                if r_dict["cm"]:
-                    ret_state = limits.nag_STATE_CRITICAL
-                    out_f.append("domain '%s' not running" % (r_dict["cm"][0]))
-                else:
-                    ret_state = limits.nag_STATE_WARNING
-                    out_f.append("no domain-name give")
-            return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
-                                          ", ".join(out_f))
+                ret_dict = {}
+            srv_com.set_dictionary("domain_status", ret_dict)
+    def interpret(self, srv_com, cur_ns):
+        r_dict = server_command.srv_command.tree_to_dict(srv_com["domain_status"])
+        return self._interpret(r_dict, cur_ns)
+    def interpret_old(self, result, parsed_coms):
+        r_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(r_dict, parsed_coms)
+    def _interpret(self, dom_dict, cur_ns):
+        ret_state, out_f = (limits.nag_STATE_OK, [])
+        if dom_dict["desc"]:
+            xml_doc = etree.fromstring(dom_dict["desc"])
+            out_f.append("%s, memory %s, %s, %s, VNC port is %d" % (
+                xml_doc.find(".//name").text,
+                logging_tools.get_size_str(int(xml_doc.find(".//memory").text) * 1024),
+                logging_tools.get_plural("disk", len(xml_doc.findall(".//disk"))),
+                logging_tools.get_plural("iface", len(xml_doc.findall(".//interface"))),
+                int(xml_doc.find(".//graphics").attrib["port"]) - 5900
+            ))
         else:
-            return limits.nag_STATE_CRITICAL, result
+            if dom_dict["cm"]:
+                ret_state = limits.nag_STATE_CRITICAL
+                out_f.append("domain '%s' not running" % (dom_dict["cm"][0]))
+            else:
+                ret_state = limits.nag_STATE_WARNING
+                out_f.append("no domain-name give")
+        return ret_state, ", ".join(out_f)
         
 if __name__ == "__main__":
     print "This is a loadable module."

@@ -21,8 +21,7 @@
 import sys
 import re
 import commands
-from host_monitoring import limits
-from host_monitoring import hm_classes
+from host_monitoring import limits, hm_classes
 import os
 import os.path
 import time
@@ -33,89 +32,80 @@ try:
 except ImportError:
     drbd_tools = None
 
-class my_modclass(hm_classes.hm_fileinfo):
-    def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "drbd",
-                                        "provides a interface to check the status of DRBD hosts",
-                                        **args)
-    def init(self, mode, logger, basedir_name, **args):
+class _general(hm_classes.hm_module):
+    def init_module(self):
         self.__last_drbd_check = (-1, -1)
-        if mode == "i":
-            if drbd_tools:
-                self.drbd_config = drbd_tools.drbd_config()
-            else:
-                self.drbd_config = None
+        if drbd_tools:
+            self.drbd_config = drbd_tools.drbd_config()
+        else:
+            self.drbd_config = None
 
-class drbd_status_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "drbd_status", **args)
-        self.help_str = "returns the status of the hosts DRBD devices"
-        self.is_immediate = True
-    def server_call(self, cm):
+class drbd_status_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
         if drbd_tools:
             self.module_info.drbd_config._parse_all()
-            return "ok %s" % (self.module_info.drbd_config.get_net_data())
+            srv_com.set_dictionary("drbd_status", self.module_info.drbd_config.get_net_data())
         else:
-            return "error no drbd_tools found"
-    def client_call(self, result, parsed_coms):
-        if result.startswith("ok "):
-            drbd_conf = drbd_tools.drbd_config(data=result[3:])
-            if drbd_conf:
-                if drbd_conf["status_present"] and drbd_conf["config_present"]:
-                    res_dict = drbd_conf["resources"]
-                    res_keys = sorted(res_dict.keys())
-                    num_total, num_warn, num_error, state_dict = (len(res_keys), 0, 0, {"total" : res_keys})
-                    dev_states, ret_strs = ([], [])
-                    for key in res_keys:
-                        loc_dict = res_dict[key]["localhost"]
-                        # check connection_state
-                        c_state = loc_dict["connection_state"].lower()
-                        if c_state in ["connected"]:
-                            dev_state = limits.nag_STATE_OK
-                        elif c_state in ["unconfigured", "syncsource", "synctarget", "wfconnection", "wfreportparams",
-                                         "pausedsyncs", "pausedsynct", "wfbitmaps", "wfbitmapt"]:
-                            dev_state = limits.nag_STATE_WARNING
-                        else:
-                            dev_state = limits.nag_STATE_CRITICAL
-                        # check states
-                        if "state" in loc_dict:
-                            state_dict.setdefault(loc_dict["state"][0], []).append(key)
-                            for state in loc_dict["state"]:
-                                if state not in ["primary", "secondary"]:
-                                    dev_state = max(dev_state, limits.nag_STATE_CRITICAL)
-                        else:
-                            dev_state = limits.nag_STATE_CRITICAL
-                        if dev_state != limits.nag_STATE_OK:
-                            #pprint.pprint(loc_dict)
-                            ret_strs.append("%s (%s, protocol '%s'%s): cs %s, %s, ds %s" % (key,
-                                                                                            loc_dict["device"],
-                                                                                            loc_dict.get("protocol", "???"),
-                                                                                            ", %s%%" % (loc_dict["resync_percentage"]) if loc_dict.has_key("resync_percentage") else "",
-                                                                                            c_state,
-                                                                                            "/".join(loc_dict.get("state", ["???"])),
-                                                                                            "/".join(loc_dict.get("data_state", ["???"]))))
-                        dev_states.append(dev_state)
-                        #pprint.pprint(res_dict[key]["localhost"])
-                    #pprint.pprint(state_dict)
-                    ret_state = max(dev_states)
-                    return ret_state, "%s: %s; %s" % (limits.get_state_str(ret_state),
-                                                      ", ".join([logging_tools.get_plural(key, len(value)) for key, value in state_dict.iteritems()]),
-                                                      ", ".join(ret_strs) if ret_strs else "everything ok")
-                else:
-                    ret_strs = []
-                    if not drbd_conf["status_present"]:
-                        ret_state = limits.nag_STATE_WARNING
-                        ret_strs.append("drbd status not present, module not loaded ?")
-                    elif not drbd_conf["config_present"]:
-                        ret_state = limits.nag_STATE_CRITICAL
-                        ret_strs.append("drbd config not present")
-                    return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
-                                                  ", ".join(ret_strs))
+            srv_com["result"].attrib.update({"reply" : "no drbd_tools found",
+                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+    def interpret(self, srv_com, cur_ns):
+        drbd_conf = srv_com["drbd_status"]
+        return self._interpret(drbd_conf, cur_ns)
+    def interpret_old(self, result, cur_ns):
+        drbd_conf = hm_classes.net_to_sys(result[3:])
+        return self._interpret(drbd_conf, cur_ns)
+    def _interpret(self, drbd_conf, cur_ns):
+        if drbd_conf:
+            if drbd_conf["status_present"] and drbd_conf["config_present"]:
+                res_dict = drbd_conf["resources"]
+                res_keys = sorted(res_dict.keys())
+                num_total, num_warn, num_error, state_dict = (len(res_keys), 0, 0, {"total" : res_keys})
+                dev_states, ret_strs = ([], [])
+                for key in res_keys:
+                    loc_dict = res_dict[key]["localhost"]
+                    # check connection_state
+                    c_state = loc_dict["connection_state"].lower()
+                    if c_state in ["connected"]:
+                        dev_state = limits.nag_STATE_OK
+                    elif c_state in ["unconfigured", "syncsource", "synctarget", "wfconnection", "wfreportparams",
+                                     "pausedsyncs", "pausedsynct", "wfbitmaps", "wfbitmapt"]:
+                        dev_state = limits.nag_STATE_WARNING
+                    else:
+                        dev_state = limits.nag_STATE_CRITICAL
+                    # check states
+                    if "state" in loc_dict:
+                        state_dict.setdefault(loc_dict["state"][0], []).append(key)
+                        for state in loc_dict["state"]:
+                            if state not in ["primary", "secondary"]:
+                                dev_state = max(dev_state, limits.nag_STATE_CRITICAL)
+                    else:
+                        dev_state = limits.nag_STATE_CRITICAL
+                    if dev_state != limits.nag_STATE_OK:
+                        #pprint.pprint(loc_dict)
+                        ret_strs.append("%s (%s, protocol '%s'%s): cs %s, %s, ds %s" % (key,
+                                                                                        loc_dict["device"],
+                                                                                        loc_dict.get("protocol", "???"),
+                                                                                        ", %s%%" % (loc_dict["resync_percentage"]) if loc_dict.has_key("resync_percentage") else "",
+                                                                                        c_state,
+                                                                                        "/".join(loc_dict.get("state", ["???"])),
+                                                                                        "/".join(loc_dict.get("data_state", ["???"]))))
+                    dev_states.append(dev_state)
+                    #pprint.pprint(res_dict[key]["localhost"])
+                #pprint.pprint(state_dict)
+                ret_state = max(dev_states)
+                return ret_state, "%s; %s" % (", ".join([logging_tools.get_plural(key, len(value)) for key, value in state_dict.iteritems()]),
+                                              ", ".join(ret_strs) if ret_strs else "everything ok")
             else:
-                return limits.nag_STATE_WARNING, "warn empty dbrd_config"
+                ret_strs = []
+                if not drbd_conf["status_present"]:
+                    ret_state = limits.nag_STATE_WARNING
+                    ret_strs.append("drbd status not present, module not loaded ?")
+                elif not drbd_conf["config_present"]:
+                    ret_state = limits.nag_STATE_CRITICAL
+                    ret_strs.append("drbd config not present")
+                return ret_state, ", ".join(ret_strs)
         else:
-            return limits.nag_STATE_CRITICAL, "error %s" % (resulto)
+            return limits.nag_STATE_WARNING, "empty dbrd_config"
 
 if __name__ == "__main__":
     print "This is a loadable module."
