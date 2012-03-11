@@ -32,7 +32,30 @@ import server_command
 TW_EXEC = "/sbin/tw_cli"
 ARCCONF_BIN = "/usr/sbin/arcconf"
 
-CTRL_TYPES = ["tw"]
+# WTF ?
+def get_short_state(in_state):
+    return in_state.lower()
+
+def get_size(in_str):
+    try:
+        s_p, p_p = in_str.split()
+        return float(s_p) * {"k" : 1000,
+                             "m" : 1000 * 1000,
+                             "g" : 1000 * 1000 * 1000,
+                             "t" : 1000 * 1000 * 1000 * 1000}.get(p_p[0].lower(), 1)
+    except:
+        return 0
+
+def to_size_str(in_size):
+    rst, idx = (in_size, 0)
+    while rst > 1000:
+        rst /= 1000
+        idx += 1
+    return "%.2f %sB" % (rst, {0 : "",
+                               1 : "k",
+                               2 : "M",
+                               3 : "G",
+                               4 : "T"}[idx])
 
 class ctrl_type(object):
     def __init__(self, module_struct):
@@ -163,15 +186,382 @@ class ctrl_type_tw(ctrl_type):
             return False
     def process(self, ccs, x):
         ccs.srv_com["result"] = "OK"
+    def _interpret(self, tw_dict, cur_ns):
+        if tw_dict.has_key("units"):
+            tw_dict = {parsed_coms[0] : tw_dict}
+        num_warn, num_error = (0, 0)
+        ret_list = []
+        if tw_dict:
+            for ctrl, ctrl_dict in tw_dict.iteritems():
+                info = ctrl_dict["info"]
+                if info.startswith("error"):
+                    num_error += 1
+                    ret_list.append("%s (%s): %s " % (ctrl, ctrl_dict.get("type", "???"), info))
+                else:
+                    num_units, num_ports = (len(ctrl_dict["units"]), len(ctrl_dict["ports"]))
+                    unit_info, port_info = ([], [])
+                    # check units
+                    for u_num, u_stuff in ctrl_dict["units"].iteritems():
+                        l_status = u_stuff["status"].lower()
+                        if l_status in ["degraded"]:
+                            num_error += 1
+                        elif l_status != "ok":
+                            num_warn += 1
+                        if u_stuff["raid"].lower() in ["jbod"]:
+                            num_error += 1
+                        unit_info.append("unit %s (%s, %s, %s): %s%s" % (u_num,
+                                                                         u_stuff["raid"],
+                                                                         u_stuff["size"],
+                                                                         "/".join(u_stuff["ports"]),
+                                                                         u_stuff["status"],
+                                                                         (l_status.startswith("verify") or l_status.startswith("initia") or l_status.startswith("rebuild")) and " (%s %%)" % (u_stuff.get("cmpl", "???")) or ""))
+                    for p_num, p_stuff in ctrl_dict["ports"].iteritems():
+                        if p_stuff["status"].lower() != "ok":
+                            num_error += 1
+                            port_info.append("port %s (u%s): %s" % (p_num, p_stuff.get("unit", "???"), p_stuff["status"]))
+                    if ctrl_dict.has_key("bbu"):
+                        bbu_errors, bbu_ok = ([], 0)
+                        for key in sorted(ctrl_dict["bbu"].iterkeys()):
+                            value = ctrl_dict["bbu"][key]
+                            if value.lower() not in ["on", "ok", "yes"]:
+                                bbu_errors.append((key, value))
+                                num_error += 1
+                            else:
+                                bbu_ok += 1
+                        bbu_str = "%s ok" % (logging_tools.get_plural("attribute", bbu_ok))
+                        if bbu_errors:
+                            bbu_str = "%s, %s" % ("; ".join(["error %s: %s" % (key, value) for key, value in bbu_errors]), bbu_str)
+                    else:
+                        bbu_str = ""
+                    ret_list.append("%s (%s) %du/%dp: %s%s%s" % (ctrl,
+                                                                 ctrl_dict.get("type", "???"),
+                                                                 num_units,
+                                                                 num_ports,
+                                                                 ",".join(unit_info),
+                                                                 port_info and "; %s" % (",".join(port_info)) or "",
+                                                                 ", BBU: %s" % (bbu_str) if bbu_str else ""))
+        else:
+            ret_list.append("no controller found")
+            num_error = 1
+        if num_error:
+            ret_state = limits.nag_STATE_CRITICAL
+        elif num_warn:
+            ret_state = limits.nag_STATE_WARNING
+        else:
+            ret_state = limits.nag_STATE_OK
+        return ret_state, ", ".join(ret_list)
         
+class ctrl_type_ips(ctrl_type):
+    class Meta:
+        name = "ips"
+        exec_name = "arcconf"
+        description = "Threeware RAID Controller"
+    def get_exec_list(self, ctrl_list=[]):
+        if ctrl_list == []:
+            ctrl_list = self._dict.keys()
+        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+    def scan_ctrl(self):
+        cur_stat, cur_lines = self.exec_command(" info", post="strip")
+    def update_ctrl(self, ctrl_ids):
+        print ctrl_ids
+    def update_ok(self, srv_com):
+        if self._dict:
+            return ctrl_type.update_ok(self, srv_com)
+        else:
+            srv_com["result"].attrib.update({"reply" : "no controller found",
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            return False
+    def process(self, ccs, x):
+        ccs.srv_com["result"] = "OK"
+    def _interpret(self, aac_dict, cur_ns):
+        num_warn, num_error = (0, 0)
+        ret_f = []
+        for c_num, c_stuff in aac_dict.iteritems():
+            #pprint.pprint(c_stuff)
+            act_field = []
+            if c_stuff["logical"]:
+                log_field = []
+                for l_num, l_stuff in c_stuff["logical"].iteritems():
+                    sold_name = "status_of_logical_device" if l_stuff.has_key("status_of_logical_device") else "status_of_logical_drive"
+                    log_field.append("ld%d: %s (%s, %s)" % (l_num,
+                                                            logging_tools.get_size_str(int(l_stuff["size"].split()[0]) * 1000000, divider=1000).strip(),
+                                                            "RAID%s" % (l_stuff["raid_level"]) if l_stuff.has_key("raid_level") else "RAID?",
+                                                            get_short_state(l_stuff[sold_name])))
+                    if l_stuff[sold_name].lower() in ["degraded"]:
+                        num_error += 1
+                    elif l_stuff[sold_name].lower() not in ["optimal", "okay"]:
+                        num_warn += 1
+                act_field.extend(log_field)
+            if c_stuff["physical"]:
+                phys_dict = {}
+                for phys in c_stuff["physical"]:
+                    if phys.has_key("size"):
+                        s_state = get_short_state(phys["state"])
+                        if s_state == "sby":
+                            # ignore empty standby bays
+                            pass
+                        else:
+                            if s_state not in ["onl", "hsp", "optimal", "online"]:
+                                num_error += 1
+                            con_info = ""
+                            if phys.has_key("reported_location"):
+                                cd_info = phys["reported_location"].split(",")
+                                if len(cd_info) == 2:
+                                    try:
+                                        con_info = "c%d.%d" % (int(cd_info[0].split()[-1]),
+                                                               int(cd_info[1].split()[-1]))
+                                    except:
+                                        con_info = "error parsing con_info %s" % (phys["reported_location"])
+                            phys_dict.setdefault(s_state, []).append("c%d/id%d%s" % (phys["channel"],
+                                                                                     phys["scsi_id"],
+                                                                                     " (%s)" % (con_info) if con_info else ""))
+                act_field.extend(["%s: %s" % (key, ",".join(phys_dict[key])) for key in sorted(phys_dict.keys())])
+            if "task_list" in c_stuff:
+                for act_task in c_stuff["task_list"]:
+                    act_field.append("%s on logical device %s: %s, %d %%" % (act_task.get("header", "unknown task"),
+                                                                             act_task.get("logical device", "?"),
+                                                                             act_task.get("current operation", "unknown op"),
+                                                                             int(act_task.get("percentage complete", "0"))))
+            # check controller warnings
+            ctrl_field = []
+            if c_stuff["controller"]:
+                ctrl_dict = c_stuff["controller"]
+                c_stat = ctrl_dict.get("controller status", "")
+                if c_stat:
+                    ctrl_field.append("status %s" % (c_stat))
+                    if c_stat.lower() not in ["optimal", "okay"]:
+                        num_error += 1
+                ov_temp = ctrl_dict.get("over temperature", "")
+                if ov_temp:
+                    if ov_temp == "yes":
+                        num_error += 1
+                        ctrl_field.append("over temperature")
+            ret_f.append("c%d (%s): %s" % (c_num,
+                                           ", ".join(ctrl_field) or "---",
+                                           ", ".join(act_field)))
+            if num_error:
+                ret_state = limits.nag_STATE_CRITICAL
+            elif num_warn:
+                ret_state = limits.nag_STATE_WARNING
+            else:
+                ret_state = limits.nag_STATE_OK
+        if not ret_f:
+            return limits.nag_STATE_WARNING, "no controller information found"
+        else:
+            return ret_state, "; ".join(ret_f)
+            
+class ctrl_type_megaraid_sas(ctrl_type):
+    class Meta:
+        name = "megaraid_sas"
+        exec_name = "megarc"
+        description = "MegaRAID SAS"
+    def get_exec_list(self, ctrl_list=[]):
+        if ctrl_list == []:
+            ctrl_list = self._dict.keys()
+        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+    def scan_ctrl(self):
+        cur_stat, cur_lines = self.exec_command(" info", post="strip")
+    def update_ctrl(self, ctrl_ids):
+        print ctrl_ids
+    def update_ok(self, srv_com):
+        if self._dict:
+            return ctrl_type.update_ok(self, srv_com)
+        else:
+            srv_com["result"].attrib.update({"reply" : "no controller found",
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            return False
+    def process(self, ccs, x):
+        ccs.srv_com["result"] = "OK"
+    def _interpret(self, ctrl_dict, cur_ns):
+        num_c, num_d, num_e = (len(ctrl_dict.keys()), 0, 0)
+        ret_state = limits.nag_STATE_OK
+        drive_stats = []
+        for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
+            for log_num, log_stuff in ctrl_stuff.get("logical_lines", {}).iteritems():
+                log_dict = dict([(key.lower(), value) for key, value in log_stuff])
+                num_d += 1
+                if "state" in log_dict:
+                    status = log_dict["state"]
+                    if status.lower() != "optimal":
+                        num_e += 1
+                    drive_stats.append("ld %d (ctrl %d, %s): %s" % (log_num,
+                                                                    ctrl_num,
+                                                                    log_dict.get("size", "???"),
+                                                                    status))
+        if num_e:
+            ret_state = limits.nag_STATE_CRITICAL
+        return ret_state, "%s: %s on %s, %s" % (limits.get_state_str(ret_state),
+                                                logging_tools.get_plural("logical drive", num_d),
+                                                logging_tools.get_plural("controller", num_c),
+                                                ", ".join(drive_stats))
+        
+class ctrl_type_gdth(ctrl_type):
+    class Meta:
+        name = "gdth"
+        exec_name = "true"
+        description = "GDTH"
+    def get_exec_list(self, ctrl_list=[]):
+        if ctrl_list == []:
+            ctrl_list = self._dict.keys()
+        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+    def scan_ctrl(self):
+        cur_stat, cur_lines = self.exec_command(" info", post="strip")
+    def update_ctrl(self, ctrl_ids):
+        print ctrl_ids
+    def update_ok(self, srv_com):
+        if self._dict:
+            return ctrl_type.update_ok(self, srv_com)
+        else:
+            srv_com["result"].attrib.update({"reply" : "no controller found",
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            return False
+    def process(self, ccs, x):
+        ccs.srv_com["result"] = "OK"
+    def _interpret(self, ctrl_dict, cur_ns):
+        pd_list, ld_list, ad_list, hd_list = (ctrl_dict["pd"], ctrl_dict["ld"], ctrl_dict["ad"], ctrl_dict["hd"])
+        last_log_time, last_log_line = ctrl_dict.get("log", (None, ""))
+        out_f, num_w, num_e = ([], 0, 0)
+        for l_type, what, lst in [("p", "physical disc", pd_list),
+                                  ("l", "logical drive", ld_list),
+                                  ("a", "array drive"  , ad_list),
+                                  ("h", "host drive"   , hd_list)]:
+            if lst:
+                num = len(lst)
+                cap = reduce(lambda x, y : x+y, [int(x["capacity [mb]"]) for x in lst if x.has_key("capacity [mb]")])
+                loc_out = ["%s (%s)" % (logging_tools.get_plural(what, num),
+                                        ", ".join([entry for entry in ["%.2f GB" % (float(cap)/1024) if cap else "",
+                                                                       ", ".join([x["type"] for x in lst if x.has_key("type")]) if lst[0].has_key("type") else ""] if entry]))]
+                if lst[0].has_key("status"):
+                    loc_warn = [x for x in lst if x["status"].lower() in ["rebuild", "build", "rebuild/patch"]]
+                    loc_err  = [x for x in lst if x["status"].lower() not in ["ok", "ready", "rebuild", "build", "rebuild/patch", "ready/patch"]]
+                    if loc_warn:
+                        num_w += 1
+                        loc_out.append(", ".join(["%s %s: %s" % (what, x["number"], x["status"]) for x in loc_warn]))
+                    if loc_err:
+                        num_e += 1
+                        loc_out.append(", ".join(["%s %s: %s" % (what, x["number"], x["status"]) for x in loc_err]))
+                out_f.append(";".join(loc_out))
+            else:
+                out_f.append("no %ss" % (what))
+        if num_e:
+            ret_state, ret_str = (limits.nag_STATE_CRITICAL, "Error")
+        elif num_w:
+            ret_state, ret_str = (limits.nag_STATE_WARNING, "Warning")
+        else:
+            ret_state, ret_str = (limits.nag_STATE_OK, "OK")
+        if last_log_line:
+            # change ret_state if ret_state == STATE_OK:
+            if ret_state == limits.nag_STATE_OK:
+                lll = last_log_line.lower().strip()
+                if lll.endswith("started"):
+                    ret_state, ret_str = (limits.nag_STATE_WARNING, "Warning")
+            out_f.append(last_log_line)
+        return ret_state, "%s: %s" % (ret_str, ", ".join(out_f))
+
+class ctrl_type_hpacu(ctrl_type):
+    class Meta:
+        name = "hpacu"
+        exec_name = "true"
+        description = "HP Acu controller"
+    def get_exec_list(self, ctrl_list=[]):
+        if ctrl_list == []:
+            ctrl_list = self._dict.keys()
+        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+    def scan_ctrl(self):
+        cur_stat, cur_lines = self.exec_command(" info", post="strip")
+    def update_ctrl(self, ctrl_ids):
+        print ctrl_ids
+    def update_ok(self, srv_com):
+        if self._dict:
+            return ctrl_type.update_ok(self, srv_com)
+        else:
+            srv_com["result"].attrib.update({"reply" : "no controller found",
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            return False
+    def process(self, ccs, x):
+        ccs.srv_com["result"] = "OK"
+    def _interpret(self, ctrl_dict, cur_ns):
+        num_cont, num_array, num_log, num_phys = (0, 0, 0, 0)
+        array_names, size_log, size_phys = ([], [], 0)
+        #pprint.pprint(c_dict)
+        error_f, warn_f = ([], [])
+        for c_name, c_stuff in ctrl_dict.iteritems():
+            num_cont += 1
+            if c_stuff.has_key("arrays"):
+                # new code
+                if len([True for v in c_stuff["status"].itervalues() if v.lower() not in ["ok"]]):
+                    error_f.append("status of controller %s (slot %d): %s" % (c_stuff["info"], c_name, ", ".join(["%s: %s" % (k, v) for k, v in c_stuff["status"].iteritems() if v.lower() != "ok"])))
+                for array_name, array_stuff in c_stuff["arrays"].iteritems():
+                    array_names.append("%s in slot %d" % (array_name, c_name))
+                    num_array += 1
+                    for log_num, log_stuff in array_stuff["logicals"].iteritems():
+                        num_log += 1
+                        size_log.append(get_size(log_stuff["size_info"]))
+                        if log_stuff["status_info"].lower() != "ok":
+                            error_f.append("status of log.drive %d (array %s) is %s (%s%s)" % (log_num, array_name, log_stuff["status_info"], log_stuff["raid_info"], ", %s" % (log_stuff["recovery_info"]) if "recovery_info" in log_stuff else ""))
+                    for phys_num, phys_stuff in array_stuff["physicals"].iteritems():
+                        num_phys += 1
+                        size_phys += get_size(phys_stuff["size_info"])
+                        if phys_stuff["status_info"].lower() != "ok":
+                            if len(phys_num) == 3:
+                                pos_info = "port %s, box %s, bay %s" % (phys_num[0], phys_num[1], phys_num[2])
+                            else:
+                                pos_info = "port %s, id %s" % (phys_num[0], phys_num[1])
+                            error_f.append("status of phys.drive %s (array %s) is %s (%s)" % (pos_info, array_name, phys_stuff["status_info"], phys_stuff["type_info"]))
+            else:
+                # old code (SRO3)
+                if c_stuff["status"] != "ok":
+                    error_f.append("status of controller %s (slot %d): %s" % (c_name, c_stuff["slot"], c_stuff["status"]))
+                if type(c_stuff["logicaldrives"]) == type("a"):
+                    error_f.append("logical drives on controller %s (slot %d): %s" % (c_name, c_stuff["slot"], c_stuff["logicaldrives"]))
+                else:
+                    for l_num, l_stuff in c_stuff["logicaldrives"].iteritems():
+                        num_log += 1
+                        size_log.append(get_size(l_stuff["size"]))
+                        if l_stuff["status"] != "ok":
+                            error_f.append("logical drive %d on controller %s (slot %d): %s%s" % (l_num, c_name, c_stuff["slot"], l_stuff["status"], ", %s" % (l_stuff["recovery_info"]) if "recovery_info" in l_stuff else ""))
+                if type(c_stuff["physicaldrives"]) == type("a"):
+                    error_f.append("physical drives on controller %s (slot %d): %s" % (c_name, c_stuff["slot"], c_stuff["physicaldrives"]))
+                else:
+                    for port_num, port_stuff in c_stuff["physicaldrives"].iteritems():
+                        for id_num, phys_stuff in port_stuff.iteritems():
+                            num_phys += 1
+                            size_phys += get_size(phys_stuff["size"])
+                            if phys_stuff["status"] != "ok":
+                                error_f.append("physical drive on controller %s (slot %d), port %d, id %d: %s" % (c_name, c_stuff["slot"], port_num, id_num, phys_stuff["status"]))
+        if error_f:
+            ret_state, ret_str = (limits.nag_STATE_CRITICAL, "Error")
+            error_str = ", %s: %s" % (logging_tools.get_plural("error", len(error_f)), ", ".join(error_f))
+        else:
+            ret_state, ret_str = (limits.nag_STATE_OK, "OK")
+            error_str = ""
+        if num_array:
+            return ret_state, "%s: %s, %s (%s), %s (%s), %s (%s)%s" % (ret_str,
+                                                                       logging_tools.get_plural("controller", num_cont),
+                                                                       logging_tools.get_plural("array", num_array),
+                                                                       ", ".join(array_names),
+                                                                       logging_tools.get_plural("log.drive", num_log),
+                                                                       "+".join([to_size_str(act_size_log) for act_size_log in size_log]),
+                                                                       logging_tools.get_plural("phys.drive", num_phys),
+                                                                       to_size_str(size_phys),
+                                                                       error_str)
+        else:
+            return ret_state, "%s: %s, %s (%s), %s (%s)%s" % (ret_str,
+                                                              logging_tools.get_plural("controller", num_cont),
+                                                              logging_tools.get_plural("log.drive", num_log),
+                                                              to_size_str(size_log),
+                                                              logging_tools.get_plural("phys.drive", num_phys),
+                                                              to_size_str(size_phys),
+                                                              error_str)
+
 class _general(hm_classes.hm_module):
     def init_module(self):
         ctrl_type.init(self)
-    def check_exec(self):
-        if os.path.isfile(TW_EXEC):
-            return "ok"
-        else:
-            return "error no %s found" % (TW_EXEC)
+##    def check_exec(self):
+##        if os.path.isfile(TW_EXEC):
+##            return "ok"
+##        else:
+##            return "error no %s found" % (TW_EXEC)
     def check_controller(self, ctrl_id):
         unit_match = re.compile("^\s+Unit\s*(?P<num>\d+):\s*(?P<raid>.*)\s+(?P<size>\S+\s+\S+)\s+\(\s*(?P<blocks>\d+)\s+\S+\):\s*(?P<status>.*)$")
         port_match = re.compile("^\s+Port\s*(?P<num>\d+):\s*(?P<info>[^:]+):\s*(?P<status>.*)\(unit\s*(?P<unit>\d+)\)$")
@@ -378,69 +768,47 @@ class tw_status_command(hm_classes.hm_command):
         tw_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(tw_dict, parsed_coms)
     def _interpret(self, tw_dict, cur_ns):
-        if tw_dict.has_key("units"):
-            tw_dict = {parsed_coms[0] : tw_dict}
-        num_warn, num_error = (0, 0)
-        ret_list = []
-        if tw_dict:
-            for ctrl, ctrl_dict in tw_dict.iteritems():
-                info = ctrl_dict["info"]
-                if info.startswith("error"):
-                    num_error += 1
-                    ret_list.append("%s (%s): %s " % (ctrl, ctrl_dict.get("type", "???"), info))
-                else:
-                    num_units, num_ports = (len(ctrl_dict["units"]), len(ctrl_dict["ports"]))
-                    unit_info, port_info = ([], [])
-                    # check units
-                    for u_num, u_stuff in ctrl_dict["units"].iteritems():
-                        l_status = u_stuff["status"].lower()
-                        if l_status in ["degraded"]:
-                            num_error += 1
-                        elif l_status != "ok":
-                            num_warn += 1
-                        if u_stuff["raid"].lower() in ["jbod"]:
-                            num_error += 1
-                        unit_info.append("unit %s (%s, %s, %s): %s%s" % (u_num,
-                                                                         u_stuff["raid"],
-                                                                         u_stuff["size"],
-                                                                         "/".join(u_stuff["ports"]),
-                                                                         u_stuff["status"],
-                                                                         (l_status.startswith("verify") or l_status.startswith("initia") or l_status.startswith("rebuild")) and " (%s %%)" % (u_stuff.get("cmpl", "???")) or ""))
-                    for p_num, p_stuff in ctrl_dict["ports"].iteritems():
-                        if p_stuff["status"].lower() != "ok":
-                            num_error += 1
-                            port_info.append("port %s (u%s): %s" % (p_num, p_stuff.get("unit", "???"), p_stuff["status"]))
-                    if ctrl_dict.has_key("bbu"):
-                        bbu_errors, bbu_ok = ([], 0)
-                        for key in sorted(ctrl_dict["bbu"].iterkeys()):
-                            value = ctrl_dict["bbu"][key]
-                            if value.lower() not in ["on", "ok", "yes"]:
-                                bbu_errors.append((key, value))
-                                num_error += 1
-                            else:
-                                bbu_ok += 1
-                        bbu_str = "%s ok" % (logging_tools.get_plural("attribute", bbu_ok))
-                        if bbu_errors:
-                            bbu_str = "%s, %s" % ("; ".join(["error %s: %s" % (key, value) for key, value in bbu_errors]), bbu_str)
-                    else:
-                        bbu_str = ""
-                    ret_list.append("%s (%s) %du/%dp: %s%s%s" % (ctrl,
-                                                                 ctrl_dict.get("type", "???"),
-                                                                 num_units,
-                                                                 num_ports,
-                                                                 ",".join(unit_info),
-                                                                 port_info and "; %s" % (",".join(port_info)) or "",
-                                                                 ", BBU: %s" % (bbu_str) if bbu_str else ""))
-        else:
-            ret_list.append("no controller found")
-            num_error = 1
-        if num_error:
-            ret_state = limits.nag_STATE_CRITICAL
-        elif num_warn:
-            ret_state = limits.nag_STATE_WARNING
-        else:
-            ret_state = limits.nag_STATE_OK
-        return ret_state, ", ".join(ret_list)
+        return ctrl_type.ctrl("tw")._interpret(tw_dict, cur_ns)
+
+class aac_status_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+    def server_call(self, cm):
+        if not os.path.isfile(ARCCONF_BIN):
+            return "error no arcconf-binary found in %s" % (os.path.dirname(ARCCONF_BIN))
+        self.module_info.init_ctrl_dict(self.logger)
+        self.module_info.update_ctrl_dict(self.logger)
+        return "ok %s" % (hm_classes.sys_to_net(self.module_info.get_ctrl_config()))
+    def interpret_old(self, result, cur_ns):
+        aac_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(aac_dict, cur_ns)
+    def _interpret(self, aac_dict, cur_ns):
+        return ctrl_type.ctrl("ips")._interpret(aac_dict, cur_ns)
+
+class megaraid_sas_status_command(hm_classes.hm_command):
+    def server_call(self, cm):
+        self.module_info.init_ctrl_dict(self.logger)
+        self.module_info.update_ctrl_dict(self.logger)
+        return "ok %s" % (hm_classes.sys_to_net(self.module_info.get_ctrl_config()))
+    def interpret_old(self, result, cur_ns):
+        ctrl_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(ctrl_dict, cur_ns)
+    def _interpret(self, ctrl_dict, cur_ns):
+        return ctrl_type.ctrl("megaraid_sas")._interpret(ctrl_dict, cur_ns)
+
+class gdth_status_command(hm_classes.hm_command):
+    def interpret_old(self, result, cur_ns):
+        ctrl_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(ctrl_dict, cur_ns)
+    def _interpret(self, ctrl_dict, cur_ns):
+        return ctrl_type.ctrl("gdth")._interpret(ctrl_dict, cur_ns)
+
+class hpacu_status_command(hm_classes.hm_command):
+    def interpret_old(self, result, cur_ns):
+        ctrl_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(ctrl_dict, cur_ns)
+    def _interpret(self, ctrl_dict, cur_ns):
+        return ctrl_type.ctrl("hpacu")._interpret(ctrl_dict, cur_ns)
 
 if __name__ == "__main__":
     print "This is a loadable module."

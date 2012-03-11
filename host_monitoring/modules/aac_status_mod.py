@@ -146,7 +146,7 @@ class _general(hm_classes.hm_module):
 def get_short_state(in_state):
     return in_state.lower()
 
-class aac_status_command(hm_classes.hm_command):
+class aacold_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=False)
     def server_call(self, cm):
@@ -158,83 +158,6 @@ class aac_status_command(hm_classes.hm_command):
     def client_call(self, result, parsed_coms):
         if result.startswith("ok "):
             ret_dict = hm_classes.net_to_sys(result[3:])
-            num_warn, num_error = (0, 0)
-            ret_f = []
-            for c_num, c_stuff in ret_dict.iteritems():
-                #pprint.pprint(c_stuff)
-                act_field = []
-                if c_stuff["logical"]:
-                    log_field = []
-                    for l_num, l_stuff in c_stuff["logical"].iteritems():
-                        sold_name = "status_of_logical_device" if l_stuff.has_key("status_of_logical_device") else "status_of_logical_drive"
-                        log_field.append("ld%d: %s (%s, %s)" % (l_num,
-                                                                logging_tools.get_size_str(int(l_stuff["size"].split()[0]) * 1000000, divider=1000).strip(),
-                                                                "RAID%s" % (l_stuff["raid_level"]) if l_stuff.has_key("raid_level") else "RAID?",
-                                                                get_short_state(l_stuff[sold_name])))
-                        if l_stuff[sold_name].lower() in ["degraded"]:
-                            num_error += 1
-                        elif l_stuff[sold_name].lower() not in ["optimal", "okay"]:
-                            num_warn += 1
-                    act_field.extend(log_field)
-                if c_stuff["physical"]:
-                    phys_dict = {}
-                    for phys in c_stuff["physical"]:
-                        if phys.has_key("size"):
-                            s_state = get_short_state(phys["state"])
-                            if s_state == "sby":
-                                # ignore empty standby bays
-                                pass
-                            else:
-                                if s_state not in ["onl", "hsp", "optimal", "online"]:
-                                    num_error += 1
-                                con_info = ""
-                                if phys.has_key("reported_location"):
-                                    cd_info = phys["reported_location"].split(",")
-                                    if len(cd_info) == 2:
-                                        try:
-                                            con_info = "c%d.%d" % (int(cd_info[0].split()[-1]),
-                                                                   int(cd_info[1].split()[-1]))
-                                        except:
-                                            con_info = "error parsing con_info %s" % (phys["reported_location"])
-                                phys_dict.setdefault(s_state, []).append("c%d/id%d%s" % (phys["channel"],
-                                                                                         phys["scsi_id"],
-                                                                                         " (%s)" % (con_info) if con_info else ""))
-                    act_field.extend(["%s: %s" % (key, ",".join(phys_dict[key])) for key in sorted(phys_dict.keys())])
-                if "task_list" in c_stuff:
-                    for act_task in c_stuff["task_list"]:
-                        act_field.append("%s on logical device %s: %s, %d %%" % (act_task.get("header", "unknown task"),
-                                                                                 act_task.get("logical device", "?"),
-                                                                                 act_task.get("current operation", "unknown op"),
-                                                                                 int(act_task.get("percentage complete", "0"))))
-                # check controller warnings
-                ctrl_field = []
-                if c_stuff["controller"]:
-                    ctrl_dict = c_stuff["controller"]
-                    c_stat = ctrl_dict.get("controller status", "")
-                    if c_stat:
-                        ctrl_field.append("status %s" % (c_stat))
-                        if c_stat.lower() not in ["optimal", "okay"]:
-                            num_error += 1
-                    ov_temp = ctrl_dict.get("over temperature", "")
-                    if ov_temp:
-                        if ov_temp == "yes":
-                            num_error += 1
-                            ctrl_field.append("over temperature")
-                ret_f.append("c%d (%s): %s" % (c_num,
-                                               ", ".join(ctrl_field) or "---",
-                                               ", ".join(act_field)))
-                if num_error:
-                    ret_state, ret_str = (limits.nag_STATE_CRITICAL, "ERROR")
-                elif num_warn:
-                    ret_state, ret_str = (limits.nag_STATE_WARNING, "WARNING")
-                else:
-                    ret_state, ret_str = (limits.nag_STATE_OK, "OK")
-            if not ret_f:
-                return limits.nag_STATE_WARNING, "no controller information found"
-            else:
-                return ret_state, "%s: %s" % (ret_str, "; ".join(ret_f))
-        else:
-            return limits.nag_STATE_CRITICAL, "error %s" % (result)
 
 if __name__ == "__main__":
     print "This is a loadable module."
