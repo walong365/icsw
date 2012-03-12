@@ -83,10 +83,10 @@ class twisted_process(threading_tools.process_obj):
         self.__log_socket = self.connect_to_socket("receiver")
         # init twisted reactor
         #self._got_udp = udp_log_receiver()
-        tcp_factory = Factory()
-        tcp_factory.protocol = tcp_log_receiver
+        #tcp_factory = Factory()
+        #tcp_factory.protocol = tcp_log_receiver
         #reactor.listenUDP(8004, self._got_udp)
-        reactor.listenTCP(8004, tcp_factory)
+        #reactor.listenTCP(8004, tcp_factory)
         log_recv = twisted_log_receiver(self)
         reactor.listenUNIXDatagram(global_config["LOG_HANDLE"], log_recv)
         reactor.listenUNIXDatagram(global_config["ERR_HANDLE"], log_recv)
