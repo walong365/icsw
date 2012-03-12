@@ -1179,11 +1179,13 @@ class df_command(hm_classes.hm_command):
                                                                       "used"       : n_dict[disk][3],
                                                                       "total"      : n_dict[disk][2]}) for disk in n_dict.keys()]))
                 else:
+                    store_info = True
                     if not mapped_disk in n_dict:
                         # id is just a guess, FIXME
                         try:
                             all_maps = self.__disk_lut["id"][mapped_disk]
                         except KeyError:
+                            store_info = False
                             srv_com["result"].attrib.update({"reply" : "invalid partition %s (key is %s)" % (disk,
                                                                                                              mapped_disk),
                                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
@@ -1194,15 +1196,16 @@ class df_command(hm_classes.hm_command):
                                     disk_found = True
                                     break
                             if not disk_found:
+                                store_info = False
                                 srv_com["result"].attrib.update({"reply" : "invalid partition %s" % (disk),
                                                                  "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
-                            else:
-                                srv_com.set_dictionary("df_result", {"part"        : disk,
-                                                                     "mapped_disk" : mapped_disk,
-                                                                     "mountpoint"  : n_dict[mapped_disk][0],
-                                                                     "perc"        : n_dict[mapped_disk][1],
-                                                                     "used"        : n_dict[mapped_disk][3],
-                                                                     "total"       : n_dict[mapped_disk][2]})
+                    if store_info:
+                        srv_com.set_dictionary("df_result", {"part"        : disk,
+                                                             "mapped_disk" : mapped_disk,
+                                                             "mountpoint"  : n_dict[mapped_disk][0],
+                                                             "perc"        : n_dict[mapped_disk][1],
+                                                             "used"        : n_dict[mapped_disk][3],
+                                                             "total"       : n_dict[mapped_disk][2]})
     def interpret(self, srv_com, cur_ns):
         result = server_command.srv_command.tree_to_dict(srv_com["df_result"])
         #print result

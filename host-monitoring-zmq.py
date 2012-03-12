@@ -604,7 +604,7 @@ class relay_process(threading_tools.process_pool):
             dummy_hm.set_com_struct(self.modules.command_dict[com_name])
             res_tuple = dummy_hm.interpret_old(data_str)
         else:
-            res_tuple = (limits.nag_STATE_CRITICAL, "error unknown command '%s'" % (com_name))
+            res_tuple = (limits.nag_STATE_CRITICAL, "error unknown relay command '%s'" % (com_name))
         self.send_result(src_id, u"%d\0%s" % (res_tuple[0], res_tuple[1]))
     def send_result(self, src_id, ret_str):
         self.relayer_socket.send_unicode(src_id, zmq.SNDMORE)
