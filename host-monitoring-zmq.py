@@ -136,7 +136,7 @@ class host_connection(object):
         for to_mes in to_messages:
             if self.socket:
                 self.__backlog_counter -= 1
-                print "*** blc ", self.__backlog_counter
+                #print "*** blc ", self.__backlog_counter
             self.return_error(to_mes, "timeout")
     def _open(self):
         if not self.__open:
@@ -422,6 +422,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
     def _update(self):
         cur_time = time.time()
         del_keys = []
+        #pprint.pprint(self.__work_dict)
         for key, value in self.__work_dict.iteritems():
             if value["sent"] < value["num"]:
                 if value["sent_list"]:
@@ -445,7 +446,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                         reactor.callLater(value["slide_time"] + 0.001, self._update)
                         reactor.callLater(value["timeout"] + value["slide_time"] * value["num"] + 0.001, self._update)
             # check for timeout
-            for seq_to in [s_key for s_key, s_value in value["sent_list"].iteritems() if abs(s_value - cur_time) > value["timeout"]]:
+            for seq_to in [s_key for s_key, s_value in value["sent_list"].iteritems() if abs(s_value - cur_time) > value["timeout"] and s_key not in value["recv_list"]]:
                 value["recv_fail"] += 1
                 value["recv_list"][seq_to] = None
             # check for ping finish
@@ -457,11 +458,8 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
             del self[del_key]
         #pprint.pprint(self.__work_dict)
     def received(self, dgram):
-        if dgram.packet_type == 0:
-            seqno, success, mine = (dgram.seqno, True, dgram.ident == self.__twisted_process.pid & 0x7fff)
-        else:
-            seqno, success, mine = (0, False, False)
-        if mine:
+        if dgram.packet_type == 0 and dgram.ident == self.__twisted_process.pid & 0x7fff:
+            seqno = dgram.seqno
             if seqno not in self.__seqno_dict:
                 self.log("got result with unknown seqno %d" % (seqno),
                          logging_tools.LOG_LEVEL_ERROR)
@@ -469,7 +467,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                 value = self[self.__seqno_dict[seqno]]
                 if not seqno in value["recv_list"]:
                     value["recv_list"][seqno] = time.time()
-                    value["recv_%s" % ("ok" if success else "fail")] += 1
+                    value["recv_ok"] += 1
             self._update()
         
 class twisted_process(threading_tools.process_obj):
@@ -911,6 +909,7 @@ class server_process(threading_tools.process_pool):
                 # delayed is a subprocess_struct
                 delayed.set_send_stuff(src_id, zmq_sock)
                 com_usage = len([True for cur_del in self.__delayed if cur_del.command == cur_com])
+                #print "CU", com_usage, [cur_del.target_host for cur_del in self.__delayed]
                 if com_usage > delayed.Meta.max_usage:
                     srv_com["result"].attrib.update(
                         {"reply" : "delay limit %d reached for '%s'" % (
@@ -989,7 +988,6 @@ class server_process(threading_tools.process_pool):
             self.log("Config : %s" % (conf))
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)
-        print "***", self.__pid_name
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
     def _init_commands(self):

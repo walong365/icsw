@@ -34,7 +34,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                                         "provides a interface to check the status of gdth RAID-cards",
                                         **args)
 
-class gdth_status_command(hm_classes.hmb_command):
+class gdth_status_OLD_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "gdth_status", **args)
         self.help_str = "returns the status of the given controller"
