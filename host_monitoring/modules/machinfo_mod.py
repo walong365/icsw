@@ -1153,7 +1153,7 @@ class df_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
             srv_com["result"].attrib.update({"reply" : "missing argument",
-                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
             disk = srv_com["arguments:arg0"].text.strip()
             if disk.startswith("/dev/mapper"):
@@ -1170,39 +1170,42 @@ class df_command(hm_classes.hm_command):
             try:
                 n_dict = self.module._df_int()
             except:
-                return "error reading /etc/mtab"
-            if disk == "ALL":
-                srv_com.set_dictionary("df_result", dict([(disk, {"mountpoint" : n_dict[disk][0],
-                                                                  "perc"       : n_dict[disk][1],
-                                                                  "used"       : n_dict[disk][3],
-                                                                  "total"      : n_dict[disk][2]}) for disk in n_dict.keys()]))
+                srv_com["result"].attrib.update({"reply" : "error reading mtab: %s" % (process_tools.get_except_info()),
+                                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             else:
-                if not mapped_disk in n_dict:
-                    # id is just a guess, FIXME
-                    try:
-                        all_maps = self.__disk_lut["id"][mapped_disk]
-                    except KeyError:
-                        print "+"
-                        return "error invalid partition %s (key is %s)" % (disk,
-                                                                           mapped_disk)
-                    else:
-                        disk_found = False
-                        for mapped_disk in ["/dev/disk/by-id/%s" % (cur_map) for cur_map in all_maps]:
-                            if mapped_disk in n_dict:
-                                disk_found = True
-                                break
-                        if not disk_found:
-                            print "+*"
-                            return "error invalid partition %s" % (disk)
-                srv_com.set_dictionary("df_result", {"part"        : disk,
-                                                     "mapped_disk" : mapped_disk,
-                                                     "mountpoint"  : n_dict[mapped_disk][0],
-                                                     "perc"        : n_dict[mapped_disk][1],
-                                                     "used"        : n_dict[mapped_disk][3],
-                                                     "total"       : n_dict[mapped_disk][2]})
+                if disk == "ALL":
+                    srv_com.set_dictionary("df_result", dict([(disk, {"mountpoint" : n_dict[disk][0],
+                                                                      "perc"       : n_dict[disk][1],
+                                                                      "used"       : n_dict[disk][3],
+                                                                      "total"      : n_dict[disk][2]}) for disk in n_dict.keys()]))
+                else:
+                    if not mapped_disk in n_dict:
+                        # id is just a guess, FIXME
+                        try:
+                            all_maps = self.__disk_lut["id"][mapped_disk]
+                        except KeyError:
+                            srv_com["result"].attrib.update({"reply" : "invalid partition %s (key is %s)" % (disk,
+                                                                                                             mapped_disk),
+                                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                        else:
+                            disk_found = False
+                            for mapped_disk in ["/dev/disk/by-id/%s" % (cur_map) for cur_map in all_maps]:
+                                if mapped_disk in n_dict:
+                                    disk_found = True
+                                    break
+                            if not disk_found:
+                                srv_com["result"].attrib.update({"reply" : "invalid partition %s" % (disk),
+                                                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                            else:
+                                srv_com.set_dictionary("df_result", {"part"        : disk,
+                                                                     "mapped_disk" : mapped_disk,
+                                                                     "mountpoint"  : n_dict[mapped_disk][0],
+                                                                     "perc"        : n_dict[mapped_disk][1],
+                                                                     "used"        : n_dict[mapped_disk][3],
+                                                                     "total"       : n_dict[mapped_disk][2]})
     def interpret(self, srv_com, cur_ns):
         result = server_command.srv_command.tree_to_dict(srv_com["df_result"])
-        print result
+        #print result
         if result.has_key("perc"):
             # single-partition result
             ret_state = limits.check_ceiling(result["perc"], cur_ns.warn, cur_ns.crit)

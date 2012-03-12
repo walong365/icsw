@@ -940,7 +940,7 @@ class server_process(threading_tools.process_pool):
         for cur_del in self.__delayed:
             if cur_del.Meta.use_popen:
                 if cur_del.finished():
-                    print "finished delayed"
+                    #print "finished delayed"
                     cur_del.process()
                     cur_del.send_return()
                 elif abs(cur_time - cur_del._init_time) > cur_del.Meta.max_runtime:
