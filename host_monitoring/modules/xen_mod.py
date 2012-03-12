@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008 lang-nevyjel@init.at
+# Copyright (C) 2008,2012 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -20,8 +20,7 @@
 
 import sys
 import commands
-from host_monitoring import limits
-from host_monitoring import hm_classes
+from host_monitoring import limits, hm_classes
 import os
 import os.path
 import logging_tools
@@ -32,14 +31,7 @@ except:
 
 HOST_KEY = "/tool/host"
 
-class my_modclass(hm_classes.hm_fileinfo):
-    def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "xen",
-                                        "provides a interface to check for XEN",
-                                        **args)
-    def init(self, mode, logger, basedir_name, **args):
-        pass
+class _general(hm_classes.hm_module):
     def read_host_name(self, ret_dict, logger):
         xsr_bins = ["/usr/bin/xenstore-read", "/bin/xenstore-read"]
         # search xenstore-read binary
@@ -68,11 +60,8 @@ class my_modclass(hm_classes.hm_fileinfo):
             out = ""
         return out.split("\n")
                     
-class xen_type(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "xen_type", **args)
-        self.help_str = "returns the XEN-status of the host"
-    def server_call(self, cm):
+class xen_type_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
         ret_dict = {"xen_bus_found"   : False,
                     "xen_type"        : "",
                     "errors"          : []}
@@ -92,28 +81,26 @@ class xen_type(hm_classes.hmb_command):
                 ret_dict["xen_type"] = "guest"
                 # read host name
                 self.module_info.read_host_name(ret_dict, self.logger)
-        return "ok %s" % (hm_classes.sys_to_net(ret_dict))
-    def client_call(self, result, parsed_coms):
-        if result.startswith("ok "):
-            r_dict = hm_classes.net_to_sys(result[3:])
-            ret_state, out_f = (limits.nag_STATE_OK, [])
-            if r_dict["xen_type"]:
-                out_f.append("is a xen-%s" % (r_dict["xen_type"]))
-                if r_dict["xen_type"] == "host":
-                    if r_dict.has_key("running_domains"):
-                        out_f.append(logging_tools.get_plural("running domain", len(r_dict["running_domains"])))
-                elif r_dict["xen_type"] == "guest":
-                    if r_dict.has_key("xen_host"):
-                        out_f.append("host is %s" % (r_dict["xen_host"]))
-            else:
-                out_f.append("host is neither a xen-guest nor a xen-host")
-            if r_dict["errors"]:
-                out_f.extend(r_dict["errors"])
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-            return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
-                                          ", ".join(out_f))
+        srv_com.set_dictionary("xen_type", ret_dict)
+    def interpret_old(self, result, cur_ns):
+        r_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(r_dict, cur_ns)
+    def _interpret(self, r_dict, cur_ns):
+        ret_state, out_f = (limits.nag_STATE_OK, [])
+        if r_dict["xen_type"]:
+            out_f.append("is a xen-%s" % (r_dict["xen_type"]))
+            if r_dict["xen_type"] == "host":
+                if r_dict.has_key("running_domains"):
+                    out_f.append(logging_tools.get_plural("running domain", len(r_dict["running_domains"])))
+            elif r_dict["xen_type"] == "guest":
+                if r_dict.has_key("xen_host"):
+                    out_f.append("host is %s" % (r_dict["xen_host"]))
         else:
-            return limits.nag_STATE_CRITICAL, result
+            out_f.append("host is neither a xen-guest nor a xen-host")
+        if r_dict["errors"]:
+            out_f.extend(r_dict["errors"])
+            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        return ret_state, ", ".join(out_f)
 
 if __name__ == "__main__":
     print "This is a loadable module."

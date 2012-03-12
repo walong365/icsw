@@ -76,7 +76,7 @@ class my_modclass(hm_classes.hm_fileinfo):
         else:
             return self.__ctrl_dict[c_num]
 
-class megaraid_status_command(hm_classes.hmb_command):
+class megaraid_status_OLD_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "megaraid_status", **args)
         self.help_str = "returns the status of the given controller"

@@ -34,7 +34,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                                         "ibmraid_status",
                                         "provides a interface to check the status of IBM BC-S SAS Raid controller",
                                         **args)
-class ibmraid_status_command(hm_classes.hmb_command):
+class ibmraid_status_OLD_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "ibmraid_status", **args)
         self.help_str = "returns the status of the given IBM SAS RAID controller"

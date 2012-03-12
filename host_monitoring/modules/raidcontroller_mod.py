@@ -28,6 +28,7 @@ import os.path
 import time
 import logging_tools
 import server_command
+import pprint
 
 TW_EXEC = "/sbin/tw_cli"
 ARCCONF_BIN = "/usr/sbin/arcconf"
@@ -395,6 +396,50 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                                 logging_tools.get_plural("controller", num_c),
                                                 ", ".join(drive_stats))
         
+class ctrl_type_megaraid(ctrl_type):
+    class Meta:
+        name = "megaraid"
+        exec_name = "megarc"
+        description = "MegaRAID"
+    def get_exec_list(self, ctrl_list=[]):
+        if ctrl_list == []:
+            ctrl_list = self._dict.keys()
+        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+    def scan_ctrl(self):
+        cur_stat, cur_lines = self.exec_command(" info", post="strip")
+    def update_ctrl(self, ctrl_ids):
+        print ctrl_ids
+    def update_ok(self, srv_com):
+        if self._dict:
+            return ctrl_type.update_ok(self, srv_com)
+        else:
+            srv_com["result"].attrib.update({"reply" : "no controller found",
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            return False
+    def process(self, ccs, x):
+        ccs.srv_com["result"] = "OK"
+    def _interpret(self, ctrl_dict, cur_ns):
+        num_c, num_d, num_e = (len(ctrl_dict.keys()), 0, 0)
+        ret_state, ret_str = (limits.nag_STATE_OK, "OK")
+        drive_stats = []
+        for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
+            for log_num, log_stuff in ctrl_stuff.get("logical_lines", {}).iteritems():
+                num_d += 1
+                for line in log_stuff:
+                    if line.lower().startswith("logical drive") and line.lower().count("status"):
+                        status = line.split()[-1]
+                        if status.lower() != "optimal":
+                            num_e += 1
+                        drive_stats.append("ld %d (ctrl %d): %s" % (log_num,
+                                                                    ctrl_num,
+                                                                    status))
+        if num_e:
+            ret_state, ret_str = (limits.nag_STATE_CRITICAL, "Error")
+        return ret_state, "%s: %s on %s, %s" % (ret_str,
+                                                logging_tools.get_plural("logical drive", num_d),
+                                                logging_tools.get_plural("controller", num_c),
+                                                ", ".join(drive_stats))
+ 
 class ctrl_type_gdth(ctrl_type):
     class Meta:
         name = "gdth"
@@ -553,6 +598,63 @@ class ctrl_type_hpacu(ctrl_type):
                                                               logging_tools.get_plural("phys.drive", num_phys),
                                                               to_size_str(size_phys),
                                                               error_str)
+
+class ctrl_type_ibmraid(ctrl_type):
+    class Meta:
+        name = "ibmraid"
+        exec_name = "true"
+        description = "IBM Raidcontroller for Bladecenter S"
+    def get_exec_list(self, ctrl_list=[]):
+        if ctrl_list == []:
+            ctrl_list = self._dict.keys()
+        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+    def scan_ctrl(self):
+        cur_stat, cur_lines = self.exec_command(" info", post="strip")
+    def update_ctrl(self, ctrl_ids):
+        print ctrl_ids
+    def update_ok(self, srv_com):
+        if self._dict:
+            return ctrl_type.update_ok(self, srv_com)
+        else:
+            srv_com["result"].attrib.update({"reply" : "no controller found",
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            return False
+    def process(self, ccs, x):
+        ccs.srv_com["result"] = "OK"
+    def _interpret(self, ctrl_dict, cur_ns):
+        ret_state = limits.nag_STATE_OK
+        ret_f = []
+        for ctrl_info in ctrl_dict["ctrl_list"]:
+            ret_f.append("%s (%s)" % (ctrl_info["name"],
+                                      ctrl_info["status"]))
+            if ctrl_info["status"].lower() not in ["primary", "secondary"]:
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        for ctrl_key in [key for key in ctrl_dict.keys() if key.split("_")[1].isdigit()]:
+            cur_dict = ctrl_dict[ctrl_key]
+            #pprint.pprint(cur_dict)
+            ctrl_f = []
+            ctrl_f.append("C%d: %s" % (int(ctrl_key.split("_")[1]),
+                                       cur_dict["Current Status"]))
+            if cur_dict["BBU Charging"]:
+                ctrl_f.append("BBU Charging")
+                ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            if cur_dict["BBU State"].split()[0] != "1" or cur_dict["BBU Fault Code"].split()[0] != "0":
+                ctrl_f.append("BBU State/Fault Code: '%s/%s'" % (cur_dict["BBU State"],
+                                                                 cur_dict["BBU Fault Code"]))
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            if cur_dict["Current Status"].lower() not in ["primary", "secondary"]:
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            vol_info = [logging_tools.get_plural("volume", len(cur_dict["volumes"]))]
+            for cur_vol in cur_dict["volumes"]:
+                if cur_vol["status"] != "VBL INI":
+                    vol_info.append("%s (%d, %s): %s" % (cur_vol["name"],
+                                                         cur_vol["raidlevel"],
+                                                         cur_vol["capacity"],
+                                                         cur_vol["status"]))
+                pass
+            ctrl_f.append(",".join(vol_info))
+            ret_f.append(", ".join(ctrl_f))
+        return ret_state, "; ".join(ret_f)
 
 class _general(hm_classes.hm_module):
     def init_module(self):
@@ -796,6 +898,17 @@ class megaraid_sas_status_command(hm_classes.hm_command):
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("megaraid_sas")._interpret(ctrl_dict, cur_ns)
 
+class megaraid_status_command(hm_classes.hm_command):
+    def server_call(self, cm):
+        self.module_info.init_ctrl_dict(self.logger)
+        self.module_info.update_ctrl_dict(self.logger)
+        return "ok %s" % (hm_classes.sys_to_net(self.module_info.get_ctrl_config()))
+    def interpret_old(self, result, cur_ns):
+        ctrl_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(ctrl_dict, cur_ns)
+    def _interpret(self, ctrl_dict, cur_ns):
+        return ctrl_type.ctrl("megaraid")._interpret(ctrl_dict, cur_ns)
+
 class gdth_status_command(hm_classes.hm_command):
     def interpret_old(self, result, cur_ns):
         ctrl_dict = hm_classes.net_to_sys(result[3:])
@@ -809,6 +922,15 @@ class hpacu_status_command(hm_classes.hm_command):
         return self._interpret(ctrl_dict, cur_ns)
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("hpacu")._interpret(ctrl_dict, cur_ns)
+
+class ibmraid_status_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+    def interpret_old(self, result, cur_ns):
+        ctrl_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(ctrl_dict, cur_ns)
+    def _interpret(self, ctrl_dict, cur_ns):
+        return ctrl_type.ctrl("ibmraid")._interpret(ctrl_dict, cur_ns)
 
 if __name__ == "__main__":
     print "This is a loadable module."
