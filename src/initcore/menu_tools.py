@@ -376,7 +376,7 @@ def get_menu_html(request, is_mobile, for_dynatree):
                            "class" : "sf-menu"})
     #print is_mobile, for_dynatree, "***", menu_xpath
     return etree.tostring(my_menu.to_html(xml_doc, is_mobile, for_dynatree,
-                                          user=unicode(request.user.username.decode("utf-8")),
+                                          user=unicode(request.user),
                                           menu_xpath=menu_xpath))
 
 
