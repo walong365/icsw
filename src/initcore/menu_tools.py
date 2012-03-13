@@ -6,6 +6,7 @@ from django.core.urlresolvers import reverse
 import base64
 import codecs
 from django.conf import settings
+from django.utils.encoding import smart_unicode
 from lxml import etree
 from lxml.builder import E
 import os
@@ -375,7 +376,7 @@ def get_menu_html(request, is_mobile, for_dynatree):
                            "class" : "sf-menu"})
     #print is_mobile, for_dynatree, "***", menu_xpath
     return etree.tostring(my_menu.to_html(xml_doc, is_mobile, for_dynatree,
-                                          user=unicode(request.user),
+                                          user=unicode(request.user.username.decode("utf-8")),
                                           menu_xpath=menu_xpath))
 
 
