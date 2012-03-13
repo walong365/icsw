@@ -82,7 +82,8 @@ def change_password(request):
         cur_form = change_password_form(_post, username=request.user.username)
         if cur_form.is_valid():
             request.user.set_password(cur_form.cleaned_data["password_1"])
-            request.user.save()
+            request.user.olimhcm_oetiperson.password = request.user.password
+            request.user.olimhcm_oetiperson.save()
             return HttpResponseRedirect(settings.SITE_ROOT)
     else:
         cur_form = change_password_form(username=request.user.username)
