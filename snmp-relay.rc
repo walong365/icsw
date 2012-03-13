@@ -27,7 +27,7 @@ fi
 . /etc/init.d/ics_tools.sh
 
 # remove previous snmprelay pid directory
-[ -d /var/run/snmprelay] && rm -rf /var/run/snmprelay
+[ -d /var/run/snmprelay ] && rm -rf /var/run/snmprelay
 
 RELAY_BIN=/opt/cluster/sbin/snmp-relay.py
 PYTHON_BIN=/opt/python-init/bin/python
