@@ -72,6 +72,10 @@ void mysigh(int dummy) {
     //err_exit(0, ebuff, 0);
 }
 
+void try_second_socket(int dummy) {
+    printf("first timeout\n");
+}
+
 int main (int argc, char** argv) {
     int ret, num, inlen, file, i/*, time*/, port, rchar, verbose, quiet, retcode, timeout, host_written;
     struct in_addr sia;
@@ -97,7 +101,7 @@ int main (int argc, char** argv) {
     host_b[0] = 0;
     sprintf(host_b, "localhost");
     while (1) {
-        rchar = getopt(argc, argv, "+vm:p:ht:q");
+        rchar = getopt(argc, argv, "+vm:p:ht:qF");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
         case 'p':
@@ -105,8 +109,6 @@ int main (int argc, char** argv) {
             break;
         case 'm':
             sprintf(host_b, "%s", optarg);
-            //h = gethostbyname(optarg);
-            //if (!h) err_exit("Can't resolve hostname");
             break;
         case 't':
             timeout = strtol(optarg, NULL, 10);
@@ -157,6 +159,7 @@ int main (int argc, char** argv) {
         exit(ENOMEM);
     }
     alrmsigact -> sa_handler = &mysigh;
+    // alrmsigact -> sa_handler = &try_second_socket;
     if ((ret = sigaction(SIGALRM, (struct sigaction*)alrmsigact, NULL))<0) {
         retcode = err_exit("sigaction");
     } else {

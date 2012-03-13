@@ -57,16 +57,24 @@ class subprocess_struct(object):
         # if not a popen call
         self.terminated = False
     def run(self):
+        run_info = {}
         if self.multi_command:
             if self.command_line:
-                self.cur_comline = self.command_line[self.com_num]
+                cur_cl = self.command_line[self.com_num]
+                if type(cur_cl) == type(()):
+                    run_info["comline"] = cur_cl[0]
+                else:
+                    run_info["comline"] = cur_cl
+                run_info["command"] = cur_cl
+                run_info["run"] = self.com_num
                 self.com_num += 1
             else:
-                self.cur_comline = None
+                run_info["comline"] = None
         else:
-            self.cur_comline = self.command_line
-        if self.cur_comline:
-            self.popen = subprocess.Popen(self.cur_comline, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+            run_info["comline"] = self.command_line
+        self.run_info = run_info
+        if run_info["comline"]:
+            self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     def set_send_stuff(self, src_id, zmq_sock):
         self.src_id = src_id
         self.zmq_sock = zmq_sock
@@ -76,17 +84,16 @@ class subprocess_struct(object):
         else:
             return None
     def finished(self):
-        if self.cur_comline is None:
-            self.cur_result = 0
+        if self.run_info["comline"] is None:
+            self.run_info["result"] = 0
             # empty list of commands
             fin = True
         else:
-            self.cur_result = self.popen.poll()
+            self.run_info["result"] = self.popen.poll()
             fin = False
-            if self.cur_result is not None:
+            if self.run_info["result"] is not None:
+                self.process()
                 if self.multi_command:
-                    if self.cb_func:
-                        self.cb_func(self, self.com_num - 1)
                     if self.com_num == len(self.command_line):
                         # last command
                         fin = True
@@ -98,10 +105,7 @@ class subprocess_struct(object):
         return fin
     def process(self):
         if self.cb_func:
-            if self.multi_command:
-                self.cb_func(self, self.com_num)
-            else:
-                self.cb_func(self)
+            self.cb_func(self)
         else:
             self.srv_com["result"].attrib.update({
                 "reply" : "default process() call",

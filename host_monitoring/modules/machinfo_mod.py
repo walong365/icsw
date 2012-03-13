@@ -44,6 +44,10 @@ import base64
 import bz2
 import server_command
 import subprocess
+try:
+    from host_monitoring_version import VERSION_STRING
+except ImportError:
+    VERSION_STRING = "?.?"
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -1264,6 +1268,31 @@ class df_command(hm_classes.hm_command):
                                                                max_stuff["mountpoint"],
                                                                logging_tools.get_plural("partition", len(all_parts)))
 
+class version_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        srv_com["version"] = VERSION_STRING
+    def interpret(self, srv_com, cur_ns):
+        try:
+            return limits.nag_STATE_OK, "version is %s" % (srv_com["version"].text)
+        except:
+            return limits.nag_STATE_CRITICAL, "version not found"
+    def interpret_old(self, result, parsed_coms):
+        act_state = limits.nag_STATE_OK
+        print result
+        return act_state, "version is %s" % (result)
+        
+class status_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        srv_com["status_str"] = "ok running"
+    def interpret(self, srv_com, cur_ns):
+        try:
+            return limits.nag_STATE_OK, "status is %s" % (srv_com["status_str"].text)
+        except:
+            return limits.nag_STATE_CRITICAL, "status unknown"
+    def interpret_old(self, result, parsed_coms):
+        act_state = limits.nag_STATE_OK
+        return act_state, "status is %s" % (result)
+        
 class get_uuid_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["uuid"] = uuid_tools.get_uuid().get_urn()
@@ -1274,7 +1303,7 @@ class get_uuid_command(hm_classes.hm_command):
             return limits.nag_STATE_CRITICAL, "uuid not found"
     def interpret_old(self, result, parsed_coms):
         act_state = limits.nag_STATE_OK
-        return act_state, "ok uuid is %s" % (result.split()[1])
+        return act_state, "uuid is %s" % (result.split()[1])
 
 class swap_command(hm_classes.hm_command):
     def __init__(self, name):

@@ -52,7 +52,6 @@ class net_speed(object):
         self.__act_rx, self.__act_tx = (rx, tx)
         if last_update:
             diff_time = max(1, abs(last_update - self.__last_update))
-            print diff_time
             return (self._get_value(self.__act_rx - prev_rx, diff_time),
                     self._get_value(self.__act_tx - prev_tx, diff_time))
         else:

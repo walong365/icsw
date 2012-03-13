@@ -29,6 +29,9 @@ import time
 import logging_tools
 import server_command
 import pprint
+import base64
+import marshal
+import bz2
 
 TW_EXEC = "/sbin/tw_cli"
 ARCCONF_BIN = "/usr/sbin/arcconf"
@@ -58,8 +61,25 @@ def to_size_str(in_size):
                                3 : "G",
                                4 : "T"}[idx])
 
+def _split_config_line(line):
+    key, val = line.split(":", 1)
+    key = key.lower().strip().replace(" ", "_")
+    val = val.strip()
+    if val.isdigit():
+        val = int(val)
+    elif val.lower() == "enabled":
+        val = True
+    elif val.lower() == "disabled":
+        val = False
+    return key, val
+
+class dummy_mod(object):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        print "[%d] %s" % (log_level, what)
+        
 class ctrl_type(object):
-    def __init__(self, module_struct):
+    _all_types = None
+    def __init__(self, module_struct, **kwargs):
         self.name = self.Meta.name
         # last scan date
         self.scanned = None
@@ -68,7 +88,8 @@ class ctrl_type(object):
         self._dict = {}
         self._module = module_struct
         self._check_exec = None
-        self.log("init")
+        if not kwargs.get("quiet", False):
+            self.log("init")
     @staticmethod
     def init(module_struct):
         ctrl_type._all_types = {}
@@ -86,7 +107,10 @@ class ctrl_type(object):
             ctrl_type._all_types[cur_type]._update(ctrl_ids)
     @staticmethod
     def ctrl(key):
-        return ctrl_type._all_types[key]
+        if ctrl_type._all_types:
+            return ctrl_type._all_types[key]
+        else:
+            return globals()["ctrl_type_%s" % (key)](dummy_mod(), quiet=True)
     def exec_command(self, com_line, **kwargs):
         if com_line.startswith(" "):
             com_line = "%s%s" % (self._check_exec, com_line)
@@ -100,7 +124,7 @@ class ctrl_type(object):
             lines = [getattr(cur_line, kwargs["post"])() for cur_line in lines]
         if not kwargs.get("empty_ok", False):
             lines = [cur_line for cur_line in lines if cur_line.strip()]
-        print cur_stat, lines
+        #print cur_stat, lines
         return cur_stat, lines
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self._module.log("[ct %s] %s" % (self.name, what), log_level)
@@ -109,6 +133,7 @@ class ctrl_type(object):
         self.log("scanning for %s controller" % (self.name))
         self.check_for_exec()
         if self._check_exec:
+            self.log("scanning for %s" % (self.Meta.description))
             self.scan_ctrl()
     def _update(self, ctrl_ids):
         if not self.scanned:
@@ -130,7 +155,7 @@ class ctrl_type(object):
         return self._dict.keys()
     def scan_ctrl(self):
         pass
-    def update_ctrl(self):
+    def update_ctrl(self, *args):
         pass
     def update_ok(self, srv_com):
         if self._check_exec:
@@ -158,7 +183,7 @@ class ctrl_type_tw(ctrl_type):
         if not cur_stat:
             mode = None
             for line in cur_lines:
-                print "*", line
+                #print "*", line
                 line_p = line.split()
                 if mode is None:
                     if line_p[0].lower() == "list":
@@ -185,7 +210,7 @@ class ctrl_type_tw(ctrl_type):
             srv_com["result"].attrib.update({"reply" : "no controller found",
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
-    def process(self, ccs, x):
+    def process(self, ccs):
         ccs.srv_com["result"] = "OK"
     def _interpret(self, tw_dict, cur_ns):
         if tw_dict.has_key("units"):
@@ -256,15 +281,26 @@ class ctrl_type_ips(ctrl_type):
     class Meta:
         name = "ips"
         exec_name = "arcconf"
-        description = "Threeware RAID Controller"
-    def get_exec_list(self, ctrl_list=[]):
-        if ctrl_list == []:
-            ctrl_list = self._dict.keys()
-        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+        description = "Adapatec AAC RAID Controller"
+    def get_exec_list(self, ctrl_ids=[]):
+        ctrl_ids = ctrl_ids or self._dict.keys()
+        return [("%s getconfig %d AL" % (self._check_exec, ctrl_id),
+                 "config", ctrl_id) for ctrl_id in ctrl_ids] + \
+               [("%s getstatus %d" % (self._check_exec, ctrl_id),
+                 "status", ctrl_id) for ctrl_id in ctrl_ids]               
     def scan_ctrl(self):
-        cur_stat, cur_lines = self.exec_command(" info", post="strip")
-    def update_ctrl(self, ctrl_ids):
-        print ctrl_ids
+        cur_stat, cur_lines = self.exec_command(" getversion", post="strip")
+        if not cur_stat:
+            num_ctrl = len([True for line in cur_lines if line.lower().count("controller #")])
+            if num_ctrl:
+                for ctrl_num in range(1, num_ctrl + 1):
+                    ctrl_stuff = {"last_al_lines" : []}
+                    # get config for every controller
+                    c_stat, c_result = self.exec_command(" getconfig %d AD" % (ctrl_num))
+                    ctrl_stuff["config"] = {}
+                    for key, val in [_split_config_line(line) for line in c_result if line.count(":")]:
+                        ctrl_stuff["config"][key] = val
+                    self._dict[ctrl_num] = ctrl_stuff
     def update_ok(self, srv_com):
         if self._dict:
             return ctrl_type.update_ok(self, srv_com)
@@ -272,8 +308,81 @@ class ctrl_type_ips(ctrl_type):
             srv_com["result"].attrib.update({"reply" : "no controller found",
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
-    def process(self, ccs, x):
-        ccs.srv_com["result"] = "OK"
+    def process(self, ccs):
+        com_line, com_type, ctrl_num = ccs.run_info["command"]
+        if com_type == "config":
+            ctrl_config = {"logical"    : {},
+                           "array"      : {},
+                           "channel"    : {},
+                           "physical"   : [],
+                           "controller" : {}}
+            act_part, prev_line = ("", "")
+            for line in ccs.read().split("\n"):
+                ls = line.strip()
+                lsl = ls.lower()
+                if prev_line.startswith("-" * 10) and line.endswith("information"):
+                    act_part = " ".join(line.split()[0:2]).lower().replace(" ", "_").replace("drive", "device")
+                elif line.lower().startswith("command complet") or line.startswith("-" * 10):
+                    pass
+                else:
+                    if act_part == "logical_device":
+                        if line.lower().count("logical device number") or line.lower().count("logical drive number"):
+                            act_log_drv_num = int(line.split()[-1])
+                            ctrl_config["logical"][act_log_drv_num] = {}
+                        elif line.lower().strip().startswith("logical device name"):
+                            array_name = ls.split()[1]
+                            ctrl_config["array"][array_name] = " ".join(line.lower().strip().split()[2:])
+                        elif line.count(":"):
+                            key, val = _split_config_line(line)
+                            ctrl_config["logical"][act_log_drv_num][key] = val
+                    elif act_part == "physical_device":
+                        if lsl.startswith("channel #"):
+                            act_channel_num = int(lsl[-2])
+                            ctrl_config["channel"][act_channel_num] = {}
+                            act_scsi_stuff = None
+                        elif lsl.startswith("device #"):
+                            act_scsi_id = int(lsl[-1])
+                            act_channel_num = -1
+                            act_scsi_stuff = {}
+                        elif lsl.startswith("reported channel,device"):
+                            act_scsi_id = int(lsl.split(",")[-1])
+                            if act_channel_num == -1:
+                                act_channel_num = int(lsl.split(",")[-2].split()[-1])
+                                ctrl_config["channel"][act_channel_num] = {}
+                            ctrl_config["channel"][act_channel_num][act_scsi_id] = " ".join(lsl.split()[:-4])
+                            act_scsi_stuff["channel"] = act_channel_num
+                            act_scsi_stuff["scsi_id"] = act_scsi_id
+                            ctrl_config["channel"][act_channel_num][act_scsi_id] = act_scsi_stuff
+                            ctrl_config["physical"].append(act_scsi_stuff)
+                        elif line.count(":"):
+                            if act_scsi_stuff is not None:
+                                key, val = _split_config_line(line)
+                                act_scsi_stuff[key] = val
+                    elif act_part == "controller_information":
+                        if lsl.count(":"):
+                            key, value = [entry.strip() for entry in lsl.split(":", 1)]
+                            ctrl_config["controller"][key] = value
+                    #print act_part, linea
+                prev_line = line
+            self._dict[ctrl_num].update(ctrl_config)
+        elif com_type == "status":
+            task_list = []
+            act_task = None
+            for line in ccs.read().split("\n"):
+                lline = line.lower()
+                if lline.startswith("logical device task"):
+                    act_task = {"header" : lline}
+                elif act_task:
+                    if lline.count(":"):
+                        key, value = [part.strip().lower() for part in lline.split(":", 1)]
+                        act_task[key] = value
+                if not lline.strip():
+                    if act_task:
+                        task_list.append(act_task)
+                        act_task = None
+            self._dict[ctrl_num]["config"]["task_list"] = task_list
+        if ctrl_num == max(self._dict.keys()) and com_type == "status":
+            ccs.srv_com["ips_dict_base64"] = base64.b64encode(bz2.compress(marshal.dumps(self._dict)))
     def _interpret(self, aac_dict, cur_ns):
         num_warn, num_error = (0, 0)
         ret_f = []
@@ -371,7 +480,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
             srv_com["result"].attrib.update({"reply" : "no controller found",
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
-    def process(self, ccs, x):
+    def process(self, ccs):
         ccs.srv_com["result"] = "OK"
     def _interpret(self, ctrl_dict, cur_ns):
         num_c, num_d, num_e = (len(ctrl_dict.keys()), 0, 0)
@@ -416,7 +525,7 @@ class ctrl_type_megaraid(ctrl_type):
             srv_com["result"].attrib.update({"reply" : "no controller found",
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
-    def process(self, ccs, x):
+    def process(self, ccs):
         ccs.srv_com["result"] = "OK"
     def _interpret(self, ctrl_dict, cur_ns):
         num_c, num_d, num_e = (len(ctrl_dict.keys()), 0, 0)
@@ -460,7 +569,7 @@ class ctrl_type_gdth(ctrl_type):
             srv_com["result"].attrib.update({"reply" : "no controller found",
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
-    def process(self, ccs, x):
+    def process(self, ccs):
         ccs.srv_com["result"] = "OK"
     def _interpret(self, ctrl_dict, cur_ns):
         pd_list, ld_list, ad_list, hd_list = (ctrl_dict["pd"], ctrl_dict["ld"], ctrl_dict["ad"], ctrl_dict["hd"])
@@ -523,7 +632,7 @@ class ctrl_type_hpacu(ctrl_type):
             srv_com["result"].attrib.update({"reply" : "no controller found",
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
-    def process(self, ccs, x):
+    def process(self, ccs):
         ccs.srv_com["result"] = "OK"
     def _interpret(self, ctrl_dict, cur_ns):
         num_cont, num_array, num_log, num_phys = (0, 0, 0, 0)
@@ -619,7 +728,7 @@ class ctrl_type_ibmraid(ctrl_type):
             srv_com["result"].attrib.update({"reply" : "no controller found",
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
-    def process(self, ccs, x):
+    def process(self, ccs):
         ccs.srv_com["result"] = "OK"
     def _interpret(self, ctrl_dict, cur_ns):
         ret_state = limits.nag_STATE_OK
@@ -875,12 +984,16 @@ class tw_status_command(hm_classes.hm_command):
 class aac_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=False)
-    def server_call(self, cm):
-        if not os.path.isfile(ARCCONF_BIN):
-            return "error no arcconf-binary found in %s" % (os.path.dirname(ARCCONF_BIN))
-        self.module_info.init_ctrl_dict(self.logger)
-        self.module_info.update_ctrl_dict(self.logger)
-        return "ok %s" % (hm_classes.sys_to_net(self.module_info.get_ctrl_config()))
+    def __call__(self, srv_com, cur_ns):
+        ctrl_type.update("ips")
+        if "arguments:arg0" in srv_com:
+            ctrl_list = [srv_com["arguments:arg0"].text]
+        else:
+            ctrl_list = []
+        if ctrl_type.ctrl("ips").update_ok(srv_com):
+            return ctrl_check_struct(srv_com, ctrl_type.ctrl("ips"), ctrl_list)
+    def interpret(self, srv_com, cur_ns):
+        return self._interpret(marshal.loads(bz2.decompress(base64.b64decode(srv_com["ips_dict_base64"].text))), cur_ns)
     def interpret_old(self, result, cur_ns):
         aac_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(aac_dict, cur_ns)

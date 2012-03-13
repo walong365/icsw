@@ -26,6 +26,9 @@ fi
 [ -f /etc/sysconfig/snmp-relay ] && . /etc/sysconfig/snmp-relay
 . /etc/init.d/ics_tools.sh
 
+# remove previous snmprelay pid directory
+[ -d /var/run/snmprelay] && rm -rf /var/run/snmprelay
+
 RELAY_BIN=/opt/cluster/sbin/snmp-relay.py
 PYTHON_BIN=/opt/python-init/bin/python
 RELAY_PID=/var/run/snmp-relay/snmp-relay.pid
@@ -73,6 +76,7 @@ case "$1" in
 	    rc_failed
 	fi
 	rm -f ${RELAY_PID}
+	sleep 1
 	rc_status -v
 	;;
     status)

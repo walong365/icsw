@@ -137,7 +137,7 @@ class host_connection(object):
             if self.socket:
                 self.__backlog_counter -= 1
                 #print "*** blc ", self.__backlog_counter
-            self.return_error(to_mes, "timeout")
+            self.return_error(to_mes, "timeout (after %.2f seconds)" % (to_mes.get_runtime(cur_time)))
     def _open(self):
         if not self.__open:
             try:
@@ -223,13 +223,15 @@ class host_connection(object):
         else:
             self.log("unknown id '%s' in _handle_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
     def _handle_old_result(self, mes_id, result):
-        #print unicode(result)
         if mes_id in self.messages:
             cur_mes = self.messages[mes_id]
-            try:
-                res_tuple = cur_mes.interpret_old(result)
-            except:
-                res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
+            if result.startswith("no valid"):
+                res_tuple = (limits.nag_STATE_CRITICAL, result)
+            else:
+                try:
+                    res_tuple = cur_mes.interpret_old(result)
+                except:
+                    res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
             self.send_result(cur_mes, res_tuple)
         else:
             self.log("unknown id '%s' in _handle_old_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
@@ -248,16 +250,23 @@ class host_message(object):
                                   "state" : "%d" % (state)}
     def set_com_struct(self, com_struct):
         self.com_struct = com_struct
-        cur_ns, rest = com_struct.handle_commandline((self.srv_com["arg_list"].text or "").split())
-        #print "***", cur_ns, rest
-        self.srv_com["arg_list"] = " ".join(rest)
-        self.srv_com.delete_subtree("arguments")
-        for arg_idx, arg in enumerate(rest):
-            self.srv_com["arguments:arg%d" % (arg_idx)] = arg
-        self.srv_com["arguments:rest"] = " ".join(rest)
-        self.ns = cur_ns
+        if com_struct:
+            cur_ns, rest = com_struct.handle_commandline((self.srv_com["arg_list"].text or "").split())
+            #print "***", cur_ns, rest
+            self.srv_com["arg_list"] = " ".join(rest)
+            self.srv_com.delete_subtree("arguments")
+            for arg_idx, arg in enumerate(rest):
+                self.srv_com["arguments:arg%d" % (arg_idx)] = arg
+            self.srv_com["arguments:rest"] = " ".join(rest)
+            self.ns = cur_ns
+        else:
+            # connect to non-host-monitoring service
+            self.srv_com["arguments:rest"] = self.srv_com["arg_list"].text
+            self.ns = argparse.Namespace()
     def check_timeout(self, cur_time):
         return abs(cur_time - self.s_time) > 1
+    def get_runtime(self, cur_time):
+        return abs(cur_time - self.s_time)
     def get_result(self, result):
         if result is None:
             result = self.srv_com
@@ -622,7 +631,7 @@ class relay_process(threading_tools.process_pool):
         wait_iter = 0
         while os.path.exists(file_name) and wait_iter < 100:
             self.log("socket %s still exists, waiting" % (sock_name))
-            time.sleep(0.1)
+            time.sleep(0.02)
             wait_iter += 1
         client = self.zmq_context.socket(zmq.ROUTER)
         try:
@@ -666,7 +675,7 @@ class relay_process(threading_tools.process_pool):
                 if data.count(";") > 1:
                     parts = data.split(";", 2)
                     com_part = parts[2].split(None, 1)
-                    srv_com = server_command.srv_command(command=com_part.pop(0))
+                    srv_com = server_command.srv_command(command=com_part.pop(0) if com_part else "")
                     srv_com["host"] = parts[0]
                     srv_com["port"] = parts[1]
                     if com_part:
@@ -677,11 +686,15 @@ class relay_process(threading_tools.process_pool):
                         arg_list = []
                     srv_com["arg_list"] = " ".join(arg_list)
             if srv_com is not None:
-                self.log("got command '%s' for '%s' (XML: %s)" % (srv_com["command"].text,
-                                                                  srv_com["host"].text,
-                                                                  str(xml_input)))
+                if self.__verbose:
+                    self.log("got command '%s' for '%s' (XML: %s)" % (srv_com["command"].text,
+                                                                      srv_com["host"].text,
+                                                                      str(xml_input)))
                 # decide which code to use
-                if srv_com["host"].text in self.__new_clients.hosts:
+                if int(srv_com["port"].text) != 2001:
+                    # connect to non-host-monitoring service
+                    self._send_to_old_nhm_service(src_id, srv_com, xml_input)
+                elif srv_com["host"].text in self.__new_clients.hosts:
                     self._send_to_client(src_id, srv_com, xml_input)
                 elif srv_com["host"].text in self.__old_clients.hosts:
                     self._send_to_old_client(src_id, srv_com, xml_input)
@@ -717,6 +730,14 @@ class relay_process(threading_tools.process_pool):
             self.__old_send_lut[cur_mes.src_id] = cur_hc
         else:
             cur_hc.return_error(cur_mes, "command '%s' not defined" % (com_name))
+    def _send_to_old_nhm_service(self, src_id, srv_com, xml_input):
+        conn_str = "tcp://%s:%d" % (srv_com["host"].text,
+                                    int(srv_com["port"].text))
+        cur_hc = host_connection.get_hc(conn_str, dummy_connection=True)
+        com_name = srv_com["command"].text
+        cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+        cur_hc.send(cur_mes, None)
+        self.__old_send_lut[cur_mes.src_id] = cur_hc
     def _send_to_client(self, src_id, srv_com, xml_input):
         # generate new xml from srv_com
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
@@ -778,6 +799,7 @@ class relay_process(threading_tools.process_pool):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+        self.relayer_socket.close()
     def _init_commands(self):
         self.log("init commands")
         self.module_list = self.modules.module_list
@@ -895,11 +917,7 @@ class server_process(threading_tools.process_pool):
             cur_com = srv_com["command"].text
             srv_com["result"] = {"state" : server_command.SRV_REPLY_STATE_OK,
                                  "reply" : "ok"}
-            if cur_com == "status":
-                srv_com["result"].attrib["reply"] = "ok process is running"
-            elif cur_com == "version":
-                srv_com["result"].attrib["reply"] = "version is %s" % (VERSION_STRING)
-            elif cur_com in self.commands:
+            if cur_com in self.commands:
                 delayed = self._handle_module_command(srv_com, rest_str)
             else:
                 srv_com["result"].attrib.update(
@@ -941,7 +959,6 @@ class server_process(threading_tools.process_pool):
             if cur_del.Meta.use_popen:
                 if cur_del.finished():
                     #print "finished delayed"
-                    cur_del.process()
                     cur_del.send_return()
                 elif abs(cur_time - cur_del._init_time) > cur_del.Meta.max_runtime:
                     self.log("delay_object runtime exceeded, stopping")
