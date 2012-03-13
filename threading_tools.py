@@ -836,6 +836,7 @@ class process_obj(multiprocessing.Process):
         time.sleep(0.5)
         if not self.__twisted:
             self.__process_queue.close()
+            time.sleep(0.1)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print "process %s (%d) %s: %s" % (self.name,
                                           self.pid,
@@ -1046,6 +1047,9 @@ class process_pool(object):
                      logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_version=True)))
+    def _close_pp_sockets(self):
+        for sock_name, zmq_sock in self.__sockets.iteritems():
+            zmq_sock.close()
     def add_process(self, t_obj, **kwargs):
         # add a process_object to the process_pool
         if t_obj.getName() in self.__processes:
@@ -1266,6 +1270,7 @@ class process_pool(object):
                 self._handle_exception()
         self.uninstall_signal_handlers()
         self.loop_post()
+        self._close_pp_sockets()
     def loop_function(self):
         print "_dummy_loop_function(), sleeping for 10 seconds"
         time.sleep(10)

@@ -204,7 +204,7 @@ def get_mem_info(pid=0, **kwargs):
                 pass
             else:
                 for map_p in map_lines:
-                    print map_p
+                    #print "map_p", map_p
                     try:
                         mem_start, mem_end = map_p[0].split("-")
                         mem_start, mem_end = (int(mem_start, 16),
@@ -1214,6 +1214,7 @@ def kill_running_processes(p_name=None, **kwargs):
         kill_sig,
         "empty" if not exclude_pids else ", ".join(["%d" % (exc_pid) for exc_pid in sorted(exclude_pids)]))]
     kill_dict = build_kill_dict(p_name, exclude_pids)
+    any_killed = False
     if kill_dict:
         for pid, name in kill_dict.iteritems():
             if name not in kwargs.get("ignore_names", []):
@@ -1228,11 +1229,17 @@ def kill_running_processes(p_name=None, **kwargs):
                     log_lines.append("%s error (%s)" % (log_str, get_except_info()))
                 else:
                     log_lines.append("%s ok" % (log_str))
+                    any_killed = True
     else:
         log_lines[-1] = "%s, nothing to do" % (log_lines[-1])
+    wait_time = kwargs.get("wait_time", 1)
+    if any_killed:
+        log_lines.append("sleeping for %.2f seconds" % (wait_time))
     if kwargs.get("do_syslog", True):
         for log_line in log_lines:
             logging_tools.my_syslog(log_line)
+    if any_killed:
+        time.sleep(wait_time)
     return log_lines
 
 class device_recognition(object):
