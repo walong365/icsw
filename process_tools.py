@@ -597,6 +597,9 @@ class cached_file(object):
         self.__cache_time = args.get("cache_time", 3600)
         self.__last_stat, self.__last_update = (None, None)
         self.update()
+    @property
+    def name(self):
+        return self.__name
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_handle:
             self.__log_handle(what, log_level)
@@ -628,10 +631,9 @@ class cached_file(object):
                                                                 get_except_info()),
                                  logging_tools.LOG_LEVEL_ERROR)
                         self.content = None
-                        self.changed()
                     else:
                         self.content = content
-                        self.changed()
+                    self.changed()
         else:
             self.log("file '%s' does not exist" % (self.__name), logging_tools.LOG_LEVEL_ERROR)
             self.content = None

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011,2012 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -52,10 +52,14 @@ class config_proxy(BaseProxy):
         return ret_value
     def get_log(self, **kwargs):
         return self._callmethod("get_log", [], kwargs)
+    def fixed(self, key):
+        return self._callmethod("fixed", (key,))
     def __getitem__(self, key):
         return self._callmethod("__getitem__", (key,))
     def __setitem__(self, key, value):
         return self._callmethod("__setitem__", (key, value))
+    def __contains__(self, key):
+        return self._callmethod("__contains__", (key,))
     def parse_file(self, *args):
         return self._callmethod("parse_file", (args))
     def write_file(self, *args):
@@ -100,7 +104,10 @@ class _conf_var(object):
         if self.argparse_type == None:
             if self.short_type == "b":
                 # bool
-                arg_parser.add_argument(opts, dest=name, action="store_%s" % ("false" if self.__default_val else "true"), default=self.__default_val, help=self._help_string)
+                if self._only_commandline:
+                    arg_parser.add_argument(opts, dest=name, action="store_%s" % ("false" if self.__default_val else "true"), default=self.__default_val, help=self._help_string)
+                else:
+                    arg_parser.add_argument(opts, dest=name, action="store_%s" % ("false" if self.value else "true"), default=self.value, help=self._help_string)
             else:
                 print "*???*", self.short_type, name
         else:
@@ -269,10 +276,10 @@ class configuration(object):
         self.__log_array = []
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_array.append((what, log_level))
-    def copy_flags(self, var_dict):
-        # copy flags (right now only global / local) for given var_names
-        for var_name, var_value in var_dict.iteritems():
-            self.__c_dict[var_name].is_global = var_value.is_global()
+    #def copy_flags(self, var_dict):
+    #    # copy flags (right now only global / local) for given var_names
+    #    for var_name, var_value in var_dict.iteritems():
+    #        self.__c_dict[var_name].is_global = var_value.is_global()
     def add_config_entries(self, entries):
         if type(entries) == type({}):
             entries = [(key, value) for key, value in entries.iteritems()]
@@ -390,6 +397,7 @@ class configuration(object):
                                 try:
                                     self[key] = (value, "%s, sec %s" % (file_name, act_section))
                                 except KeyError:
+                                    print "*"
                                     self.log("Error: key %s not defined in dictionary" % (key),
                                              logging_tools.LOG_LEVEL_ERROR)
                                 else:
@@ -413,12 +421,13 @@ class configuration(object):
                 #                                                                self.__c_dict[k].get_info() and "# %s \n" % (self.__c_dict[k].get_info()) or "",
                 #                                                                k,
                 #                                                                self.__c_dict[k].get_value()) for k in all_keys] + [""]))
-                file(file_name, "w").write("\n".join(sum([["# %s" % (self.__c_dict[key]),
-                                                           "# %s" % (self.__c_dict[key].get_info() if self.__c_dict[key].get_info() else "no info"),
-                                                           "# %s" % (self.__c_dict[key].get_commandline_info()),
-                                                           "%s = %s" % (key, 
-                                                                        "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value),
-                                                           ""] for key in all_keys if self.get_cvar(key)._only_commandline == False],
+                file(file_name, "w").write("\n".join(sum([[
+                    "# %s" % (self.__c_dict[key]),
+                    "# %s" % (self.__c_dict[key].get_info() if self.__c_dict[key].get_info() else "no info"),
+                    "# %s" % (self.__c_dict[key].get_commandline_info()),
+                    "%s = %s" % (key, 
+                                 "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value),
+                    ""] for key in all_keys if self.get_cvar(key)._only_commandline == False],
                                                          [""])))
             except:
                 self.log("Error while writing file %s: %s" % (file_name, process_tools.get_except_info()))
@@ -474,7 +483,10 @@ class configuration(object):
         else:
             return options
 
-config_manager.register("config", configuration, config_proxy, exposed=["parse_file", "add_config_entries", "get_log", "handle_commandline", "__getitem__", "__setitem__", "write_file", "get_config_info", "name", "get_argument_stuff", "get_pid"])
+config_manager.register("config", configuration, config_proxy, exposed=["parse_file", "add_config_entries",
+                                                                        "get_log", "handle_commandline",
+                                                                        "__getitem__", "__setitem__", "__contains__",
+                                                                        "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])
 cur_manager = config_manager()
 
 def get_global_config(c_name):
@@ -602,6 +614,51 @@ def reload_global_config(dc, gcd, server_type, host_name = ""):
         for wo_var_name, wo_var in l_var_wo_host.iteritems():
             if not wo_var_name in gcd or gcd.get_source(wo_var_name) == "default":
                 gcd.add_config_dict({wo_var_name : wo_var})
+    
+def read_config_from_db(g_config, dc, server_type, init_list=[], host_name=""):
+    if not host_name:
+        host_name = process_tools.get_machine_name()
+    g_config.add_config_entries(init_list)
+    num_serv, serv_idx, s_type, s_str, config_idx, real_config_name = process_tools.is_server(dc, server_type.replace("%", ""), True, False, host_name.split(".")[0])
+    #print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
+    if num_serv:
+        # dict of local vars without specified host
+        l_var_wo_host = {}
+        for short in ["str",
+                      "int",
+                      "blob",
+                      "bool"]:
+            # very similiar code appears in config_tools.py
+            sql_str = "SELECT cv.* FROM new_config c INNER JOIN device_config dc LEFT JOIN config_%s cv ON cv.new_config=c.new_config_idx WHERE (cv.device=0 OR cv.device=%d) AND dc.device=%d AND dc.new_config=c.new_config_idx AND c.name='%s' ORDER BY cv.device, cv.name" % (short, config_idx, serv_idx, real_config_name)
+            dc.execute(sql_str)
+            for db_rec in [y for y in dc.fetchall() if y["name"]]:
+                if db_rec["name"].count(":"):
+                    var_global = False
+                    local_host_name, var_name = db_rec["name"].split(":", 1)
+                else:
+                    var_global = True
+                    local_host_name, var_name = (host_name, db_rec["name"])
+                if type(db_rec["value"]) == type(array.array("b")):
+                    new_val = str_c_var(db_rec["value"].tostring(), source="%s_table" % (short))
+                elif short == "int":
+                    new_val = int_c_var(int(db_rec["value"]), source="%s_table" % (short))
+                elif short == "bool":
+                    new_val = bool_c_var(bool(db_rec["value"]), source="%s_table" % (short))
+                else:
+                    new_val = str_c_var(db_rec["value"], source="%s_table" % (short))
+                new_val.is_global = var_global
+                if local_host_name == host_name:
+                    if var_name.upper() in g_config and g_config.fixed(var_name.upper()):
+                        # present value is fixed, keep value, only copy global / local status
+                        g_config[var_name.upper].is_global = new_val.is_global
+                    else:
+                        g_config.add_config_entries([(var_name.upper(), new_val)])
+                elif local_host_name == "":
+                    l_var_wo_host[var_name.upper()] = new_val
+        # check for vars to insert
+        for wo_var_name, wo_var in l_var_wo_host.iteritems():
+            if not wo_var_name in g_config or g_config.get_source(wo_var_name) == "default":
+                g_config.add_config_entries([(wo_var_name, wo_var)])
     
 def read_global_config(dc, server_type, init_dict=None, host_name=""):
     if init_dict is None:
