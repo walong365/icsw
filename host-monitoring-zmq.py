@@ -649,9 +649,10 @@ class relay_process(threading_tools.process_pool):
             msi_block = None
         self.__msi_block = msi_block
     def process_start(self, src_process, src_pid):
-        process_tools.append_pids(self.__pid_name, src_pid, mult=3)
+        # twisted needs 4 threads if connecting to TCP clients, 3 if not (???)
+        process_tools.append_pids(self.__pid_name, src_pid, mult=4 if src_process == "twisted" else 3)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=3)
+            self.__msi_block.add_actual_pid(src_pid, mult=4 if src_process == "twisted" else 3)
             self.__msi_block.save_block()
     def _check_timeout(self):
         host_connection.check_timeout_g()
