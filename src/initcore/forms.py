@@ -30,6 +30,12 @@ class authentication_form(forms.Form):
     def get_user(self):
         return self.user_cache
 
+
+class change_language_form(forms.Form):
+    language = forms.ChoiceField(widget=forms.widgets.Select(),
+                                 choices=("de", "en"))
+
+
 class user_config_form(forms.Form):
     css_theme = forms.ChoiceField(
         widget=forms.widgets.Select(

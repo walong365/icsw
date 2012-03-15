@@ -26,6 +26,7 @@ from initcore import menu_tools
 from initcore.render_tools import render_me
 from initcore.helper_functions import init_logging
 from initcore.forms import authentication_form, user_config_form, change_password_form
+from initcore.forms import change_language_form
 from initcore.models import user_variable
 
 from edmdb.models import olimhcm_oetiperson, olimhcm_oetirole, olimhcm_oetipersonoetirole, olimcrm_person
@@ -108,6 +109,18 @@ def get_menu(request, *args):
     for_dynatree = "dynatree" in args
     menu_html = menu_tools.get_menu_html(request, is_mobile, for_dynatree)
     return HttpResponse(menu_html, mimetype="text/html")
+
+@init_logging
+@login_required
+def change_language(request):
+    if request.method == "POST":
+        form = change_language_form(request.POST)
+        if form.is_valid():
+            lang = form.cleaned_data["language"]
+            store_user_variable(request, "language", lang)
+    else:
+        form = change_language_form()
+    return render_me(request, "initcore/change_language.html", {"form": form})()
 
 @init_logging
 @login_required
@@ -237,10 +250,10 @@ def get_user_role(request, user):
     except olimhcm_oetiperson.DoesNotExist:
         res =  {"OLIM_ROLE": ()}
     else:
-        person2role = olimhcm_oetipersonoetirole.objects.filter(rf_oetiperson=oetiperson.pk)
+        person2role = olimhcm_oetipersonoetirole.objects.filter(oetiperson_pk=oetiperson.pk)
         roles = []
         for i in person2role:
-            role = olimhcm_oetirole.objects.get(pk=i.rf_oetirole)
+            role = olimhcm_oetirole.objects.get(pk=i.oetirole_pk)
             roles.append(role.rolename)
         res = {"OLIM_ROLE": roles}
     return res

@@ -1,0 +1,23 @@
+{% extends "initcore/main.html" %}
+{% load i18n %}
+
+{% block title %}
+{% trans "Change language" %}
+{% endblock %}
+
+{% block content %}
+
+<h2>{% trans "Change language" %}</h2>
+
+<div id="password_div">
+<form id="password_form" method="post" action="{% url session:change_language %}">
+    <table class="style2" id="lang_form_{{ edit_user.pk }}">
+    <tbody>
+        <tr><th colspan="3" class="center ui-widget-header">Language</th></tr>
+        {{ form.as_table }}
+    </tbody>
+    </table>
+    <input type="submit" action="submit"/>
+</form>
+</div>
+{% endblock %}
