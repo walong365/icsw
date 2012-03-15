@@ -397,7 +397,6 @@ class configuration(object):
                                 try:
                                     self[key] = (value, "%s, sec %s" % (file_name, act_section))
                                 except KeyError:
-                                    print "*"
                                     self.log("Error: key %s not defined in dictionary" % (key),
                                              logging_tools.LOG_LEVEL_ERROR)
                                 else:
