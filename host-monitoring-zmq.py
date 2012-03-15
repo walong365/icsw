@@ -41,7 +41,7 @@ import server_command
 import stat
 import net_tools
 from lxml import etree
-from host_monitoring import limits
+from host_monitoring import limits, hm_classes
 import argparse
 import subprocess
 import icmp_twisted
@@ -251,7 +251,7 @@ class host_connection(object):
         #print unicode(result)
         mes_id = result["relayer_id"].text
         if mes_id in self.messages:
-            host_connection.relayer_process._new_client(result["host"].text)
+            host_connection.relayer_process._new_client(result["host"].text, int(result["port"].text))
             cur_mes = self.messages[mes_id]
             if cur_mes.sent:
                 cur_mes.sent = False
@@ -269,7 +269,7 @@ class host_connection(object):
             if result.startswith("no valid"):
                 res_tuple = (limits.nag_STATE_CRITICAL, result)
             else:
-                host_connection.relayer_process._old_client(cur_mes.srv_com["host"].text)
+                host_connection.relayer_process._old_client(cur_mes.srv_com["host"].text, int(cur_mes.srv_com["port"].text))
                 try:
                     res_tuple = cur_mes.interpret_old(result)
                 except:
@@ -596,7 +596,7 @@ class relay_process(threading_tools.process_pool):
         self._init_filecache()
         self._init_msi_block()
         self._init_ipc_sockets(close_socket=True)
-        self.register_exception("int_error", self._sigint)
+        self.register_exception("int_error" , self._sigint)
         self.register_exception("term_error", self._sigint)
         self.register_timer(self._check_timeout, 2)
         self.register_func("twisted_result", self._twisted_result)
@@ -617,17 +617,18 @@ class relay_process(threading_tools.process_pool):
         self.__client_dict = {}
         self.__last_tried = {}
         if not self.__autosense:
-            self.__new_clients, self.__old_clients = (my_cached_file("/tmp/.new_clients", log_handle=self.log),
-                                                      my_cached_file("/tmp/.old_clients", log_handle=self.log))
+            self.__new_clients, self.__old_clients = (
+                my_cached_file("/tmp/.new_clients", log_handle=self.log),
+                my_cached_file("/tmp/.old_clients", log_handle=self.log))
         self.__default_0mq = False
-    def _new_client(self, c_name):
-        self._set_client_state(c_name, "0")
-    def _old_client(self, c_name):
-        self._set_client_state(c_name, "T")
-    def _set_client_state(self, c_name, c_type):
+    def _new_client(self, c_name, c_port):
+        self._set_client_state(c_name, c_port, "0")
+    def _old_client(self, c_name, c_port):
+        self._set_client_state(c_name, c_port, "T")
+    def _set_client_state(self, c_name, c_port, c_type):
         if self.__autosense:
-            if self.__client_dict.get(c_name, None) != c_type:
-                self.log("setting client '%s' to '%s'" % (c_name, c_type))
+            if self.__client_dict.get(c_name, None) != c_type and c_port == 2001:
+                self.log("setting client '%s:%d' to '%s'" % (c_name, c_port, c_type))
                 self.__client_dict[c_name] = c_type
                 #file("/tmp/.client_states", "w").write("\n".join(["%s %s" % (name, self.__client_dict.iteritems())
     def _init_msi_block(self):
@@ -635,7 +636,7 @@ class relay_process(threading_tools.process_pool):
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
         process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3)
-        if True:#not self.__options.DEBUG:
+        if True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("collrelay")
             msi_block.add_actual_pid(mult=3)
@@ -718,13 +719,6 @@ class relay_process(threading_tools.process_pool):
                 break
         if len(in_data) == 2:
             src_id, data = in_data
-            # FIXME
-##            print "got", len(src_id), src_id, data
-##            self.relayer_socket.send(src_id, zmq.SNDMORE)
-##            self.relayer_socket.send(data)
-##            print "sent"
-##            return
-            # FIXME
             xml_input = data.startswith("<")
             srv_com = None
             if xml_input:
@@ -791,8 +785,6 @@ class relay_process(threading_tools.process_pool):
             else:
                 self.log("cannot interpret input data '%s' is srv_command" % (data),
                          logging_tools.LOG_LEVEL_ERROR)
-            #zmq_sock.send_unicode(src_id, zmq.SNDMORE)
-            #zmq_sock.send_unicode(unicode(result))
         else:
             self.log("wrong count of input data frames: %d, first one is %s" % (len(in_data),
                                                                                in_data[0]),
@@ -873,7 +865,7 @@ class relay_process(threading_tools.process_pool):
             self.log("%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str), logging_tools.LOG_LEVEL_ERROR)
         _init_ok = True
         for call_name, add_self in [("register_server", True),
-                                    ("init_module", False)]:
+                                    ("init_module"    , False)]:
             for cur_mod in self.modules.module_list:
                 if global_config["VERBOSE"]:
                     self.log("calling %s for module '%s'" % (call_name,
@@ -1102,10 +1094,22 @@ class server_process(threading_tools.process_pool):
                 break
         return _init_ok
 
+def show_command_info():
+    from host_monitoring import modules
+    if modules.IMPORT_ERRORS:
+        print "Import errors:"
+        for mod_name, com_name, error_str in modules.IMPORT_ERRORS:
+            print "%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str)
+    for com_name in sorted(modules.command_dict.keys()):
+        cur_com = modules.command_dict[com_name]
+        if isinstance(cur_com, hm_classes.hm_command):
+            #print "\n".join(["", "command %s" % (com_name), ""])
+            cur_com.parser.print_help()
+    sys.exit(0)
+    
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 def main():
-    long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
         #("MAILSERVER"          , configfile.str_c_var("localhost", info="Mail Server")),
@@ -1113,8 +1117,8 @@ def main():
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("KILL_RUNNING"        , configfile.bool_c_var(True)),
+        ("SHOW-COMMAND-INFO"   , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
         ("BACKLOG_SIZE"        , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
-        ("SERVER_FULL_NAME"    , configfile.str_c_var(long_host_name)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name,
                                                                  prog_name)))])
@@ -1143,11 +1147,13 @@ def main():
     global_config.write_file()
     if global_config["KILL_RUNNING"]:
         process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
+    if global_config["SHOW-COMMAND-INFO"]:
+        show_command_info()
     if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
         process_tools.become_daemon()
     elif prog_name in ["collserver", "collrelay"]:
         print "Debugging %s on %s" % (prog_name,
-                                      global_config["SERVER_FULL_NAME"])
+                                      process_tools.get_machine_name())
     if prog_name == "collserver":
         ret_state = server_process().loop()
     elif prog_name == "collrelay":
@@ -1155,7 +1161,7 @@ def main():
     elif prog_name == "collclient":
         ret_state = client_code()
     else:
-        print "Unknown opmode %s" % (prog_name)
+        print "Unknown operation mode %s" % (prog_name)
         ret_state = -1
     sys.exit(ret_state)
 

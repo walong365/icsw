@@ -968,7 +968,7 @@ global_config = configfile.get_global_config(process_tools.get_programm_name())
         
 def main():
     # read global configfile
-    prog_name = "snmp-relay"
+    prog_name = global_config.name()
     global_config.add_config_entries([
         ("BASEDIR_NAME"    , configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
         ("DEBUG"           , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
@@ -985,9 +985,10 @@ def main():
         ("PID_NAME"        , configfile.str_c_var("%s/%s" % (prog_name,
                                                              prog_name)))])
     global_config.parse_file()
-    # determine module_path
     options = global_config.handle_commandline(positional_arguments=False,
-                                               partial=False)
+                                               partial=False,
+                                               add_writeback_option=True)
+    global_config.write_file()
     if global_config["KILL_RUNNING"]:
         process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
     handledict = {"out"    : (1, "snmp-relay.out"),
