@@ -96,11 +96,14 @@ def client_code():
 
 class host_connection(object):
     def __init__(self, conn_str, **kwargs):
-        host_connection.hc_dict[conn_str] = self
+        dummy_con = kwargs.get("dummy_connection", False)
+        if dummy_con:
+            host_connection.hc_dict_tcp[conn_str] = self
+        else:
+            host_connection.hc_dict_0mq[conn_str] = self
         self.__open = False
         self.__conn_str = conn_str
         self.messages = {}
-        dummy_con = kwargs.get("dummy_connection", False)
         if dummy_con:
             self.socket = None
         else:
@@ -115,24 +118,58 @@ class host_connection(object):
             host_connection.relayer_process.register_poller(self.socket, zmq.POLLIN, self._get_result)
             host_connection.relayer_process.register_poller(self.socket, zmq.POLLERR, self._error)
             self.__backlog_counter = 0
+    def close(self):
+        if self.socket:
+            host_connection.relayer_process.unregister_poller(self.socket, zmq.POLLIN)
+            host_connection.relayer_process.unregister_poller(self.socket, zmq.POLLERR)
+            self.socket.close()
+            for mes in self.messages.values():
+                del mes
+    def __del__(self):
+        pass
+##    @staticmethod
+##    def delete_hc(srv_com):
+##        conn_str = "tcp://%s:%d" % (srv_com["host"].text,
+##                                    int(srv_com["port"].text))
+##        if conn_str in host_connection.hc_dict:
+##            host_connection.hc_dict[conn_str].close()
+##            del host_connection.hc_dict[conn_str]
     @staticmethod
-    def init(r_process, backlog_size):
+    def init(r_process, backlog_size, timeout, verbose):
         host_connection.relayer_process = r_process
-        host_connection.hc_dict = {}
+        # 2 queues for 0MQ and tcp
+        host_connection.hc_dict_0mq = {}
+        host_connection.hc_dict_tcp = {}
         host_connection.backlog_size = backlog_size
+        host_connection.timeout = timeout
+        host_connection.verbose = verbose
     @staticmethod
-    def get_hc(conn_str, **kwargs):
-        if conn_str not in host_connection.hc_dict:
-            new_hc = host_connection(conn_str, **kwargs)
-        return host_connection.hc_dict[conn_str]
+    def get_hc_0mq(conn_str, **kwargs):
+        if conn_str not in host_connection.hc_dict_0mq:
+            if host_connection.verbose > 1:
+                host_connection.relayer_process.log("new 0MQ host_connection for '%s'" % (conn_str))
+            cur_hc = host_connection(conn_str, **kwargs)
+        else:
+            cur_hc = host_connection.hc_dict_0mq[conn_str]
+        return cur_hc
+    @staticmethod
+    def get_hc_tcp(conn_str, **kwargs):
+        if conn_str not in host_connection.hc_dict_tcp:
+            if host_connection.verbose > 1:
+                host_connection.relayer_process.log("new TCP host_connection for '%s'" % (conn_str))
+            cur_hc = host_connection(conn_str, **kwargs)
+        else:
+            cur_hc = host_connection.hc_dict_tcp[conn_str]
+        return cur_hc
     @staticmethod
     def check_timeout_g():
         cur_time = time.time()
-        [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict.itervalues()]
+        [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict_0mq.itervalues()]
+        [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict_tcp.itervalues()]
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         host_connection.relayer_process.log("[hc] %s" % (what), log_level)
     def check_timeout(self, cur_time):
-        to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time)]
+        to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time, host_connection.timeout)]
         for to_mes in to_messages:
             if self.socket:
                 self.__backlog_counter -= 1
@@ -177,12 +214,15 @@ class host_connection(object):
                                               self.__conn_str))
                         #self._close()
                     else:
-                        self.__backlog_counter += 1
-                        #if self.__conn_str == 
-                        #print "tts0", self.__backlog_counter, BACKLOG_SIZE
-                        host_mes.sent = True
-                        self.socket.send_unicode(unicode(host_mes.srv_com))
-                        #print "tts1"
+                        try:
+                            self.socket.send_unicode(unicode(host_mes.srv_com), zmq.NOBLOCK)
+                        except:
+                            self.return_error(host_mes,
+                                              "connection error (%s)" % (process_tools.get_except_info()),
+                                              )
+                        else:
+                            self.__backlog_counter += 1
+                            host_mes.sent = True
             else:
                 # send to twisted-thread for old clients
                 host_connection.relayer_process.send_to_process(
@@ -211,6 +251,7 @@ class host_connection(object):
         #print unicode(result)
         mes_id = result["relayer_id"].text
         if mes_id in self.messages:
+            host_connection.relayer_process._new_client(result["host"].text)
             cur_mes = self.messages[mes_id]
             if cur_mes.sent:
                 cur_mes.sent = False
@@ -228,6 +269,7 @@ class host_connection(object):
             if result.startswith("no valid"):
                 res_tuple = (limits.nag_STATE_CRITICAL, result)
             else:
+                host_connection.relayer_process._old_client(cur_mes.srv_com["host"].text)
                 try:
                     res_tuple = cur_mes.interpret_old(result)
                 except:
@@ -263,8 +305,8 @@ class host_message(object):
             # connect to non-host-monitoring service
             self.srv_com["arguments:rest"] = self.srv_com["arg_list"].text
             self.ns = argparse.Namespace()
-    def check_timeout(self, cur_time):
-        return abs(cur_time - self.s_time) > 1
+    def check_timeout(self, cur_time, to_value):
+        return abs(cur_time - self.s_time) > to_value
     def get_runtime(self, cur_time):
         return abs(cur_time - self.s_time)
     def get_result(self, result):
@@ -521,9 +563,12 @@ class my_cached_file(process_tools.cached_file):
         process_tools.cached_file.__init__(self, name, **kwargs)
     def changed(self):
         if self.content:
+            self.log("reread file %s" % (self.name))
             self.hosts = set([cur_line.strip() for cur_line in self.content.strip().split("\n") if cur_line.strip() and not cur_line.strip().startswith("#")])
         else:
             self.hosts = set()
+    def __contains__(self, h_name):
+        return h_name in self.hosts
         
 class relay_process(threading_tools.process_pool):
     def __init__(self):
@@ -532,11 +577,12 @@ class relay_process(threading_tools.process_pool):
         self.modules = modules
         self.global_config = global_config
         self.__verbose = global_config["VERBOSE"]
+        self.__autosense = global_config["AUTOSENSE"]
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.renice()
         #pending_connection.init(self)
-        host_connection.init(self, global_config["BACKLOG_SIZE"])
+        host_connection.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose)
         # init lut
         self.__old_send_lut = {}
         if not global_config["DEBUG"]:
@@ -552,7 +598,7 @@ class relay_process(threading_tools.process_pool):
         self._init_ipc_sockets(close_socket=True)
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
-        self.register_timer(self._check_timeout, 1)
+        self.register_timer(self._check_timeout, 2)
         self.register_func("twisted_result", self._twisted_result)
         self._show_config()
         if not self._init_commands():
@@ -568,9 +614,22 @@ class relay_process(threading_tools.process_pool):
         else:
             self["exit_requested"] = True
     def _init_filecache(self):
-        self.__new_clients, self.__old_clients = (my_cached_file("/tmp/.new_clients", log_handle=self.log),
-                                                  my_cached_file("/tmp/.old_clients", log_handle=self.log))
-        self.__use_new_code = False
+        self.__client_dict = {}
+        self.__last_tried = {}
+        if not self.__autosense:
+            self.__new_clients, self.__old_clients = (my_cached_file("/tmp/.new_clients", log_handle=self.log),
+                                                      my_cached_file("/tmp/.old_clients", log_handle=self.log))
+        self.__default_0mq = False
+    def _new_client(self, c_name):
+        self._set_client_state(c_name, "0")
+    def _old_client(self, c_name):
+        self._set_client_state(c_name, "T")
+    def _set_client_state(self, c_name, c_type):
+        if self.__autosense:
+            if self.__client_dict.get(c_name, None) != c_type:
+                self.log("setting client '%s' to '%s'" % (c_name, c_type))
+                self.__client_dict[c_name] = c_type
+                #file("/tmp/.client_states", "w").write("\n".join(["%s %s" % (name, self.__client_dict.iteritems())
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
@@ -651,8 +710,6 @@ class relay_process(threading_tools.process_pool):
             self.register_poller(client, zmq.POLLIN, self._recv_command)
         self.__num_messages = 0
     def _recv_command(self, zmq_sock):
-        self.__old_clients.update()
-        self.__new_clients.update()
         in_data = []
         while True:
             in_data.append(zmq_sock.recv())
@@ -690,20 +747,46 @@ class relay_process(threading_tools.process_pool):
                     self.log("got command '%s' for '%s' (XML: %s)" % (srv_com["command"].text,
                                                                       srv_com["host"].text,
                                                                       str(xml_input)))
+                t_host = srv_com["host"].text
+                if self.__autosense:
+                    c_state = self.__client_dict.get(t_host, None)
+                    if c_state is None:
+                        # not needed
+                        #host_connection.delete_hc(srv_com)
+                        if t_host not in self.__last_tried:
+                            self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
+                        self.__last_tried[t_host] = {"T" : "0",
+                                                     "0" : "T"}[self.__last_tried[t_host]]
+                        c_state = self.__last_tried[t_host]
+                    con_mode = c_state
+                else:
+                    self.__old_clients.update()
+                    self.__new_clients.update()
+                    if t_host in self.__new_clients:
+                        con_mode = "0"
+                    elif t_host in self.__old_clients:
+                        con_mode = "T"
+                    elif self.__default_0mq:
+                        con_mode = "0"
+                    else:
+                        con_mode = "T"
                 # decide which code to use
+                if self.__verbose:
+                    self.log("connection to '%s:%d' via %s" % (t_host,
+                                                               int(srv_com["port"].text),
+                                                               con_mode))
                 if int(srv_com["port"].text) != 2001:
                     # connect to non-host-monitoring service
                     self._send_to_old_nhm_service(src_id, srv_com, xml_input)
-                elif srv_com["host"].text in self.__new_clients.hosts:
+                elif con_mode == "0":
                     self._send_to_client(src_id, srv_com, xml_input)
-                elif srv_com["host"].text in self.__old_clients.hosts:
+                elif con_mode == "T":
                     self._send_to_old_client(src_id, srv_com, xml_input)
-                elif self.__use_new_code:
-                    # fallback new
-                    self._send_to_client(src_id, srv_com, xml_input)
                 else:
-                    # fallback old
-                    self._send_to_old_client(src_id, srv_com, xml_input)
+                    self.log("unknown con_mode '%s', error" % (con_mode),
+                             logging_tools.LOG_LEVEL_CRITICAL)
+                if self.__verbose:
+                    self.log("send done")
             else:
                 self.log("cannot interpret input data '%s' is srv_command" % (data),
                          logging_tools.LOG_LEVEL_ERROR)
@@ -721,7 +804,7 @@ class relay_process(threading_tools.process_pool):
     def _send_to_old_client(self, src_id, srv_com, xml_input):
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
-        cur_hc = host_connection.get_hc(conn_str, dummy_connection=True)
+        cur_hc = host_connection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
         cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
         if com_name in self.modules.command_dict:
@@ -733,7 +816,7 @@ class relay_process(threading_tools.process_pool):
     def _send_to_old_nhm_service(self, src_id, srv_com, xml_input):
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
-        cur_hc = host_connection.get_hc(conn_str, dummy_connection=True)
+        cur_hc = host_connection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
         cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
         cur_hc.send(cur_mes, None)
@@ -742,35 +825,15 @@ class relay_process(threading_tools.process_pool):
         # generate new xml from srv_com
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
-        cur_hc = host_connection.get_hc(conn_str)
+        cur_hc = host_connection.get_hc_0mq(conn_str)
         com_name = srv_com["command"].text
         cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
         if com_name in self.modules.command_dict:
             com_struct = self.modules.command_dict[srv_com["command"].text]
             # handle commandline
             cur_hc.send(cur_mes, com_struct)
-            if False:
-                if True:
-                    try:
-                        cur_pc = pending_connection(src_id, srv_com, com_struct, conn_str, xml_input)
-                    except:
-                        err_str = "unable to initiate pending_connection: %s" % (process_tools.get_except_info())
-                        self.log(err_str,
-                                 logging_tools.LOG_LEVEL_ERROR)
-                        self.relayer_socket.send_unicode(src_id, zmq.SNDMORE)
-                        self.relayer_socket.send_unicode(u"%d\0%s" % (limits.nag_STATE_CRITICAL,
-                                                                      err_str))
-                        raise
-                    else:
-                        self.register_poller(cur_pc.sock, zmq.POLLIN, self._get_result)
-                else:
-                    result = com_struct.interpret(net_tools.zmq_connection("relayer").add_connection(conn_str, srv_com), None)
-                    self.relayer_socket.send_unicode(src_id, zmq.SNDMORE)
-                    self.relayer_socket.send_unicode(u"%d\0%s" % (result[0], result[1]))
         else:
             cur_hc.return_error(cur_mes, "command '%s' not defined" % (com_name))
-        #result = net_tools.zmq_connection(identity_string).add_connection(conn_str, send_xml)
-        #return result
     def _close_socket(self, zmq_sock):
         del self.__send_dict[zmq_sock]
         self.unregister_poller(zmq_sock, zmq.POLLIN)
@@ -1065,10 +1128,15 @@ def main():
             ("COM_PORT"       , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
             ("HOST"           , configfile.str_c_var("localhost", help_string="host to connect to"))
         ])
+    elif prog_name == "collrelay":
+        global_config.add_config_entries([
+            ("TIMEOUT"  , configfile.int_c_var(8, help_string="timeout for calls to distance machines [%(default)d]")),
+            ("AUTOSENSE", configfile.bool_c_var(False, help_string="enable autosensing of 0MQ/TCP Clients [%(default)s]")),
+            ])
     global_config.parse_file()
     options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
                                                                                   VERSION_STRING),
-                                               add_writeback_option=prog_name in ["collserver"],
+                                               add_writeback_option=prog_name in ["collserver", "collrelay"],
                                                positional_arguments=prog_name in ["collclient"],
                                                partial=prog_name in ["collclient"])
     global_config.write_file()

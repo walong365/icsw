@@ -1278,7 +1278,6 @@ class version_command(hm_classes.hm_command):
             return limits.nag_STATE_CRITICAL, "version not found"
     def interpret_old(self, result, parsed_coms):
         act_state = limits.nag_STATE_OK
-        print result
         return act_state, "version is %s" % (result)
         
 class status_command(hm_classes.hm_command):
