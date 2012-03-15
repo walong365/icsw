@@ -308,7 +308,7 @@ class olim_menu(object):
             href = reverse("session:menu_folder", args=[base64.b64encode(node.attrib["xpath"])])
         return href
     def _translate_node(self, context, node, *args):
-        cur_lang = self.__kwargs.get("language_code", "de")
+        cur_lang = self.__kwargs.get("language_code", settings.DEFAULT_LANGUAGE)
         ret_str = ""
         for pref in [cur_lang, "de", "name", "en"]:
             if pref in node[0].attrib:
@@ -318,19 +318,18 @@ class olim_menu(object):
 
 def get_menu_html(request, is_mobile, for_dynatree):
     #print is_mobile, for_dynatree
-    lang_code = request.LANGUAGE_CODE.split("_")[0]
-    lang_code = {"de" : "de",
-                 "en" : "en"}.get(lang_code, "de")
     if is_mobile:
         useragent_list = ["all", "mobile"]
     else:
         useragent_list = ["all", "pc"]
     if hasattr(request, "session"):
         current_role = request.session.get("OLIM_ROLE", None)
+        language = request.session.get("language", settings.DEFAULT_LANGUAGE)
     else:
         current_role = None
+        language = settings.DEFAULT_LANGUAGE
     my_menu = olim_menu(settings.MENU_XML_DIR, **{"filter_useragent": useragent_list,
-                                                  "language_code": lang_code,
+                                                  "language_code": language,
                                                   "filter_role": current_role})
     xml_doc = my_menu.process(codecs.open(settings.MENU_XML_PATH, "r", "utf-8").read())
     if request.session.has_key("menu_xpath"):

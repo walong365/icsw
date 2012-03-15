@@ -113,13 +113,19 @@ def get_menu(request, *args):
 @init_logging
 @login_required
 def change_language(request):
+    """Set the language user_variable."""
     if request.method == "POST":
         form = change_language_form(request.POST)
         if form.is_valid():
             lang = form.cleaned_data["language"]
             store_user_variable(request, "language", lang)
     else:
-        form = change_language_form()
+        current_language = get_user_variables(request, "language")
+        if current_language:
+            initial = current_language
+        else:
+            initial = {"language": settings.DEFAULT_LANGUAGE}
+        form = change_language_form(initial=initial)
     return render_me(request, "initcore/change_language.html", {"form": form})()
 
 @init_logging
@@ -258,20 +264,22 @@ def get_user_role(request, user):
         res = {"OLIM_ROLE": roles}
     return res
 
+
 @login_required
 def get_user_variables(request, var_name=None):
-    if type(request) == User:
-        # we got an user, no traversing needed
-        edm_user = request
+    """Get all or a specific user_variable. Return {} when no user_variables
+    could be found."""
+    if isinstance(request, User):
+        user = request
     else:
-        edm_user = request.user
-    # the vars belong to the oekotex user, not the django user
-    query = Q(user=edm_user)
+        user = request.user
+    query = Q(user=user)
     if var_name:
         query &= Q(name=var_name)
     all_vars = user_variable.objects.filter(query)
     var_dict = dict([(act_var.name, act_var.load()) for act_var in all_vars])
     return var_dict
+
 
 @login_required
 def store_user_variable(request, var_name, var_value=None, default=None):

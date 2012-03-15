@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import auth
 from django.utils.translation import ugettext_lazy as _
 from django.forms.util import ErrorList
+from django.conf import settings
 
 class authentication_form(forms.Form):
     """ Standard login form """
@@ -33,7 +34,7 @@ class authentication_form(forms.Form):
 
 class change_language_form(forms.Form):
     language = forms.ChoiceField(widget=forms.widgets.Select(),
-                                 choices=("de", "en"))
+                                 choices=settings.LANGUAGES)
 
 
 class user_config_form(forms.Form):
