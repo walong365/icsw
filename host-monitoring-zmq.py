@@ -22,10 +22,9 @@
 #
 """ host-monitoring, with 0MQ and twisted support """
 
-from twisted.internet import reactor, task
-from twisted.internet.protocol import ClientFactory, Protocol, Factory, DatagramProtocol
+from twisted.internet import reactor
+from twisted.internet.protocol import ClientFactory, Protocol, DatagramProtocol
 from twisted.python import log
-from twisted.pair import ip, rawudp, ethernet
 import zmq
 import sys
 import os
@@ -40,10 +39,8 @@ import configfile
 import server_command
 import stat
 import net_tools
-from lxml import etree
 from host_monitoring import limits, hm_classes
 import argparse
-import subprocess
 import icmp_twisted
 import pprint
 
@@ -532,6 +529,8 @@ class twisted_process(threading_tools.process_obj):
         log.startLoggingWithObserver(my_observer, setStdout=False)
         self.tcp_factory = tcp_factory(self)
         self.register_func("connection", self._connection)
+        # clear flag for extra twisted thread
+        self.__extra_twisted_thread = False
         if self.start_kwargs.get("icmp", True):
             self.icmp_protocol = hm_icmp_protocol(self, self.__log_template)
             reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
@@ -543,6 +542,9 @@ class twisted_process(threading_tools.process_obj):
         except:
             self.send_result(src_id, unicode(srv_com), "error in lookup: %s" % (process_tools.get_except_info()))
         else:
+            if not self.__extra_twisted_thread:
+                self.__extra_twisted_thread = True
+                self.send_pool_message("process_start")
             try:
                 cur_con = reactor.connectTCP(srv_com["host"].text, int(srv_com["port"].text), self.tcp_factory)
             except:
@@ -651,9 +653,17 @@ class relay_process(threading_tools.process_pool):
         self.__msi_block = msi_block
     def process_start(self, src_process, src_pid):
         # twisted needs 4 threads if connecting to TCP clients, 3 if not (???)
-        process_tools.append_pids(self.__pid_name, src_pid, mult=4 if src_process == "twisted" else 3)
+        if src_process == "twisted":
+            if src_pid in self.__msi_block.get_pids():
+                # add one extra thread
+                mult = 1
+            else:
+                mult = 3
+        else:
+            mult = 3
+        process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=4 if src_process == "twisted" else 3)
+            self.__msi_block.add_actual_pid(src_pid, mult=mult)
             self.__msi_block.save_block()
     def _check_timeout(self):
         host_connection.check_timeout_g()
