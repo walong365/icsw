@@ -36,6 +36,7 @@ import datetime
 import logging
 import logging.handlers
 import cPickle
+import pprint
 import socket
 import threading
 if sys.platform in ["linux2", "linux3"]:
@@ -83,7 +84,7 @@ def get_relative_dt(dt_struct):
         elif diff_days == 0:
             return dt_struct.strftime("today %H:%M:%S")
         else:
-            return dt_struct.strftime("%a, %d days ago %%H:%%M:%%S" % (diff_days))
+            return dt_struct.strftime("%%a, %d days ago %%H:%%M:%%S" % (diff_days))
     else:
         return dt_struct.strftime("%a, %d. %b %Y %H:%M:%S")
     
@@ -1241,7 +1242,6 @@ class syslog_ng_config(syslog_helper_obj):
         #pprint.pprint(s_dict)
 
 def main():
-    import pprint
     a = syslog_ng_config()
     #print a.get_dict_sort(a.get_multi_object("source"))
     print "\n".join(a.get_config_lines())

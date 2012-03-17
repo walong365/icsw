@@ -77,7 +77,7 @@ class _conf_var(object):
         self.__default_val = def_val
         self.__info = kwargs.get("info", "")
         if not self.check_type(def_val):
-            raise TypeError, "Type of Default-value differs from given type (%s, %s)" % (type(def_val), str(loc_type))
+            raise TypeError, "Type of Default-value differs from given type (%s, %s)" % (type(def_val), str(self.short_type))
         self.source = kwargs.get("source", "default")
         self.fixed = kwargs.get("fixed", False)
         self.is_global = kwargs.get("is_global", True)

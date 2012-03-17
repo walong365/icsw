@@ -309,7 +309,11 @@ class meta_server_info(object):
                     logging_tools.my_syslog("error parsing XML file %s (meta_server_info): %s" % (name, get_except_info()))
             if xml_struct is not None:
                 self.__name = xml_struct.xpath(".//name/text()")[0]
-                self.__pids = sorted([int(cur_pid) for cur_pid in xml_struct.xpath(".//pid_list/pid/text()")])
+                # reads pids
+                self.__pids = []
+                for pid_struct in xml_struct.xpath(".//pid_list/pid"):
+                    self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
+                #self.__pids = sorted([int(cur_pid) for cur_pid in xml_struct.xpath(".//pid_list/pid/text()")])
                 for opt, val_type, def_val in self.__prop_list:
                     cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='%s']" % (opt))
                     if cur_prop:
@@ -463,7 +467,7 @@ class meta_server_info(object):
         if etree:
             xml_struct = E.meta_info(
                 E.name(self.__name),
-                E.pid_list(*[E.pid("%d" % (cur_pid)) for cur_pid in self.__pids]),
+                E.pid_list(*[E.pid("%d" % (cur_pid), mult="%d" % (self.__pids.count(cur_pid))) for cur_pid in set(self.__pids)]),
                 E.properties()
                 )
             for opt, val_type, dev_val in self.__prop_list:
@@ -744,7 +748,7 @@ def set_lockfile_msg(lf_name, msg):
     if msg and os.path.isfile(lf_name):
         lf_msg_name = get_msg_file_name(lf_name)
         try:
-            lf = file(lf_msg_name, "w").write(msg.strip())
+            file(lf_msg_name, "w").write(msg.strip())
         except:
             pass
         

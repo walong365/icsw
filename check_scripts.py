@@ -24,7 +24,6 @@
 import sys
 import getopt
 import os
-import os.path
 import commands
 import stat
 import time
@@ -166,7 +165,7 @@ def check_system(opt_dict, checks, db_cursor):
                 elif out.count(":") < 5:
                     stat_dict[check] = "Error getting config: %s" % (out)
                 else:
-                    stat_dict[check] = [x.strip().split(None, 1) for x in out.split("\n")][0][1].lower()
+                    stat_dict[check] = [line.strip().split(None, 1) for line in out.split("\n")][-1][1].lower()
                     stat_dict[check] = [int(k2) for k2, v in [x.split(":") for x in stat_dict[check].split()] if v == "on"]
         ret_dict["check_list"] = []
         for name in check_list:

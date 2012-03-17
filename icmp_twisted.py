@@ -28,7 +28,6 @@ import struct
 import os
 import array
 import errno
-from twisted.python import reflect
 from twisted.internet import protocol, base, interfaces, error, address
 from zope.interface import implements, Interface
 
@@ -266,7 +265,7 @@ class icmp_port(base.BasePort):
     def write(self, datagram, addr):
         try:
             return self.socket.sendto(datagram, addr)
-        except socket.error, se:
+        except socket.error:
 ##            no = se.args[0]
 ##            if no == errno.EINTR:
 ##                return self.write(datagram)
@@ -283,7 +282,8 @@ class icmp_port(base.BasePort):
 
 class icmp_protocol(protocol.AbstractDatagramProtocol):
     def __init__(self):
-        self.echo_seqno = 32700L
+        # start at seqno 32
+        self.echo_seqno = 32L
     def datagram_received(self, datagram, addr):
         self.received(self.parse_datagram(datagram))
     def received(self, dgram):
@@ -297,7 +297,7 @@ class icmp_protocol(protocol.AbstractDatagramProtocol):
         chkdata = struct.pack("!BBH%ds" % (len(data)), packet_type, code, 0, data)
         chk = socket.htons(_checksum(chkdata))
         if checksum != chk:
-            log.warning("Checksum mismatch: %d != %d", checksum, chk)
+            raise ValueError("Checksum mismatch: %d != %d", checksum, chk)
         type_lut_dict = {
             0 : icmp_echo_reply,
             3 : icmp_destination_unreachable,

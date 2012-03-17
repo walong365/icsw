@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006,2007,2009,2010,2011 Andreas Lang-Nevyjel
+# Copyright (C) 2006,2007,2009,2010,2011,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -38,8 +38,8 @@ import pprint
 import pickle
 try:
     import zmq
-    from txZMQ import ZmqSubConnection, ZmqFactory, ZmqEndpoint, ZmqConnection
-    from twisted.internet import reactor, defer
+    from txZMQ import ZmqSubConnection, ZmqEndpoint
+    from twisted.internet import reactor
 except ImportError:
     zmq = None
     
