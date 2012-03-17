@@ -24,6 +24,13 @@ else
 fi
 . /etc/init.d/ics_tools.sh
 
+function setup() {
+    [ ! -d /var/run/logserver ] && mkdir /var/run/logserver 
+    [ ! -d /var/lock/logserver ] && mkdir /var/lock/logserver 
+    chmod 0750 /var/run/logserver
+    chown idlog.idg /var/run/logserver /var/lock/logserver 
+}
+
 SERVER_BIN=/opt/cluster/sbin/logging-server.py
 PYTHON_BIN=/opt/python-init/bin/python
 SERVER_PID=/var/run/logserver/logserver.pid
@@ -36,13 +43,10 @@ test -x ${PYTHON_BIN} || exit 5
 
 rc_reset
 
-[ ! -d /var/run/logserver ] && mkdir /var/run/logserver 
-[ ! -d /var/lock/logserver ] && mkdir /var/lock/logserver 
-chmod 0750 /var/run/logserver
-chown idlog.idg /var/run/logserver /var/lock/logserver 
+setup()
 
-id ${SERVER_USER} > /dev/null || { echo "User ${SERVER_USER} for ${SERVER_BIN} not found, exiting..." ; rc_failed 6 ; rc_exit ; }
-[ "`id ${SERVER_USER} -g -n`" != "${SERVER_GROUP}" ] && { echo "Group ${SERVER_GROUP} for ${SERVER_BIN} not found, exiting..." ; rc_failed 6 ; rc_exit ; }
+#id ${SERVER_USER} > /dev/null || { echo "User ${SERVER_USER} for ${SERVER_BIN} not found, exiting..." ; rc_failed 6 ; rc_exit ; }
+#[ "`id ${SERVER_USER} -g -n`" != "${SERVER_GROUP}" ] && { echo "Group ${SERVER_GROUP} for ${SERVER_BIN} not found, exiting..." ; rc_failed 6 ; rc_exit ; }
 
 export HOSTNAME=`/bin/hostname`
 case "$1" in
