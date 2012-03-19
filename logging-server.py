@@ -319,8 +319,9 @@ class log_receiver(threading_tools.process_obj):
             logger_name = record_name
             h_name = "%s/%s" % (record.host, record_name)
         if h_name in self.__handles:
-            if not (set([record_process, record_parent_process]) &  set([self.__handles[h_name].process_id,
-                                                                         self.__handles[h_name].parent_process_id])) and not self.__handles[h_name].ignore_process_id:
+            if not (set([record_process, record_parent_process]) & 
+                    set([self.__handles[h_name].process_id,
+                         self.__handles[h_name].parent_process_id])) and not self.__handles[h_name].ignore_process_id:
                 self.remove_handle(h_name)
         if not h_name in self.__handles:
             self.log("logger '%s' (logger_type %s) requested" % (logger_name,
@@ -338,7 +339,7 @@ class log_receiver(threading_tools.process_obj):
                     sub_dirs.append("%s/%s" % (sub_dirs[-1], new_sub_dir))
             # create sub_dirs
             for sub_dir in sub_dirs:
-                act_dir = "%s/%s" % (global_config["LOG_DESTINATION"], sub_dir)
+                act_dir = os.path.join(global_config["LOG_DESTINATION"], sub_dir)
                 if not os.path.isdir(act_dir):
                     try:
                         os.makedirs(act_dir)
