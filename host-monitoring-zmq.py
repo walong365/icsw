@@ -44,6 +44,8 @@ import argparse
 import icmp_twisted
 import pprint
 
+MAX_MSG_RECEIVED = 10000
+
 try:
     from host_monitoring_version import VERSION_STRING
 except ImportError:
@@ -394,7 +396,6 @@ class tcp_send(Protocol):
         pass
 
 class tcp_factory(ClientFactory):
-    # handling of tcp_factor freeing not implemented right now, FIXME
     def __init__(self, t_process):
         self.twisted_process = t_process
         self.__to_send = {}
@@ -431,8 +432,6 @@ class tcp_factory(ClientFactory):
         self.twisted_process.log("[tcp] %s" % (what), log_level)
     def received(self, cur_proto, data):
         self.twisted_process.send_result(cur_proto.src_id, unicode(cur_proto.srv_com), data)
-    def __del__(self):
-        return "del tcp_factory"
 
 class hm_icmp_protocol(icmp_twisted.icmp_protocol):
     def __init__(self, tw_process, log_template):
@@ -800,7 +799,7 @@ class relay_process(threading_tools.process_pool):
                                                                                in_data[0]),
                      logging_tools.LOG_LEVEL_ERROR)
         self.__num_messages += 1
-        if self.__num_messages > 1000:
+        if self.__num_messages > MAX_MSG_RECEIVED:
             self.unregister_poller(self.relayer_socket, zmq.POLLIN)
             self.relayer_socket.close()
             self._init_ipc_sockets()
