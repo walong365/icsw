@@ -1069,179 +1069,104 @@ class service_templates(object):
     def has_key(self, key):
         return self.__dict.has_key(key)
 
-class monitor_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config, db_con, log_queue):
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        self.__db_con = db_con
-        self.__log_queue = log_queue
-        self.__machlogs, self.__glob_log, self.__glob_cache = ({}, None, [])
-        threading_tools.thread_obj.__init__(self, "monitor", queue_size=500, priority=10)
-        self.register_func("set_queue_dict", self._set_queue_dict)
-        self.register_func("update", self._update)
-        self.__esd, self.__nvn = ("/tmp/.machvect_es", "nagios_ov")
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        self._init_em()
-    def _set_queue_dict(self, q_dict):
-        self.__queue_dict = q_dict
-    def loop_end(self):
-        if self.__em_ok:
-            for f_name in ["%s/%s.mvd" % (self.__esd, self.__nvn),
-                           "%s/%s.mvv" % (self.__esd, self.__nvn)]:
-                if os.path.isfile(f_name):
-                    try:
-                        os.unlink(f_name)
-                    except:
-                        self.log("cannot delete file %s: %s" % (f_name,
-                                                                process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
-        self.send_pool_message(("remove_pid", (self.name, self.pid)))
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (self.name, what, level)))
-    def _init_em(self):
-        init_ok = False
-        if os.path.isdir(self.__esd):
-            ofile = "%s/%s.mvd" % (self.__esd, self.__nvn)
-            try:
-                file(ofile, "w").write("\n".join(["nag.tot:0:Number of devices monitored by %s:1:1:1" % (self.__loc_config["MD_TYPE"]),
-                                                  "nag.up:0:Number of devices up:1:1:1",
-                                                  "nag.down:0:Number of devices down:1:1:1",
-                                                  "nag.unknown:0:Number of devices unknown:1:1:1",
-                                                  ""]))
-            except:
-                self.log("cannot write %s: %s" % (ofile, process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                init_ok = True
-        self.__em_ok = init_ok
-    def _update(self):
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM nagiosdb.%s_hoststatus nhs, nagiosdb.%s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (
-            self.__loc_config["MD_TYPE"],
-            self.__loc_config["MD_TYPE"])
-        nag_suc = dc.execute(sql_str)
-        if nag_suc:
-            nag_dict = dict([(x["host_name"], x["host_status"]) for x in dc.fetchall()])
-            num_tot, num_up, num_down = (len(nag_dict.keys()),
-                                         nag_dict.values().count(NAG_HOST_UP),
-                                         nag_dict.values().count(NAG_HOST_DOWN))
-            num_unknown = num_tot - (num_up + num_down)
-            self.log("nagios status is: %d up, %d down, %d unknown (%d total)" % (num_up, num_down, num_unknown, num_tot))
-            if not self.__em_ok:
-                self._init_em()
-            if self.__em_ok:
-                ofile = "%s/%s.mvv" % (self.__esd, self.__nvn)
-                try:
-                    file(ofile, "w").write("\n".join(["nag.tot:i:%d" % (num_tot),
-                                                      "nag.up:i:%d" % (num_up),
-                                                      "nag.down:i:%d" % (num_down),
-                                                      "nag.unknown:i:%d" % (num_unknown),
-                                                      ""]))
-                except:
-                    self.log("cannot write to file %s: %s" % (ofile,
-                                                              process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    pass
-        dc.release()
-        
-class logging_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config):
-        self.__sep_str = "-" * 50
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        self.__machlogs, self.__glob_log, self.__glob_cache = ({}, None, [])
-        threading_tools.thread_obj.__init__(self, "logging", queue_size=500, priority=10)
-        self.register_func("log", self._log)
-        self.register_func("update", self._update)
-        self.register_func("mach_log", self._mach_log)
-        self.register_func("set_queue_dict", self._set_queue_dict)
-        self.register_func("delay_request", self._delay_request)
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        root = self.__glob_config["LOG_DIR"]
-        if not os.path.exists(root):
-            os.makedirs(root)
-        glog_name = "%s/log" % (root)
-        self.__glob_log = logging_tools.logfile(glog_name)
-        self.__glob_log.write(self.__sep_str)
-        self.__glob_log.write("Opening log")
-        # array of delay-requests
-        self.__delay_array = []
-    def _update(self):
-        # handle delay-requests
-        act_time = time.time()
-        new_d_array = []
-        for target_queue, arg, r_time in self.__delay_array:
-            if r_time < act_time:
-                self.log("sending delayed object")
-                target_queue.put(arg)
-            else:
-                new_d_array.append((target_queue, arg, r_time))
-        self.__delay_array = new_d_array
-    def _delay_request(self, (target_queue, arg, delay)):
-        self.log("append to delay_array (delay=%s)" % (logging_tools.get_plural("second", delay)))
-        self.__delay_array.append((target_queue, arg, time.time() + delay))
-    def _set_queue_dict(self, q_dict):
-        self.__queue_dict = q_dict
-    def loop_end(self):
-        for mach in self.__machlogs.keys():
-            self.__machlogs[mach].write("Closing log")
-            self.__machlogs[mach].close()
-        self.__glob_log.write("Closed %s" % (logging_tools.get_plural("machine log", len(self.__machlogs.keys()))))
-        self.__glob_log.write("Closing log")
-        self.__glob_log.write("logging thread exiting (pid %d)" % (self.pid))
-        self.send_pool_message(("remove_pid", (self.name, self.pid)))
-        self.__glob_log.close()
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self._mach_log((self.name, what, lev, ""))
-    def _log(self, (s_thread, what, lev)):
-        self._mach_log((s_thread, what, lev, ""))
-    def _mach_log(self, (s_thread, what, lev, mach)):
-        if mach == "":
-            handle, pre_str = (self.__glob_log, "")
-        else:
-            handle, pre_str = self._get_handle(mach)
-        if handle is None:
-            self.__glob_cache.append((s_thread, what, lev, mach))
-        else:
-            log_act = []
-            if self.__glob_cache:
-                for c_s_thread, c_what, c_lev, c_mach in self.__glob_cache:
-                    c_handle, c_pre_str = self._get_handle(c_mach)
-                    self._handle_log(c_handle, c_s_thread, c_pre_str, c_what, c_lev, c_mach)
-                self.__glob_cache = []
-            self._handle_log(handle, s_thread, pre_str, what, lev, mach)
-    def _handle_log(self, handle, s_thread, pre_str, what, lev, mach):
-        if type(lev) not in [type(0), type(0L)]:
-            handle.write("type of level is not int: %s, %s, %s, %s" % (lev,
-                                                                       s_thread,
-                                                                       pre_str,
-                                                                       what))
-        else:
-            handle.write("%-5s(%s) : %s%s" % (logging_tools.get_log_level_str(lev),
-                                              s_thread,
-                                              pre_str,
-                                              what))
-    def _remove_handle(self, name):
-        self.log("Closing log for device %s" % (name))
-        self._mach_log((self.name, "(%s) : Closing log" % (self.name), logging_tools.LOG_LEVEL_OK, name))
-        self.__machlogs[name].close()
-        del self.__machlogs[name]
-    def _get_handle(self, name):
-        devname_dict = {}
-        if self.__machlogs.has_key(name):
-            handle, pre_str = (self.__machlogs[name], "")
-        else:
-            machdir = "%s/%s" % (self.__glob_config["LOG_DIR"], name)
-            if not os.path.exists(machdir):
-                self.log("Creating dir %s for %s" % (machdir, name))
-                os.makedirs(machdir)
-            self.__machlogs[name] = logging_tools.logfile("%s/log" % (machdir))
-            self.__machlogs[name].write(self.__sep_str)
-            self.__machlogs[name].write("Opening log")
-            #glog.write("# of open machine logs: %d" % (len(self.__machlogs.keys())))
-            handle, pre_str = (self.__machlogs[name], "")
-        return (handle, pre_str)
+##        
+##class logging_thread(threading_tools.thread_obj):
+##    def __init__(self, glob_config, loc_config):
+##        self.__sep_str = "-" * 50
+##        self.__glob_config, self.__loc_config = (glob_config, loc_config)
+##        self.__machlogs, self.__glob_log, self.__glob_cache = ({}, None, [])
+##        threading_tools.thread_obj.__init__(self, "logging", queue_size=500, priority=10)
+##        self.register_func("log", self._log)
+##        self.register_func("update", self._update)
+##        self.register_func("mach_log", self._mach_log)
+##        self.register_func("set_queue_dict", self._set_queue_dict)
+##        self.register_func("delay_request", self._delay_request)
+##    def thread_running(self):
+##        self.send_pool_message(("new_pid", (self.name, self.pid)))
+##        root = self.__glob_config["LOG_DIR"]
+##        if not os.path.exists(root):
+##            os.makedirs(root)
+##        glog_name = "%s/log" % (root)
+##        self.__glob_log = logging_tools.logfile(glog_name)
+##        self.__glob_log.write(self.__sep_str)
+##        self.__glob_log.write("Opening log")
+##        # array of delay-requests
+##        self.__delay_array = []
+##    def _update(self):
+##        # handle delay-requests
+##        act_time = time.time()
+##        new_d_array = []
+##        for target_queue, arg, r_time in self.__delay_array:
+##            if r_time < act_time:
+##                self.log("sending delayed object")
+##                target_queue.put(arg)
+##            else:
+##                new_d_array.append((target_queue, arg, r_time))
+##        self.__delay_array = new_d_array
+##    def _delay_request(self, (target_queue, arg, delay)):
+##        self.log("append to delay_array (delay=%s)" % (logging_tools.get_plural("second", delay)))
+##        self.__delay_array.append((target_queue, arg, time.time() + delay))
+##    def _set_queue_dict(self, q_dict):
+##        self.__queue_dict = q_dict
+##    def loop_end(self):
+##        for mach in self.__machlogs.keys():
+##            self.__machlogs[mach].write("Closing log")
+##            self.__machlogs[mach].close()
+##        self.__glob_log.write("Closed %s" % (logging_tools.get_plural("machine log", len(self.__machlogs.keys()))))
+##        self.__glob_log.write("Closing log")
+##        self.__glob_log.write("logging thread exiting (pid %d)" % (self.pid))
+##        self.send_pool_message(("remove_pid", (self.name, self.pid)))
+##        self.__glob_log.close()
+##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+##        self._mach_log((self.name, what, lev, ""))
+##    def _log(self, (s_thread, what, lev)):
+##        self._mach_log((s_thread, what, lev, ""))
+##    def _mach_log(self, (s_thread, what, lev, mach)):
+##        if mach == "":
+##            handle, pre_str = (self.__glob_log, "")
+##        else:
+##            handle, pre_str = self._get_handle(mach)
+##        if handle is None:
+##            self.__glob_cache.append((s_thread, what, lev, mach))
+##        else:
+##            log_act = []
+##            if self.__glob_cache:
+##                for c_s_thread, c_what, c_lev, c_mach in self.__glob_cache:
+##                    c_handle, c_pre_str = self._get_handle(c_mach)
+##                    self._handle_log(c_handle, c_s_thread, c_pre_str, c_what, c_lev, c_mach)
+##                self.__glob_cache = []
+##            self._handle_log(handle, s_thread, pre_str, what, lev, mach)
+##    def _handle_log(self, handle, s_thread, pre_str, what, lev, mach):
+##        if type(lev) not in [type(0), type(0L)]:
+##            handle.write("type of level is not int: %s, %s, %s, %s" % (lev,
+##                                                                       s_thread,
+##                                                                       pre_str,
+##                                                                       what))
+##        else:
+##            handle.write("%-5s(%s) : %s%s" % (logging_tools.get_log_level_str(lev),
+##                                              s_thread,
+##                                              pre_str,
+##                                              what))
+##    def _remove_handle(self, name):
+##        self.log("Closing log for device %s" % (name))
+##        self._mach_log((self.name, "(%s) : Closing log" % (self.name), logging_tools.LOG_LEVEL_OK, name))
+##        self.__machlogs[name].close()
+##        del self.__machlogs[name]
+##    def _get_handle(self, name):
+##        devname_dict = {}
+##        if self.__machlogs.has_key(name):
+##            handle, pre_str = (self.__machlogs[name], "")
+##        else:
+##            machdir = "%s/%s" % (self.__glob_config["LOG_DIR"], name)
+##            if not os.path.exists(machdir):
+##                self.log("Creating dir %s for %s" % (machdir, name))
+##                os.makedirs(machdir)
+##            self.__machlogs[name] = logging_tools.logfile("%s/log" % (machdir))
+##            self.__machlogs[name].write(self.__sep_str)
+##            self.__machlogs[name].write("Opening log")
+##            #glog.write("# of open machine logs: %d" % (len(self.__machlogs.keys())))
+##            handle, pre_str = (self.__machlogs[name], "")
+##        return (handle, pre_str)
 
 class build_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, loc_config, db_con, log_queue):
@@ -1998,37 +1923,34 @@ class command_thread(threading_tools.thread_obj):
                      logging_tools.LOG_LEVEL_WARN)
         self._enqueue_rebuild_request([])
 
-class db_verify_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config, db_con, log_queue):
-        self.__db_con = db_con
-        self.__log_queue = log_queue
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        threading_tools.thread_obj.__init__(self, "db_verify", queue_size=100)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (self.name, what, lev)))
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        self._validate_db(dc)
-        dc.release()
-    def _validate_db(self, dc):
+class db_verify_process(threading_tools.process_obj):
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+        self.register_func("validate", self._validate_db)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def _validate_db(self, **kwargs):
+        db_con = mysql_tools.dbcon_container()
+        dc = db_con.get_connection(SQL_ACCESS)
         self.log("starting to validate database")
         sql_file = "/etc/sysconfig/cluster/mysql.cf"
         sql_suc, sql_dict = configfile.readconfig(sql_file, 1)
         dbv_struct = mysql_tools.db_validate(self.log, dc, database=sql_dict["NAGIOS_DATABASE"])
         dbv_struct.repair_tables()
         del dbv_struct
+        dc.release()
+        del db_con
 
-class server_thread_pool(threading_tools.thread_pool):
-    def __init__(self, db_con, g_config, loc_config):
-        self.__log_cache, self.__log_queue = ([], None)
+class server_process(threading_tools.process_pool):
+    def __init__(self, db_con):
+        self.__log_cache, self.__log_template = ([], None)
         self.__db_con = db_con
-        self.__glob_config, self.__loc_config = (g_config, loc_config)
-        threading_tools.thread_pool.__init__(self, "main", blocking_loop=False)
+        self.__pid_name = global_config["PID_NAME"]
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
-        self.register_func("new_pid", self._new_pid)
-        self.register_func("remove_pid", self._remove_pid)
-        self.__log_queue = self.add_thread(logging_thread(self.__glob_config, self.__loc_config), start_thread=True).get_thread_queue()
+        #self.register_func("new_pid", self._new_pid)
+        #self.register_func("remove_pid", self._remove_pid)
         # prepare directories
         #self._prepare_directories()
         dc = self.__db_con.get_connection(SQL_ACCESS)
@@ -2041,38 +1963,83 @@ class server_thread_pool(threading_tools.thread_pool):
         self._check_relay_version(dc)
         self._log_config()
         self._check_nagios_db(dc)
-        self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=self.__loc_config["VERBOSE"] > 1)
-        self.__com_queue     = self.add_thread(command_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__build_queue   = self.add_thread(build_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__monitor_queue = self.add_thread(monitor_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__verify_queue  = self.add_thread(db_verify_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__queue_dict = {"log_queue"     : self.__log_queue,
-                             "command_queue" : self.__com_queue,
-                             "monitor_queue" : self.__monitor_queue,
-                             "build_queue"   : self.__build_queue}
-        self.__log_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__com_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__build_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__com_queue.put(("set_net_stuff", (self.__ns)))
-        self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_command_con, port=self.__glob_config["COM_PORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=60))
         dc.release()
-        self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
-        self.__com_queue.put(("rebuild_config", []))
+        self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=global_config["VERBOSE"] > 1)
+        self.add_process(db_verify_process("db_verify"), start=True)
+        self._init_em()
+        #self.__com_queue     = self.add_thread(command_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
+        #self.__build_queue   = self.add_thread(build_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
+##        self.__queue_dict = {"command_queue" : self.__com_queue,
+##                             "build_queue"   : self.__build_queue}
+##        self.__com_queue.put(("set_queue_dict", self.__queue_dict))
+##        self.__build_queue.put(("set_queue_dict", self.__queue_dict))
+##        self.__com_queue.put(("set_net_stuff", (self.__ns)))
+        #self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_command_con, port=self.__glob_config["COM_PORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=60))
+        self.register_timer(self._check_db, 300, instant=True)
+        self.register_timer(self._update, 30, instant=True)
+        #self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
+        #self.__com_queue.put(("rebuild_config", []))
+    def _check_db(self):
+        self.send_to_process("db_verify", "validate")
+    def _init_em(self):
+        self.__esd, self.__nvn = ("/tmp/.machvect_es", "nagios_ov")
+        init_ok = False
+        if os.path.isdir(self.__esd):
+            ofile = "%s/%s.mvd" % (self.__esd, self.__nvn)
+            try:
+                file(ofile, "w").write("\n".join(["nag.tot:0:Number of devices monitored by %s:1:1:1" % (global_config["MD_TYPE"]),
+                                                  "nag.up:0:Number of devices up:1:1:1",
+                                                  "nag.down:0:Number of devices down:1:1:1",
+                                                  "nag.unknown:0:Number of devices unknown:1:1:1",
+                                                  ""]))
+            except:
+                self.log("cannot write %s: %s" % (ofile, process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                init_ok = True
+        self.__em_ok = init_ok
+    def _update(self):
+        dc = self.__db_con.get_connection(SQL_ACCESS)
+        sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM nagiosdb.%s_hoststatus nhs, nagiosdb.%s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (
+            global_config["MD_TYPE"],
+            global_config["MD_TYPE"])
+        nag_suc = dc.execute(sql_str)
+        if nag_suc:
+            nag_dict = dict([(db_rec["host_name"], db_rec["host_status"]) for db_rec in dc.fetchall()])
+            num_tot, num_up, num_down = (len(nag_dict.keys()),
+                                         nag_dict.values().count(NAG_HOST_UP),
+                                         nag_dict.values().count(NAG_HOST_DOWN))
+            num_unknown = num_tot - (num_up + num_down)
+            self.log("nagios status is: %d up, %d down, %d unknown (%d total)" % (num_up, num_down, num_unknown, num_tot))
+            if not self.__em_ok:
+                self._init_em()
+            if self.__em_ok:
+                ofile = "%s/%s.mvv" % (self.__esd, self.__nvn)
+                try:
+                    file(ofile, "w").write("\n".join(["nag.tot:i:%d" % (num_tot),
+                                                      "nag.up:i:%d" % (num_up),
+                                                      "nag.down:i:%d" % (num_down),
+                                                      "nag.unknown:i:%d" % (num_unknown),
+                                                      ""]))
+                except:
+                    self.log("cannot write to file %s: %s" % (ofile,
+                                                              process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    pass
+        dc.release()
     def _log_config(self):
         self.log("Config info:")
-        for line, log_level in self.__glob_config.get_log(clear=True):
+        for line, log_level in global_config.get_log(clear=True):
             self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = self.__glob_config.get_config_info()
+        conf_info = global_config.get_config_info()
         self.log("Found %d valid global config-lines:" % (len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : %s" % (conf))
-        conf_info = self.__loc_config.get_config_info()
-        self.log("Found %d valid local config-lines:" % (len(conf_info)))
         for conf in conf_info:
             self.log("Config : %s" % (conf))
     def _re_insert_config(self, dc):
         self.log("re-insert config")
-        configfile.write_config(dc, "nagios_master", self.__glob_config)
+        # FIXME, not implemented, AL 20120319
+        #configfile.write_config(dc, "nagios_master", global_config)
     def _check_nagios_version(self, dc):
         start_time = time.time()
         md_version, md_type = ("unknown", "unknown")
@@ -2102,15 +2069,17 @@ class server_thread_pool(threading_tools.thread_pool):
                 break
         # save to local config
         if md_version[0].isdigit():
-            self.__loc_config["MD_TYPE"] = md_type
-            self.__loc_config["MD_VERSION"] = int(md_version.split(".")[0])
-            self.__loc_config["MD_RELEASE"] = int(md_version.split(".")[1])
-            self.__loc_config["MD_VERSION_STRING"] = md_version
-            self.__loc_config["MD_BASEDIR"] = "/opt/%s" % (md_type)
-            self.__loc_config["MAIN_CONFIG_NAME"] = md_type
-            self.__loc_config["MD_LOCK_FILE"] = "%s.lock" % (md_type)
+            global_config.add_config_entries([
+                ("MD_TYPE"          , configfile.str_c_var(md_type)),
+                ("MD_VERSION"       , configfile.int_c_var(int(md_version.split(".")[0]))),
+                ("MD_RELEASE"       , configfile.int_c_var(int(md_version.split(".")[1]))),
+                ("MD_VERSION_STRING", configfile.str_c_var(md_version)),
+                ("MD_BASEDIR"       , configfile.str_c_var("/opt/%s" % (md_type))),
+                ("MAIN_CONFIG_NAME" , configfile.str_c_var(md_type)),
+                ("MD_LOCK_FILE"     , configfile.str_c_var("%s.lock" % (md_type))),
+            ])
         # device_variable local to the server
-        dv = configfile.device_variable(dc, self.__loc_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon RPM", value=md_version)
+        dv = configfile.device_variable(dc, global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon RPM", value=md_version)
         if dv.is_set():
             dv.set_value(md_version)
             dv.update(dc)
@@ -2154,7 +2123,7 @@ class server_thread_pool(threading_tools.thread_pool):
             if relay_split[0] > 0 or (len(relay_split) == 2 and (relay_split[0] == 0 and relay_split[1] > 4)):
                 has_snmp_relayer = True
             if has_snmp_relayer:
-                self.__loc_config["HAS_SNMP_RELAYER"] = True
+                global_config.add_config_entries([("HAS_SNMP_RELAYER", configfile.bool_c_var(True))])
                 self.log("host-relay package has snmp-relayer, rewriting database entries for nagios")
                 self._rewrite_nagios_snmp(dc)
         # device_variable local to the server
@@ -2190,7 +2159,7 @@ class server_thread_pool(threading_tools.thread_pool):
                                                                                                          db_rec["ng_check_command_idx"]))
     def _check_nagios_db(self, dc):
         # add keys for hostname and stuff
-        if self.__loc_config["MD_TYPE"] == "nagios" and self.__loc_config["MD_VERSION"] == 1:
+        if global_config["MD_TYPE"] == "nagios" and global_config["MD_VERSION"] == 1:
             self.log("Checking Nagios DB (for Nagios 1.x) ...")
             table_dict = {"hoststatus"    : ["host_name"],
                           "servicestatus" : ["host_name", "service_status"]}
@@ -2202,14 +2171,10 @@ class server_thread_pool(threading_tools.thread_pool):
                         dc.execute("ALTER TABLE nagiosdb.%s ADD KEY %s(%s)" % (db_name, name, name))
                         self.log("  added key %s to table %s" % (name, db_name))
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_queue:
-            if self.__log_cache:
-                for c_what, c_lev in self.__log_cache:
-                    self.__log_queue.put(("log", (self.name, "(delayed) %s" % (c_what), c_lev)))
-                self.__log_cache = []
-            self.__log_queue.put(("log", (self.name, what, lev)))
+        if self.__log_template:
+            self.__log_template.log(lev, what)
         else:
-            self.__log_cache.append((what, lev))
+            self.__log_cache.append((lev, what))
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
@@ -2223,24 +2188,20 @@ class server_thread_pool(threading_tools.thread_pool):
         submit_c, log_lines = process_tools.submit_at_command("/etc/init.d/host-relay reload")
         for log_line in log_lines:
             self.log(log_line)
-    def _new_pid(self, (thread_name, new_pid)):
-        self.log("received new_pid message from thread %s" % (thread_name))
-        process_tools.append_pids(self.__loc_config["PID_NAME"], new_pid)
+    def process_start(self, src_process, src_pid):
+        mult = 3
+        process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(new_pid)
-            self.__msi_block.save_block()
-    def _remove_pid(self, (thread_name, rem_pid)):
-        self.log("received remove_pid message from thread %s" % (thread_name))
-        process_tools.remove_pids(self.__loc_config["PID_NAME"], rem_pid)
-        if self.__msi_block:
-            self.__msi_block.remove_actual_pid(rem_pid)
+            self.__msi_block.add_actual_pid(src_pid, mult=mult)
             self.__msi_block.save_block()
     def _init_msi_block(self):
-        process_tools.save_pid(self.__loc_config["PID_NAME"])
-        if self.__loc_config["DAEMON"]:
+        process_tools.save_pid(self.__pid_name, mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("md-config-server")
-            msi_block.add_actual_pid()
+            msi_block.add_actual_pid(mult=3)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/md-config-server start"
             msi_block.stop_command = "/etc/init.d/md-config-server force-stop"
             msi_block.kill_pids = True
@@ -2251,12 +2212,23 @@ class server_thread_pool(threading_tools.thread_pool):
     def loop_function(self):
         self.__ns.step()
         act_time = time.time()
-        if not self.__last_update or abs(self.__last_update - act_time) > self.__glob_config["MAIN_LOOP_TIMEOUT"]:
-            self.__last_update = act_time
-            self.__monitor_queue.put("update")
-            self.__log_queue.put("update")
+        time.sleep(5)
+        #if not self.__last_update or abs(self.__last_update - act_time) > self.__glob_config["MAIN_LOOP_TIMEOUT"]:
+        #    self.__last_update = act_time
+        #    self.__monitor_queue.put("update")
+        #    self.__log_queue.put("update")
     def thread_loop_post(self):
-        process_tools.delete_pid("md-config-server/md-config-server")
+        if self.__em_ok:
+            for f_name in ["%s/%s.mvd" % (self.__esd, self.__nvn),
+                           "%s/%s.mvv" % (self.__esd, self.__nvn)]:
+                if os.path.isfile(f_name):
+                    try:
+                        os.unlink(f_name)
+                    except:
+                        self.log("cannot delete file %s: %s" % (f_name,
+                                                                process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+        process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
     def _new_tcp_command_con(self, sock, src):
@@ -2282,14 +2254,21 @@ def main():
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("FIXIT"               , configfile.bool_c_var(False, action="store_true", help_string="fix directory rights [%(default)s]", only_commandline=True)),
         ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True)),
-        ])
+        ("USER"                , configfile.str_c_var("idnagios", help_string="user to run as [%(default)s")),
+        ("GROUP"               , configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
+        ("GROUPS"              , configfile.array_c_var([])),
+        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
+        ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name,
+                                                                 prog_name))),
+        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+    ])
     global_config.parse_file()
     options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
                                                                                   VERSION_STRING),
                                                add_writeback_option=True,
                                                positional_arguments=False)
     global_config.write_file()
-    print configfile.get_manager_pid()
     db_con = mysql_tools.dbcon_container()
     try:
         dc = db_con.get_connection("cluster_full_access")
@@ -2319,24 +2298,33 @@ def main():
     configfile.read_config_from_db(global_config, dc, "nagios_master", [
             ("COM_PORT"                    ,  configfile.int_c_var(8010)),
             ("NETSPEED_WARN_MULT"          ,  configfile.float_c_var(0.85)),
-        ("NETSPEED_CRITICAL_MULT"      ,  configfile.float_c_var(0.95)),
-        ("NETSPEED_DEFAULT_VALUE"      ,  configfile.int_c_var(10000000)),
-        ("CHECK_HOST_ALIVE_PINGS"      ,  configfile.int_c_var(3)),
-        ("CHECK_HOST_ALIVE_TIMEOUT"    ,  configfile.float_c_var(5.0)),
-        ("NONE_CONTACT_GROUP"          ,  configfile.str_c_var("none_group")),
-        ("LOG_DIR"                     ,  configfile.str_c_var("/var/log/cluster/md-config-server")),
-        ("FROM_ADDR"                   ,  configfile.str_c_var(long_host_name)),
-        ("MAIN_LOOP_TIMEOUT"           ,  configfile.int_c_var(30)),
-        ("RETAIN_HOST_STATUS"          ,  configfile.int_c_var(1)),
-        ("RETAIN_SERVICE_STATUS"       ,  configfile.int_c_var(1)),
-        ("NDO_DATA_PROCESSING_OPTIONS" ,  configfile.int_c_var(1 | 4 | 8 | 16 | 64 | 128 | 2048 | 4096 | 8192 | 524288 | 262144 | 1048576 | 2097152)),
-        ("EVENT_BROKER_OPTIONS"        ,  configfile.int_c_var(1 | 4 | 8 | 64 | 128 | 512 | 1024 | 4096 | 32768 | 65536 | 131072)),
-        ("CCOLLCLIENT_TIMEOUT"         ,  configfile.int_c_var(6)),
-        ("CSNMPCLIENT_TIMEOUT"         ,  configfile.int_c_var(20)),
-        ("MAX_SERVICE_CHECK_SPREAD"    ,  configfile.int_c_var(5)),
-        ("MAX_CONCURRENT_CHECKS"       ,  configfile.int_c_var(500)),
+            ("NETSPEED_CRITICAL_MULT"      ,  configfile.float_c_var(0.95)),
+            ("NETSPEED_DEFAULT_VALUE"      ,  configfile.int_c_var(10000000)),
+            ("CHECK_HOST_ALIVE_PINGS"      ,  configfile.int_c_var(3)),
+            ("CHECK_HOST_ALIVE_TIMEOUT"    ,  configfile.float_c_var(5.0)),
+            ("NONE_CONTACT_GROUP"          ,  configfile.str_c_var("none_group")),
+            ("LOG_DIR"                     ,  configfile.str_c_var("/var/log/cluster/md-config-server")),
+            ("FROM_ADDR"                   ,  configfile.str_c_var(long_host_name)),
+            ("MAIN_LOOP_TIMEOUT"           ,  configfile.int_c_var(30)),
+            ("RETAIN_HOST_STATUS"          ,  configfile.int_c_var(1)),
+            ("RETAIN_SERVICE_STATUS"       ,  configfile.int_c_var(1)),
+            ("NDO_DATA_PROCESSING_OPTIONS" ,  configfile.int_c_var(1 | 4 | 8 | 16 | 64 | 128 | 2048 | 4096 | 8192 | 524288 | 262144 | 1048576 | 2097152)),
+            ("EVENT_BROKER_OPTIONS"        ,  configfile.int_c_var(1 | 4 | 8 | 64 | 128 | 512 | 1024 | 4096 | 32768 | 65536 | 131072)),
+            ("CCOLLCLIENT_TIMEOUT"         ,  configfile.int_c_var(6)),
+            ("CSNMPCLIENT_TIMEOUT"         ,  configfile.int_c_var(20)),
+            ("MAX_SERVICE_CHECK_SPREAD"    ,  configfile.int_c_var(5)),
+            ("MAX_CONCURRENT_CHECKS"       ,  configfile.int_c_var(500)),
     ])
-    sys.exit(0)
+    dc.release()
+    process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
+    if not global_config["DEBUG"]:
+        process_tools.become_daemon()
+        process_tools.set_handles({"out" : (1, "md-config-server.out"),
+                                   "err" : (0, "/var/lib/logging-server/py_err")})
+    else:
+        print "Debugging md-config-server on %s" % (long_host_name)
+    ret_state = server_process(db_con).loop()
+    sys.exit(ret_state)
     try:
         opts, args = getopt.getopt(sys.argv[1:], "dVvr:hCfg:u:kG:", ["help", "comp"])
     except getopt.GetoptError, bla:
