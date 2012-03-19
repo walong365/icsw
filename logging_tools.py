@@ -209,12 +209,16 @@ class twisted_log_observer(object):
         
 def get_logger(name, destination, **kwargs):
     """ specify init_logger=True to append init.at to the logname """
-    is_linux = sys.platform in ["linux2", "linux3"]
+    is_linux, cur_pid = (
+        sys.platform in ["linux2", "linux3"],
+        os.getpid())
     if kwargs.get("init_logger", False) and is_linux:
         # force init.at logger
         if not name.startswith("init.at."):
             name ="init.at.%s" % (name)
-    act_logger = logging.getLogger(name)
+    # get unique logger for 0MQ send
+    act_logger = logging.getLogger("%s.%d" % (name, cur_pid))
+    act_logger.name = name
     act_logger.propagate = 0
     if not hasattr(act_logger, "handler_strings"):
         # only initiate once
@@ -223,12 +227,12 @@ def get_logger(name, destination, **kwargs):
     if type(destination) != type([]):
         destination = [destination]
     # hack to make destination unique with respect to pid
-    destination = [(os.getpid(), cur_dest) for cur_dest in destination]
+    destination = [(cur_pid, cur_dest) for cur_dest in destination]
     for act_dest in destination:
         #print name, act_dest
-        if act_dest not in act_logger.handler_strings:
+        if (cur_pid, act_dest) not in act_logger.handler_strings:
             act_dest = act_dest[1]
-            act_logger.handler_strings.append(act_dest)
+            act_logger.handler_strings.append((cur_pid, act_dest))
             if kwargs.get("zmq", False):
                 cur_context = kwargs["context"]
                 pub = cur_context.socket(zmq.PUSH)

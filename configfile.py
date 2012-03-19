@@ -70,6 +70,12 @@ class config_proxy(BaseProxy):
         return self._callmethod("name")
     def get_argument_stuff(self):
         return self._callmethod("get_argument_stuff")
+    def set_uid_gid(self, uid, gid):
+        cur_address = self._manager.address
+        addr_path = os.path.dirname(cur_address)
+        os.chown(addr_path, uid, gid)
+        os.chown(cur_address, uid, gid)
+        return self._callmethod("set_uid_gid", (uid, gid))
         
 class _conf_var(object):
     argparse_type = None
@@ -280,6 +286,11 @@ class configuration(object):
     #    # copy flags (right now only global / local) for given var_names
     #    for var_name, var_value in var_dict.iteritems():
     #        self.__c_dict[var_name].is_global = var_value.is_global()
+    def set_uid_gid(self, new_uid, new_gid):
+        os.setgid(new_gid)
+        os.setegid(new_gid)
+        os.setuid(new_uid)
+        os.seteuid(new_uid)
     def add_config_entries(self, entries):
         if type(entries) == type({}):
             entries = [(key, value) for key, value in entries.iteritems()]
@@ -482,7 +493,7 @@ class configuration(object):
         else:
             return options
 
-config_manager.register("config", configuration, config_proxy, exposed=["parse_file", "add_config_entries",
+config_manager.register("config", configuration, config_proxy, exposed=["parse_file", "add_config_entries", "set_uid_gid",
                                                                         "get_log", "handle_commandline",
                                                                         "__getitem__", "__setitem__", "__contains__",
                                                                         "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])

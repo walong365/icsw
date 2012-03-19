@@ -914,7 +914,7 @@ def resolve_user(user):
         uid_stuff = None
     return uid_stuff
     
-def change_user_group(user, group, groups=[]):
+def change_user_group(user, group, groups=[], **kwargs):
     try:
         if type(user) == type(0):
             uid_stuff = pwd.getpwuid(user)
@@ -966,11 +966,14 @@ def change_user_group(user, group, groups=[]):
                                                                                                          new_gid_name,
                                                                                                          new_gid))
     try:
+        if "global_config" in kwargs:
+            kwargs["global_config"].set_uid_gid(new_uid, new_gid)
         os.setgid(new_gid)
         os.setegid(new_gid)
         os.setuid(new_uid)
         os.seteuid(new_uid)
     except:
+        logging_tools.my_syslog("error changing uid / gid: %s" % (get_except_info()))
         ok = False
     else:
         ok = True
