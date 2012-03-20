@@ -109,7 +109,7 @@ def check_system(opt_dict, checks, db_cursor):
                             "xen-server",
                             "host-relay",
                             "snmp-relay",
-                            "nagios-config-server",
+                            "md-config-server",
                             "nagios:threads_by_pid_file:/opt/nagios/var/nagios.lock"]
         checks["server"].extend(extra_server_tools.extra_server_file().get_server_list())
     check_dict, check_list = ({}, [])
