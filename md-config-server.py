@@ -23,6 +23,7 @@
 
 import pkg_resources
 pkg_resources.require("MySQL_python")
+import zmq
 import MySQLdb
 import sys
 import os
@@ -54,6 +55,7 @@ NAG_HOST_UP          = 0
 NAG_HOST_DOWN        = 1
 NAG_HOST_UNREACHABLE = 2
 
+# default port
 SERVER_COM_PORT = 8010
 TEMPLATE_NAME = "t"
 SQL_ACCESS = "cluster_full_access"
@@ -1168,31 +1170,26 @@ class service_templates(object):
 ##            handle, pre_str = (self.__machlogs[name], "")
 ##        return (handle, pre_str)
 
-class build_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config, db_con, log_queue):
+class build_process(threading_tools.process_obj):
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+        self.__hosts_pending, self.__hosts_waiting = (set(), set())
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def __init__OLD(self, glob_config, loc_config, db_con, log_queue):
         self.__db_con = db_con
-        self.__log_queue = log_queue
         self.__glob_config, self.__loc_config = (glob_config, loc_config)
         threading_tools.thread_obj.__init__(self, "build", queue_size=100)
         self.register_func("set_queue_dict", self._set_queue_dict)
         self.register_func("rebuild_config", self._rebuild_config)
         self.__nagios_lock_file_name = "%s/var/%s" % (self.__loc_config["MD_BASEDIR"], self.__loc_config["MD_LOCK_FILE"])
         self._init_build_info()
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (self.name, what, lev)))
     def mach_log(self, what, mach_name, lev=logging_tools.LOG_LEVEL_OK, global_flag=False):
         self.__log_queue.put(("mach_log", (self.name, what, lev, mach_name)))
         if global_flag:
             self.log(what, lev)
     def caching_mach_log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         self.__log_queue.put(("mach_log", (self.name, what, lev, self.__cached_mach_name)))
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        # pending ... config requests sent to build_thread
-        # waiting ... config requests waiting to be sent to the built_thread
-        self.__hosts_pending, self.__hosts_waiting = (set(), set())
-    def loop_end(self):
-        self.send_pool_message(("remove_pid", (self.name, self.pid)))
     def _set_queue_dict(self, q_dict):
         self.__queue_dict = q_dict
     def _init_build_info(self):
@@ -1964,8 +1961,9 @@ class server_process(threading_tools.process_pool):
         self._log_config()
         self._check_nagios_db(dc)
         dc.release()
-        self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=global_config["VERBOSE"] > 1)
+        self._init_network_sockets()
         self.add_process(db_verify_process("db_verify"), start=True)
+        self.add_process(build_process("build"), start=True)
         self._init_em()
         #self.__com_queue     = self.add_thread(command_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
         #self.__build_queue   = self.add_thread(build_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
@@ -1975,7 +1973,7 @@ class server_process(threading_tools.process_pool):
 ##        self.__build_queue.put(("set_queue_dict", self.__queue_dict))
 ##        self.__com_queue.put(("set_net_stuff", (self.__ns)))
         #self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_command_con, port=self.__glob_config["COM_PORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=60))
-        self.register_timer(self._check_db, 300, instant=True)
+        self.register_timer(self._check_db, 300)
         self.register_timer(self._update, 30, instant=True)
         #self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
         #self.__com_queue.put(("rebuild_config", []))
@@ -2179,15 +2177,17 @@ class server_process(threading_tools.process_pool):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
-            self.log("exit requested", logging_tools.LOG_LEVEL_WARN)
             self["exit_requested"] = True
-            self.__ns.set_timeout(1)
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
         self.__com_queue.put(("rebuild_config", []))
         submit_c, log_lines = process_tools.submit_at_command("/etc/init.d/host-relay reload")
         for log_line in log_lines:
             self.log(log_line)
+        # needed ? FIXME
+        #submit_c, log_lines = process_tools.submit_at_command("/etc/init.d/snmp-relay reload")
+        #for log_line in log_lines:
+        #    self.log(log_line)
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
@@ -2209,10 +2209,57 @@ class server_process(threading_tools.process_pool):
         else:
             msi_block = None
         return msi_block
+    def _init_network_sockets(self):
+        client = self.zmq_context.socket(zmq.ROUTER)
+        client.setsockopt(zmq.IDENTITY, "ms")
+        client.setsockopt(zmq.HWM, 256)
+        try:
+            client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
+        except zmq.core.error.ZMQError:
+            self.log("error binding to %d: %s" % (global_config["COM_PORT"],
+                                                  process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_CRITICAL)
+            raise
+        else:
+            self.register_poller(client, zmq.POLLIN, self._recv_command)
+            self.com_socket = client
+    def _recv_command(self, zmq_sock):
+        in_data = []
+        while True:
+            in_data.append(zmq_sock.recv())
+            if not zmq_sock.getsockopt(zmq.RCVMORE):
+                break
+        if len(in_data) == 2:
+            src_id, data = in_data
+            try:
+                srv_com = server_command.srv_command(source=data)
+            except:
+                self.log("error interpreting command: %s" % (process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+                # send something back
+                self.com_socket.send_unicode(src_id, zmq.SNDMORE)
+                self.com_socket.send_unicode("internal error")
+            else:
+                cur_com = srv_com["command"].text
+                self.log("got command '%s' from '%s'" % (cur_com,
+                                                         srv_com["source"].attrib["host"]))
+                srv_com.update_source()
+                srv_com["result"] = {"state" : server_command.SRV_REPLY_STATE_OK,
+                                     "reply" : "ok"}
+                # blabla
+                srv_com["result"].attrib.update({"reply" : "ok processed command",
+                                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                self.com_socket.send_unicode(src_id, zmq.SNDMORE)
+                self.com_socket.send_unicode(unicode(srv_com))
+        else:
+            self.log("wrong count of input data frames: %d, first one is %s" % (len(in_data),
+                                                                               in_data[0]),
+                     logging_tools.LOG_LEVEL_ERROR)
     def loop_function(self):
-        self.__ns.step()
-        act_time = time.time()
-        time.sleep(5)
+        print "*"
+        #self.__ns.step()
+        #act_time = time.time()
+        #time.sleep(5)
         #if not self.__last_update or abs(self.__last_update - act_time) > self.__glob_config["MAIN_LOOP_TIMEOUT"]:
         #    self.__last_update = act_time
         #    self.__monitor_queue.put("update")
@@ -2261,6 +2308,7 @@ def main():
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name,
                                                                  prog_name))),
+        ("COM_PORT"            , configfile.int_c_var(SERVER_COM_PORT)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
     ])
     global_config.parse_file()
