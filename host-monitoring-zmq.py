@@ -529,7 +529,7 @@ class twisted_process(threading_tools.process_obj):
         self.tcp_factory = tcp_factory(self)
         self.register_func("connection", self._connection)
         # clear flag for extra twisted thread
-        self.__extra_twisted_thread = False
+        self.__extra_twisted_threads = 0
         if self.start_kwargs.get("icmp", True):
             self.icmp_protocol = hm_icmp_protocol(self, self.__log_template)
             reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
@@ -541,13 +541,18 @@ class twisted_process(threading_tools.process_obj):
         except:
             self.send_result(src_id, unicode(srv_com), "error in lookup: %s" % (process_tools.get_except_info()))
         else:
-            if not self.__extra_twisted_thread:
-                self.__extra_twisted_thread = True
-                self.send_pool_message("process_start")
             try:
                 cur_con = reactor.connectTCP(srv_com["host"].text, int(srv_com["port"].text), self.tcp_factory)
             except:
-                print "exception in _connection (twisted_process): ", process_tools.get_except_info()
+                self.log("exception in _connection (twisted_process): %s" % (process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                if reactor.threadpool:
+                    cur_threads = len(reactor.threadpool.threads)
+                    if cur_threads != self.__extra_twisted_threads:
+                        self.log("number of twisted threads changed from %d to %d" % (self.__extra_twisted_threads, cur_threads))
+                        self.__extra_twisted_threads = cur_threads
+                        self.send_pool_message("process_start")
         #self.send_pool_message("pong", cur_idx)
     def _ping(self, *args, **kwargs):
         self.icmp_protocol.ping(*args)
@@ -976,10 +981,10 @@ class server_process(threading_tools.process_pool):
                 rest_str = u""
             # is a delayed command
             delayed = False
-            self.log("got command '%s' from '%s'" % (srv_com["command"].text,
+            cur_com = srv_com["command"].text
+            self.log("got command '%s' from '%s'" % (cur_com,
                                                      srv_com["source"].attrib["host"]))
             srv_com.update_source()
-            cur_com = srv_com["command"].text
             srv_com["result"] = {"state" : server_command.SRV_REPLY_STATE_OK,
                                  "reply" : "ok"}
             if cur_com in self.commands:
