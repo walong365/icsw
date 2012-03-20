@@ -30,7 +30,7 @@ import struct
 import os
 import process_tools
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, **args):
+def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
     sc_array = []
     eth_check = re.match(".*ethtool.*", s_check["command_name"])
     mach_log_com("Starting special net, eth_check is %s" % ("on" if eth_check else "off"))

@@ -27,13 +27,13 @@ import pprint
 import process_tools
 import os.path
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, **args):
+def handle(s_check, host, dc, mach_log_com, valid_ip, global_config=None, **kwargs):
     sc_array = []
     sql_str = "SELECT pt.name, pt.partition_table_idx, pt.valid, pd.*, p.*, ps.name AS psname FROM partition_table pt INNER JOIN device d LEFT JOIN partition_disc pd ON pd.partition_table=pt.partition_table_idx " + \
         "LEFT JOIN partition p ON p.partition_disc=pd.partition_disc_idx LEFT JOIN partition_fs ps ON ps.partition_fs_idx=p.partition_fs WHERE d.device_idx=%d AND d.act_partition_table=pt.partition_table_idx ORDER BY pd.priority DESC, p.pnum" % (host["device_idx"])
     dc.execute(sql_str)
     part_dev = host["partdev"]
-    df_settings_dir = "%s/etc/df_settings" % (args["loc_config"]["MD_BASEDIR"])
+    df_settings_dir = "%s/etc/df_settings" % (global_config["MD_BASEDIR"])
     df_sd_ok = os.path.isdir(df_settings_dir)
     mach_log_com("Starting special disc for part_dev '%s', df_settings_dir is '%s' (%s)" % (part_dev or "NOT SET",
                                                                                             df_settings_dir,

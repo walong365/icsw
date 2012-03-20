@@ -38,7 +38,7 @@ try:
 except ImportError:
     snmp_relay_schemes = None
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, **args):
+def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
     mach_log_com("Starting special eonstor")
     sc_array = []
     if not ipc_comtools:

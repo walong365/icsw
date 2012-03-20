@@ -57,7 +57,7 @@ def parse_expected():
                         #    inst_dict[client_name] = limits.nag_STATE_WARNING
     return ret_dict
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, **args):
+def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
     mach_log_com("Starting special openvpn")
     exp_dict = parse_expected()
     if exp_dict.has_key(host["name"]):

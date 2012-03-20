@@ -31,7 +31,7 @@ import os
 import process_tools
 import ipc_comtools
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, **args):
+def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
     act_com = "domain_overview"
     mach_log_com("Starting special libvirt (%s), host_name %s" % (act_com,
                                                                   host["name"]))

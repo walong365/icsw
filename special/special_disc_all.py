@@ -23,7 +23,7 @@
 
 import sys
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, **args):
+def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
     sc_array = []
     mach_log_com("Starting special disc_all")
     sc_array.append(("All partitions", ["",
