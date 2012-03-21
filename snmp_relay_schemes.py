@@ -153,6 +153,8 @@ class snmp_scheme(object):
         self.snmp_dict = {}
         self.net_obj = kwargs["net_obj"]
         self.envelope = kwargs["envelope"]
+        self.xml_input = kwargs["xml_input"]
+        self.srv_com = kwargs["srv_com"]
         self.__errors = []
         self.__missing_headers = []
         self.return_sent = False
@@ -258,7 +260,7 @@ class snmp_scheme(object):
                 if self.__hv_mapping[recv].cache_it:
                     self.net_obj.save_snmp_tree(self.__hv_mapping[recv], self.snmp_dict[recv])
         #self.net_obj.release()
-        #print "SNMP_ENDG", self.__missing_headers, self.__errors
+        #print "SNMP_END", self.__missing_headers, self.__errors
         #pprint.pprint(self.snmp_dict)
         if not self.return_sent:
             if self.__missing_headers or self.__errors:
@@ -296,6 +298,10 @@ class snmp_scheme(object):
     def send_return(self, ret_state, ret_str, log_it=False):
         self.return_sent = True
         self.return_tuple = (ret_state, ret_str, log_it)
+        if self.xml_input:
+            self.srv_com["result"].attrib.update(
+                {"reply" : self.return_tuple[1],
+                 "state" : "%d" % (self.return_tuple[0])})
         ####self.ret_queue.put(("snmp_result", (self.__pid, self.__init_time, ret_state, ret_str, log_it)))
     # helper functions
     def _simplify_keys(self, in_dict):
@@ -1011,7 +1017,11 @@ class eonstor_get_counter_scheme(eonstor_proto_scheme):
             if ent_name:
                 info_dict.setdefault("ent_dict", {}).setdefault(ent_name, {})[idx] = value[8]
         info_dict["ld_ids"] = self._reorder_dict(self.snmp_dict[self.ld_oid]).keys()
-        return limits.nag_STATE_OK, process_tools.sys_to_net(info_dict)
+        if self.xml_input:
+            self.srv_com.set_dictionary("eonstor_info", info_dict)
+            return limits.nag_STATE_OK, "ok got info"
+        else:
+            return limits.nag_STATE_OK, process_tools.sys_to_net(info_dict)
 
 class port_info_scheme(snmp_scheme):
     def __init__(self, **kwargs):

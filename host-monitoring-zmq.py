@@ -255,11 +255,16 @@ class host_connection(object):
             if cur_mes.sent:
                 cur_mes.sent = False
                 self.__backlog_counter -= 1
-            try:
-                res_tuple = cur_mes.interpret(result)
-            except:
-                res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
-            self.send_result(cur_mes, res_tuple)
+            if len(result.xpath(None, ".//ns:raw")):
+                # raw response, no interpret
+                cur_mes.srv_com = result
+                self.send_result(cur_mes, None)
+            else:
+                try:
+                    res_tuple = cur_mes.interpret(result)
+                except:
+                    res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
+                self.send_result(cur_mes, res_tuple)
         else:
             self.log("unknown id '%s' in _handle_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
     def _handle_old_result(self, mes_id, result):
@@ -626,6 +631,9 @@ class relay_process(threading_tools.process_pool):
             self.__new_clients, self.__old_clients = (
                 my_cached_file("/tmp/.new_clients", log_handle=self.log),
                 my_cached_file("/tmp/.old_clients", log_handle=self.log))
+        else:
+            if os.path.isfile("/tmp/.0mq_clients"):
+                self.__client_dict.update(dict([(key, "0") for key in file("/tmp/.0mq_clients", "r").read().split("\n") if key.strip()]))
         self.__default_0mq = False
     def _new_client(self, c_name, c_port):
         self._set_client_state(c_name, c_port, "0")
@@ -636,7 +644,7 @@ class relay_process(threading_tools.process_pool):
             if self.__client_dict.get(c_name, None) != c_type and c_port == 2001:
                 self.log("setting client '%s:%d' to '%s'" % (c_name, c_port, c_type))
                 self.__client_dict[c_name] = c_type
-                #file("/tmp/.client_states", "w").write("\n".join(["%s %s" % (name, self.__client_dict.iteritems())
+                file("/tmp/.0mq_clients", "w").write("\n".join([key for key, value in self.__client_dict.iteritems() if value == "0"]))
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
@@ -756,46 +764,50 @@ class relay_process(threading_tools.process_pool):
                     self.log("got command '%s' for '%s' (XML: %s)" % (srv_com["command"].text,
                                                                       srv_com["host"].text,
                                                                       str(xml_input)))
-                t_host = srv_com["host"].text
-                if self.__autosense:
-                    c_state = self.__client_dict.get(t_host, None)
-                    if c_state is None:
-                        # not needed
-                        #host_connection.delete_hc(srv_com)
-                        if t_host not in self.__last_tried:
-                            self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
-                        self.__last_tried[t_host] = {"T" : "0",
-                                                     "0" : "T"}[self.__last_tried[t_host]]
-                        c_state = self.__last_tried[t_host]
-                    con_mode = c_state
-                else:
-                    self.__old_clients.update()
-                    self.__new_clients.update()
-                    if t_host in self.__new_clients:
-                        con_mode = "0"
-                    elif t_host in self.__old_clients:
-                        con_mode = "T"
-                    elif self.__default_0mq:
-                        con_mode = "0"
+                if "host" in srv_com and "port" in srv_com:
+                    t_host = srv_com["host"].text
+                    if self.__autosense:
+                        c_state = self.__client_dict.get(t_host, None)
+                        if c_state is None:
+                            # not needed
+                            #host_connection.delete_hc(srv_com)
+                            if t_host not in self.__last_tried:
+                                self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
+                            self.__last_tried[t_host] = {"T" : "0",
+                                                         "0" : "T"}[self.__last_tried[t_host]]
+                            c_state = self.__last_tried[t_host]
+                        con_mode = c_state
                     else:
-                        con_mode = "T"
-                # decide which code to use
-                if self.__verbose:
-                    self.log("connection to '%s:%d' via %s" % (t_host,
-                                                               int(srv_com["port"].text),
-                                                               con_mode))
-                if int(srv_com["port"].text) != 2001:
-                    # connect to non-host-monitoring service
-                    self._send_to_old_nhm_service(src_id, srv_com, xml_input)
-                elif con_mode == "0":
-                    self._send_to_client(src_id, srv_com, xml_input)
-                elif con_mode == "T":
-                    self._send_to_old_client(src_id, srv_com, xml_input)
+                        self.__old_clients.update()
+                        self.__new_clients.update()
+                        if t_host in self.__new_clients:
+                            con_mode = "0"
+                        elif t_host in self.__old_clients:
+                            con_mode = "T"
+                        elif self.__default_0mq:
+                            con_mode = "0"
+                        else:
+                            con_mode = "T"
+                    # decide which code to use
+                    if self.__verbose:
+                        self.log("connection to '%s:%d' via %s" % (t_host,
+                                                                   int(srv_com["port"].text),
+                                                                   con_mode))
+                    if int(srv_com["port"].text) != 2001:
+                        # connect to non-host-monitoring service
+                        self._send_to_old_nhm_service(src_id, srv_com, xml_input)
+                    elif con_mode == "0":
+                        self._send_to_client(src_id, srv_com, xml_input)
+                    elif con_mode == "T":
+                        self._send_to_old_client(src_id, srv_com, xml_input)
+                    else:
+                        self.log("unknown con_mode '%s', error" % (con_mode),
+                                 logging_tools.LOG_LEVEL_CRITICAL)
+                    if self.__verbose:
+                        self.log("send done")
                 else:
-                    self.log("unknown con_mode '%s', error" % (con_mode),
-                             logging_tools.LOG_LEVEL_CRITICAL)
-                if self.__verbose:
-                    self.log("send done")
+                    self.log("some keys missing (host and / or port)",
+                             logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.log("cannot interpret input data '%s' is srv_command" % (data),
                          logging_tools.LOG_LEVEL_ERROR)

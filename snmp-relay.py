@@ -45,6 +45,7 @@ from pysnmp.smi import exval
 from pysnmp.proto import api
 import snmp_relay_schemes
 import gc
+import server_command
 #import ipc_comtools
 
 # non-critical imports
@@ -751,8 +752,11 @@ class relay_process(threading_tools.process_pool):
             cur_scheme.flag_error(cur_error)
         cur_scheme.snmp_end(self.log)
         if cur_scheme.return_sent:
-            ret_state, ret_str, log_it = cur_scheme.return_tuple
-            self._send_return(cur_scheme.envelope, ret_state, ret_str)
+            if cur_scheme.xml_input:
+                self._send_return_xml(cur_scheme)
+            else:
+                ret_state, ret_str, log_it = cur_scheme.return_tuple
+                self._send_return(cur_scheme.envelope, ret_state, ret_str)
         del self.__pending_schemes[envelope]
         if self.__queued_requests:
             self.log("sending request from buffer (size: %d)" % (len(self.__queued_requests)))
@@ -780,8 +784,11 @@ class relay_process(threading_tools.process_pool):
         else:
             scheme.snmp_end(self.log)
             if scheme.return_sent:
-                ret_state, ret_str, log_it = scheme.return_tuple
-                self._send_return(scheme.envelope, ret_state, ret_str)
+                if scheme.xml_input:
+                    self._send_return_xml(scheme)
+                else:
+                    ret_state, ret_str, log_it = scheme.return_tuple
+                    self._send_return(scheme.envelope, ret_state, ret_str)
     def _recv_command(self, zmq_sock):
         in_data = []
         while True:
@@ -790,8 +797,28 @@ class relay_process(threading_tools.process_pool):
                 break
         if len(in_data) == 2:
             envelope, body = in_data
-            if body.count(";") >= 3:
-                host, snmp_version, snmp_community, comline = body.split(";", 3)
+            xml_input = body.startswith("<")
+            parameter_ok = False
+            if xml_input:
+                srv_com = server_command.srv_command(source=body)
+                srv_com["result"] = {"reply" : "no reply set",
+                                     "state" : server_command.SRV_REPLY_STATE_UNSET}
+                try:
+                    host = srv_com.xpath(None, ".//ns:host")[0].text
+                    snmp_version = int(srv_com.xpath(None, ".//ns:snmp_version")[0].text)
+                    snmp_community = srv_com.xpath(None, ".//ns:snmp_community")[0].text
+                    comline = srv_com.xpath(None, ".//ns:command")[0].text
+                except:
+                    self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
+                else:
+                    parameter_ok = True
+                    #print host, snmp_version, snmp_community, comline
+            else:
+                srv_com = None
+                if body.count(";") >= 3:
+                    host, snmp_version, snmp_community, comline = body.split(";", 3)
+                    parameter_ok = True
+            if parameter_ok:
                 try:
                     snmp_version = int(snmp_version)
                     comline_split = comline.split()
@@ -815,6 +842,8 @@ class relay_process(threading_tools.process_pool):
                                                     #pid=pid,
                                                     envelope=envelope,
                                                     options=comline_split,
+                                                    xml_input=xml_input,
+                                                    srv_com=srv_com,
                                                     init_time=time.time())
                         except IOError:
                             err_str = "error while creating scheme %s: %s" % (scheme,
@@ -841,6 +870,9 @@ class relay_process(threading_tools.process_pool):
     def _send_return(self, envelope, ret_state, ret_str):
         self.relayer_socket.send(envelope, zmq.SNDMORE)
         self.relayer_socket.send_unicode(u"%d\0%s" % (ret_state, ret_str))
+    def _send_return_xml(self, scheme):
+        self.relayer_socket.send(scheme.envelope, zmq.SNDMORE)
+        self.relayer_socket.send_unicode(unicode(scheme.srv_com))
     def _check_msg_settings(self):
         msg_dir = "/proc/sys/kernel/"
         t_dict = {"max" : {"info"  : "maximum number of bytes in a message"},

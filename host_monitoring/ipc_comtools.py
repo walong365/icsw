@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2008,2009,2010 Andreas Lang-Nevyjel
+# Copyright (C) 2008,2009,2010,2012 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -19,16 +19,52 @@
 #
 """ ipc communication tools """
 
-import pyipc
+try:
+    import pyipc
+except:
+    pyipc = None
 import sys
 import struct
 import os
 import process_tools
+import zmq
+import time
+import server_command
 
 long_size = struct.calcsize("@l")
 int_size  = struct.calcsize("@i")
 
+def send_and_receive_zmq(target_host, command, *args, **kwargs):
+    identity_str = process_tools.zmq_identity_str(kwargs.pop("identity_string", "ipc_com"))
+    zmq_context = kwargs.pop("zmq_context")
+    client = zmq_context.socket(zmq.DEALER)
+    client.setsockopt(zmq.IDENTITY, identity_str)
+    client.setsockopt(zmq.LINGER, kwargs.pop("timeout", 100))
+    # kwargs["server"] : collrelay or snmprelay
+    conn_str = "%s" % (process_tools.get_zmq_ipc_name(kwargs.pop("process", "receiver"), s_name=kwargs.pop("server")))
+    client.connect(conn_str)
+    srv_com = server_command.srv_command(command=command)
+    srv_com["host"] = target_host
+    srv_com["raw"] = "True"
+    srv_com["arg_list"] = " ".join(args)
+    # add additional keys
+    for key, value in kwargs.iteritems():
+        srv_com[key] = "%d" % (value) if type(value) in [int, long] else value
+    s_time = time.time()
+    client.send_unicode(unicode(srv_com))
+    recv_str = client.recv()
+    client.close()
+    e_time = time.time()
+    try:
+        srv_reply = server_command.srv_command(source=recv_str)
+    except:
+        print "cannot interpret reply: %s" % (process_tools.get_except_info())
+        print "reply was: %s" % (recv_str)
+        srv_reply = None
+    return srv_reply
+    
 def send_and_receive(target_host, command, **kwargs):
+    return 2, "error deprecated call"
     ipc_key = kwargs.get("ipc_key", 100)
     if type(ipc_key) == type(""):
         ipc_key = int(file(ipc_key, "r").read().strip())
