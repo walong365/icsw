@@ -56,7 +56,7 @@ def handle(s_check, host, dc, build_proc, valid_ip, **kwargs):
                                                                               process_tools.get_except_info()),
                                 logging_tools.LOG_LEVEL_CRITICAL)
         else:
-            print unicode(srv_reply)
+            info_dict = server_command.srv_command.tree_to_dict(srv_reply.xpath(None, ".//ns:eonstor_info")[0])
             # disks
             for disk_id in sorted(info_dict.get("disc_ids", [])):
                 sc_array.append(("Disc %2d" % (disk_id), ["eonstor_disc_info", "%d" % (disk_id)]))
@@ -71,23 +71,26 @@ def handle(s_check, host, dc, build_proc, valid_ip, **kwargs):
                     add_check = True
                     # get info for certain environment types
                     if env_dict_name in ["ups", "bbu"]:
-                        act_com = "eonstor_%s_info --raw %d" % (env_dict_name,
-                                                                idx)
+                        act_com = "eonstor_%s_info" % (env_dict_name)
                         try:
-                            act_state, state_obj = ipc_comtools.send_and_receive(valid_ip,
-                                                                                 act_com,
-                                                                                 decode=True,
-                                                                                 ipc_key="/var/run/snmp_relay_key.ipc",
-                                                                                 mode="snmp-relay")
+                            srv_reply = ipc_comtools.send_and_receive_zmq(valid_ip,
+                                                                          act_com,
+                                                                          "%d" % (idx),
+                                                                          server="snmp_relay",
+                                                                          zmq_context=build_proc.zmq_context,
+                                                                          #ipc_key="/var/run/snmp_relay_key.ipc",
+                                                                          snmp_version="1",
+                                                                          snmp_community="public")
                         except:
                             build_proc.mach_log("error sending command '%s': %s" % (act_com,
-                                                                             process_tools.get_except_info()),
-                                         logging_tools.LOG_LEVEL_CRITICAL)
+                                                                                    process_tools.get_except_info()),
+                                                logging_tools.LOG_LEVEL_CRITICAL)
                         else:
+                            print unicode(srv_reply)
                             if act_state:
                                 build_proc.mach_log("error command %s gave (%d): %s" % (act_com,
-                                                                                 act_state,
-                                                                                 state_obj),
+                                                                                        act_state,
+                                                                                        state_obj),
                                              logging_tools.LOG_LEVEL_ERROR)
                             else:
                                 if env_dict_name == "ups":

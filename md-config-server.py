@@ -44,8 +44,9 @@ import mysql_tools
 import server_command
 import threading_tools
 import config_tools
+from md_config_server import special_commands
 try:
-    from md_config_server_version import VERSION_STRING
+    from md_config_server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
 
@@ -1385,11 +1386,6 @@ class build_process(threading_tools.process_obj):
         my_net_idxs = [x.values()[0] for x in dc.fetchall()]
         return my_net_idxs
     def _create_host_config_files(self, dc, hosts, dev_templates, serv_templates):
-        for add_dir in ["/opt/cluster/md_daemon/special",
-                        "/usr/local/sbin"]:
-            if add_dir not in sys.path:
-                self.log("adding path '%s' to sys.path" % (add_dir))
-                sys.path.append(add_dir)
         start_time = time.time()
         server_idxs = [global_config["SERVER_IDX"]]
         # get additional idx if host is virtual server
@@ -1665,21 +1661,16 @@ class build_process(threading_tools.process_obj):
                                     if special:
                                         sc_array = []
                                         try:
-                                            special_mod = __import__("special_%s" % (special.lower()),
-                                                                     globals(),
-                                                                     locals(),
-                                                                     [],
-                                                                     -1)
+                                            cur_special = getattr(special_commands, "special_%s" % (special.lower()))(self, dc, s_check, host, valid_ip, global_config)
                                         except:
-                                            self.log("unable to import special '%s': %s" % (special,
-                                                                                            process_tools.get_except_info()),
+                                            self.log("unable to initialize special '%s': %s" % (special,
+                                                                                                process_tools.get_except_info()),
                                                      logging_tools.LOG_LEVEL_CRITICAL)
-                                            sc_array = []
                                         else:
                                             # calling handle to return a list of checks with format
                                             # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
                                             try:
-                                                sc_array = special_mod.handle(s_check, host, dc, self, valid_ip, global_config=global_config)
+                                                sc_array = cur_special()#.handle(s_check, host, dc, self, valid_ip, global_config=global_config)
                                             except:
                                                 exc_info = process_tools.exception_info()
                                                 self.log("error calling special %s:" % (special),
@@ -1687,6 +1678,8 @@ class build_process(threading_tools.process_obj):
                                                 for line in exc_info.log_lines:
                                                     self.log(" - %s" % (line), logging_tools.LOG_LEVEL_CRITICAL)
                                                 sc_array = []
+                                            finally:
+                                                cur_special.cleanup()
                                     else:
                                         sc_array = [(s_check.get_description(), [])]
                                         # contact_group is only written if contact_group is responsible for the host and the service_template
