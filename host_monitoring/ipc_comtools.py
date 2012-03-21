@@ -46,6 +46,7 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     srv_com = server_command.srv_command(command=command)
     srv_com["host"] = target_host
     srv_com["raw"] = "True"
+    print "***", args
     srv_com["arg_list"] = " ".join(args)
     # add additional keys
     for key, value in kwargs.iteritems():

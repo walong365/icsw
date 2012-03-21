@@ -893,7 +893,6 @@ class eonstor_proto_scheme(snmp_scheme):
             self.requests = snmp_oid(self.disc_oid, cache=True, cache_timeout=EONSTOR_TIMEOUT, max_oid=self.max_disc_oid)
         if args.get("sys_table", False):
             self.requests = snmp_oid(self.sys_oid , cache=True, cache_timeout=EONSTOR_TIMEOUT)
-        self.parser.add_option("--raw", dest="raw", default=False, action="store_true", help="set return mode raw")
     def error(self):
         if len(self.get_missing_headers()) == len(self.requests):
             # change eonstor version
@@ -911,8 +910,8 @@ class eonstor_proto_scheme(snmp_scheme):
         raw_dict = {}
         if dev_idx:
             if dev_dict.has_key(dev_idx):
-                if self.opts.raw:
-                    raw_dict = dev_dict[dev_idx]
+                if self.xml_input:
+                    raw_dict = {"state" : dev_dict[dev_idx].state}
                 else:
                     value = dev_dict[dev_idx]
                     ret_state = value.nag_state
@@ -928,8 +927,9 @@ class eonstor_proto_scheme(snmp_scheme):
                 act_ret_str = value.get_ret_str() or "%s is OK" % (value.name)
                 ret_field.append(act_ret_str)
             ret_field.sort()
-        if raw_dict:
-            return limits.nag_STATE_OK, process_tools.sys_to_net(raw_dict)
+        if self.xml_input:
+            self.srv_com.set_dictionary("eonstor_info", raw_dict)
+            return limits.nag_STATE_OK, "ok got info"
         else:
             return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
                                           "; ".join(ret_field) or "no errors or warnings")

@@ -44,8 +44,6 @@ import argparse
 import icmp_twisted
 import pprint
 
-MAX_MSG_RECEIVED = 10000
-
 try:
     from host_monitoring_version import VERSION_STRING
 except ImportError:
@@ -370,6 +368,7 @@ class tcp_send(Protocol):
         self.src_id = src_id
         self.srv_com = srv_com
         self.__header_size = None
+        self.__chunks = 0
     def connectionMade(self):
         com = self.srv_com["command"].text
         if self.srv_com["arg_list"].text:
@@ -385,17 +384,19 @@ class tcp_send(Protocol):
                 self.__data = ""
                 self._received(data)
             else:
-                self.factory.log("protocol error ", logging_tools.LOG_LEVEL_ERROR)
+                self.factory.log("protocol error", logging_tools.LOG_LEVEL_ERROR)
                 self.transport.loseConnection()
         else:
             self._received(data)
     def _received(self, data):
         self.__data = "%s%s" % (self.__data, data)
         if len(self.__data) == self.__header_size + 8:
+            if self.__chunks:
+                self.factory.log("got %d bytes in %d chunks" % (len(self.__data), self.__chunks + 1))
             self.factory.received(self, self.__data[8:])
             self.transport.loseConnection()
         else:
-            self.factory.log("got %d of %d bytes, waiting for more" % (len(self.__data), self.__header_size + 8))
+            self.__chunks += 1
     def __del__(self):
         #print "del tcp_send"
         pass
@@ -714,7 +715,7 @@ class relay_process(threading_tools.process_pool):
         wait_iter = 0
         while os.path.exists(file_name) and wait_iter < 100:
             self.log("socket %s still exists, waiting" % (sock_name))
-            time.sleep(0.02)
+            time.sleep(0.1)
             wait_iter += 1
         client = self.zmq_context.socket(zmq.ROUTER)
         try:
@@ -816,10 +817,15 @@ class relay_process(threading_tools.process_pool):
                                                                                in_data[0]),
                      logging_tools.LOG_LEVEL_ERROR)
         self.__num_messages += 1
-        if self.__num_messages > MAX_MSG_RECEIVED:
-            self.unregister_poller(self.relayer_socket, zmq.POLLIN)
-            self.relayer_socket.close()
-            self._init_ipc_sockets()
+        if self.__num_messages % 20 == 0:
+            cur_mem = process_tools.get_mem_info(self.pid)
+            if  cur_mem > 100 * 1024 * 1024:
+                self.log("reached memory limit of %s after %s" % (logging_tools.get_size_str(cur_mem),
+                                                                  logging_tools.get_plural("message", self.__num_messages)),
+                         logging_tools.LOG_LEVEL_WARN)
+                self.unregister_poller(self.relayer_socket, zmq.POLLIN)
+                self.relayer_socket.close()
+                self._init_ipc_sockets()
     def _send_to_old_client(self, src_id, srv_com, xml_input):
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
