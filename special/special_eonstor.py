@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008,2009,2012 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of nagios-config-server
 #
@@ -29,37 +29,34 @@ import pyipc
 import struct
 import os
 import process_tools
-try:
-    import ipc_comtools
-except ImportError:
-    ipc_comtools = None
+import server_command
+from host_monitoring import ipc_comtools
 try:
     import snmp_relay_schemes
 except ImportError:
     snmp_relay_schemes = None
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
-    mach_log_com("Starting special eonstor")
+def handle(s_check, host, dc, build_proc, valid_ip, **kwargs):
+    build_proc.mach_log("Starting special eonstor")
     sc_array = []
-    if not ipc_comtools:
-        mach_log_com("no ipc_comtools found",
-                     logging_tools.LOG_LEVEL_CRITICAL)
-    elif not snmp_relay_schemes:
-        mach_log_com("no snmp_relay_schemes found",
-                     logging_tools.LOG_LEVEL_CRITICAL)
+    if not snmp_relay_schemes:
+        build_proc.mach_log("no snmp_relay_schemes found",
+                            logging_tools.LOG_LEVEL_CRITICAL)
     else:
         try:
-            act_state, info_dict = ipc_comtools.send_and_receive(valid_ip,
-                                                                 "eonstor_get_counter",
-                                                                 decode=True,
-                                                                 ipc_key="/var/run/snmp_relay_key.ipc",
-                                                                 snmp_community="public",
-                                                                 mode="snmp-relay")
+            srv_reply = ipc_comtools.send_and_receive_zmq(valid_ip,
+                                                          "eonstor_get_counter",
+                                                          server="snmp_relay",
+                                                          zmq_context=build_proc.zmq_context,
+                                                          #ipc_key="/var/run/snmp_relay_key.ipc",
+                                                          snmp_version="1",
+                                                          snmp_community="public")
         except:
-            mach_log_com("error getting eonstor_status from %s: %s" % (valid_ip,
-                                                                       process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_CRITICAL)
+            build_proc.mach_log("error getting eonstor_status from %s: %s" % (valid_ip,
+                                                                              process_tools.get_except_info()),
+                                logging_tools.LOG_LEVEL_CRITICAL)
         else:
+            print unicode(srv_reply)
             # disks
             for disk_id in sorted(info_dict.get("disc_ids", [])):
                 sc_array.append(("Disc %2d" % (disk_id), ["eonstor_disc_info", "%d" % (disk_id)]))
@@ -83,12 +80,12 @@ def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
                                                                                  ipc_key="/var/run/snmp_relay_key.ipc",
                                                                                  mode="snmp-relay")
                         except:
-                            mach_log_com("error sending command '%s': %s" % (act_com,
+                            build_proc.mach_log("error sending command '%s': %s" % (act_com,
                                                                              process_tools.get_except_info()),
                                          logging_tools.LOG_LEVEL_CRITICAL)
                         else:
                             if act_state:
-                                mach_log_com("error command %s gave (%d): %s" % (act_com,
+                                build_proc.mach_log("error command %s gave (%d): %s" % (act_com,
                                                                                  act_state,
                                                                                  state_obj),
                                              logging_tools.LOG_LEVEL_ERROR)
@@ -96,12 +93,12 @@ def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
                                 if env_dict_name == "ups":
                                     # check for inactive psus
                                     if state_obj.state & 128:
-                                        mach_log_com("disabling psu with idx %d because not present" % (idx),
+                                        build_proc.mach_log("disabling psu with idx %d because not present" % (idx),
                                                      logging_tools.LOG_LEVEL_ERROR)
                                         add_check = False
                                 elif env_dict_name == "bbu":
                                     if state_obj.state & 128:
-                                        mach_log_com("disabling bbu with idx %d because not present" % (idx),
+                                        build_proc.mach_log("disabling bbu with idx %d because not present" % (idx),
                                                      logging_tools.LOG_LEVEL_ERROR)
                                         add_check = False
                     if add_check:
@@ -111,7 +108,7 @@ def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
                                          ["eonstor_%s_info" % (env_dict_name), "%d" % (idx)]))
         # rewrite sc_array to include community and version
         sc_array = [(name, ["", ""] + var_list) for name, var_list in sc_array]
-    mach_log_com("sc_array has %s" % (logging_tools.get_plural("entry", len(sc_array))))
+    build_proc.mach_log("sc_array has %s" % (logging_tools.get_plural("entry", len(sc_array))))
     return sc_array
 
 if __name__ == "__main__":

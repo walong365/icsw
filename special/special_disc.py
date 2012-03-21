@@ -27,7 +27,7 @@ import pprint
 import process_tools
 import os.path
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, global_config=None, **kwargs):
+def handle(s_check, host, dc, build_proc, valid_ip, global_config=None, **kwargs):
     sc_array = []
     sql_str = "SELECT pt.name, pt.partition_table_idx, pt.valid, pd.*, p.*, ps.name AS psname FROM partition_table pt INNER JOIN device d LEFT JOIN partition_disc pd ON pd.partition_table=pt.partition_table_idx " + \
         "LEFT JOIN partition p ON p.partition_disc=pd.partition_disc_idx LEFT JOIN partition_fs ps ON ps.partition_fs_idx=p.partition_fs WHERE d.device_idx=%d AND d.act_partition_table=pt.partition_table_idx ORDER BY pd.priority DESC, p.pnum" % (host["device_idx"])
@@ -35,9 +35,9 @@ def handle(s_check, host, dc, mach_log_com, valid_ip, global_config=None, **kwar
     part_dev = host["partdev"]
     df_settings_dir = "%s/etc/df_settings" % (global_config["MD_BASEDIR"])
     df_sd_ok = os.path.isdir(df_settings_dir)
-    mach_log_com("Starting special disc for part_dev '%s', df_settings_dir is '%s' (%s)" % (part_dev or "NOT SET",
-                                                                                            df_settings_dir,
-                                                                                            "OK" if df_sd_ok else "not reachable"))
+    build_proc.mach_log("Starting special disc for part_dev '%s', df_settings_dir is '%s' (%s)" % (part_dev or "NOT SET",
+                                                                                                   df_settings_dir,
+                                                                                                   "OK" if df_sd_ok else "not reachable"))
     first_disc = None
     all_parts = [x for x in dc.fetchall() if x["disc"] and x["mountpoint"]]
     part_list = []
@@ -73,7 +73,7 @@ def handle(s_check, host, dc, mach_log_com, valid_ip, global_config=None, **kwar
                 part_list.append((part_p["mountpoint"],
                                   check_part, warn_level_str, crit_level_str))
             else:
-                mach_log_com("Diskcheck on host %s requested an illegal partition %s -> skipped" % (host["name"], act_part), logging_tools.LOG_LEVEL_WARN)
+                build_proc.mach_log("Diskcheck on host %s requested an illegal partition %s -> skipped" % (host["name"], act_part), logging_tools.LOG_LEVEL_WARN)
                 num_warning += 1
     # LVM-partitions
     sql_str = "SELECT lv.mountpoint, lv.warn_threshold, lv.crit_threshold, lv.name AS lvname, vg.name AS vgname FROM lvm_lv lv, lvm_vg vg, partition_table pt, device d WHERE lv.partition_table=pt.partition_table_idx AND d.act_partition_table=pt.partition_table_idx AND lv.lvm_vg=vg.lvm_vg_idx " + \
@@ -99,12 +99,12 @@ def handle(s_check, host, dc, mach_log_com, valid_ip, global_config=None, **kwar
     for info_name, p_name, w_lev, c_lev in part_list:
         if p_name in set_dict:
             w_lev, c_lev = set_dict[p_name]
-            mach_log_com("    setting w/c to %d/%d" % (w_lev, c_lev))
+            build_proc.mach_log("    setting w/c to %d/%d" % (w_lev, c_lev))
             w_lev, c_lev = (str(w_lev) if w_lev > 0 else "", str(c_lev) if c_lev > 0 else "")
-        mach_log_com("  P: %-40s: %-40s (w: %-5s, c: %-5s)" % (info_name,
-                                                               p_name,
-                                                               w_lev or "N/S",
-                                                               c_lev or "N/S"))
+        build_proc.mach_log("  P: %-40s: %-40s (w: %-5s, c: %-5s)" % (info_name,
+                                                                      p_name,
+                                                                      w_lev or "N/S",
+                                                                      c_lev or "N/S"))
         sc_array.append((info_name, [w_lev, c_lev, p_name]))
     return sc_array
             

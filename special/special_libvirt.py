@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2010 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2010,2012 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of nagios-config-server
 #
@@ -29,27 +29,27 @@ import pyipc
 import struct
 import os
 import process_tools
-import ipc_comtools
+from host_monitoring import ipc_comtools
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
+def handle(s_check, host, dc, build_proc, valid_ip, global_config=None, **kwargs):
     act_com = "domain_overview"
-    mach_log_com("Starting special libvirt (%s), host_name %s" % (act_com,
-                                                                  host["name"]))
+    build_proc.mach_log("Starting special libvirt (%s), host_name %s" % (act_com,
+                                                                         host["name"]))
     sc_array = []
     try:
-        res_ok, res_dict = ipc_comtools.send_and_receive(valid_ip, act_com, target_port=2001, decode=True)
+        res_ok, res_dict = ipc_comtools.send_and_receive_zmq(valid_ip, act_com, port=2001, zmq_context=build_proc.zmq_context, server="collrelay")
     except:
-        mach_log_com("error getting %s from %s: %s" % (
+        build_proc.mach_log("error getting %s from %s: %s" % (
             act_com,
             valid_ip,
             process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_CRITICAL)
+                            logging_tools.LOG_LEVEL_CRITICAL)
     else:
         if res_ok:
-            mach_log_com("error calling %s: %s" % (
+            build_proc.mach_log("error calling %s: %s" % (
                 act_com,
                 str(res_dict)),
-                         logging_tools.LOG_LEVEL_ERROR)
+                                logging_tools.LOG_LEVEL_ERROR)
         else:
             if "running" in res_dict and "defined" in res_dict:
                 res_dict = res_dict["running"]

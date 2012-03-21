@@ -30,10 +30,10 @@ import struct
 import os
 import process_tools
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
+def handle(s_check, host, dc, build_proc, valid_ip, **kwargs):
     sc_array = []
     eth_check = re.match(".*ethtool.*", s_check["command_name"])
-    mach_log_com("Starting special net, eth_check is %s" % ("on" if eth_check else "off"))
+    build_proc.mach_log("Starting special net, eth_check is %s" % ("on" if eth_check else "off"))
     # never check duplex and stuff for a loopback-device
     if eth_check:
         if host["xen_guest"]:
@@ -59,9 +59,9 @@ def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
         eth_opts.extend(["%.0f" % (net_dev["speed_bps"] * 0.9),
                          "%.0f" % (net_dev["speed_bps"] * 0.95)])
         eth_opts.append(net_dev["devname"])
-        mach_log_com(" - netdevice %s with %s: %s" % (name_with_descr,
-                                                       logging_tools.get_plural("option", len(eth_opts) - 1),
-                                                       ", ".join(eth_opts[:-1])))
+        build_proc.mach_log(" - netdevice %s with %s: %s" % (name_with_descr,
+                                                             logging_tools.get_plural("option", len(eth_opts) - 1),
+                                                             ", ".join(eth_opts[:-1])))
         sc_array.append((name_with_descr, eth_opts))
     return sc_array
             

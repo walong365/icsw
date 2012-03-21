@@ -164,7 +164,7 @@ class main_config(object):
         resource_cfg = base_config("resource", is_host_file=True)
         resource_cfg["$USER1$"] = "/opt/%s/libexec" % (global_config["MD_TYPE"])
         resource_cfg["$USER2$"] = "/opt/cluster/sbin/ccollclientzmq -t %d" % (global_config["CCOLLCLIENT_TIMEOUT"])
-        resource_cfg["$USER3$"] = "/usr/cluster/sbin/csnmpclientzmq -t %d" % (global_config["CSNMPCLIENT_TIMEOUT"])
+        resource_cfg["$USER3$"] = "/opt/cluster/sbin/csnmpclientzmq -t %d" % (global_config["CSNMPCLIENT_TIMEOUT"])
         NDOMOD_NAME, NDO2DB_NAME = ("ndomod",
                                     "ndo2db")
         ndomod_cfg = base_config(NDOMOD_NAME,
@@ -1181,7 +1181,7 @@ class build_process(threading_tools.process_obj):
             self.__cached_mach_name = mach_name
         if mach_name not in self.__mach_loggers:
             self.__mach_loggers[mach_name] = logging_tools.get_logger("%s.%s" % (global_config["LOG_NAME"],
-                                                                                 mach_name), global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+                                                                                 mach_name.replace(".", r"\.")), global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
         self.__mach_loggers[mach_name].log(lev, what)
         if kwargs.get("global_flag", False):
             self.log(what, lev)
@@ -1306,7 +1306,8 @@ class build_process(threading_tools.process_obj):
             cfgs_written = self.__gen_config._write_entries()
             if bc_valid and (cfgs_written or rebuild_gen_config):
                 self._reload_nagios()
-            self.__queue_dict["command_queue"].put(("config_rebuilt", h_list or [global_config["ALL_HOSTS_NAME"]]))
+            # FIXME
+            #self.__queue_dict["command_queue"].put(("config_rebuilt", h_list or [global_config["ALL_HOSTS_NAME"]]))
         dc.release()
     def _create_general_config(self, dc):
         start_time = time.time()
@@ -1678,7 +1679,7 @@ class build_process(threading_tools.process_obj):
                                             # calling handle to return a list of checks with format
                                             # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
                                             try:
-                                                sc_array = special_mod.handle(s_check, host, dc, self.mach_log, valid_ip, global_config=global_config)
+                                                sc_array = special_mod.handle(s_check, host, dc, self, valid_ip, global_config=global_config)
                                             except:
                                                 exc_info = process_tools.exception_info()
                                                 self.log("error calling special %s:" % (special),

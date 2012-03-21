@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008,2009,2012 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of nagios-config-server
 #
@@ -23,9 +23,9 @@
 
 import sys
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
+def handle(s_check, host, dc, build_proc, valid_ip, global_config=None, **kwargs):
     sc_array = []
-    mach_log_com("Starting special disc_all")
+    build_proc.mach_log("Starting special disc_all")
     sc_array.append(("All partitions", ["",
                                         "",
                                         "ALL"]))

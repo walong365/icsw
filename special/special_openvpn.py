@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009,2010 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008,2009,2010,2012 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of nagios-config-server
 #
@@ -29,7 +29,8 @@ import pyipc
 import struct
 import os
 import process_tools
-import ipc_comtools
+import server_command
+from host_monitoring import ipc_comtools
 
 EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
 
@@ -57,8 +58,8 @@ def parse_expected():
                         #    inst_dict[client_name] = limits.nag_STATE_WARNING
     return ret_dict
 
-def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
-    mach_log_com("Starting special openvpn")
+def handle(s_check, host, dc, build_proc, valid_ip, **kwargs):
+    build_proc.mach_log("Starting special openvpn")
     exp_dict = parse_expected()
     if exp_dict.has_key(host["name"]):
         exp_dict = exp_dict[host["name"]]
@@ -66,16 +67,21 @@ def handle(s_check, host, dc, mach_log_com, valid_ip, **kwargs):
         exp_dict = {}
     if not exp_dict:
         # no expected_dict found, try to get the actual config from the server
+        srv_result = ipc_comtools.send_and_receive_zmq(valid_ip, "openvpn_status", server="collrelay", zmq_context=build_proc.zmq_context, port=2001)
+        print unicode(srv_result)
+        print "*" * 20
         try:
             res_ok, res_dict = ipc_comtools.send_and_receive(valid_ip, "openvpn_status", target_port=2001, decode=True)
         except:
-            mach_log_com("error getting open_status from %s: %s" % (valid_ip,
-                                                                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_CRITICAL)
+            print "nogo"
+            build_proc.mach_log("error getting open_status from %s: %s" % (valid_ip,
+                                                                           process_tools.get_except_info()),
+                                logging_tools.LOG_LEVEL_CRITICAL)
         else:
+            print "go"
             if res_ok:
-                mach_log_com("error calling openvpn_status: %s" % (str(res_dict)),
-                             logging_tools.LOG_LEVEL_ERROR)
+                build_proc.mach_log("error calling openvpn_status: %s" % (str(res_dict)),
+                                    logging_tools.LOG_LEVEL_ERROR)
             else:
                 # build exp_dict
                 for inst_name in res_dict:
