@@ -4,6 +4,7 @@
 """ initcore views """
 
 import base64
+import importlib
 import codecs
 import os
 import colorsys
@@ -62,7 +63,20 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
             auth.login(request, form.get_user())
             request.session.update(get_user_variables(request))
             request.session.update(set_css_values(request))
-            request.session.update(get_user_role(request, form.get_user()))
+            if hasattr(settings, "SESSION_EXTENDERS") and isinstance(settings.SESSION_EXTENDERS, (tuple, list)):
+                for funcstring in settings.SESSION_EXTENDERS:
+                    split_string = funcstring.split(".")
+                    module, func = ".".join(split_string[:-1]), split_string[-1]
+                    try:
+                        module = importlib.import_module(module)
+                        func = getattr(module, func)
+                    except (ImportError, AttributeError):
+                        pass
+                    else:
+                        if callable(func):
+                            dict_ = func(request)
+                            if isinstance(dict_, dict):
+                                request.session.update(dict_)
             request.session.save()
             return HttpResponseRedirect(redirect_to)
         else:
@@ -249,20 +263,6 @@ def set_css_values(request):
 def scale_rgb(rgb_specs, fact, diff):
     ret_val = tuple([min(max(val * fact + diff * val * val / (255 * 255), 0), 255) for val in rgb_specs])
     return ret_val
-
-def get_user_role(request, user):
-    try:
-        oetiperson = olimhcm_oetiperson.objects.get(username=request.user.username)
-    except olimhcm_oetiperson.DoesNotExist:
-        res =  {"OLIM_ROLE": ()}
-    else:
-        person2role = olimhcm_oetipersonoetirole.objects.filter(oetiperson_pk=oetiperson.pk)
-        roles = []
-        for i in person2role:
-            role = olimhcm_oetirole.objects.get(pk=i.oetirole_pk)
-            roles.append(role.rolename)
-        res = {"OLIM_ROLE": roles}
-    return res
 
 
 @login_required
