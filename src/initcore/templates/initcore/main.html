@@ -19,7 +19,6 @@
     {# jqGrid #}
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jqgrid/grid.locale-en.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jqgrid/jquery.jqGrid.min.js"></script>
-    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jqgrid_user_functions.js"></script>
     {# jQuery UI #}
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery-ui/jquery-ui-1.8.15.custom.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery-ui/jquery-ui-timepicker-addon.js"></script>
@@ -33,8 +32,9 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery.iframe-transport.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/lib/jquery.fileupload.js"></script>
     {# MEDIA URL for all javascript #}
-    <script language="javascript">var MEDIA_URL = "{{ MEDIA_URL }}";</script>
+    <script>var MEDIA_URL = "{{ MEDIA_URL }}";</script>
     <script type="text/javascript" src="{{ MEDIA_URL }}initcore/init.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}initcore/jqgrid_user_functions.js"></script>
     {% block javascript %}{% endblock %}
 
     {% include "initcore/main.css" %}
