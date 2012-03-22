@@ -26,7 +26,6 @@ import pprint
 import re
 import logging_tools
 import pyipc
-import struct
 import os
 import process_tools
 import server_command
