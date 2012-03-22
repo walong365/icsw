@@ -73,7 +73,27 @@ class special_base(object):
         self.global_config = None
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.build_process.mach_log("[sc] %s" % (what), log_level)
+    def _call_collrelay(self, command, *args):
+        return self._call_server(command, "collrelay", *args)
+    def _call_server(self, command, server_name, *args):
+        self.log("calling server '%s', command is '%s', args is '%s'" % (
+            server_name,
+            command,
+            ", ".join([str(value) for value in args]) if args else "NO ARGS"))
+        try:
+            srv_reply = ipc_comtools.send_and_receive_zmq(self.valid_ip, command, *args, server="collrelay", zmq_context=self.build_process.zmq_context, port=2001)
+        except:
+            self.log("error connecting to '%s' (%s, %s): %s" % (
+                server_name,
+                self.valid_ip,
+                command,
+                process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+            srv_reply = None
+        return srv_reply
     def __call__(self):
+        s_name = self.__class__.__name__.split("_", 1)[1]
+        self.log("starting %s for %s" % (s_name, self.host["name"]))
         s_time = time.time()
         cur_ret = self._call()
         e_time = time.time()
@@ -101,9 +121,9 @@ class special_disc(special_base):
         part_dev = self.host["partdev"]
         df_settings_dir = "%s/etc/df_settings" % (self.global_config["MD_BASEDIR"])
         df_sd_ok = os.path.isdir(df_settings_dir)
-        self.log("Starting special disc for part_dev '%s', df_settings_dir is '%s' (%s)" % (part_dev or "NOT SET",
-                                                                                            df_settings_dir,
-                                                                                            "OK" if df_sd_ok else "not reachable"))
+        self.log("part_dev '%s', df_settings_dir is '%s' (%s)" % (part_dev or "NOT SET",
+                                                                  df_settings_dir,
+                                                                  "OK" if df_sd_ok else "not reachable"))
         first_disc = None
         all_parts = [x for x in self.dc.fetchall() if x["disc"] and x["mountpoint"]]
         part_list = []
@@ -177,7 +197,7 @@ class special_net(special_base):
     def _call(self):
         sc_array = []
         eth_check = re.match(".*ethtool.*", self.s_check["command_name"])
-        self.log("Starting special net, eth_check is %s" % ("on" if eth_check else "off"))
+        self.log("eth_check is %s" % ("on" if eth_check else "off"))
         # never check duplex and stuff for a loopback-device
         if eth_check:
             if self.host["xen_guest"]:
@@ -211,7 +231,6 @@ class special_net(special_base):
         return sc_array
 
 def handle(s_check, host, dc, build_proc, valid_ip, **kwargs):
-    build_proc.mach_log("Starting special openvpn")
     exp_dict = parse_expected()
     if exp_dict.has_key(host["name"]):
         exp_dict = exp_dict[host["name"]]
@@ -248,6 +267,23 @@ def handle(s_check, host, dc, build_proc, valid_ip, **kwargs):
         sc_array.append(("OpenVPN", ["ALL", "ALL"]))
     return sc_array
 
+class special_libvirt(special_base):
+    def _call(self):
+        act_com = "domain_overview"
+        sc_array = []
+        srv_result = self._call_collrelay(act_com)
+        if srv_result is not None:
+            print unicode(srv_result)
+            if False:
+                if "running" in res_dict and "defined" in res_dict:
+                    res_dict = res_dict["running"]
+                # build sc_array
+                for inst_id in res_dict:
+                    d_dict = res_dict[inst_id]
+                    sc_array.append(("Domain %s" % (d_dict["name"]),
+                                     [d_dict["name"]]))
+        return sc_array
+        
 if __name__ == "__main__":
     print "Loadable module, exiting"
     sys.exit(0)
