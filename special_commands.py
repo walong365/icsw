@@ -32,6 +32,8 @@ import process_tools
 import server_command
 from host_monitoring import ipc_comtools
 import time
+import bz2
+import base64
 
 EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
 
@@ -67,6 +69,27 @@ class special_base(object):
         self.host = host
         self.valid_ip = valid_ip
         self.global_config = global_config
+    def _cache_name(self):
+        return "/tmp/.md-config-server/%s_%s" % (self.host["name"],
+                                                 self.valid_ip)
+    def _store_cache(self):
+        c_name = self._cache_name()
+        if not os.path.isdir(os.path.dirname(c_name)):
+            os.makedirs(os.path.dirname(c_name))
+        _coded = [base64.b64encode(unicode(srv_reply)) for srv_reply in self.__server_results]
+        file(c_name, "wb").write(bz2.compress("".join([u"%08d%s" % (len(b64), b64) for b64 in _coded])))
+        self.log("stored cached in %s" % (c_name))
+    def _load_cache(self):
+        self.__cache = []
+        self.__use_cache = False
+        c_name = self._cache_name()
+        if os.path.isfile(c_name):
+            c_content = bz2.decompress(file(c_name, "rb").read())
+            while c_content:
+                b64_len = len(c_content[0:8])
+                self.__cache.append(base64.b64decode(c_content[8:b64_len + 8]))
+                c_content = c_content[b64_len + 8:]
+            self.log("loaded cache from %s" % (c_name))
     def cleanup(self):
         self.dc = None
         self.build_process = None
@@ -101,14 +124,37 @@ class special_base(object):
                 process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
             srv_reply = None
+        else:
+            srv_error = srv_reply.xpath(None, ".//ns:result[@state != '0']")
+            if srv_error:
+                self.log("got an error (%d): %s" % (int(server_error[0].attrib["state"]),
+                                                    server_error[0].attrib["reply"]),
+                         logging_tools.LOG_LEVEL_ERROR)
+                srv_reply = None
+            else:
+                self.__server_results.append(srv_reply)
+        if srv_reply == None and self.__server_calls == 0 and len(self.__cache):
+            self.__use_cache = True
+        if self.__use_cache:
+            if len(self.__cache) > self.__server_calls:
+                srv_reply = self.__cache[self.__server_calls]
+            else:
+                self.log("cache too small", logging_tools.LOG_LEVEL_WARN)
+        self.__server_calls += 1
         return srv_reply
     def __call__(self):
         s_name = self.__class__.__name__.split("_", 1)[1]
         self.log("starting %s for %s" % (s_name, self.host["name"]))
         s_time = time.time()
+        self._load_cache()
+        self.__server_results, self.__server_calls = ([], 0)
         cur_ret = self._call()
         e_time = time.time()
-        self.log("took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+        self.log("took %s, (%d of %d ok)" % (logging_tools.get_diff_time_str(e_time - s_time),
+                                             len(self.__server_results),
+                                             self.__server_calls))
+        if len(self.__server_results) == self.__server_calls and self.__server_calls:
+            self._store_cache()
         return cur_ret
 
 class special_openvpn(special_base):
@@ -310,23 +356,17 @@ class special_eonstor(special_base):
                         if srv_reply and "eonstor_info:state" in srv_reply:
                             act_state = int(srv_reply["eonstor_info:state"].text)
                             self.log("state for %s:%d is %d" % (act_com, idx, act_state))
-                            if act_state:
-                                self.log("error command %s gave (%d): %s" % (act_com,
-                                                                             act_state,
-                                                                             state_obj),
-                                         logging_tools.LOG_LEVEL_ERROR)
-                            else:
-                                if env_dict_name == "ups":
-                                    # check for inactive psus
-                                    if state_obj.state & 128:
-                                        self.log("disabling psu with idx %d because not present" % (idx),
-                                                 logging_tools.LOG_LEVEL_ERROR)
-                                        add_check = False
-                                elif env_dict_name == "bbu":
-                                    if state_obj.state & 128:
-                                        self.log("disabling bbu with idx %d because not present" % (idx),
-                                                 logging_tools.LOG_LEVEL_ERROR)
-                                        add_check = False
+                            if env_dict_name == "ups":
+                                # check for inactive psus
+                                if act_state & 128:
+                                    self.log("disabling psu with idx %d because not present" % (idx),
+                                             logging_tools.LOG_LEVEL_ERROR)
+                                    add_check = False
+                            elif env_dict_name == "bbu":
+                                if act_state & 128:
+                                    self.log("disabling bbu with idx %d because not present" % (idx),
+                                             logging_tools.LOG_LEVEL_ERROR)
+                                    add_check = False
                     if add_check:
                         if not nag_name.lower().startswith(env_dict_name):
                             nag_name = "%s %s" % (env_dict_name, nag_name)
