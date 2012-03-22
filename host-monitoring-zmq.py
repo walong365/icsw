@@ -49,6 +49,8 @@ try:
 except ImportError:
     VERSION_STRING = "?.?"
 
+MAX_USED_MEM = 150
+
 def client_code():
     from host_monitoring import modules
     #log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=)
@@ -819,7 +821,7 @@ class relay_process(threading_tools.process_pool):
         self.__num_messages += 1
         if self.__num_messages % 20 == 0:
             cur_mem = process_tools.get_mem_info(self.pid)
-            if  cur_mem > 100 * 1024 * 1024:
+            if  cur_mem > MAX_USED_MEM * 1024 * 1024:
                 self.log("reached memory limit of %s after %s" % (logging_tools.get_size_str(cur_mem),
                                                                   logging_tools.get_plural("message", self.__num_messages)),
                          logging_tools.LOG_LEVEL_WARN)
