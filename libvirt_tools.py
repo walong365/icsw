@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2010 lang-nevyjel@init.at
+# Copyright (C) 2010,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -248,7 +248,7 @@ class libvirt_connection(object):
             domain_ids = conn.listDomainsID()
             for act_id in domain_ids:
                 act_dom = conn.lookupByID(act_id)
-                if cm and act_dom.name() == cm[0]:
+                if cm and act_dom.name() == cm:
                     r_dict["desc"] = act_dom.XMLDesc(0)
                 del act_dom
         else:
