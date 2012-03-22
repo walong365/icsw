@@ -37,31 +37,37 @@ int_size  = struct.calcsize("@i")
 def send_and_receive_zmq(target_host, command, *args, **kwargs):
     identity_str = process_tools.zmq_identity_str(kwargs.pop("identity_string", "ipc_com"))
     zmq_context = kwargs.pop("zmq_context")
+    cur_timeout = kwargs.pop("timeout", 20)
     client = zmq_context.socket(zmq.DEALER)
     client.setsockopt(zmq.IDENTITY, identity_str)
-    client.setsockopt(zmq.LINGER, kwargs.pop("timeout", 100))
+    client.setsockopt(zmq.LINGER, cur_timeout * 2)
     # kwargs["server"] : collrelay or snmprelay
     conn_str = "%s" % (process_tools.get_zmq_ipc_name(kwargs.pop("process", "receiver"), s_name=kwargs.pop("server")))
     client.connect(conn_str)
     srv_com = server_command.srv_command(command=command)
     srv_com["host"] = target_host
     srv_com["raw"] = "True"
-    print "***", args
     srv_com["arg_list"] = " ".join(args)
     # add additional keys
     for key, value in kwargs.iteritems():
         srv_com[key] = "%d" % (value) if type(value) in [int, long] else value
     s_time = time.time()
     client.send_unicode(unicode(srv_com))
-    recv_str = client.recv()
+    if client.poll(cur_timeout * 1000):
+        recv_str = client.recv()
+    else:
+        recv_str = None
     client.close()
     e_time = time.time()
-    try:
-        srv_reply = server_command.srv_command(source=recv_str)
-    except:
-        print "cannot interpret reply: %s" % (process_tools.get_except_info())
-        print "reply was: %s" % (recv_str)
+    if recv_str:
+        try:
+            srv_reply = server_command.srv_command(source=recv_str)
+        except:
+            srv_reply = None
+            raise
+    else:
         srv_reply = None
+        raise SystemError, "timeout (%d seconds) exceeded" % (cur_timeout)
     return srv_reply
     
 def send_and_receive(target_host, command, **kwargs):

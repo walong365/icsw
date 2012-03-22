@@ -24,8 +24,8 @@ from host_monitoring import limits, hm_classes
 import os
 import os.path
 import logging_tools
-import contextlib
 import pprint
+import server_command
 import process_tools
 from lxml import etree
 try:
@@ -77,7 +77,7 @@ class domain_overview_command(hm_classes.hm_command):
             cur_lvc.close()
         else:
             ret_dict = {}
-            srv_com.set_dictionary("domain_overview", ret_dict)
+        srv_com.set_dictionary("domain_overview", ret_dict)
     def interpret(self, srv_com, cur_ns):
         r_dict = server_command.srv_command.tree_to_dict(srv_com["domain_overview"])
         return self._interpret(r_dict, cur_ns)
@@ -111,7 +111,7 @@ class domain_status_command(hm_classes.hm_command):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
-            srv_com["result"].attrib.update({"reply" : "missing argument",
+            srv_com["result"].attrib.update({"reply"  : "missing argument",
                                               "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
             if libvirt_tools:
@@ -141,7 +141,7 @@ class domain_status_command(hm_classes.hm_command):
         else:
             if dom_dict["cm"]:
                 ret_state = limits.nag_STATE_CRITICAL
-                out_f.append("domain '%s' not running" % (dom_dict["cm"][0]))
+                out_f.append("domain '%s' not running" % (dom_dict["cm"]))
             else:
                 ret_state = limits.nag_STATE_WARNING
                 out_f.append("no domain-name give")
