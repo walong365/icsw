@@ -918,8 +918,8 @@ class relay_process(threading_tools.process_pool):
                                                          "0" : "T"}[self.__last_tried[t_host]]
                             c_state = self.__last_tried[t_host]
                         con_mode = c_state
-                        # FIXEM, forces 0MQ connection
-                        con_mode = "0"
+                        # FIXME, forces 0MQ connection
+                        #con_mode = "0"
                     else:
                         self.__old_clients.update()
                         self.__new_clients.update()
