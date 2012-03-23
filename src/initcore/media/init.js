@@ -522,3 +522,50 @@ function get_xml_value(xml, key) {
     });
     return ret_value;
 };
+
+INIT = {
+    modal_confirm: function(args) {
+        var element = $("<div>").addClass("modal-confirm").append(
+            $("<div>").addClass("modal-confirm-message"),
+            $("<div>").addClass("modal-fields"),
+            $("<div>").addClass("modal-confirm-button-container").append(
+                $("<button>").attr("id", "negative").button({icons: {primary: "ui-icon-alert"}, text: true}),
+                $("<button>").attr("id", "positive").button({icons: {primary: "ui-icon-check"}, text: true})
+            )
+        );
+        var d = {
+            message: "?",
+            positive: "Yes",
+            negative: "No",
+            callback: function() {},
+            extrafields: $("<div>"),
+            element: element,
+            width: 200,
+            height: 70,
+        }
+        $.extend(d, args || {});
+
+        $.modal(d.element, {
+            minHeight: d.height,
+            minWidth: d.width,
+            overlayClose: true,
+            onShow: function (dialog) {
+                var modal = this;
+                $(".modal-confirm-message", dialog.data[0]).append(d.message);
+                var fields = $(".modal-fields", dialog.data[0]);
+                fields.html(d.extrafields);
+                fields.appendTo(".modal-confirm-message", dialog.data[0]);
+                $("#positive", dialog.data[0]).button("option", "label", d.positive).click(function (event) {
+                    event.preventDefault();
+                    var postdata = $(".modal-confirm-form").serialize();
+                    d.callback.apply(this, [postdata]);
+                    modal.close();
+                });
+                $("#negative", dialog.data[0]).button("option", "label", d.negative).click(function(event) {
+                    event.preventDefault();
+                    modal.close();
+                });
+            }
+        });
+    }
+}

@@ -15,13 +15,14 @@ from lxml.builder import E
 
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import auth
 from django.contrib.auth.models import User
 from django.db.models import Q
+from django.utils.translation import ugettext as _
 
 from initcore import menu_tools
 from initcore.render_tools import render_me
@@ -283,24 +284,23 @@ def get_user_variables(request, var_name=None):
 
 @login_required
 def store_user_variable(request, var_name, var_value=None, default=None):
-    edm_user = request.user
+    user = request.user
     cur_value = var_value if var_value is not None else request.session.get(var_name, default)
     try:
-        act_var = user_variable.objects.get(Q(user=edm_user) & Q(name=var_name))
+        act_var = user_variable.objects.get(Q(user=user) & Q(name=var_name))
     except user_variable.DoesNotExist:
-        act_var = user_variable(user=edm_user,
-                                name=var_name)
+        act_var = user_variable(user=user, name=var_name)
     except user_variable.MultipleObjectsReturned:
         request.log("more than one user_variable '%s' defined, deleting them all ..." % (var_name),
                     logging_tools.LOG_LEVEL_ERROR)
-        user_variable.objects.filter(Q(user=edm_user) & Q(name=var_name)).delete()
-        act_var = user_variable(user=edm_user,
-                                name=var_name)
+        user_variable.objects.filter(Q(user=user) & Q(name=var_name)).delete()
+        act_var = user_variable(user=user, name=var_name)
     else:
         pass
     act_var.store(cur_value)
     request.session[var_name] = act_var.load()
     return act_var
+
 
 def get_jqgrid_user_params(request, name, grid_num=1):
     result = []
@@ -313,6 +313,7 @@ def get_jqgrid_user_params(request, name, grid_num=1):
             result.append({"rowNum"  : u"10", "columns" : []})
     return " ".join([":".join([res["rowNum"], ",".join(res["columns"])]) for res in result])
 
+
 def store_jqgrid_user_params(request):
     if request.POST["params"].split(" ") == []:
         HttpResponse(etree.tostring(E.error("error on saving user params, params string is empty")), mimetype="application/xml")
@@ -324,10 +325,26 @@ def store_jqgrid_user_params(request):
                                                                                  "columns" : request.POST["params"].split(" ")})
     return HttpResponse(etree.tostring(E.succsess("user params saved")), mimetype="application/xml")
 
+
 @login_required
 def overview(request, first_char=""):
     return render_me(request, "initcore/welcome_page.html")()
 
+
 @login_required
 def admin(request, first_char=""):
     return render_me(request, "initcore/admin_page.html")()
+
+
+@login_required
+def ask_del_user_config(request):
+    return render_me(request, "initcore/del_user_config.html")()
+
+
+@login_required
+@require_POST
+def del_user_config(request):
+    user = request.user
+    objs = user_variable.objects.filter(user=user).delete()
+    res = E.message(_("User config deleted"))
+    return HttpResponse(etree.tostring(res), content_type="text/xml; charset=utf-8")

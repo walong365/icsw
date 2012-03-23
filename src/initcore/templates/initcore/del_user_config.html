@@ -1,0 +1,37 @@
+{% extends "initcore/main.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Delete user config" %}{% endblock %}
+
+{% block stylesheets %}
+        <link href="{{ MEDIA_URL }}edmdb/olim.css" rel="stylesheet" type="text/css" />
+        <link href="{{ MEDIA_URL }}edmdb/simplemodal.css" rel="stylesheet" type="text/css" />
+{% endblock %}
+
+{% block content %}
+
+<input id="delete-config" type="submit" value="{% trans 'Delete config' %}" />
+
+<script>
+$(document).ready(function() {
+    $("#delete-config").click(function(event) {
+        event.preventDefault();
+        INIT.modal_confirm({
+            negative: "{% trans "Cancel" %}",
+            positive: "{% trans "Delete" %}",
+            callback: delete_config,
+            message: "{% trans "Delete the user config?" %}"}
+       );
+    });
+});
+
+function delete_config() {
+    var url = "{% url session:del_user_config %}";
+    $.post(url, {
+        success: function(data) {
+        }
+    });
+}
+</script>
+
+{% endblock %}
