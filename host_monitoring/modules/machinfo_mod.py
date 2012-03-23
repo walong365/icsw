@@ -1280,6 +1280,15 @@ class version_command(hm_classes.hm_command):
         act_state = limits.nag_STATE_OK
         return act_state, "version is %s" % (result)
         
+class get_0mq_id_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        srv_com["zmq_id"] = file("/etc/sysconfig/host-monitoring.d/0mq_id", "r").read().strip()
+    def interpret(self, srv_com, cur_ns):
+        try:
+            return limits.nag_STATE_OK, "0MQ id is %s" % (srv_com["zmq_id"].text)
+        except:
+            return limits.nag_STATE_CRITICAL, "version not found"
+        
 class status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["status_str"] = "ok running"
