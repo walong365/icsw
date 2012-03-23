@@ -1256,8 +1256,10 @@ class process_pool(object):
                                 self.poller_handler[sock][c_type](sock)
                             else:
                                 print "???0", sock, c_type
+                                time.sleep(1)
                         else:
                             print "???1", sock, c_type
+                            time.sleep(1)
                     cur_time = time.time()
                     if self.__next_timeout and cur_time > self.__next_timeout:
                         self._handle_timer(cur_time)
