@@ -13,7 +13,8 @@ import logging_tools
 from lxml import etree
 from lxml.builder import E
 
-from django.http import HttpResponse, HttpResponseRedirect
+import django
+from django.http import HttpResponse, HttpResponseRedirect, HttpResponseNotAllowed
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST, require_GET
 from django.conf import settings
@@ -28,10 +29,11 @@ from initcore import menu_tools
 from initcore.render_tools import render_me
 from initcore.helper_functions import init_logging
 from initcore.forms import authentication_form, user_config_form, change_password_form
-from initcore.forms import change_language_form
+from initcore.forms import change_language_form, change_user_form
 from initcore.models import user_variable
 
-from edmdb.models import olimhcm_oetiperson, olimhcm_oetirole, olimhcm_oetipersonoetirole, olimcrm_person
+from edmdb.models import olimhcm_oetiperson, olimhcm_oetirole
+from edmdb.models import olimhcm_oetipersonoetirole, olimcrm_person, OlimUser
 
 session_history = None
 
@@ -48,10 +50,13 @@ def logout(request):
             act_she.logout_time = datetime.datetime.now()
             act_she.save()
     auth.logout(request)
-    return render_me(request, "initcore/login.html", {"login_form": authentication_form(),
-                                             "next"        : settings.SITE_ROOT,
-                                             "from_logout" : True,
-                                             "app_path"    : reverse("session:login")})()
+    return render_me(request, "initcore/login.html",
+                     {"login_form": authentication_form(),
+                      "next": settings.SITE_ROOT,
+                      "from_logout" : True,
+                      "app_path": reverse("session:login")}
+                     )()
+
 
 #@init_logging
 @never_cache
@@ -62,23 +67,7 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
         if form.is_valid():
             # Light security check -- make sure redirect_to isn't garbage.
             auth.login(request, form.get_user())
-            request.session.update(get_user_variables(request))
-            request.session.update(set_css_values(request))
-            if hasattr(settings, "SESSION_EXTENDERS") and isinstance(settings.SESSION_EXTENDERS, (tuple, list)):
-                for funcstring in settings.SESSION_EXTENDERS:
-                    split_string = funcstring.split(".")
-                    module, func = ".".join(split_string[:-1]), split_string[-1]
-                    try:
-                        module = importlib.import_module(module)
-                        func = getattr(module, func)
-                    except (ImportError, AttributeError):
-                        pass
-                    else:
-                        if callable(func):
-                            dict_ = func(request)
-                            if isinstance(dict_, dict):
-                                request.session.update(dict_)
-            request.session.save()
+            update_request(request)
             return HttpResponseRedirect(redirect_to)
         else:
             form = authentication_form(data=dict([(key, value) for key, value in request.POST.iteritems() if key not in ["password"]]))
@@ -88,6 +77,28 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
     return render_me(request, template_name, {"login_form" : form,
                                               "next"       : redirect_to,
                                               "app_path"   : reverse("session:login")})()
+
+
+def update_request(request):
+    """Update the request with session information."""
+    request.session.update(get_user_variables(request))
+    request.session.update(set_css_values(request))
+    if hasattr(settings, "SESSION_EXTENDERS") and isinstance(settings.SESSION_EXTENDERS, (tuple, list)):
+        for funcstring in settings.SESSION_EXTENDERS:
+            split_string = funcstring.split(".")
+            module, func = ".".join(split_string[:-1]), split_string[-1]
+            try:
+                module = importlib.import_module(module)
+                func = getattr(module, func)
+            except (ImportError, AttributeError):
+                pass
+            else:
+                if callable(func):
+                    dict_ = func(request)
+                    if isinstance(dict_, dict):
+                        request.session.update(dict_)
+    request.session.save()
+
 
 @init_logging
 @login_required
@@ -105,6 +116,7 @@ def change_password(request):
         cur_form = change_password_form(username=request.user.username)
     return render_me(request, "initcore/change_password.html",
                      {"password_form" : cur_form,
+                      "user_form": change_user_form(),
                       }).render()
 
 @init_logging
@@ -348,3 +360,23 @@ def del_user_config(request):
     objs = user_variable.objects.filter(user=user).delete()
     res = E.message(_("User config deleted"))
     return HttpResponse(etree.tostring(res), content_type="text/xml; charset=utf-8")
+
+
+@login_required
+@require_POST
+def change_user(request):
+    res = HttpResponseNotAllowed("Only for superusers!")
+    if request.user.is_superuser:
+        form = change_user_form(request.POST)
+        if form.is_valid():
+            try:
+                user = OlimUser.objects.get(username=form.cleaned_data["username"])
+            except OlimUser.DoesNotExist:
+                res = HttpResponseRedirect(settings.SITE_ROOT)
+            else:
+                user.backend = "edmdb.auth.olim_backend"
+                django.contrib.auth.login(request, user)
+                update_request(request)
+                res = HttpResponseRedirect(settings.SITE_ROOT)
+    return res
+

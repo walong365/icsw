@@ -4,6 +4,8 @@ from django.utils.translation import ugettext_lazy as _
 from django.forms.util import ErrorList
 from django.conf import settings
 
+from edmdb.models import OlimUser
+
 class authentication_form(forms.Form):
     """ Standard login form """
     username = forms.CharField(label=_("Username"), max_length=30)
@@ -37,6 +39,11 @@ class change_language_form(forms.Form):
                                  choices=settings.LANGUAGES)
 
 
+class change_user_form(forms.Form):
+    username = forms.ChoiceField(widget=forms.widgets.Select(),
+                             choices=[(i.username, i.username) for i in OlimUser.objects.all()])
+
+
 class user_config_form(forms.Form):
     css_theme = forms.ChoiceField(
         widget=forms.widgets.Select(
@@ -55,6 +62,7 @@ class user_config_form(forms.Form):
             ("27", "Big")
         ), label=_("size"), initial="small")
 
+
 ##class simple_password_form(forms.Form):
 ##    password_1 = forms.CharField(label=_("Password"), widget=forms.PasswordInput)
 ##    password_2 = forms.CharField(label=_("Password (again)"), widget=forms.PasswordInput)
@@ -72,6 +80,7 @@ class user_config_form(forms.Form):
 ##                del self.cleaned_data["password_1"]
 ##                del self.cleaned_data["password_2"]
 ##        return self.cleaned_data
+
 
 class change_password_form(forms.Form):
     password_old = forms.CharField(label=_("Old Password"), widget=forms.PasswordInput)
@@ -110,3 +119,4 @@ class change_password_form(forms.Form):
                     self._errors["password_1"] = ErrorList(["Your new password cannot be the same like your old password"])
                     pass_ok = False
         return self.cleaned_data
+
