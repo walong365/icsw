@@ -104,25 +104,21 @@ class id_discovery(object):
         self.srv_com = srv_com
         self.src_id = src_id
         self.xml_input = xml_input
-        if self.conn_str in id_discovery.pending:
-            self.socket = None
-            self.send_return("0MQ discovery in progress")
-        else:
-            id_discovery.pending[self.conn_str] = self
-            new_sock = id_discovery.relayer_process.zmq_context.socket(zmq.DEALER)
-            id_str = "relayer_dlr_%s_%s" % (process_tools.get_machine_name(),
-                                            self.src_id)
-            new_sock.setsockopt(zmq.IDENTITY, id_str)
-            new_sock.setsockopt(zmq.LINGER, 0)
-            new_sock.setsockopt(zmq.HWM, id_discovery.backlog_size)
-            new_sock.setsockopt(zmq.BACKLOG, id_discovery.backlog_size)
-            self.socket = new_sock
-            id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)
-            #id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.error)
-            dealer_message = server_command.srv_command(command="get_0mq_id")
-            self.socket.connect(self.conn_str)
-            self.log("send discovery message")
-            self.socket.send_unicode(unicode(dealer_message))
+        id_discovery.pending[self.conn_str] = self
+        new_sock = id_discovery.relayer_process.zmq_context.socket(zmq.DEALER)
+        id_str = "relayer_dlr_%s_%s" % (process_tools.get_machine_name(),
+                                        self.src_id)
+        new_sock.setsockopt(zmq.IDENTITY, id_str)
+        new_sock.setsockopt(zmq.LINGER, 0)
+        new_sock.setsockopt(zmq.HWM, id_discovery.backlog_size)
+        new_sock.setsockopt(zmq.BACKLOG, id_discovery.backlog_size)
+        self.socket = new_sock
+        id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)
+        #id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.error)
+        dealer_message = server_command.srv_command(command="get_0mq_id")
+        self.socket.connect(self.conn_str)
+        self.log("send discovery message")
+        self.socket.send_unicode(unicode(dealer_message))
     def send_return(self, error_msg):
         self.log(error_msg, logging_tools.LOG_LEVEL_ERROR)
         dummy_mes = host_message(self.srv_com["command"].text, self.src_id, self.srv_com, self.xml_input)
@@ -147,7 +143,7 @@ class id_discovery(object):
             # reinject
             id_discovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
             # save mapping
-            file(MAPPING_FILE_IDS, "w").write("\n".join(["%s=%s" % (key, value) for key, value in self.mapping.iteritems()]))
+            file(MAPPING_FILE_IDS, "w").write("\n".join(["%s=%s" % (key, self.mapping[key]) for key in sorted(self.mapping.iterkeys())]))
             self.close()
     def close(self):
         del self.srv_com
@@ -176,6 +172,9 @@ class id_discovery(object):
             id_discovery.mapping = {}
         id_discovery.pending = {}
         # dealer socket
+    @staticmethod
+    def is_pending(conn_str):
+        return conn_str in id_discovery.pending
     @staticmethod
     def has_mapping(conn_str):
         return conn_str in id_discovery.mapping
@@ -870,6 +869,7 @@ class relay_process(threading_tools.process_pool):
                                                                       str(xml_input)))
                 if "host" in srv_com and "port" in srv_com:
                     t_host = srv_com["host"].text
+                    srv_com["host"] = socket.gethostbyname(t_host)
                     if self.__autosense:
                         c_state = self.__client_dict.get(t_host, None)
                         if c_state is None:
@@ -944,6 +944,11 @@ class relay_process(threading_tools.process_pool):
                 cur_hc.send(cur_mes, com_struct)
             else:
                 cur_hc.return_error(cur_mes, "command '%s' not defined" % (com_name))
+        elif id_discovery.is_pending(conn_str):
+            cur_hc = host_connection.get_hc_0mq(conn_str, id_discovery.get_mapping(conn_str))
+            com_name = srv_com["command"].text
+            cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
+            cur_hc.return_error(cur_mes, "0mq discovery in progress")
         else:
             id_discovery(srv_com, src_id, xml_input)
     def _send_to_old_client(self, src_id, srv_com, xml_input):
