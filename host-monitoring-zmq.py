@@ -51,6 +51,7 @@ except ImportError:
     VERSION_STRING = "?.?"
 
 MAX_USED_MEM = 150
+MAPPING_FILE_IDS = "/etc/sysconfig/host-monitoring.d/collrelay_0mq_mapping"
 
 def client_code():
     from host_monitoring import modules
@@ -145,6 +146,8 @@ class id_discovery(object):
             id_discovery.mapping[self.conn_str] = zmq_id
             # reinject
             id_discovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
+            # save mapping
+            file(MAPPING_FILE_IDS, "w").write("\n".join(["%s=%s" % (key, value) for key, value in self.mapping.iteritems()]))
             self.close()
     def close(self):
         del self.srv_com
@@ -164,7 +167,13 @@ class id_discovery(object):
         id_discovery.timeout = timeout
         id_discovery.verbose = verbose
         # mapping connection string -> 0MQ id
-        id_discovery.mapping = {}
+        if os.path.isfile(MAPPING_FILE_IDS):
+            id_discovery.mapping = dict([line.strip().split("=", 1) for line in file(MAPPING_FILE_IDS, "r").read().split("\n") if line.strip() and line.count("=")])
+            id_discovery.relayer_process.log(
+                "read %s from %s" % (logging_tools.get_plural("mapping", len(id_discovery.mapping)),
+                                     MAPPING_FILE_IDS))
+        else:
+            id_discovery.mapping = {}
         id_discovery.pending = {}
         # dealer socket
     @staticmethod
@@ -186,54 +195,20 @@ class id_discovery(object):
 class host_connection(object):
     def __init__(self, conn_str, **kwargs):
         self.zmq_id = kwargs.get("zmq_id", "ms")
-        dummy_con = kwargs.get("dummy_connection", False)
-        if dummy_con:
-            host_connection.hc_dict_tcp[conn_str] = self
-        else:
-            host_connection.hc_dict_0mq[conn_str] = self
+        self.tcp_con = kwargs.get("dummy_connection", False)
+        host_connection.hc_dict[(not self.tcp_con, conn_str)] = self
         self.__open = False
         self.__conn_str = conn_str
-        #self.messages = {}
-        if dummy_con:
-            self.socket = None
-        else:
-##            new_sock = host_connection.relayer_process.zmq_context.socket(zmq.DEALER)
-##            id_str = "relayer_%s_%s" % (process_tools.get_machine_name(),
-##                                        conn_str)
-##            new_sock.setsockopt(zmq.IDENTITY, id_str)
-##            new_sock.setsockopt(zmq.LINGER, 0)
-##            new_sock.setsockopt(zmq.HWM, host_connection.backlog_size)
-##            new_sock.setsockopt(zmq.BACKLOG, host_connection.backlog_size)
-##            self.socket = new_sock
-##            host_connection.relayer_process.register_poller(self.socket, zmq.POLLIN, self._get_result)
-##            host_connection.relayer_process.register_poller(self.socket, zmq.POLLERR, self._error)
-            self.socket = host_connection.zmq_socket
-            #self.__backlog_counter = 0
     def close(self):
-        if self.socket:
-            self.socket = None
-##            host_connection.relayer_process.unregister_poller(self.socket, zmq.POLLIN)
-##            host_connection.relayer_process.unregister_poller(self.socket, zmq.POLLERR)
-##            self.socket.close()
-            #FIXME
-            #for mes in self.messages.values():
-            #    del mes
+        pass
     def __del__(self):
         pass
-##    @staticmethod
-##    def delete_hc(srv_com):
-##        conn_str = "tcp://%s:%d" % (srv_com["host"].text,
-##                                    int(srv_com["port"].text))
-##        if conn_str in host_connection.hc_dict:
-##            host_connection.hc_dict[conn_str].close()
-##            del host_connection.hc_dict[conn_str]
     @staticmethod
     def init(r_process, backlog_size, timeout, verbose):
         host_connection.relayer_process = r_process
         host_connection.messages = {}
-        # 2 queues for 0MQ and tcp
-        host_connection.hc_dict_0mq = {}
-        host_connection.hc_dict_tcp = {}
+        # 2 queues for 0MQ and tcp, 0MQ is (True, conn_str), TCP is (False, conn_str)
+        host_connection.hc_dict = {}
         host_connection.backlog_size = backlog_size
         host_connection.timeout = timeout
         host_connection.verbose = verbose
@@ -249,45 +224,41 @@ class host_connection(object):
         #host_connection.relayer_process.register_poller(new_sock, zmq.POLLERR, host_connection.error)
     @staticmethod
     def get_hc_0mq(conn_str, target_id, **kwargs):
-        if conn_str not in host_connection.hc_dict_0mq:
+        if (True, conn_str) not in host_connection.hc_dict:
             if host_connection.verbose > 1:
                 host_connection.relayer_process.log("new 0MQ host_connection for '%s'" % (conn_str))
             cur_hc = host_connection(conn_str, zmq_id=target_id, **kwargs)
         else:
-            cur_hc = host_connection.hc_dict_0mq[conn_str]
+            cur_hc = host_connection.hc_dict[(True, conn_str)]
         return cur_hc
     @staticmethod
     def get_hc_tcp(conn_str, **kwargs):
-        if conn_str not in host_connection.hc_dict_tcp:
+        if (False, conn_str) not in host_connection.hc_dict:
             if host_connection.verbose > 1:
                 host_connection.relayer_process.log("new TCP host_connection for '%s'" % (conn_str))
             cur_hc = host_connection(conn_str, **kwargs)
         else:
-            cur_hc = host_connection.hc_dict_tcp[conn_str]
+            cur_hc = host_connection.hc_dict[(False, conn_str)]
         return cur_hc
     @staticmethod
     def check_timeout_g():
         cur_time = time.time()
         id_discovery.check_timeout(cur_time)
-        [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict_0mq.itervalues()]
-        [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict_tcp.itervalues()]
+        [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict.itervalues()]
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         host_connection.relayer_process.log("[hc] %s" % (what), log_level)
     def check_timeout(self, cur_time):
-        # FIXME
-        pass
         to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time, host_connection.timeout)]
         for to_mes in to_messages:
-            if self.socket:
+            if not self.tcp_con:
                 pass
                 # self.__backlog_counter -= 1
-                #print "*** blc ", self.__backlog_counter
             self.return_error(to_mes, "timeout (after %.2f seconds)" % (to_mes.get_runtime(cur_time)))
     def _open(self):
         if not self.__open:
             try:
-                print "C", self.__conn_str
-                self.socket.connect(self.__conn_str)
+                self.log("connecting to %s" % (self.__conn_str))
+                host_connection.zmq_socket.connect(self.__conn_str)
             except:
                 raise
             else:
@@ -295,9 +266,10 @@ class host_connection(object):
         return self.__open
     def _close(self):
         if self.__open:
-            self.socket.close()
+            host_connection.zmq_socket.close()
             self.__open = False
-    def add_message(self, new_mes):
+    @staticmethod
+    def add_message(new_mes):
         host_connection.messages[new_mes.src_id] = new_mes
         return new_mes
     def send(self, host_mes, com_struct):
@@ -307,7 +279,7 @@ class host_connection(object):
             self.return_error(host_mes,
                               "error parsing arguments: %s" % (process_tools.get_except_info()))
         else:
-            if self.socket:
+            if not self.tcp_con:
                 try:
                     self._open()
                 except:
@@ -325,10 +297,8 @@ class host_connection(object):
                         #self._close()
                     else:
                         try:
-                            print "s0"
-                            self.socket.send_unicode(self.zmq_id, zmq.NOBLOCK|zmq.SNDMORE)
-                            self.socket.send_unicode(unicode(host_mes.srv_com), zmq.NOBLOCK)
-                            print "s1"
+                            host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.NOBLOCK|zmq.SNDMORE)
+                            host_connection.zmq_socket.send_unicode(unicode(host_mes.srv_com), zmq.NOBLOCK)
                         except:
                             self.return_error(host_mes,
                                               "connection error (%s)" % (process_tools.get_except_info()),
@@ -368,16 +338,7 @@ class host_connection(object):
     def get_result(zmq_sock):
         src_id = zmq_sock.recv()
         cur_reply = server_command.srv_command(source=zmq_sock.recv())
-        print src_id, unicode(cur_reply)
         host_connection._handle_result(cur_reply)
-    @staticmethod
-    def get_dealer_result(zmq_sock):
-        print "* dealer *"
-        cur_reply = server_command.srv_command(source=zmq_sock.recv())
-        print unicode(cur_reply)
-        #host_connection._handle_result(cur_reply)
-    def _get_result(self, zmq_sock):
-        self._handle_result(server_command.srv_command(source=zmq_sock.recv()))
     @staticmethod
     def _handle_result(result):
         #print unicode(result)
@@ -734,7 +695,6 @@ class relay_process(threading_tools.process_pool):
         self.renice()
         #pending_connection.init(self)
         host_connection.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose)
-        id_discovery.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose)
         # init lut
         self.__old_send_lut = {}
         if not global_config["DEBUG"]:
@@ -745,6 +705,7 @@ class relay_process(threading_tools.process_pool):
         self.add_process(twisted_process("twisted", icmp=False), twisted=True, start=True)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
+        id_discovery.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose)
         self._init_filecache()
         self._init_msi_block()
         self._init_ipc_sockets(close_socket=True)
@@ -757,6 +718,8 @@ class relay_process(threading_tools.process_pool):
             self._sigint("error init")
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
+            while self.__log_cache:
+                self.__log_template.log(*self.__log_cache.pop(0))
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
@@ -918,7 +881,6 @@ class relay_process(threading_tools.process_pool):
                                                          "0" : "T"}[self.__last_tried[t_host]]
                             c_state = self.__last_tried[t_host]
                         con_mode = c_state
-                        # FIXME, forces 0MQ connection
                         #con_mode = "0"
                     else:
                         self.__old_clients.update()
@@ -975,7 +937,7 @@ class relay_process(threading_tools.process_pool):
         if id_discovery.has_mapping(conn_str):
             cur_hc = host_connection.get_hc_0mq(conn_str, id_discovery.get_mapping(conn_str))
             com_name = srv_com["command"].text
-            cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+            cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
             if com_name in self.modules.command_dict:
                 com_struct = self.modules.command_dict[srv_com["command"].text]
                 # handle commandline
@@ -989,7 +951,7 @@ class relay_process(threading_tools.process_pool):
                                     int(srv_com["port"].text))
         cur_hc = host_connection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
-        cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+        cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
         if com_name in self.modules.command_dict:
             com_struct = self.modules.command_dict[com_name]
             cur_hc.send(cur_mes, com_struct)
@@ -1001,7 +963,7 @@ class relay_process(threading_tools.process_pool):
                                     int(srv_com["port"].text))
         cur_hc = host_connection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
-        cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+        cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
         cur_hc.send(cur_mes, None)
         self.__old_send_lut[cur_mes.src_id] = cur_hc
     def _close_socket(self, zmq_sock):
