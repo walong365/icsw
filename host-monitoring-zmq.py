@@ -222,7 +222,7 @@ class host_connection(object):
         host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)
         #host_connection.relayer_process.register_poller(new_sock, zmq.POLLERR, host_connection.error)
     @staticmethod
-    def get_hc_0mq(conn_str, target_id, **kwargs):
+    def get_hc_0mq(conn_str, target_id="ms", **kwargs):
         if (True, conn_str) not in host_connection.hc_dict:
             if host_connection.verbose > 1:
                 host_connection.relayer_process.log("new 0MQ host_connection for '%s'" % (conn_str))
@@ -945,7 +945,7 @@ class relay_process(threading_tools.process_pool):
             else:
                 cur_hc.return_error(cur_mes, "command '%s' not defined" % (com_name))
         elif id_discovery.is_pending(conn_str):
-            cur_hc = host_connection.get_hc_0mq(conn_str, id_discovery.get_mapping(conn_str))
+            cur_hc = host_connection.get_hc_0mq(conn_str)
             com_name = srv_com["command"].text
             cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
             cur_hc.return_error(cur_mes, "0mq discovery in progress")
