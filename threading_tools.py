@@ -754,10 +754,13 @@ class tz_factory(object):
         This is shutting down all created connections
         and terminating ZeroMQ context.
         """
+        #print "sd0"
         for connection in self.connections.copy():
             connection.shutdown()
+        #print "sd1"
         self.connections = None
         self.context.term()
+        #print "sd2"
         self.context = None
     def registerForShutdown(self):
         """
@@ -819,6 +822,7 @@ class process_obj(multiprocessing.Process):
             # no filter
             new_q.subscribe("")
             new_q.gotMessage = self._recv_message
+            self.tz_factory = my_factory
         else:
             new_q = self.zmq_context.socket(zmq.PULL)
             process_tools.bind_zmq_socket(new_q, process_tools.get_zmq_ipc_name(self.name))
@@ -877,6 +881,8 @@ class process_obj(multiprocessing.Process):
         self.log("exit_process called for process %s (pid=%d)" % (self.name, self.pid))
         self["run_flag"] = False
         if self.__twisted:
+            # close twisted socket
+            self.__process_queue.shutdown()
             reactor.stop()
     def process_exit(self):
         self.send_pool_message("process_exit")
