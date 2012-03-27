@@ -87,12 +87,26 @@ class twisted_process(threading_tools.process_obj):
         #tcp_factory.protocol = tcp_log_receiver
         #reactor.listenUDP(8004, self._got_udp)
         #reactor.listenTCP(8004, tcp_factory)
+        bind_errors = 0
         log_recv = twisted_log_receiver(self)
-        reactor.listenUNIXDatagram(global_config["LOG_HANDLE"], log_recv)
-        reactor.listenUNIXDatagram(global_config["ERR_HANDLE"], log_recv)
-        reactor.listenUNIXDatagram(global_config["OUT_HANDLE"], log_recv)
-        reactor.listenUDP(global_config["LISTEN_PORT"], log_recv)
+        for h_name in ["LOG", "ERR", "OUT"]:
+            try:
+                reactor.listenUNIXDatagram(global_config["%s_HANDLE" % (h_name)], log_recv)
+            except:
+                self.log("cannot listen to UDS %s: %s" % (global_config["%s_HANDLE" % (h_name)],
+                                                          process_tools.get_except_info()),
+                          logging_tools.LOG_LEVEL_ERROR)
+                bind_errors += 1
+        try:
+            reactor.listenUDP(global_config["LISTEN_PORT"], log_recv)
+        except:
+            self.log("cannot listen to UDP port %d: %s" % (global_config["LISTEN_PORT"],
+                                                            process_tools.get_except_info()),
+                      logging_tools.LOG_LEVEL_ERROR)
+            bind_errors += 1
         self.register_func("ping", self._ping)
+        if bind_errors:
+            self.send_pool_message("startup_error", bind_errors)
     def _ping(self, cur_idx, *args, **kwargs):
         self.send_pool_message("pong", cur_idx)
     def log_recv(self, raw_data):
@@ -468,6 +482,7 @@ class main_process(threading_tools.process_pool):
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("pong", self._pong)
+        self.register_func("startup_error", self._startup_error)
         self.renice()
         self._init_msi_block()
         self.add_process(log_receiver("receiver"), start=True)
@@ -481,6 +496,10 @@ class main_process(threading_tools.process_pool):
             self.send_to_process("receiver", "log", what, level)
         else:
             logging_tools.my_syslog(what, level)
+    def _startup_error(self, src_name, src_pid, num_errors):
+        self.log("%s during startup, exiting" % (logging_tools.get_plural("bind error", num_errors)),
+                 logging_tools.LOG_LEVEL_ERROR)
+        self._int_error("bind problem")
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
