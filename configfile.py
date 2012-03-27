@@ -435,8 +435,8 @@ class configuration(object):
                     "# %s" % (self.__c_dict[key]),
                     "# %s" % (self.__c_dict[key].get_info() if self.__c_dict[key].get_info() else "no info"),
                     "# %s" % (self.__c_dict[key].get_commandline_info()),
-                    "%s = %s" % (key, 
-                                 "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value),
+                    "%s=%s" % (key, 
+                               "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value),
                     ""] for key in all_keys if self.get_cvar(key)._only_commandline == False],
                                                          [""])))
             except:
