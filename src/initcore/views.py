@@ -67,7 +67,8 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
         if form.is_valid():
             # Light security check -- make sure redirect_to isn't garbage.
             auth.login(request, form.get_user())
-            update_request(request)
+            request.session.update(additional_session(request))
+            request.session.save()
             return HttpResponseRedirect(redirect_to)
         else:
             form = authentication_form(data=dict([(key, value) for key, value in request.POST.iteritems() if key not in ["password"]]))
@@ -79,10 +80,11 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
                                               "app_path"   : reverse("session:login")})()
 
 
-def update_request(request):
+def additional_session():
     """Update the request with session information."""
-    request.session.update(get_user_variables(request))
-    request.session.update(set_css_values(request))
+    res = {}
+    res.update(get_user_variables(request))
+    res.update(set_css_values(request))
     if hasattr(settings, "SESSION_EXTENDERS") and isinstance(settings.SESSION_EXTENDERS, (tuple, list)):
         for funcstring in settings.SESSION_EXTENDERS:
             split_string = funcstring.split(".")
@@ -96,8 +98,8 @@ def update_request(request):
                 if callable(func):
                     dict_ = func(request)
                     if isinstance(dict_, dict):
-                        request.session.update(dict_)
-    request.session.save()
+                        res.update(dict_)
+    return res
 
 
 @init_logging
@@ -376,7 +378,8 @@ def change_user(request):
             else:
                 user.backend = "edmdb.auth.olim_backend"
                 django.contrib.auth.login(request, user)
-                update_request(request)
+                request.session.update(additional_session(request))
+                request.session.save()
                 res = HttpResponseRedirect(settings.SITE_ROOT)
     return res
 
