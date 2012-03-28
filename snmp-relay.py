@@ -302,7 +302,7 @@ class relay_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
         self._init_msi_block()
-        self._init_ipc_sockets(close_socket=True)
+        self._init_ipc_sockets()
         self.register_exception("int_error" , self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error" , self._hup_error)
@@ -406,40 +406,46 @@ class relay_process(threading_tools.process_pool):
         else:
             self["exit_requested"] = True
     def _init_ipc_sockets(self, close_socket=False):
-        sock_name = process_tools.get_zmq_ipc_name("receiver")
-        file_name = sock_name[5:]
-        self.log("init ipc_socket '%s'" % (sock_name))
-        if os.path.exists(file_name) and close_socket:
-            self.log("removing previous file")
-            try:
-                os.unlink(file_name)
-            except:
-                self.log("... %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-        wait_iter = 0
-        while os.path.exists(file_name) and wait_iter < 100:
-            self.log("socket %s still exists, waiting" % (sock_name))
-            time.sleep(0.1)
-            wait_iter += 1
-        client = self.zmq_context.socket(zmq.ROUTER)
-        try:
-            process_tools.bind_zmq_socket(client, sock_name)
-            #client.bind("tcp://*:8888")
-        except zmq.core.error.ZMQError:
-            self.log("error binding %s: %s" % (sock_name,
-                                               process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_CRITICAL)
-            raise
-        else:
-            self.relayer_socket = client
-            backlog_size = global_config["BACKLOG_SIZE"]
-            os.chmod(file_name, 0777)
-            self.relayer_socket.setsockopt(zmq.LINGER, 0)
-            #self.relayer_socket.setsockopt(zmq.HWM, backlog_size)
-            self.register_poller(client, zmq.POLLIN, self._recv_command)
         self.__num_messages = 0
+        for short_sock_name, sock_type, hwm_size in [
+            ("receiver", zmq.PULL, 2),
+            ("sender"  , zmq.PUB, 1024)]:
+            sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
+            file_name = sock_name[5:]
+            self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
+                                                            hwm_size))
+            if os.path.exists(file_name):
+                self.log("removing previous file")
+                try:
+                    os.unlink(file_name)
+                except:
+                    self.log("... %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            wait_iter = 0
+            while os.path.exists(file_name) and wait_iter < 100:
+                self.log("socket %s still exists, waiting" % (sock_name))
+                time.sleep(0.1)
+                wait_iter += 1
+            cur_socket = self.zmq_context.socket(sock_type)
+            try:
+                process_tools.bind_zmq_socket(cur_socket, sock_name)
+                #client.bind("tcp://*:8888")
+            except zmq.core.error.ZMQError:
+                self.log("error binding %s: %s" % (short_sock_name,
+                                                   process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_CRITICAL)
+                raise
+            else:
+                setattr(self, "%s_socket" % (short_sock_name), cur_socket)
+                backlog_size = global_config["BACKLOG_SIZE"]
+                os.chmod(file_name, 0777)
+                self.receiver_socket.setsockopt(zmq.LINGER, 0)
+                self.receiver_socket.setsockopt(zmq.HWM, hwm_size)
+                if sock_type == zmq.PULL:
+                    self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)
     def _close_ipc_sockets(self):
         self.unregister_poller(self.relayer_socket, zmq.POLLIN)
         self.relayer_socket.close()
+        self.sender_socket.close()
     def _hup_error(self, err_cause):
         # no longer needed
         #self.__relay_thread_queue.put("reload")
@@ -492,90 +498,85 @@ class relay_process(threading_tools.process_pool):
                     ret_state, ret_str, log_it = scheme.return_tuple
                     self._send_return(scheme.envelope, ret_state, ret_str)
     def _recv_command(self, zmq_sock):
-        in_data = []
-        while True:
-            in_data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):
-                break
-        if len(in_data) == 2:
-            envelope, body = in_data
-            xml_input = body.startswith("<")
-            parameter_ok = False
-            if xml_input:
-                srv_com = server_command.srv_command(source=body)
-                srv_com["result"] = {"reply" : "no reply set",
-                                     "state" : server_command.SRV_REPLY_STATE_UNSET}
-                try:
-                    host = srv_com.xpath(None, ".//ns:host")[0].text
-                    snmp_version = int(srv_com.xpath(None, ".//ns:snmp_version")[0].text)
-                    snmp_community = srv_com.xpath(None, ".//ns:snmp_community")[0].text
-                    comline = srv_com.xpath(None, ".//ns:command")[0].text
-                except:
-                    self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
-                else:
-                    parameter_ok = True
-                    if len(srv_com.xpath(None, ".//ns:arg_list/text()")):
-                        comline = " ".join([comline] + srv_com.xpath(None, ".//ns:arg_list/text()")[0].strip().split())
+        body = zmq_sock.recv()
+        xml_input = body.startswith("<")
+        parameter_ok = False
+        if xml_input:
+            srv_com = server_command.srv_command(source=body)
+            srv_com["result"] = {"reply" : "no reply set",
+                                 "state" : server_command.SRV_REPLY_STATE_UNSET}
+            try:
+                host = srv_com.xpath(None, ".//ns:host")[0].text
+                snmp_version = int(srv_com.xpath(None, ".//ns:snmp_version")[0].text)
+                snmp_community = srv_com.xpath(None, ".//ns:snmp_community")[0].text
+                comline = srv_com.xpath(None, ".//ns:command")[0].text
+            except:
+                self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
             else:
-                srv_com = None
-                if body.count(";") >= 3:
-                    host, snmp_version, snmp_community, comline = body.split(";", 3)
-                    parameter_ok = True
-            if parameter_ok:
-                try:
-                    snmp_version = int(snmp_version)
-                    comline_split = comline.split()
-                    scheme = comline_split.pop(0)
-                except:
-                    self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
-                else:
-                    act_scheme = self.__all_schemes.get(scheme, None)
-                    if act_scheme:
-                        host_obj = self._get_host_object(host, snmp_community, snmp_version)
-                        if self.__verbose:
-                            self.log("got request for scheme %s (host %s, community %s, version %d, envelope %s)" % (
-                                scheme,
-                                host,
-                                snmp_community,
-                                snmp_version,
-                                envelope))
-                        try:
-                            act_scheme = act_scheme(net_obj=host_obj,
-                                                    #ret_queue=self.get_thread_queue(),
-                                                    #pid=pid,
-                                                    envelope=envelope,
-                                                    options=comline_split,
-                                                    xml_input=xml_input,
-                                                    srv_com=srv_com,
-                                                    init_time=time.time())
-                        except IOError:
-                            err_str = "error while creating scheme %s: %s" % (scheme,
-                                                                              process_tools.get_except_info()) 
+                parameter_ok = True
+                if len(srv_com.xpath(None, ".//ns:arg_list/text()")):
+                    comline = " ".join([comline] + srv_com.xpath(None, ".//ns:arg_list/text()")[0].strip().split())
+        else:
+            srv_com = None
+            if body.count(";") >= 3:
+                envelope, host, snmp_version, snmp_community, comline = body.split(";", 4)
+                parameter_ok = True
+        if parameter_ok:
+            try:
+                snmp_version = int(snmp_version)
+                comline_split = comline.split()
+                scheme = comline_split.pop(0)
+            except:
+                self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
+            else:
+                act_scheme = self.__all_schemes.get(scheme, None)
+                if act_scheme:
+                    host_obj = self._get_host_object(host, snmp_community, snmp_version)
+                    if self.__verbose:
+                        self.log("got request for scheme %s (host %s, community %s, version %d, envelope %s)" % (
+                            scheme,
+                            host,
+                            snmp_community,
+                            snmp_version,
+                            envelope))
+                    try:
+                        act_scheme = act_scheme(net_obj=host_obj,
+                                                #ret_queue=self.get_thread_queue(),
+                                                #pid=pid,
+                                                envelope=envelope,
+                                                options=comline_split,
+                                                xml_input=xml_input,
+                                                srv_com=srv_com,
+                                                init_time=time.time())
+                    except IOError:
+                        err_str = "error while creating scheme %s: %s" % (scheme,
+                                                                          process_tools.get_except_info()) 
+                        self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
+                    else:
+                        if act_scheme.get_errors():
+                            err_str = "problem in creating scheme %s: %s" % (scheme,
+                                                                             ", ".join(act_scheme.get_errors()))
                             self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
                         else:
-                            if act_scheme.get_errors():
-                                err_str = "problem in creating scheme %s: %s" % (scheme,
-                                                                                 ", ".join(act_scheme.get_errors()))
-                                self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
-                            else:
-                                self._start_snmp_fetch(act_scheme)
-                    else:
-                        guess_list = ", ".join(difflib.get_close_matches(scheme, self.__all_schemes.keys()))
-                        err_str = "got unknown scheme '%s'%s" % (scheme,
-                                                                 ", maybe one of %s" % (guess_list) if guess_list else ", no similar scheme found")
-                        self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
-            else:
-                self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error")
+                            self._start_snmp_fetch(act_scheme)
+                else:
+                    guess_list = ", ".join(difflib.get_close_matches(scheme, self.__all_schemes.keys()))
+                    err_str = "got unknown scheme '%s'%s" % (scheme,
+                                                             ", maybe one of %s" % (guess_list) if guess_list else ", no similar scheme found")
+                    self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
         else:
-            self.log("wrong count of input data frames: %d, first one is %s" % (len(in_data),
-                                                                                in_data[0]),
-                      logging_tools.LOG_LEVEL_ERROR)
+            self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error")
+        self.__num_messages += 1
+        if self.__num_messages % 1000 == 0:
+            cur_mem = process_tools.get_mem_info()
+            self.log("memory usage is %s after %s" % (logging_tools.get_size_str(cur_mem),
+                                                      logging_tools.get_plural("message", self.__num_messages)))
     def _send_return(self, envelope, ret_state, ret_str):
-        self.relayer_socket.send(envelope, zmq.SNDMORE)
-        self.relayer_socket.send_unicode(u"%d\0%s" % (ret_state, ret_str))
+        self.sender_socket.send(envelope, zmq.SNDMORE)
+        self.sender_socket.send_unicode(u"%d\0%s" % (ret_state, ret_str))
     def _send_return_xml(self, scheme):
-        self.relayer_socket.send(scheme.envelope, zmq.SNDMORE)
-        self.relayer_socket.send_unicode(unicode(scheme.srv_com))
+        self.sender_socket.send(scheme.envelope, zmq.SNDMORE)
+        self.sender_socket.send_unicode(unicode(scheme.srv_com))
     def _check_msg_settings(self):
         msg_dir = "/proc/sys/kernel/"
         t_dict = {"max" : {"info"  : "maximum number of bytes in a message"},

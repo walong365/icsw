@@ -839,7 +839,8 @@ class relay_process(threading_tools.process_pool):
                 os.chmod(file_name, 0777)
                 self.receiver_socket.setsockopt(zmq.LINGER, 0)
                 self.receiver_socket.setsockopt(zmq.HWM, hwm_size)
-                self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)
+                if sock_type == zmq.PULL:
+                    self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)
     def _recv_command(self, zmq_sock):
         data = zmq_sock.recv()
         xml_input = data.startswith("<")

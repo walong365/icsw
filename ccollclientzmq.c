@@ -166,8 +166,9 @@ int main (int argc, char** argv) {
         setitimer(ITIMER_REAL, &mytimer, NULL);
         /* init 0MQ context */
         void *context = zmq_init(1);
-        /* DEALER socket */
+        /* PUSH sender socket */
         void *requester = zmq_socket(context, ZMQ_PUSH);
+        /* SUB receiver socket */
         void *receiver = zmq_socket(context, ZMQ_SUB);
         // send
         zmq_connect(requester, "ipc:///var/log/cluster/sockets/collrelay/receiver");
@@ -184,18 +185,25 @@ int main (int argc, char** argv) {
         memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
         zmq_send(requester, &request, 0);
         zmq_msg_init(&reply);
+        // receive header
         zmq_recv(receiver, &reply, 0);
+        zmq_getsockopt(receiver, ZMQ_RCVMORE, &more, &more_size);
         zmq_msg_close(&request);
-        // receive
-        zmq_recv(receiver, &reply, 0);
-        int reply_size = zmq_msg_size(&reply);
-        char *recv_buffer = malloc(reply_size + 1);
-        memcpy (recv_buffer, zmq_msg_data(&reply), reply_size);
+        if (more == 1) {
+            // receive body
+            zmq_recv(receiver, &reply, 0);
+            int reply_size = zmq_msg_size(&reply);
+            char *recv_buffer = malloc(reply_size + 1);
+            memcpy (recv_buffer, zmq_msg_data(&reply), reply_size);
+            recv_buffer[reply_size] = 0;
+            retcode = strtol(recv_buffer, NULL, 10);
+            printf("%s\n", recv_buffer + 2);
+            free(recv_buffer);
+        } else {
+            retcode = 2;
+            printf("short message\n");
+        }
         zmq_msg_close(&reply);
-        recv_buffer[reply_size] = 0;
-        retcode = strtol(recv_buffer, NULL, 10);
-        printf("%s\n", recv_buffer + 2);
-        free(recv_buffer);
         zmq_close(requester);
         zmq_close(receiver);
         zmq_term(context);

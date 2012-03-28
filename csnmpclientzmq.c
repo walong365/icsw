@@ -134,7 +134,9 @@ int main (int argc, char** argv) {
     //printf("%s\n", host_b);
     /*  errno = 0;*/
     //if (!h) err_exit("Wrong host or no host given!\n");
-    sprintf(sendbuff, "%s;%d;%s;", host_b, snmp_version, snmp_community);
+    char identity_str[64];
+    sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
+    sprintf(sendbuff, "%s;%s;%d;%s;", identity_str, host_b, snmp_version, snmp_community);
     act_pos = sendbuff;
     for (i = optind; i < argc; i++) {
         sprintf(sendbuff, "%s %s", sendbuff, argv[i]);
@@ -146,14 +148,9 @@ int main (int argc, char** argv) {
     sendbuff[SENDBUFF_SIZE] = '\0';/* terminate optarg for secure use of strlen() */
     if (!strlen(sendbuff)) err_exit("Nothing to send!\n");
     //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));
-    void *context = zmq_init(1);
-    void *requester = zmq_socket(context, ZMQ_DEALER);
-    char* identity_str;
     int linger = 100;
-    identity_str = (char*)malloc(1000);
-    sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
-    zmq_setsockopt(requester, ZMQ_IDENTITY, identity_str, strlen(identity_str));
-    zmq_setsockopt(requester, ZMQ_LINGER, &linger, sizeof(linger));
+    int64_t more;
+    size_t more_size = sizeof(more);
     alrmsigact = (struct sigaction*)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
         free(host_b);
@@ -168,8 +165,16 @@ int main (int argc, char** argv) {
         mytimer.it_value.tv_sec = timeout;
         mytimer.it_value.tv_usec = 0;
         setitimer(ITIMER_REAL, &mytimer, NULL);
+        /* init 0MQ context */
+        void *context = zmq_init(1);
+        /* PUSH sender socket */
+        void *requester = zmq_socket(context, ZMQ_PUSH);
+        /* SUB receiver socket */
+        void *receiver = zmq_socket(context, ZMQ_SUB);
         // send
         zmq_connect(requester, "ipc:///var/log/cluster/sockets/snmp_relay/receiver");
+        zmq_connect(receiver, "ipc:///var/log/cluster/sockets/snmp_relay/sender");
+        zmq_setsockopt(receiver, ZMQ_SUBSCRIBE, identity_str, strlen(identity_str));
         zmq_msg_t request, reply;
         if (verbose) {
             printf("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', pid is %d\n", strlen(sendbuff), identity_str, myuts.nodename, SERVICE_NAME, getpid());
@@ -177,21 +182,30 @@ int main (int argc, char** argv) {
         zmq_msg_init_size (&request, strlen(sendbuff));
         memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
         zmq_send(requester, &request, 0);
-        zmq_msg_close(&request);
-        // receive
         zmq_msg_init(&reply);
-        zmq_recv(requester, &reply, 0);
-        int reply_size = zmq_msg_size(&reply);
-        char *recv_buffer = malloc(reply_size + 1);
-        memcpy (recv_buffer, zmq_msg_data(&reply), reply_size);
-        recv_buffer[reply_size] = 0;
+        // receive header
+        zmq_recv(receiver, &reply, 0);
+        zmq_getsockopt(receiver, ZMQ_RCVMORE, &more, &more_size);
+        zmq_msg_close(&request);
+        if (more == 1) {
+            // receive body
+            zmq_recv(receiver, &reply, 0);
+            int reply_size = zmq_msg_size(&reply);
+            char *recv_buffer = malloc(reply_size + 1);
+            memcpy (recv_buffer, zmq_msg_data(&reply), reply_size);
+            recv_buffer[reply_size] = 0;
+            retcode = strtol(recv_buffer, NULL, 10);
+            printf("%s\n", recv_buffer + 2);
+            free(recv_buffer);
+        } else {
+            retcode = 2;
+            printf("short message\n");
+        }
         zmq_msg_close(&reply);
-        retcode = strtol(recv_buffer, NULL, 10);
-        printf("%s\n", recv_buffer + 2);
-        free(recv_buffer);
+        zmq_close(requester);
+        zmq_close(receiver);
+        zmq_term(context);
     }
-    zmq_close(requester);
-    zmq_term(context);
     free(sendbuff);
     free(host_b);
     exit(retcode);
