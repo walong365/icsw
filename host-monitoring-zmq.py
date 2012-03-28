@@ -788,19 +788,6 @@ class relay_process(threading_tools.process_pool):
         else:
             self.log("result for non-existing id '%s' received, discarding" % (src_id),
                      logging_tools.LOG_LEVEL_ERROR)
-        return
-        print src_id, self.__old_send_lut
-        srv_com = server_command.srv_command(source=srv_com)
-        print "tr", src_id, unicode(srv_com), data_str
-        com_name = srv_com["command"].text
-        if com_name in self.modules.command_dict:
-            # build dummy host_message
-            dummy_hm = host_message(com_name, src_id, srv_com, True)
-            dummy_hm.set_com_struct(self.modules.command_dict[com_name])
-            res_tuple = dummy_hm.interpret_old(data_str)
-        else:
-            res_tuple = (limits.nag_STATE_CRITICAL, "error unknown relay command '%s'" % (com_name))
-        self.send_result(src_id, u"%d\0%s" % (res_tuple[0], res_tuple[1]))
     def send_result(self, src_id, ret_str):
         self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
         self.sender_socket.send_unicode(ret_str)
@@ -919,14 +906,6 @@ class relay_process(threading_tools.process_pool):
             # return a dummy message
             zmq_sock.send_unicode(src_id, zmq.SNDMORE)
             zmq_sock.send_unicode("cannot interpret")
-##        else:
-##            self.log("wrong count of input data frames: %d, first one is %s" % (len(in_data),
-##                                                                               in_data[0]),
-##                     logging_tools.LOG_LEVEL_ERROR)
-##            print "ss0"
-##            self.sender_socket.send(in_data[0].split(";")[0], zmq.SNDMORE)
-##            self.sender_socket.send("0\0ok")
-##            print "ss1"
         self.__num_messages += 1
         if self.__num_messages % 1000 == 0:
             cur_mem = process_tools.get_mem_info()
