@@ -37,6 +37,7 @@ from edmdb.models import olimhcm_oetipersonoetirole, olimcrm_person, OlimUser
 
 session_history = None
 
+
 @login_required
 def logout(request):
     """ Log a User out, and record action """
@@ -53,7 +54,7 @@ def logout(request):
     return render_me(request, "initcore/login.html",
                      {"login_form": authentication_form(),
                       "next": settings.SITE_ROOT,
-                      "from_logout" : True,
+                      "from_logout": True,
                       "app_path": reverse("session:login")}
                      )()
 
@@ -75,12 +76,12 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
     else:
         form = authentication_form(request)
     request.session.set_test_cookie()
-    return render_me(request, template_name, {"login_form" : form,
-                                              "next"       : redirect_to,
-                                              "app_path"   : reverse("session:login")})()
+    return render_me(request, template_name, {"login_form": form,
+                                              "next": redirect_to,
+                                              "app_path": reverse("session:login")})()
 
 
-def additional_session():
+def additional_session(request):
     """Update the request with session information."""
     res = {}
     res.update(get_user_variables(request))
@@ -117,18 +118,20 @@ def change_password(request):
     else:
         cur_form = change_password_form(username=request.user.username)
     return render_me(request, "initcore/change_password.html",
-                     {"password_form" : cur_form,
+                     {"password_form": cur_form,
                       "user_form": change_user_form(),
                       }).render()
+
 
 @init_logging
 def menu_folder(request, *args):
     args = base64.b64decode(args[0])
     xml_doc = menu_tools.olim_menu(settings.MENU_XML_DIR).process(codecs.open(settings.MENU_XML_PATH, "r", "utf-8").read(), transform=False)
     parent_node = xml_doc.xpath(args)[0]
-    request.session.update({"menu_xpath" : args})
+    request.session.update({"menu_xpath": args})
     request.session.save()
     return render_me(request, "initcore/main.html")()
+
 
 @init_logging
 @login_required
@@ -138,6 +141,7 @@ def get_menu(request, *args):
     for_dynatree = "dynatree" in args
     menu_html = menu_tools.get_menu_html(request, is_mobile, for_dynatree)
     return HttpResponse(menu_html, mimetype="text/html")
+
 
 @init_logging
 @login_required
@@ -157,6 +161,7 @@ def change_language(request):
         form = change_language_form(initial=initial)
     return render_me(request, "initcore/change_language.html", {"form": form})()
 
+
 @init_logging
 @login_required
 def switch_useragent(request):
@@ -170,6 +175,7 @@ def switch_useragent(request):
     request.session.save()
     return HttpResponseRedirect(redirect_to)
 
+
 @init_logging
 @login_required
 def set_color_scheme(request, *args):
@@ -179,6 +185,7 @@ def set_color_scheme(request, *args):
     request.session.update(set_css_values(request))
     request.session.save()
     return HttpResponseRedirect(redirect_to)
+
 
 @init_logging
 @login_required
@@ -197,6 +204,7 @@ def set_mobile(request):
             else:
                 store_user_variable(request, "is_mobile", True)
     return HttpResponseRedirect(redirect_to)
+
 
 @init_logging
 def save_layout_state(request):
@@ -220,13 +228,14 @@ def save_layout_state(request):
     return HttpResponse(etree.tostring(E.retval("OK saved state")),
                         mimetype="application/xml")
 
+
 @login_required
 def user_config(request):
     # modify session object if necessary
-    def_dict = {"css_theme"  : settings.DEFAULT_CSS_THEME,
-                "font_scale" : "27"}
+    def_dict = {"css_theme": settings.DEFAULT_CSS_THEME,
+                "font_scale": "27"}
     for cv_name, cv_default in def_dict.iteritems():
-        if not request.session.has_key(cv_name):
+        if not cv_name in request.session:
             request.session[cv_name] = cv_default
     stored = False
     if request.method == "POST":
@@ -244,14 +253,15 @@ def user_config(request):
     if stored:
         return HttpResponseRedirect(settings.SITE_ROOT)
     else:
-        return render_me(request, "initcore/user_config.html", {"css_form" : config_form})()
+        return render_me(request, "initcore/user_config.html", {"css_form": config_form})()
+
 
 @login_required
 def set_css_values(request):
     css_name = request.session.get("css_theme", settings.DEFAULT_CSS_THEME)
     font_scale = request.session.get("font_scale", "27")
-    upd_dict = {"background_color_top"  : "#ffda88",
-                "background_color_west" : "#ffeaa8"}
+    upd_dict = {"background_color_top": "#ffda88",
+                "background_color_west": "#ffeaa8"}
     css_dir = os.path.join(settings.MEDIA_ROOT, "initcore/css", "%s%s" % (css_name, font_scale))
     if os.path.isdir(css_dir):
         css_file = [f_name for f_name in os.listdir(css_dir) if f_name.endswith(".css")]
@@ -271,9 +281,10 @@ def set_css_values(request):
                                  int(css_color[2:4], 16),
                                  int(css_color[4:6], 16))
                     css_h_s_v = colorsys.rgb_to_hsv(*css_r_g_b)
-                    upd_dict = {"background_color_top"  : "#%02x%02x%02x" % (scale_rgb(css_r_g_b, 1.0, -20)),
-                                "background_color_west" : "#%02x%02x%02x" % (scale_rgb(css_r_g_b, 1.02, 0))}
+                    upd_dict = {"background_color_top": "#%02x%02x%02x" % (scale_rgb(css_r_g_b, 1.0, -20)),
+                                "background_color_west": "#%02x%02x%02x" % (scale_rgb(css_r_g_b, 1.02, 0))}
     return upd_dict
+
 
 def scale_rgb(rgb_specs, fact, diff):
     ret_val = tuple([min(max(val * fact + diff * val * val / (255 * 255), 0), 255) for val in rgb_specs])
@@ -324,7 +335,7 @@ def get_jqgrid_user_params(request, name, grid_num=1):
         if params.get(u_name):
             result.append(params.get(u_name))
         else:
-            result.append({"rowNum"  : u"10", "columns" : []})
+            result.append({"rowNum": u"10", "columns": []})
     return " ".join([":".join([res["rowNum"], ",".join(res["columns"])]) for res in result])
 
 
@@ -335,8 +346,8 @@ def store_jqgrid_user_params(request):
         grid_num = "0"
         if request.POST["grid_num"]:
             grid_num = request.POST["grid_num"]
-        store_user_variable(request, "%s%s" % (request.POST["name"], grid_num), {"rowNum"  : request.POST["rowNum"],
-                                                                                 "columns" : request.POST["params"].split(" ")})
+        store_user_variable(request, "%s%s" % (request.POST["name"], grid_num), {"rowNum": request.POST["rowNum"],
+                                                                                 "columns": request.POST["params"].split(" ")})
     return HttpResponse(etree.tostring(E.succsess("user params saved")), mimetype="application/xml")
 
 
@@ -382,4 +393,3 @@ def change_user(request):
                 request.session.save()
                 res = HttpResponseRedirect(settings.SITE_ROOT)
     return res
-
