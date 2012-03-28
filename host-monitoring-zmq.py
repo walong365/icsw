@@ -125,8 +125,8 @@ class id_discovery(object):
         dummy_mes.set_result(limits.nag_STATE_CRITICAL, error_msg)
         self.send_result(dummy_mes)
     def send_result(self, host_mes, result=None):
-        id_discovery.relayer_process.relayer_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
-        id_discovery.relayer_process.relayer_socket.send_unicode(host_mes.get_result(result))
+        id_discovery.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
+        id_discovery.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
         self.close()
     def error(self, zmq_sock):
         self.log("got error for socket", logging_tools.LOG_LEVEL_ERROR)
@@ -313,14 +313,14 @@ class host_connection(object):
                     host_mes.src_id,
                     unicode(host_mes.srv_com))
     def send_result(self, host_mes, result=None):
-        host_connection.relayer_process.relayer_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
-        host_connection.relayer_process.relayer_socket.send_unicode(host_mes.get_result(result))
+        host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
+        host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
         del host_connection.messages[host_mes.src_id]
         del host_mes
     @staticmethod
     def _send_result(host_mes, result=None):
-        host_connection.relayer_process.relayer_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
-        host_connection.relayer_process.relayer_socket.send_unicode(host_mes.get_result(result))
+        host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
+        host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
         del host_connection.messages[host_mes.src_id]
         del host_mes
     def return_error(self, host_mes, error_str):
@@ -534,7 +534,7 @@ class tcp_factory(ClientFactory):
         else:
             raise SyntaxError, "nothing found to send for '%s'" % (cur_id)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.twisted_process.log("[tcp] %s" % (what), log_level)
+        self.twisted_process.log("[tcp] %s" % (", ".join([line.strip() for line in what.split("\n")])), log_level)
     def received(self, cur_proto, data):
         self.twisted_process.send_result(cur_proto.src_id, unicode(cur_proto.srv_com), data)
 
@@ -707,7 +707,7 @@ class relay_process(threading_tools.process_pool):
         id_discovery.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose)
         self._init_filecache()
         self._init_msi_block()
-        self._init_ipc_sockets(close_socket=True)
+        self._init_ipc_sockets()
         self.register_exception("int_error" , self._sigint)
         self.register_exception("term_error", self._sigint)
         self.register_timer(self._check_timeout, 2)
@@ -802,134 +802,135 @@ class relay_process(threading_tools.process_pool):
             res_tuple = (limits.nag_STATE_CRITICAL, "error unknown relay command '%s'" % (com_name))
         self.send_result(src_id, u"%d\0%s" % (res_tuple[0], res_tuple[1]))
     def send_result(self, src_id, ret_str):
-        self.relayer_socket.send_unicode(src_id, zmq.SNDMORE)
-        self.relayer_socket.send_unicode(ret_str)
-    def _init_ipc_sockets(self, close_socket=False):
-        sock_name = process_tools.get_zmq_ipc_name("receiver")
-        file_name = sock_name[5:]
-        self.log("init ipc_socket '%s'" % (sock_name))
-        if os.path.exists(file_name) and close_socket:
-            self.log("removing previous file")
-            try:
-                os.unlink(file_name)
-            except:
-                self.log("... %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-        wait_iter = 0
-        while os.path.exists(file_name) and wait_iter < 100:
-            self.log("socket %s still exists, waiting" % (sock_name))
-            time.sleep(0.1)
-            wait_iter += 1
-        client = self.zmq_context.socket(zmq.ROUTER)
-        try:
-            process_tools.bind_zmq_socket(client, sock_name)
-            #client.bind("tcp://*:8888")
-        except zmq.core.error.ZMQError:
-            self.log("error binding %s: %s" % (sock_name,
-                                               process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_CRITICAL)
-            raise
-        else:
-            self.relayer_socket = client
-            backlog_size = global_config["BACKLOG_SIZE"]
-            os.chmod(file_name, 0777)
-            self.relayer_socket.setsockopt(zmq.LINGER, 0)
-            #self.relayer_socket.setsockopt(zmq.HWM, backlog_size)
-            self.register_poller(client, zmq.POLLIN, self._recv_command)
+        self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
+        self.sender_socket.send_unicode(ret_str)
+    def _init_ipc_sockets(self):
         self.__num_messages = 0
+        for short_sock_name, sock_type, hwm_size in [
+            ("receiver", zmq.PULL, 2),
+            ("sender"  , zmq.PUB, 1024)]:
+            sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
+            file_name = sock_name[5:]
+            self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
+                                                            hwm_size))
+            if os.path.exists(file_name):
+                self.log("removing previous file")
+                try:
+                    os.unlink(file_name)
+                except:
+                    self.log("... %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            wait_iter = 0
+            while os.path.exists(file_name) and wait_iter < 100:
+                self.log("socket %s still exists, waiting" % (sock_name))
+                time.sleep(0.1)
+                wait_iter += 1
+            cur_socket = self.zmq_context.socket(sock_type)
+            try:
+                process_tools.bind_zmq_socket(cur_socket, sock_name)
+                #client.bind("tcp://*:8888")
+            except zmq.core.error.ZMQError:
+                self.log("error binding %s: %s" % (short_sock_name,
+                                                   process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_CRITICAL)
+                raise
+            else:
+                setattr(self, "%s_socket" % (short_sock_name), cur_socket)
+                backlog_size = global_config["BACKLOG_SIZE"]
+                os.chmod(file_name, 0777)
+                self.receiver_socket.setsockopt(zmq.LINGER, 0)
+                self.receiver_socket.setsockopt(zmq.HWM, hwm_size)
+                self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)
     def _recv_command(self, zmq_sock):
-        in_data = []
-        while True:
-            in_data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):
-                break
-        if len(in_data) == 2:
-            src_id, data = in_data
-            xml_input = data.startswith("<")
-            srv_com = None
-            if xml_input:
-                srv_com = server_command.srv_command(source=data)
-            else:
-                if data.count(";") > 1:
-                    parts = data.split(";", 2)
-                    com_part = parts[2].split(None, 1)
-                    srv_com = server_command.srv_command(command=com_part.pop(0) if com_part else "")
-                    srv_com["host"] = parts[0]
-                    srv_com["port"] = parts[1]
-                    if com_part:
-                        arg_list = com_part[0].split()
-                        for arg_index, arg in enumerate(arg_list):
-                            srv_com["arguments:arg%d" % (arg_index)] = arg
-                    else:
-                        arg_list = []
-                    srv_com["arg_list"] = " ".join(arg_list)
-            if srv_com is not None:
-                if self.__verbose:
-                    self.log("got command '%s' for '%s' (XML: %s)" % (srv_com["command"].text,
-                                                                      srv_com["host"].text,
-                                                                      str(xml_input)))
-                if "host" in srv_com and "port" in srv_com:
-                    t_host = srv_com["host"].text
-                    srv_com["host"] = socket.gethostbyname(t_host)
-                    if self.__autosense:
-                        c_state = self.__client_dict.get(t_host, None)
-                        if c_state is None:
-                            # not needed
-                            #host_connection.delete_hc(srv_com)
-                            if t_host not in self.__last_tried:
-                                self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
-                            self.__last_tried[t_host] = {"T" : "0",
-                                                         "0" : "T"}[self.__last_tried[t_host]]
-                            c_state = self.__last_tried[t_host]
-                        con_mode = c_state
-                        #con_mode = "0"
-                    else:
-                        self.__old_clients.update()
-                        self.__new_clients.update()
-                        if t_host in self.__new_clients:
-                            con_mode = "0"
-                        elif t_host in self.__old_clients:
-                            con_mode = "T"
-                        elif self.__default_0mq:
-                            con_mode = "0"
-                        else:
-                            con_mode = "T"
-                    # decide which code to use
-                    if self.__verbose:
-                        self.log("connection to '%s:%d' via %s" % (t_host,
-                                                                   int(srv_com["port"].text),
-                                                                   con_mode))
-                    if int(srv_com["port"].text) != 2001:
-                        # connect to non-host-monitoring service
-                        self._send_to_old_nhm_service(src_id, srv_com, xml_input)
-                    elif con_mode == "0":
-                        self._send_to_client(src_id, srv_com, xml_input)
-                    elif con_mode == "T":
-                        self._send_to_old_client(src_id, srv_com, xml_input)
-                    else:
-                        self.log("unknown con_mode '%s', error" % (con_mode),
-                                 logging_tools.LOG_LEVEL_CRITICAL)
-                    if self.__verbose:
-                        self.log("send done")
+        data = zmq_sock.recv()
+        xml_input = data.startswith("<")
+        srv_com = None
+        if xml_input:
+            srv_com = server_command.srv_command(source=data)
+        else:
+            if data.count(";") > 1:
+                parts = data.split(";", 3)
+                src_id = parts.pop(0)
+                com_part = parts[2].split(None, 1)
+                srv_com = server_command.srv_command(command=com_part.pop(0) if com_part else "")
+                srv_com["host"] = parts[0]
+                srv_com["port"] = parts[1]
+                if com_part:
+                    arg_list = com_part[0].split()
+                    for arg_index, arg in enumerate(arg_list):
+                        srv_com["arguments:arg%d" % (arg_index)] = arg
                 else:
-                    self.log("some keys missing (host and / or port)",
-                             logging_tools.LOG_LEVEL_ERROR)
+                    arg_list = []
+                srv_com["arg_list"] = " ".join(arg_list)
+        if srv_com is not None:
+            if self.__verbose:
+                self.log("got command '%s' for '%s' (XML: %s)" % (srv_com["command"].text,
+                                                                  srv_com["host"].text,
+                                                                  str(xml_input)))
+            if "host" in srv_com and "port" in srv_com:
+                t_host = srv_com["host"].text
+                srv_com["host"] = socket.gethostbyname(t_host)
+                if self.__autosense:
+                    c_state = self.__client_dict.get(t_host, None)
+                    if c_state is None:
+                        # not needed
+                        #host_connection.delete_hc(srv_com)
+                        if t_host not in self.__last_tried:
+                            self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
+                        self.__last_tried[t_host] = {"T" : "0",
+                                                     "0" : "T"}[self.__last_tried[t_host]]
+                        c_state = self.__last_tried[t_host]
+                    con_mode = c_state
+                    #con_mode = "0"
+                else:
+                    self.__old_clients.update()
+                    self.__new_clients.update()
+                    if t_host in self.__new_clients:
+                        con_mode = "0"
+                    elif t_host in self.__old_clients:
+                        con_mode = "T"
+                    elif self.__default_0mq:
+                        con_mode = "0"
+                    else:
+                        con_mode = "T"
+                # decide which code to use
+                if self.__verbose:
+                    self.log("connection to '%s:%d' via %s" % (t_host,
+                                                               int(srv_com["port"].text),
+                                                               con_mode))
+                if int(srv_com["port"].text) != 2001:
+                    # connect to non-host-monitoring service
+                    self._send_to_old_nhm_service(src_id, srv_com, xml_input)
+                elif con_mode == "0":
+                    self._send_to_client(src_id, srv_com, xml_input)
+                elif con_mode == "T":
+                    self._send_to_old_client(src_id, srv_com, xml_input)
+                else:
+                    self.log("unknown con_mode '%s', error" % (con_mode),
+                             logging_tools.LOG_LEVEL_CRITICAL)
+                if self.__verbose:
+                    self.log("send done")
             else:
-                self.log("cannot interpret input data '%s' is srv_command" % (data),
+                self.log("some keys missing (host and / or port)",
                          logging_tools.LOG_LEVEL_ERROR)
         else:
-            self.log("wrong count of input data frames: %d, first one is %s" % (len(in_data),
-                                                                               in_data[0]),
+            self.log("cannot interpret input data '%s' as srv_command" % (data),
                      logging_tools.LOG_LEVEL_ERROR)
+            # return a dummy message
+            zmq_sock.send_unicode(src_id, zmq.SNDMORE)
+            zmq_sock.send_unicode("cannot interpret")
+##        else:
+##            self.log("wrong count of input data frames: %d, first one is %s" % (len(in_data),
+##                                                                               in_data[0]),
+##                     logging_tools.LOG_LEVEL_ERROR)
+##            print "ss0"
+##            self.sender_socket.send(in_data[0].split(";")[0], zmq.SNDMORE)
+##            self.sender_socket.send("0\0ok")
+##            print "ss1"
         self.__num_messages += 1
-        if self.__num_messages % 20 == 0:
-            cur_mem = process_tools.get_mem_info(self.pid)
-            if  cur_mem > MAX_USED_MEM * 1024 * 1024:
-                self.log("reached memory limit of %s after %s" % (logging_tools.get_size_str(cur_mem),
-                                                                  logging_tools.get_plural("message", self.__num_messages)),
-                         logging_tools.LOG_LEVEL_WARN)
-                self.unregister_poller(self.relayer_socket, zmq.POLLIN)
-                self.relayer_socket.close()
-                self._init_ipc_sockets()
+        if self.__num_messages % 1000 == 0:
+            cur_mem = process_tools.get_mem_info()
+            self.log("memory usage is %s after %s" % (logging_tools.get_size_str(cur_mem),
+                                                      logging_tools.get_plural("message", self.__num_messages)))
     def _send_to_client(self, src_id, srv_com, xml_input):
         # generate new xml from srv_com
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
@@ -999,7 +1000,8 @@ class relay_process(threading_tools.process_pool):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-        self.relayer_socket.close()
+        self.receiver_socket.close()
+        self.sender_socket.close()
     def _init_commands(self):
         self.log("init commands")
         self.module_list = self.modules.module_list
