@@ -570,7 +570,7 @@ class relay_process(threading_tools.process_pool):
         else:
             self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error")
         self.__num_messages += 1
-        if self.__num_messages % 1000 == 0:
+        if self.__num_messages % 100 == 0:
             cur_mem = process_tools.get_mem_info()
             self.log("memory usage is %s after %s" % (logging_tools.get_size_str(cur_mem),
                                                       logging_tools.get_plural("message", self.__num_messages)))
