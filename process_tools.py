@@ -1198,7 +1198,7 @@ def build_ppid_list(p_dict, pid=None):
             ppid_list.append(pid)
     return ppid_list
 
-def build_kill_dict(name, exclude_list):
+def build_kill_dict(name, exclude_list=[]):
     # process dict
     pdict = get_proc_list()
     # list of parent pids (up to init)

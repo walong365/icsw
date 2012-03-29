@@ -87,7 +87,8 @@ class srv_command(object):
                 self.__builder.source(host=os.uname()[1],
                                       pid="%d" % (os.getpid())),
                 self.__builder.command(kwargs.get("command", "not set")),
-            version="%d" % (kwargs.get("version", 1)))
+                self.__builder.identity(kwargs.get("identity", "not set")),
+                version="%d" % (kwargs.get("version", 1)))
     def xpath(self, start_el=None, *args, **kwargs):
         if "namespace" not in kwargs:
             kwargs["namespaces"] = {"ns" : XML_NS}
@@ -148,6 +149,9 @@ class srv_command(object):
         elif type(value) in [type(0), type(0L)]:
             cur_element.text = "%d" % (value)
             cur_element.attrib["type"] = "int"
+        elif type(value) in [type(0.0)]:
+            cur_element.text = "%f" % (value)
+            cur_element.attrib["type"] = "float"
         elif type(value) == type(None):
             cur_element.text = None
             cur_element.attrib["type"] = "none"
@@ -234,6 +238,8 @@ class srv_command(object):
             value = datetime.date(value_dt.year, value_dt.month, value_dt.day)
         elif el_type == "datetime":
             value = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
+        elif el_type == "float":
+            value = float(value)
         else:
             pass
         return value
