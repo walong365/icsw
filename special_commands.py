@@ -127,8 +127,8 @@ class special_base(object):
         else:
             srv_error = srv_reply.xpath(None, ".//ns:result[@state != '0']")
             if srv_error:
-                self.log("got an error (%d): %s" % (int(server_error[0].attrib["state"]),
-                                                    server_error[0].attrib["reply"]),
+                self.log("got an error (%d): %s" % (int(srv_error[0].attrib["state"]),
+                                                    srv_error[0].attrib["reply"]),
                          logging_tools.LOG_LEVEL_ERROR)
                 srv_reply = None
             else:
