@@ -793,9 +793,10 @@ class relay_process(threading_tools.process_pool):
         self.sender_socket.send_unicode(ret_str)
     def _init_ipc_sockets(self):
         self.__num_messages = 0
-        for short_sock_name, sock_type, hwm_size in [
-            ("receiver", zmq.PULL, 2),
-            ("sender"  , zmq.PUB, 1024)]:
+        sock_list = [("receiver", zmq.PULL, 2   ),
+                     ("sender"  , zmq.PUB , 1024)]
+        [setattr(self, "%s_socket" % (short_sock_name), None) for short_sock_name, a0, b0 in sock_list]
+        for short_sock_name, sock_type, hwm_size in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
             file_name = sock_name[5:]
             self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
@@ -976,12 +977,17 @@ class relay_process(threading_tools.process_pool):
         self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
             self.log("Config : %s" % (conf))
+    def _close_ipc_sockets(self):
+        if self.receiver_socket is not None:
+            self.unregister_poller(self.receiver_socket, zmq.POLLIN)
+            self.receiver_socket.close()
+        if self.sender_socket is not None:
+            self.sender_socket.close()
     def loop_end(self):
+        self._close_ipc_sockets()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-        self.receiver_socket.close()
-        self.sender_socket.close()
     def _init_commands(self):
         self.log("init commands")
         self.module_list = self.modules.module_list
@@ -1192,6 +1198,7 @@ class server_process(threading_tools.process_pool):
         for conf in conf_info:
             self.log("Config : %s" % (conf))
     def loop_end(self):
+        self._close_ipc_sockets()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()

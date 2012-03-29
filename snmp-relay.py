@@ -405,11 +405,12 @@ class relay_process(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
-    def _init_ipc_sockets(self, close_socket=False):
+    def _init_ipc_sockets(self):
         self.__num_messages = 0
-        for short_sock_name, sock_type, hwm_size in [
-            ("receiver", zmq.PULL, 2),
-            ("sender"  , zmq.PUB, 1024)]:
+        sock_list = [("receiver", zmq.PULL, 2   ),
+                     ("sender"  , zmq.PUB , 1024)]
+        [setattr(self, "%s_socket" % (short_sock_name), None) for short_sock_name, a0, b0 in sock_list]
+        for short_sock_name, sock_type, hwm_size in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
             file_name = sock_name[5:]
             self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
@@ -443,9 +444,11 @@ class relay_process(threading_tools.process_pool):
                 if sock_type == zmq.PULL:
                     self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)
     def _close_ipc_sockets(self):
-        self.unregister_poller(self.relayer_socket, zmq.POLLIN)
-        self.relayer_socket.close()
-        self.sender_socket.close()
+        if self.receiver_socket is not None:
+            self.unregister_poller(self.receiver_socket, zmq.POLLIN)
+            self.receiver_socket.close()
+        if self.sender_socket is not None:
+            self.sender_socket.close()
     def _hup_error(self, err_cause):
         # no longer needed
         #self.__relay_thread_queue.put("reload")
