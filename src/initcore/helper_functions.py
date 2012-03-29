@@ -40,7 +40,7 @@ import copy
 import colorsys
 from lxml import etree
 from lxml.builder import E
-from django.utils.hashcompat import md5_constructor
+import hashlib
 from django.utils.crypto import constant_time_compare, salted_hmac
 import hashlib
 from django.utils.encoding import smart_str
@@ -53,7 +53,7 @@ if settings.ZMQ_LOGGING:
     import zmq
 else:
     zmq = None
-    
+
 if not settings.IS_WINDOWS:
     from openpyxl.workbook import Workbook
     from openpyxl.writer.excel import save_virtual_workbook
@@ -108,7 +108,7 @@ class logging_pool(object):
                 os.getpid(),
                 log_name))
             logging_pool.logger_dict[cur_logger.logger.name] = cur_logger
-##            
+##
 ##        if logging_pool.idle_pool:
 ##            cur_logger = logging_pool.idle_pool.pop(0)
 ##            cur_logger.logger.name = "init.at.%s" % (log_name)
@@ -203,7 +203,7 @@ def expand_html_body(body_str, **kwargs):
             new_lines.pop(0)
     new_text = "\n".join(new_lines)
     return new_text
-  
+
 class progress_counter(object):
     @staticmethod
     def get_counter(**kwargs):
@@ -225,7 +225,7 @@ class progress_counter(object):
         cache.set("pc_%s" % (self.name), [self.max_value, self.act_value])
     def delete(self):
         cache.delete("pc_%s" % (self.name))
-    
+
 """
 def remove_temporary_documents(log_com, **kwargs):
     temp_docs = document.objects.filter(Q(temporary=True) & (Q(created=None) | Q(created__lt=datetime.datetime.now() - datetime.timedelta(days=kwargs.get("days", 1)))))
@@ -393,7 +393,7 @@ def customer_name_hash(name, short=None):
             return "%s%s" % (name_hash, short_hash)
     else:
         return name_hash
-    
+
 def hash_string(in_str):
     in_str = in_str or ""
     ret_str = ""
@@ -489,7 +489,7 @@ class init_base_object(object):
         with_revison = kwargs.get("revision", False)
         act_time = time.time()
         if self.__act_step:
-            # finish 
+            # finish
             run_time = act_time - self.__step_time
             self.log("finished step %d (%s) in %s" % (self.__step_num,
                                                       self.__act_step,
@@ -551,7 +551,7 @@ class init_base_object(object):
         if self.options:
             if self.options.verbose:
                 self.__verbose = True
-        
+
 def parser_options_to_dict(opts):
     empty_options = optparse.Values()
     return dict([(key, getattr(opts, key)) for key in [key for key in dir(opts) if key not in dir(empty_options)]])
@@ -606,7 +606,7 @@ class xml_response(object):
     def create_response(self):
         return HttpResponse(unicode(self),
                             mimetype="application/xml")
-    
+
 def keyword_check(*kwarg_list):
     def decorator(func):
         def _wrapped_view(*args, **kwargs):
@@ -616,7 +616,7 @@ def keyword_check(*kwarg_list):
             return func(*args, **kwargs)
         return _wrapped_view
     return decorator
-    
+
 class keyword_checkd(object):
     def __init__(self, *kwarg_list):
         self.__allowed_kwargs = kwarg_list
@@ -711,7 +711,7 @@ class init_logging(object):
             #print ret_value["Content-Type"]
             ret_value = HttpResponse(build_simple_xml("xml_result", {"err_str" : "session has expired, please login again"}),
                                      mimetype="application/xml")
-        if request.is_ajax() and ret_value["Content-Type"] == "application/json" and "callback" in request.GET:            
+        if request.is_ajax() and ret_value["Content-Type"] == "application/json" and "callback" in request.GET:
             # modify content with callback-function for dynatree calls
             ret_value.content = "%s(%s)" % (request.GET["callback"], ret_value.content)
         if logging_pool:
@@ -791,7 +791,7 @@ def _fix_header(email_obj, h_name):
     if type(c_list) == type([]):
         c_list = ", ".join(c_list)
     email_obj[h_name] = c_list
-    
+
 """
 @keyword_check("alf_handler", "snapshot_info", "index_list", "email_server", "email_server_port", "snapshot_pk")
 def send_email(log_com, from_name, to_name, user, cur_mail, **kwargs):
@@ -916,7 +916,7 @@ def _decode_email_field(cur_el, field_name):
         decoded = email.header.decode_header(src_val.decode("ascii"))
         if decoded[0][0] != src_val:
             setattr(cur_el, field_name, decoded[0][0])
-    
+
 def decode_email_header(cur_el):
     for field_name in ["subject"]:
         _decode_email_field(cur_el, field_name)
@@ -961,7 +961,7 @@ def get_email_text(**args):
 """
 def _get_based_on_certificates(**kwargs):
     # get child certificates
-    multi_certs = certificate.objects.filter(Q(cert_child__parent=kwargs["certificate"].cert_number) & 
+    multi_certs = certificate.objects.filter(Q(cert_child__parent=kwargs["certificate"].cert_number) &
                                              Q(valid_to__gt=datetime.date.today() - datetime.timedelta(days=180))).select_related("customer", "customer__country").order_by("customer__name_1", "customer__city", "customer__country__description")
     ret_array = []
     if multi_certs:
@@ -995,13 +995,13 @@ def _get_footer(**kwargs):
     else:
         # new code
         return kwargs["var_dict"]["Zertifikatsfuss"]
-    
+
 def is_email_address(in_str):
     if re.match("^.*@.*\..*$", in_str):
         return True
     else:
         return False
-    
+
 """
 def fetch_based_on_certificates(cert, **kwargs):
     bo_dict = dict([(bo_cert.parent, None) for bo_cert in cert.cert_child.all()])
@@ -1127,7 +1127,7 @@ def remove_local_session(sess_entry):
                              sess_entry[-1]))
     except:
         pass
-    
+
 def get_local_sessions(**kwargs):
     sess_ids = [entry for entry in os.listdir(settings.SESSION_FILE_PATH) if entry.startswith(settings.SESSION_COOKIE_NAME)]
     session_list = []
@@ -1171,7 +1171,7 @@ def get_local_sessions(**kwargs):
                 else:
                     # old code
                     p_part, t_part = (decoded[:-32], decoded[-32:])
-                    c_part = md5_constructor(p_part + settings.SECRET_KEY).hexdigest() 
+                    c_part = hashlib.md5(p_part + settings.SECRET_KEY).hexdigest()
                     if c_part == t_part:
                         try:
                             sess_dict = pickle.loads(p_part)
@@ -1342,7 +1342,7 @@ def add_month(in_date, diff):
         else:
             break
     return next_date
-    
+
 def next_bill_date(in_date, interval):
     next_year, next_month = (in_date.year,
                              in_date.month + interval)
@@ -1535,17 +1535,17 @@ def xlsx_export_response(request, xlsx_dict, name=None):
     _stime = datetime.datetime.now()
     xlsx_content = save_virtual_workbook(xlsx_dict["xlsx"])
     print "save_virtual_workbook done in %s" % (datetime.datetime.now() - _stime)
-    
+
     if not os.path.isdir(TEMP_DIR):
         os.mkdir(TEMP_DIR)
     file(os.path.join(TEMP_DIR, file_name), "wb").write(xlsx_content)
     xlsx_file = file(os.path.join(TEMP_DIR, file_name), "rb").read()
-    
+
     a = alfresco_handler(request.log, directory="Olim")
     testfolder = "test/testfolder"
     print "##", a.get_dir_list(testfolder)
     if a.get_dir_list(testfolder):
-        a.store_content("%s/%s" % (testfolder, file_name), xlsx_file, create_new_version_if_exists=True) 
+        a.store_content("%s/%s" % (testfolder, file_name), xlsx_file, create_new_version_if_exists=True)
         c_node = alfresco_content(None, a.get_result())
         request.xml_response["url"] = django.core.urlresolvers.reverse("xlsx:fetch_content", args=[c_node["node-uuid"]])
     else:
@@ -1580,7 +1580,7 @@ def is_leapyear(iyear):
         return True
     else:
         return False
-    
+
 def parse_filename(fname):
     _pat = re.compile("(\ |\/|#)")
     return _pat.sub("_", fname).replace(u"Ö", u"O").replace(u"ö", u"o")

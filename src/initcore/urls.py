@@ -1,7 +1,7 @@
 """ These urls have to be registered in a
 namespace called 'session' """
 
-from django.conf.urls.defaults import url, patterns, include
+from django.conf.urls import url, patterns, include
 from django.conf import settings
 
 urlpatterns = patterns(
