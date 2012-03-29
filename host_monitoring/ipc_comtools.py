@@ -38,13 +38,18 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     identity_str = process_tools.zmq_identity_str(kwargs.pop("identity_string", "ipc_com"))
     zmq_context = kwargs.pop("zmq_context")
     cur_timeout = kwargs.pop("timeout", 20)
-    client = zmq_context.socket(zmq.DEALER)
-    client.setsockopt(zmq.IDENTITY, identity_str)
-    client.setsockopt(zmq.LINGER, cur_timeout * 2)
+    client_send = zmq_context.socket(zmq.PUSH)
+    client_recv = zmq_context.socket(zmq.SUB)
+    #client_send.setsockopt(zmq.IDENTITY, identity_str)
+    client_send.setsockopt(zmq.LINGER, cur_timeout * 2)
+    client_recv.setsockopt(zmq.SUBSCRIBE, identity_str)
     # kwargs["server"] : collrelay or snmprelay
-    conn_str = "%s" % (process_tools.get_zmq_ipc_name(kwargs.pop("process", "receiver"), s_name=kwargs.pop("server")))
-    client.connect(conn_str)
-    srv_com = server_command.srv_command(command=command)
+    server_name = kwargs.pop("server")
+    send_conn_str = "%s" % (process_tools.get_zmq_ipc_name(kwargs.pop("process", "receiver"), s_name=server_name))
+    recv_conn_str = "%s" % (process_tools.get_zmq_ipc_name(kwargs.pop("process", "sender"), s_name=server_name))
+    client_send.connect(send_conn_str)
+    client_recv.connect(recv_conn_str)
+    srv_com = server_command.srv_command(command=command, identity=identity_str)
     srv_com["host"] = target_host
     srv_com["raw"] = "True"
     srv_com["arg_list"] = " ".join(args)
@@ -52,14 +57,24 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     for key, value in kwargs.iteritems():
         srv_com[key] = "%d" % (value) if type(value) in [int, long] else value
     s_time = time.time()
-    client.send_unicode(unicode(srv_com))
-    if client.poll(cur_timeout * 1000):
-        recv_str = client.recv()
+    client_send.send_unicode(unicode(srv_com))
+    client_send.close()
+    s_time = time.time()
+    if client_recv.poll(cur_timeout * 1000):
+        id_str = client_recv.recv()
+    else:
+        id_str = None
+    if id_str and client_recv.getsockopt(zmq.RCVMORE):
+        e_time = time.time()
+        if client_recv.poll((cur_timeout - (e_time - s_time)) * 1000):
+            recv_str = client_recv.recv()
+        else:
+            recv_str = None
     else:
         recv_str = None
-    client.close()
+    client_recv.close()
     e_time = time.time()
-    if recv_str:
+    if recv_str and id_str:
         try:
             srv_reply = server_command.srv_command(source=recv_str)
         except:

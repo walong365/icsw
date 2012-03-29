@@ -516,6 +516,7 @@ class relay_process(threading_tools.process_pool):
             except:
                 self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
             else:
+                envelope = srv_com["identity"].text
                 parameter_ok = True
                 if len(srv_com.xpath(None, ".//ns:arg_list/text()")):
                     comline = " ".join([comline] + srv_com.xpath(None, ".//ns:arg_list/text()")[0].strip().split())

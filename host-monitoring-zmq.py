@@ -52,6 +52,7 @@ except ImportError:
 
 MAX_USED_MEM = 150
 MAPPING_FILE_IDS = "/etc/sysconfig/host-monitoring.d/collrelay_0mq_mapping"
+MAPPING_FILE_TYPES = "/etc/sysconfig/host-monitoring.d/0mq_clients"
 
 def client_code():
     from host_monitoring import modules
@@ -735,19 +736,28 @@ class relay_process(threading_tools.process_pool):
                 my_cached_file("/tmp/.new_clients", log_handle=self.log),
                 my_cached_file("/tmp/.old_clients", log_handle=self.log))
         else:
-            if os.path.isfile("/tmp/.0mq_clients"):
-                self.__client_dict.update(dict([(key, "0") for key in file("/tmp/.0mq_clients", "r").read().split("\n") if key.strip()]))
+            if os.path.isfile(MAPPING_FILE_TYPES):
+                self.__client_dict.update(dict([(key, "0") for key in file(MAPPING_FILE_TYPES, "r").read().split("\n") if key.strip()]))
         self.__default_0mq = False
-    def _new_client(self, c_name, c_port):
-        self._set_client_state(c_name, c_port, "0")
-    def _old_client(self, c_name, c_port):
-        self._set_client_state(c_name, c_port, "T")
-    def _set_client_state(self, c_name, c_port, c_type):
+    def _new_client(self, c_ip, c_port):
+        self._set_client_state(c_ip, c_port, "0")
+    def _old_client(self, c_ip, c_port):
+        self._set_client_state(c_ip, c_port, "T")
+    def _set_client_state(self, c_ip, c_port, c_type):
+        write_file = False
         if self.__autosense:
-            if self.__client_dict.get(c_name, None) != c_type and c_port == 2001:
-                self.log("setting client '%s:%d' to '%s'" % (c_name, c_port, c_type))
-                self.__client_dict[c_name] = c_type
-                file("/tmp/.0mq_clients", "w").write("\n".join([key for key, value in self.__client_dict.iteritems() if value == "0"]))
+            check_names = [c_ip]
+            if c_ip in self.__ip_lut:
+                real_name = self.__ip_lut[c_ip]
+                if real_name != c_ip:
+                    check_names.append(real_name)
+            for c_name in check_names:
+                if self.__client_dict.get(c_name, None) != c_type and c_port == 2001:
+                    self.log("setting client '%s:%d' to '%s'" % (c_name, c_port, c_type))
+                    self.__client_dict[c_name] = c_type
+                    write_file = True
+        if write_file:
+            file(MAPPING_FILE_TYPES, "w").write("\n".join([key for key, value in self.__client_dict.iteritems() if value == "0"]))
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
@@ -792,6 +802,8 @@ class relay_process(threading_tools.process_pool):
         self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
         self.sender_socket.send_unicode(ret_str)
     def _init_ipc_sockets(self):
+        # init IP lookup table
+        self.__ip_lut = {}
         self.__num_messages = 0
         sock_list = [("receiver", zmq.PULL, 2   ),
                      ("sender"  , zmq.PUB , 1024)]
@@ -835,12 +847,13 @@ class relay_process(threading_tools.process_pool):
         srv_com = None
         if xml_input:
             srv_com = server_command.srv_command(source=data)
+            src_id = srv_com["identity"].text
         else:
             if data.count(";") > 1:
                 parts = data.split(";", 3)
                 src_id = parts.pop(0)
                 com_part = parts[2].split(None, 1)
-                srv_com = server_command.srv_command(command=com_part.pop(0) if com_part else "")
+                srv_com = server_command.srv_command(command=com_part.pop(0) if com_part else "", identity=src_id)
                 srv_com["host"] = parts[0]
                 srv_com["port"] = parts[1]
                 if com_part:
@@ -857,7 +870,10 @@ class relay_process(threading_tools.process_pool):
                                                                   str(xml_input)))
             if "host" in srv_com and "port" in srv_com:
                 t_host = srv_com["host"].text
-                srv_com["host"] = socket.gethostbyname(t_host)
+                ip_addr = socket.gethostbyname(t_host)
+                srv_com["host"] = ip_addr
+                if ip_addr not in self.__ip_lut:
+                    self.__ip_lut[ip_addr] = t_host
                 if self.__autosense:
                     c_state = self.__client_dict.get(t_host, None)
                     if c_state is None:
@@ -1198,7 +1214,6 @@ class server_process(threading_tools.process_pool):
         for conf in conf_info:
             self.log("Config : %s" % (conf))
     def loop_end(self):
-        self._close_ipc_sockets()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()

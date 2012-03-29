@@ -24,8 +24,7 @@ import os
 import stat
 import sys
 import commands
-from host_monitoring import limits
-from host_monitoring import hm_classes
+from host_monitoring import limits, hm_classes
 import tempfile
 import time
 import logging_tools
@@ -33,6 +32,7 @@ import process_tools
 import threading_tools
 import Queue
 import net_tools
+import server_command
 
 class _general(hm_classes.hm_module):
     def _parse_ecd(self, in_str):
@@ -73,11 +73,13 @@ class check_file_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
             srv_com["result"].attrib.update({"reply" : "need filename",
-                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
             file_name = srv_com["arguments:arg0"].text.strip()
             if os.path.isfile(file_name):
                 f_stat = os.stat(file_name)
+                stat_keys = [key for key in dir(f_stat) if key.startswith("st_")]
+                f_stat = dict([(key, getattr(f_stat, key)) for key in stat_keys])
                 srv_com.set_dictionary("stat_result", {
                     "file"       : file_name,
                     "stat"       : f_stat,
@@ -87,13 +89,19 @@ class check_file_command(hm_classes.hm_command):
                     "reply" : "file '%s' not found" % (file_name),
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
     def interpret(self, srv_com, cur_ns):
-        return self._interpret(srv_com["stat_result"], cur_ns)
+        return self._interpret(server_command.srv_command.tree_to_dict(srv_com["stat_result"]), cur_ns)
     def interpret_old(self, result, cur_ns):
         return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
     def _interpret(self, f_dict, cur_ns):
         ret_state = limits.nag_STATE_OK
         file_stat = f_dict["stat"]
-        add_array = ["size %s" % (logging_tools.get_size_str(file_stat[stat.ST_SIZE]))]
+        if type(file_stat) == type({}):
+            file_size  = file_stat["st_size"]
+            file_mtime = file_stat["st_mtime"]
+        else:
+            file_size  = file_stat[stat.ST_SIZE]
+            file_mtime = file_stat[stat.ST_MTIME]
+        add_array = ["size %s" % (logging_tools.get_size_str(file_size))]
         act_time = time.localtime()
         act_time = (act_time.tm_wday + 1,
                     act_time.tm_hour,
@@ -119,7 +127,7 @@ class check_file_command(hm_classes.hm_command):
             add_array.append("in exclude_range")
         else:
             if cur_ns.mod_diff_time:
-                md_time = abs(file_stat[stat.ST_MTIME] - f_dict["local_time"])
+                md_time = abs(file_mtime - f_dict["local_time"])
                 if md_time > cur_ns.mod_diff_time:
                     ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                     add_array.append("changed %s ago > %s" % (logging_tools.get_diff_time_str(md_time),
