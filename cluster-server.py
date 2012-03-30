@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -45,6 +45,7 @@ import difflib
 import cs_base_class
 import config_tools
 import cProfile
+import zmq
 
 try:
     from cluster_server_version import VERSION_STRING
@@ -1005,37 +1006,43 @@ class simple_con(net_tools.buffer_object):
 
 # --------- connection objects ------------------------------------
 
-class server_thread_pool(threading_tools.thread_pool):
-    def __init__(self, logger, db_con, glob_config, loc_config, server_com):
+class server_process(threading_tools.process_pool):
+    def __init__(self, db_con):
+        self.__log_cache, self.__log_template = ([], None)
         self.__db_con = db_con
-        self.__logger = logger
-        self.__server_com = server_com
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        self.__pid_name = loc_config["PID_NAME"]
-        threading_tools.thread_pool.__init__(self, "main_thread", blocking_loop=False)
-        process_tools.save_pid(self.__pid_name)
+        self.__pid_name = global_config["PID_NAME"]
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
+        self._re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
-        self.register_func("new_pid", self._new_pid)
         self._log_config()
         self._check_uuid()
-        self.__is_server = not self.__server_com
-        load_modules(self.__loc_config, self.log, self.__is_server)
-        self.__ns = None
-        if not self.__server_com:
-            self._re_insert_config()
-            self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=False)
-            self.__tcp_bo = net_tools.tcp_bind(self._new_tcp_con, port=self.__glob_config["COM_PORT"], bind_retries=self.__loc_config["N_RETRY"], bind_state_call=self._bind_state_call, timeout=120)
-            self.__udp_bo = net_tools.udp_bind(self._new_udp_con, port=self.__glob_config["COM_PORT"], bind_retries=self.__loc_config["N_RETRY"], bind_state_call=self._bind_state_call, timeout=120)
-            self.__ns.add_object(self.__tcp_bo)
-            self.__ns.add_object(self.__udp_bo)
-            self.__ss_thread_queue = self.add_thread(socket_server_thread(self.__db_con, self.__glob_config, self.__loc_config, self.__ns, self.__logger), start_thread=True).get_thread_queue()
-            self.__bg_thread_queue = self.add_thread(background_thread(self.__db_con, self.__ss_thread_queue, self.__glob_config, self.__loc_config, self.__logger), start_thread=True).get_thread_queue()
-            self.__mon_thread_queue = self.add_thread(monitor_thread(self.__db_con, self.__glob_config, self.__loc_config, self.__logger), start_thread=True).get_thread_queue()
+        #self.__is_server = not self.__server_com
+        self._load_modules()#self.__loc_config, self.log, self.__is_server)
+        self._init_network_sockets()
+        self.register_timer(self._update, 30, instant=True)
+##        self.__ns = None
+##        if not self.__server_com:
+##            self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=False)
+##            self.__tcp_bo = net_tools.tcp_bind(self._new_tcp_con, port=self.__glob_config["COM_PORT"], bind_retries=self.__loc_config["N_RETRY"], bind_state_call=self._bind_state_call, timeout=120)
+##            self.__udp_bo = net_tools.udp_bind(self._new_udp_con, port=self.__glob_config["COM_PORT"], bind_retries=self.__loc_config["N_RETRY"], bind_state_call=self._bind_state_call, timeout=120)
+##            self.__ns.add_object(self.__tcp_bo)
+##            self.__ns.add_object(self.__udp_bo)
+##            self.__ss_thread_queue = self.add_thread(socket_server_thread(self.__db_con, self.__glob_config, self.__loc_config, self.__ns, self.__logger), start_thread=True).get_thread_queue()
+##            self.__bg_thread_queue = self.add_thread(background_thread(self.__db_con, self.__ss_thread_queue, self.__glob_config, self.__loc_config, self.__logger), start_thread=True).get_thread_queue()
+##            self.__mon_thread_queue = self.add_thread(monitor_thread(self.__db_con, self.__glob_config, self.__loc_config, self.__logger), start_thread=True).get_thread_queue()
+##        else:
+##            self.__target_host, self.__target_port = (None, None)
+##            self.__client_ret_str = None
+    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+        if self.__log_template:
+            while self.__log_cache:
+                self.__log_template.log(*self.__log_cache.pop(0))
+            self.__log_template.log(lev, what)
         else:
-            self.__target_host, self.__target_port = (None, None)
-            self.__client_ret_str = None
+            self.__log_cache.append((lev, what))
     def set_target(self, t_host, t_port):
         self.__target_host, self.__target_port = (t_host, t_port)
         self.__ns = net_tools.network_send(timeout=10, log_hook=self.log, verbose=False)
@@ -1053,31 +1060,28 @@ class server_thread_pool(threading_tools.thread_pool):
             self["exit_requested"] = True
             if self.__ns:
                 self.__ns.set_timeout(0.1)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__logger.log(lev, what)
-    def _new_pid(self, new_pid):
-        self.log("received new_pid message")
-        process_tools.append_pids(self.__pid_name, new_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(new_pid)
-            self.__msi_block.save_block()
     def _log_config(self):
         self.log("Config info:")
-        for line, log_level in self.__glob_config.get_log(clear=True):
+        for line, log_level in global_config.get_log(clear=True):
             self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = self.__glob_config.get_config_info()
+        conf_info = global_config.get_config_info()
         self.log("Found %d valid config-lines:" % (len(conf_info)))
         for conf in conf_info:
             self.log("Config : %s" % (conf))
     def _re_insert_config(self):
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        configfile.write_config(dc, "server", self.__glob_config)
-        dc.release()
+        self.log("re-insert config")
+        # FIXME, AL, 20120330, not needed ?
+##        dc = self.__db_con.get_connection(SQL_ACCESS)
+##        configfile.write_config(dc, "server", self.__glob_config)
+##        dc.release()
     def _init_msi_block(self):
-        if self.__loc_config["DAEMON"] and not self.__server_com:
+        process_tools.save_pid(self.__pid_name, mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        if global_config["DEBUG"] or True:#AEMON"]: and not self.__server_com:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("cluster-server")
-            msi_block.add_actual_pid()
+            msi_block.add_actual_pid(mult=3)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/cluster-server start"
             msi_block.stop_command = "/etc/init.d/cluster-server force-stop"
             msi_block.kill_pids = True
@@ -1089,7 +1093,7 @@ class server_thread_pool(threading_tools.thread_pool):
         self.log("uuid checking")
         dc = self.__db_con.get_connection(SQL_ACCESS)
         self.log(" - cluster_device_uuid is '%s'" % (uuid_tools.get_uuid().get_urn()))
-        uuid_var = configfile.device_variable(dc, self.__loc_config["SERVER_IDX"], "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
+        uuid_var = configfile.device_variable(dc, global_config["SERVER_IDX"], "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
         # recognize for which devices i am responsible
         dev_r = process_tools.device_recognition(dc)
         if dev_r.device_dict:
@@ -1099,34 +1103,39 @@ class server_thread_pool(threading_tools.thread_pool):
                 configfile.device_variable(dc, dev_idx, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
                 configfile.device_variable(dc, dev_idx, "is_virtual", description="Flag set for Virtual Machines", value=1)
         dc.release()
-    def thread_running(self):
-        self._new_pid(self.pid)
     def thread_loop_post(self):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-    def _bind_state_call(self, **args):
-        if args["state"] == "error":
-            self.log("unable to bind to all ports, exiting", logging_tools.LOG_LEVEL_ERROR)
-            self._int_error("bind problem")
-        elif args["state"] == "ok":
-            self.__ns.set_timeout(self.__loc_config["DAEMON"] and 60 or 5)
-    def _new_client_tcp_con(self, sock):
-        return cs_base_class.simple_tcp_obj(self, self.__server_com)
-    def _new_tcp_con(self, sock, src):
-        return new_tcp_con(sock, src, self.__ss_thread_queue, self.__logger)
-    def _new_udp_con(self, data, frm):
-        self.__ss_thread_queue.put(("in_udp_bytes", (data, frm)))
+    def _init_network_sockets(self):
+        client = self.zmq_context.socket(zmq.ROUTER)
+        client.setsockopt(zmq.IDENTITY, "cluster-server:%s" % (global_config["SERVER_SHORT_NAME"]))
+        client.setsockopt(zmq.HWM, 256)
+        try:
+            client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
+        except zmq.core.error.ZMQError:
+            self.log("error binding to %d: %s" % (global_config["COM_PORT"],
+                                                  process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_CRITICAL)
+            raise
+        else:
+            self.register_poller(client, zmq.POLLIN, self._recv_command)
+            self.com_socket = client
+    def _recv_command(self, sock):
+        print "*"
+##    def _new_client_tcp_con(self, sock):
+##        return cs_base_class.simple_tcp_obj(self, self.__server_com)
+##    def _new_tcp_con(self, sock, src):
+##        return new_tcp_con(sock, src, self.__ss_thread_queue, self.__logger)
+##    def _new_udp_con(self, data, frm):
+##        self.__ss_thread_queue.put(("in_udp_bytes", (data, frm)))
     def _client_connect_timeout(self, sock):
         self.log("connect timeout", logging_tools.LOG_LEVEL_ERROR)
         self.set_error("error connect timeout")
         self._int_error("timeout")
         sock.close()
-    def _client_connect_state_call(self, **args):
-        if args["state"] == "error":
-            self.log("Error cannot connect", logging_tools.LOG_LEVEL_ERROR)
-            self.set_error("error cannot connect")
-            self._int_error("connect")
+    def _update(self):
+        self.log("update")
     def loop_function(self):
         if self.__is_server:
             self.__mon_thread_queue.put("update")
@@ -1162,6 +1171,33 @@ class server_thread_pool(threading_tools.thread_pool):
         self.__client_error, self.__client_ret_str = (True, in_data)
     def get_client_ret_state(self):
         return self.__client_error, self.__client_ret_str
+    def _load_modules(self):
+        self.log("loading modules from cluster_server")
+        num_coms = 0
+        for com_file_name in loc_config["COM_FILE_LIST"]:
+            new_mod = __import__("%s_mod" % (com_file_name), globals(), [], [])
+            loc_config["COM_DICT"]["%s_module" % (com_file_name)] = new_mod
+            func_names = [name for (name, ett) in [(ett_name, getattr(new_mod, ett_name)) for ett_name in dir(new_mod)] if type(ett) == type(dummy_class) and issubclass(ett, cs_base_class.server_com)]
+            for func_name in func_names:
+                if func_name in loc_config["COM_LIST"]:
+                    log_hook("Error, function %s already in list" % (func_name),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    loc_config["COM_LIST"].append(func_name)
+                    loc_config["COM_LIST"].sort()
+                    loc_config["COM_DICT"][func_name] = getattr(new_mod, func_name)()
+                    act_sc = loc_config["COM_DICT"][func_name]
+                    act_sc.file_name = "%s_mod.py" % (com_file_name)
+                    num_coms += 1
+                    if detail_log:
+                        log("   com %-30s, %s%s, %s, needed option_keys(s) %s, %s" % (act_sc.get_name(),
+                                                                                      logging_tools.get_plural("config", len(act_sc.get_config_list())),
+                                                                                      " (%s)" % (act_sc.get_config()) if act_sc.get_config_list() else "",
+                                                                                      act_sc.get_blocking_mode() and "blocking" or "not blocking",
+                                                                                      act_sc.get_needed_option_keys(),
+                                                                                      act_sc.get_is_restartable() and "restartable" or "not restartable"))
+        log("Found %s" % (logging_tools.get_plural("command", num_coms)))
+
         
 def scan_module_path(mod_path):
     com_file_list = []
@@ -1176,250 +1212,285 @@ class dummy_class(object):
     def __init__(self):
         pass
 
-def load_modules(loc_config, log_hook, detail_log=False):
-    def log(what, level=logging_tools.LOG_LEVEL_OK):
-        if log_hook:
-            log_hook(what, level)
-        elif log_hook == "stdout":
-            print "(%2d) %s" % (level, what)
-    log("Initialising commands from %s, %s" % (logging_tools.get_plural("command_file", len(loc_config["COM_FILE_LIST"])),
-                                               "detailed log" if detail_log else "short log"))
-    sys.path.append(loc_config["MODULE_PATH"])
-    num_coms = 0
-    for com_file_name in loc_config["COM_FILE_LIST"]:
-        new_mod = __import__("%s_mod" % (com_file_name), globals(), [], [])
-        loc_config["COM_DICT"]["%s_module" % (com_file_name)] = new_mod
-        func_names = [name for (name, ett) in [(ett_name, getattr(new_mod, ett_name)) for ett_name in dir(new_mod)] if type(ett) == type(dummy_class) and issubclass(ett, cs_base_class.server_com)]
-        for func_name in func_names:
-            if func_name in loc_config["COM_LIST"]:
-                log_hook("Error, function %s already in list" % (func_name),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                loc_config["COM_LIST"].append(func_name)
-                loc_config["COM_LIST"].sort()
-                loc_config["COM_DICT"][func_name] = getattr(new_mod, func_name)()
-                act_sc = loc_config["COM_DICT"][func_name]
-                act_sc.file_name = "%s_mod.py" % (com_file_name)
-                num_coms += 1
-                if detail_log:
-                    log("   com %-30s, %s%s, %s, needed option_keys(s) %s, %s" % (act_sc.get_name(),
-                                                                                  logging_tools.get_plural("config", len(act_sc.get_config_list())),
-                                                                                  " (%s)" % (act_sc.get_config()) if act_sc.get_config_list() else "",
-                                                                                  act_sc.get_blocking_mode() and "blocking" or "not blocking",
-                                                                                  act_sc.get_needed_option_keys(),
-                                                                                  act_sc.get_is_restartable() and "restartable" or "not restartable"))
-    log("Found %s" % (logging_tools.get_plural("command", num_coms)))
+global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 def main():
+    long_host_name, mach_name = process_tools.get_fqdn()
+    prog_name = global_config.name()
+    global_config.add_config_entries([
+        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
+        ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
+        ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True)),
+        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
+        ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
+        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("CONTACT"             , configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
+    ])
+    global_config.parse_file()
+    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
+                                                                                  VERSION_STRING),
+                                               add_writeback_option=True,
+                                               positional_arguments=False)
+    global_config.write_file()
+    db_con = mysql_tools.dbcon_container()
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "dVvr:p:c:hCkD:", ["help", "force", "contact", "sql-fail"])
-    except getopt.GetoptError, bla:
-        print "Commandline error!", bla
-        sys.exit(2)
-    server_full_name = socket.getfqdn(socket.gethostname())
-    server_short_name = server_full_name.split(".")[0]
-    loc_config = configfile.configuration("local_config", {"PID_NAME"          : configfile.str_c_var("cluster-server"),
-                                                           "SERVER_IDX"        : configfile.int_c_var(0),
-                                                           "VERBOSE"           : configfile.bool_c_var(False),
-                                                           "FORCE"             : configfile.bool_c_var(False),
-                                                           "CONTACT"           : configfile.bool_c_var(False),
-                                                           "N_RETRY"           : configfile.int_c_var(5),
-                                                           "DAEMON"            : configfile.bool_c_var(True),
-                                                           "MODULE_PATH"       : configfile.str_c_var("/usr/local/sbin/cs_modules"),
-                                                           "VERSION_STRING"    : configfile.str_c_var(VERSION_STRING),
-                                                           "SERVER_SHORT_NAME" : configfile.str_c_var(server_short_name),
-                                                           "SERVER_FULL_NAME"  : configfile.str_c_var(server_full_name),
-                                                           "COM_FILE_LIST"     : configfile.array_c_var([]),
-                                                           "COM_LIST"          : configfile.array_c_var([]),
-                                                           "COM_DICT"          : configfile.dict_c_var({}),
-                                                           "LOG_STATUS"        : configfile.dict_c_var({}),
-                                                           "LOG_SOURCE_IDX"    : configfile.int_c_var(0)})
-    if os.getcwd() == "/usr/local/share/home/local/development/cluster-server":
-        loc_config["MODULE_PATH"] = "/usr/local/share/home/local/development/cluster-server/cs_modules"
-    loc_config["COM_FILE_LIST"] = scan_module_path(loc_config["MODULE_PATH"])
-    check, kill_running, sql_fail = (0, True, False)
-    g_port = SERVER_PORT
-    pid_name = "cluster-server"
-    server_com = None
-    pname = os.path.basename(sys.argv[0])
-    ov_dict = {}
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print "Usage: %s [OPTIONS] {[KEY:VALUE]}" % (pname)
-            print "where OPTIONS are:"
-            print " -h,--help        this help"
-            print " -C               check if this host is a cluster-server (returns 5 on error and 0 on ok)"
-            print " -d               run in debug mode (no forking)"
-            print " -v               be verbose"
-            print " -V               show version"
-            print " -p port          connect to given port, default is %d" % (g_port)
-            print " -k               do not kill running %s" % (pname)
-            print " --force          force calling of command even if no config is found (only for direct calls)"
-            print " --contact        contact running clusterserver, default is to run the command directly"
-            print " -D [key:value,]  override predefined values"
-            print " --sql-fail       fail immediately if no SQL-server is reachable"
-            print " -c command       call command directly where command is one of:"
-            out_list = logging_tools.form_list()
-            out_list.set_header_string(0, ["Idx", "Command", "file", "public", "config(s)", "source", "Needed keys", "Used config keys"])
-            db_con = mysql_tools.dbcon_container(with_logging=socket.getfqdn() == "nagios.init.at")
-            with db_con.db_transaction() as dc:
-#             try:
-#                 dc = db_con.get_connection(SQL_ACCESS)
-#             except:
-#                 dc = None
-                out_list.set_format_string("Idx", "d", "")
-                load_modules(loc_config, None)
-                idx = 0
-                for com in loc_config["COM_LIST"]:
-                    idx += 1
-                    cdk_s = loc_config["COM_DICT"][com]
-                    is_ok, srv_origin, why_not = cdk_s.check_config(dc, loc_config)
-                    out_list.add_line((idx,
-                                       com,
-                                       cdk_s.file_name,
-                                       {True  : "yes",
-                                        False : "no"}[cdk_s.get_public_via_net()],
-                                       cdk_s.get_config(),
-                                       srv_origin,
-                                       cdk_s.get_needed_option_keys(),
-                                       cdk_s.get_used_config_keys()))
-                #if dc:
-                #    dc.release()
-            if out_list:
-                print out_list
-            else:
-                print "No modules found, strange..."
-            sys.exit(0)
-        if opt == "--sql-fail":
-            sql_fail = True
-        if opt == "-D":
-            try:
-                ov_dict = dict([(k, v) for k, v in [x.split(":", 1) for x in arg.split(",")]])
-            except:
-                print "error parsing option dict"
-                sys.exit(-1)
-        if opt == "--contact":
-            loc_config["CONTACT"] = True
-        if opt == "--force":
-            loc_config["FORCE"] = True
-        if opt == "-k":
-            kill_running = False
-        if opt == "-C":
-            check = 1
-        if opt == "-d":
-            loc_config["DAEMON"] = False
-        if opt == "-c":
-            server_com = server_command.server_command(command=arg)
-            server_com.set_option_dict(dict([(k, v) for k, v in [z for z in [x.split(":", 1) for x in args] if len(z) == 2]]))
-        if opt == "-V":
-            print "Version %s" % (loc_config["VERSION_STRING"])
-            sys.exit(0)
-        if opt == "-p":
-            g_port = int(arg)
-        if opt == "-v":
-            loc_config["VERBOSE"] = True
-        if opt == "-r":
-            try:
-                loc_config["N_RETRY"] = int(arg)
-            except:
-                print "Error parsing n_retry"
-                sys.exit(2)
-    if server_com:
-        kill_running = False
-        pid_name = "%s-direct-%s-%d" % (pid_name, "%04d%02d%02d-%02d:%02d" % tuple(time.localtime()[0:5]), os.getpid())
-    process_tools.renice()
-    if server_com:
-        loc_config["DAEMON"] = False
-    # do we have to change stdin / stdout, have we changed them ?
-    change_stds, stds_changed = (False, False)
-    if loc_config["DAEMON"]:
-        process_tools.become_daemon()
-        changed_stds = True
-    else:
-        if not server_com:
-            print "Debugging cluster-server on %s" % (loc_config["SERVER_FULL_NAME"])
-    db_con = mysql_tools.dbcon_container(with_logging=loc_config["VERBOSE"])
-    wait_iter = 0
-    while True:
-        try:
-            dc = db_con.get_connection(SQL_ACCESS)
-        except MySQLdb.OperationalError:
-            db_con.release()
-            if sql_fail:
-                sys.stderr.write(" Cannot connect to SQL-Server ")
-                sys.exit(1)
-            else:
-                if not wait_iter:
-                    if change_stds and not stds_changed:
-                        stds_changed = True
-                        process_tools.set_handles({"out" : (1, "cluster-server.out"),
-                                                   "err" : (0, "/var/lib/logging-server/py_err")})
-                    sys.stderr.write(" Cannot connect to SQL-Server, waiting...")
-                wait_iter += 1
-                logging_tools.my_syslog("cannot connect to SQL-Server, waiting for 30 seconds")
-                time.sleep(30)
-        except:
-            err_str = "unable to create a DB-cursor: %s" % (process_tools.get_except_info())
-            sys.stderr.write("%s\n" % (err_str))
-            logging_tools.my_syslog(err_str)
-            sys.exit(1)
-        else:
-            break
-    if wait_iter:
-        logging_tools.my_syslog("successfully connected to SQL-Server after %s" % (logging_tools.get_plural("retry", wait_iter)))
+        dc = db_con.get_connection("cluster_full_access")
+    except MySQLdb.OperationalError:
+        sys.stderr.write(" Cannot connect to SQL-Server ")
+        sys.exit(1)
     sql_info = config_tools.server_check(dc=dc, server_type="server")
-    loc_config["SERVER_IDX"] = sql_info.server_device_idx
-    if not loc_config["SERVER_IDX"] and not loc_config["FORCE"]:
-        sys.stderr.write(" %s is no cluster-server, exiting..." % (loc_config["SERVER_FULL_NAME"]))
+    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.server_device_idx))])
+    ret_state = 256
+    if not global_config["SERVER_IDX"]:
+        sys.stderr.write(" %s is no cluster-server, exiting..." % (long_host_name))
         sys.exit(5)
-    if change_stds and not stds_changed:
-        stds_changed = True
+    if sql_info.num_servers > 1:
+        print "Database error for host %s (nagios_config): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
+        dc.release()
+        sys.exit(5)
+    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(process_tools.create_log_source_entry(dc, global_config["SERVER_IDX"], "cluster-server", "Cluster Server")))])
+    if not global_config["LOG_SOURCE_IDX"]:
+        print "Too many log_source with my id present, exiting..."
+        dc.release()
+        sys.exit(5)
+    if global_config["KILL_RUNNING"]:
+        log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
+    configfile.read_config_from_db(global_config, dc, "server", [
+        ("COM_PORT"              , configfile.int_c_var(SERVER_PORT)),
+        ("LOG_DESTINATION"       , configfile.str_c_var("uds:/var/lib/logging-server/py_log")),
+        ("LOG_NAME"              , configfile.str_c_var("cluster-server")),
+        ("IMAGE_SOURCE_DIR"      , configfile.str_c_var("/usr/local/share/images")),
+        ("UPDATE_SITE"           , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
+        ("RPM_TARGET_DIR"        , configfile.str_c_var("/root/RPMs")),
+        ("MAILSERVER"            , configfile.str_c_var("localhost")),
+        ("FROM_NAME"             , configfile.str_c_var("quotawarning")),
+        ("FROM_ADDR"             , configfile.str_c_var(long_host_name)),
+        ("QUOTA_ADMINS"          , configfile.str_c_var("lang-nevyjel@init.at")),
+        ("LDAP_SCHEMATA_VERSION" , configfile.int_c_var(1)),
+        ("MONITOR_QUOTA_USAGE"   , configfile.bool_c_var(False)),
+        ("QUOTA_CHECK_TIME_SECS" , configfile.int_c_var(3600)),
+        ("USER_MAIL_SEND_TIME"   , configfile.int_c_var(3600, info="time in seconds between to mails")),
+        ("SERVER_SHORT_NAME"     , configfile.str_c_var(mach_name)),
+    ])
+    dc.release()
+    if not global_config["DEBUG"]:
+        process_tools.become_daemon()
         process_tools.set_handles({"out" : (1, "cluster-server.out"),
                                    "err" : (0, "/var/lib/logging-server/py_err")})
-    if check:
-        sys.exit(0)
-    if kill_running:
-        kill_dict = process_tools.build_kill_dict(pname)
-        for key, value in kill_dict.iteritems():
-            log_str = "Trying to kill pid %d (%s) with signal 9 ..." % (key, value)
-            try:
-                os.kill(key, 9)
-            except:
-                log_str = "%s error (%s)" % (log_str, process_tools.get_except_info())
-            else:
-                log_str = "%s ok" % (log_str)
-            logging_tools.my_syslog(log_str)
-    loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, loc_config["SERVER_IDX"], "cluster-server", "Cluster Server")
-    glob_config = configfile.read_global_config(dc, "server", {"COM_PORT"              : configfile.int_c_var(g_port),
-                                                               "LOG_DESTINATION"       : configfile.str_c_var("uds:/var/lib/logging-server/py_log"),
-                                                               "LOG_NAME"              : configfile.str_c_var("cluster-server"),
-                                                               "IMAGE_SOURCE_DIR"      : configfile.str_c_var("/usr/local/share/images"),
-                                                               "UPDATE_SITE"           : configfile.str_c_var("http://www.initat.org/cluster/RPMs/"),
-                                                               "RPM_TARGET_DIR"        : configfile.str_c_var("/root/RPMs"),
-                                                               "MAILSERVER"            : configfile.str_c_var("localhost"),
-                                                               "FROM_NAME"             : configfile.str_c_var("quotawarning"),
-                                                               "FROM_ADDR"             : configfile.str_c_var(loc_config["SERVER_FULL_NAME"]),
-                                                               "QUOTA_ADMINS"          : configfile.str_c_var("lang-nevyjel@init.at"),
-                                                               "LDAP_SCHEMATA_VERSION" : configfile.int_c_var(1),
-                                                               "MONITOR_QUOTA_USAGE"   : configfile.bool_c_var(False),
-                                                               "QUOTA_CHECK_TIME_SECS" : configfile.int_c_var(3600),
-                                                               "USER_MAIL_SEND_TIME"   : configfile.int_c_var(3600, info="time in seconds between to mails")})
-    loc_config["LOG_STATUS"] = process_tools.get_all_log_status(dc)
-    dc.release()
-    for key, value in ov_dict.iteritems():
-        if glob_config.has_key(key):
-            print "Overriding value '%s' for key '%s' to '%s'" % (glob_config[key], key, value)
-            glob_config[key] = value
-        else:
-            print "Setting value for new key '%s' to '%s'" % (key, value)
-            glob_config.add_config_dict({key : configfile.str_c_var(value)})
-    if server_com:
-        glob_config["LOG_NAME"] = "%s-direct" % (glob_config["LOG_NAME"])
-        loc_config["PID_NAME"] = "%s-direct-%s-%d" % (loc_config["PID_NAME"], "%04d%02d%02d-%02d:%02d" % tuple(time.localtime()[0:5]), os.getpid())
-    server_code(db_con, glob_config, loc_config, server_com)
-    db_con.close()
-    del db_con
-    sys.exit(0)
+    else:
+        print "Debugging cluster-server on %s" % (long_host_name)
+    ret_state = server_process(db_con).loop()
+    sys.exit(ret_state)
+    
+##    try:
+##        opts, args = getopt.getopt(sys.argv[1:], "dVvr:p:c:hCkD:", ["help", "force", "contact", "sql-fail"])
+##    except getopt.GetoptError, bla:
+##        print "Commandline error!", bla
+##        sys.exit(2)
+##    server_full_name = socket.getfqdn(socket.gethostname())
+##    server_short_name = server_full_name.split(".")[0]
+##    loc_config = configfile.configuration("local_config", {"PID_NAME"          : configfile.str_c_var("cluster-server"),
+##                                                           "SERVER_IDX"        : configfile.int_c_var(0),
+##                                                           "VERBOSE"           : configfile.bool_c_var(False),
+##                                                           "FORCE"             : configfile.bool_c_var(False),
+##                                                           "CONTACT"           : configfile.bool_c_var(False),
+##                                                           "N_RETRY"           : configfile.int_c_var(5),
+##                                                           "DAEMON"            : configfile.bool_c_var(True),
+##                                                           "MODULE_PATH"       : configfile.str_c_var("/usr/local/sbin/cs_modules"),
+##                                                           "VERSION_STRING"    : configfile.str_c_var(VERSION_STRING),
+##                                                           "COM_FILE_LIST"     : configfile.array_c_var([]),
+##                                                           "COM_LIST"          : configfile.array_c_var([]),
+##                                                           "COM_DICT"          : configfile.dict_c_var({}),
+##                                                           "LOG_STATUS"        : configfile.dict_c_var({}),
+##                                                           "LOG_SOURCE_IDX"    : configfile.int_c_var(0)})
+##    if os.getcwd() == "/usr/local/share/home/local/development/cluster-server":
+##        loc_config["MODULE_PATH"] = "/usr/local/share/home/local/development/cluster-server/cs_modules"
+##    loc_config["COM_FILE_LIST"] = scan_module_path(loc_config["MODULE_PATH"])
+##    check, kill_running, sql_fail = (0, True, False)
+##    g_port = SERVER_PORT
+##    pid_name = "cluster-server"
+##    server_com = None
+##    pname = os.path.basename(sys.argv[0])
+##    ov_dict = {}
+##    for opt, arg in opts:
+##        if opt in ("-h", "--help"):
+##            print "Usage: %s [OPTIONS] {[KEY:VALUE]}" % (pname)
+##            print "where OPTIONS are:"
+##            print " -h,--help        this help"
+##            print " -C               check if this host is a cluster-server (returns 5 on error and 0 on ok)"
+##            print " -d               run in debug mode (no forking)"
+##            print " -v               be verbose"
+##            print " -V               show version"
+##            print " -p port          connect to given port, default is %d" % (g_port)
+##            print " -k               do not kill running %s" % (pname)
+##            print " --force          force calling of command even if no config is found (only for direct calls)"
+##            print " --contact        contact running clusterserver, default is to run the command directly"
+##            print " -D [key:value,]  override predefined values"
+##            print " --sql-fail       fail immediately if no SQL-server is reachable"
+##            print " -c command       call command directly where command is one of:"
+##            out_list = logging_tools.form_list()
+##            out_list.set_header_string(0, ["Idx", "Command", "file", "public", "config(s)", "source", "Needed keys", "Used config keys"])
+##            db_con = mysql_tools.dbcon_container(with_logging=socket.getfqdn() == "nagios.init.at")
+##            with db_con.db_transaction() as dc:
+###             try:
+###                 dc = db_con.get_connection(SQL_ACCESS)
+###             except:
+###                 dc = None
+##                out_list.set_format_string("Idx", "d", "")
+##                load_modules(loc_config, None)
+##                idx = 0
+##                for com in loc_config["COM_LIST"]:
+##                    idx += 1
+##                    cdk_s = loc_config["COM_DICT"][com]
+##                    is_ok, srv_origin, why_not = cdk_s.check_config(dc, loc_config)
+##                    out_list.add_line((idx,
+##                                       com,
+##                                       cdk_s.file_name,
+##                                       {True  : "yes",
+##                                        False : "no"}[cdk_s.get_public_via_net()],
+##                                       cdk_s.get_config(),
+##                                       srv_origin,
+##                                       cdk_s.get_needed_option_keys(),
+##                                       cdk_s.get_used_config_keys()))
+##                #if dc:
+##                #    dc.release()
+##            if out_list:
+##                print out_list
+##            else:
+##                print "No modules found, strange..."
+##            sys.exit(0)
+##        if opt == "--sql-fail":
+##            sql_fail = True
+##        if opt == "-D":
+##            try:
+##                ov_dict = dict([(k, v) for k, v in [x.split(":", 1) for x in arg.split(",")]])
+##            except:
+##                print "error parsing option dict"
+##                sys.exit(-1)
+##        if opt == "--contact":
+##            loc_config["CONTACT"] = True
+##        if opt == "--force":
+##            loc_config["FORCE"] = True
+##        if opt == "-k":
+##            kill_running = False
+##        if opt == "-C":
+##            check = 1
+##        if opt == "-d":
+##            loc_config["DAEMON"] = False
+##        if opt == "-c":
+##            server_com = server_command.server_command(command=arg)
+##            server_com.set_option_dict(dict([(k, v) for k, v in [z for z in [x.split(":", 1) for x in args] if len(z) == 2]]))
+##        if opt == "-V":
+##            print "Version %s" % (loc_config["VERSION_STRING"])
+##            sys.exit(0)
+##        if opt == "-p":
+##            g_port = int(arg)
+##        if opt == "-v":
+##            loc_config["VERBOSE"] = True
+##        if opt == "-r":
+##            try:
+##                loc_config["N_RETRY"] = int(arg)
+##            except:
+##                print "Error parsing n_retry"
+##                sys.exit(2)
+##    if server_com:
+##        kill_running = False
+##        pid_name = "%s-direct-%s-%d" % (pid_name, "%04d%02d%02d-%02d:%02d" % tuple(time.localtime()[0:5]), os.getpid())
+##    process_tools.renice()
+##    if server_com:
+##        loc_config["DAEMON"] = False
+##    # do we have to change stdin / stdout, have we changed them ?
+##    change_stds, stds_changed = (False, False)
+##    if loc_config["DAEMON"]:
+##        process_tools.become_daemon()
+##        changed_stds = True
+##    else:
+##        if not server_com:
+##            print "Debugging cluster-server on %s" % (loc_config["SERVER_FULL_NAME"])
+##    db_con = mysql_tools.dbcon_container(with_logging=loc_config["VERBOSE"])
+##    wait_iter = 0
+##    while True:
+##        try:
+##            dc = db_con.get_connection(SQL_ACCESS)
+##        except MySQLdb.OperationalError:
+##            db_con.release()
+##            if sql_fail:
+##                sys.stderr.write(" Cannot connect to SQL-Server ")
+##                sys.exit(1)
+##            else:
+##                if not wait_iter:
+##                    if change_stds and not stds_changed:
+##                        stds_changed = True
+##                        process_tools.set_handles({"out" : (1, "cluster-server.out"),
+##                                                   "err" : (0, "/var/lib/logging-server/py_err")})
+##                    sys.stderr.write(" Cannot connect to SQL-Server, waiting...")
+##                wait_iter += 1
+##                logging_tools.my_syslog("cannot connect to SQL-Server, waiting for 30 seconds")
+##                time.sleep(30)
+##        except:
+##            err_str = "unable to create a DB-cursor: %s" % (process_tools.get_except_info())
+##            sys.stderr.write("%s\n" % (err_str))
+##            logging_tools.my_syslog(err_str)
+##            sys.exit(1)
+##        else:
+##            break
+##    if wait_iter:
+##        logging_tools.my_syslog("successfully connected to SQL-Server after %s" % (logging_tools.get_plural("retry", wait_iter)))
+##    sql_info = config_tools.server_check(dc=dc, server_type="server")
+##    loc_config["SERVER_IDX"] = sql_info.server_device_idx
+##    if not loc_config["SERVER_IDX"] and not loc_config["FORCE"]:
+##        sys.stderr.write(" %s is no cluster-server, exiting..." % (loc_config["SERVER_FULL_NAME"]))
+##        sys.exit(5)
+##    if change_stds and not stds_changed:
+##        stds_changed = True
+##        process_tools.set_handles({"out" : (1, "cluster-server.out"),
+##                                   "err" : (0, "/var/lib/logging-server/py_err")})
+##    if check:
+##        sys.exit(0)
+##    if kill_running:
+##        kill_dict = process_tools.build_kill_dict(pname)
+##        for key, value in kill_dict.iteritems():
+##            log_str = "Trying to kill pid %d (%s) with signal 9 ..." % (key, value)
+##            try:
+##                os.kill(key, 9)
+##            except:
+##                log_str = "%s error (%s)" % (log_str, process_tools.get_except_info())
+##            else:
+##                log_str = "%s ok" % (log_str)
+##            logging_tools.my_syslog(log_str)
+##    loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, loc_config["SERVER_IDX"], "cluster-server", "Cluster Server")
+##    glob_config = configfile.read_global_config(dc, "server", {"COM_PORT"              : configfile.int_c_var(g_port),
+##                                                               "LOG_DESTINATION"       : configfile.str_c_var("uds:/var/lib/logging-server/py_log"),
+##                                                               "LOG_NAME"              : configfile.str_c_var("cluster-server"),
+##                                                               "IMAGE_SOURCE_DIR"      : configfile.str_c_var("/usr/local/share/images"),
+##                                                               "UPDATE_SITE"           : configfile.str_c_var("http://www.initat.org/cluster/RPMs/"),
+##                                                               "RPM_TARGET_DIR"        : configfile.str_c_var("/root/RPMs"),
+##                                                               "MAILSERVER"            : configfile.str_c_var("localhost"),
+##                                                               "FROM_NAME"             : configfile.str_c_var("quotawarning"),
+##                                                               "FROM_ADDR"             : configfile.str_c_var(loc_config["SERVER_FULL_NAME"]),
+##                                                               "QUOTA_ADMINS"          : configfile.str_c_var("lang-nevyjel@init.at"),
+##                                                               "LDAP_SCHEMATA_VERSION" : configfile.int_c_var(1),
+##                                                               "MONITOR_QUOTA_USAGE"   : configfile.bool_c_var(False),
+##                                                               "QUOTA_CHECK_TIME_SECS" : configfile.int_c_var(3600),
+##                                                               "USER_MAIL_SEND_TIME"   : configfile.int_c_var(3600, info="time in seconds between to mails")})
+##    loc_config["LOG_STATUS"] = process_tools.get_all_log_status(dc)
+##    dc.release()
+##    for key, value in ov_dict.iteritems():
+##        if glob_config.has_key(key):
+##            print "Overriding value '%s' for key '%s' to '%s'" % (glob_config[key], key, value)
+##            glob_config[key] = value
+##        else:
+##            print "Setting value for new key '%s' to '%s'" % (key, value)
+##            glob_config.add_config_dict({key : configfile.str_c_var(value)})
+##    if server_com:
+##        glob_config["LOG_NAME"] = "%s-direct" % (glob_config["LOG_NAME"])
+##        loc_config["PID_NAME"] = "%s-direct-%s-%d" % (loc_config["PID_NAME"], "%04d%02d%02d-%02d:%02d" % tuple(time.localtime()[0:5]), os.getpid())
+##    server_code(db_con, glob_config, loc_config, server_com)
+##    db_con.close()
+##    del db_con
+##    sys.exit(0)
 
 if __name__ == "__main__":
     main()

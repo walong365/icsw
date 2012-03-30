@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2003,2004,2005,2006,2007,2008 lang-nevyjel@init.at
+# Copyright (c) 2003,2004,2005,2006,2007,2008,2012 lang-nevyjel@init.at
 #
 
 #
@@ -18,6 +18,7 @@
 # Description:   starts cluster-server
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -25,7 +26,7 @@ else
 fi
 . /etc/init.d/ics_tools.sh
 
-SERVER_BIN=/usr/local/sbin/cluster-server.py
+SERVER_BIN=/opt/cluster/sbin/cluster-server.py
 PYTHON_BIN=/usr/bin/python-init
 SERVER_PID=/var/run/cluster-server.pid
 SERVER_ARGS=""
