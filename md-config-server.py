@@ -61,58 +61,6 @@ SERVER_COM_PORT = 8010
 TEMPLATE_NAME = "t"
 SQL_ACCESS = "cluster_full_access"
 
-# -------------- connection objects --------------
-##class new_tcp_con(net_tools.buffer_object):
-##    # connection object for rrd-server
-##    def __init__(self, src, recv_queue, log_queue):
-##        #print "Init %s (%s) from %s" % (con_type, con_class, str(src))
-##        self.__src_host, self.__src_port = src
-##        self.__recv_queue = recv_queue
-##        self.__log_queue = log_queue
-##        net_tools.buffer_object.__init__(self)
-##        self.__init_time = time.time()
-##        self.__in_buffer = ""
-##    def __del__(self):
-##        pass
-##    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-##        self.__log_queue.put(("log", (threading.currentThread().getName(), what, level)))
-##    def get_src_host(self):
-##        return self.__src_host
-##    def get_src_port(self):
-##        return self.__src_port
-##    def add_to_in_buffer(self, what):
-##        self.__in_buffer += what
-##        p1_ok, what = net_tools.check_for_proto_1_header(self.__in_buffer)
-##        if p1_ok:
-##            self.__decoded = what
-##            self.__recv_queue.put(("com_con", self))
-##    def add_to_out_buffer(self, what, new_in_str=""):
-##        self.lock()
-##        # to give some meaningful log
-##        if new_in_str:
-##            self.__decoded = new_in_str
-##        if self.socket:
-##            self.out_buffer = net_tools.add_proto_1_header(what)
-##            self.socket.ready_to_send()
-##        else:
-##            self.log("timeout, other side has closed connection")
-##        self.unlock()
-##    def out_buffer_sent(self, d_len):
-##        if d_len == len(self.out_buffer):
-##            self.__recv_queue = None
-##            self.log("command %s from %s (port %d) took %s" % (self.__decoded.replace("\n", "\\n"),
-##                                                               self.__src_host,
-##                                                               self.__src_port,
-##                                                               logging_tools.get_diff_time_str(abs(time.time() - self.__init_time))))
-##            self.close()
-##        else:
-##            self.out_buffer = self.out_buffer[d_len:]
-##    def get_decoded_in_str(self):
-##        return self.__decoded
-##    def report_problem(self, flag, what):
-##        self.close()
-
-# -------------- connection objects --------------
 class main_config(object):
     def __init__(self, b_proc):
         self.__build_process = b_proc
@@ -2149,6 +2097,8 @@ class server_process(threading_tools.process_pool):
                         self.log("  added key %s to table %s" % (name, db_name))
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
+            while self.__log_cache:
+                self.__log_template.log(*self.__log_cache.pop(0))
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
@@ -2254,12 +2204,10 @@ global_config = configfile.get_global_config(process_tools.get_programm_name())
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
-    # local configs, also stored in configfile
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name, prog_name))),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
-        ("FIXIT"               , configfile.bool_c_var(False, action="store_true", help_string="fix directory rights [%(default)s]", only_commandline=True)),
         ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True)),
         ("USER"                , configfile.str_c_var("idnagios", help_string="user to run as [%(default)s")),
         ("GROUP"               , configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
@@ -2304,26 +2252,26 @@ def main():
         log_lines = process_tools.kill_running_processes(prog_name, ignore_names=["nagios", "icinga"],
                                                          exclude=configfile.get_manager_pid())
     configfile.read_config_from_db(global_config, dc, "nagios_master", [
-            ("COM_PORT"                    , configfile.int_c_var(8010)),
-            ("NETSPEED_WARN_MULT"          , configfile.float_c_var(0.85)),
-            ("NETSPEED_CRITICAL_MULT"      , configfile.float_c_var(0.95)),
-            ("NETSPEED_DEFAULT_VALUE"      , configfile.int_c_var(10000000)),
-            ("CHECK_HOST_ALIVE_PINGS"      , configfile.int_c_var(3)),
-            ("CHECK_HOST_ALIVE_TIMEOUT"    , configfile.float_c_var(5.0)),
-            ("NONE_CONTACT_GROUP"          , configfile.str_c_var("none_group")),
-            ("LOG_DIR"                     , configfile.str_c_var("/var/log/cluster/md-config-server")),
-            ("FROM_ADDR"                   , configfile.str_c_var(long_host_name)),
-            ("MAIN_LOOP_TIMEOUT"           , configfile.int_c_var(30)),
-            ("RETAIN_HOST_STATUS"          , configfile.int_c_var(1)),
-            ("RETAIN_SERVICE_STATUS"       , configfile.int_c_var(1)),
-            ("NDO_DATA_PROCESSING_OPTIONS" , configfile.int_c_var(1 | 4 | 8 | 16 | 64 | 128 | 2048 | 4096 | 8192 | 524288 | 262144 | 1048576 | 2097152)),
-            ("EVENT_BROKER_OPTIONS"        , configfile.int_c_var(1 | 4 | 8 | 64 | 128 | 512 | 1024 | 4096 | 32768 | 65536 | 131072)),
-            ("CCOLLCLIENT_TIMEOUT"         , configfile.int_c_var(6)),
-            ("CSNMPCLIENT_TIMEOUT"         , configfile.int_c_var(20)),
-            ("MAX_SERVICE_CHECK_SPREAD"    , configfile.int_c_var(5)),
-            ("MAX_CONCURRENT_CHECKS"       , configfile.int_c_var(500)),
-            ("ALL_HOSTS_NAME"              , configfile.str_c_var("***ALL***")),
-            ("SERVER_SHORT_NAME"           , configfile.str_c_var(mach_name)),
+        ("COM_PORT"                    , configfile.int_c_var(8010)),
+        ("NETSPEED_WARN_MULT"          , configfile.float_c_var(0.85)),
+        ("NETSPEED_CRITICAL_MULT"      , configfile.float_c_var(0.95)),
+        ("NETSPEED_DEFAULT_VALUE"      , configfile.int_c_var(10000000)),
+        ("CHECK_HOST_ALIVE_PINGS"      , configfile.int_c_var(3)),
+        ("CHECK_HOST_ALIVE_TIMEOUT"    , configfile.float_c_var(5.0)),
+        ("NONE_CONTACT_GROUP"          , configfile.str_c_var("none_group")),
+        ("LOG_DIR"                     , configfile.str_c_var("/var/log/cluster/md-config-server")),
+        ("FROM_ADDR"                   , configfile.str_c_var(long_host_name)),
+        ("MAIN_LOOP_TIMEOUT"           , configfile.int_c_var(30)),
+        ("RETAIN_HOST_STATUS"          , configfile.int_c_var(1)),
+        ("RETAIN_SERVICE_STATUS"       , configfile.int_c_var(1)),
+        ("NDO_DATA_PROCESSING_OPTIONS" , configfile.int_c_var(1 | 4 | 8 | 16 | 64 | 128 | 2048 | 4096 | 8192 | 524288 | 262144 | 1048576 | 2097152)),
+        ("EVENT_BROKER_OPTIONS"        , configfile.int_c_var(1 | 4 | 8 | 64 | 128 | 512 | 1024 | 4096 | 32768 | 65536 | 131072)),
+        ("CCOLLCLIENT_TIMEOUT"         , configfile.int_c_var(6)),
+        ("CSNMPCLIENT_TIMEOUT"         , configfile.int_c_var(20)),
+        ("MAX_SERVICE_CHECK_SPREAD"    , configfile.int_c_var(5)),
+        ("MAX_CONCURRENT_CHECKS"       , configfile.int_c_var(500)),
+        ("ALL_HOSTS_NAME"              , configfile.str_c_var("***ALL***")),
+        ("SERVER_SHORT_NAME"           , configfile.str_c_var(mach_name)),
     ])
     dc.release()
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
@@ -2334,149 +2282,6 @@ def main():
     else:
         print "Debugging md-config-server on %s" % (long_host_name)
     ret_state = server_process(db_con).loop()
-    sys.exit(ret_state)
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "dVvr:hCfg:u:kG:", ["help", "comp"])
-    except getopt.GetoptError, bla:
-        print "Commandline error: %s, %s" % (bla, process_tools.get_except_info())
-        sys.exit(2)
-    long_host_name = socket.getfqdn(socket.gethostname())
-    short_host_name = long_host_name.split(".")[0]
-    loc_config = configfile.configuration("local_config", {"PID_NAME"              : configfile.str_c_var("md-config-server/md-config-server"),
-                                                           "SERVER_FULL_NAME"      : configfile.str_c_var(long_host_name),
-                                                           "SERVER_SHORT_NAME"     : configfile.str_c_var(short_host_name),
-                                                           "DAEMON"                : configfile.bool_c_var(True),
-                                                           "VERBOSE"               : configfile.int_c_var(0),
-                                                           "CHECK"                 : configfile.bool_c_var(False),
-                                                           "KILL_RUNNING"          : configfile.bool_c_var(True),
-                                                           "N_RETRY"               : configfile.int_c_var(5),
-                                                           "USER"                  : configfile.str_c_var("root"),
-                                                           "GROUP"                 : configfile.str_c_var("root"),
-                                                           "GROUPS"                : configfile.array_c_var([]),
-                                                           "FIXIT"                 : configfile.bool_c_var(False),
-                                                           "SERVER_IDX"            : configfile.int_c_var(0),
-                                                           "LOG_SOURCE_IDX"        : configfile.int_c_var(0),
-                                                           "VERSION_STRING"        : configfile.str_c_var(VERSION_STRING),
-                                                           "ALL_HOSTS_NAME"        : configfile.str_c_var("***ALL***"),
-                                                           "MAIN_CONFIG_NAME"      : configfile.str_c_var("not_set"),
-                                                           "MD_VERSION"            : configfile.int_c_var(0),
-                                                           "MD_RELEASE"            : configfile.int_c_var(0),
-                                                           "MD_TYPE"               : configfile.str_c_var("unknown"),
-                                                           "MD_LOCK_FILE"          : configfile.str_c_var("unknown.lock"),
-                                                           "MD_BASEDIR"            : configfile.str_c_var("/opt/not_set"),
-                                                           "MD_VERSION_STRING"     : configfile.str_c_var("unknown"),
-                                                           "HAS_SNMP_RELAYER"      : configfile.bool_c_var(False)})
-    com_port = SERVER_COM_PORT
-    pname = os.path.basename(sys.argv[0])
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print "Usage: %s [OPTIONS]" % (pname)
-            print "version is %s" % (loc_config["VERSION_STRING"])
-            print "where OPTIONS are:"
-            print " -h,--help       this help"
-            print " -C              check if this is a nagios_master"
-            print " -d              run in debug mode (no forking)"
-            print " -v              increase verbosity"
-            print " -r N            set number of bind-retries to N (default %d)" % (loc_config["N_RETRY"])
-            print " -V              show version"
-            print " --comp port     connect to given port for commands, default is %d" % (com_port)
-            print " -f              create and fix needed files and directories"
-            print " -u user         run as user USER"
-            print " -g group        run as group GROUP"
-            print " -G groups       coma-separated list of additional groups"
-            print " -k              do not kill running %s" % (pname)
-            sys.exit(0)
-        if opt == "-G":
-            loc_config["GROUPS"] = [x.strip() for x in arg.strip().split(",")]
-        if opt == "-k":
-            loc_config["KILL_RUNNING"] = False
-        if opt == "-C":
-            loc_config["CHECK"] = True
-        if opt == "-d":
-            loc_config["DAEMON"] = False
-        if opt == "-V":
-            print "Version %s" % (VERSION_STRING)
-            sys.exit(0)
-        if opt == "--comp":
-            com_port = int(arg)
-        if opt == "-v":
-            loc_config["VERBOSE"] += 1
-        if opt == "-r":
-            try:
-                loc_config["N_RETRY"] = int(arg)
-            except:
-                print "Error parsing n_retry"
-                sys.exit(2)
-        if opt == "-f":
-            loc_config["FIXIT"] = 1
-        if opt == "-u":
-            loc_config["USER"] = arg
-        if opt == "-g":
-            loc_config["GROUP"] = arg
-    db_con = mysql_tools.dbcon_container()
-    try:
-        dc = db_con.get_connection("cluster_full_access")
-    except MySQLdb.OperationalError:
-        sys.stderr.write(" Cannot connect to SQL-Server ")
-        sys.exit(1)
-    sql_info = config_tools.server_check(dc=dc, server_type="nagios_master")
-    loc_config["SERVER_IDX"] = sql_info.server_device_idx
-    ret_state = 256
-    if not loc_config["SERVER_IDX"]:
-        sys.stderr.write(" %s is no md-config-server, exiting..." % (long_host_name))
-        sys.exit(5)
-    if loc_config["CHECK"]:
-        sys.exit(0)
-    if sql_info.num_servers > 1:
-        print "Database error for host %s (nagios_config): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
-        dc.release()
-    else:
-        loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, loc_config["SERVER_IDX"], "nagios_master", "Nagios Master Monitor")
-        if not loc_config["LOG_SOURCE_IDX"]:
-            print "Too many log_source with my id present, exiting..."
-            dc.release()
-        else:
-            if loc_config["KILL_RUNNING"]:
-                log_lines = process_tools.kill_running_processes(pname, ignore_names=["nagios"])
-                for line in log_lines:
-                    logging_tools.my_syslog(line)
-            glob_config = configfile.read_global_config(dc, "nagios_master", {"COM_PORT"                    : configfile.int_c_var(com_port),
-                                                                              "NETSPEED_WARN_MULT"          : configfile.float_c_var(0.85),
-                                                                              "NETSPEED_CRITICAL_MULT"      : configfile.float_c_var(0.95),
-                                                                              "NETSPEED_DEFAULT_VALUE"      : configfile.int_c_var(10000000),
-                                                                              "CHECK_HOST_ALIVE_PINGS"      : configfile.int_c_var(3),
-                                                                              "CHECK_HOST_ALIVE_TIMEOUT"    : configfile.float_c_var(5.0),
-                                                                              "NONE_CONTACT_GROUP"          : configfile.str_c_var("none_group"),
-                                                                              "LOG_DIR"                     : configfile.str_c_var("/var/log/cluster/md-config-server"),
-                                                                              "FROM_ADDR"                   : configfile.str_c_var(long_host_name),
-                                                                              "MAIN_LOOP_TIMEOUT"           : configfile.int_c_var(30),
-                                                                              "RETAIN_HOST_STATUS"          : configfile.int_c_var(1),
-                                                                              "RETAIN_SERVICE_STATUS"       : configfile.int_c_var(1),
-                                                                              "NDO_DATA_PROCESSING_OPTIONS" : configfile.int_c_var(1 | 4 | 8 | 16 | 64 | 128 | 2048 | 4096 | 8192 | 524288 | 262144 | 1048576 | 2097152),
-                                                                              "EVENT_BROKER_OPTIONS"        : configfile.int_c_var(1 | 4 | 8 | 64 | 128 | 512 | 1024 | 4096 | 32768 | 65536 | 131072),
-                                                                              "CCOLLCLIENT_TIMEOUT"         : configfile.int_c_var(6),
-                                                                              "CSNMPCLIENT_TIMEOUT"         : configfile.int_c_var(20),
-                                                                              "MAX_SERVICE_CHECK_SPREAD"    : configfile.int_c_var(5),
-                                                                              "MAX_CONCURRENT_CHECKS"       : configfile.int_c_var(500)})
-            dc.release()
-            if loc_config["FIXIT"]:
-                process_tools.fix_directories(loc_config["USER"],
-                                              loc_config["GROUP"],
-                                              [glob_config["LOG_DIR"], "/var/run/md-config-server"])
-                process_tools.fix_files(loc_config["USER"],
-                                        loc_config["GROUP"],
-                                        ["/var/log/md-config-server.out", "/tmp/md-config-server.out"])
-            process_tools.change_user_group(loc_config["USER"], loc_config["GROUP"], loc_config["GROUPS"])
-            if loc_config["DAEMON"]:
-                process_tools.become_daemon()
-                process_tools.set_handles({"out" : (1, "md-config-server.out"),
-                                           "err" : (0, "/var/lib/logging-server/py_err")})
-            else:
-                print "Debugging md-config-server on %s" % (long_host_name)
-            my_tp = server_thread_pool(db_con, glob_config, loc_config)
-            my_tp.thread_loop()
-    db_con.close()
-    del db_con
     sys.exit(ret_state)
 
 if __name__  == "__main__":
