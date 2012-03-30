@@ -1,9 +1,9 @@
 {% extends "initcore/main.html" %}
-
 {% load i18n %}
+{% load url from future %}
 
 {% block title %}{% trans 'Welcome' %}{% endblock %}
 
 {% block content %}
-    <iframe src="{% url admin:index %}" width="100%" height="800px" frameborder="0"/>
+    <iframe src="{% url "admin:index" %}" width="100%" height="800px" frameborder="0"/>
 {% endblock %}

@@ -1,4 +1,6 @@
-<form action="{% url session:set_mobile %}" method="POST" id="set_mobile_form">
+{% load url from future %}
+
+<form action="{% url "session:set_mobile" %}" method="POST" id="set_mobile_form">
     <input name="next" type="hidden" value="{{ request.path }}" />
     {% if session.is_mobile %}
         <input type="image" src="{{ MEDIA_URL }}initcore/img/do_normal.png" name="set_mobile_button" value="M" class="noresize" />

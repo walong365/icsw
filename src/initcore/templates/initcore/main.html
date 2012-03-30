@@ -1,4 +1,5 @@
 {% load initcore_tags i18n %}
+{% load url from future %}
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 
@@ -84,7 +85,7 @@
         <div class="fp_headline" style="float:right;">
             {% now "l, j. F Y" %} <span id="cur_time">00:00:00</span>,
             {% if user.is_authenticated %}
-                {% blocktrans %} You are logged in as <strong>{{ user }}</strong>. {% endblocktrans %} <a href="{% url session:logout %}">{% trans 'Logout' %}</a>
+                {% blocktrans %} You are logged in as <strong>{{ user }}</strong>. {% endblocktrans %} <a href="{% url "session:logout" %}">{% trans 'Logout' %}</a>
             {% endif %}
         </div>
     {% endif %}
@@ -146,7 +147,7 @@ function show_menu() {
         add_dropdwon_dynatree_handlers();
     } else {
         dropdown_dynatree_enabled = 1;
-        $("div#dropdown_sidebar").load("{% url session:get_menu 'dynatree' %}", function() {
+        $("div#dropdown_sidebar").load("{% url "session:get_menu" 'dynatree' %}", function() {
             $("div#dropdown_sidebar").dynatree({
                 onActivate : function(dtnode) {
                     if (dtnode.data.href) {
@@ -171,7 +172,7 @@ function add_dropdwon_dynatree_handlers() {
 
 function save_layout_state() {
     $.ajax({
-        url      : "{% url session:save_layout_state %}",
+        url      : "{% url "session:save_layout_state" %}",
         data     : {"a" : my_layout.state},
         dataType : "xml"
     });

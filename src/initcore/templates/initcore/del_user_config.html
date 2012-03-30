@@ -1,5 +1,6 @@
 {% extends "initcore/main.html" %}
 {% load i18n %}
+{% load url from future %}
 
 {% block title %}{% trans "Delete user config" %}{% endblock %}
 
@@ -26,7 +27,7 @@ $(document).ready(function() {
 });
 
 function delete_config() {
-    var url = "{% url session:del_user_config %}";
+    var url = "{% url "session:del_user_config" %}";
     $.post(url, {
         success: function(data) {
         }

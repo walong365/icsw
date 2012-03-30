@@ -1,5 +1,6 @@
 {% extends "initcore/main.html" %}
 {% load i18n %}
+{% load url from future %}
 
 {% block title %}{{PROJECT_NAME}} {% trans "Configuration" %}{% endblock %}
 
@@ -7,7 +8,7 @@
 
 {% block content %}
 
-<form action="{% url session:user_config %}" method="POST">
+<form action="{% url "session:user_config" %}" method="POST">
 <table class="style2" id="config_table">
 {{ css_form }}
 </table>
