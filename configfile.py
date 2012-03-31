@@ -54,6 +54,14 @@ class config_proxy(BaseProxy):
         return self._callmethod("get_log", [], kwargs)
     def fixed(self, key):
         return self._callmethod("fixed", (key,))
+    def get_type(self, key):
+        return self._callmethod("get_type", (key,))
+    def is_global(self, key):
+        return self._callmethod("is_global", (key,))
+    def database(self, key):
+        return self._callmethod("database", (key,))
+    def keys(self):
+        return self._callmethod("keys")
     def __getitem__(self, key):
         return self._callmethod("__getitem__", (key,))
     def __setitem__(self, key, value):
@@ -91,6 +99,9 @@ class _conf_var(object):
         # for commandline options
         self._help_string = kwargs.get("help_string", None)
         self._short_opts = kwargs.get("short_options", None)
+        self._choices = kwargs.get("choices", None)
+        self._nargs = kwargs.get("nargs", None)
+        self._database = kwargs.get("database", True)
         self._only_commandline = kwargs.get("only_commandline", False)
     def is_commandline_option(self):
         return True if self._help_string else False
@@ -107,17 +118,29 @@ class _conf_var(object):
                 opts = "-%s" % (self._short_opts)
         else:
             opts = "--%s" % (name.lower())
+        kwargs = {"dest" : name,
+                  "help" : self._help_string}
+        if self._choices:
+            kwargs["choices"] = self._choices
+        if self._nargs:
+            kwargs["nargs"] = self._nargs
         if self.argparse_type == None:
             if self.short_type == "b":
                 # bool
                 if self._only_commandline:
-                    arg_parser.add_argument(opts, dest=name, action="store_%s" % ("false" if self.__default_val else "true"), default=self.__default_val, help=self._help_string)
+                    arg_parser.add_argument(opts, action="store_%s" % ("false" if self.__default_val else "true"), default=self.__default_val, **kwargs)
                 else:
-                    arg_parser.add_argument(opts, dest=name, action="store_%s" % ("false" if self.value else "true"), default=self.value, help=self._help_string)
+                    arg_parser.add_argument(opts, action="store_%s" % ("false" if self.value else "true"), default=self.value, **kwargs)
             else:
-                print "*???*", self.short_type, name
+                print "*???*", self.short_type, name, self.argparse_type
         else:
-            arg_parser.add_argument(opts, dest=name, type=self.argparse_type, help=self._help_string, default=self.value)
+            arg_parser.add_argument(opts, type=self.argparse_type, default=self.value, **kwargs)
+    @property
+    def database(self):
+        return self._database
+    @database.setter
+    def database(self, database):
+        self._database = database
     @property
     def is_global(self):
         return self.__is_global
@@ -233,6 +256,7 @@ class bool_c_var(_conf_var):
 class array_c_var(_conf_var):
     descr = "Array"
     short_type = "a"
+    argparse_type = str
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
     def check_type(self, val):
@@ -368,6 +392,11 @@ class configuration(object):
             return self.__c_dict[key].is_global
         else:
             raise KeyError, "Key %s not found in c_dict" % (key)
+    def database(self, key):
+        if key in self.__c_dict:
+            return self.__c_dict[key].database
+        else:
+            raise KeyError, "Key %s not found in c_dict" % (key)
     def get_type(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].short_type
@@ -494,7 +523,8 @@ class configuration(object):
             return options
 
 config_manager.register("config", configuration, config_proxy, exposed=["parse_file", "add_config_entries", "set_uid_gid",
-                                                                        "get_log", "handle_commandline",
+                                                                        "get_log", "handle_commandline", "keys", "get_type",
+                                                                        "is_global", "database",
                                                                         "__getitem__", "__setitem__", "__contains__",
                                                                         "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])
 cur_manager = config_manager()
@@ -656,6 +686,10 @@ def read_config_from_db(g_config, dc, server_type, init_list=[], host_name=""):
                     new_val = bool_c_var(bool(db_rec["value"]), source="%s_table" % (short))
                 else:
                     new_val = str_c_var(db_rec["value"], source="%s_table" % (short))
+                present_in_config = var_name in g_config
+                if present_in_config:
+                    # copy settings from config
+                    new_val.database = g_config.database(var_name)
                 new_val.is_global = var_global
                 if local_host_name == host_name:
                     if var_name.upper() in g_config and g_config.fixed(var_name.upper()):
@@ -747,20 +781,19 @@ def write_config(dc, server_type, config):
     host_name = full_host_name.split(".")[0]
     srv_info = config_tools.server_check(dc=dc, server_type=server_type, short_host_name=host_name)
     if srv_info.num_servers and srv_info.config_idx:
-        for k in config.keys():
+        for key in config.keys():
             #print k,config.get_source(k)
             #print "write", k, config.get_source(k)
             #if config.get_source(k) == "default":
             # only deal with int and str-variables
             tab_type = {"i" : "int",
                         "s" : "str",
-                        "b" : "bool"}.get(config.get_type(k), None)
-            if tab_type:
+                        "b" : "bool"}.get(config.get_type(key), None)
+            if tab_type and config.database(key):
                 # var global / local
-                var_range_name = config.is_global(k) and "global" or "local"
+                var_range_name = config.is_global(key) and "global" or "local"
                 # build real var name
-                real_k_name = config.is_global(k) and k or "%s:%s" % (host_name, k)
-                #print config.is_global(k), k, real_k_name
+                real_k_name = config.is_global(key) and key or "%s:%s" % (host_name, key)
                 sql_str = "SELECT cv.*, dc.device FROM device_config dc INNER JOIN config_%s cv INNER JOIN device d INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE " % (tab_type) + \
                           "d.device_group=dg.device_group_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND " + \
                           "d.device_idx=%d AND dc.new_config=%d AND cv.new_config=dc.new_config AND cv.name='%s' AND (cv.device=0 OR cv.device=%d)" % (srv_info.server_device_idx,
@@ -776,17 +809,20 @@ def write_config(dc, server_type, config):
                                                                                                                                                                         srv_info.config_name,
                                                                                                                                                                         full_host_name),
                                                                                                                                     srv_info.config_idx,
-                                                                                                                                    config[k]))
+                                                                                                                                    config[key]))
                     dc.execute(sql_str, sql_tuple)
                 else:
                     # already in db
                     #sql_str = ""
                     act_db_record = dc.fetchone()
-                    if config[k] != act_db_record["value"]:
-                        sql_str, sql_tuple = ("UPDATE config_%s SET value=%%s WHERE config=%%s AND name=%%s" % (tab_type), (config[k],
+                    if config[key] != act_db_record["value"]:
+                        sql_str, sql_tuple = ("UPDATE config_%s SET value=%%s WHERE config=%%s AND name=%%s" % (tab_type), (config[key],
                                                                                                                             srv_info.config_idx,
                                                                                                                             real_k_name))
                         dc.execute(sql_str, sql_tuple)
                         # changed
                         #print "Change", real_k_name, k, config[k], act_db_record["value"]
+            else:
+                #print "X", key
+                pass
     return log_lines

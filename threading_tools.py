@@ -837,7 +837,7 @@ class process_obj(multiprocessing.Process):
         self.send_pool_message("process_start")
     def _close_sockets(self):
         # wait for the last commands to settle
-        time.sleep(0.5)
+        time.sleep(0.25)
         if not self.__twisted:
             self.__process_queue.close()
             time.sleep(0.1)
@@ -1252,23 +1252,26 @@ class process_pool(object):
                 while self["run_flag"]:
                     if self["exit_requested"]:
                         self.stop_running_processes()
-                    try:
-                        _socks = self.poller.poll(timeout=self.__loop_granularity)
-                    except:
-                        raise
-                    for sock, c_type in _socks:
-                        if sock in self.poller_handler:
-                            if c_type in self.poller_handler[sock]:
-                                self.poller_handler[sock][c_type](sock)
-                            else:
-                                print "???0", sock, c_type
-                                time.sleep(1)
-                        else:
-                            print "???1", sock, c_type
-                            time.sleep(1)
                     cur_time = time.time()
                     if self.__next_timeout and cur_time > self.__next_timeout:
                         self._handle_timer(cur_time)
+                    if not self["exit_requested"]:
+                        # only check sockets if no exit was requested by one of the timer funcs above
+                        # otherwise we have to wait for loop_granularity milliseconds
+                        try:
+                            _socks = self.poller.poll(timeout=self.__loop_granularity)
+                        except:
+                            raise
+                        for sock, c_type in _socks:
+                            if sock in self.poller_handler:
+                                if c_type in self.poller_handler[sock]:
+                                    self.poller_handler[sock][c_type](sock)
+                                else:
+                                    print "???0", sock, c_type
+                                    time.sleep(1)
+                            else:
+                                print "???1", sock, c_type
+                                time.sleep(1)
                     if self["exit_requested"] and not self.__processes_running:
                         self.log("loop exit")
                         self["run_flag"] = False
