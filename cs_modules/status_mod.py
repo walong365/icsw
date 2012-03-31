@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -18,48 +18,53 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ returns status of the cluster and updates the cluster_name if necessary """
+
 import sys
 import cs_base_class
 import configfile
 import os
+import server_command
 
 CLUSTER_NAME_FILE = "/etc/sysconfig/cluster/cluster_name"
 
 class status(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_showtime(0)
-        self.set_write_log(0)
-    def call_it(self, opt_dict, call_params):
-        tp = call_params.get_thread_pool()
-        if tp:
-            call_params.dc.execute("SELECT d.device_idx FROM device d, device_group dg WHERE d.device_group=dg.device_group_idx AND dg.cluster_device_group")
-            if call_params.dc.rowcount:
-                cd_idx = call_params.dc.fetchone()["device_idx"]
-                dv = configfile.device_variable(call_params.dc, cd_idx, "CLUSTER_NAME")
-                if dv.is_set():
-                    new_name = dv.get_value()
-                    if os.path.isfile(CLUSTER_NAME_FILE):
-                        try:
-                            old_name = file(CLUSTER_NAME_FILE, "r").read().strip().split()[0]
-                        except:
-                            old_name = ""
-                    else:
+    class Meta:
+        show_execution_time = False
+    def _call(self):
+        self.dc.execute("SELECT d.device_idx FROM device d, device_group dg WHERE d.device_group=dg.device_group_idx AND dg.cluster_device_group")
+        if self.dc.rowcount:
+            cd_idx = self.dc.fetchone()["device_idx"]
+            dv = configfile.device_variable(self.dc, cd_idx, "CLUSTER_NAME")
+            if dv.is_set():
+                cluster_name = dv.get_value()
+                if os.path.isfile(CLUSTER_NAME_FILE):
+                    try:
+                        old_name = file(CLUSTER_NAME_FILE, "r").read().strip().split()[0]
+                    except:
                         old_name = ""
-                    if new_name != old_name:
-                        try:
-                            file(CLUSTER_NAME_FILE, "w").write(dv.get_value())
-                        except:
-                            pass
-            num_threads, num_ok = (tp.num_threads(False),
-                                   tp.num_threads_running(False))
-            if num_ok == num_threads:
-                ret_str = "OK: all %d threads running, version %s" % (num_ok, call_params.get_l_config()["VERSION_STRING"])
+                else:
+                    old_name = ""
+                if cluster_name != old_name:
+                    try:
+                        file(CLUSTER_NAME_FILE, "w").write(cluster_name)
+                    except:
+                        pass
             else:
-                ret_str = "ERROR: only %d of %d threads running, version %s" % (num_ok, num_threads, call_params.get_l_config()["VERSION_STRING"])
+                cluster_name = "not found"
         else:
-            ret_str = "warn running local"
-        return ret_str
+            cluster_name = "not set"
+        self.srv_com["clustername"] = cluster_name
+        self.srv_com["version"] = self.global_config["VERSION"]
+        self.srv_com["result"].attrib.update({
+            "reply" : "all threads and processes running, clustername is %s, version is %s" % (cluster_name,
+                                                                                               self.global_config["VERSION"]),
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+        #num_threads, num_ok = (tp.num_threads(False),
+        #                       tp.num_threads_running(False))
+        #if num_ok == num_threads:
+        #    ret_str = "OK: all %d threads running, version %s" % (num_ok, call_params.get_l_config()["VERSION_STRING"])
+        #else:
+        #    ret_str = "ERROR: only %d of %d threads running, version %s" % (num_ok, num_threads, #call_params.get_l_config()["VERSION_STRING"])
     
 if __name__ == "__main__":
     print "Loadable module, exiting ..."

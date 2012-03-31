@@ -46,6 +46,7 @@ import cs_base_class
 import config_tools
 import cProfile
 import zmq
+import cluster_server
 
 try:
     from cluster_server_version import VERSION_STRING
@@ -148,27 +149,6 @@ class call_params(object):
         self.option_dict_valid = valid
     def get_option_dict_valid(self):
         return self.option_dict_valid
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        if self.logger:
-            self.logger.log(level, "%s: %s" % (self.sc_name, what))
-        else:
-            logging_tools.my_syslog("%s: %s" % (self.sc_name, what), level)
-    def write_start_log(self, act_sc):
-        if act_sc.get_write_log():
-            self.log("Got command %s (options %s) from host %s (port %d) to %s, %s: %s" % (self.server_com.get_command(),
-                                                                                           self.opt_str,
-                                                                                           self.src_host,
-                                                                                           self.src_port,
-                                                                                           self.loc_ip,
-                                                                                           logging_tools.get_plural("config", len(act_sc.get_config_list())),
-                                                                                           act_sc.get_config()))
-    def write_end_log(self, act_sc):
-        if act_sc.get_write_log():
-            ins_id = mysql_tools.device_log_entry(self.dc, self.__server_idx, self.__loc_config["LOG_SOURCE_IDX"], 0, self.__loc_config["LOG_STATUS"]["i"]["log_status_idx"], "command %s from %s, result: %s" % (self.server_com.get_command(), self.src_host, self.ret_str))
-            mysql_tools.ext_device_log_entry(self.dc, ins_id, self.__loc_config["LOG_SOURCE_IDX"], 0, "cluster-server", "Cluster-Server entry", "\n".join(["From    : %s" % (self.src_host),
-                                                                                                                                                           "Command : %s" % (self.server_com.get_command()),
-                                                                                                                                                           "Options : %s" % (self.opt_str),
-                                                                                                                                                           "Result  : %s" % (self.ret_str), ""]))
         
 def process_request(glob_config, loc_config, logger, db_con, server_com, src_host, src_port, direct_com, loc_ip, nss_queue, bg_queue, bg_commands, thread_pool):
     commands_queued = []
@@ -1010,8 +990,18 @@ class server_process(threading_tools.process_pool):
     def __init__(self, db_con):
         self.__log_cache, self.__log_template = ([], None)
         self.__db_con = db_con
-        self.__pid_name = global_config["PID_NAME"]
         threading_tools.process_pool.__init__(self, "main", zmq=True)
+        self.__run_command = True if global_config["COMMAND"].strip() else False
+        if self.__run_command:
+            # rewrite LOG_NAME and PID_NAME
+            global_config["PID_NAME"] = "%s-direct-%s-%d" % (
+                global_config["PID_NAME"],
+                "%04d%02d%02d-%02d:%02d" % tuple(time.localtime()[0:5]),
+                os.getpid())
+            global_config["LOG_NAME"] = "%s-direct-%s" % (
+                global_config["LOG_NAME"],
+                global_config["COMMAND"])
+        self.__pid_name = global_config["PID_NAME"]
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
         self._re_insert_config()
@@ -1022,7 +1012,10 @@ class server_process(threading_tools.process_pool):
         #self.__is_server = not self.__server_com
         self._load_modules()#self.__loc_config, self.log, self.__is_server)
         self._init_network_sockets()
-        self.register_timer(self._update, 30, instant=True)
+        if self.__run_command:
+            self.register_timer(self._run_command, 3600, instant=True)
+        else:
+            self.register_timer(self._update, 30, instant=True)
 ##        self.__ns = None
 ##        if not self.__server_com:
 ##            self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=False)
@@ -1055,11 +1048,12 @@ class server_process(threading_tools.process_pool):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
-            if not self.__is_server and self.__client_ret_str is None:
-                self.set_error("interrupted")
             self["exit_requested"] = True
-            if self.__ns:
-                self.__ns.set_timeout(0.1)
+##            if not self.__is_server and self.__client_ret_str is None:
+##                self.set_error("interrupted")
+##            self["exit_requested"] = True
+##            if self.__ns:
+##                self.__ns.set_timeout(0.1)
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -1070,16 +1064,15 @@ class server_process(threading_tools.process_pool):
             self.log("Config : %s" % (conf))
     def _re_insert_config(self):
         self.log("re-insert config")
-        # FIXME, AL, 20120330, not needed ?
-##        dc = self.__db_con.get_connection(SQL_ACCESS)
-##        configfile.write_config(dc, "server", self.__glob_config)
-##        dc.release()
+        dc = self.__db_con.get_connection(SQL_ACCESS)
+        configfile.write_config(dc, "server", global_config)
+        dc.release()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
         if global_config["DEBUG"] or True:#AEMON"]: and not self.__server_com:
             self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("cluster-server")
+            msi_block = process_tools.meta_server_info(self.__pid_name)
             msi_block.add_actual_pid(mult=3)
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/cluster-server start"
@@ -1103,24 +1096,30 @@ class server_process(threading_tools.process_pool):
                 configfile.device_variable(dc, dev_idx, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
                 configfile.device_variable(dc, dev_idx, "is_virtual", description="Flag set for Virtual Machines", value=1)
         dc.release()
-    def thread_loop_post(self):
+    def loop_end(self):
+        if self.com_socket:
+            self.log("closing socket")
+            self.com_socket.close()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
     def _init_network_sockets(self):
-        client = self.zmq_context.socket(zmq.ROUTER)
-        client.setsockopt(zmq.IDENTITY, "cluster-server:%s" % (global_config["SERVER_SHORT_NAME"]))
-        client.setsockopt(zmq.HWM, 256)
-        try:
-            client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
-        except zmq.core.error.ZMQError:
-            self.log("error binding to %d: %s" % (global_config["COM_PORT"],
-                                                  process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_CRITICAL)
-            raise
+        if self.__run_command:
+            client = None
         else:
-            self.register_poller(client, zmq.POLLIN, self._recv_command)
-            self.com_socket = client
+            client = self.zmq_context.socket(zmq.ROUTER)
+            client.setsockopt(zmq.IDENTITY, "cluster-server:%s" % (global_config["SERVER_SHORT_NAME"]))
+            client.setsockopt(zmq.HWM, 256)
+            try:
+                client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
+            except zmq.core.error.ZMQError:
+                self.log("error binding to %d: %s" % (global_config["COM_PORT"],
+                                                      process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_CRITICAL)
+                raise
+            else:
+                self.register_poller(client, zmq.POLLIN, self._recv_command)
+        self.com_socket = client
     def _recv_command(self, sock):
         print "*"
 ##    def _new_client_tcp_con(self, sock):
@@ -1134,6 +1133,80 @@ class server_process(threading_tools.process_pool):
         self.set_error("error connect timeout")
         self._int_error("timeout")
         sock.close()
+    def _run_command(self):
+        self.log("direct command %s" % (global_config["COMMAND"]))
+        cur_com = server_command.srv_command(command=global_config["COMMAND"])
+        cur_com["command"].attrib["via_comline"] = "1"
+        self._process_command(cur_com)
+        self["exit_requested"] = True
+    def _process_command(self, srv_com):
+        com_name = srv_com["command"].text
+        self.log("executing command %s" % (com_name))
+        srv_com["result"] = {
+            "reply" : "no reply set",
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)}
+        if com_name in cluster_server.command_dict:
+            com_obj = cluster_server.command_dict[com_name]
+            dc = self.__db_con.get_connection(SQL_ACCESS)
+            # check config status
+            do_it, srv_origin, err_str = com_obj.check_config(dc, global_config)
+            self.log("checking the config gave: %s (%s) %s" % (str(do_it),
+                                                               srv_origin,
+                                                               err_str))
+            if do_it:
+                try:
+                    opt_keys = dict([value.split("=", 1) for value in global_config["OPTION_KEYS"] if value.strip()])
+                except:
+                    srv_com["result"].attrib.update({
+                        "reply" : "error parsing options_keys: %s" % (process_tools.get_except_info()),
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
+                        })
+                else:
+                    if set(opt_keys.keys()) != set(com_obj.Meta.needed_option_keys):
+                        srv_com["result"].attrib.update({
+                            "reply" : "error option keys found (%s) != needed (%s)" % (", ".join(sorted(list(set(opt_keys.keys())))),
+                                                                                       ", ".join(sorted(list(set(com_obj.Meta.needed_option_keys))))),
+                            "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
+                            })
+                    else:
+                        com_obj.option_dict = opt_keys
+                        com_obj.srv_com = srv_com
+                        com_obj.dc = dc
+                        com_obj.global_config = global_config
+                        # salt com_obj with some settings
+                        com_obj.server_idx = global_config["SERVER_IDX"]
+                        com_obj.write_start_log()
+                        try:
+                            result = com_obj()
+                        except:
+                            exc_info = process_tools.exception_info()
+                            for line in exc_info.log_lines:
+                                self.log(line, logging_tools.LOG_LEVEL_CRITICAL)
+                            srv_com["result"].attrib.update({
+                                "reply" : "error %s" % (process_tools.get_except_info(exc_info.except_info)),
+                                "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
+                            })
+                        else:
+                            if result is not None:
+                                self.log("command got an (unexpected) result: '%s'" % (str(result)),
+                                         logging_tools.LOG_LEVEL_ERROR)
+                        com_obj.write_end_log()
+                        del com_obj.option_dict
+                        del com_obj.global_config
+                        del com_obj.dc
+                        del com_obj.srv_com
+            else:
+                srv_com["result"].attrib.update({
+                    "reply" : "error %s" % (err_str),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
+                    })
+            dc.release()
+        else:
+            srv_com["result"].attrib.update({
+                "reply" : "command %s not known" % (com_name),
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
+                })
+        print unicode(srv_com)
     def _update(self):
         self.log("update")
     def loop_function(self):
@@ -1172,45 +1245,25 @@ class server_process(threading_tools.process_pool):
     def get_client_ret_state(self):
         return self.__client_error, self.__client_ret_str
     def _load_modules(self):
-        self.log("loading modules from cluster_server")
-        num_coms = 0
-        for com_file_name in loc_config["COM_FILE_LIST"]:
-            new_mod = __import__("%s_mod" % (com_file_name), globals(), [], [])
-            loc_config["COM_DICT"]["%s_module" % (com_file_name)] = new_mod
-            func_names = [name for (name, ett) in [(ett_name, getattr(new_mod, ett_name)) for ett_name in dir(new_mod)] if type(ett) == type(dummy_class) and issubclass(ett, cs_base_class.server_com)]
-            for func_name in func_names:
-                if func_name in loc_config["COM_LIST"]:
-                    log_hook("Error, function %s already in list" % (func_name),
-                             logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    loc_config["COM_LIST"].append(func_name)
-                    loc_config["COM_LIST"].sort()
-                    loc_config["COM_DICT"][func_name] = getattr(new_mod, func_name)()
-                    act_sc = loc_config["COM_DICT"][func_name]
-                    act_sc.file_name = "%s_mod.py" % (com_file_name)
-                    num_coms += 1
-                    if detail_log:
-                        log("   com %-30s, %s%s, %s, needed option_keys(s) %s, %s" % (act_sc.get_name(),
-                                                                                      logging_tools.get_plural("config", len(act_sc.get_config_list())),
-                                                                                      " (%s)" % (act_sc.get_config()) if act_sc.get_config_list() else "",
-                                                                                      act_sc.get_blocking_mode() and "blocking" or "not blocking",
-                                                                                      act_sc.get_needed_option_keys(),
-                                                                                      act_sc.get_is_restartable() and "restartable" or "not restartable"))
-        log("Found %s" % (logging_tools.get_plural("command", num_coms)))
-
-        
-def scan_module_path(mod_path):
-    com_file_list = []
-    if not os.path.isdir(mod_path):
-        print "No module_path %s found" % (mod_path)
-        sys.exit(1)
-    else:
-        com_file_list = sorted([x[:-7] for x in os.listdir(mod_path) if x.endswith("_mod.py")])
-    return com_file_list
-
-class dummy_class(object):
-    def __init__(self):
-        pass
+        self.log("init modules from cluster_server")
+        if cluster_server.error_log:
+            self.log("%s while loading:" % (logging_tools.get_plural("error", len(cluster_server.error_log))),
+                     logging_tools.LOG_LEVEL_ERROR)
+            for line_num, err_line in enumerate(cluster_server.error_log):
+                self.log("%2d : %s" % (line_num + 1,
+                                       err_line),
+                         logging_tools.LOG_LEVEL_ERROR)
+        for com_name in cluster_server.command_names:
+            act_sc = cluster_server.command_dict[com_name]
+            act_sc.link(self)
+            self.log("   com %-30s, %s%s, %s, needed option_keys(s) %s, %s" % (
+                act_sc.name,
+                logging_tools.get_plural("config", len(act_sc.Meta.needed_configs)),
+                " (%s)" % (", ".join(act_sc.Meta.needed_configs)) if act_sc.Meta.needed_configs else "",
+                "blocking" if act_sc.Meta.blocking else "not blocking",
+                ", ".join(act_sc.Meta.needed_option_keys) if act_sc.Meta.needed_option_keys else "none",
+                "restartable" if act_sc.Meta.restartable else "not restartable"))
+        self.log("Found %s" % (logging_tools.get_plural("command", len(cluster_server.command_names))))
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
@@ -1219,14 +1272,15 @@ def main():
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
+        ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name), database=False)),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True)),
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
-        ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
-        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True, database=False)),
         ("CONTACT"             , configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
+        ("COMMAND"             , configfile.str_c_var("", short_options="c", choices=cluster_server.command_names, only_commandline=True, help_string="command to execute [%(default)s]")),
+        ("OPTION_KEYS"         , configfile.array_c_var([], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)")),
     ])
     global_config.parse_file()
     options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
@@ -1241,7 +1295,7 @@ def main():
         sys.stderr.write(" Cannot connect to SQL-Server ")
         sys.exit(1)
     sql_info = config_tools.server_check(dc=dc, server_type="server")
-    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.server_device_idx))])
+    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.server_device_idx, database=False))])
     ret_state = 256
     if not global_config["SERVER_IDX"]:
         sys.stderr.write(" %s is no cluster-server, exiting..." % (long_host_name))
@@ -1267,15 +1321,16 @@ def main():
         ("MAILSERVER"            , configfile.str_c_var("localhost")),
         ("FROM_NAME"             , configfile.str_c_var("quotawarning")),
         ("FROM_ADDR"             , configfile.str_c_var(long_host_name)),
+        ("VERSION"               , configfile.str_c_var(VERSION_STRING, database=False)),
         ("QUOTA_ADMINS"          , configfile.str_c_var("lang-nevyjel@init.at")),
         ("LDAP_SCHEMATA_VERSION" , configfile.int_c_var(1)),
         ("MONITOR_QUOTA_USAGE"   , configfile.bool_c_var(False)),
         ("QUOTA_CHECK_TIME_SECS" , configfile.int_c_var(3600)),
         ("USER_MAIL_SEND_TIME"   , configfile.int_c_var(3600, info="time in seconds between to mails")),
-        ("SERVER_SHORT_NAME"     , configfile.str_c_var(mach_name)),
+        ("SERVER_SHORT_NAME"     , configfile.str_c_var(mach_name, database=False)),
     ])
     dc.release()
-    if not global_config["DEBUG"]:
+    if not global_config["DEBUG"] and not global_config["COMMAND"]:
         process_tools.become_daemon()
         process_tools.set_handles({"out" : (1, "cluster-server.out"),
                                    "err" : (0, "/var/lib/logging-server/py_err")})

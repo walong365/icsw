@@ -1,6 +1,6 @@
 #!/usr/bin/python -Otu
 #
-# Copyright (C) 2007,2008,2011 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2008,2011,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -26,43 +26,43 @@ import array
 import ipvx_tools
 import pprint
 import logging_tools
+import server_command
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME       = "/etc/hosts"
 
 class write_etc_hosts(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_config(["auto_etc_hosts"])
-    def call_it(self, opt_dict, call_params):
+    class Meta:
+        needed_configs = ["auto_etc_hosts"]
+    def _call(self):
         file_list = []
-        server_idxs = [call_params.get_server_idx()]
+        server_idxs = [self.server_idx]
         # get additional idx if host is virtual server
-        is_server, serv_idx, server_type, server_str, config_idx, real_server_name = process_tools.is_server(call_params.dc, self.get_config_list()[0], True, False)
-        if is_server and serv_idx != call_params.get_server_idx():
+        is_server, serv_idx, server_type, server_str, config_idx, real_server_name = process_tools.is_server(self.dc, self.Meta.actual_configs[0], True, False)
+        if is_server and serv_idx != self.server_idx:
             server_idxs.append(serv_idx)
         # recognize for which devices i am responsible
-        dev_r = process_tools.device_recognition(call_params.dc)
+        dev_r = process_tools.device_recognition(self.dc)
         server_idxs.extend(dev_r.device_dict.keys())
         # get all peers to local machine and local netdevices
-        call_params.dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE (%s)" % (" OR ".join(["n.device=%d" % (x) for x in server_idxs])))
-        my_idxs = [x["netdevice_idx"] for x in call_params.dc.fetchall()]
+        self.dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE (%s)" % (" OR ".join(["n.device=%d" % (srv_idx) for srv_idx in server_idxs])))
+        my_idxs = [db_rec["netdevice_idx"] for db_rec in self.dc.fetchall()]
         sql_str = "SELECT DISTINCT d.name, i.ip, i.alias, i.alias_excl, nw.network_idx, n.netdevice_idx, n.devname, nt.identifier, nw.name AS domain_name, nw.postfix, nw.short_names, h.value FROM " + \
                   "device d, netip i, netdevice n, network nw, network_type nt, hopcount h WHERE nt.network_type_idx=nw.network_type AND i.network=nw.network_idx AND n.device=d.device_idx AND " + \
                   "i.netdevice=n.netdevice_idx AND n.netdevice_idx=h.s_netdevice AND (%s) ORDER BY h.value, d.name, i.ip, nw.postfix" % (" OR ".join(["h.d_netdevice=%d" % (x) for x in my_idxs]))
-        call_params.dc.execute(sql_str)
-        all_hosts = [[x for x in call_params.dc.fetchall()]]
+        self.dc.execute(sql_str)
+        all_hosts = [list(self.dc.fetchall())]
         # self-references
         sql_str = "SELECT DISTINCT d.name, i.ip, i.alias, i.alias_excl, nw.network_idx, n.netdevice_idx, n.devname, nt.identifier, nw.name AS domain_name, nw.postfix, nw.short_names, n.penalty AS value FROM " + \
                   "device d, netip i, netdevice n, network nw, network_type nt WHERE nt.network_type_idx=nw.network_type AND i.network=nw.network_idx AND n.device=d.device_idx AND i.netdevice=n.netdevice_idx AND " + \
-                  "d.device_idx=%d ORDER BY d.name, i.ip, nw.postfix" % (call_params.get_server_idx())
-        call_params.dc.execute(sql_str)
-        all_hosts.append([x for x in call_params.dc.fetchall()])
+                  "d.device_idx=%d ORDER BY d.name, i.ip, nw.postfix" % (self.server_idx)
+        self.dc.execute(sql_str)
+        all_hosts.append(list(self.dc.fetchall()))
         # fetch key-information
         sql_str = "SELECT DISTINCT d.name, dv.name AS dvname, dv.val_blob FROM device d LEFT JOIN device_variable dv ON dv.device=d.device_idx WHERE dv.name='ssh_host_rsa_key_pub'"
-        call_params.dc.execute(sql_str)
+        self.dc.execute(sql_str)
         rsa_key_dict = {}
-        for db_rec in call_params.dc.fetchall():
+        for db_rec in self.dc.fetchall():
             if db_rec["val_blob"] and db_rec["dvname"] == "ssh_host_rsa_key_pub":
                 if type(db_rec["val_blob"]) == type(array.array("b")):
                     key_str = db_rec["val_blob"].tostring().split()
@@ -73,11 +73,11 @@ class write_etc_hosts(cs_base_class.server_com):
         pre_host_lines, post_host_lines = ([], [])
         # parse pre/post host_lines
         try:
-            host_lines = [x.strip() for x in file(ETC_HOSTS_FILENAME, "r").read().split("\n")]
+            host_lines = [line.strip() for line in file(ETC_HOSTS_FILENAME, "r").read().split("\n")]
         except:
-            call_params.log("error reading / parsing %s: %s (%s)" % (ETC_HOSTS_FILENAME,
-                                                                     str(sys.exc_info()[0]),
-                                                                     str(sys.exc_info()[1])))
+            self.log("error reading / parsing %s: %s" % (ETC_HOSTS_FILENAME,
+                                                         process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
         else:
             mode, any_modes_found = (0, False)
             for line in host_lines:
@@ -93,11 +93,12 @@ class write_etc_hosts(cs_base_class.server_com):
                     elif mode == 2:
                         post_host_lines.append(line)
             if not any_modes_found:
-                call_params.log("no ### aeh-.* stuff found in %s, copying to %s.orig" % (ETC_HOSTS_FILENAME, ETC_HOSTS_FILENAME))
+                self.log("no ### aeh-.* stuff found in %s, copying to %s.orig" % (ETC_HOSTS_FILENAME, ETC_HOSTS_FILENAME))
                 try:
-                    file("%s.orig" % (ETC_HOSTS_FILENAME), "w").write("\n".join(host_lines + [""]))
+                    pass
+                    #file("%s.orig" % (ETC_HOSTS_FILENAME), "w").write("\n".join(host_lines + [""]))
                 except:
-                    call_params.log("error writing %s.orig: %s" % (ETC_HOSTS_FILENAME,
+                    self.log("error writing %s.orig: %s" % (ETC_HOSTS_FILENAME,
                                                                    process_tools.get_except_info()))
         # mapping from device_name to all names for ssh_host_keys
         name_dict = {}
@@ -153,15 +154,21 @@ class write_etc_hosts(cs_base_class.server_com):
             except:
                 pass
         if os.path.isdir(group_dir):
+            # remove old files
+            for file_name in os.listdir(group_dir):
+                try:
+                    os.unlink(os.path.join(group_dir, file_name))
+                except:
+                    pass
             # get all devices with netips
-            call_params.dc.execute("SELECT DISTINCT d.name, dg.name AS dgname FROM device d, device_group dg, netdevice n, netip i WHERE dg.device_group_idx=d.device_group AND n.device=d.device_idx AND i.netdevice=n.netdevice_idx ORDER BY dg.name, d.name")
+            self.dc.execute("SELECT DISTINCT d.name, dg.name AS dgname FROM device d, device_group dg, netdevice n, netip i WHERE dg.device_group_idx=d.device_group AND n.device=d.device_idx AND i.netdevice=n.netdevice_idx ORDER BY dg.name, d.name")
             ddg_dict, all_names, all_nodes = ({}, [], [])
-            for db_rec in call_params.dc.fetchall():
+            for db_rec in self.dc.fetchall():
                 ddg_dict.setdefault(db_rec["dgname"], []).append(db_rec["name"])
                 all_names.append(db_rec["name"])
-            call_params.dc.execute("SELECT DISTINCT d.name, dg.name AS dgname, c.name FROM device d, device_group dg, device_config dc, new_config c WHERE (dc.device=d.device_idx OR dc.device=dg.device) AND c.new_config_idx=dc.new_config AND c.name LIKE('node%') AND dg.device_group_idx=d.device_group ORDER BY dg.name, d.name")
+            self.dc.execute("SELECT DISTINCT d.name, dg.name AS dgname, c.name FROM device d, device_group dg, device_config dc, new_config c WHERE (dc.device=d.device_idx OR dc.device=dg.device) AND c.new_config_idx=dc.new_config AND c.name LIKE('node%') AND dg.device_group_idx=d.device_group ORDER BY dg.name, d.name")
             ddg_dict["all_names"] = all_names
-            ddg_dict["all_nodes"] = [x["name"] for x in call_params.dc.fetchall() if x["name"] in all_names]
+            ddg_dict["all_nodes"] = [x["name"] for x in self.dc.fetchall() if x["name"] in all_names]
             for dg_name, dg_hosts in ddg_dict.iteritems():
                 dg_hosts.sort()
                 try:
@@ -186,17 +193,18 @@ class write_etc_hosts(cs_base_class.server_com):
             if os.path.isdir(act_dirname):
                 file_list.append(act_file)
                 tf = file(act_file, "w+")
-                call_params.dc.execute("SELECT DISTINCT d.name FROM device d INNER JOIN device_type dt INNER JOIN new_config c INNER JOIN device_config dc INNER JOIN device_group dg LEFT JOIN " + \
+                self.dc.execute("SELECT DISTINCT d.name FROM device d INNER JOIN device_type dt INNER JOIN new_config c INNER JOIN device_config dc INNER JOIN device_group dg LEFT JOIN " + \
                                        "device d2 ON d2.device_idx=dg.device WHERE dg.device_group_idx=d.device_group AND dt.identifier='H' AND dt.device_type_idx=d.device_type AND dc.new_config=c.new_config_idx AND " + \
                                        "(d2.device_idx=dc.device OR d.device_idx=dc.device) AND %s ORDER BY dg.name, d.name" % (restr))
-                for entry in call_params.dc.fetchall():
+                for entry in self.dc.fetchall():
                     tf.write("%s\n" % (entry["name"]))
                 tf.close()
             else:
-                call_params.log("Error: directory '%s' not found" % (act_dirname))
-        return "ok wrote %s" % (", ".join(sorted(file_list)))
+                self.log("Error: directory '%s' not found" % (act_dirname))
+        self.srv_com["result"].attrib.update({
+            "reply" : "ok wrote %s" % (", ".join(sorted(file_list))),
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
-    

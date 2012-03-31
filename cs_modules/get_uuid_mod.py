@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -21,13 +21,16 @@
 import sys
 import cs_base_class
 import uuid_tools
+import server_command
 
 class get_uuid(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_write_log(0)
-    def call_it(self, opt_dict, call_params):
-        return "ok %s" % (uuid_tools.get_uuid().get_urn())
+    class Meta:
+        show_execution_time = False
+    def _call(self):
+        self.srv_com["uuid"] = uuid_tools.get_uuid().get_urn()
+        self.srv_com["result"].attrib.update({
+            "reply" : "uuid is %s" % (uuid_tools.get_uuid().get_urn()),
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
     
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
