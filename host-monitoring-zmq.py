@@ -99,8 +99,9 @@ def client_code():
 class id_discovery(object):
     # discover 0mq ids
     def __init__(self, srv_com, src_id, xml_input):
+        self.port = int(srv_com["port"].text)
         self.conn_str = "tcp://%s:%d" % (srv_com["host"].text,
-                                         int(srv_com["port"].text))
+                                         self.port)
         self.init_time = time.time()
         self.srv_com = srv_com
         self.src_id = src_id
@@ -142,7 +143,10 @@ class id_discovery(object):
             self.log("0MQ id is %s" % (zmq_id))
             id_discovery.mapping[self.conn_str] = zmq_id
             # reinject
-            id_discovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
+            if self.port == 2001:
+                id_discovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
+            else:
+                id_discovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
             # save mapping
             file(MAPPING_FILE_IDS, "w").write("\n".join(["%s=%s" % (key, self.mapping[key]) for key in sorted(self.mapping.iterkeys())]))
             self.close()
@@ -694,7 +698,8 @@ class relay_process(threading_tools.process_pool):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.renice()
         #pending_connection.init(self)
-        host_connection.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose)
+        self.__global_timeout = global_config["TIMEOUT"]
+        host_connection.init(self, global_config["BACKLOG_SIZE"], self.__global_timeout, self.__verbose)
         # init lut
         self.__old_send_lut = {}
         if not global_config["DEBUG"]:
@@ -792,6 +797,21 @@ class relay_process(threading_tools.process_pool):
             self.__msi_block.save_block()
     def _check_timeout(self):
         host_connection.check_timeout_g()
+        # check nhm timeouts
+        cur_time = time.time()
+        del_list = []
+        for key, value in self.__nhm_dict.iteritems():
+            if abs(value[0] - cur_time) > self.__global_timeout:
+                del_list.append(key)
+                self._send_result(value[1]["identity"].text,
+                                  "error timeout",
+                                  server_command.SRV_REPLY_STATE_ERROR)
+        if del_list:
+            self.log("removing %s: %s" % (logging_tools.get_plural("nhm key", len(del_list)),
+                                          ", ".join(sorted(del_list))),
+                     logging_tools.LOG_LEVEL_ERROR)
+            for key in del_list:
+                del self.__nhm_dict[key]
     def _twisted_result(self, src_proc, proc_id, src_id, srv_com, data_str):
         if src_id in self.__old_send_lut:
             self.__old_send_lut.pop(src_id)._handle_old_result(src_id, data_str)
@@ -805,10 +825,13 @@ class relay_process(threading_tools.process_pool):
         # init IP lookup table
         self.__ip_lut = {}
         self.__num_messages = 0
-        sock_list = [("receiver", zmq.PULL, 2   ),
-                     ("sender"  , zmq.PUB , 1024)]
-        [setattr(self, "%s_socket" % (short_sock_name), None) for short_sock_name, a0, b0 in sock_list]
-        for short_sock_name, sock_type, hwm_size in sock_list:
+        # nhm (not host monitoring) dictionary for timeout
+        self.__nhm_dict = {}
+        self.__nhm_connections = set()
+        sock_list = [("ipc", "receiver", zmq.PULL  , 2   ),
+                     ("ipc", "sender"  , zmq.PUB   , 1024)]
+        [setattr(self, "%s_socket" % (short_sock_name), None) for sock_proto, short_sock_name, a0, b0 in sock_list]
+        for sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
             file_name = sock_name[5:]
             self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
@@ -841,6 +864,11 @@ class relay_process(threading_tools.process_pool):
                 self.receiver_socket.setsockopt(zmq.HWM, hwm_size)
                 if sock_type == zmq.PULL:
                     self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)
+        self.client_socket = self.zmq_context.socket(zmq.ROUTER)
+        self.client_socket.setsockopt(zmq.IDENTITY, "ccollclient:%s" % (process_tools.get_machine_name()))
+        self.client_socket.setsockopt(zmq.LINGER, 0)
+        self.client_socket.setsockopt(zmq.HWM, 10)
+        self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)
     def _recv_command(self, zmq_sock):
         data = zmq_sock.recv()
         xml_input = data.startswith("<")
@@ -904,7 +932,10 @@ class relay_process(threading_tools.process_pool):
                                                                con_mode))
                 if int(srv_com["port"].text) != 2001:
                     # connect to non-host-monitoring service
-                    self._send_to_old_nhm_service(src_id, srv_com, xml_input)
+                    if con_mode == "0":
+                        self._send_to_nhm_service(src_id, srv_com, xml_input)
+                    else:
+                        self._send_to_old_nhm_service(src_id, srv_com, xml_input)
                 elif con_mode == "0":
                     self._send_to_client(src_id, srv_com, xml_input)
                 elif con_mode == "T":
@@ -949,6 +980,56 @@ class relay_process(threading_tools.process_pool):
             cur_hc.return_error(cur_mes, "0mq discovery in progress")
         else:
             id_discovery(srv_com, src_id, xml_input)
+    def _send_to_nhm_service(self, src_id, srv_com, xml_input):
+        conn_str = "tcp://%s:%d" % (srv_com["host"].text,
+                                    int(srv_com["port"].text))
+        if id_discovery.has_mapping(conn_str):
+            connected = conn_str in self.__nhm_connections
+            # trigger id discovery
+            if not connected:
+                try:
+                    self.client_socket.connect(conn_str)
+                except:
+                    self._send_result(src_id, "error connecting: %s" % (process_tools.get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
+                else:
+                    self.log("connected ROUTER client to %s" % (conn_str))
+                    connected = True
+                    self.__nhm_connections.add(conn_str)
+            if connected:
+                try:
+                    self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE|zmq.NOBLOCK)
+                    self.client_socket.send_unicode(unicode(srv_com), zmq.NOBLOCK)
+                except:
+                    self._send_result(src_id, "error sending to %s: %s" % (
+                        conn_str,
+                        process_tools.get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
+                else:
+                    self.__nhm_dict[srv_com["identity"].text] = (time.time(), srv_com)
+        elif id_discovery.is_pending(conn_str):
+            self._send_result(src_id, "0mq discovery in progress", server_command.SRV_REPLY_STATE_CRITICAL)
+        else:
+            id_discovery(srv_com, src_id, xml_input)
+    def _send_result(self, identity, reply_str, reply_state):
+        self.sender_socket.send_unicode(identity, zmq.SNDMORE)
+        self.sender_socket.send_unicode("%d\0%s" % (reply_state,
+                                                    reply_str))
+    def _recv_nhm_result(self, zmq_sock):
+        data = []
+        while True:
+            data.append(zmq_sock.recv())
+            if not zmq_sock.getsockopt(zmq.RCVMORE):
+                break
+        if len(data) == 2:
+            srv_result = server_command.srv_command(source=data[1])
+            cur_id = srv_result["identity"].text
+            if cur_id in self.__nhm_dict:
+                del self.__nhm_dict[cur_id]
+                self._send_result(cur_id,
+                                  srv_result["result"].attrib["reply"],
+                                  int(srv_result["result"].attrib["state"]))
+            else:
+                self.log("received nhm-result for unknown id '%s', ignoring" % (cur_id),
+                         logging_tools.LOG_LEVEL_ERROR)
     def _send_to_old_client(self, src_id, srv_com, xml_input):
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
@@ -969,9 +1050,6 @@ class relay_process(threading_tools.process_pool):
         cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
         cur_hc.send(cur_mes, None)
         self.__old_send_lut[cur_mes.src_id] = cur_hc
-    def _close_socket(self, zmq_sock):
-        del self.__send_dict[zmq_sock]
-        self.unregister_poller(zmq_sock, zmq.POLLIN)
     def _handle_module_command(self, srv_com):
         try:
             self.commands[srv_com["command"].text](srv_com)
@@ -999,6 +1077,9 @@ class relay_process(threading_tools.process_pool):
             self.receiver_socket.close()
         if self.sender_socket is not None:
             self.sender_socket.close()
+        if self.client_socket is not None:
+            self.unregister_poller(self.client_socket, zmq.POLLIN)
+            self.client_socket.close()
     def loop_end(self):
         self._close_ipc_sockets()
         process_tools.delete_pid(self.__pid_name)
