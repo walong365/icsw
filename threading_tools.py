@@ -1255,7 +1255,7 @@ class process_pool(object):
                     cur_time = time.time()
                     if self.__next_timeout and cur_time > self.__next_timeout:
                         self._handle_timer(cur_time)
-                    if not self["exit_requested"]:
+                    if not self["exit_requested"] or self.__processes_running:
                         # only check sockets if no exit was requested by one of the timer funcs above
                         # otherwise we have to wait for loop_granularity milliseconds
                         try:

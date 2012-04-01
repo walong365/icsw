@@ -41,8 +41,8 @@ class config_manager(BaseManager):
     pass
 
 class config_proxy(BaseProxy):
-    def add_config_entries(self, ce_list):
-        return self._callmethod("add_config_entries", (ce_list,))
+    def add_config_entries(self, ce_list, **kwargs):
+        return self._callmethod("add_config_entries", (ce_list, ), kwargs)
     def handle_commandline(self, **kwargs):
         kwargs["proxy_call"] = True
         ret_value, exit_code = self._callmethod("handle_commandline", [], kwargs)
@@ -101,7 +101,8 @@ class _conf_var(object):
         self._short_opts = kwargs.get("short_options", None)
         self._choices = kwargs.get("choices", None)
         self._nargs = kwargs.get("nargs", None)
-        self._database = kwargs.get("database", True)
+        self._database_set = "database" in kwargs
+        self._database = kwargs.get("database", False)
         self._only_commandline = kwargs.get("only_commandline", False)
     def is_commandline_option(self):
         return True if self._help_string else False
@@ -315,10 +316,15 @@ class configuration(object):
         os.setegid(new_gid)
         os.setuid(new_uid)
         os.seteuid(new_uid)
-    def add_config_entries(self, entries):
+    def add_config_entries(self, entries, **kwargs):
         if type(entries) == type({}):
             entries = [(key, value) for key, value in entries.iteritems()]
         for key, value in entries:
+            # check for override of database flag
+            if not value._database_set and "database" in kwargs:
+                if self.__verbose:
+                    self.log("override database flag for '%s', setting to '%s'" % (key, str(kwargs["database"])))
+                value.database = kwargs["database"]
             if key in self.__c_dict and self.__verbose:
                 self.log("Replacing config for key %s" % (key))
             self.__c_dict[key] = value
@@ -655,10 +661,11 @@ def reload_global_config(dc, gcd, server_type, host_name = ""):
             if not wo_var_name in gcd or gcd.get_source(wo_var_name) == "default":
                 gcd.add_config_dict({wo_var_name : wo_var})
     
-def read_config_from_db(g_config, dc, server_type, init_list=[], host_name=""):
+def read_config_from_db(g_config, dc, server_type, init_list=[], host_name="", **kwargs):
     if not host_name:
+        # AL 20120401 **kwargs delete, FIXME ?
         host_name = process_tools.get_machine_name()
-    g_config.add_config_entries(init_list)
+    g_config.add_config_entries(init_list, database=True)
     num_serv, serv_idx, s_type, s_str, config_idx, real_config_name = process_tools.is_server(dc, server_type.replace("%", ""), True, False, host_name.split(".")[0])
     #print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
     if num_serv:
