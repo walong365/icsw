@@ -44,7 +44,6 @@ import mail_tools
 import difflib
 import cs_base_class
 import config_tools
-import cProfile
 import zmq
 import cluster_server
 
@@ -595,36 +594,6 @@ class quota_stuff(bg_stuff):
         self.log("quotacheck took %s" % (logging_tools.get_diff_time_str(qc_etime - qc_stime)))
         self.log(sep_str)
 
-def server_code(db_con, glob_config, loc_config, server_com=None):
-    logger = logging_tools.get_logger(glob_config["LOG_NAME"],
-                                      glob_config["LOG_DESTINATION"],
-                                      init_logger=True)
-    thread_pool = server_thread_pool(logger, db_con, glob_config, loc_config, server_com)
-    if server_com:
-        if loc_config["CONTACT"]:
-            thread_pool.set_target("localhost", SERVER_PORT)
-        thread_pool.thread_loop()
-        was_error, ret_str = thread_pool.get_client_ret_state()
-        if was_error:
-            ret_state = 1
-        else:
-            ret_state = 0
-        if type(ret_str) == type(""):
-            print "%d: %s" % (ret_state, ret_str)
-        else:
-            print "%d: %s" % (ret_str.get_state(), ret_str.get_result())
-            my_pp = pprint.PrettyPrinter(indent=0)
-            if ret_str.get_option_dict():
-                opt_dict = ret_str.get_option_dict()
-                opt_keys = sorted(opt_dict.keys())
-                print "option dict found with %s:" % (logging_tools.get_plural("key", len(opt_keys)))
-                for key in opt_keys:
-                    print " - %s :\n%s" % (key, my_pp.pformat(opt_dict[key]))
-    else:
-        thread_pool.thread_loop()
-    logger.info("CLOSE")
-    return 0
-
 class background_thread(threading_tools.thread_obj):
     def __init__(self, db_con, ss_queue, glob_config, loc_config, logger):
         self.__db_con = db_con
@@ -1104,6 +1073,8 @@ class server_process(threading_tools.process_pool):
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
     def _init_network_sockets(self):
+        self.__connection_dict = {}
+        self.__discovery_dict = {}
         if self.__run_command:
             client = None
         else:
@@ -1218,6 +1189,99 @@ class server_process(threading_tools.process_pool):
                 })
     def _update(self):
         self.log("update")
+    def send_broadcast(self, bc_com):
+        self.log("init broadcast command '%s'" % (bc_com))
+        dc = self.__db_con.get_connection(SQL_ACCESS)
+        dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE n.device=%d" % (global_config["SERVER_IDX"]))
+        my_netdev_idxs = [db_rec["netdevice_idx"] for db_rec in dc.fetchall()]
+        if my_netdev_idxs:
+            dc.execute("SELECT d.name, i.ip, h.value FROM device d INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device_group dg INNER JOIN device_type dt INNER JOIN " + \
+                       "hopcount h INNER JOIN netdevice n INNER JOIN netip i LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_idx=n.device AND i.netdevice=n.netdevice_idx AND dg.device_group_idx=d.device_group AND " + \
+                       "dc.new_config=c.new_config_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND c.name='server' AND d.device_type=dt.device_type_idx AND dt.identifier='H' AND " + \
+                       "h.s_netdevice=n.netdevice_idx AND (%s) ORDER BY h.value, d.name" % (" OR ".join(["h.d_netdevice=%d" % (db_rec) for db_rec in my_netdev_idxs])))
+            serv_ip_dict = dict([(db_rec["name"], db_rec["ip"]) for db_rec in dc.fetchall()])
+            to_send_ids = []
+            for srv_name, ip_addr in serv_ip_dict.iteritems():
+                conn_str = "tcp://%s:%d" % (ip_addr, global_config["COM_PORT"])
+                if conn_str not in self.__connection_dict:
+                    # discovery
+                    discovery_id = "%s_%s_%d" % (process_tools.get_machine_name(),
+                                                 ip_addr,
+                                                 global_config["COM_PORT"])
+                    if discovery_id not in self.__discovery_dict:
+                        self.log("init discovery socket for %s (id is %s)" % (conn_str,
+                                                                              discovery_id))
+                        new_sock = self.zmq_context.socket(zmq.DEALER)
+                        new_sock.setsockopt(zmq.IDENTITY, discovery_id)
+                        new_sock.setsockopt(zmq.LINGER, 0)
+                        self.__discovery_dict[discovery_id] = new_sock
+                        new_sock.connect(conn_str)
+                        self.register_poller(new_sock, zmq.POLLIN, self._recv_discovery)
+                        discovery_cmd = server_command.srv_command(command="get_0mq_id")
+                        discovery_cmd["discovery_id"] = discovery_id
+                        discovery_cmd["conn_str"] = conn_str
+                        discovery_cmd["broadcast_command"] = bc_com
+                        new_sock.send_unicode(unicode(discovery_cmd))
+                        # set connection_dict entry to None
+                        self.__connection_dict[conn_str] = None
+                    else:
+                        self.log("discovery already in progress for %s" % (conn_str),
+                                 logging_tools.LOG_LEVEL_WARN)
+                elif self.__connection_dict[conn_str] is None:
+                    self.log("0mq discovery still in progress for %s" % (conn_str))
+                else:
+                    self.log("send to %s (%s)" % (conn_str,
+                                                  self.__connection_dict[conn_str]))
+                    to_send_ids.append(self.__connection_dict[conn_str])
+            if to_send_ids:
+                my_uuid = uuid_tools.get_uuid().get_urn()
+                self.log("sending to %s: %s" % (logging_tools.get_plural("target", len(to_send_ids)),
+                                                ", ".join(to_send_ids)))
+                srv_com = server_command.srv_command(command=bc_com)
+                srv_com["servers_visited"] = None
+                srv_com["command"].attrib["broadcast"] = "1"
+                srv_com["src_uuid"] = my_uuid
+                srv_com["servers_visited"].append(srv_com.builder("server", my_uid))
+                for send_id in to_send_ids:
+                    if send_id == my_uuid:
+                        self._process_command(srv_com)
+                    else:
+                        # FIXME, send_broadcast not fully implemented, need 2nd server to test, AL 20120401
+                        self.com_socket.send_unicode(send_id, zmq.SNDMORE)
+                        self.com_socket.send_unicode(unicode(srv_com))
+                #pprint.pprint(serv_ip_dict)
+                #print unicode(srv_com)
+        else:
+            self.log("no local netdevices found", logging_tools.LOG_LEVEL_ERROR)
+        dc.release()
+    def _recv_discovery(self, sock):
+        result = server_command.srv_command(source=sock.recv_unicode())
+        discovery_id = result["discovery_id"].text
+        t_0mq_id = result["zmq_id"].text
+        conn_str = result["conn_str"].text
+        bc_com = result["broadcast_command"].text
+        self.log("got 0MQ_id '%s' for discovery_id '%s' (connection string %s, bc_command %s)" % (
+            t_0mq_id,
+            discovery_id,
+            conn_str,
+            bc_com))
+        self.__connection_dict[conn_str] = t_0mq_id
+        self.log("closing discovery socket for %s" % (conn_str))
+        self.unregister_poller(self.__discovery_dict[discovery_id], zmq.POLLIN)
+        self.__discovery_dict[discovery_id].close()
+        del self.__discovery_dict[discovery_id]
+        try:
+            if self.__connection_dict[conn_str] != uuid_tools.get_uuid().get_urn():
+                self.com_socket.connect(conn_str)
+            else:
+                self.log("no connection to self", logging_tools.LOG_LEVEL_WARN)
+        except:
+            self.log("error connecting to %s: %s" % (conn_str,
+                                                     process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("connected to %s" % (conn_str))
+        self.send_broadcast(bc_com)
     def loop_function(self):
         if self.__is_server:
             self.__mon_thread_queue.put("update")

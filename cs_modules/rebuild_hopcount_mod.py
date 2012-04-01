@@ -376,8 +376,10 @@ class rebuild_hopcount(cs_base_class.server_com):
 ##            return
         # delete hopcounts
         if not dev_list:
-            my_dc.execute("DELETE FROM hopcount")
-            my_dc.execute("INSERT INTO device_variable SET val_int=1, description='rebuild in progress', name='hopcount_rebuild_in_progress', device=%d, var_type='i'" % (cdg_idx))
+            # FIXME
+            #my_dc.execute("DELETE FROM hopcount")
+            #my_dc.execute("INSERT INTO device_variable SET val_int=1, description='rebuild in progress', name='hopcount_rebuild_in_progress', device=%d, var_type='i'" % (cdg_idx))
+            pass
         source_visit = []
         num_routes, num_dups = (0, 0)
         # restarted ?
@@ -386,7 +388,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         num_to_check = num_devs * num_devs
         checks_left = num_to_check
         old_perc, old_time = (1000, time.time())
-        for s_name in dev_names:
+        for s_name in []:# FIXME dev_names:
             perc_done = max(0, min(100, 100. - (100. * checks_left) / num_to_check))
             if abs(old_perc - perc_done) >= 10 or abs(time.time() - old_time) >= 5.:
                 old_perc, old_time = (perc_done, time.time())
@@ -441,6 +443,7 @@ class rebuild_hopcount(cs_base_class.server_com):
                     if show:
                         print "Found no routes from %10s to %10s" % (s_name, d_name)
             source_visit.append(s_name)
+            #break
             # FIXME
             #restarted = call_params.check_for_restart()
             #if restarted:
@@ -464,10 +467,11 @@ class rebuild_hopcount(cs_base_class.server_com):
                                                                                                                                                                      cdg_idx))
                 my_dc.execute(sql_str, sql_tuple)
                 my_dc.execute("DELETE FROM device_variable WHERE name='hopcount_rebuild_in_progress'")
-            if False:#call_params.nss_queue:
-                call_params.nss_queue.put(("send_broadcast", "write_etc_hosts"))
+            if not self.global_config["COMMAND"]:
+                self.log("broadcasting write_etc_hosts to other cluster-servers")
+                self.process_pool.send_broadcast("write_etc_hosts")
                 my_dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE n.device=%d" % (self.server_idx))
-                my_netdev_idxs = [x["netdevice_idx"] for x in my_dc.fetchall()]
+                my_netdev_idxs = [db_rec["netdevice_idx"] for db_rec in my_dc.fetchall()]
                 # start sending of nscd_reload commands
                 my_dc.execute("SELECT d.name, i.ip, h.value FROM device d INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device_group dg INNER JOIN device_type dt INNER JOIN " + \
                               "hopcount h INNER JOIN netdevice n INNER JOIN netip i LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_idx=n.device AND i.netdevice=n.netdevice_idx AND " + \
@@ -480,10 +484,12 @@ class rebuild_hopcount(cs_base_class.server_com):
                                                      htc_com,
                                                      ", ".join(["%s (IP %s)" % (k, v) for k, v in serv_ip_dict.iteritems()])))
                 for serv_name, serv_ip in serv_ip_dict.iteritems():
-                    call_params.nss_queue.put(("contact_server", (serv_name, serv_ip, 8001, htc_com)))
-            self.log("%6.2f %% done" % 100)
+                    # FIXME
+                    #call_params.nss_queue.put(("contact_server", (serv_name, serv_ip, 8001, htc_com)))
+                    pass
+            self.log("%6.2f %% done" % (100))
         self.srv_com["result"].attrib.update({
-            "reply" : "rebuilt hopcount",
+            "reply" : ret_str,
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
     
 if __name__ == "__main__":
