@@ -824,6 +824,7 @@ class relay_process(threading_tools.process_pool):
     def _init_ipc_sockets(self):
         # init IP lookup table
         self.__ip_lut = {}
+        self.__forward_lut = {}
         self.__num_messages = 0
         # nhm (not host monitoring) dictionary for timeout
         self.__nhm_dict = {}
@@ -869,6 +870,34 @@ class relay_process(threading_tools.process_pool):
         self.client_socket.setsockopt(zmq.LINGER, 0)
         self.client_socket.setsockopt(zmq.HWM, 10)
         self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)
+    def _resolve_address(self, target):
+        # to avoid loops in the 0MQ connection scheme (will result to nasty asserts)
+        if target in self.__forward_lut:
+            ip_addr = self.__forward_lut[target]
+        else:
+            orig_target = target
+            if target.lower() in ["localhost", "127.0.0.1", "localhost.localdomain"]:
+                target = process_tools.get_machine_name()
+            # step 1: resolve to ip
+            ip_addr = socket.gethostbyname(target)
+            try:
+                # step 2: try to get full name
+                full_name, aliases, ip_addrs = socket.gethostbyaddr(ip_addr)
+            except:
+                # forget it
+                pass
+            else:
+                # resolve full name
+                ip_addr = socket.gethostbyname(full_name)
+            if ip_addr not in self.__ip_lut:
+                self.log("resolved %s to %s" % (target, ip_addr))
+                self.__ip_lut[ip_addr] = target
+            self.__forward_lut[target] = ip_addr
+            self.log("ip resolving: %s -> %s" % (target, ip_addr))
+            if orig_target != target:
+                self.__forward_lut[orig_target] = ip_addr
+                self.log("ip resolving: %s -> %s" % (orig_target, ip_addr))
+        return ip_addr
     def _recv_command(self, zmq_sock):
         data = zmq_sock.recv()
         xml_input = data.startswith("<")
@@ -898,10 +927,8 @@ class relay_process(threading_tools.process_pool):
                                                                   str(xml_input)))
             if "host" in srv_com and "port" in srv_com:
                 t_host = srv_com["host"].text
-                ip_addr = socket.gethostbyname(t_host)
+                ip_addr = self._resolve_address(t_host)
                 srv_com["host"] = ip_addr
-                if ip_addr not in self.__ip_lut:
-                    self.__ip_lut[ip_addr] = t_host
                 if self.__autosense:
                     c_state = self.__client_dict.get(t_host, None)
                     if c_state is None:
