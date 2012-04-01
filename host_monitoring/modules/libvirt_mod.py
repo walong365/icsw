@@ -49,7 +49,7 @@ class libvirt_status_command(hm_classes.hm_command):
             cur_lvc.close()
         else:
             ret_dict = {}
-            srv_com.set_dictionary("libvirt", ret_dict)
+        srv_com.set_dictionary("libvirt", ret_dict)
     def interpret(self, srv_com, cur_ns):
         r_dict = server_command.srv_command.tree_to_dict(srv_com["libvirt"])
         return self._interpret(r_dict, cur_ns)
