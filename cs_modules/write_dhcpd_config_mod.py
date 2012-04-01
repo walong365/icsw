@@ -55,7 +55,7 @@ class write_dhcpd_config(cs_base_class.server_com):
             dhcpd_f.write("omapi-port 7911;\n")
             dhcpd_f.write("ddns-domainname \"%s\";\n" % (self.global_config["SERVER_SHORT_NAME"]))
             dhcpd_f.write("allow booting;\nallow bootp;\n\n")
-            if self.option_dict["authoritative"].lower() in ["1", "true", "yes"]:
+            if self.srv_com["authoritative"].text.lower() in ["1", "true", "yes"]:
                 dhcpd_f.write("authoritative;\n")
             # get gateway and domain-servers for the various nets
             gw_pri, gateway = (-10000, "0.0.0.0")

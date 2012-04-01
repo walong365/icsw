@@ -32,6 +32,15 @@ class get_uuid(cs_base_class.server_com):
             "reply" : "uuid is %s" % (uuid_tools.get_uuid().get_urn()),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
     
+class get_0mq_id(cs_base_class.server_com):
+    class Meta:
+        show_execution_time = False
+    def _call(self):
+        self.srv_com["zmq_id"] = uuid_tools.get_uuid().get_urn()
+        self.srv_com["result"].attrib.update({
+            "reply" : "0MQ_ID is %s" % (uuid_tools.get_uuid().get_urn()),
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+        
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)

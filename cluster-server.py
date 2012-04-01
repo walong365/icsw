@@ -1108,7 +1108,7 @@ class server_process(threading_tools.process_pool):
             client = None
         else:
             client = self.zmq_context.socket(zmq.ROUTER)
-            client.setsockopt(zmq.IDENTITY, "cluster-server:%s" % (global_config["SERVER_SHORT_NAME"]))
+            client.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
             client.setsockopt(zmq.HWM, 256)
             try:
                 client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
@@ -1120,8 +1120,20 @@ class server_process(threading_tools.process_pool):
             else:
                 self.register_poller(client, zmq.POLLIN, self._recv_command)
         self.com_socket = client
-    def _recv_command(self, sock):
-        print "*"
+    def _recv_command(self, zmq_sock):
+        data = []
+        while True:
+            data.append(zmq_sock.recv())
+            if not zmq_sock.getsockopt(zmq.RCVMORE):
+                break
+        if len(data) == 2:
+            srv_com = server_command.srv_command(source=data[1])
+            self._process_command(srv_com)
+            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+            zmq_sock.send_unicode(unicode(srv_com))
+        else:
+            self.log("data stream has wrong length (%d) != 2" % (len(data)),
+                     logging_tools.LOG_LEVEL_ERROR)
 ##    def _new_client_tcp_con(self, sock):
 ##        return cs_base_class.simple_tcp_obj(self, self.__server_com)
 ##    def _new_tcp_con(self, sock, src):
@@ -1155,21 +1167,20 @@ class server_process(threading_tools.process_pool):
                                                                err_str))
             if do_it:
                 try:
-                    opt_keys = dict([value.split("=", 1) for value in global_config["OPTION_KEYS"] if value.strip()])
+                    found_keys = [key for key in com_obj.Meta.needed_option_keys if key in srv_com]
                 except:
                     srv_com["result"].attrib.update({
                         "reply" : "error parsing options_keys: %s" % (process_tools.get_except_info()),
                         "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
                         })
                 else:
-                    if set(opt_keys.keys()) != set(com_obj.Meta.needed_option_keys):
+                    if set(found_keys) != set(com_obj.Meta.needed_option_keys):
                         srv_com["result"].attrib.update({
-                            "reply" : "error option keys found (%s) != needed (%s)" % (", ".join(sorted(list(set(opt_keys.keys())))),
+                            "reply" : "error option keys found (%s) != needed (%s)" % (", ".join(sorted(list(set(found_keys)))) or "none",
                                                                                        ", ".join(sorted(list(set(com_obj.Meta.needed_option_keys))))),
                             "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
                             })
                     else:
-                        com_obj.option_dict = opt_keys
                         com_obj.srv_com = srv_com
                         com_obj.dc = dc
                         com_obj.global_config = global_config
@@ -1191,7 +1202,6 @@ class server_process(threading_tools.process_pool):
                                 self.log("command got an (unexpected) result: '%s'" % (str(result)),
                                          logging_tools.LOG_LEVEL_ERROR)
                         com_obj.write_end_log()
-                        del com_obj.option_dict
                         del com_obj.global_config
                         del com_obj.dc
                         del com_obj.srv_com
@@ -1206,7 +1216,6 @@ class server_process(threading_tools.process_pool):
                 "reply" : "command %s not known" % (com_name),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
                 })
-        print unicode(srv_com)
     def _update(self):
         self.log("update")
     def loop_function(self):
@@ -1272,12 +1281,12 @@ def main():
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name), database=False)),
+        ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True)),
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
-        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True, database=False)),
+        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("CONTACT"             , configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
         ("COMMAND"             , configfile.str_c_var("", short_options="c", choices=cluster_server.command_names, only_commandline=True, help_string="command to execute [%(default)s]")),
         ("OPTION_KEYS"         , configfile.array_c_var([], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)")),
@@ -1315,7 +1324,7 @@ def main():
         ("COM_PORT"              , configfile.int_c_var(SERVER_PORT)),
         ("LOG_DESTINATION"       , configfile.str_c_var("uds:/var/lib/logging-server/py_log")),
         ("LOG_NAME"              , configfile.str_c_var("cluster-server")),
-        ("IMAGE_SOURCE_DIR"      , configfile.str_c_var("/usr/local/share/images")),
+        ("IMAGE_SOURCE_DIR"      , configfile.str_c_var("/usr/local/share/cluster/images")),
         ("UPDATE_SITE"           , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
         ("RPM_TARGET_DIR"        , configfile.str_c_var("/root/RPMs")),
         ("MAILSERVER"            , configfile.str_c_var("localhost")),
