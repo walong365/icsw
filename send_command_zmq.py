@@ -44,7 +44,7 @@ def main():
     #parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
     args, other_args = parser.parse_known_args()
-    print args.arguments, other_args
+    #print args.arguments, other_args
     command = args.arguments.pop(0)
     other_args = args.arguments + other_args
     identity_str = process_tools.zmq_identity_str(args.identity_string)
