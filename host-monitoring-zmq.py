@@ -106,21 +106,27 @@ class id_discovery(object):
         self.srv_com = srv_com
         self.src_id = src_id
         self.xml_input = xml_input
-        id_discovery.pending[self.conn_str] = self
-        new_sock = id_discovery.relayer_process.zmq_context.socket(zmq.DEALER)
-        id_str = "relayer_dlr_%s_%s" % (process_tools.get_machine_name(),
-                                        self.src_id)
-        new_sock.setsockopt(zmq.IDENTITY, id_str)
-        new_sock.setsockopt(zmq.LINGER, 0)
-        new_sock.setsockopt(zmq.HWM, id_discovery.backlog_size)
-        new_sock.setsockopt(zmq.BACKLOG, id_discovery.backlog_size)
-        self.socket = new_sock
-        id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)
-        #id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.error)
-        dealer_message = server_command.srv_command(command="get_0mq_id")
-        self.socket.connect(self.conn_str)
-        self.log("send discovery message")
-        self.socket.send_unicode(unicode(dealer_message))
+        cur_time = time.time()
+        if self.conn_str in id_discovery.last_try and abs(id_discovery.last_try[self.conn_str] - cur_time) < 60:
+            # need 60 seconds between tries
+            self.socket = None
+            self.send_return("last 0MQ discovery less than 60 seconds ago")
+        else:
+            id_discovery.pending[self.conn_str] = self
+            new_sock = id_discovery.relayer_process.zmq_context.socket(zmq.DEALER)
+            id_str = "relayer_dlr_%s_%s" % (process_tools.get_machine_name(),
+                                            self.src_id)
+            new_sock.setsockopt(zmq.IDENTITY, id_str)
+            new_sock.setsockopt(zmq.LINGER, 0)
+            new_sock.setsockopt(zmq.HWM, id_discovery.backlog_size)
+            new_sock.setsockopt(zmq.BACKLOG, id_discovery.backlog_size)
+            self.socket = new_sock
+            id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)
+            #id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.error)
+            dealer_message = server_command.srv_command(command="get_0mq_id")
+            self.socket.connect(self.conn_str)
+            self.log("send discovery message")
+            self.socket.send_unicode(unicode(dealer_message))
     def send_return(self, error_msg):
         self.log(error_msg, logging_tools.LOG_LEVEL_ERROR)
         dummy_mes = host_message(self.srv_com["command"].text, self.src_id, self.srv_com, self.xml_input)
@@ -135,6 +141,8 @@ class id_discovery(object):
         time.sleep(1)
     def get_result(self, zmq_sock):
         cur_reply = server_command.srv_command(source=zmq_sock.recv())
+        if self.conn_str in id_discovery.last_try:
+            del id_discovery.last_try[self.conn_str]
         try:
             zmq_id = cur_reply["zmq_id"].text
         except:
@@ -156,7 +164,9 @@ class id_discovery(object):
             self.socket.close()
             id_discovery.relayer_process.unregister_poller(self.socket, zmq.POLLIN)
             del self.socket
-        del id_discovery.pending[self.conn_str]
+        if self.conn_str in id_discovery.pending:
+            # remove from pending dict
+            del id_discovery.pending[self.conn_str]
         self.log("closing")
         del self
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -176,7 +186,8 @@ class id_discovery(object):
         else:
             id_discovery.mapping = {}
         id_discovery.pending = {}
-        # dealer socket
+        # last discovery try
+        id_discovery.last_try = {}
     @staticmethod
     def is_pending(conn_str):
         return conn_str in id_discovery.pending
@@ -194,6 +205,8 @@ class id_discovery(object):
             if diff_time > id_discovery.timeout:
                 del_list.append(cur_ids)
         for cur_ids in del_list:
+            # set last try flag
+            id_discovery.last_try[cur_ids.conn_str] = cur_time
             cur_ids.send_return("timeout triggered, closing")
         
 class host_connection(object):
