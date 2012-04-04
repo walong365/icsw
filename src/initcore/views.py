@@ -68,6 +68,8 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
         if form.is_valid():
             # Light security check -- make sure redirect_to isn't garbage.
             auth.login(request, form.get_user())
+            request.session.update(get_user_variables(request))
+            request.session.update(set_css_values(request))
             request.session.update(additional_session(request))
             request.session.save()
             return HttpResponseRedirect(redirect_to)
@@ -84,8 +86,6 @@ def login(request, template_name="initcore/login.html", redirect_field_name="nex
 def additional_session(request):
     """Update the request with session information."""
     res = {}
-    res.update(get_user_variables(request))
-    res.update(set_css_values(request))
     if hasattr(settings, "SESSION_EXTENDERS") and isinstance(settings.SESSION_EXTENDERS, (tuple, list)):
         for funcstring in settings.SESSION_EXTENDERS:
             split_string = funcstring.split(".")
@@ -389,6 +389,8 @@ def change_user(request):
             else:
                 user.backend = "edmdb.auth.olim_backend"
                 django.contrib.auth.login(request, user)
+                request.session.update(get_user_variables(request))
+                request.session.update(set_css_values(request))
                 request.session.update(additional_session(request))
                 request.session.save()
                 res = HttpResponseRedirect(settings.SITE_ROOT)
