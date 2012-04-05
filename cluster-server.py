@@ -241,15 +241,22 @@ def process_request(glob_config, loc_config, logger, db_con, server_com, src_hos
     logger.info(type(ret_str) == type("") and ret_str or "%d: %s" % (ret_str.get_state(), ret_str.get_result()))
     return ret_str, commands_queued
 
+
 class bg_stuff(object):
-    def __init__(self, name, logger, glob_config, loc_config):
-        self.__name = name
-        self.__logger = logger
-        self.glob_config, self.loc_config = (glob_config, loc_config)
-        self.set_creates_machvector(False)
-        self.set_min_time_between_runs(0)
+    class Meta:
+        min_time_between_runs = 30
+        creates_machvector = False
+    def __init__(self, srv_process):
+        #self.__name = name
+        self.server_process = srv_process
+        self.init_bg_stuff()
+        #self.glob_config, self.loc_config = (glob_config, loc_config)
+        #self.set_creates_machvector(False)
+        #self.set_min_time_between_runs(0)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__logger.log(level, "%s: %s" % (self.__name, what))
+        self.server_process.log("[bg] %s" % (what), level)
+    def init_bg_stuff(self):
+        pass
     def set_creates_machvector(self, cv):
         self.__cv = cv
     def get_creates_machvector(self):
@@ -273,9 +280,8 @@ class bg_stuff(object):
         return log_lines
 
 class usv_server_stuff(bg_stuff):
-    def __init__(self, logger, glob_config, loc_config):
-        bg_stuff.__init__(self, "usv", logger, glob_config, loc_config)
-        self.set_creates_machvector(True)
+    class Meta:
+        creates_machvector = True
     def do_apc_call(self):
         stat, out = commands.getstatusoutput("apcaccess")
         if stat:
@@ -395,17 +401,20 @@ class quota_line(object):
         return "; ".join(p_f)
 
 class quota_stuff(bg_stuff):
-    def __init__(self, logger, db_con, glob_config, loc_config):
-        bg_stuff.__init__(self, "quota", logger, glob_config, loc_config)
-        self.__db_con = db_con
-        self.set_min_time_between_runs(self.glob_config["QUOTA_CHECK_TIME_SECS"])
-        self.set_creates_machvector(self.glob_config["MONITOR_QUOTA_USAGE"])
-        # user cache
-        self.__user_dict = {}
-        # quota cache, (device, uid, stuff)
-        self.__quota_cache = []
-        # last mail sent to admins
-        self.__admin_mail_sent = None
+    def init_bg_stuff(self):
+        self.Meta.min_time_between_runs = global_config["QUOTA_CHECK_TIME_SECS"]
+        self.Meta.creates_machvector = global_config["MONITOR_QUOTA_USAGE"]
+##    def __init__(self, logger, db_con, glob_config, loc_config):
+##        bg_stuff.__init__(self, "quota", logger, glob_config, loc_config)
+##        self.__db_con = db_con
+##        self.set_min_time_between_runs(self.glob_config["QUOTA_CHECK_TIME_SECS"])
+##        self.set_creates_machvector(self.glob_config["MONITOR_QUOTA_USAGE"])
+##        # user cache
+##        self.__user_dict = {}
+##        # quota cache, (device, uid, stuff)
+##        self.__quota_cache = []
+##        # last mail sent to admins
+##        self.__admin_mail_sent = None
     def _resolve_uids(self, dc, uid_list):
         if uid_list:
             dc.execute("SELECT u.uid, u.login, u.uservname, u.usernname, u.useremail FROM user u WHERE %s" % (" OR ".join(["u.uid=%d" % (x) for x in uid_list])))
@@ -782,8 +791,6 @@ class monitor_thread(threading_tools.thread_obj):
         self.__esd, self.__nvn = ("/tmp/.machvect_es", "cluster_div")
         self.__ext_keys = {}
         self.register_func("update", self._update)
-        self.__server_cap_dict = {"usv_server" : usv_server_stuff(self.__logger, self.__glob_config, self.__loc_config),
-                                  "quota"      : quota_stuff(self.__logger, self.__db_con, self.__glob_config, self.__loc_config)}
         self._init_cap_list()
     def thread_running(self):
         self.send_pool_message(("new_pid", self.pid))
@@ -867,91 +874,91 @@ class monitor_thread(threading_tools.thread_obj):
         
 # --------- connection objects ------------------------------------
 
-class new_tcp_con(net_tools.buffer_object):
-    # connection object for cluster-server
-    def __init__(self, sock, src, pm_queue, logger):
-        self.__loc_host, self.__loc_port = sock.get_sock_name()
-        self.__src_host, self.__src_port = src
-        self.__pm_queue = pm_queue
-        self.__logger = logger
-        net_tools.buffer_object.__init__(self)
-        self.__init_time = time.time()
-        self.__in_buffer = ""
-        self.__command = "<not set>"
-    def __del__(self):
-        pass
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__logger.log(level, what)
-    def set_command(self, com):
-        self.__command = com
-    def get_loc_host(self):
-        return self.__loc_host
-    def get_loc_port(self):
-        return self.__loc_port
-    def get_src_host(self):
-        return self.__src_host
-    def get_src_port(self):
-        return self.__src_port
-    def add_to_in_buffer(self, what):
-        self.__in_buffer += what
-        p1_ok, what = net_tools.check_for_proto_1_header(self.__in_buffer)
-        if p1_ok:
-            self.__decoded = what
-            self.__pm_queue.put(("in_tcp_bytes", self))
-    def add_to_out_buffer(self, what):
-        self.lock()
-        if self.socket:
-            self.out_buffer = net_tools.add_proto_1_header(what)
-            self.socket.ready_to_send()
-        else:
-            self.log("timeout, other side has closed connection")
-        self.unlock()
-    def out_buffer_sent(self, d_len):
-        if d_len == len(self.out_buffer):
-            self.__pm_queue = None
-            d_time = abs(time.time() - self.__init_time)
-            self.log("command %s from %s (port %d) took %s" % (self.__command,
-                                                               self.__src_host,
-                                                               self.__src_port,
-                                                               logging_tools.get_diff_time_str(d_time)))
-            self.close()
-        else:
-            self.out_buffer = self.out_buffer[d_len:]
-            #self.socket.ready_to_send()
-    def get_decoded_in_str(self):
-        return self.__decoded
-    def report_problem(self, flag, what):
-        self.close()
-
-class simple_con(net_tools.buffer_object):
-    def __init__(self, mode, host, port, s_str, d_queue):
-        self.__mode = mode
-        self.__host = host
-        self.__port = port
-        self.__send_str = s_str
-        self.__d_queue = d_queue
-        net_tools.buffer_object.__init__(self)
-    def setup_done(self):
-        if self.__mode == "udp":
-            self.add_to_out_buffer(self.__send_str)
-        else:
-            self.add_to_out_buffer(net_tools.add_proto_1_header(self.__send_str, True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-            if self.__mode == "udp":
-                self.__d_queue.put(("send_ok", (self.__host, self.__port, self.__mode, "udp_send")))
-                self.delete()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.__d_queue.put(("send_ok", (self.__host, self.__port, self.__mode, "got %s" % (what))))
-        self.delete()
-    def report_problem(self, flag, what):
-        self.__d_queue.put(("send_error", (self.__host, self.__port, self.__mode, "%s: %s" % (net_tools.net_flag_to_str(flag),
-                                                                                              what))))
-        self.delete()
+##class new_tcp_con(net_tools.buffer_object):
+##    # connection object for cluster-server
+##    def __init__(self, sock, src, pm_queue, logger):
+##        self.__loc_host, self.__loc_port = sock.get_sock_name()
+##        self.__src_host, self.__src_port = src
+##        self.__pm_queue = pm_queue
+##        self.__logger = logger
+##        net_tools.buffer_object.__init__(self)
+##        self.__init_time = time.time()
+##        self.__in_buffer = ""
+##        self.__command = "<not set>"
+##    def __del__(self):
+##        pass
+##    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+##        self.__logger.log(level, what)
+##    def set_command(self, com):
+##        self.__command = com
+##    def get_loc_host(self):
+##        return self.__loc_host
+##    def get_loc_port(self):
+##        return self.__loc_port
+##    def get_src_host(self):
+##        return self.__src_host
+##    def get_src_port(self):
+##        return self.__src_port
+##    def add_to_in_buffer(self, what):
+##        self.__in_buffer += what
+##        p1_ok, what = net_tools.check_for_proto_1_header(self.__in_buffer)
+##        if p1_ok:
+##            self.__decoded = what
+##            self.__pm_queue.put(("in_tcp_bytes", self))
+##    def add_to_out_buffer(self, what):
+##        self.lock()
+##        if self.socket:
+##            self.out_buffer = net_tools.add_proto_1_header(what)
+##            self.socket.ready_to_send()
+##        else:
+##            self.log("timeout, other side has closed connection")
+##        self.unlock()
+##    def out_buffer_sent(self, d_len):
+##        if d_len == len(self.out_buffer):
+##            self.__pm_queue = None
+##            d_time = abs(time.time() - self.__init_time)
+##            self.log("command %s from %s (port %d) took %s" % (self.__command,
+##                                                               self.__src_host,
+##                                                               self.__src_port,
+##                                                               logging_tools.get_diff_time_str(d_time)))
+##            self.close()
+##        else:
+##            self.out_buffer = self.out_buffer[d_len:]
+##            #self.socket.ready_to_send()
+##    def get_decoded_in_str(self):
+##        return self.__decoded
+##    def report_problem(self, flag, what):
+##        self.close()
+##
+##class simple_con(net_tools.buffer_object):
+##    def __init__(self, mode, host, port, s_str, d_queue):
+##        self.__mode = mode
+##        self.__host = host
+##        self.__port = port
+##        self.__send_str = s_str
+##        self.__d_queue = d_queue
+##        net_tools.buffer_object.__init__(self)
+##    def setup_done(self):
+##        if self.__mode == "udp":
+##            self.add_to_out_buffer(self.__send_str)
+##        else:
+##            self.add_to_out_buffer(net_tools.add_proto_1_header(self.__send_str, True))
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##            if self.__mode == "udp":
+##                self.__d_queue.put(("send_ok", (self.__host, self.__port, self.__mode, "udp_send")))
+##                self.delete()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def add_to_in_buffer(self, what):
+##        self.__d_queue.put(("send_ok", (self.__host, self.__port, self.__mode, "got %s" % (what))))
+##        self.delete()
+##    def report_problem(self, flag, what):
+##        self.__d_queue.put(("send_error", (self.__host, self.__port, self.__mode, "%s: %s" % (net_tools.net_flag_to_str(flag),
+##                                                                                              what))))
+##        self.delete()
 
 # --------- connection objects ------------------------------------
 
@@ -980,6 +987,7 @@ class server_process(threading_tools.process_pool):
         self._check_uuid()
         #self.__is_server = not self.__server_com
         self._load_modules()#self.__loc_config, self.log, self.__is_server)
+        self._init_capabilities()
         self._init_network_sockets()
         if self.__run_command:
             self.register_timer(self._run_command, 3600, instant=True)
@@ -1013,6 +1021,12 @@ class server_process(threading_tools.process_pool):
                                                                                 self.__target_port,
                                                                                 self.__server_com.get_command()))
         self.__first_step = True
+    def _init_capabilities(self):
+        self.__server_cap_dict = {"usv_server" : usv_server_stuff(self),
+                                  "quota"      : quota_stuff(self)}
+        dc = self.__db_con.get_connection(SQL_ACCESS)
+        
+        dc.release()
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
