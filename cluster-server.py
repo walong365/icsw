@@ -46,6 +46,7 @@ import cs_base_class
 import config_tools
 import zmq
 import cluster_server
+from host_monitoring import hm_classes
 
 try:
     from cluster_server_version import VERSION_STRING
@@ -247,41 +248,53 @@ class bg_stuff(object):
         min_time_between_runs = 30
         creates_machvector = False
     def __init__(self, srv_process):
+        # copy Meta keys
+        for key in dir(bg_stuff.Meta):
+            if not key.startswith("__") and not hasattr(self.Meta, key):
+                setattr(self.Meta, key, getattr(bg_stuff.Meta, key))
         #self.__name = name
         self.server_process = srv_process
         self.init_bg_stuff()
-        #self.glob_config, self.loc_config = (glob_config, loc_config)
-        #self.set_creates_machvector(False)
-        #self.set_min_time_between_runs(0)
+        self.__last_call = None
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.server_process.log("[bg] %s" % (what), level)
+        self.server_process.log("[bg %s] %s" % (self.Meta.name, what), level)
     def init_bg_stuff(self):
         pass
-    def set_creates_machvector(self, cv):
-        self.__cv = cv
-    def get_creates_machvector(self):
-        return self.__cv
-    def set_min_time_between_runs(self, mt):
-        # mt is in seconds
-        self.__min_time_br = mt
-        self.__last_wakeup = None
-    def get_min_time_between_runs(self):
-        return self.__min_time_br
-    def check_for_wakeup(self, act_time):
-        if self.__last_wakeup is None or abs(self.__last_wakeup - act_time) >= self.__min_time_br:
-            self.__last_wakeup = act_time
-            return True
+    def __call__(self, cur_time, drop_com):
+        if self.__last_call and abs(self.__last_call - cur_time) < self.Meta.min_time_between_runs:
+            #self.log("last call only %d seconds ago, skipping" % (abs(self.__last_call - cur_time)),
+            #         logging_tools.LOG_LEVEL_WARN)
+            pass
         else:
-            return False
+            self.__last_call = cur_time
+            add_obj = self._call(cur_time, drop_com.builder)
+            if add_obj is not None:
+                drop_com["vector_%s" % (self.Meta.name)] = add_obj
+                drop_com["vector_%s" % (self.Meta.name)].attrib["type"] = "vector"
+    def _call(self, cur_time, drop_com):
+        self.log("dummy __call__()")
     def send_mail(self, to_addr, subject, msg_body):
         new_mail = mail_tools.mail(subject, "%s@%s" % (self.glob_config["FROM_NAME"], self.glob_config["FROM_ADDR"]), to_addr, msg_body)
         new_mail.set_server(self.glob_config["MAILSERVER"], self.glob_config["MAILSERVER"])
         stat, log_lines = new_mail.send_mail()
         return log_lines
 
+class dummy_stuff(bg_stuff):
+    class Meta:
+        name = "dummy"
+    def init_bg_stuff(self):
+        self.load_value = hm_classes.mvect_entry("sys.load1", info="test entry", default=0.0)
+    def _call(self, cur_time, builder):
+        self.load_value.update(float(file("/proc/loadavg", "r").read().split()[0]))
+        self.load_value.valid_until = time.time() + 10
+        my_vector = builder("values")
+        my_vector.append(self.load_value.build_xml(builder))
+        return my_vector
+
 class usv_server_stuff(bg_stuff):
     class Meta:
         creates_machvector = True
+        name = "usv_server"
     def do_apc_call(self):
         stat, out = commands.getstatusoutput("apcaccess")
         if stat:
@@ -401,6 +414,8 @@ class quota_line(object):
         return "; ".join(p_f)
 
 class quota_stuff(bg_stuff):
+    class Meta:
+        name = "quota"
     def init_bg_stuff(self):
         self.Meta.min_time_between_runs = global_config["QUOTA_CHECK_TIME_SECS"]
         self.Meta.creates_machvector = global_config["MONITOR_QUOTA_USAGE"]
@@ -1022,10 +1037,17 @@ class server_process(threading_tools.process_pool):
                                                                                 self.__server_com.get_command()))
         self.__first_step = True
     def _init_capabilities(self):
+        self.log("init server capabilities")
         self.__server_cap_dict = {"usv_server" : usv_server_stuff(self),
-                                  "quota"      : quota_stuff(self)}
+                                  "quota"      : quota_stuff(self),
+                                  "dummy"      : dummy_stuff(self)}
+        self.__cap_list = []
         dc = self.__db_con.get_connection(SQL_ACCESS)
-        
+        for key, value in self.__server_cap_dict.iteritems():
+            sql_info = config_tools.server_check(dc=dc, server_type=key)
+            if sql_info.num_servers or key == "dummy":
+                self.__cap_list.append(key)
+            self.log("capability %s: %s" % (key, "enabled" if key in self.__cap_list else "disabled"))
         dc.release()
     def _int_error(self, err_cause):
         if self["exit_requested"]:
@@ -1105,6 +1127,12 @@ class server_process(threading_tools.process_pool):
             else:
                 self.register_poller(client, zmq.POLLIN, self._recv_command)
         self.com_socket = client
+        # connection to local collserver socket
+        conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver")
+        vector_socket = self.zmq_context.socket(zmq.PUSH)
+        vector_socket.connect(conn_str)
+        self.vector_socket = vector_socket
+        self.log("connected vector_socket to %s" % (conn_str))
     def _recv_command(self, zmq_sock):
         data = []
         while True:
@@ -1202,7 +1230,11 @@ class server_process(threading_tools.process_pool):
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
                 })
     def _update(self):
-        self.log("update")
+        cur_time = time.time()
+        drop_com = server_command.srv_command(command="set_vector")
+        for cap_name in self.__cap_list:
+            self.__server_cap_dict[cap_name](cur_time, drop_com)
+        self.vector_socket.send_unicode(unicode(drop_com))
     def send_broadcast(self, bc_com):
         self.log("init broadcast command '%s'" % (bc_com))
         dc = self.__db_con.get_connection(SQL_ACCESS)
