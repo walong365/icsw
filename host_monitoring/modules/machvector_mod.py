@@ -615,6 +615,17 @@ class machine_vector(object):
                 except:
                     self.log("error: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
                     raise
+        # delete external directories
+        old_dir = "/tmp/.machvect_es"
+        if os.path.isdir(old_dir):
+            try:
+                os.removedirs(old_dirs)
+            except:
+                self.log("error removing old external directory %s: %s" % (old_dir,
+                                                                           process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("removed old external directory %s" % (old_dir))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.module.process_pool.log("[mvect] %s" % (what), log_level)
     def _recv_vector(self, zmq_sock):
