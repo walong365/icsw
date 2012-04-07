@@ -370,7 +370,10 @@ class thread_pool(object):
             else:
                 new_tl.append((cur_to, t_time, cb_func))
         self.__timer_list = new_tl
-        self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+        if self.__timer_list:
+            self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+        else:
+            self.__next_timeout = None
         for t_func in t_funcs:
             t_func()
     def add_queue(self, q_name, q_len):
@@ -1007,7 +1010,10 @@ class process_pool(object):
             else:
                 new_tl.append((cur_to, t_time, cb_func))
         self.__timer_list = new_tl
-        self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+        if self.__timer_list:
+            self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+        else:
+            self.__next_timeout = None
         for t_func in t_funcs:
             t_func()
     def add_zmq_socket(self, q_name):
