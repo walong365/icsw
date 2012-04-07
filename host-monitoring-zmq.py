@@ -874,8 +874,8 @@ class relay_process(threading_tools.process_pool):
                 setattr(self, "%s_socket" % (short_sock_name), cur_socket)
                 backlog_size = global_config["BACKLOG_SIZE"]
                 os.chmod(file_name, 0777)
-                self.receiver_socket.setsockopt(zmq.LINGER, 0)
-                self.receiver_socket.setsockopt(zmq.HWM, hwm_size)
+                cur_socket.setsockopt(zmq.LINGER, 0)
+                cur_socket.setsockopt(zmq.HWM, hwm_size)
                 if sock_type == zmq.PULL:
                     self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)
         self.client_socket = self.zmq_context.socket(zmq.ROUTER)
@@ -1228,6 +1228,40 @@ class server_process(threading_tools.process_pool):
             raise
         else:
             self.register_poller(client, zmq.POLLIN, self._recv_command)
+        sock_list = [("ipc", "vector"  , zmq.PULL  , 512 )]
+        for sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
+            sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
+            file_name = sock_name[5:]
+            self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
+                                                            hwm_size))
+            if os.path.exists(file_name):
+                self.log("removing previous file")
+                try:
+                    os.unlink(file_name)
+                except:
+                    self.log("... %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            wait_iter = 0
+            while os.path.exists(file_name) and wait_iter < 100:
+                self.log("socket %s still exists, waiting" % (sock_name))
+                time.sleep(0.1)
+                wait_iter += 1
+            cur_socket = self.zmq_context.socket(sock_type)
+            try:
+                process_tools.bind_zmq_socket(cur_socket, sock_name)
+                #client.bind("tcp://*:8888")
+            except zmq.core.error.ZMQError:
+                self.log("error binding %s: %s" % (short_sock_name,
+                                                   process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_CRITICAL)
+                raise
+            else:
+                setattr(self, "%s_socket" % (short_sock_name), cur_socket)
+                backlog_size = global_config["BACKLOG_SIZE"]
+                os.chmod(file_name, 0777)
+                cur_socket.setsockopt(zmq.LINGER, 0)
+                cur_socket.setsockopt(zmq.HWM, hwm_size)
+    def register_vector_receiver(self, t_func):
+        self.register_poller(self.vector_socket, zmq.POLLIN, t_func)
     def _recv_command(self, zmq_sock):
         src_id = zmq_sock.recv()
         more = zmq_sock.getsockopt(zmq.RCVMORE)

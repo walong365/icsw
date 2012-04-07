@@ -1,6 +1,6 @@
 #!/usr/bin/python-init
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -37,6 +37,8 @@ import threading_tools
 import net_tools
 from host_monitoring import hm_classes
 from lxml import etree
+import server_command
+import copy
 try:
     import bz2
 except:
@@ -55,8 +57,9 @@ class _general(hm_classes.hm_module):
     def __init__(self, *args, **kwargs):
         hm_classes.hm_module.__init__(self, *args, **kwargs)
     def init_module(self):
-        self.process_pool.register_timer(self._update_machine_vector, 10, instant=True)
-        self._init_machine_vector()
+        if hasattr(self.process_pool, "register_vector_receiver"):
+            self.process_pool.register_timer(self._update_machine_vector, 10, instant=True)
+            self._init_machine_vector()
     def _init_machine_vector(self):
         self.machine_vector = machine_vector(self)
     def init_machine_vector(self, mvect):
@@ -594,13 +597,14 @@ class machine_vector(object):
         # actual dictionary, including full-length dictionary keys
         self.__act_dict = {}
         # actual keys, last keys
-        self.__act_keys = []
+        self.__act_keys = set()
         # init external_sources
         #self.init_ext_src()
         #self.__alert_dict, self.__alert_dict_time = ({}, time.time())
         # key is in fact the timestamp
         self.__act_key, self.__changed = (0, True)
         self.__verbosity = module.process_pool.global_config["VERBOSE"]
+        module.process_pool.register_vector_receiver(self._recv_vector)
         #self.__module_dict = module_dict
         for module in module.process_pool.module_list:
             if hasattr(module, "init_machine_vector"):
@@ -613,6 +617,27 @@ class machine_vector(object):
                     raise
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.module.process_pool.log("[mvect] %s" % (what), log_level)
+    def _recv_vector(self, zmq_sock):
+        try:
+            rcv_com = server_command.srv_command(source=zmq_sock.recv_unicode())
+        except:
+            self.log("error interpreting data as srv_command: %s" % (process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+        else:
+            for in_vector in rcv_com.xpath(None, ".//*[@type='vector']"):
+                for values_list in in_vector:
+                    for cur_value in values_list:
+                        self.set_from_external(hm_classes.mvect_entry(**cur_value.attrib))
+            self.check_timeout()
+            self.check_changed()
+    def set_from_external(self, mvec):
+        if mvec.name not in self:
+            # register entry
+            self.__act_dict[mvec.name] = mvec
+            self.__changed = True
+        else:
+            # only update value
+            self[mvec.name] = mvec.value
 ##    def check_for_alert_file_change(self, log_t):
 ##        if self.__module:
 ##            alert_file = self.__module.get_alert_file_name()
@@ -658,7 +683,7 @@ class machine_vector(object):
         # base is the divider to derive the k/M/G-Values (1, 1000 or 1024)
         # factor is a number the values have to be multipilicated with in order to lead to a meaningful number (for example memory or df)
         self.__changed = True
-        self.__act_dict[name] = hm_classes.mvect_entry(name, default=default, info=info, unit=unit, base=base, factor=factor, mvv_timeout=kwargs.get("mvv_timeout", 300))
+        self.__act_dict[name] = hm_classes.mvect_entry(name, default=default, info=info, unit=unit, base=base, factor=factor)
     def get(self, name, default_value=None):
         return self.__act_dict.get(name, default_value)
     def __getitem__(self, key):
@@ -673,8 +698,7 @@ class machine_vector(object):
             #print "Unregister "+name
             del self.__act_dict[name]
         else:
-            print "Error: entry %s not defined" % (name)
-            return 0
+            self.log("Error: entry %s not defined" % (name), logging_tools.LOG_LEVEL_ERROR)
     def __setitem__(self, name, value):
         self.__act_dict[name].update(value)
     def _reg_update(self, log_t, name, value):
@@ -698,15 +722,15 @@ class machine_vector(object):
     def check_changed(self):
         if self.__changed:
             # attention ! dict.keys() != copy.deppcopy(dict).keys()
-            last_keys = [x for x in self.__act_keys]
-            self.__act_keys = sorted(self.__act_dict.keys())
+            last_keys = copy.deepcopy(self.__act_keys)
+            self.__act_keys = set(self.__act_dict.keys())
             self.__changed = False
             new_key = int(time.time())
             if new_key == self.__act_key:
                 new_key += 1
             self.__act_key = new_key
-            new_keys  = [x for x in self.__act_keys  if x not in last_keys]
-            lost_keys = [x for x in last_keys if x not in self.__act_keys ]
+            new_keys  = self.__act_keys - last_keys
+            lost_keys = last_keys - self.__act_keys
             if new_keys:
                 self.log("%s:" % (logging_tools.get_plural("new key", len(new_keys))))
                 #for key_num, key in enumerate(sorted(new_keys)):
@@ -715,7 +739,16 @@ class machine_vector(object):
                 self.log("%s:" % (logging_tools.get_plural("lost key", len(lost_keys))))
                 #for key_num, key in enumerate(sorted(lost_keys)):
                 #    self.log(" %3d : %s" % (key_num, key))
-                self.log("Machine_vector has changed, setting actual key to %d (%d keys)" % (self.__act_key, len(self.__act_dict)))
+            self.log("Machine_vector has changed, setting actual key to %d (%d keys)" % (self.__act_key, len(self.__act_dict)))
+    def check_timeout(self):
+        cur_time = time.time()
+        rem_keys = [key for key, value in self.__act_dict.iteritems() if value.check_timeout(cur_time)]
+        if rem_keys:
+            self.log("removing %s because of timeout: %s" % (logging_tools.get_plural("key", len(rem_keys)),
+                                                             ", ".join(sorted(rem_keys))))
+            for rem_key in rem_keys:
+                self.unregister_entry(rem_key)
+            self.__changed = True
     def store_xml(self, srv_com):
         el_builder = srv_com.builder
         mach_vect = el_builder("machine_vector", version="%d" % (self.__act_key))
@@ -737,6 +770,7 @@ class machine_vector(object):
         self.check_changed()
         # copy ref_dict to act_dict
         [value.update_default() for value in self.__act_dict.itervalues()]
+        self.check_timeout()
         #if esd:
         #    self.check_external_sources(log_t, esd)
         #self.check_for_alert_file_change(log_t)
@@ -759,122 +793,122 @@ class machine_vector(object):
         return self.ext_src.has_key(src)
     def get_last_update(self, src):
         return self.ext_src[src]
-    def check_external_sources(self, log_t, esd):
-        act_time = time.time()
-        mvns_found = []
-        if os.path.isdir(esd):
-            try:
-                esd_files = os.listdir(esd)
-            except:
-                log_t.error("error reading entries from directory %s: %s" % (esd,
-                                                                             process_tools.get_except_info()))
-                esd_files = []
-            for fn in esd_files:
-                ffn = "%s/%s" % (esd, fn)
-                if fn.endswith(".mvd"):
-                    # machine vector definition
-                    mvn = fn.split(".")[0]
-                    mvns_found.append(mvn)
-                    if not self.has_ext_src(mvn):
-                        self.set_ext_src(mvn)
-                        log_t.info("Registering external mv-source '%s'" % (mvn))
-                        mvn_lines = [line_p for line_p in [line_s.split(":") for line_s in [line.strip() for line in file(ffn, "r").readlines()] if line_s] if len(line_p) >= 6]
-                        for line_p in mvn_lines:
-                            # mvv_timeout should in fact be a emv-local setting
-                            if len(line_p) == 6:
-                                name, default, info, unit, base, factor = line_p
-                                mvv_timeout = 300
-                            else:
-                                name, default, info, unit, base, factor, mvv_timeout = line_p
-                            try:
-                                mvv_timeout = int(mvv_timeout)
-                                if default.isdigit():
-                                    default_n = int(default)
-                                    base = int(base)
-                                    factor = int(factor)
-                                else:
-                                    default_n = float(default)
-                                    base = float(base)
-                                    factor = float(factor)
-                            except:
-                                log_t.error("Error adding mvector %s: %s" % (name, process_tools.get_except_info()))
-                            else:
-                                log_t.info("Adding mvector %s with default %s, info %s, unit %s, base %s and factor %s (mvv_timeout is %d)" % (name, default, info, unit, base, factor, mvv_timeout))
-                                self.reg_entry(name, default_n, info, unit, base, factor, mvv_timeout=mvv_timeout)
-                                self.ext_src[mvn].append(name)
-                    elif self.get_ext_src_dt(mvn) < os.stat(ffn)[stat.ST_MTIME]:
-                        self.set_ext_src_dt(mvn)
-                        log_t.info("Checking already registered external mv-source '%s'" % (mvn))
-                        mvn_lines = [line_p for line_p in [line_s.split(":") for line_s in [line.strip() for line in file(ffn, "r").readlines()] if line_s] if len(line_p) >= 6]
-                        for line_p in mvn_lines:
-                            # mvv_timeout should in fact be a emv-local setting
-                            if len(line_p) == 6:
-                                name, default, info, unit, base, factor = line_p
-                                mvv_timeout = 300
-                            else:
-                                name, default, info, unit, base, factor, mvv_timeout = line_p
-                            try:
-                                mvv_timeout = int(mvv_timeout)
-                                if default.isdigit():
-                                    default_n = int(default)
-                                    base = int(base)
-                                    factor = int(factor)
-                                else:
-                                    default_n = float(default)
-                                    base = float(base)
-                                    factor = float(factor)
-                            except:
-                                log_t.error("Error checking mvector %s: %s" % (name, process_tools.get_except_info()))
-                            else:
-                                if name in self.ext_src[mvn]:
-                                    log_t.info("  key %s already present")
-                                else:
-                                    log_t.info("Adding mvector %s with default %s, info %s, unit %s, base %s and factor %s (mvv_timeout is %d)" % (name, default, info, unit, base, factor, mvv_timeout))
-                                    self.reg_entry(name, default_n, info, unit, base, factor, mvv_timeout=mvv_timeout)
-                                    self.ext_src[mvn].append(name)
-                elif fn.endswith(".mvv"):
-                    act_mtime = os.path.getmtime(ffn)
-                    mvn = fn.split(".")[0]
-                    mvv_timeout = 300
-                    if mvn in self.ext_src:
-                        if self.ext_src[mvn]:
-                            mv_entry = self.get_entry(self.ext_src[mvn][0], None)
-                            if mv_entry:
-                                mvv_timeout = mv_entry.get_mvv_timeout()
-                    if abs(act_mtime - act_time) < mvv_timeout:
-                        if self.has_ext_src(mvn):
-                            mvv_lines = [z for z in [y.split(":") for y in [x.strip() for x in file(ffn, "r").readlines()] if y] if len(z) == 3]
-                            for name, tp, value in mvv_lines:
-                                if tp == "i":
-                                    value = int(value)
-                                else:
-                                    value = float(value)
-                                try:
-                                    self.reg_update(log_t, name, value)
-                                except:
-                                    log_t.error("Error calling reg_update(): %s" % (process_tools.get_except_info()))
-                        else:
-                            log_t.info("Found .mvv file for unknown emv '%s'" % (mvn))
-                    else:
-                        log_t.warning(".mvv file for emv '%s' is too old, removing" % (mvn))
-                        try:
-                            os.unlink(ffn)
-                        except:
-                            log_t.error("cannot remove '%s': %s" % (ffn,
-                                                                    process_tools.get_except_info()))
-                            
-        del_ext_s = []
-        for ext_s, ext_keys in self.ext_src.iteritems():
-            if ext_s not in mvns_found:
-                del_ext_s.append(ext_s)
-                log_t.info("External mv-source %s no more existent, removing %s (%s)" % (ext_s,
-                                                                                         logging_tools.get_plural("key", len(ext_keys)),
-                                                                                         ", ".join(ext_keys)))
-                for k in ext_keys:
-                    self.unreg_entry(k)
-        for del_ext in del_ext_s:
-            del self.ext_src[del_ext]
-        # delete 
+##    def check_external_sources(self, log_t, esd):
+##        act_time = time.time()
+##        mvns_found = []
+##        if os.path.isdir(esd):
+##            try:
+##                esd_files = os.listdir(esd)
+##            except:
+##                log_t.error("error reading entries from directory %s: %s" % (esd,
+##                                                                             process_tools.get_except_info()))
+##                esd_files = []
+##            for fn in esd_files:
+##                ffn = "%s/%s" % (esd, fn)
+##                if fn.endswith(".mvd"):
+##                    # machine vector definition
+##                    mvn = fn.split(".")[0]
+##                    mvns_found.append(mvn)
+##                    if not self.has_ext_src(mvn):
+##                        self.set_ext_src(mvn)
+##                        log_t.info("Registering external mv-source '%s'" % (mvn))
+##                        mvn_lines = [line_p for line_p in [line_s.split(":") for line_s in [line.strip() for line in file(ffn, "r").readlines()] if line_s] if len(line_p) >= 6]
+##                        for line_p in mvn_lines:
+##                            # mvv_timeout should in fact be a emv-local setting
+##                            if len(line_p) == 6:
+##                                name, default, info, unit, base, factor = line_p
+##                                mvv_timeout = 300
+##                            else:
+##                                name, default, info, unit, base, factor, mvv_timeout = line_p
+##                            try:
+##                                mvv_timeout = int(mvv_timeout)
+##                                if default.isdigit():
+##                                    default_n = int(default)
+##                                    base = int(base)
+##                                    factor = int(factor)
+##                                else:
+##                                    default_n = float(default)
+##                                    base = float(base)
+##                                    factor = float(factor)
+##                            except:
+##                                log_t.error("Error adding mvector %s: %s" % (name, process_tools.get_except_info()))
+##                            else:
+##                                log_t.info("Adding mvector %s with default %s, info %s, unit %s, base %s and factor %s (mvv_timeout is %d)" % (name, default, info, unit, base, factor, mvv_timeout))
+##                                self.reg_entry(name, default_n, info, unit, base, factor, mvv_timeout=mvv_timeout)
+##                                self.ext_src[mvn].append(name)
+##                    elif self.get_ext_src_dt(mvn) < os.stat(ffn)[stat.ST_MTIME]:
+##                        self.set_ext_src_dt(mvn)
+##                        log_t.info("Checking already registered external mv-source '%s'" % (mvn))
+##                        mvn_lines = [line_p for line_p in [line_s.split(":") for line_s in [line.strip() for line in file(ffn, "r").readlines()] if line_s] if len(line_p) >= 6]
+##                        for line_p in mvn_lines:
+##                            # mvv_timeout should in fact be a emv-local setting
+##                            if len(line_p) == 6:
+##                                name, default, info, unit, base, factor = line_p
+##                                mvv_timeout = 300
+##                            else:
+##                                name, default, info, unit, base, factor, mvv_timeout = line_p
+##                            try:
+##                                mvv_timeout = int(mvv_timeout)
+##                                if default.isdigit():
+##                                    default_n = int(default)
+##                                    base = int(base)
+##                                    factor = int(factor)
+##                                else:
+##                                    default_n = float(default)
+##                                    base = float(base)
+##                                    factor = float(factor)
+##                            except:
+##                                log_t.error("Error checking mvector %s: %s" % (name, process_tools.get_except_info()))
+##                            else:
+##                                if name in self.ext_src[mvn]:
+##                                    log_t.info("  key %s already present")
+##                                else:
+##                                    log_t.info("Adding mvector %s with default %s, info %s, unit %s, base %s and factor %s (mvv_timeout is %d)" % (name, default, info, unit, base, factor, mvv_timeout))
+##                                    self.reg_entry(name, default_n, info, unit, base, factor, mvv_timeout=mvv_timeout)
+##                                    self.ext_src[mvn].append(name)
+##                elif fn.endswith(".mvv"):
+##                    act_mtime = os.path.getmtime(ffn)
+##                    mvn = fn.split(".")[0]
+##                    mvv_timeout = 300
+##                    if mvn in self.ext_src:
+##                        if self.ext_src[mvn]:
+##                            mv_entry = self.get_entry(self.ext_src[mvn][0], None)
+##                            if mv_entry:
+##                                mvv_timeout = mv_entry.get_mvv_timeout()
+##                    if abs(act_mtime - act_time) < mvv_timeout:
+##                        if self.has_ext_src(mvn):
+##                            mvv_lines = [z for z in [y.split(":") for y in [x.strip() for x in file(ffn, "r").readlines()] if y] if len(z) == 3]
+##                            for name, tp, value in mvv_lines:
+##                                if tp == "i":
+##                                    value = int(value)
+##                                else:
+##                                    value = float(value)
+##                                try:
+##                                    self.reg_update(log_t, name, value)
+##                                except:
+##                                    log_t.error("Error calling reg_update(): %s" % (process_tools.get_except_info()))
+##                        else:
+##                            log_t.info("Found .mvv file for unknown emv '%s'" % (mvn))
+##                    else:
+##                        log_t.warning(".mvv file for emv '%s' is too old, removing" % (mvn))
+##                        try:
+##                            os.unlink(ffn)
+##                        except:
+##                            log_t.error("cannot remove '%s': %s" % (ffn,
+##                                                                    process_tools.get_except_info()))
+##                            
+##        del_ext_s = []
+##        for ext_s, ext_keys in self.ext_src.iteritems():
+##            if ext_s not in mvns_found:
+##                del_ext_s.append(ext_s)
+##                log_t.info("External mv-source %s no more existent, removing %s (%s)" % (ext_s,
+##                                                                                         logging_tools.get_plural("key", len(ext_keys)),
+##                                                                                         ", ".join(ext_keys)))
+##                for k in ext_keys:
+##                    self.unreg_entry(k)
+##        for del_ext in del_ext_s:
+##            del self.ext_src[del_ext]
+##        # delete 
 
 class monitor_object(object):
     def __init__(self, name):

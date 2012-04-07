@@ -277,7 +277,7 @@ class hmb_command(object):
         return result
         
 class mvect_entry(object):
-    __slots__ = ["name", "default", "info", "unit", "base", "value", "factor", "v_type"]
+    __slots__ = ["name", "default", "info", "unit", "base", "value", "factor", "v_type", "valid_until"]
     def __init__(self, name, **kwargs):
         self.name = name
         # info, description for user
@@ -285,9 +285,9 @@ class mvect_entry(object):
         # unit, can be 1, B, ...
         self.unit = kwargs.get("unit", "1")
         # base, 1, 1000 or 1024
-        self.base = kwargs.get("base", 1)
+        self.base = int(kwargs.get("base", 1))
         # factor to mulitply value with to get real value
-        self.factor = kwargs.get("factor", 1)
+        self.factor = int(kwargs.get("factor", 1))
         if "v_type" in kwargs:
             self.factor = int(self.factor)
             self.base = int(self.base)
@@ -308,16 +308,9 @@ class mvect_entry(object):
             self.v_type = {type(0)   : "i",
                            type(0L)  : "i",
                            type(0.0) : "f"}.get(type(self.default), "s")
-        #self.__monitor = kwargs.get("monitor_value", False)
-        #self.__mvv_timeout = kwargs.get("mvv_timeout", 300)
-        #if self.__monitor:
-        #    self.min_value, self.max_value, self.total_value, self.num = (self.value,
-        #                                                                  self.value,
-        #                                                                  self.value,
-        #                                                                  1)
-    @property
-    def mvv_timeout(self):
-        return self.__mvv_timeout
+        self.valid_until = kwargs.get("valid_until", None)
+        if self.valid_until:
+            self.valid_until = int(self.valid_until)
     def update(self, value):
         if value is None:
             # unknown
@@ -342,8 +335,11 @@ class mvect_entry(object):
 ##            self.total_value += self.value
 ##            self.num += 1
     def update_default(self):
-        # init value with default value
-        self.value = self.default
+        # init value with default value for entries without valid_until settings
+        if not self.valid_until:
+            self.value = self.default
+    def check_timeout(self, cur_time):
+        return True if (self.valid_until and cur_time > self.valid_until) else False
     def get_form_entry(self, idx):
         act_line = []
         sub_keys = (self.name.split(".") + ["", "", ""])[0:4]
@@ -399,7 +395,17 @@ class mvect_entry(object):
             ret_str = ret_str.replace("$%d" % (idx + 1), ref_p[idx])
         return ret_str
     def build_xml(self, builder):
-        return builder("mve", name=self.name, info=self.info, unit=self.unit, base="%d" % (self.base), factor="%d" % (self.factor), v_type=self.v_type, value=str(self.value))
+        kwargs = {"name"   : self.name,
+                  "info"   : self.info,
+                  "unit"   : self.unit,
+                  "v_type" : self.v_type,
+                  "value"  : str(self.value)}
+        for key, ns_value in [("valid_until", None),
+                              ("base"       , 1   ),
+                              ("factor"     , 1   )]:
+            if getattr(self, key) != ns_value:
+                kwargs[key] = "%d" % (getattr(self, key))
+        return builder("mve", **kwargs)
 
 if __name__ == "__main__":
     print "Loadable module, exiting..."
