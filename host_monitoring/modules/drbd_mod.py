@@ -27,6 +27,7 @@ import os.path
 import time
 import logging_tools
 import pprint
+import server_command
 try:
     import drbd_tools
 except ImportError:
@@ -43,14 +44,13 @@ class _general(hm_classes.hm_module):
 class drbd_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         if drbd_tools:
-            self.module_info.drbd_config._parse_all()
-            srv_com.set_dictionary("drbd_status", self.module_info.drbd_config.get_net_data())
+            self.module.drbd_config._parse_all()
+            srv_com.set_dictionary("drbd_status", self.module.drbd_config.get_config_dict())
         else:
             srv_com["result"].attrib.update({"reply" : "no drbd_tools found",
                                               "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
     def interpret(self, srv_com, cur_ns):
-        drbd_conf = srv_com["drbd_status"]
-        return self._interpret(drbd_conf, cur_ns)
+        return self._interpret(server_command.srv_command.tree_to_dict(srv_com["drbd_status"]), cur_ns)
     def interpret_old(self, result, cur_ns):
         drbd_conf = hm_classes.net_to_sys(result[3:])
         return self._interpret(drbd_conf, cur_ns)
@@ -82,19 +82,21 @@ class drbd_status_command(hm_classes.hm_command):
                         dev_state = limits.nag_STATE_CRITICAL
                     if dev_state != limits.nag_STATE_OK:
                         #pprint.pprint(loc_dict)
-                        ret_strs.append("%s (%s, protocol '%s'%s): cs %s, %s, ds %s" % (key,
-                                                                                        loc_dict["device"],
-                                                                                        loc_dict.get("protocol", "???"),
-                                                                                        ", %s%%" % (loc_dict["resync_percentage"]) if loc_dict.has_key("resync_percentage") else "",
-                                                                                        c_state,
-                                                                                        "/".join(loc_dict.get("state", ["???"])),
-                                                                                        "/".join(loc_dict.get("data_state", ["???"]))))
+                        ret_strs.append("%s (%s, protocol '%s'%s): cs %s, %s, ds %s" % (
+                            key,
+                            loc_dict["device"],
+                            loc_dict.get("protocol", "???"),
+                            ", %s%%" % (loc_dict["resync_percentage"]) if loc_dict.has_key("resync_percentage") else "",
+                            c_state,
+                            "/".join(loc_dict.get("state", ["???"])),
+                            "/".join(loc_dict.get("data_state", ["???"]))))
                     dev_states.append(dev_state)
                     #pprint.pprint(res_dict[key]["localhost"])
                 #pprint.pprint(state_dict)
                 ret_state = max(dev_states)
-                return ret_state, "%s; %s" % (", ".join([logging_tools.get_plural(key, len(value)) for key, value in state_dict.iteritems()]),
-                                              ", ".join(ret_strs) if ret_strs else "everything ok")
+                return ret_state, "%s; %s" % (
+                    ", ".join([logging_tools.get_plural(key, len(value)) for key, value in state_dict.iteritems()]),
+                    ", ".join(ret_strs) if ret_strs else "everything ok")
             else:
                 ret_strs = []
                 if not drbd_conf["status_present"]:

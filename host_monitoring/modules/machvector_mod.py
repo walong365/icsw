@@ -619,7 +619,7 @@ class machine_vector(object):
         old_dir = "/tmp/.machvect_es"
         if os.path.isdir(old_dir):
             try:
-                os.removedirs(old_dirs)
+                os.removedirs(old_dir)
             except:
                 self.log("error removing old external directory %s: %s" % (old_dir,
                                                                            process_tools.get_except_info()),

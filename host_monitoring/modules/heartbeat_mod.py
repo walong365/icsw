@@ -27,21 +27,23 @@ import logging_tools
 import contextlib
 import pprint
 import process_tools
+import server_command
 from lxml import etree
 
 class _general(hm_classes.hm_module):
-    def _exec_command(self, com, logger):
+    def _exec_command(self, com):
         stat, out = commands.getstatusoutput(com)
         if stat:
-            logger.warning("cannot execute %s (%d): %s" % (com, stat, out))
+            self.log("cannot execute %s (%d): %s" % (com, stat, out), logging_tools.LOG_LEVEL_WARN)
             out = ""
         return out.split("\n")
                     
 class corosync_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com["corosync_status"] = self.module._exec_command("/usr/sbin/corosync-cfgtool -s", self.logger)
+        # not beautifull, FIXME ...
+        srv_com["corosync_status"] = "\n".join(self.module._exec_command("/usr/sbin/corosync-cfgtool -s"))
     def interpret(self, srv_com, cur_ns): 
-        return self._interpret(srv_com["corosync_status"], cur_ns)
+        return self._interpret(srv_com["corosync_status"].text.split("\n"), cur_ns)
     def interpret_old(self, result, cur_ns):
         return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
     def _parse_lines(self, lines):
@@ -87,7 +89,9 @@ class corosync_status_command(hm_classes.hm_command):
 class heartbeat_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com.set_dictionary("heartbeat_info", {"host"   : process_tools.get_machine_name(),
-                                                  "output" : self.module_info._exec_command("/usr/sbin/crm_mon -1", self.logger)})
+                                                  "output" : self.module._exec_command("/usr/sbin/crm_mon -1")})
+    def interpret(self, srv_com, cur_ns): 
+        return self._interpret(server_command.srv_command.tree_to_dict(srv_com["heartbeat_info"]), cur_ns)
     def interpret_old(self, result, parsed_coms):
         return self._interpret(hm_classes.net_to_sys(result[3:]), parsed_coms)
     def _interpret(self, r_dict, parsed_coms):

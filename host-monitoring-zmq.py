@@ -51,8 +51,10 @@ except ImportError:
     VERSION_STRING = "?.?"
 
 MAX_USED_MEM = 150
-MAPPING_FILE_IDS = "/etc/sysconfig/host-monitoring.d/collrelay_0mq_mapping"
-MAPPING_FILE_TYPES = "/etc/sysconfig/host-monitoring.d/0mq_clients"
+
+CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
+MAPPING_FILE_IDS = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
+MAPPING_FILE_TYPES = os.path.join(CONFIG_DIR, "0mq_clients")
 
 def client_code():
     from host_monitoring import modules
@@ -100,7 +102,8 @@ class id_discovery(object):
     # discover 0mq ids
     def __init__(self, srv_com, src_id, xml_input):
         self.port = int(srv_com["port"].text)
-        self.conn_str = "tcp://%s:%d" % (srv_com["host"].text,
+        self.host = srv_com["host"].text
+        self.conn_str = "tcp://%s:%d" % (self.host,
                                          self.port)
         self.init_time = time.time()
         self.srv_com = srv_com
@@ -148,16 +151,24 @@ class id_discovery(object):
         except:
             self.send_return("error extracting 0MQ id: %s" % (process_tools.get_except_info()))
         else:
-            self.log("0MQ id is %s" % (zmq_id))
-            id_discovery.mapping[self.conn_str] = zmq_id
-            # reinject
-            if self.port == 2001:
-                id_discovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
+            if zmq_id in id_discovery.reverse_mapping and self.host not in id_discovery.reverse_mapping[zmq_id]:
+                self.log("0MQ is %s but already used by %s: %s" % (
+                    zmq_id,
+                    logging_tools.get_plural("host", len(id_discovery.reverse_mapping[zmq_id])),
+                    ", ".join(sorted(id_discovery.reverse_mapping[zmq_id]))),
+                         logging_tools.LOG_LEVEL_ERROR)
+                self.send_return("0MQ id not unique, virtual host setup found ?")
             else:
-                id_discovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
-            # save mapping
-            file(MAPPING_FILE_IDS, "w").write("\n".join(["%s=%s" % (key, self.mapping[key]) for key in sorted(self.mapping.iterkeys())]))
-            self.close()
+                self.log("0MQ id is %s" % (zmq_id))
+                id_discovery.mapping[self.conn_str] = zmq_id
+                # reinject
+                if self.port == 2001:
+                    id_discovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
+                else:
+                    id_discovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
+                # save mapping
+                file(MAPPING_FILE_IDS, "w").write("\n".join(["%s=%s" % (key, self.mapping[key]) for key in sorted(self.mapping.iterkeys())]))
+                self.close()
     def close(self):
         del self.srv_com
         if self.socket:
@@ -177,12 +188,17 @@ class id_discovery(object):
         id_discovery.backlog_size = backlog_size
         id_discovery.timeout = timeout
         id_discovery.verbose = verbose
+        id_discovery.reverse_mapping = {}
         # mapping connection string -> 0MQ id
         if os.path.isfile(MAPPING_FILE_IDS):
             id_discovery.mapping = dict([line.strip().split("=", 1) for line in file(MAPPING_FILE_IDS, "r").read().split("\n") if line.strip() and line.count("=")])
             id_discovery.relayer_process.log(
                 "read %s from %s" % (logging_tools.get_plural("mapping", len(id_discovery.mapping)),
                                      MAPPING_FILE_IDS))
+            for key, value in id_discovery.mapping.iteritems():
+                # only use ip-address / hostname from key
+                id_discovery.reverse_mapping.setdefault(value, []).append(key[6:].split(":")[0])
+            pprint.pprint(id_discovery.reverse_mapping)
         else:
             id_discovery.mapping = {}
         id_discovery.pending = {}
