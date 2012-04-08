@@ -200,6 +200,10 @@ class srv_command(object):
                     sub_el.attrib["type"] = "list"
                     for list_value in sub_value:
                         sub_el.append(self._element(list_value))
+                elif type(sub_value) == type(()):
+                    sub_el.attrib["type"] = "tuple"
+                    for list_value in sub_value:
+                        sub_el.append(self._element(list_value))
                 else:
                     self._element(sub_value, sub_el)
                 cur_element.append(sub_el)
@@ -220,6 +224,8 @@ class srv_command(object):
             else:
                 if sub_el.attrib["type"] == "list":
                     value = [srv_command._interpret_element(list_el) for list_el in sub_el]
+                elif sub_el.attrib["type"] == "tuple":
+                    value = tuple([srv_command._interpret_element(tuple_el) for tuple_el in sub_el])
                 elif sub_el.attrib["type"] == "dict":
                     value = srv_command.tree_to_dict(sub_el)
                 else:
@@ -240,8 +246,8 @@ class srv_command(object):
             value = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
         elif el_type == "float":
             value = float(value)
-        else:
-            pass
+        elif el_type == "str":
+            value = value or u""
         return value
     def get(self, key, def_value):
         xpath_str = ".//%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))

@@ -1,6 +1,6 @@
  #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009,2010 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008,2009,2010,2012 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -176,6 +176,8 @@ class drbd_config(object):
         return parts
     def __getitem__(self, key):
         return self.__config_dict[key]
+    def get_config_dict(self):
+        return self.__config_dict
     def get_net_data(self):
         return server_command.sys_to_net(self.__config_dict)
 
