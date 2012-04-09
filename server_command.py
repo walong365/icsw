@@ -26,6 +26,7 @@ import marshal
 import cPickle
 import socket
 import time
+import re
 import os
 from lxml import etree
 from lxml.builder import E, ElementMaker
@@ -102,6 +103,12 @@ class srv_command(object):
         if tag_name.count("@"):
             tag_name = tag_name.replace("@", "__atsign__")
             kwargs["escape_atsign"] = "1"
+        if tag_name[0].isdigit():
+            tag_name = "__fdigit__%s" % (tag_name)
+            kwargs["first_digit"] = "1"
+        # escape special chars
+        for s_char in "[] ":
+            tag_name = tag_name.replace(s_char, "_0x0%x_" % (ord(s_char)))
         return getattr(self.__builder, tag_name)(*args, **kwargs)
     @property
     def tree(self):
@@ -210,15 +217,27 @@ class srv_command(object):
         return cur_element
     @staticmethod
     def tree_to_dict(top_el):
+        iso_re = re.compile("^(?P<pre>.*)_0x0(?P<code>[^_]\S+)_(?P<post>.*)")
         ret_dict = {}
         for sub_el in top_el:
             key = sub_el.tag.split("}")[1]
-            if key.startswith("__int__"):
-                key = int(key[7:])
             if "escape_slash" in sub_el.attrib:
                 key = key.replace("__slash__", "/")
             if "escape_atsign" in sub_el.attrib:
                 key = key.replace("__atsign__", "@")
+            if "first_digit" in sub_el.attrib:
+                key = key.replace("__fdigit__", "")
+            if key.startswith("__int__"):
+                key = int(key[7:])
+            else:
+                while True:
+                    cur_match = iso_re.match(key)
+                    if cur_match:
+                        key = "%s%s%s" % (cur_match.group("pre"),
+                                          chr(int(cur_match.group("code"), 16)),
+                                          cur_match.group("post"))
+                    else:
+                        break
             if not sub_el.attrib:
                 value = srv_command.tree_to_dict(sub_el)
             else:
