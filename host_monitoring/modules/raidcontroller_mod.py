@@ -26,6 +26,7 @@ from host_monitoring import limits, hm_classes
 import os
 import os.path
 import time
+import datetime
 import logging_tools
 import server_command
 import pprint
@@ -154,10 +155,13 @@ class ctrl_type(object):
     def controller_list(self):
         return self._dict.keys()
     def scan_ctrl(self):
+        # override to scan for controllers
         pass
     def update_ctrl(self, *args):
+        # override to update controllers, args optional
         pass
     def update_ok(self, srv_com):
+        # return True if update is OK, can be overrided to add more checks (maybe arguments)
         if self._check_exec:
             return True
         else:
@@ -177,7 +181,7 @@ class ctrl_type_tw(ctrl_type):
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+        return ["%s info %s" % (self._check_exec, ctrl_id) for ctrl_id in ctrl_list]
     def scan_ctrl(self):
         cur_stat, cur_lines = self.exec_command(" info", post="strip")
         if not cur_stat:
@@ -211,7 +215,112 @@ class ctrl_type_tw(ctrl_type):
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
     def process(self, ccs):
-        ccs.srv_com["result"] = "OK"
+        unit_match = re.compile("^\s+Unit\s*(?P<num>\d+):\s*(?P<raid>.*)\s+(?P<size>\S+\s+\S+)\s+\(\s*(?P<blocks>\d+)\s+\S+\):\s*(?P<status>.*)$")
+        port_match = re.compile("^\s+Port\s*(?P<num>\d+):\s*(?P<info>[^:]+):\s*(?P<status>.*)\(unit\s*(?P<unit>\d+)\)$")
+        u2_0_match = re.compile("^u(?P<num>\d+)\s+(?P<raid>\S+)\s+(?P<status>\S+)\s+(?P<cmpl>\S+)\s+(?P<stripe>\S+)\s+(?P<size>\S+)\s+(?P<cache>\S+)\s+.*$")
+        u2_1_match = re.compile("^u(?P<num>\d+)\s+(?P<raid>\S+)\s+(?P<status>\S+)\s+(?P<rcmpl>\S+)\s+(?P<cmpl>\S+)\s+(?P<stripe>\S+)\s+(?P<size>\S+)\s+(?P<cache>\S+)\s+(?P<avrfy>\S+)$")
+        p2_match   = re.compile("^p(?P<num>\d+)\s+(?P<status>\S+)\s+u(?P<unit>\d+)\s+(?P<size>\S+\s+\S+)\s+(?P<blocks>\d+)\s+.*$")
+        bbu_match  = re.compile("^bbu\s+(?P<onlinestate>\S+)\s+(?P<ready>\S+)\s+(?P<status>\S+)\s+(?P<volt>\S+)\s+(?P<temp>\S+)\s+.*$")
+        com_line, com_type, ctrl_id = ccs.run_info["command"].strip().split()
+        if com_type == "info":
+            ctrl_result = {
+                "type"  : self._dict[ctrl_id]["type"],
+                "units" : {},
+                "ports" : {}}
+            if ccs.run_info["result"]:
+                ctrl_result["error"] = "%s gave %d" % (ccs.run_info["comline"], ccs.run_info["result"])
+            else:
+                ctrl_result["error"] = "ok"
+                lines = [line.strip() for line in ccs.read().split("\n") if line.strip()]
+                num_units, num_ports = (0, 0)
+                l_mode = "c"
+                if lines:
+                    if lines[0].lower().strip().startswith("unit"):
+                        # new format
+                        if lines[0].lower().count("rcmpl"):
+                            # new tw_cli
+                            u2_match = u2_1_match
+                        else:
+                            # old tw_cli
+                            u2_match = u2_0_match
+                        for line in lines:
+                            um = u2_match.match(line)
+                            pm = p2_match.match(line)
+                            bm = bbu_match.match(line)
+                            if um:
+                                ctrl_result["units"][um.group("num")] = {
+                                    "raid"   : um.group("raid").strip(),
+                                    "size"   : "%s GB" % (um.group("size").strip()),
+                                    "ports"  : [],
+                                    "status" : um.group("status").strip(),
+                                    "cmpl"   : um.group("cmpl")}
+                            elif pm:
+                                ctrl_result["ports"][pm.group("num")] = {
+                                    "status" : pm.group("status").strip(),
+                                    "unit"   : pm.group("unit")}
+                                if ctrl_result["units"].has_key(pm.group("unit")):
+                                    ctrl_result["units"][pm.group("unit")]["ports"].append(pm.group("num"))
+                            elif bm:
+                                ctrl_result["bbu"] = dict([(key, bm.group(key)) for key in [
+                                    "onlinestate",
+                                    "ready",
+                                    "status",
+                                    "volt",
+                                    "temp"]])
+                    else:
+                        for line in lines:
+                            if line.startswith("# of unit"):
+                                uc_m = re.match("^# of units\s*:\s*(\d+).*$", line)
+                                if uc_m:
+                                    num_units = uc_m.group(1)
+                                l_mode = "u"
+                            elif line.startswith("# of port"):
+                                l_mode = "p"
+                                pc_m = re.match("^# of ports\s*:\s*(\d+).*$", line)
+                                if num_units and pc_m:
+                                    num_ports = pc_m.group(1)
+                            elif l_mode == "u":
+                                um = unit_match.match(line)
+                                if um:
+                                    cmpl_str, stat_str = ("???",
+                                                          um.group("status").strip())
+                                    if stat_str.lower().startswith("rebuil"):
+                                        # try to exctract rebuild_percentage
+                                        pc_m = re.match("^(?P<stat>\S+)\s+\((?P<perc>\d+)%\)$", stat_str)
+                                        if pc_m:
+                                            stat_str = pc_m.group("stat")
+                                            cmpl_str = pc_m.group("perc")
+                                    ctrl_result["units"][um.group("num")] = {
+                                        "raid"   : um.group("raid").strip(),
+                                        "size"   : um.group("size").strip(),
+                                        "blocks" : um.group("blocks").strip(),
+                                        "ports"  : [],
+                                        "status" : stat_str,
+                                        "cmpl"   : cmpl_str}
+                            elif l_mode == "p":
+                                pm = port_match.match(line)
+                                if pm:
+                                    ctrl_result["ports"][pm.group("num")] = {"info"   : pm.group("info").strip(),
+                                                                             "status" : pm.group("status").strip()}
+                                    if ctrl_result["units"].has_key(pm.group("unit")):
+                                        ctrl_result["units"][pm.group("unit")]["ports"].append(pm.group("num"))
+            ccs.srv_com.set_dictionary("result:ctrl_%s" % (ctrl_id), ctrl_result)
+        else:
+            pass
+##    def server_call(self, cm):
+##        ret_str = self.module_info.check_exec()
+##        if ret_str.startswith("ok"):
+##            ret_str = self.module_info.update_ctrl_dict()
+##            if ret_str.startswith("ok"):
+##                if cm:
+##                    ctrl_list = [x for x in cm if x in self.module_info.ctrl_dict.keys()]
+##                else:
+##                    ctrl_list = self.module_info.ctrl_dict.keys()
+##                ret_dict = {}
+##                for ctrl_id in ctrl_list:
+##                    ret_dict[ctrl_id] = self.module_info.check_controller(ctrl_id)
+##                ret_str = "ok %s" % (hm_classes.sys_to_net(ret_dict))
+##        return ret_str
     def _interpret(self, tw_dict, cur_ns):
         if tw_dict.has_key("units"):
             tw_dict = {parsed_coms[0] : tw_dict}
@@ -219,7 +328,7 @@ class ctrl_type_tw(ctrl_type):
         ret_list = []
         if tw_dict:
             for ctrl, ctrl_dict in tw_dict.iteritems():
-                info = ctrl_dict["info"]
+                info = ctrl_dict.get("info", "")
                 if info.startswith("error"):
                     num_error += 1
                     ret_list.append("%s (%s): %s " % (ctrl, ctrl_dict.get("type", "???"), info))
@@ -309,7 +418,7 @@ class ctrl_type_ips(ctrl_type):
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
     def process(self, ccs):
-        com_line, com_type, ctrl_num = ccs.run_info["command"]
+        com_line, com_type, ctrl_num = ccs.run_info["command"].strip().split()
         if com_type == "config":
             ctrl_config = {"logical"    : {},
                            "array"      : {},
@@ -557,9 +666,12 @@ class ctrl_type_gdth(ctrl_type):
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+        return ["/bin/true %s" % (ctrl_id) for ctrl_id in ctrl_list]
     def scan_ctrl(self):
-        cur_stat, cur_lines = self.exec_command(" info", post="strip")
+        gdth_dir = "/proc/scsi/gdth"
+        if os.path.isdir(gdth_dir):
+            for entry in os.listdir(gdth_dir):
+                self._dict[entry] = {}
     def update_ctrl(self, ctrl_ids):
         print ctrl_ids
     def update_ok(self, srv_com):
@@ -570,9 +682,91 @@ class ctrl_type_gdth(ctrl_type):
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
     def process(self, ccs):
-        ccs.srv_com["result"] = "OK"
+        com_line, ctrl_id = ccs.run_info["command"].strip().split()
+        ctrl_file = "/proc/scsi/gdth/%s" % (ctrl_id)
+        last_log_line, last_log_time = ("", None)
+        act_time = datetime.datetime(*time.localtime()[0:6])
+        lines = [line.rstrip() for line in file(ctrl_file, "r").read().split("\n")]
+        act_mode = "?"
+        pd_dict, ld_dict, ad_dict, hd_dict = ({}, {}, {}, {})
+        for line in lines:
+            if line.lower().startswith("driver parameter"):
+                act_mode = "dp"
+                act_dp_dict = {}
+            elif line.lower().startswith("disk array control"):
+                act_mode = "ci"
+            elif line.lower().startswith("physical devices"):
+                act_mode = "pd"
+            elif line.lower().startswith("logical drives"):
+                act_mode = "ld"
+                act_ld_dict = {}
+            elif line.lower().startswith("array drives"):
+                act_mode = "ad"
+                act_ad_dict = {}
+            elif line.lower().startswith("host drives"):
+                act_mode = "hd"
+                act_hd_dict = {}
+            elif line.lower().startswith("controller even"):
+                act_mode = "ce"
+            elif line.strip():
+                #print "%s %s" % (act_mode, line)
+                if act_mode == "pd":
+                    left_str, right_str = (line[0:27].strip(), line[27:].strip())
+                    for act_str in [x for x in [left_str, right_str] if x]:
+                        key, value = [x.strip() for x in act_str.split(":", 1)]
+                        act_dp_dict[key.lower()] = value
+                        if key.lower() == "grown defects":
+                            pd_dict[len(pd_dict)] = act_dp_dict
+                            act_dp_dict = {}
+                elif act_mode == "ld":
+                    left_str, right_str = (line[0:27].strip(), line[27:].strip())
+                    for act_str in [x for x in [left_str, right_str] if x]:
+                        key, value = [x.strip() for x in act_str.split(":", 1)]
+                        act_ld_dict[key.lower()] = value
+                        if key.lower().startswith("to array dr"):
+                            if act_ld_dict.has_key("status"):
+                                ld_dict[len(ld_dict)] = act_ld_dict
+                            act_ld_dict = {}
+                elif act_mode == "ad":
+                    if len(line.strip()) > 10:
+                        left_str, right_str = (line[0:27].strip(), line[27:].strip())
+                        for act_str in [x for x in [left_str, right_str] if x]:
+                            key, value = [x.strip() for x in act_str.split(":", 1)]
+                            act_ad_dict[key.lower()]=value
+                            if key.lower().startswith("type"):
+                                ad_dict[len(ad_dict)] = act_ad_dict
+                                act_ad_dict = {}
+                elif act_mode == "hd":
+                    left_str, right_str = (line[0:27].strip(), line[27:].strip())
+                    for act_str in [x for x in [left_str, right_str] if x]:
+                        key, value = [x.strip() for x in act_str.split(":", 1)]
+                        act_hd_dict[key.lower()] = value
+                        if key.lower().startswith("start secto"):
+                            hd_dict[len(hd_dict)] = act_hd_dict
+                            act_hd_dict = {}
+                elif act_mode == "ce":
+                    if line.strip().startswith("date-"):
+                        line_p = line.strip().split(None, 2)
+                        line_d, last_log_line = ([int(x) for x in line_p[1].split(":")], line_p[2])
+                        time_t = datetime.timedelta(0, line_d[0] * 3600 + line_d[1] * 60 + line_d[2])
+                        last_log_time = act_time - time_t
+        ret_dict = {
+            "pd" : pd_dict,
+            "ld" : ld_dict,
+            "ad" : ad_dict,
+            "hd" : hd_dict,
+            "log" : (last_log_time, last_log_line)}
+        ccs.srv_com.set_dictionary("result:ctrl_%s" % (ctrl_id), ret_dict)
     def _interpret(self, ctrl_dict, cur_ns):
+        if ctrl_dict.keys()[0].startswith("ctrl_"):
+            ctrl_dict = ctrl_dict.values()[0]
         pd_list, ld_list, ad_list, hd_list = (ctrl_dict["pd"], ctrl_dict["ld"], ctrl_dict["ad"], ctrl_dict["hd"])
+        if type(pd_list) == type({}):
+            # rewrite dict to list
+            pd_list = [pd_list[key] for key in sorted(pd_list.keys())]
+            ld_list = [ld_list[key] for key in sorted(ld_list.keys())]
+            ad_list = [ad_list[key] for key in sorted(ad_list.keys())]
+            hd_list = [hd_list[key] for key in sorted(hd_list.keys())]
         last_log_time, last_log_line = ctrl_dict.get("log", (None, ""))
         out_f, num_w, num_e = ([], 0, 0)
         for l_type, what, lst in [("p", "physical disc", pd_list),
@@ -774,12 +968,6 @@ class _general(hm_classes.hm_module):
 ##        else:
 ##            return "error no %s found" % (TW_EXEC)
     def check_controller(self, ctrl_id):
-        unit_match = re.compile("^\s+Unit\s*(?P<num>\d+):\s*(?P<raid>.*)\s+(?P<size>\S+\s+\S+)\s+\(\s*(?P<blocks>\d+)\s+\S+\):\s*(?P<status>.*)$")
-        port_match = re.compile("^\s+Port\s*(?P<num>\d+):\s*(?P<info>[^:]+):\s*(?P<status>.*)\(unit\s*(?P<unit>\d+)\)$")
-        u2_0_match = re.compile("^u(?P<num>\d+)\s+(?P<raid>\S+)\s+(?P<status>\S+)\s+(?P<cmpl>\S+)\s+(?P<stripe>\S+)\s+(?P<size>\S+)\s+(?P<cache>\S+)\s+.*$")
-        u2_1_match = re.compile("^u(?P<num>\d+)\s+(?P<raid>\S+)\s+(?P<status>\S+)\s+(?P<rcmpl>\S+)\s+(?P<cmpl>\S+)\s+(?P<stripe>\S+)\s+(?P<size>\S+)\s+(?P<cache>\S+)\s+(?P<avrfy>\S+)$")
-        p2_match   = re.compile("^p(?P<num>\d+)\s+(?P<status>\S+)\s+u(?P<unit>\d+)\s+(?P<size>\S+\s+\S+)\s+(?P<blocks>\d+)\s+.*$")
-        bbu_match  = re.compile("^bbu\s+(?P<onlinestate>\S+)\s+(?P<ready>\S+)\s+(?P<status>\S+)\s+(?P<volt>\S+)\s+(?P<temp>\S+)\s+.*$")
         ctrl_dict = {"type"  : self.ctrl_dict[ctrl_id]["type"],
                      "units" : {},
                      "ports" : {}}
@@ -874,107 +1062,10 @@ class tw_status_command(hm_classes.hm_command):
             ctrl_list = []
         if ctrl_type.ctrl("tw").update_ok(srv_com):
             return ctrl_check_struct(srv_com, ctrl_type.ctrl("tw"), ctrl_list)
-    def _cb_func(self, sps_struct, cur_num=None):
-        if cur_num is not None:
-            ctrl_result = {}
-            ctrl_id = sps_struct.cur_comline.split()[-1]
-            if sps_struct.cur_result:
-                ctrl_result["error"] = "%s gave %d" % (sps_struct.cur_comline, sps_struct.cur_result)
-            else:
-                ctrl_result["error"] = "ok"
-                lines = [line.strip() for line in sps_struct.read().split("\n") if line.strip()]
-                num_units, num_ports = (0, 0)
-                l_mode = "c"
-                if lines:
-                    if lines[0].lower().strip().startswith("unit"):
-                        # new format
-                        if lines[0].lower().count("rcmpl"):
-                            # new tw_cli
-                            u2_match = u2_1_match
-                        else:
-                            # old tw_cli
-                            u2_match = u2_0_match
-                        for line in lines:
-                            um = u2_match.match(line)
-                            pm = p2_match.match(line)
-                            bm = bbu_match.match(line)
-                            if um:
-                                ctrl_result["units"][um.group("num")] = {
-                                    "raid"   : um.group("raid").strip(),
-                                    "size"   : "%s GB" % (um.group("size").strip()),
-                                    "ports"  : [],
-                                    "status" : um.group("status").strip(),
-                                    "cmpl"   : um.group("cmpl")}
-                            elif pm:
-                                ctrl_result["ports"][pm.group("num")] = {
-                                    "status" : pm.group("status").strip(),
-                                    "unit"   : pm.group("unit")}
-                                if ctrl_result["units"].has_key(pm.group("unit")):
-                                    ctrl_result["units"][pm.group("unit")]["ports"].append(pm.group("num"))
-                            elif bm:
-                                ctrl_result["bbu"] = dict([(key, bm.group(key)) for key in [
-                                    "onlinestate",
-                                    "ready",
-                                    "status",
-                                    "volt",
-                                    "temp"]])
-                    else:
-                        for line in lines:
-                            if line.startswith("# of unit"):
-                                uc_m = re.match("^# of units\s*:\s*(\d+).*$", line)
-                                if uc_m:
-                                    num_units = uc_m.group(1)
-                                l_mode = "u"
-                            elif line.startswith("# of port"):
-                                l_mode = "p"
-                                pc_m = re.match("^# of ports\s*:\s*(\d+).*$", line)
-                                if num_units and pc_m:
-                                    num_ports = pc_m.group(1)
-                            elif l_mode == "u":
-                                um = unit_match.match(line)
-                                if um:
-                                    cmpl_str, stat_str = ("???",
-                                                          um.group("status").strip())
-                                    if stat_str.lower().startswith("rebuil"):
-                                        # try to exctract rebuild_percentage
-                                        pc_m = re.match("^(?P<stat>\S+)\s+\((?P<perc>\d+)%\)$", stat_str)
-                                        if pc_m:
-                                            stat_str = pc_m.group("stat")
-                                            cmpl_str = pc_m.group("perc")
-                                    ctrl_result["units"][um.group("num")] = {
-                                        "raid"   : um.group("raid").strip(),
-                                        "size"   : um.group("size").strip(),
-                                        "blocks" : um.group("blocks").strip(),
-                                        "ports"  : [],
-                                        "status" : stat_str,
-                                        "cmpl"   : cmpl_str}
-                            elif l_mode == "p":
-                                pm = port_match.match(line)
-                                if pm:
-                                    ctrl_result["ports"][pm.group("num")] = {"info"   : pm.group("info").strip(),
-                                                                             "status" : pm.group("status").strip()}
-                                    if ctrl_result["units"].has_key(pm.group("unit")):
-                                        ctrl_result["units"][pm.group("unit")]["ports"].append(pm.group("num"))
-            sps_struct.srv_com.set_dictionary("result:ctrl_%s" % (ctrl_id), ctrl_result)
-        else:
-            pass
-##    def server_call(self, cm):
-##        ret_str = self.module_info.check_exec()
-##        if ret_str.startswith("ok"):
-##            ret_str = self.module_info.update_ctrl_dict()
-##            if ret_str.startswith("ok"):
-##                if cm:
-##                    ctrl_list = [x for x in cm if x in self.module_info.ctrl_dict.keys()]
-##                else:
-##                    ctrl_list = self.module_info.ctrl_dict.keys()
-##                ret_dict = {}
-##                for ctrl_id in ctrl_list:
-##                    ret_dict[ctrl_id] = self.module_info.check_controller(ctrl_id)
-##                ret_str = "ok %s" % (hm_classes.sys_to_net(ret_dict))
-##        return ret_str
+    def _interpret(self, ctrl_dict, cur_ns):
+        return ctrl_type.ctrl("tw")._interpret(ctrl_dict, cur_ns)
     def interpret(self, srv_com, cur_ns):
-        print unicode(srv_com)
-        print cur_ns
+        return self._interpret(server_command.srv_command.tree_to_dict(srv_com["result"]), cur_ns)
     def interpret_old(self, result, parsed_coms):
         tw_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(tw_dict, parsed_coms)
@@ -1023,6 +1114,18 @@ class megaraid_status_command(hm_classes.hm_command):
         return ctrl_type.ctrl("megaraid")._interpret(ctrl_dict, cur_ns)
 
 class gdth_status_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        ctrl_type.update("gdth")
+        if "arguments:arg0" in srv_com:
+            ctrl_list = [srv_com["arguments:arg0"].text]
+        else:
+            ctrl_list = []
+        if ctrl_type.ctrl("gdth").update_ok(srv_com):
+            return ctrl_check_struct(srv_com, ctrl_type.ctrl("gdth"), ctrl_list)
+    def _interpret(self, ctrl_dict, cur_ns):
+        return ctrl_type.ctrl("gdth")._interpret(ctrl_dict, cur_ns)
+    def interpret(self, srv_com, cur_ns):
+        return self._interpret(server_command.srv_command.tree_to_dict(srv_com["result"]), cur_ns)
     def interpret_old(self, result, cur_ns):
         ctrl_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(ctrl_dict, cur_ns)
