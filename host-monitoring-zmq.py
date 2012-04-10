@@ -43,7 +43,11 @@ from host_monitoring import limits, hm_classes
 import argparse
 import icmp_twisted
 import pprint
+import uuid
 import uuid_tools
+from lxml import etree
+from lxml.builder import E
+import netifaces
 
 try:
     from host_monitoring_version import VERSION_STRING
@@ -1226,24 +1230,60 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.add_actual_pid(src_pid, mult=3)
             self.__msi_block.save_block()
     def _init_network_sockets(self):
-        client = self.zmq_context.socket(zmq.ROUTER)
         zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
         if not os.path.isfile(zmq_id_name):
             my_0mq_id = uuid_tools.get_uuid().get_urn()
-            file(zmq_id_name, "w").write(my_0mq_id)
+            zmq_id_xml = E.bind_info(
+                E.zmq_id(my_0mq_id, bind_address="*"))
+            file(zmq_id_name, "w").write(etree.tostring(zmq_id_xml, pretty_print=True, xml_declaration=True, encoding="utf-8"))
         my_0mq_id = file(zmq_id_name, "r").read().strip()
-        self.log("0MQ id is '%s'" % (my_0mq_id))
-        client.setsockopt(zmq.IDENTITY, my_0mq_id)
-        client.setsockopt(zmq.HWM, 256)
-        try:
-            client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
-        except zmq.core.error.ZMQError:
-            self.log("error binding to %d: %s" % (global_config["COM_PORT"],
-                                                  process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_CRITICAL)
-            raise
+        rewrite = False
+        if my_0mq_id.startswith("<?xml"):
+            zmq_id_xml = etree.fromstring(my_0mq_id)
+            for cur_el in zmq_id_xml.xpath(".//zmq_id[@bind_address]"):
+                if cur_el.text is None:
+                    rewrite = True
+                    cur_el.text = uuid.uuid1().get_urn()
         else:
-            self.register_poller(client, zmq.POLLIN, self._recv_command)
+            zmq_id_xml = E.bind_info(
+                E.zmq_id(my_0mq_id, bind_address="*"))
+            rewrite = True
+        if rewrite:
+            file(zmq_id_name, "w").write(etree.tostring(zmq_id_xml, pretty_print=True, xml_declaration=True, encoding="utf-8"))
+        my_0mq_id = zmq_id_xml.xpath(".//zmq_id[@bind_address='*']/text()")
+        my_0mq_id = my_0mq_id[0]
+        # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
+        ipv4_dict = dict([(cur_if_name, [ip_tuple["addr"] for ip_tuple in value[2]][0]) for cur_if_name, value in [(if_name, netifaces.ifaddresses(if_name)) for if_name in netifaces.interfaces()] if 2 in value])
+        ipv4_lut = dict([(value, key) for key, value in ipv4_dict.iteritems()])
+        ipv4_addresses = ipv4_dict.values()
+        zmq_id_dict = dict([(cur_el.attrib["bind_address"], cur_el.text) for cur_el in zmq_id_xml.xpath(".//zmq_id[@bind_address]")])
+        if zmq_id_dict.keys() == ["*"]:
+            # wildcard bind
+            pass
+        else:
+            if "*" in zmq_id_dict:
+                wc_urn = zmq_id_dict.pop("*")
+                for target_ip in ipv4_addresses:
+                    if target_ip not in zmq_id_dict:
+                        zmq_id_dict[target_ip] = wc_urn
+        self.log("0MQ bind info")
+        for key in sorted(zmq_id_dict.iterkeys()):
+            self.log("bind address %-15s: %s" % (key, zmq_id_dict[key]))
+        for bind_ip, bind_0mq_id in zmq_id_dict.iteritems():
+            client = self.zmq_context.socket(zmq.ROUTER)
+            client.setsockopt(zmq.IDENTITY, bind_0mq_id)
+            client.setsockopt(zmq.HWM, 256)
+            try:
+                client.bind("tcp://%s:%d" % (
+                    bind_ip,
+                    global_config["COM_PORT"]))
+            except zmq.core.error.ZMQError:
+                self.log("error binding to %d: %s" % (global_config["COM_PORT"],
+                                                      process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_CRITICAL)
+                raise
+            else:
+                self.register_poller(client, zmq.POLLIN, self._recv_command)
         sock_list = [("ipc", "vector"  , zmq.PULL  , 512 )]
         for sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
