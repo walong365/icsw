@@ -317,8 +317,6 @@ def main():
                                                            ("PID_NAME"            , configfile.str_c_var("meta-server"))])
     glob_config.parse_file()
     options = glob_config.handle_commandline(description="meta-server, version is %s" % (VERSION_STRING))
-    # always set FROM_ADDR
-    glob_config["FROM_ADDR"] = long_host_name
     glob_config.write_file()
     #process_tools.fix_directories("root", "root", [(glob_config["MAIN_DIR"], 0777)])
     if not options.DEBUG:
