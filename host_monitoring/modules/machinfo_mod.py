@@ -1290,7 +1290,7 @@ class get_0mq_id_command(hm_classes.hm_command):
                 target_ip = srv_com["target_ip"].text
             else:
                 target_ip = "*"
-            self.log("target_ip for get_0mq_id is %s" % ())
+            self.log("target_ip for get_0mq_id is %s" % (target_ip))
             if target_ip != "*":
                 id_node = zmq_id_xml.xpath(".//zmq_id[@bind_address='%s']" % (target_ip))
                 id_node = id_node[0] if len(id_node) else None
