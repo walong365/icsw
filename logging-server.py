@@ -615,10 +615,6 @@ def main():
         os.chmod("/var/log/cluster/sockets", 0777)
     except:
         pass
-    # always set FROM_ADDR
-    global_config["FROM_ADDR"] = long_host_name
-    #process_tools.kill_running_processes()
-    global_config["LONG_HOST_NAME"] = long_host_name
     global_config.write_file()
     #process_tools.renice()
     # not very beautiful ...
