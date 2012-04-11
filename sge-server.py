@@ -48,101 +48,107 @@ import threading_tools
 import uuid_tools
 import sge_tools
 import config_tools
-# import hm_classes for mvect_entry
-sys.path.append("/usr/local/sbin")
-import hm_classes
+from host_monitoring import hm_classes
+try:
+    from sge_server_version import VERSION_STRING
+except ImportError:
+    VERSION_STRING = "?.?"
+import zmq
 
 #from sge_server_messages import *
 
+# old
 SERVER_CHECK_PORT = 8009
+# new 
+COM_PORT = 8009
 SQL_ACCESS = "cluster_full_access"
 
-# ------------------- connection objects ------------------------------
-class new_tcp_con(net_tools.buffer_object):
-    # connection object for rrd-server
-    def __init__(self, sock, src, recv_queue, log_queue):
-        #print "Init %s (%s) from %s" % (con_type, con_class, str(src))
-        self.__src_host, self.__src_port = src
-        self.__recv_queue = recv_queue
-        self.__log_queue = log_queue
-        net_tools.buffer_object.__init__(self)
-        self.__init_time = time.time()
-        self.__in_buffer = ""
-    def __del__(self):
-        pass
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (threading.currentThread().getName(), what, level)))
-    def get_src_host(self):
-        return self.__src_host
-    def get_src_port(self):
-        return self.__src_port
-    def add_to_in_buffer(self, what):
-        self.__in_buffer += what
-        p1_ok, what = net_tools.check_for_proto_1_header(self.__in_buffer)
-        if p1_ok:
-            self.__decoded = what
-            try:
-                srv_com = server_command.server_command(self.__decoded)
-            except:
-                self.__log_str = "str_com %s" % (self.__decoded)
-            else:
-                self.__log_str = "srv_com %s" % (srv_com.get_command())
-                self.__decoded = srv_com
-            self.__recv_queue.put(("con", self))
-    def add_to_out_buffer(self, what, log_str=""):
-        self.lock()
-        if log_str:
-            self.__log_str = log_str
-        if self.socket:
-            self.out_buffer = net_tools.add_proto_1_header(what)
-            self.socket.ready_to_send()
-        else:
-            self.log("timeout, other side has closed connection")
-        self.unlock()
-    def out_buffer_sent(self, d_len):
-        if d_len == len(self.out_buffer):
-            self.__recv_queue = None
-            self.log("%s from %s (port %d) took %s (%s)" % (self.__log_str,
-                                                            self.__src_host,
-                                                            self.__src_port,
-                                                            logging_tools.get_diff_time_str(abs(time.time() - self.__init_time)),
-                                                            logging_tools.get_plural("byte", len(self.out_buffer))))
-            self.close()
-        else:
-            self.out_buffer = self.out_buffer[d_len:]
-            #self.socket.ready_to_send()
-    def get_decoded_in_str(self):
-        return self.__decoded
-    def report_problem(self, flag, what):
-        self.close()
-
-class node_con_obj(net_tools.buffer_object):
-    # connects to a foreign node
-    def __init__(self, pj_struct, dst_host, dst_com):
-        self.__pj_struct = pj_struct
-        self.__dst_host = dst_host
-        self.__dst_com = dst_com
-        net_tools.buffer_object.__init__(self)
-    def __del__(self):
-        pass
-    def setup_done(self):
-        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__dst_com, True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
-        if p1_ok:
-            self.__pj_struct._host_ok(self.__dst_host, self.__dst_com, p1_data)
-            self.delete()
-    def report_problem(self, flag, what):
-        self.__pj_struct._host_error(self.__dst_host, self.__dst_com)
-        self.delete()
-# ------------------- connection objects ------------------------------
+### ------------------- connection objects ------------------------------
+##class new_tcp_con(net_tools.buffer_object):
+##    # connection object for rrd-server
+##    def __init__(self, sock, src, recv_queue, log_queue):
+##        #print "Init %s (%s) from %s" % (con_type, con_class, str(src))
+##        self.__src_host, self.__src_port = src
+##        self.__recv_queue = recv_queue
+##        self.__log_queue = log_queue
+##        net_tools.buffer_object.__init__(self)
+##        self.__init_time = time.time()
+##        self.__in_buffer = ""
+##    def __del__(self):
+##        pass
+##    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+##        self.__log_queue.put(("log", (threading.currentThread().getName(), what, level)))
+##    def get_src_host(self):
+##        return self.__src_host
+##    def get_src_port(self):
+##        return self.__src_port
+##    def add_to_in_buffer(self, what):
+##        self.__in_buffer += what
+##        p1_ok, what = net_tools.check_for_proto_1_header(self.__in_buffer)
+##        if p1_ok:
+##            self.__decoded = what
+##            try:
+##                srv_com = server_command.server_command(self.__decoded)
+##            except:
+##                self.__log_str = "str_com %s" % (self.__decoded)
+##            else:
+##                self.__log_str = "srv_com %s" % (srv_com.get_command())
+##                self.__decoded = srv_com
+##            self.__recv_queue.put(("con", self))
+##    def add_to_out_buffer(self, what, log_str=""):
+##        self.lock()
+##        if log_str:
+##            self.__log_str = log_str
+##        if self.socket:
+##            self.out_buffer = net_tools.add_proto_1_header(what)
+##            self.socket.ready_to_send()
+##        else:
+##            self.log("timeout, other side has closed connection")
+##        self.unlock()
+##    def out_buffer_sent(self, d_len):
+##        if d_len == len(self.out_buffer):
+##            self.__recv_queue = None
+##            self.log("%s from %s (port %d) took %s (%s)" % (self.__log_str,
+##                                                            self.__src_host,
+##                                                            self.__src_port,
+##                                                            logging_tools.get_diff_time_str(abs(time.time() - self.__init_time)),
+##                                                            logging_tools.get_plural("byte", len(self.out_buffer))))
+##            self.close()
+##        else:
+##            self.out_buffer = self.out_buffer[d_len:]
+##            #self.socket.ready_to_send()
+##    def get_decoded_in_str(self):
+##        return self.__decoded
+##    def report_problem(self, flag, what):
+##        self.close()
+##
+##class node_con_obj(net_tools.buffer_object):
+##    # connects to a foreign node
+##    def __init__(self, pj_struct, dst_host, dst_com):
+##        self.__pj_struct = pj_struct
+##        self.__dst_host = dst_host
+##        self.__dst_com = dst_com
+##        net_tools.buffer_object.__init__(self)
+##    def __del__(self):
+##        pass
+##    def setup_done(self):
+##        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__dst_com, True))
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if p1_ok:
+##            self.__pj_struct._host_ok(self.__dst_host, self.__dst_com, p1_data)
+##            self.delete()
+##    def report_problem(self, flag, what):
+##        self.__pj_struct._host_error(self.__dst_host, self.__dst_com)
+##        self.delete()
+### ------------------- connection objects ------------------------------
 
 class all_jobs(object):
     def __init__(self, log_queue, glob_config, loc_config):
@@ -1880,124 +1886,12 @@ def monitor_thread_code(main_queue, log_queue, own_queue, job_mon_queue, sge_com
     log_queue.put(log_ok_message("proc %d: %s-thread for sge-server exiting" % (my_pid, my_name)))
     main_queue.put(internal_message("exiting"))
     
-def send_mail(from_addr, to_addrs, subject, mail_array):
-    new_mail = mail_tools.mail(subject, from_addr, to_addrs, mail_array)
-    new_mail.set_server("localhost", "localhost")
-    stat, log_lines = new_mail.send_mail()
-    del new_mail
-    return stat, log_lines
-
-class logging_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config):
-        """ logging thread """
-        self.__sep_str = "-" * 50
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        self.__speciallogs, self.__glob_log, self.__glob_cache = ({}, None, [])
-        threading_tools.thread_obj.__init__(self, "logging", queue_size=100, priority=10)
-        self.register_func("log", self._log)
-        self.register_func("special_log", self._special_log)
-        self.register_func("close", self._close)
-        self.register_func("set_queue_dict", self._set_queue_dict)
-        self.register_func("update", self._update)
-        self.register_func("remove_handle", self._remove_handle)
-        self.__ad_struct = {}
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        root = self.__glob_config["LOG_DIR"]
-        if not os.path.exists(root):
-            os.makedirs(root)
-        glog_name = "%s/log" % (root)
-        self.__glob_log = logging_tools.logfile(glog_name)
-        self.__glob_log.write(self.__sep_str)
-        self.__glob_log.write("Opening log")
-        self._special_log((self.name, "init", logging_tools.LOG_LEVEL_OK, "job_check"))
-        # array of delay-requests
-        self.__delay_array = []
-    def _delay_request(self, (target_queue, arg, delay)):
-        self.log("append to delay_array (delay=%s)" % (logging_tools.get_plural("second", delay)))
-        self.__delay_array.append((target_queue, arg, time.time() + delay))
-    def _update(self):
-        # handle delay-requests
-        act_time = time.time()
-        new_d_array = []
-        for target_queue, arg, r_time in self.__delay_array:
-            if r_time < act_time:
-                self.log("sending delayed object")
-                target_queue.put(arg)
-            else:
-                new_d_array.append((target_queue, arg, r_time))
-        self.__delay_array = new_d_array
-    def _set_ad_struct(self, ad_struct):
-        self.log("got ad_struct")
-        self.__ad_struct = ad_struct
-    def _set_queue_dict(self, q_dict):
-        self.__queue_dict = q_dict
-    def _close(self, special):
-        if special in self.__speciallogs.keys():
-            self.__speciallogs[special].write("Closing log")
-            self.__speciallogs[special].close()
-            self._log((self.name,
-                       "closing log_key '%s'" % (special),
-                       logging_tools.LOG_LEVEL_OK))
-        else:
-            self._log((self.name,
-                       "no log_key '%s' found" % (special),
-                       logging_tools.LOG_LEVEL_ERROR))
-    def loop_end(self):
-        for special in self.__speciallogs.keys():
-            self.__speciallogs[special].write("Closing log")
-            self.__speciallogs[special].close()
-        self.__glob_log.write("Closed %s" % (logging_tools.get_plural("specialine log", len(self.__speciallogs.keys()))))
-        self.__glob_log.write("Closing log")
-        self.__glob_log.write("logging thread exiting (pid %d)" % (self.pid))
-        self.__glob_log.close()
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self._special_log((self.name, what, lev, ""))
-    def _log(self, (s_thread, what, lev)):
-        self._special_log((s_thread, what, lev, ""))
-    def _special_log(self, (s_thread, what, lev, special)):
-        if special == "":
-            handle, pre_str = (self.__glob_log, "")
-        else:
-            handle, pre_str = self._get_handle(special)
-        if handle is None:
-            self.__glob_cache.append((s_thread, what, lev, special))
-        else:
-            log_act = []
-            if self.__glob_cache:
-                for c_s_thread, c_what, c_lev, c_special in self.__glob_cache:
-                    c_handle, c_pre_str = self._get_handle(c_special)
-                    self._handle_log(c_handle, c_s_thread, c_pre_str, c_what, c_lev, c_special)
-                self.__glob_cache = []
-            self._handle_log(handle, s_thread, pre_str, what, lev, special)
-    def _handle_log(self, handle, s_thread, pre_str, what, lev, special):
-        if type(what) != type([]):
-            what = [what]
-        for line in what:
-            handle.write("%-5s(%s) : %s%s" % (logging_tools.get_log_level_str(lev),
-                                              s_thread,
-                                              pre_str,
-                                              line))
-    def _remove_handle(self, name):
-        self.log("Closing log for special %s" % (name))
-        self._special_log((self.name, "(%s) : Closing log" % (self.name), logging_tools.LOG_LEVEL_OK, name))
-        self.__speciallogs[name].close()
-        del self.__speciallogs[name]
-    def _get_handle(self, name):
-        devname_dict = {}
-        if self.__speciallogs.has_key(name):
-            handle, pre_str = (self.__speciallogs[name], "")
-        else:
-            specialdir = "%s/%s" % (self.__glob_config["LOG_DIR"], name)
-            if not os.path.exists(specialdir):
-                self.log("Creating dir %s for %s" % (specialdir, name))
-                os.makedirs(specialdir)
-            self.__speciallogs[name] = logging_tools.logfile("%s/log" % (specialdir))
-            self.__speciallogs[name].write(self.__sep_str)
-            self.__speciallogs[name].write("Opening log")
-            #glog.write("# of open specialine logs: %d" % (len(self.__speciallogs.keys())))
-            handle, pre_str = (self.__speciallogs[name], "")
-        return (handle, pre_str)
+##def send_mail(from_addr, to_addrs, subject, mail_array):
+##    new_mail = mail_tools.mail(subject, from_addr, to_addrs, mail_array)
+##    new_mail.set_server("localhost", "localhost")
+##    stat, log_lines = new_mail.send_mail()
+##    del new_mail
+##    return stat, log_lines
 
 class accounting_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, loc_config, db_con, log_queue):
@@ -2946,69 +2840,154 @@ class node_thread(threading_tools.thread_obj):
         ret_str = "ok %s on %d %s(s)" % (command, num_done, com_struct["object"])
         tcp_obj.add_to_out_buffer(server_command.server_reply(state=server_command.SRV_REPLY_STATE_OK, result=ret_str))
 
-class sql_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config, db_con, log_queue):
-        self.__db_con = db_con
-        self.__log_queue = log_queue
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        threading_tools.thread_obj.__init__(self, "sql", queue_size=200)
-        self.register_func("update"        , self._update_db)
-        self.register_func("insert_value"  , self._insert_value_db)
-        self.register_func("insert_set"    , self._insert_set_db)
-        self.register_func("set_queue_dict", self._set_queue_dict)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (self.name, what, lev)))
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        self._init_start_time()
-        self.__dc = self.__db_con.get_connection(SQL_ACCESS)
-    def _set_queue_dict(self, q_dict):
-        self.__queue_dict = q_dict
-    def _init_start_time(self):
-        self.__start_time = time.time()
-        self.__num_written, self.__num_update, self.__num_ins_v, self.__num_ins_s = (0, 0, 0, 0)
-    def _check_written(self, force=False):
-        if not force:
-            self.__num_written += 1
-        if self.__num_written > 50 or force:
-            act_time = time.time()
-            self.log("wrote %d entries (%s, %s [with values], %s [with set]) in %s" % (self.__num_written,
-                                                                                       logging_tools.get_plural("update", self.__num_update),
-                                                                                       logging_tools.get_plural("insert", self.__num_ins_v),
-                                                                                       logging_tools.get_plural("insert", self.__num_ins_s),
-                                                                                       logging_tools.get_diff_time_str(act_time - self.__start_time)))
-            self._init_start_time()
-    def _update_db(self, args):
-        if len(args) == 2:
-            sql_table, sql_data = args
-            sql_args = None
-        else:
-            sql_table, sql_data, sql_args = args
-        self.__dc.execute("UPDATE %s SET %s" % (sql_table, sql_data), sql_args)
-        self.__num_update += 1
-        self._check_written()
-    def _insert_value_db(self, args):
-        if len(args) == 2:
-            sql_table, sql_data = args
-            sql_args = None
-        else:
-            sql_table, sql_data, sql_args = args
-        self.__dc.execute("INSERT INTO %s VALUES(%s)" % (sql_table, sql_data), sql_args)
-        self.__num_ins_v += 1
-        self._check_written()
-    def _insert_set_db(self, args):
-        if len(args) == 2:
-            sql_table, sql_data = args
-            sql_args = None
-        else:
-            sql_table, sql_data, sql_args = args
-        self.__dc.execute("INSERT INTO %s SET %s" % (sql_table, sql_data), sql_args)
-        self.__num_ins_s += 1
-        self._check_written()
-    def loop_end(self):
-        self._check_written(True)
-        self.__dc.release()
+class rms_mon_process(threading_tools.process_obj):
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+        #self.__db_con = mysql_tools.dbcon_container()
+        #self.__gen_config = main_config(self)
+        #self.register_func("rebuild_config", self._rebuild_config)
+        self._init_sge_info()
+        self.register_func("get_config", self._get_config)
+    def _init_sge_info(self):
+        self.log("init sge_info")
+        self.__sge_info = sge_tools.sge_info(log_command=self.log,
+                                             run_initial_update=False,
+                                             verbose=True if global_config["DEBUG"] else False,
+                                             is_active=True,
+                                             sge_dict=dict([(key, global_config[key]) for key in ["SGE_ARCH", "SGE_ROOT", "SGE_CELL"]]))
+        self._update()
+    def _update(self):
+        self.__sge_info.update(no_file_cache=True, force_update=True)
+    def _get_config(self, *args, **kwargs):
+        src_id, srv_com_str = args
+        srv_com = server_command.srv_command(source=srv_com_str)
+        #needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
+        #update_list = opt_dict.get("update_list", [])
+        needed_dicts = ["hostgroup", "queueconf", "qhost", "complexes"]
+        update_list = []
+        for key in needed_dicts:
+            print key
+            pprint.pprint(self.__sge_info[key])
+            if key == "qhost":
+                srv_com.set_dictionary("sge:%s" % (key), dict([(sub_key, self.__sge_info[key][sub_key].get_value_dict()) for sub_key in self.__sge_info[key]]))
+            else:
+                srv_com.set_dictionary("sge:%s" % (key), self.__sge_info[key])
+        print unicode(srv_com)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
 
+class server_process(threading_tools.process_pool):
+    def __init__(self, db_con):
+        self.__log_cache, self.__log_template = ([], None)
+        self.__db_con = db_con
+        self.__pid_name = global_config["PID_NAME"]
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.__msi_block = self._init_msi_block()
+        #dc = self.__db_con.get_connection(SQL_ACCESS)
+        # re-insert config
+        #self._re_insert_config(dc)
+        self.register_exception("int_error", self._int_error)
+        self.register_exception("term_error", self._int_error)
+        self.register_exception("hup_error", self._hup_error)
+        self._log_config()
+        #dc.release()
+        self._init_network_sockets()
+        #self.add_process(db_verify_process("db_verify"), start=True)
+        self.add_process(rms_mon_process("rms_mon"), start=True)
+        #self._init_em()
+        #self.register_timer(self._check_db, 3600, instant=True)
+        #self.register_timer(self._update, 30, instant=True)
+        #self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
+        #self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
+    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+        if self.__log_template:
+            while self.__log_cache:
+                self.__log_template.log(*self.__log_cache.pop(0))
+            self.__log_template.log(lev, what)
+        else:
+            self.__log_cache.append((lev, what))
+    def _log_config(self):
+        self.log("Config info:")
+        for line, log_level in global_config.get_log(clear=True):
+            self.log(" - clf: [%d] %s" % (log_level, line))
+        conf_info = global_config.get_config_info()
+        self.log("Found %d valid global config-lines:" % (len(conf_info)))
+        for conf in conf_info:
+            self.log("Config : %s" % (conf))
+    def _int_error(self, err_cause):
+        if self["exit_requested"]:
+            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
+        else:
+            self["exit_requested"] = True
+    def _hup_error(self, err_cause):
+        self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
+    def process_start(self, src_process, src_pid):
+        mult = 3
+        process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
+        if self.__msi_block:
+            self.__msi_block.add_actual_pid(src_pid, mult=mult)
+            self.__msi_block.save_block()
+    def _init_msi_block(self):
+        process_tools.save_pid(self.__pid_name, mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        if not global_config["DEBUG"] or True:
+            self.log("Initialising meta-server-info block")
+            msi_block = process_tools.meta_server_info("sge_server")
+            msi_block.add_actual_pid(mult=3)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+            msi_block.start_command = "/etc/init.d/sge-server start"
+            msi_block.stop_command = "/etc/init.d/sge-server force-stop"
+            msi_block.kill_pids = True
+            msi_block.save_block()
+        else:
+            msi_block = None
+        return msi_block
+    def _init_network_sockets(self):
+        client = self.zmq_context.socket(zmq.ROUTER)
+        client.setsockopt(zmq.IDENTITY, "sgeserver")
+        client.setsockopt(zmq.HWM, 256)
+        try:
+            client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
+        except zmq.core.error.ZMQError:
+            self.log("error binding to %d: %s" % (global_config["COM_PORT"],
+                                                  process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_CRITICAL)
+            raise
+        else:
+            self.log("connected to tcp://*:%d" % (global_config["COM_PORT"]))
+            self.register_poller(client, zmq.POLLIN, self._recv_command)
+            self.com_socket = client
+    def _recv_command(self, zmq_sock):
+        data = []
+        while True:
+            data.append(zmq_sock.recv_unicode())
+            more = zmq_sock.getsockopt(zmq.RCVMORE)
+            if not more:
+                break
+        if len(data) == 2:
+            src_id, xml_input = data
+            srv_com = server_command.srv_command(source=xml_input)
+            self.log("got command '%s' from %s" % (srv_com["command"].text, src_id))
+            srv_com.update_source()
+            cur_com = srv_com["command"].text
+            if cur_com == "get_config":
+                self.send_to_process("rms_mon", "get_config", src_id, unicode(srv_com))
+            else:
+                srv_com["result"] = {"state" : server_command.SRV_REPLY_STATE_ERROR,
+                                     "reply" : "unknown command %s" % (cur_com)}
+                self._send_result(src_id, srv_com)
+        else:
+            self.log("received wrong data (len() = %d != 2)" % (len(data)),
+                     logging_tools.LOG_LEVEL_ERROR)
+    def _send_result(self, src_id, srv_com):
+        self.com_socket.send_unicode(src_id, zmq.SNDMORE)
+        self.com_socket.send_unicode(unicode(srv_com))
+    def thread_loop_post(self):
+        process_tools.delete_pid(self.__pid_name)
+        if self.__msi_block:
+            self.__msi_block.remove_meta_block()
+        
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, db_con, g_config, loc_config):
         self.__log_cache, self.__log_queue = ([], None)
@@ -3161,176 +3140,130 @@ class server_thread_pool(threading_tools.thread_pool):
             self.log("setting environment variable %s to %s" % (env_name, self.__glob_config[env_name]))
             os.environ[env_name] = self.__glob_config[env_name]
 
+global_config = configfile.get_global_config(process_tools.get_programm_name())
+
 def main():
+    long_host_name, mach_name = process_tools.get_fqdn()
+    prog_name = global_config.name()
+    global_config.add_config_entries([
+        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
+        ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
+        ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True)),
+        ("USER"                , configfile.str_c_var("sge", help_string="user to run as [%(default)s")),
+        ("GROUP"               , configfile.str_c_var("sge", help_string="group to run as [%(default)s]")),
+        ("GROUPS"              , configfile.array_c_var([])),
+        ("FORCE"               , configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
+        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
+        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+    ])
+    global_config.parse_file()
+    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
+                                                                                  VERSION_STRING),
+                                               add_writeback_option=True,
+                                               positional_arguments=False)
+    global_config.write_file()
+    db_con = mysql_tools.dbcon_container()
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "dVvG:hCfg:u:k", ["help", "comp", "confp"])
-    except getopt.GetoptError, bla:
-        print "Commandline error!", bla
-        sys.exit(2)
-    long_host_name = socket.getfqdn(socket.gethostname())
-    short_host_name = long_host_name.split(".")[0]
-    # read version
-    try:
-        from sge_server_version import VERSION_STRING
-    except ImportError:
-        VERSION_STRING = "?.?"
-    loc_config = configfile.configuration("local_config", {"PID_NAME"          : configfile.str_c_var("sge-server/sge-server"),
-                                                           "SERVER_FULL_NAME"  : configfile.str_c_var(long_host_name),
-                                                           "SERVER_SHORT_NAME" : configfile.str_c_var(short_host_name),
-                                                           "DAEMON"            : configfile.bool_c_var(True),
-                                                           "VERBOSE"           : configfile.int_c_var(0),
-                                                           "SERVER_IDX"        : configfile.int_c_var(0),
-                                                           "VERSION_STRING"    : configfile.str_c_var(VERSION_STRING),
-                                                           "SERVER_ROLE"       : configfile.str_c_var("unset")})
-
-    check, kill_running = (False, True)
-    check_port = SERVER_CHECK_PORT
-    user, group, groups, fixit = ("root", "root", [], False)
-    pname = os.path.basename(sys.argv[0])
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print "Usage: %s [OPTIONS]" % (pname)
-            print "where OPTIONS are:"
-            print " -h,--help       this help"
-            print " -d              run in debug mode (no forking)"
-            print " -v              be verbose"
-            print " -V              show version"
-            print " --confp port    connect to given port for node requests, default is %d" % (check_port)
-            print " -f              create and fix needed files and directories"
-            print " -u user         run as user USER"
-            print " -g group        run as group GROUP"
-            print " -G groups       coma-separated list of additional groups"
-            print " -k              do not kill running %s" % (pname)
-            sys.exit(0)
-        if opt == "-G":
-            groups = [x.strip() for x in arg.strip().split(",")]
-        if opt == "-C":
-            check = True
-        if opt == "-d":
-            loc_config["DAEMON"] = False
-        if opt == "-V":
-            print "Version %s" % (VERSION_STRING)
-            sys.exit(0)
-        if opt == "-p":
-            g_port = int(arg)
-        if opt == "-v":
-            loc_config["VERBOSE"] += 1
-        if opt == "-f":
-            fixit = True
-        if opt == "-u":
-            user = arg
-        if opt == "-g":
-            group = arg
-    db_con = mysql_tools.dbcon_container(with_logging=not loc_config["DAEMON"])
-    try:
-        dc = db_con.get_connection(SQL_ACCESS)
-    except MySQLdb.OperationalError:
-        sys.stderr.write(" Cannot connect to SQL-Server ")
-        sys.exit(1)
-    ret_state = 256
-    sql_s_info = config_tools.server_check(dc=dc, server_type="sge_server")
-    sql_r_info = config_tools.server_check(dc=dc, server_type="sge_relayer")
-    if sql_s_info.num_servers + sql_r_info.num_servers == 0:
-        sys.stderr.write(" %s is no sge-server/relayer, exiting..." % (long_host_name))
-        sys.exit(5)
-    if check:
+        dc = db_con.get_connection("cluster_full_access")
+    except:
+        if options.FORCE:
+            print "error creating db-connection: %s, ignoring..." % (process_tools.get_except_info())
+            dc = None
+        else:
+            sys.stderr.write(" Cannot connect to SQL-Server ")
+            sys.exit(1)
+            ret_state = 256
+    if dc:
+        sql_s_info = config_tools.server_check(dc=dc, server_type="sge_server")
+        if sql_s_info.num_servers == 0:
+            sys.stderr.write(" %s is no sge-server, exiting..." % (long_host_name))
+            sys.exit(5)
+    if global_config["CHECK"]:
         sys.exit(0)
-    if sql_s_info.num_servers:
-        loc_config["SERVER_IDX"] = sql_s_info.server_device_idx
-        loc_config["SERVER_ROLE"] = "sge_server"
-    else:
-        loc_config["SERVER_IDX"] = sql_r_info.server_device_idx
-        loc_config["SERVER_ROLE"] = "sge_relayer"
-    if kill_running:
-        kill_dict = process_tools.build_kill_dict(pname)
-        for k, v in kill_dict.iteritems():
-            log_str = "Trying to kill pid %d (%s) with signal 9 ..." % (k, v)
-            try:
-                os.kill(k, 9)
-            except:
-                log_str = "%s error (%s)" % (log_str, sys.exc_info()[0])
-            else:
-                log_str = "%s ok" % (log_str)
-            logging_tools.my_syslog(log_str)
-
+    if dc:
+        if sql_s_info.num_servers > 1:
+            print "Database error for host %s (sge_server): too many entries found (%d)" % (long_host_name, sql_s_info.num_servers)
+            dc.release()
+            sys.exit(5)
+        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_s_info.server_device_idx, database=False))])
+        global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(process_tools.create_log_source_entry(dc, global_config["SERVER_IDX"], "sge_server", "RMS Server")))])
+    if global_config["KILL_RUNNING"]:
+        log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
+    
     sge_dict = {}
-    for v_name, v_src in [("SGE_ROOT", "/etc/sge_root"),
-                          ("SGE_CELL", "/etc/sge_cell")]:
+    for v_name, v_src, v_default in [("SGE_ROOT", "/etc/sge_root", "/opt/sge"),
+                                     ("SGE_CELL", "/etc/sge_cell", "default" )]:
         if os.path.isfile(v_src):
             sge_dict[v_name] = file(v_src, "r").read().strip()
         else:
-            print "error: Cannot read %s from file %s, exiting..." % (v_name, v_src)
-            sys.exit(2)
+            if global_config["FORCE"]:
+                sge_dict[v_name] = v_default
+            else:
+                print "error: Cannot read %s from file %s, exiting..." % (v_name, v_src)
+                sys.exit(2)
     stat, sge_dict["SGE_ARCH"], log_lines = call_command("/%s/util/arch" % (sge_dict["SGE_ROOT"]))
     if stat:
-        print "error Cannot evaluate SGE_ARCH"
-        sys.exit(1)
-    g_config = configfile.read_global_config(dc, loc_config["SERVER_ROLE"], {"LOG_DIR"                         : configfile.str_c_var("/var/log/cluster/%s" % (loc_config["SERVER_ROLE"].replace("_", "-"))),
-                                                                             "CHECK_PORT"                      : configfile.int_c_var(check_port),
-                                                                             "CHECK_ITERATIONS"                : configfile.int_c_var(3),
-                                                                             "RETRY_AFTER_CONNECTION_PROBLEMS" : configfile.int_c_var(0),
-                                                                             "FROM_ADDR"                       : configfile.str_c_var(loc_config["SERVER_ROLE"].replace("_", "-")),
-                                                                             "TO_ADDR"                         : configfile.str_c_var("lang-nevyjel@init.at"),
-                                                                             "SGE_ARCH"                        : configfile.str_c_var(sge_dict["SGE_ARCH"], fixed=True),
-                                                                             "SGE_ROOT"                        : configfile.str_c_var(sge_dict["SGE_ROOT"], fixed=True),
-                                                                             "SGE_CELL"                        : configfile.str_c_var(sge_dict["SGE_CELL"], fixed=True),
-                                                                             "MONITOR_JOBS"                    : configfile.bool_c_var(True)})
-    if loc_config["SERVER_ROLE"] == "sge_server":
-        # server_mode
-        g_config.add_config_dict({"TRACE_FAIRSHARE"          : configfile.int_c_var(0),
-                                  "STRICT_MODE"              : configfile.int_c_var(0),
-                                  "APPEND_SERIAL_COMPLEX"    : configfile.int_c_var(1),
-                                  "CLEAR_ITERATIONS"         : configfile.int_c_var(1),
-                                  "CHECK_ACCOUNTING_TIMEOUT" : configfile.int_c_var(300)})
-    if os.path.isfile("/%s/%s/common/product_mode" % (g_config["SGE_ROOT"], g_config["SGE_CELL"])):
-        g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(5),
-                                  "SGE_RELEASE"    : configfile.int_c_var(3),
-                                  "SGE_PATCHLEVEL" : configfile.int_c_var(0)})
-    else:
-        # try to get the actual version
-        qs_com = "/%s/bin/%s/qconf" % (g_config["SGE_ROOT"],
-                                       g_config["SGE_ARCH"])
-        stat, vers_string, log_lines = call_command(qs_com)
-        vers_line = vers_string.split("\n")[0].lower()
-        if vers_line.startswith("ge") or vers_line.startswith("sge"):
-            vers_part = vers_line.split()[1]
-            major, minor = vers_part.split(".")
-            minor, patchlevel = minor.split("u")
-            patchlevel = patchlevel.split("_")[0]
-            g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(int(major)),
-                                      "SGE_RELEASE"    : configfile.int_c_var(int(minor)),
-                                      "SGE_PATCHLEVEL" : configfile.int_c_var(int(patchlevel))})
+        if global_config["FORCE"]:
+            sge_dict["SGE_ARCH"] = "lx26_amd64"
         else:
-            if g_config.has_key("SGE_VERSION") and g_config.has_key("SGE_RELEASE") and g_config.has_key("SGE_PATCHLEVEL"):
-                pass
-            else:
-                print "Cannot determine GE Version via %s" % (qs_com)
-                dc.release()
-                sys.exit(-1)
-    if sql_s_info.num_servers > 1 or sql_r_info.num_servers> 1:
-        print "Database error for host %s (%s): too many entries found (%d)" % (long_host_name,
-                                                                                loc_config["SERVER_ROLE"],
-                                                                                sql_s_info.num_servers + sql_r_info.num_servers)
+            print "error Cannot evaluate SGE_ARCH"
+            sys.exit(1)
+    configfile.read_config_from_db(global_config, dc, "sge_server", [
+        ("CHECK_ITERATIONS"               , configfile.int_c_var(3)),
+        ("COM_PORT"                       , configfile.int_c_var(COM_PORT)),
+        ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
+        ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
+        ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
+        ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])),#, fixed=True)),
+        ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])),#, fixed=True)),
+        ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])),#, fixed=True)),
+        ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
+        ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
+        ("STRICT_MODE"                    , configfile.bool_c_var(False)),
+        ("APPEND_SERIAL_COMPLEX"          , configfile.bool_c_var(True)),
+        ("CLEAR_ITERATIONS"               , configfile.int_c_var(1)),
+        ("CHECK_ACCOUNTING_TIMEOUT"       , configfile.int_c_var(300))])
+##    if os.path.isfile("/%s/%s/common/product_mode" % (g_config["SGE_ROOT"], g_config["SGE_CELL"])):
+##        g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(5),
+##                                  "SGE_RELEASE"    : configfile.int_c_var(3),
+##                                  "SGE_PATCHLEVEL" : configfile.int_c_var(0)})
+##    else:
+##        # try to get the actual version
+##        qs_com = "/%s/bin/%s/qconf" % (g_config["SGE_ROOT"],
+##                                       g_config["SGE_ARCH"])
+##        stat, vers_string, log_lines = call_command(qs_com)
+##        vers_line = vers_string.split("\n")[0].lower()
+##        if vers_line.startswith("ge") or vers_line.startswith("sge"):
+##            vers_part = vers_line.split()[1]
+##            major, minor = vers_part.split(".")
+##            minor, patchlevel = minor.split("u")
+##            patchlevel = patchlevel.split("_")[0]
+##            g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(int(major)),
+##                                      "SGE_RELEASE"    : configfile.int_c_var(int(minor)),
+##                                      "SGE_PATCHLEVEL" : configfile.int_c_var(int(patchlevel))})
+##        else:
+##            if g_config.has_key("SGE_VERSION") and g_config.has_key("SGE_RELEASE") and g_config.has_key("SGE_PATCHLEVEL"):
+##                pass
+##            else:
+##                print "Cannot determine GE Version via %s" % (qs_com)
+##                dc.release()
+##                sys.exit(-1)
+
+        #log_sources = process_tools.get_all_log_sources(dc)
+        #log_status = process_tools.get_all_log_status(dc)
+        #process_tools.create_log_source_entry(dc, 0, "sgeflat", "SGE Message (unparsed)", "Info from the SunGridEngine")
+    if dc:
         dc.release()
+    process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
+    if not global_config["DEBUG"]:
+        process_tools.become_daemon()
+        process_tools.set_handles({"out" : (1, "sge-server.out"),
+                                   "err" : (0, "/var/lib/logging-server/py_err")})
     else:
-        # get real server stuff
-        log_source_idx = process_tools.create_log_source_entry(dc, loc_config["SERVER_IDX"], loc_config["SERVER_ROLE"], "SGE Server/relayer")
-        log_sources = process_tools.get_all_log_sources(dc)
-        log_status = process_tools.get_all_log_status(dc)
-        process_tools.create_log_source_entry(dc, 0, "sgeflat", "SGE Message (unparsed)", "Info from the SunGridEngine")
-        dc.release()
-        if fixit:
-            process_tools.fix_directories(user, group, [g_config["LOG_DIR"], "/var/run/sge-server"])
-        process_tools.change_user_group(user, group, groups)
-        if loc_config["DAEMON"]:
-            process_tools.become_daemon()
-            process_tools.set_handles({"out" : (1, loc_config["SERVER_ROLE"]),
-                                       "err" : (0, "/var/lib/logging-server/py_err")})
-        else:
-            print "Debugging %s on %s" % (loc_config["SERVER_ROLE"],
-                                          short_host_name)
-        my_tp = server_thread_pool(db_con, g_config, loc_config)
-        my_tp.thread_loop()
+        print "Debugging SGE-server"
+    ret_state = server_process(db_con).loop()
     db_con.close()
     del db_con
     sys.exit(ret_state)
