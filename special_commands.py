@@ -170,7 +170,7 @@ class special_openvpn(special_base):
             srv_result = self._call_collrelay("openvpn_status")
             if srv_result is not None:
                 if "openvpn_instances" in srv_result:
-                    ovpn_dict = server_command.srv_command.tree_to_dict(srv_result["openvpn_instances"])
+                    ovpn_dict = srv_result["openvpn_instances"]
                     # build exp_dict
                     for inst_name in ovpn_dict:
                         if ovpn_dict[inst_name]["type"] == "server":
@@ -316,7 +316,7 @@ class special_libvirt(special_base):
         srv_result = self._call_collrelay("domain_overview")
         if srv_result is not None:
             if "domain_overview" in srv_result:
-                domain_info = server_command.srv_command.tree_to_dict(srv_result["domain_overview"])
+                domain_info = srv_result["domain_overview"]
                 if "running" in domain_info and "defined" in domain_info:
                     domain_info = domain_info["running"]
                 # build sc_array
@@ -333,7 +333,7 @@ class special_eonstor(special_base):
                                          snmp_community="public",
                                          snmp_version="1")
         if srv_reply and "eonstor_info" in srv_reply:
-            info_dict = server_command.srv_command.tree_to_dict(srv_reply.xpath(None, ".//ns:eonstor_info")[0])
+            info_dict = srv_reply["eonstor_info"]
             # disks
             for disk_id in sorted(info_dict.get("disc_ids", [])):
                 sc_array.append(("Disc %2d" % (disk_id), ["eonstor_disc_info", "%d" % (disk_id)]))
