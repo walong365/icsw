@@ -369,9 +369,9 @@ class certificate_status_command(hm_classes.hm_command):
                 if map_dict.has_key(file_name):
                     act_dict["openvpn_config"] = map_dict[file_name]
                 cert_dict[file_name] = act_dict
-        srv_com.set_dictionary("certificates", cert_dict)
+        srv_com["certificates"] = cert_dict
     def interpret(self, srv_com, cur_ns):
-        cert_dict = server_command.srv_command.tree_to_dict(srv_com["certificates"])
+        cert_dict = srv_com["certificates"]
         return self._interpret(cert_dict)
     def interpret_old(self, result, parsed_coms):
         cert_dict = hm_classes.net_to_sys(result[3:])
@@ -431,9 +431,9 @@ class openvpn_status_command(hm_classes.hm_command):
                 ret_dict[inst] = self.module[inst].get_repr()
         else:
             ret_dict = {}
-        srv_com.set_dictionary("openvpn_instances", ret_dict)
+        srv_com["openvpn_instances"] = ret_dict
     def interpret(self, srv_com, cur_ns):
-        inst_dict = server_command.srv_command.tree_to_dict(srv_com["openvpn_instances"])
+        inst_dict = srv_com["openvpn_instances"]
         return self._interpret(inst_dict, cur_ns, srv_com["host"].text)
     def interpret_old(self, result, parsed_coms):
         inst_dict = hm_classes.net_to_sys(result[3:])

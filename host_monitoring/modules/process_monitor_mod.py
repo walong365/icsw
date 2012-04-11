@@ -307,11 +307,11 @@ class procstat_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         p_dict = process_tools.get_proc_list()
         if cur_ns.arguments:
-            srv_com.set_dictionary("process_tree", dict([(key, value) for key, value in p_dict.iteritems() if value["name"] in cur_ns.arguments]))
+            srv_com["process_tree"] = dict([(key, value) for key, value in p_dict.iteritems() if value["name"] in cur_ns.arguments])
         else:
-            srv_com.set_dictionary("process_tree", p_dict)
+            srv_com["process_tree"] = p_dict
     def interpret(self, srv_com, cur_ns):
-        result = srv_com.tree_to_dict(srv_com.xpath(None, ".//ns:process_tree"))["process_tree"]
+        result = srv_com["process_tree"]
         #pprint.pprint(result)
         commands = cur_ns.arguments
         zombie_ok_list = ["cron"]
@@ -447,7 +447,7 @@ class proclist_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         p_dict = process_tools.get_proc_list()
         # slow but very flexible
-        srv_com.set_dictionary("process_tree", p_dict)
+        srv_com["process_tree"] = p_dict
 ##    def server_call(self, cm):
 ##        re_list = [re.compile(".*%s.*" % (x)) for x in cm]
 ##        if not re_list:
@@ -475,7 +475,7 @@ class proclist_command(hm_classes.hm_command):
             tree_view = False
         else:
             name_re = re.compile(".*")
-        result = srv_com.tree_to_dict(srv_com.xpath(None, ".//ns:process_tree"))["process_tree"]
+        result = srv_com["process_tree"]
         #print etree.tostring(srv_com.tree, pretty_print=True)
         ret_str, ret_state = ("OK", limits.nag_STATE_CRITICAL)
         pids = sorted([key for key, value in result.iteritems() if name_re.match(value["name"])])

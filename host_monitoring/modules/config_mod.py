@@ -80,16 +80,16 @@ class check_file_command(hm_classes.hm_command):
                 f_stat = os.stat(file_name)
                 stat_keys = [key for key in dir(f_stat) if key.startswith("st_")]
                 f_stat = dict([(key, getattr(f_stat, key)) for key in stat_keys])
-                srv_com.set_dictionary("stat_result", {
+                srv_com["stat_result"] = {
                     "file"       : file_name,
                     "stat"       : f_stat,
-                    "local_time" : time.time()})
+                    "local_time" : time.time()}
             else:
                 srv_com["stat_result"].attrib.update({
                     "reply" : "file '%s' not found" % (file_name),
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
     def interpret(self, srv_com, cur_ns):
-        return self._interpret(server_command.srv_command.tree_to_dict(srv_com["stat_result"]), cur_ns)
+        return self._interpret(srv_com["stat_result"], cur_ns)
     def interpret_old(self, result, cur_ns):
         return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
     def _interpret(self, f_dict, cur_ns):

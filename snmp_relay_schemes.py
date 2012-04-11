@@ -928,7 +928,7 @@ class eonstor_proto_scheme(snmp_scheme):
                 ret_field.append(act_ret_str)
             ret_field.sort()
         if self.xml_input:
-            self.srv_com.set_dictionary("eonstor_info", raw_dict)
+            self.srv_com["eonstor_info"] = raw_dict
             return limits.nag_STATE_OK, "ok got info"
         else:
             return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
@@ -1018,7 +1018,7 @@ class eonstor_get_counter_scheme(eonstor_proto_scheme):
                 info_dict.setdefault("ent_dict", {}).setdefault(ent_name, {})[idx] = value[8]
         info_dict["ld_ids"] = self._reorder_dict(self.snmp_dict[self.ld_oid]).keys()
         if self.xml_input:
-            self.srv_com.set_dictionary("eonstor_info", info_dict)
+            self.srv_com["eonstor_info"] = info_dict
             return limits.nag_STATE_OK, "ok got info"
         else:
             return limits.nag_STATE_OK, process_tools.sys_to_net(info_dict)

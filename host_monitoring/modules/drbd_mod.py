@@ -45,12 +45,12 @@ class drbd_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         if drbd_tools:
             self.module.drbd_config._parse_all()
-            srv_com.set_dictionary("drbd_status", self.module.drbd_config.get_config_dict())
+            srv_com["drbd_status"] = self.module.drbd_config.get_config_dict()
         else:
             srv_com["result"].attrib.update({"reply" : "no drbd_tools found",
                                               "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
     def interpret(self, srv_com, cur_ns):
-        return self._interpret(server_command.srv_command.tree_to_dict(srv_com["drbd_status"]), cur_ns)
+        return self._interpret(srv_com["drbd_status"], cur_ns)
     def interpret_old(self, result, cur_ns):
         drbd_conf = hm_classes.net_to_sys(result[3:])
         return self._interpret(drbd_conf, cur_ns)

@@ -34,7 +34,7 @@ class cups_status_command(hm_classes.hm_command):
                                               "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
             printer_dict = dict([(line_p[1], line_p[2]) for line_p in [line.strip().split(None, 2) for line in lp_out.split("\n") if line.startswith("printer")]])
-            srv_com.set_dictionary("printers",  printer_dict)
+            srv_com["printers"] = printer_dict
 ##            if "arguments:arg0" in srv_com:
 ##                printer = srv_com["arguments:arg0"].text.strip()
 ##                if printer in printer_dict:
@@ -46,7 +46,7 @@ class cups_status_command(hm_classes.hm_command):
 ##            else:
 ##                return "ok %s" % (hm_classes.sys_to_net(printer_dict))
     def interpret(self, srv_com, cur_ns): 
-        return self._interpret(server_command.srv_command.tree_to_dict(srv_com["printers"]), cur_ns)
+        return self._interpret(srv_com["printers"], cur_ns)
     def interpret_old(self, result, parsed_coms):
         return self._interpret(hm_classes.net_to_sys(result[3:]), parsed_coms)
     def _interpret(self, print_dict, parsed_coms):

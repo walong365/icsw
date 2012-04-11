@@ -49,9 +49,9 @@ class libvirt_status_command(hm_classes.hm_command):
             cur_lvc.close()
         else:
             ret_dict = {}
-        srv_com.set_dictionary("libvirt", ret_dict)
+        srv_com["libvirt"] = ret_dict
     def interpret(self, srv_com, cur_ns):
-        r_dict = server_command.srv_command.tree_to_dict(srv_com["libvirt"])
+        r_dict = srv_com["libvirt"]
         return self._interpret(r_dict, cur_ns)
     def interpret_old(self, result, parsed_coms):
         r_dict = hm_classes.net_to_sys(result[3:])
@@ -77,9 +77,9 @@ class domain_overview_command(hm_classes.hm_command):
             cur_lvc.close()
         else:
             ret_dict = {}
-        srv_com.set_dictionary("domain_overview", ret_dict)
+        srv_com["domain_overview"] = ret_dict
     def interpret(self, srv_com, cur_ns):
-        r_dict = server_command.srv_command.tree_to_dict(srv_com["domain_overview"])
+        r_dict = srv_com["domain_overview"]
         return self._interpret(r_dict, cur_ns)
     def interpret_old(self, result, parsed_coms):
         r_dict = hm_classes.net_to_sys(result[3:])
@@ -120,9 +120,9 @@ class domain_status_command(hm_classes.hm_command):
                 cur_lvc.close()
             else:
                 ret_dict = {}
-            srv_com.set_dictionary("domain_status", ret_dict)
+            srv_com["domain_status"] = ret_dict
     def interpret(self, srv_com, cur_ns):
-        r_dict = server_command.srv_command.tree_to_dict(srv_com["domain_status"])
+        r_dict = srv_com["domain_status"]
         return self._interpret(r_dict, cur_ns)
     def interpret_old(self, result, parsed_coms):
         r_dict = hm_classes.net_to_sys(result[3:])

@@ -428,8 +428,9 @@ class host_message(object):
         self.s_time = time.time()
         self.sent = False
     def set_result(self, state, res_str):
-        self.srv_com["result"] = {"reply" : res_str,
-                                  "state" : "%d" % (state)}
+        self.srv_com["result"] = None
+        self.srv_com["result"].attrib.update({"reply" : res_str,
+                                              "state" : "%d" % (state)})
     def set_com_struct(self, com_struct):
         self.com_struct = com_struct
         if com_struct:
@@ -1118,9 +1119,10 @@ class relay_process(threading_tools.process_pool):
             exc_info = process_tools.exception_info()
             for log_line in process_tools.exception_info().log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_ERROR)
-                srv_com["result"] = {
+                srv_com["result"] = None
+                srv_com["result"].attrib.update({
                     "reply" : "caught server exception '%s'" % (process_tools.get_except_info()),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)}
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)})
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
@@ -1342,8 +1344,9 @@ class server_process(threading_tools.process_pool):
             self.log("got command '%s' from '%s'" % (cur_com,
                                                      srv_com["source"].attrib["host"]))
             srv_com.update_source()
-            srv_com["result"] = {"state" : server_command.SRV_REPLY_STATE_OK,
-                                 "reply" : "ok"}
+            srv_com["result"] = None
+            srv_com["result"].attrib.update({"state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                                             "reply" : "ok"})
             if cur_com in self.commands:
                 delayed = self._handle_module_command(srv_com, rest_str)
             else:

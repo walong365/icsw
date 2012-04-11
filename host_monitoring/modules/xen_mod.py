@@ -82,9 +82,9 @@ class xen_type_command(hm_classes.hm_command):
                 ret_dict["xen_type"] = "guest"
                 # read host name
                 self.module_info.read_host_name(ret_dict, self.logger)
-        srv_com.set_dictionary("xen_type", ret_dict)
+        srv_com["xen_type"] = ret_dict
     def interpret(self, srv_com, cur_ns):
-        return self._interpret(server_command.srv_command.tree_to_dict(srv_com["xen_type"]), cur_ns)
+        return self._interpret(srv_com["xen_type"], cur_ns)
     def interpret_old(self, result, cur_ns):
         r_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(r_dict, cur_ns)

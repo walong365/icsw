@@ -1178,10 +1178,10 @@ class df_command(hm_classes.hm_command):
                                                  "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             else:
                 if disk == "ALL":
-                    srv_com.set_dictionary("df_result", dict([(disk, {"mountpoint" : n_dict[disk][0],
-                                                                      "perc"       : n_dict[disk][1],
-                                                                      "used"       : n_dict[disk][3],
-                                                                      "total"      : n_dict[disk][2]}) for disk in n_dict.keys()]))
+                    srv_com["df_result"] = dict([(disk, {"mountpoint" : n_dict[disk][0],
+                                                         "perc"       : n_dict[disk][1],
+                                                         "used"       : n_dict[disk][3],
+                                                         "total"      : n_dict[disk][2]}) for disk in n_dict.keys()])
                 else:
                     store_info = True
                     if not mapped_disk in n_dict:
@@ -1204,14 +1204,14 @@ class df_command(hm_classes.hm_command):
                                 srv_com["result"].attrib.update({"reply" : "invalid partition %s" % (disk),
                                                                  "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
                     if store_info:
-                        srv_com.set_dictionary("df_result", {"part"        : disk,
-                                                             "mapped_disk" : mapped_disk,
-                                                             "mountpoint"  : n_dict[mapped_disk][0],
-                                                             "perc"        : n_dict[mapped_disk][1],
-                                                             "used"        : n_dict[mapped_disk][3],
-                                                             "total"       : n_dict[mapped_disk][2]})
+                        srv_com["df_result"] = {"part"        : disk,
+                                                "mapped_disk" : mapped_disk,
+                                                "mountpoint"  : n_dict[mapped_disk][0],
+                                                "perc"        : n_dict[mapped_disk][1],
+                                                "used"        : n_dict[mapped_disk][3],
+                                                "total"       : n_dict[mapped_disk][2]}
     def interpret(self, srv_com, cur_ns):
-        result = server_command.srv_command.tree_to_dict(srv_com["df_result"])
+        result = srv_com["df_result"]
         #print result
         if result.has_key("perc"):
             # single-partition result
@@ -1341,7 +1341,7 @@ class swap_command(hm_classes.hm_command):
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
     def __call__(self, srv_com, cur_ns):
-        srv_com.set_dictionary("mem", self.module._mem_int())
+        srv_com["mem"] = self.module._mem_int()
     def interpret(self, srv_com, cur_ns):
         swap_total, swap_free = (srv_com.get_int("mem:SwapTotal"),
                                  srv_com.get_int("mem:SwapFree"))
@@ -1378,7 +1378,7 @@ class mem_command(hm_classes.hm_command):
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
     def __call__(self, srv_com, cur_ns):
-        srv_com.set_dictionary("mem", self.module._mem_int())
+        srv_com["mem"] = self.module._mem_int()
     def interpret(self, srv_com, cur_ns):
         mem_total, mem_free = (srv_com.get_int("mem:MemTotal"),
                                srv_com.get_int("mem:MemFree") + srv_com.get_int("mem:Buffers") + srv_com.get_int("mem:Cached"))
@@ -1436,8 +1436,8 @@ class sysinfo_command(hm_classes.hm_command):
             self.log(log_line, log_lev)
         imi_file = "/%s/.imageinfo" % (root_dir)
         if os.path.isfile(imi_file):
-            srv_com.set_dictionary("imageinfo", dict([(key.strip(), value.strip()) for key, value in [line.strip().lower().split("=", 1) for line in open(imi_file, "r").readlines() if line.count("=")]]))
-        srv_com.set_dictionary("sysinfo", sys_dict)
+            srv_com["imageinfo"] = dict([(key.strip(), value.strip()) for key, value in [line.strip().lower().split("=", 1) for line in open(imi_file, "r").readlines() if line.count("=")]])
+        srv_com["sysinfo"] = sys_dict
     def interpret(self, srv_com, cur_ns):
         need_keys = set(["vendor", "version", "arch"])
         miss_keys = [key for key in need_keys if not "sysinfo:%s" % (key) in srv_com]
@@ -1666,12 +1666,12 @@ class macinfo_command(hm_classes.hm_command):
                                 net_dict[act_name] = act_mac
         except:
             pass
-        srv_com.set_dictionary("macinfo", net_dict)
+        srv_com["macinfo"] = net_dict
     def interpret(self, srv_com, cur_ns):
         if "macinfo" in srv_com:
             mac_list = []
-            for sub_el in srv_com["macinfo"]:
-                mac_list.append("%s (%s)" % (sub_el.tag.split("}")[1], sub_el.text))
+            for sub_el in sorted(srv_com["macinfo"].iterkeys()):
+                mac_list.append("%s (%s)" % (sub_el, srv_com["macinfo"][sub_el]))
             return limits.nag_STATE_OK, "%s: %s" % (logging_tools.get_plural("device", len(mac_list)),
                                                     ", ".join(sorted(mac_list)))
         else:
@@ -1735,14 +1735,14 @@ class umount_command(hm_classes.hmb_command):
 
 class pciinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com.set_dictionary("pci", pci_database.get_actual_pci_struct(*pci_database.get_pci_dicts()))
+        srv_com["pci"] = pci_database.get_actual_pci_struct(*pci_database.get_pci_dicts())
     def interpret(self, srv_com, cur_ns):
         def _short(in_tag):
             return in_tag.split("}")[1]
         def _short_tag(in_el):
-            return int(_short(in_el.tag)[1:])
+            return int(_short(in_el.tag)[7:])
         cmr_b = []
-        for domain in srv_com["pci"]:
+        for domain in srv_com.get_element("pci")[0]:
             for bus in domain:
                 for slot in bus:
                     for func in slot:

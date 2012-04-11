@@ -97,9 +97,9 @@ class ipsec_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
     def __call__(self, srv_com, cur_ns):
-        srv_com.set_dictionary("ipsec_status", self.module._update_ipsec_status())
+        srv_com["ipsec_status"] = self.module._update_ipsec_status()
     def interpret(self, srv_com, cur_ns):
-        con_dict = server_command.srv_command.tree_to_dict(srv_com["ipsec_status"])
+        con_dict = srv_com["ipsec_status"]
         return self._interpret(con_dict, cur_ns)
     def interpret_old(self, result, parsed_coms):
         con_dict = hm_classes.net_to_sys(result[3:])

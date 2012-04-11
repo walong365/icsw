@@ -304,7 +304,7 @@ class ctrl_type_tw(ctrl_type):
                                                                              "status" : pm.group("status").strip()}
                                     if ctrl_result["units"].has_key(pm.group("unit")):
                                         ctrl_result["units"][pm.group("unit")]["ports"].append(pm.group("num"))
-            ccs.srv_com.set_dictionary("result:ctrl_%s" % (ctrl_id), ctrl_result)
+            ccs.srv_com["result:ctrl_%s" % (ctrl_id)] = ctrl_result
         else:
             pass
 ##    def server_call(self, cm):
@@ -756,7 +756,7 @@ class ctrl_type_gdth(ctrl_type):
             "ad" : ad_dict,
             "hd" : hd_dict,
             "log" : (last_log_time, last_log_line)}
-        ccs.srv_com.set_dictionary("result:ctrl_%s" % (ctrl_id), ret_dict)
+        ccs.srv_com["result:ctrl_%s" % (ctrl_id)] = ret_dict
     def _interpret(self, ctrl_dict, cur_ns):
         if ctrl_dict.keys()[0].startswith("ctrl_"):
             ctrl_dict = ctrl_dict.values()[0]
@@ -1065,7 +1065,7 @@ class tw_status_command(hm_classes.hm_command):
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("tw")._interpret(ctrl_dict, cur_ns)
     def interpret(self, srv_com, cur_ns):
-        return self._interpret(server_command.srv_command.tree_to_dict(srv_com["result"]), cur_ns)
+        return self._interpret(dict([(srv_com._interpret_tag(cur_el, cur_el.tag), srv_com._interpret_el(cur_el)) for cur_el in srv_com["result"]]), cur_ns)
     def interpret_old(self, result, parsed_coms):
         tw_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(tw_dict, parsed_coms)
@@ -1125,7 +1125,7 @@ class gdth_status_command(hm_classes.hm_command):
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("gdth")._interpret(ctrl_dict, cur_ns)
     def interpret(self, srv_com, cur_ns):
-        return self._interpret(server_command.srv_command.tree_to_dict(srv_com["result"]), cur_ns)
+        return self._interpret(dict([(srv_com._interpret_tag(cur_el, cur_el.tag), srv_com._interpret_el(cur_el)) for cur_el in srv_com["result"]]), cur_ns)
     def interpret_old(self, result, cur_ns):
         ctrl_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(ctrl_dict, cur_ns)
