@@ -73,6 +73,10 @@ def _set_samba_password(user_dict, pass1):
     if smbpasswd:
         user_dict["nt_password"] = smbpasswd.nthash(pass1)
         user_dict["lm_password"] = smbpasswd.lmhash(pass1)
+    else:
+        # set dummy passwords
+        user_dict["nt_password"] = ""
+        user_dict["lm_password"] = ""
 
 def get_system_user_ids():
     try:
