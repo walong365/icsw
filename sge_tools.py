@@ -1245,6 +1245,8 @@ class sge_host(object):
                                          "m" : 1024 * 1024,
                                          "g" : 1024 * 1024 * 1024,
                                          "t" : 1024 * 1024 * 1024 * 0124}.get(in_str[-1].lower(), 1.))
+    def get_value_dict(self):
+        return self.__value_dict
     def _memory_to_str(self, in_val):
         pf_list = ["", "k", "M", "G", "T"]
         act_pf = pf_list.pop(0)
