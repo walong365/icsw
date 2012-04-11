@@ -2843,6 +2843,7 @@ class node_thread(threading_tools.thread_obj):
 class rms_mon_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+        self.__main_socket = self.connect_to_socket("internal")
         #self.__db_con = mysql_tools.dbcon_container()
         #self.__gen_config = main_config(self)
         #self.register_func("rebuild_config", self._rebuild_config)
@@ -2863,16 +2864,14 @@ class rms_mon_process(threading_tools.process_obj):
         srv_com = server_command.srv_command(source=srv_com_str)
         #needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
         #update_list = opt_dict.get("update_list", [])
-        needed_dicts = ["hostgroup", "queueconf", "qhost", "complexes"]
+        needed_dicts = ["hostgroup", "queueconf", "qhost"]#, "complexes"]
         update_list = []
         for key in needed_dicts:
-            print key
-            pprint.pprint(self.__sge_info[key])
             if key == "qhost":
-                srv_com.set_dictionary("sge:%s" % (key), dict([(sub_key, self.__sge_info[key][sub_key].get_value_dict()) for sub_key in self.__sge_info[key]]))
+                srv_com["sge:%s" % (key)] = dict([(sub_key, self.__sge_info[key][sub_key].get_value_dict()) for sub_key in self.__sge_info[key]])
             else:
-                srv_com.set_dictionary("sge:%s" % (key), self.__sge_info[key])
-        print unicode(srv_com)
+                srv_com["sge:%s" % (key)] = self.__sge_info[key]
+        self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
 
@@ -2895,6 +2894,7 @@ class server_process(threading_tools.process_pool):
         self._init_network_sockets()
         #self.add_process(db_verify_process("db_verify"), start=True)
         self.add_process(rms_mon_process("rms_mon"), start=True)
+        self.register_func("command_result", self._com_result)
         #self._init_em()
         #self.register_timer(self._check_db, 3600, instant=True)
         #self.register_timer(self._update, 30, instant=True)
@@ -2983,6 +2983,8 @@ class server_process(threading_tools.process_pool):
     def _send_result(self, src_id, srv_com):
         self.com_socket.send_unicode(src_id, zmq.SNDMORE)
         self.com_socket.send_unicode(unicode(srv_com))
+    def _com_result(self, src_proc, proc_id, src_id, srv_com):
+        self._send_result(src_id, srv_com)
     def thread_loop_post(self):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
