@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -40,6 +40,7 @@ import server_command
 import process_tools
 import shelve
 import fcntl
+import zmq
 
 SQL_ACCESS = "cluster_full_access"
 
@@ -1640,27 +1641,35 @@ class sge_info(object):
             srv_name = self.__server
             s_time = time.time()
             # try server_update
-            errnum, data = net_tools.single_connection(mode="tcp",
-                                                       host=srv_name,
-                                                       port=8009,
-                                                       command=server_command.server_command(command="get_config",
-                                                                                             option_dict={"needed_dicts" : server_update}),
-                                                       timeout=10.0,
-                                                       protocoll=1).iterate()
-            if not errnum:
-                try:
-                    srv_reply = server_command.server_reply(data)
-                except:
-                    pass
-                else:
-                    for key, value in srv_reply.get_option_dict().iteritems():
-                        dicts_to_update.remove(key)
-                        self.__act_dicts[key] = value
+            # old TCP code
+##            errnum, data = net_tools.single_connection(mode="tcp",
+##                                                       host=srv_name,
+##                                                       port=8009,
+##                                                       command=server_command.server_command(command="get_config",
+##                                                                                             option_dict={"needed_dicts" : server_update}),
+##                                                       timeout=10.0,
+##                                                       protocoll=1).iterate()
+            # new fancy 0MQ code
+            zmq_context = zmq.Context(1)
+            client = zmq_context.socket(zmq.DEALER)
+            client.setsockopt(zmq.IDENTITY, "sge_tools:%d" % (os.getpid()))
+            client.setsockopt(zmq.LINGER, 100)
+            client.connect("tcp://%s:8009" % (srv_name))
+            srv_com = server_command.srv_command(command="get_config")
+            client.send_unicode(unicode(srv_com))
+            recv = client.recv_unicode()
+            client.close()
+            zmq_context.term()
+            try:
+                srv_reply = server_command.srv_command(source=recv)
+            except:
+                pass
             else:
-                self.log("error getting dicts from server %s (%d): %s" % (srv_name,
-                                                                          errnum,
-                                                                          str(data)),
-                         logging_tools.LOG_LEVEL_ERROR)
+                for key in server_update:
+                    full_key = "sge:%s" % (key)
+                    if full_key in srv_reply:
+                        self.__act_dicts[key] = srv_reply[full_key]
+                        dicts_to_update.remove(key)
             e_time = time.time()
             if self.__verbose > 0:
                 self.log("%s (server %s) took %s" % (", ".join(server_update),
