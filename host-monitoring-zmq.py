@@ -131,6 +131,7 @@ class id_discovery(object):
             id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)
             #id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.error)
             dealer_message = server_command.srv_command(command="get_0mq_id")
+            dealer_message["target_ip"] = self.host
             self.socket.connect(self.conn_str)
             self.log("send discovery message")
             self.socket.send_unicode(unicode(dealer_message))
@@ -1256,20 +1257,22 @@ class server_process(threading_tools.process_pool):
         ipv4_dict = dict([(cur_if_name, [ip_tuple["addr"] for ip_tuple in value[2]][0]) for cur_if_name, value in [(if_name, netifaces.ifaddresses(if_name)) for if_name in netifaces.interfaces()] if 2 in value])
         ipv4_lut = dict([(value, key) for key, value in ipv4_dict.iteritems()])
         ipv4_addresses = ipv4_dict.values()
-        zmq_id_dict = dict([(cur_el.attrib["bind_address"], cur_el.text) for cur_el in zmq_id_xml.xpath(".//zmq_id[@bind_address]")])
+        zmq_id_dict = dict([(cur_el.attrib["bind_address"], (cur_el.text, True if "virtual" in cur_el.attrib else False)) for cur_el in zmq_id_xml.xpath(".//zmq_id[@bind_address]")])
         if zmq_id_dict.keys() == ["*"]:
             # wildcard bind
             pass
         else:
             if "*" in zmq_id_dict:
-                wc_urn = zmq_id_dict.pop("*")
+                wc_urn, wc_virtual = zmq_id_dict.pop("*")
                 for target_ip in ipv4_addresses:
                     if target_ip not in zmq_id_dict:
-                        zmq_id_dict[target_ip] = wc_urn
+                        zmq_id_dict[target_ip] = (wc_urn, wc_virtual)
         self.log("0MQ bind info")
         for key in sorted(zmq_id_dict.iterkeys()):
-            self.log("bind address %-15s: %s" % (key, zmq_id_dict[key]))
-        for bind_ip, bind_0mq_id in zmq_id_dict.iteritems():
+            self.log("bind address %-15s: %s%s" % (key,
+                                                   zmq_id_dict[key][0],
+                                                   " is virtual" if zmq_id_dict[key][1] else ""))
+        for bind_ip, (bind_0mq_id, is_virtual) in zmq_id_dict.iteritems():
             client = self.zmq_context.socket(zmq.ROUTER)
             client.setsockopt(zmq.IDENTITY, bind_0mq_id)
             client.setsockopt(zmq.HWM, 256)
@@ -1278,10 +1281,13 @@ class server_process(threading_tools.process_pool):
                     bind_ip,
                     global_config["COM_PORT"]))
             except zmq.core.error.ZMQError:
-                self.log("error binding to %d: %s" % (global_config["COM_PORT"],
-                                                      process_tools.get_except_info()),
+                self.log("error binding to %s:%d: %s" % (
+                    "virtual %s" % (bind_ip) if is_virtual else bind_ip,
+                    global_config["COM_PORT"],
+                    process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_CRITICAL)
-                raise
+                if not is_virtual:
+                    raise
             else:
                 self.register_poller(client, zmq.POLLIN, self._recv_command)
         sock_list = [("ipc", "vector"  , zmq.PULL  , 512 )]

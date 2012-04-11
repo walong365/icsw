@@ -1282,7 +1282,29 @@ class version_command(hm_classes.hm_command):
         
 class get_0mq_id_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com["zmq_id"] = file("/etc/sysconfig/host-monitoring.d/0mq_id", "r").read().strip()
+        zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
+        if os.path.isfile(zmq_id_name):
+            zmq_id_xml = etree.fromstring(file(zmq_id_name, "r").read())
+            id_node = None
+            if "target_ip" in srv_com:
+                target_ip = srv_com["target_ip"].text
+            else:
+                target_ip = "*"
+            self.log("target_ip for get_0mq_id is %s" % ())
+            if target_ip != "*":
+                id_node = zmq_id_xml.xpath(".//zmq_id[@bind_address='%s']" % (target_ip))
+                id_node = id_node[0] if len(id_node) else None
+            if id_node is None:
+                id_node = zmq_id_xml.xpath(".//zmq_id[@bind_address='*']")
+                id_node = id_node[0] if len(id_node) else None
+            if id_node is not None:
+                srv_com["zmq_id"] = id_node.text
+            else:
+                srv_com["result"].attrib.update({"reply" : "no matching 0MQ id found for ip %s" % (target_ip),
+                                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+        else:
+            srv_com["result"].attrib.update({"reply" : "no 0MQ_id file found",
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
     def interpret(self, srv_com, cur_ns):
         try:
             return limits.nag_STATE_OK, "0MQ id is %s" % (srv_com["zmq_id"].text)
