@@ -666,50 +666,53 @@ def read_config_from_db(g_config, dc, server_type, init_list=[], host_name="", *
         # AL 20120401 **kwargs delete, FIXME ?
         host_name = process_tools.get_machine_name()
     g_config.add_config_entries(init_list, database=True)
-    num_serv, serv_idx, s_type, s_str, config_idx, real_config_name = process_tools.is_server(dc, server_type.replace("%", ""), True, False, host_name.split(".")[0])
-    #print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
-    if num_serv:
-        # dict of local vars without specified host
-        l_var_wo_host = {}
-        for short in ["str",
-                      "int",
-                      "blob",
-                      "bool"]:
-            # very similiar code appears in config_tools.py
-            sql_str = "SELECT cv.* FROM new_config c INNER JOIN device_config dc LEFT JOIN config_%s cv ON cv.new_config=c.new_config_idx WHERE (cv.device=0 OR cv.device=%d) AND dc.device=%d AND dc.new_config=c.new_config_idx AND c.name='%s' ORDER BY cv.device, cv.name" % (short, config_idx, serv_idx, real_config_name)
-            dc.execute(sql_str)
-            for db_rec in [y for y in dc.fetchall() if y["name"]]:
-                if db_rec["name"].count(":"):
-                    var_global = False
-                    local_host_name, var_name = db_rec["name"].split(":", 1)
-                else:
-                    var_global = True
-                    local_host_name, var_name = (host_name, db_rec["name"])
-                if type(db_rec["value"]) == type(array.array("b")):
-                    new_val = str_c_var(db_rec["value"].tostring(), source="%s_table" % (short))
-                elif short == "int":
-                    new_val = int_c_var(int(db_rec["value"]), source="%s_table" % (short))
-                elif short == "bool":
-                    new_val = bool_c_var(bool(db_rec["value"]), source="%s_table" % (short))
-                else:
-                    new_val = str_c_var(db_rec["value"], source="%s_table" % (short))
-                present_in_config = var_name in g_config
-                if present_in_config:
-                    # copy settings from config
-                    new_val.database = g_config.database(var_name)
-                new_val.is_global = var_global
-                if local_host_name == host_name:
-                    if var_name.upper() in g_config and g_config.fixed(var_name.upper()):
-                        # present value is fixed, keep value, only copy global / local status
-                        g_config[var_name.upper].is_global = new_val.is_global
+    if dc is not None:
+        num_serv, serv_idx, s_type, s_str, config_idx, real_config_name = process_tools.is_server(dc, server_type.replace("%", ""), True, False, host_name.split(".")[0])
+        #print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
+        if num_serv:
+            # dict of local vars without specified host
+            l_var_wo_host = {}
+            for short in ["str",
+                          "int",
+                          "blob",
+                          "bool"]:
+                # very similiar code appears in config_tools.py
+                sql_str = "SELECT cv.* FROM new_config c INNER JOIN device_config dc LEFT JOIN config_%s cv ON cv.new_config=c.new_config_idx WHERE (cv.device=0 OR cv.device=%d) AND dc.device=%d AND dc.new_config=c.new_config_idx AND c.name='%s' ORDER BY cv.device, cv.name" % (short, config_idx, serv_idx, real_config_name)
+                dc.execute(sql_str)
+                for db_rec in [y for y in dc.fetchall() if y["name"]]:
+                    if db_rec["name"].count(":"):
+                        var_global = False
+                        local_host_name, var_name = db_rec["name"].split(":", 1)
                     else:
-                        g_config.add_config_entries([(var_name.upper(), new_val)])
-                elif local_host_name == "":
-                    l_var_wo_host[var_name.upper()] = new_val
-        # check for vars to insert
-        for wo_var_name, wo_var in l_var_wo_host.iteritems():
-            if not wo_var_name in g_config or g_config.get_source(wo_var_name) == "default":
-                g_config.add_config_entries([(wo_var_name, wo_var)])
+                        var_global = True
+                        local_host_name, var_name = (host_name, db_rec["name"])
+                    if type(db_rec["value"]) == type(array.array("b")):
+                        new_val = str_c_var(db_rec["value"].tostring(), source="%s_table" % (short))
+                    elif short == "int":
+                        new_val = int_c_var(int(db_rec["value"]), source="%s_table" % (short))
+                    elif short == "bool":
+                        new_val = bool_c_var(bool(db_rec["value"]), source="%s_table" % (short))
+                    else:
+                        new_val = str_c_var(db_rec["value"], source="%s_table" % (short))
+                    present_in_config = var_name in g_config
+                    if present_in_config:
+                        # copy settings from config
+                        new_val.database = g_config.database(var_name)
+                    new_val.is_global = var_global
+                    if local_host_name == host_name:
+                        if var_name.upper() in g_config and g_config.fixed(var_name.upper()):
+                            # present value is fixed, keep value, only copy global / local status
+                            g_config[var_name.upper].is_global = new_val.is_global
+                        else:
+                            g_config.add_config_entries([(var_name.upper(), new_val)])
+                    elif local_host_name == "":
+                        l_var_wo_host[var_name.upper()] = new_val
+            # check for vars to insert
+            for wo_var_name, wo_var in l_var_wo_host.iteritems():
+                if not wo_var_name in g_config or g_config.get_source(wo_var_name) == "default":
+                    g_config.add_config_entries([(wo_var_name, wo_var)])
+    else:
+        print "dc is None in read_config_from_db", server_type, kwargs
     
 def read_global_config(dc, server_type, init_dict=None, host_name=""):
     if init_dict is None:
