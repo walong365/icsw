@@ -163,12 +163,9 @@ class srv_command(object):
             return ("%d" % (value), "int")
         else:
             return (value, "str")
-    def __setitem__(self, key, value, *kwargs):
+    def __setitem__(self, key, value):
         cur_element = self._create_element(key)
-        if type(value) == type({}) and False:
-            # no longer needed
-            cur_element.attrib.update(dict([(sub_key, self._to_unicode(sub_value)[0]) for sub_key, sub_value in value.iteritems()]))
-        elif type(value) == etree._Element:
+        if type(value) == etree._Element:
             cur_element.append(value)
         else:
             self._element(value, cur_element)
@@ -238,29 +235,6 @@ class srv_command(object):
                 cur_element.append(sub_el)
             cur_element = sub_el
         return cur_element
-##    def set_dictionary(self, key, sub_dict):
-##        print "deprecated, no longer needed, key is %s" % (key)
-##        cur_element = self._create_element(key)
-##        cur_element.attrib["type"] = "dict"
-##        for sub_key, sub_value in sub_dict.iteritems():
-##            if type(sub_key) == type(0):
-##                sub_key = "__int__%d" % (sub_key)
-##            if type(sub_value) == type({}):
-##                self.set_dictionary("%s:%s" % (key, sub_key), sub_value)
-##            else:
-##                sub_el = self.builder(sub_key)#getattr(self.__builder, sub_key)()
-##                if type(sub_value) == type([]):
-##                    sub_el.attrib["type"] = "list"
-##                    for list_value in sub_value:
-##                        sub_el.append(self._element(list_value))
-##                elif type(sub_value) == type(()):
-##                    sub_el.attrib["type"] = "tuple"
-##                    for list_value in sub_value:
-##                        sub_el.append(self._element(list_value))
-##                else:
-##                    self._element(sub_value, sub_el)
-##                cur_element.append(sub_el)
-##        return cur_element
     def _interpret_el(self, top_el):
         value, el_type = (top_el.text, top_el.attrib.get("type", None))
         if  el_type == "dict":
@@ -296,60 +270,6 @@ class srv_command(object):
                 value = value or u""
             return value
         return result
-##    @staticmethod
-##    def tree_to_dict(top_el):
-##        print "deprecated tree_to_dict"
-##        iso_re = re.compile("^(?P<pre>.*)_0x0(?P<code>[^_]\S+)_(?P<post>.*)")
-##        ret_dict = {}
-##        for sub_el in top_el:
-##            key = sub_el.tag.split("}")[1]
-##            if "escape_slash" in sub_el.attrib:
-##                key = key.replace("__slash__", "/")
-##            if "escape_atsign" in sub_el.attrib:
-##                key = key.replace("__atsign__", "@")
-##            if "first_digit" in sub_el.attrib:
-##                key = key.replace("__fdigit__", "")
-##            if key.startswith("__int__"):
-##                key = int(key[7:])
-##            else:
-##                while True:
-##                    cur_match = iso_re.match(key)
-##                    if cur_match:
-##                        key = "%s%s%s" % (cur_match.group("pre"),
-##                                          chr(int(cur_match.group("code"), 16)),
-##                                          cur_match.group("post"))
-##                    else:
-##                        break
-##            if not sub_el.attrib:
-##                value = srv_command.tree_to_dict(sub_el)
-##            else:
-##                if sub_el.attrib["type"] == "list":
-##                    value = [srv_command._interpret_element(list_el) for list_el in sub_el]
-##                elif sub_el.attrib["type"] == "tuple":
-##                    value = tuple([srv_command._interpret_element(tuple_el) for tuple_el in sub_el])
-##                elif sub_el.attrib["type"] == "dict":
-##                    value = srv_command.tree_to_dict(sub_el)
-##                else:
-##                    value = srv_command._interpret_element(sub_el)
-##            ret_dict[key] = value
-##        return ret_dict
-    @staticmethod
-    def _interpret_element(cur_el):
-        value, el_type = (cur_el.text, cur_el.attrib["type"])
-        if el_type == "int":
-            value = int(value)
-        elif el_type == "bool":
-            value = bool(value)
-        elif el_type == "date":
-            value_dt = datetime.datetime.strptime(value, "%Y-%m-%d")
-            value = datetime.date(value_dt.year, value_dt.month, value_dt.day)
-        elif el_type == "datetime":
-            value = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
-        elif el_type == "float":
-            value = float(value)
-        elif el_type == "str":
-            value = value or u""
-        return value
     def get(self, key, def_value):
         xpath_str = ".//%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
         xpath_res = self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS})
@@ -367,8 +287,7 @@ class srv_command(object):
         return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)
     def __del__(self):
         srv_command.srvc_open -= 1
-        pass
-
+        
 class command_template(object):
     def __init__(self, *rest_vals, **rest_dict):
         self.invalidate_buffer()
