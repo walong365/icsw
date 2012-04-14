@@ -18,6 +18,7 @@
 # Description:   start hoststatus daemon and send message to mother (if possible)
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -25,8 +26,8 @@ else
 fi
 [ -f /etc/redhat-release ] && . /etc/init.d/functions
 
-HOSTSTAT_BIN=/sbin/hoststatus
-CHILD_BIN=/sbin/tell_mother
+HOSTSTAT_BIN=/opt/cluster/sbin/hoststatus
+CHILD_BIN=/opt/cluster/sbin/tell_mother
 test -x ${HOSTSTAT_BIN} || exit 5
 test -x ${CHILD_BIN} || exit 5
 

@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2001,2002,2003,2004,2005,2008 init.at
+# Copyright (c) 2001,2002,2003,2004,2005,2008,2012 init.at
 #
 # RedHat stuff
 # chkconfig: 2345 79 21
@@ -16,6 +16,7 @@
 # Description:   start mother
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -31,7 +32,7 @@ else
     SYSLOG_RC=/etc/init.d/syslog-ng
 fi
 
-SERVER_BIN=/usr/local/sbin/mother.py
+SERVER_BIN=/opt/cluster/sbin/mother.py
 PYTHON_BIN=/usr/bin/python-init
 SERVER_PID=/var/run/mother/mother.pid
 SERVER_USER="idmother"
