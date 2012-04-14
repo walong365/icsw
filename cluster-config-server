@@ -18,6 +18,7 @@
 # Description:   starts cluster-config-server
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -25,7 +26,7 @@ else
 fi
 . /etc/init.d/ics_tools.sh
 
-SERVER_BIN=/usr/local/sbin/cluster-config-server.py
+SERVER_BIN=/opt/cluster/sbin/cluster-config-server.py
 PYTHON_BIN=/usr/bin/python-init
 SERVER_PID=/var/run/cluster-config-server/cluster-config-server.pid
 SERVER_ARGS=""
