@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -21,7 +21,7 @@
 #
 
 echo "Node scripts ..."
-/usr/local/sbin/check_node.sh $*
+/opt/cluster/sbin/check_node.sh $*
 
 echo "Server scripts ..."
-/usr/local/cluster/bin/check_server.sh $*
+/opt/cluster/sbin/check_server.sh $*
