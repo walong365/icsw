@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2012 Andreas Lang-Nevyjel
 #
 # this file is part of package-client
 #
@@ -29,6 +29,7 @@ import configfile
 import socket
 import copy
 import cPickle
+import zmq
 import net_tools
 try:
     import bz2
@@ -53,6 +54,7 @@ except ImportError:
     VERSION_STRING = "0.0-0"
 
 import locale
+
 try:
     CB_ENCODING = locale.getpreferredencoding()
 except locale.Error:
@@ -1622,80 +1624,92 @@ class comsend_thread(threading_tools.thread_obj):
             if all_ok:
                 self.send_pool_message("start_sge_execd")
 
-class my_thread_pool(threading_tools.thread_pool):
-    def __init__(self, glob_config, log_list):
-        self.__glob_config = glob_config
-        self.__logger = logging_tools.get_logger(self.__glob_config["LOG_NAME"],
-                                                 self.__glob_config["LOG_DESTINATION"],
-                                                 init_logger=True)
-        threading_tools.thread_pool.__init__(self, "main_thread", blocking_loop=False, verbose=self.__glob_config["VERBOSE"] > 0)
+class server_process(threading_tools.process_pool):
+    def __init__(self):
+        self.global_config = global_config
+        self.__log_cache, self.__log_template = ([], None)
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        if not global_config["DEBUG"]:
+            process_tools.set_handles({"out" : (1, "package_client.out"),
+                                       "err" : (0, "/var/lib/logging-server/py_err")},
+                                       zmq_context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.install_signal_handlers()
         # init environment
         self._init_environment()
+        self._init_msi_block()
         self.register_exception("int_error"  , self._int_error)
         self.register_exception("term_error" , self._int_error)
         self.register_exception("alarm_error", self._alarm_error)
-        # save pid
-        process_tools.save_pid("package-client/package-client")
-        # meta-server-info
-        self.__msi_block = self._init_msi_block(self.__glob_config["DAEMON"])
         # set lockfile
         process_tools.set_lockfile_msg(LF_NAME, "connect...")
         # log buffer
-        for log_line in log_list:
-            self.log("(delayed) %s" % (log_line))
-        for conf in self.__glob_config.get_config_info():
-            self.log("Config : %s" % (conf))
-        self.__act_speed = 0.1
-        self.__ns = net_tools.network_server(timeout=self.__act_speed, log_hook=self.log, poll_verbose=False)
-        self._set_target_retry_speed(self.__glob_config["POLL_INTERVALL"])
-        self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_con, port=self.__glob_config["NODE_PORT"], bind_retries=self.__glob_config["N_RETRY"], bind_state_call=self._bind_state_call, timeout=30))
-        self.__comsend_queue = self.add_thread(comsend_thread(self.__glob_config, self.__ns, self.__logger), start_thread=True).get_thread_queue()
-        # automounter check counter
-        self.__automounter_checks = 0
-        self.__automounter_valid = not self.__glob_config["CHECK_AUTOMOUNTER"]
-        self.__am_checker = process_tools.automount_checker()
-        # register funcs
-        self.register_func("set_target_retry_speed", self._set_target_retry_speed)
-        self.register_func("new_pid", self._new_pid)
-        self.register_func("threads_alive", self._threads_alive)
-        self.register_func("force_exit", self._int_error)
-        self.register_func("start_sge_execd", self._start_sge_execd)
-        self.__last_hello_call = time.time()
-        self.__last_tqi_was_clean = False
-        # sge start option
-        self.__sge_execd_started = False
+        self._show_config()
         # log limits
         self._log_limits()
+        self._init_network_sockets()
+        if False:
+            # automounter check counter
+            self.__automounter_checks = 0
+            self.__automounter_valid = not self.__glob_config["CHECK_AUTOMOUNTER"]
+            self.__am_checker = process_tools.automount_checker()
+            # register funcs
+            #self.register_func("set_target_retry_speed", self._set_target_retry_speed)
+            #self.register_func("new_pid", self._new_pid)
+            #self.register_func("threads_alive", self._threads_alive)
+            #self.register_func("force_exit", self._int_error)
+            self.register_func("start_sge_execd", self._start_sge_execd)
+            #self.__last_hello_call = time.time()
+            #self.__last_tqi_was_clean = False
+        # sge start option
+        self.__sge_execd_started = False
+    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+        if self.__log_template:
+            while self.__log_cache:
+                cur_lev, cur_what = self.__log_cache.pop(0)
+                self.__log_template.log(cur_lev, cur_what)
+            self.__log_template.log(lev, what)
+        else:
+            self.__log_cache.append((lev, what))
     def _init_environment(self):
         # Debian fix to get full package names, sigh ...
         os.environ["COLUMNS"] = "2000"
-    def _new_pid(self, new_pid):
-        self.log("received new_pid message")
-        process_tools.append_pids("package-client/package-client", new_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(new_pid)
-            self.__msi_block.save_block()
-    def _init_msi_block(self, daemon):
-        if daemon:
+    def _init_msi_block(self):
+        # store pid name because global_config becomes unavailable after SIGTERM
+        self.__pid_name = global_config["PID_NAME"]
+        process_tools.save_pids(global_config["PID_NAME"], mult=3)
+        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3)
+        if True:#not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("package-client")
-            msi_block.add_actual_pid()
+            msi_block.add_actual_pid(mult=3)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/package-client start"
             msi_block.stop_command = "/etc/init.d/package-client force-stop"
             msi_block.kill_pids = True
+            #msi_block.heartbeat_timeout = 60
             msi_block.save_block()
         else:
             msi_block = None
-        return msi_block
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__logger.log(lev, what)
+        self.__msi_block = msi_block
+    def _show_config(self):
+        try:
+            for log_line, log_level in global_config.get_log():
+                self.log("Config info : [%d] %s" % (log_level, log_line))
+        except:
+            self.log("error showing configfile log, old configfile ? (%s)" % (process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+        conf_info = global_config.get_config_info()
+        self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
+        for conf in conf_info:
+            self.log("Config : %s" % (conf))
     def _log_limits(self):
         # read limits
         r_dict = {}
         try:
             import resource
         except ImportError:
-            pass
+            self.log("cannot import resource", logging_tools.LOG_LEVEL_ERROR)
         available_resources = [key for key in dir(resource) if key.startswith("RLIMIT")]
         for av_r in available_resources:
             try:
@@ -1722,6 +1736,22 @@ class my_thread_pool(threading_tools.thread_pool):
                 self.log(line)
         else:
             self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
+    def _init_network_sockets(self):
+        client = self.zmq_context.socket(zmq.ROUTER)
+        client.setsockopt(zmq.IDENTITY, "package-client:%s" % (process_tools.get_machine_name()))
+        client.setsockopt(zmq.HWM, 256)
+        conn_str = "tcp://*:%d" % (global_config["COM_PORT"])
+        client.bind(conn_str)
+        self.log("bind to %s" % (conn_str))
+        self.com_socket = client
+        self.register_poller(self.com_socket, zmq.POLLIN, self._recv)
+    def _recv(self, zmq_sock):
+        data = []
+        while True:
+            data.append(zmq_sock.recv())
+            if not zmq_sock.getsockopt(zmq.RCVMORE):
+                break
+        print data
     def _threads_alive(self):
         self.log("All threads alive")
         if not self.__automounter_valid:
@@ -1759,64 +1789,48 @@ class my_thread_pool(threading_tools.thread_pool):
             am_ok = False
         self.log("status of automounter is %s" % (str(am_ok)))
         return am_ok
-    def _bind_state_call(self, **args):
-        if args["state"] == "error":
-            self.log("unable to bind to all ports, exiting", logging_tools.LOG_LEVEL_ERROR)
-            self._int_error("bind error")
-        elif args["state"] == "ok":
-            pass
-    def _new_tcp_con(self, sock, source):
-        return connection_from_server(sock, source, self.__comsend_queue)
-    def _set_target_retry_speed(self, speed):
-        if speed != self.__act_speed:
-            if self["exit_requested"] and speed > self.__act_speed:
-                # only decrease retry-speed when exiting
-                pass
-            else:
-                self.log("changing target_retry_speed from %d to %d (seconds)" % (self.__act_speed, speed))
-                self.__act_speed = speed
-                self.__ns.set_timeout(speed)
+##    def _set_target_retry_speed(self, speed):
+##        if speed != self.__act_speed:
+##            if self["exit_requested"] and speed > self.__act_speed:
+##                # only decrease retry-speed when exiting
+##                pass
+##            else:
+##                self.log("changing target_retry_speed from %d to %d (seconds)" % (self.__act_speed, speed))
+##                self.__act_speed = speed
+##                self.__ns.set_timeout(speed)
     def _int_error(self, err_cause):
         self.__exit_cause = err_cause
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self.log("got int_error, err_cause is '%s'" % (err_cause), logging_tools.LOG_LEVEL_WARN)
-            self.__comsend_queue.put("request_exit")
             self["exit_requested"] = True
-            self.__ns.set_timeout(0.1)
     def _alarm_error(self, err_cause):
         self.__comsend_queue.put("reload")
-    def loop_function(self):
-        self.__ns.step()
-        self._show_tqi()
-        act_time = time.time()
-        if abs(self.__last_hello_call - act_time) > 2:
-            self.__last_hello_call = act_time
-            self.__comsend_queue.put("hello")
-    def _show_tqi(self):
-        tqi_dict = self.get_thread_queue_info()
-        tq_names = sorted(tqi_dict.keys())
-        tqi_info = [(t_name,
-                     tqi_dict[t_name][1],
-                     tqi_dict[t_name][0]) for t_name in tq_names if tqi_dict[t_name][1]]
-        if tqi_info:
-            self.log("tqi: %s" % (", ".join(["%s: %3d of %3d" % (t_name, t_used, t_total) for (t_name, t_used, t_total) in tqi_info])))
-            self.__last_tqi_was_clean = False
-        else:
-            if not self.__last_tqi_was_clean:
-                self.__last_tqi_was_clean = True
-                self.log("tqi: clean")
+##    def loop_function(self):
+##        self.__ns.step()
+##        self._show_tqi()
+##        act_time = time.time()
+##        if abs(self.__last_hello_call - act_time) > 2:
+##            self.__last_hello_call = act_time
+##            self.__comsend_queue.put("hello")
+##    def _show_tqi(self):
+##        tqi_dict = self.get_thread_queue_info()
+##        tq_names = sorted(tqi_dict.keys())
+##        tqi_info = [(t_name,
+##                     tqi_dict[t_name][1],
+##                     tqi_dict[t_name][0]) for t_name in tq_names if tqi_dict[t_name][1]]
+##        if tqi_info:
+##            self.log("tqi: %s" % (", ".join(["%s: %3d of %3d" % (t_name, t_used, t_total) for (t_name, t_used, t_total) in tqi_info])))
+##            self.__last_tqi_was_clean = False
+##        else:
+##            if not self.__last_tqi_was_clean:
+##                self.__last_tqi_was_clean = True
+##                self.log("tqi: clean")
     def loop_end(self):
-        self.__ns.close_objects()
-        del self.__ns
-        self.log("proc %i (package-client) exiting (%s)" % (self.pid, self.__exit_cause))
-        process_tools.delete_pid("package-client/package-client")
-    def thread_loop_post(self):
+        process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-            self.log("proc %i (package-client) removed meta-block" % (self.pid))
-        self.log("package-client exiting")
     def _start_sge_execd(self):
         if not self.__sge_execd_started:
             if self.__glob_config["START_SGE_EXECD"]:
@@ -1837,113 +1851,64 @@ class my_thread_pool(threading_tools.thread_pool):
                     self.log("file %s for start_sge_execd() not found" % (sge_execd),
                              logging_tools.LOG_LEVEL_ERROR)
     
+global_config = configfile.get_global_config(process_tools.get_programm_name())
+
 def main():
     process_tools.delete_lockfile(LF_NAME, None, 0)
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "f:dVvr:hkt:p:", ["help", "eof"])
-    except getopt.GetoptError, bla:
-        print "Commandline error!", bla
-        sys.exit(2)
-    long_host_name = socket.getfqdn(socket.gethostname())
-    short_host_name = long_host_name.split(".")[0]
-    glob_config = configfile.configuration("local_config", {"PID_NAME"               : configfile.str_c_var("rrd-server/rrd-server"),
-                                                            "LONG_HOST_NAME"         : configfile.str_c_var(long_host_name),
-                                                            "SHORT_HOST_NAME"        : configfile.str_c_var(short_host_name),
-                                                            "DAEMON"                 : configfile.bool_c_var(True),
-                                                            "VERBOSE"                : configfile.int_c_var(0),
-                                                            "N_RETRY"                : configfile.int_c_var(5),
-                                                            "KILL_RUNNING"           : configfile.bool_c_var(True),
-                                                            "POLL_INTERVALL"         : configfile.int_c_var(5),
-                                                            "EXIT_ON_FAIL"           : configfile.bool_c_var(False),
-                                                            "NODE_PORT"              : configfile.int_c_var(P_CLIENT_PORT),
-                                                            "PROGRAM_NAME"           : configfile.str_c_var(os.path.basename(sys.argv[0])),
-                                                            "SERVER_PORT"            : configfile.int_c_var(P_SERVER_NODE_PORT),
-                                                            "LOG_DESTINATION"        : configfile.str_c_var("uds:/var/lib/logging-server/py_log"),
-                                                            "LOG_NAME"               : configfile.str_c_var("package-client"),
-                                                            "RETRY_WAIT_TIME"        : configfile.int_c_var(2),
-                                                            "CHECK_AUTOMOUNTER"      : configfile.bool_c_var(True),
-                                                            "MAX_AUTOMOUNTER_CHECKS" : configfile.int_c_var(5),
-                                                            "AUTOMOUNTER_WAIT_TIME"  : configfile.int_c_var(30),
-                                                            "LOCAL_CONFIG"           : configfile.str_c_var("/etc/sysconfig/package-client"),
-                                                            "START_SGE_EXECD"        : configfile.bool_c_var(True),
-                                                            "SGE_EXECD_LOCATION"     : configfile.str_c_var("/etc/init.d/sgeexecd"),
-                                                            "VAR_DIR"                : configfile.str_c_var("/var/lib/cluster/package-client")})
-    if os.path.isfile(glob_config["LOCAL_CONFIG"]):
-        glob_config.parse_file(glob_config["LOCAL_CONFIG"])
-    glob_config.write_file(glob_config["LOCAL_CONFIG"], True)
-    ps_file = "/etc/packageserver"
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print "Usage: %s [OPTIONS]" % (glob_config["PROGRAM_NAME"])
-            print "where OPTIONS are:"
-            print " -h,--help       this help"
-            print " -d              run in debug mode (no forking)"
-            print " -v              be verbose (can be used more than once)"
-            print " -V              show version"
-            print " -f FILE         file the name of the package_server host is read from, defaults to %s" % (ps_file)
-            print " -p port         list on given port, default is %d" % (glob_config["NODE_PORT"])
-            print " -k              do not kill running %s" % (glob_config["PROGRAM_NAME"])
-            print " -t <SECS>       set poll_time in seconds, default is %d" % (glob_config["POLL_INTERVALL"])
-            print " --eof           sets exit_on_fail flag"
-            sys.exit(0)
-        if opt == "-k":
-            glob_config["KILL_RUNNING"] = False
-        if opt == "-d":
-            glob_config["DAEMON"] = 0
-        if opt == "-V":
-            print "Version %s" % (VERSION_STRING)
-            sys.exit(0)
-        if opt == "-p":
-            glob_config["NODE_PORT"] = int(arg)
-        if opt == "-v":
-            glob_config["VERBOSE"] += 1
-        if opt == "-r":
-            try:
-                glob_config["N_RETRY"] = int(arg)
-            except:
-                print "Error parsing n_retry"
-                sys.exit(2)
-        if opt == "--eof":
-            glob_config["EXIT_ON_FAIL"] = True
-        if opt == "-t":
-            glob_config["POLL_INTERVALL"] = int(arg)
-    if args:
-        print "Extra arguments given (%s), exiting" % (" ".join(args))
-        sys.exit(-1)
-    # list of startup-logmessages
-    log_list = []
-    if not os.path.isfile(ps_file):
+    prog_name = global_config.name()
+    global_config.add_config_entries([
+        ("PID_NAME"               , configfile.str_c_var("%s/%s" % (prog_name, prog_name))),
+        ("DEBUG"                  , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("VERBOSE"                , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("KILL_RUNNING"           , configfile.bool_c_var(True)),
+        ("POLL_INTERVALL"         , configfile.int_c_var(5, help_string="poll intervall")),
+        ("EXIT_ON_FAIL"           , configfile.bool_c_var(False, help_string="exit on fail [%(default)s]")),
+        ("COM_PORT"               , configfile.int_c_var(P_CLIENT_PORT, help_string="node to bind to [%(default)d]")),
+        ("SERVER_PORT"            , configfile.int_c_var(P_SERVER_NODE_PORT, help_string="server to to connect to [%(default)d]")),
+        ("LOG_DESTINATION"        , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"               , configfile.str_c_var(prog_name)),
+        ("CHECK_AUTOMOUNTER"      , configfile.bool_c_var(True, help_string="check automounter [%(default)s]")),
+        ("MAX_AUTOMOUNTER_CHECKS" , configfile.int_c_var(5, help_string="number of automounter checks [%(default)d]")),
+        ("AUTOMOUNTER_WAIT_TIME"  , configfile.int_c_var(30, help_string="time to wait for automounter [%(default)d]")),
+        ("START_SGE_EXECD"        , configfile.bool_c_var(True, help_string="start sge_execd after successfull install [%(default)s]")),
+        ("SGE_EXECD_LOCATION"     , configfile.str_c_var("/etc/init.d/sgeexecd", help_string="location of sge_execd script [%(default)s")),
+        ("VAR_DIR"                , configfile.str_c_var("/var/lib/cluster/package-client", help_string="location of var-directory [%(default)s]")),
+        ("PACKAGE_SERVER_FILE"    , configfile.str_c_var("/etc/packageserver", help_string="filename where packageserver location is stored [%(default)s]"))
+    ])
+    global_config.parse_file()
+    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
+                                                                                  VERSION_STRING),
+                                               add_writeback_option=True,
+                                               positional_arguments=False,
+                                               partial=False)
+    ps_file_name = global_config["PACKAGE_SERVER_FILE"]
+    if not os.path.isfile(ps_file_name):
         try:
-            psf = file(ps_file, "w").write("localhost\n")
+            file(ps_file_name, "w").write("localhost\n")
         except:
-            log_list.append("Error writing localhost to %s" % (ps_file))
+            print "error writing to %s: %s" % (ps_file_name, process_tools.get_except_info())
+            sys.exit(5)
         else:
-            log_list.append("Wrote localhost to %s" % (ps_file))
+            pass
     try:
-        package_server = file(ps_file, "r").read().split("\n")[0].strip()
-        log_list.append("found package-server '%s'" % (package_server))
+        global_config.add_config_entries([
+            ("PACKAGE_SERVER", configfile.str_c_var(file(ps_file_name, "r").read().strip().split("\n")[0].strip()))
+        ])
     except:
-        package_server = None
-        log_list.append("found no package-server")
-    if package_server:
-        glob_config.add_config_dict({"PACKAGE_SERVER" : configfile.str_c_var(package_server)})
-        process_tools.create_lockfile(LF_NAME)
-    glob_config.add_config_dict({"DEBIAN" : configfile.bool_c_var(os.path.isfile("/etc/debian_version"))})
-    if glob_config["KILL_RUNNING"]:
-        process_tools.kill_running_processes(glob_config["PROGRAM_NAME"])
-    log_list.append("created lockfile %s" % (LF_NAME))
-    process_tools.fix_directories(0, 0, [glob_config["VAR_DIR"]])
+        print "error reading from %s: %s" % (ps_file_name, process_tools.get_except_info())
+        sys.exit(5)
+    global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
+    if global_config["KILL_RUNNING"]:
+        process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
+    process_tools.fix_directories(0, 0, [global_config["VAR_DIR"]])
     process_tools.renice()
-    if glob_config["DAEMON"]:
+    if not global_config["DEBUG"]:
         process_tools.become_daemon(mother_hook = process_tools.wait_for_lockfile, mother_hook_args = (LF_NAME, 5, 200))
-        process_tools.set_handles({"out" : (1, "package_client.out"),
-                                   "err" : (0, "/var/lib/logging-server/py_err")})
     else:
-        print "Debugging package-client on %s" % (long_host_name)
-        glob_config["LOG_DESTINATION"] = "stdout"
-    thread_pool = my_thread_pool(glob_config, log_list)
-    thread_pool.thread_loop()
-    ret_code = 0
+        print "Debugging %s on %s" % (prog_name, process_tools.get_machine_name())
+        # no longer needed
+        #global_config["LOG_DESTINATION"] = "stdout"
+    ret_code = server_process().loop()
     process_tools.delete_lockfile(LF_NAME, None, 0)
     sys.exit(ret_code)
 
