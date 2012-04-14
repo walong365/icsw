@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2007,2008,2009 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2007,2008,2009,2012 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of cbc-tools
 #
@@ -78,3 +78,4 @@ def get_short_version_for_intel(intel_path, command):
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(-1)
+    
