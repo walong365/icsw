@@ -1167,9 +1167,10 @@ class server_process(threading_tools.process_pool):
     def _process_command(self, srv_com):
         com_name = srv_com["command"].text
         self.log("executing command %s" % (com_name))
-        srv_com["result"] = {
+        srv_com["result"] = None
+        srv_com["result"].attrib.update({
             "reply" : "no reply set",
-            "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)}
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)})
         if com_name in cluster_server.command_dict:
             com_obj = cluster_server.command_dict[com_name]
             dc = self.__db_con.get_connection(SQL_ACCESS)

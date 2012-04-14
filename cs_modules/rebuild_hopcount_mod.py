@@ -388,7 +388,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         num_to_check = num_devs * num_devs
         checks_left = num_to_check
         old_perc, old_time = (1000, time.time())
-        for s_name in []:# FIXME dev_names:
+        for s_name in dev_names:
             perc_done = max(0, min(100, 100. - (100. * checks_left) / num_to_check))
             if abs(old_perc - perc_done) >= 10 or abs(time.time() - old_time) >= 5.:
                 old_perc, old_time = (perc_done, time.time())
