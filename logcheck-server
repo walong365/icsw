@@ -16,6 +16,7 @@
 # Description:   start logcheck-server
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -25,7 +26,7 @@ fi
 . /etc/sysconfig/logcheck-server
 . /etc/init.d/ics_tools.sh
 
-SERVER_BIN=/usr/local/sbin/logcheck-server.py
+SERVER_BIN=/opt/cluster/sbin/logcheck-server.py
 PYTHON_BIN=/usr/bin/python-init
 SERVER_PID=/var/run/logcheck-server/logcheck-server.pid
 SERVER_USER="idlog"
