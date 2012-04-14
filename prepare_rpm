@@ -1,0 +1,11 @@
+#!/bin/bash
+. ../devrc
+NAME=webfrontend
+rpmd=/usr/src/packages
+cp -a ${NAME}.spec ${rpmd}/SPECS
+tar -czvf ${rpmd}/SOURCES/${NAME}.tgz httpd.conf php.ini  icons/ htdocs/ --exclude *.php~ --exclude=htdocs/rrd-pngs apache2.conf README LICENSE.GPL
+
+prepare_spec
+cd $rpmd/SPECS
+build_rpm noarch
+install_file

@@ -1,0 +1,7 @@
+[Project Dir]
+Dirs=
+Files=authentication.py/basic_defs.py/basic_functions.py/bootcontrol.py/cdef_basics.py/cdef_device.py/clusterconfig.py/functions.py/hardwareinfo.py/html_tools.py/index_page.py/logging.py/mptest.py/packageinstall.py/tools.py
+
+[Project File]
+Name=webfrontend
+Type=Default
