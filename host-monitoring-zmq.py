@@ -1201,6 +1201,9 @@ class server_process(threading_tools.process_pool):
             self._sigint("error init")
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
+            while self.__log_cache:
+                cur_lev, cur_what = self.__log_cache.pop(0)
+                self.__log_template.log(lev, what)
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
