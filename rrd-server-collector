@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2003,2004,2005,2006,2007 init.at
+# Copyright (c) 2003,2004,2005,2006,2007,2012 init.at
 #
 #
 # RedHat stuff
@@ -18,6 +18,7 @@
 # Description:   start rrd-server-collector
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -26,7 +27,7 @@ fi
 . /etc/init.d/ics_tools.sh
 
 ACT_SERVER_TYPE=collector
-SERVER_BIN=/usr/local/sbin/rrd-server-${ACT_SERVER_TYPE}.py
+SERVER_BIN=/opt/cluster/sbin/rrd-server-${ACT_SERVER_TYPE}.py
 #STOP_SERVER_BIN=/usr/local/sbin/stop_rrd_server.py
 SERVER_PID=/var/run/rrd-server/rrd-server-${ACT_SERVER_TYPE}.pid
 PYTHON_BIN=/usr/bin/python-init
