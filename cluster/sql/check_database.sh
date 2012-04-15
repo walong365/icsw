@@ -41,7 +41,7 @@ for i ; do
     esac
 done
 
-cdir=/usr/local/cluster
+cdir=/opt/cluster
 file_list=$(cat /etc/sysconfig/cluster/db_access  | grep "=" | cut -d "=" -f 2 | grep "^/" | tr ";" "\n")
 
 for conf in $file_list ; do
@@ -95,9 +95,9 @@ rm -f $dump_orig $dump_temp
 
 echo "Python Database diff:"
 if [ "$verify" = "1" ] ; then
-    /usr/local/cluster/bin/check_database.py --verify ${MYSQL_DATABASE} ${TEMP_DATABASE}
+    /opt/cluster/bin/check_database.py --verify ${MYSQL_DATABASE} ${TEMP_DATABASE}
 else
-    /usr/local/cluster/bin/check_database.py ${MYSQL_DATABASE} ${TEMP_DATABASE}
+    /opt/cluster/bin/check_database.py ${MYSQL_DATABASE} ${TEMP_DATABASE}
 fi
 
 echo "Removing temporary databases ..."
