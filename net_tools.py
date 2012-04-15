@@ -565,12 +565,17 @@ class epoll_object(object):
         self.__epoll_type_dict = {}
         self.__epoll_inv_type_dict = {}
         self.verbose = kwargs.get("verbose", False)
+        self.__lock = threading.RLock()
     @property
     def verbose(self):
         return self.__verbose
     @verbose.setter
     def verbose(self, vb):
         self.__verbose = vb
+    def lock(self, blocking=True):
+        return self.__lock.acquire(blocking)
+    def unlock(self):
+        self.__lock.release()
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__verbose:
             if self.__log_handle:
@@ -578,6 +583,7 @@ class epoll_object(object):
             else:
                 print "epoll_object().log (%d): %s" % (lev, what)
     def unregister(self, fd):
+        self.lock()
         if fd in self.__epoll_inv_type_dict:
             try:
                 self.__epoll_object.unregister(fd)
@@ -589,7 +595,9 @@ class epoll_object(object):
                 epoll_object.log(self, "unregistered fd %d from epoll_object" % (fd))
         else:
             epoll_object.log(self, "unknown fd %d for epoll_unregister" % (fd), logging_tools.LOG_LEVEL_ERROR)
+        self.unlock()
     def register(self, handle, ht):
+        self.lock()
         if handle:
             if handle in self.__epoll_inv_type_dict:
                 if self.__epoll_inv_type_dict[handle] != ht:
@@ -597,6 +605,7 @@ class epoll_object(object):
                     self._register(handle, ht)
             else:
                 self._register(handle, ht)
+        self.unlock()
     def _register(self, fd, pt):
         self.__epoll_object.register(fd, pt)
         self.__epoll_type_dict.setdefault(pt, []).append(fd)
@@ -1011,7 +1020,7 @@ class tcp_con_object(socket.socket):
         self.__server.trigger()
     def send_done(self):
         # called from buffer
-        self.__server.register(self.fileno(), POLL_IN)
+        self.__server.unregister(self.fileno())
     def close(self):
         # called from buffer
         #print "close", self.fileno()
@@ -1470,17 +1479,17 @@ class unix_domain_bind(socket.socket):
             self.__log_buffer = []
         else:
             self.__log_buffer.append(("(delayed) %s" % (what), level))
-    def register(self, server, act_poll_object):
+    def register(self, server):#, act_poll_object):
         self.__server = server
         # overide if timeout was not set
         if self.__timeout is None:
             self.__timeout = self.__server.get_timeout()
-        self.__poll_object = act_poll_object
+        #self.__poll_object = act_poll_object
         self._step = self._bind_port
-        self.__poll_object.register_handle(self.fileno(), POLL_OUT)
+        self.__server.register(self.fileno(), POLL_OUT)
         self.log("registered %s" % (self.info_str()))
     def unregister(self):
-        self.__poll_object.poll_unregister(self.fileno())
+        self.__server.unregister(self.fileno())
         self._step = None
     def _dummy_bind_state_call(self, **args):
         self.log("tcp_bind: state_call, %s: %s" % (logging_tools.get_plural("key", len(args.keys())),
@@ -1499,7 +1508,7 @@ class unix_domain_bind(socket.socket):
             os.chmod(socket_name, socket_mode)
         except socket.error, val:
             self.__bind_ok = False
-            self.__poll_object.poll_unregister(self.fileno())
+            self.__server.unregister(self.fileno())
             self.__bind_error = time.time()
             if self.__bind_retries:
                 self.__bind_state_call(state="warn", log_level=logging_tools.LOG_LEVEL_WARN, port=self.__socket, type="unix domain")
@@ -1509,7 +1518,7 @@ class unix_domain_bind(socket.socket):
                 self.close()
             return 1000 * self.__rebind_wait_time
         else:
-            self.__poll_object.register_handle(self.fileno(), POLL_IN)
+            self.__server.register(self.fileno(), POLL_IN)
             self.__bind_ok = True
             self.__bind_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, port=self.__socket, type="unix domain") 
             self._step = self._recvfrom
@@ -1527,7 +1536,7 @@ class unix_domain_bind(socket.socket):
         if not self.__bind_ok:
             diff_msec = self.__rebind_wait_time - abs(act_time - self.__bind_error)
             if diff_msec < 2:
-                self.__poll_object.register_handle(self.fileno(), POLL_OUT)
+                self.__server.register(self.fileno(), POLL_OUT)
             else:
                 return 1000 * abs(diff_msec)
 

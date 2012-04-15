@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #

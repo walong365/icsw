@@ -325,7 +325,7 @@ class thread_pool(object):
             self.poller = None
             self.thread_loop = self.queue_thread_loop
         self.__my_queue_name = kwargs.get("internal_queue_name", "internal")
-        self.add_queue(self.__my_queue_name, 20)
+        self.add_queue(self.__my_queue_name, 128)
         self.__sub_threads_running = 0
         # blocking main-loop
         self.__blocking_loop = kwargs.get("blocking_loop", True)
