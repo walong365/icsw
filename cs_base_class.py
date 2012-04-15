@@ -89,7 +89,7 @@ class server_com(object):
         self.process_pool = process_pool
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.process_pool.log("[com] %s" % (what), log_level)
-    def check_config(self, dc, loc_config, force=0):
+    def check_config(self, dc, loc_config, force=False):
         self.server_idx, self.act_config_name = (0, "")
         doit, srv_origin, err_str = (False, "---", "OK")
         if self.Meta.needed_configs:
@@ -106,7 +106,7 @@ class server_com(object):
                 if force:
                     doit = True
                 else:
-                    err_str = "Server %s has no %s attribute" % (loc_config["SERVER_SHORT_NAME"], " or ".join(self.config))
+                    err_str = "Server %s has no %s attribute" % (loc_config["SERVER_SHORT_NAME"], " or ".join(self.Meta.needed_configs))
         else:
             doit = True
         if doit and srv_origin == "---":

@@ -1175,7 +1175,7 @@ class server_process(threading_tools.process_pool):
             com_obj = cluster_server.command_dict[com_name]
             dc = self.__db_con.get_connection(SQL_ACCESS)
             # check config status
-            do_it, srv_origin, err_str = com_obj.check_config(dc, global_config)
+            do_it, srv_origin, err_str = com_obj.check_config(dc, global_config, global_config["FORCE"])
             self.log("checking the config gave: %s (%s) %s" % (str(do_it),
                                                                srv_origin,
                                                                err_str))
@@ -1394,6 +1394,7 @@ def main():
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
+        ("FORCE"               , configfile.bool_c_var(False, help_string="kill running instances [%(default)s]", only_commandline=True)),
         ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True)),
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
@@ -1417,7 +1418,7 @@ def main():
     sql_info = config_tools.server_check(dc=dc, server_type="server")
     global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.server_device_idx, database=False))])
     ret_state = 256
-    if not global_config["SERVER_IDX"]:
+    if not global_config["SERVER_IDX"] and not global_config["FORCE"]:
         sys.stderr.write(" %s is no cluster-server, exiting..." % (long_host_name))
         sys.exit(5)
     if sql_info.num_servers > 1:
