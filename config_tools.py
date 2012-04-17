@@ -27,6 +27,7 @@ import os
 import commands
 import pprint
 import configfile
+import configfile_old
 import array
 
 class server_check(object):
@@ -109,9 +110,9 @@ class server_check(object):
             # dict of local vars without specified host
             l_var_wo_host = {}
             # code from configfile.py
-            for short, what_value in [("str" , configfile.str_c_var),
-                                      ("int" , configfile.int_c_var),
-                                      ("blob", configfile.str_c_var)]:
+            for short, what_value in [("str" , configfile_old.str_c_var),
+                                      ("int" , configfile_old.int_c_var),
+                                      ("blob", configfile_old.str_c_var)]:
                 sql_str = "SELECT cv.* FROM config_%s cv WHERE cv.new_config=%d ORDER BY cv.name" % (short, self.config_idx)
                 dc.execute(sql_str)
                 for db_rec in [rec for rec in dc.fetchall() if rec["name"]]:
