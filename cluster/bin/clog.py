@@ -1,6 +1,6 @@
-#!/usr/bin/python -Ot
+#!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004 Andreas Lang, init.at
+# Copyright (C) 2001,2002,2003,2004,2012 Andreas Lang, init.at
 #
 # Send feedback to: <lang@init.at>
 # 
