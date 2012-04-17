@@ -702,6 +702,9 @@ def find_free_loopdevice():
 
 def get_system_bitcount(root_dir):
     init_file = "%s/sbin/init" % (root_dir)
+    while os.path.islink(init_file):
+        print "following link %s ..." % (init_file)
+        init_file = os.path.join(os.path.dirname(init_file), os.readlink(init_file))
     if not os.path.isfile(init_file):
         print "'%s' is not the root of a valid system (/sbin/init not found), exiting..." % (root_dir)
         sys.exit(1)
@@ -883,7 +886,7 @@ def main_normal():
                                                            "KERNEL_64_BIT"       : configfile.int_c_var(0),
                                                            "INIT_SIZE"           : configfile.int_c_var(0),
                                                            "SHOW_CONTENT"        : configfile.bool_c_var(False),
-                                                           "STAGE_SOURCE_DIR"    : configfile.str_c_var("/usr/local/cluster/lcs"),
+                                                           "STAGE_SOURCE_DIR"    : configfile.str_c_var("/opt/cluster/lcs"),
                                                            "STAGE_DEST_DIR"      : configfile.str_c_var(""),
                                                            "KERNEL_DIR"          : configfile.str_c_var(""),
                                                            "ROOT_DIR"            : configfile.str_c_var("/"),
