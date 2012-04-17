@@ -1175,7 +1175,7 @@ class machine(object):
                         if os.path.islink(fname):
                             os.unlink(fname)
                 for stage_name in ["stage2", "stage3"]:
-                    stage_source = "/usr/local/cluster/lcs/%s" % (stage_name)
+                    stage_source = "/opt/cluster/lcs/%s" % (stage_name)
                     stage_dest  ="%s/%s" % (kern_dst_dir, stage_name)
                     if not os.path.isfile(stage_source):
                         self.log("Error, cannot find %s_source '%s'..." % (stage_name, stage_source))
