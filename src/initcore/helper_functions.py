@@ -438,7 +438,9 @@ def hash_string(in_str):
             pass
     return ret_str
 
+
 class init_base_object(object):
+    """ Provide logging facilities for objects. """
     def __init__(self, name, **kwargs):
         # base object, provides logging facilities
         self.name = name
@@ -460,10 +462,13 @@ class init_base_object(object):
         self._log_start()
         self.__mail_lines = []
         self.__mail_lines_log_level = logging_tools.LOG_LEVEL_OK
+
     def mail_log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log(what, log_level, mail=True)
+
     def get_logger(self):
         return self.__logger
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, **kwargs):
         if self.__verbose:
             print "[%s] %s" % (logging_tools.get_log_level_str(log_level), what)
@@ -624,11 +629,14 @@ class keyword_checkd(object):
         return self._func(*args, **kwargs)
 
 class init_logging(object):
+    """ Decorator for django views. Catch exceptions and log them. This has to be the
+    first decorator in the decorator queue (above login_required) to catch
+    redirects """
     def __init__(self, func):
-        """ decorator for catching exceptions and logging, has to be the first decorator in the decorator queue (above login_required) to catch redirects """
         self.__name__ = func.__name__
         self.__logger = logging_pool.get_logger("http")
         self._func = func
+
     def log(self, what="", log_level=logging_tools.LOG_LEVEL_OK, **kwargs):
         if kwargs.get("request_vars", False):
             self.log_request_vars(kwargs["request"])
@@ -637,6 +645,7 @@ class init_logging(object):
             if for_xml:
                 self.xml_response.feed_log_line(log_level, what)
             self.__logger.log(log_level, "[%s] %s" % (self.__name__, what))
+
     def write(self, what):
         self.__stdout_buffer = "%s%s" % (self.__stdout_buffer, what)
         if self.__stdout_buffer.endswith("\n"):
