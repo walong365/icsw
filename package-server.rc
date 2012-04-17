@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2003,2004 Andreas Lang/init.at
+# Copyright (c) 2003,2004,2012 Andreas Lang/init.at
 #
 #
 # RedHat stuff
@@ -16,6 +16,7 @@
 # Description:   start package-server service
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -23,7 +24,7 @@ else
 fi
 . /etc/init.d/ics_tools.sh
 
-SERVER_BIN=/usr/local/sbin/package-server.py
+SERVER_BIN=/opt/cluster/sbin/package-server.py
 SERVER_PID=/var/run/package-server/package-server.pid
 PYTHON_BIN=/opt/python-init/bin/python
 SERVER_ARGS=""

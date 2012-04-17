@@ -29,7 +29,7 @@ try:
 except:
     bz2 = None
 import getopt
-import configfile
+import configfile_old as configfile
 import os.path
 import socket
 import time
