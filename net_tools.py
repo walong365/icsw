@@ -1020,7 +1020,7 @@ class tcp_con_object(socket.socket):
         self.__server.trigger()
     def send_done(self):
         # called from buffer
-        self.__server.unregister(self.fileno())
+        self.__server.register(self.fileno(), POLL_IN)
     def close(self):
         # called from buffer
         #print "close", self.fileno()
