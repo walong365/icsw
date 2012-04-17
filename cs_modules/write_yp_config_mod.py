@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -30,10 +30,9 @@ import time
 import commands
 
 class write_yp_config(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_config(["yp_server"])
-    def call_it(self, opt_dict, call_params):
+    class Meta:
+        needed_configs = ["yp_server"]
+    def _call(self):#call_it(self, opt_dict, call_params):
         try:
             import gdbm
         except ImportError:
@@ -42,14 +41,14 @@ class write_yp_config(cs_base_class.server_com):
         # init autofs-master-dict
         am_dict = {}
         # collect machine export-entries (not the homedir-exports!)
-        call_params.dc.execute("SELECT d.name, cs.name AS csname, cs.value, cs.new_config FROM device d INNER JOIN new_config c " + \
+        self.dc.execute("SELECT d.name, cs.name AS csname, cs.value, cs.new_config FROM device d INNER JOIN new_config c " + \
                                "INNER JOIN device_config dc INNER JOIN config_str cs INNER JOIN device_group dg INNER JOIN device_type dt " + \
                                "LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_type=dt.device_type_idx AND dt.identifier='H' AND " + \
                                "d.device_group=dg.device_group_idx AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND " + \
                                "(dc.device=d.device_idx OR dc.device=d2.device_idx) AND (cs.name='export' OR cs.name='import' OR cs.name='options') ORDER BY d.name, cs.config")
         export_dict = {}
         ei_dict = {}
-        for entry in call_params.dc.fetchall():
+        for entry in self.dc.fetchall():
             dev_name, act_idx = (entry["name"], entry["new_config"])
             # generate a small dict for each export-entry (per device)
             ei_dict.setdefault(dev_name, {}).setdefault(act_idx, {"export"  : None,
@@ -77,28 +76,28 @@ class write_yp_config(cs_base_class.server_com):
                     auto_master.append((os.path.normpath("%s/" % ("/".join(splits))), exp))
                 ext_keys[exp].append((dirname, export_dict[ext_k]))
             else:
-                mysql_tools.device_log_entry(call_params.dc,
-                                             call_params.get_server_idx(),
-                                             call_params.get_l_config()["LOG_SOURCE_IDX"],
+                mysql_tools.device_log_entry(self.dc,
+                                             self.server_idx,
+                                             self.global_config["LOG_SOURCE_IDX"],
                                              0,
-                                             call_params.get_l_config()["LOG_STATUS"]["e"]["log_status_idx"],
+                                             self.global_config["LOG_STATUS"]["e"]["log_status_idx"],
                                              "refuse to create automont-map for / ")
         # collect homedir-export entries and create group/passwd entries
         # group-entries
         gbg = []
         gbn = []
         groups = {}
-        call_params.dc.execute("SELECT g.ggroup_idx, g.ggroupname, g.gid FROM ggroup g WHERE g.active=1")
-        for entry in call_params.dc.fetchall():
+        self.dc.execute("SELECT g.ggroup_idx, g.ggroupname, g.gid FROM ggroup g WHERE g.active=1")
+        for entry in self.dc.fetchall():
             name = entry["ggroupname"]
             gid = entry["gid"]
             groups[name] = entry
-            call_params.dc.execute("SELECT u.login FROM user u, ggroup g WHERE u.ggroup=g.ggroup_idx AND u.export > 0 AND g.gid=%d" % (gid))
+            self.dc.execute("SELECT u.login FROM user u, ggroup g WHERE u.ggroup=g.ggroup_idx AND u.export > 0 AND g.gid=%d" % (gid))
             users = []
-            for user in call_params.dc.fetchall():
+            for user in self.dc.fetchall():
                 users.append(user["login"])
-            call_params.dc.execute("SELECT u.login FROM user u, ggroup g, user_ggroup ug WHERE ug.user=u.user_idx AND ug.ggroup=g.ggroup_idx AND u.export > 0 AND g.gid=%d" % (gid))
-            for user in call_params.dc.fetchall():
+            self.dc.execute("SELECT u.login FROM user u, ggroup g, user_ggroup ug WHERE ug.user=u.user_idx AND ug.ggroup=g.ggroup_idx AND u.export > 0 AND g.gid=%d" % (gid))
+            for user in self.dc.fetchall():
                 users.append(user["login"])
             if len(users):
                 gbn.append((name, "%s:*:%d:%s" % (name, gid, ",".join(users))))
@@ -108,8 +107,8 @@ class write_yp_config(cs_base_class.server_com):
         # passwd-entries
         pbu = []
         pbn = []
-        call_params.dc.execute("SELECT u.login, u.uid, u.password, u.home, u.shell, u.uservname, u.usernname, u.usertitan, g.homestart, g.ggroupname, g.gid FROM user u, ggroup g, new_config c, device_config dc, device d WHERE u.active=1 AND u.ggroup=g.ggroup_idx AND u.export=dc.device_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx ORDER by u.login")
-        for entry in call_params.dc.fetchall():
+        self.dc.execute("SELECT u.login, u.uid, u.password, u.home, u.shell, u.uservname, u.usernname, u.usertitan, g.homestart, g.ggroupname, g.gid FROM user u, ggroup g, new_config c, device_config dc, device d WHERE u.active=1 AND u.ggroup=g.ggroup_idx AND u.export=dc.device_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx ORDER by u.login")
+        for entry in self.dc.fetchall():
             home = os.path.normpath("%s/%s" % (entry["homestart"], entry["home"]))
             full_name = "%s %s" % (entry["uservname"], entry["usernname"])
             full_name = "%s %s" % (entry["usertitan"], full_name.strip())
@@ -121,16 +120,16 @@ class write_yp_config(cs_base_class.server_com):
         ext_keys["passwd.byuid"] = pbu
         ext_keys["passwd.byname"] = pbn
         # home-exports
-        call_params.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, device_config dc, config_str cs, device_type dt WHERE d.device_type=dt.device_type_idx AND dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='homeexport' OR cs.name='options') ORDER BY d.name")
+        self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, device_config dc, config_str cs, device_type dt WHERE d.device_type=dt.device_type_idx AND dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='homeexport' OR cs.name='options') ORDER BY d.name")
         home_exp_dict = {}
-        for entry in call_params.dc.fetchall():
+        for entry in self.dc.fetchall():
             home_exp_dict.setdefault(entry["device_config_idx"], {"name"       : entry["name"],
                                                                   "options"    : "",
                                                                   "homeexport" : ""})[entry["csname"]] = entry["value"]
         valid_home_keys = [x for x in home_exp_dict.keys() if home_exp_dict[x]["homeexport"]]
         if valid_home_keys:
-            call_params.dc.execute("SELECT u.login, g.homestart, u.home, u.export FROM user u, ggroup g WHERE u.ggroup=g.ggroup_idx AND (%s)" % (" OR ".join(["u.export=%d" % (x) for x in valid_home_keys])))
-            for e2 in call_params.dc.fetchall():
+            self.dc.execute("SELECT u.login, g.homestart, u.home, u.export FROM user u, ggroup g WHERE u.ggroup=g.ggroup_idx AND (%s)" % (" OR ".join(["u.export=%d" % (x) for x in valid_home_keys])))
+            for e2 in self.dc.fetchall():
                 if e2["homestart"]:
                     mountpoint = e2["homestart"].replace("/", "").strip()
                     entry = home_exp_dict[e2["export"]]
@@ -141,24 +140,24 @@ class write_yp_config(cs_base_class.server_com):
                             auto_master.append((e2["homestart"], homestart))
                         ext_keys[homestart].append((e2["home"], "%s %s:%s/%s" % (entry["options"], entry["name"], cs_tools.hostname_expand(entry["name"], entry["homeexport"]), e2["home"])))
                     else:
-                        mysql_tools.device_log_entry(call_params.dc,
-                                                     call_params.get_server_idx(),
-                                                     call_params.get_l_config()["LOG_SOURCE_IDX"],
+                        mysql_tools.device_log_entry(self.dc,
+                                                     self.server_idx,
+                                                     self.global_config["LOG_SOURCE_IDX"],
                                                      0,
-                                                     call_params.get_l_config()["LOG_STATUS"]["e"]["log_status_idx"],
+                                                     self.global_config["LOG_STATUS"]["e"]["log_status_idx"],
                                                      "refuse to create automont-map for / (homedir-export)")
         # scratch-exports
-        call_params.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, config_str cs, device_config dc, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
+        self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, config_str cs, device_config dc, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
                                "dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='scratchexport' OR cs.name='options') ORDER BY d.name")
         scratch_exp_dict = {}
-        for entry in call_params.dc.fetchall():
+        for entry in self.dc.fetchall():
             scratch_exp_dict.setdefault(entry["device_config_idx"], {"name"          : entry["name"],
                                                                      "options"       :"",
                                                                      "scratchexport" : ""})[entry["csname"]] = entry["value"]
         valid_scratch_keys = [x for x in scratch_exp_dict.keys() if scratch_exp_dict[x]["scratchexport"]]
         if valid_scratch_keys:
-            call_params.dc.execute("SELECT u.login, g.scratchstart, u.scratch, u.export_scr FROM user u, ggroup g WHERE u.ggroup=g.ggroup_idx AND (%s)" % (" OR ".join(["u.export_scr=%d" % (x) for x in valid_scratch_keys])))
-            for e2 in call_params.dc.fetchall():
+            self.dc.execute("SELECT u.login, g.scratchstart, u.scratch, u.export_scr FROM user u, ggroup g WHERE u.ggroup=g.ggroup_idx AND (%s)" % (" OR ".join(["u.export_scr=%d" % (x) for x in valid_scratch_keys])))
+            for e2 in self.dc.fetchall():
                 if e2["scratchstart"]:
                     scratchstart = e2["scratchstart"].replace("/", "").strip()
                     entry = scratch_exp_dict[e2["export_scr"]]
@@ -169,19 +168,19 @@ class write_yp_config(cs_base_class.server_com):
                             auto_master.append((e2["scratchstart"], scratchstart))
                         ext_keys[scratchstart].append((e2["scratch"], "%s %s:%s/%s" % (entry["options"], entry["name"], cs_tools.hostname_expand(entry["name"], entry["scratchexport"]), e2["login"])))
                     else:
-                        mysql_tools.device_log_entry(call_params.dc,
-                                                     call_params.get_server_idx(),
-                                                     call_params.get_l_config()["LOG_SOURCE_IDX"],
+                        mysql_tools.device_log_entry(self.dc,
+                                                     self.server_idx,
+                                                     self.global_config["LOG_SOURCE_IDX"],
                                                      0,
-                                                     call_params.get_l_config()["LOG_STATUS"]["e"]["log_status_idx"],
+                                                     self.global_config["LOG_STATUS"]["e"]["log_status_idx"],
                                                      "refuse to create automont-map for / (scratch-export)")
         ext_keys["auto.master"] = auto_master
         # get yp-name
-        call_params.dc.execute("SELECT cs.value, d.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
+        self.dc.execute("SELECT cs.value, d.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
                                "device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND " + \
                                "dc.new_config=c.new_config_idx AND c.name='yp_server' AND cs.name='domainname' AND cs.new_config=c.new_config_idx")
         # check for correct hostname is missing (shit)
-        nis_name = call_params.dc.fetchone()["value"]
+        nis_name = self.dc.fetchone()["value"]
         # parse /etc/services for the services.byname and services.byservicename maps
         array = [x.strip() for x in file("/etc/services", "r").read().split("\n") if not re.match("^(#.*|\s*)$", x)]
         sbn = []
@@ -198,8 +197,8 @@ class write_yp_config(cs_base_class.server_com):
         ext_keys["services.byservicename"] = sbs
         # generate ypservers map
         temp_map_dir = "_ics_tmd"
-        ext_keys["ypservers"] = [(call_params.get_l_config()["SERVER_FULL_NAME"],
-                                  call_params.get_l_config()["SERVER_FULL_NAME"])]
+        ext_keys["ypservers"] = [(self.global_config["SERVER_FULL_NAME"],
+                                  self.global_config["SERVER_FULL_NAME"])]
         temp_map_dir = "/var/yp/%s" % (temp_map_dir)
         if not os.path.isdir("/var/yp"):
             ret_str = "error not /var/yp directory"
@@ -210,13 +209,13 @@ class write_yp_config(cs_base_class.server_com):
                 os.mkdir(temp_map_dir)
             map_keys = sorted(ext_keys.keys())
             for mapname in map_keys:
-                call_params.log("creating map named %s ..." % (mapname))
+                self.log("creating map named %s ..." % (mapname))
                 map_name = "%s/%s" % (temp_map_dir, mapname)
                 #print map_name
                 gdbf = gdbm.open(map_name, "n", 0600)
                 gdbf["YP_INPUT_NAME"] = "%s.mysql" % (mapname)
                 gdbf["YP_OUTPUT_NAME"] = map_name
-                gdbf["YP_MASTER_NAME"] = call_params.get_l_config()["SERVER_FULL_NAME"]
+                gdbf["YP_MASTER_NAME"] = self.global_config["SERVER_FULL_NAME"]
                 gdbf["YP_LAST_MODIFIED"] = str(int(time.time()))
                 for key, value in ext_keys[mapname]:
                     gdbf[key] = value
@@ -236,8 +235,8 @@ class write_yp_config(cs_base_class.server_com):
                 ret_str = "error wrote %d yp-maps, reloading gave :'%s'" % (num_maps, cout)
             else:
                 ret_str = "ok wrote %d yp-maps and successfully reloaded configuration" % (num_maps)
-        if call_params.nss_queue:
-            call_params.nss_queue.put(("send_broadcast", "reload_nscd"))
+        #if call_params.nss_queue:
+        #    call_params.nss_queue.put(("send_broadcast", "reload_nscd"))
         return ret_str
 
 if __name__ == "__main__":

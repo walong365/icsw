@@ -1448,6 +1448,7 @@ def main():
         ("MONITOR_QUOTA_USAGE"   , configfile.bool_c_var(False)),
         ("QUOTA_CHECK_TIME_SECS" , configfile.int_c_var(3600)),
         ("USER_MAIL_SEND_TIME"   , configfile.int_c_var(3600, info="time in seconds between to mails")),
+        ("SERVER_FULL_NAME"      , configfile.str_c_var(long_host_name, database=False)),
         ("SERVER_SHORT_NAME"     , configfile.str_c_var(mach_name, database=False)),
     ])
     dc.release()
