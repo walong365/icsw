@@ -710,7 +710,7 @@ class uds_con_object(socket.socket):
         self.__server.trigger()
     def send_done(self):
         # called from buffer
-        self.__poll_object.poll_unregister(self.fileno())
+        self.__poll_object.unregister(self.fileno())
     def close(self):
         # called from buffer
         if self.__server:
@@ -869,7 +869,7 @@ class udp_con_object(socket.socket):
         self.__server.trigger()
     def send_done(self):
         # called from buffer
-        self.__server.unregister(self.fileno())
+        self.__server.register(self.fileno(), POLL_IN)
     def close(self):
         # called from buffer
         if self.__server:
