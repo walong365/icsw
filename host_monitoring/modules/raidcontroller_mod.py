@@ -418,7 +418,7 @@ class ctrl_type_ips(ctrl_type):
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
     def process(self, ccs):
-        com_line, com_type, ctrl_num = ccs.run_info["command"].strip().split()
+        com_line, com_type, ctrl_num = ccs.run_info["command"]
         if com_type == "config":
             ctrl_config = {"logical"    : {},
                            "array"      : {},
