@@ -370,7 +370,8 @@ def ask_del_user_config(request):
 @require_POST
 def del_user_config(request):
     user = request.user
-    objs = user_variable.objects.filter(user=user).delete()
+    query = Q(name__in=["font_scale", "css_theme", "is_mobile", "language"])
+    objs = user_variable.objects.filter(user=user).exclude(query).delete()
     res = E.message(_("User config deleted"))
     return HttpResponse(etree.tostring(res), content_type="text/xml; charset=utf-8")
 
