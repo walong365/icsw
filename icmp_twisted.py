@@ -290,12 +290,11 @@ class icmp_protocol(protocol.AbstractDatagramProtocol):
         parsed_dgram = self.parse_datagram(datagram)
         # can be none because of error
         if parsed_dgram is not None:
-            self.received()
+            self.received(parsed_dgram)
     def received(self, dgram):
         """ to be overwritten """
         print "received datagram", dgram
     def parse_datagram(self, datagram):
-        print self._log_errors
         packet = _parse_ip_packet(datagram)
         header = packet.payload[:4]
         data = packet.payload[4:]
