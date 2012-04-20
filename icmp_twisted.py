@@ -30,6 +30,7 @@ import array
 import errno
 from twisted.internet import protocol, base, interfaces, error, address
 from zope.interface import implements, Interface
+import logging_tools
 
 def _octets_to_hex(octets):
     return ".".join(["%02x" % (ord(byte)) for byte in octets])
@@ -281,31 +282,48 @@ class icmp_port(base.BasePort):
         return address.IPv4Address("TCP", *(self.socket.getsockname() + ("INET_UDP",)))
 
 class icmp_protocol(protocol.AbstractDatagramProtocol):
-    def __init__(self):
+    def __init__(self, **kwargs):
         # start at seqno 32
         self.echo_seqno = 32L
+        self._log_errors = hasattr(self, "log")
     def datagram_received(self, datagram, addr):
-        self.received(self.parse_datagram(datagram))
+        parsed_dgram = self.parse_datagram(datagram)
+        # can be none because of error
+        if parsed_dgram is not None:
+            self.received()
     def received(self, dgram):
         """ to be overwritten """
         print "received datagram", dgram
     def parse_datagram(self, datagram):
+        print self._log_errors
         packet = _parse_ip_packet(datagram)
         header = packet.payload[:4]
         data = packet.payload[4:]
         packet_type, code, checksum = struct.unpack("!BBH", header)
         chkdata = struct.pack("!BBH%ds" % (len(data)), packet_type, code, 0, data)
         chk = socket.htons(_checksum(chkdata))
+        # init dgram
         if checksum != chk:
-            raise ValueError("Checksum mismatch: %d != %d", checksum, chk)
-        type_lut_dict = {
-            0 : icmp_echo_reply,
-            3 : icmp_destination_unreachable,
-            8 : icmp_echo}
-        try:
-            dgram = type_lut_dict[int(packet_type)](code, checksum, data, unpack=True)
-        except KeyError:
-            raise NotImplementedError("Decoding of type '%d' datagrams not supported" % (packet_type))
+            err_str = "Checksum mismatch: %d != %d" % (checksum, chk)
+            if self._log_errors:
+                self.log(err_str, logging_tools.LOG_LEVEL_CRITICAL)
+                dgram = None
+            else:
+                raise ValueError(err_str)
+        else:
+            type_lut_dict = {
+                0 : icmp_echo_reply,
+                3 : icmp_destination_unreachable,
+                8 : icmp_echo}
+            try:
+                dgram = type_lut_dict[int(packet_type)](code, checksum, data, unpack=True)
+            except KeyError:
+                err_str = "Decoding of type '%d' datagrams not supported" % (packet_type)
+                if self._log_errors:
+                    self.log(err_str, logging_tools.LOG_LEVEL_CRITICAL)
+                    dgram = None
+                else:
+                    raise NotImplementedError(err_str)
         return dgram
     def send_echo(self, addr, data="icmp_twisted.py data", ident=None):
         self.echo_seqno = (self.echo_seqno + 1) & 0x7fff
