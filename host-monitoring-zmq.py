@@ -751,6 +751,7 @@ class relay_process(threading_tools.process_pool):
         self._init_ipc_sockets()
         self.register_exception("int_error" , self._sigint)
         self.register_exception("term_error", self._sigint)
+        self.register_exception("hup_error", self._hup_error)
         self.register_timer(self._check_timeout, 2)
         self.register_func("twisted_result", self._twisted_result)
         self._show_config()
@@ -768,6 +769,14 @@ class relay_process(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+    def _hup_error(self, err_cause):
+        self.log("got SIGHUP (%s), setting all clients with connmode TCP to unknown" % (err_cause), logging_tools.LOG_LEVEL_WARN)
+        num_c = 0
+        for t_host, c_state in self.__client_dict.iteritems():
+            if c_state == "T":
+                self.__client_dict[t_host] = None
+                num_c += 1
+        self.log("cleared %s" % (logging_tools.get_plural("state", num_c)))
     def _init_filecache(self):
         self.__client_dict = {}
         self.__last_tried = {}
