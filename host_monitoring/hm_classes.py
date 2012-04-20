@@ -356,6 +356,7 @@ class mvect_entry(object):
                          logging_tools.form_entry_right(act_pf, header=" "),
                          logging_tools.form_entry(self.unit, header="unit"),
                          logging_tools.form_entry("(%3d)" % (idx), header="idx"),
+                         logging_tools.form_entry("%d" % (self.valid_until) if self.valid_until else "---", header="valid_until"),
                          logging_tools.form_entry(self._build_info_string(), header="info")])
         return act_line
     def _get_val_str(self, val):
