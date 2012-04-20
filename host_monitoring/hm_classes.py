@@ -62,6 +62,7 @@ class subprocess_struct(object):
             if self.command_line:
                 cur_cl = self.command_line[self.com_num]
                 if type(cur_cl) == type(()):
+                    # in case of tuple
                     run_info["comline"] = cur_cl[0]
                 else:
                     run_info["comline"] = cur_cl
