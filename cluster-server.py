@@ -274,8 +274,8 @@ class bg_stuff(object):
     def _call(self, cur_time, drop_com):
         self.log("dummy __call__()")
     def send_mail(self, to_addr, subject, msg_body):
-        new_mail = mail_tools.mail(subject, "%s@%s" % (self.glob_config["FROM_NAME"], self.glob_config["FROM_ADDR"]), to_addr, msg_body)
-        new_mail.set_server(self.glob_config["MAILSERVER"], self.glob_config["MAILSERVER"])
+        new_mail = mail_tools.mail(subject, "%s@%s" % (global_config["FROM_NAME"], global_config["FROM_ADDR"]), to_addr, msg_body)
+        new_mail.set_server(global_config["MAILSERVER"], global_config["MAILSERVER"])
         stat, log_lines = new_mail.send_mail()
         return log_lines
 
@@ -419,17 +419,12 @@ class quota_stuff(bg_stuff):
     def init_bg_stuff(self):
         self.Meta.min_time_between_runs = global_config["QUOTA_CHECK_TIME_SECS"]
         self.Meta.creates_machvector = global_config["MONITOR_QUOTA_USAGE"]
-##    def __init__(self, logger, db_con, glob_config, loc_config):
-##        bg_stuff.__init__(self, "quota", logger, glob_config, loc_config)
-##        self.__db_con = db_con
-##        self.set_min_time_between_runs(self.glob_config["QUOTA_CHECK_TIME_SECS"])
-##        self.set_creates_machvector(self.glob_config["MONITOR_QUOTA_USAGE"])
-##        # user cache
-##        self.__user_dict = {}
-##        # quota cache, (device, uid, stuff)
-##        self.__quota_cache = []
-##        # last mail sent to admins
-##        self.__admin_mail_sent = None
+        # user cache
+        self.__user_dict = {}
+        # last mail sent to admins
+        self.__admin_mail_sent = None
+        # load value cache
+        self.__load_values = {}
     def _resolve_uids(self, dc, uid_list):
         if uid_list:
             dc.execute("SELECT u.uid, u.login, u.uservname, u.usernname, u.useremail FROM user u WHERE %s" % (" OR ".join(["u.uid=%d" % (x) for x in uid_list])))
@@ -492,21 +487,22 @@ class quota_stuff(bg_stuff):
                              "quota.%s.%s.hard:i:%d" % (dev_name, u_name, block_dict["hard"]),
                              "quota.%s.%s.used:i:%d" % (dev_name, u_name, block_dict["used"])])
         return ret_list
-    def wakeup(self):
-        qc_stime = time.time()
+    def _call(self, cur_time, builder):
+        dc = self.server_process.get_dc()
         sep_str = "-" * 64
-        dc = self.__db_con.get_connection(SQL_ACCESS)
+        # vector to report
+        my_vector = None
         self.log(sep_str)
         self.log("starting quotacheck")
         q_cmd = "repquota -aniu"
-        stat, out = commands.getstatusoutput(q_cmd)
-        if stat:
-            self.log("Cannot call '%s' (stat=%d): %s" % (q_cmd, stat, str(out)),
+        q_stat, q_out = commands.getstatusoutput(q_cmd)
+        if q_stat:
+            self.log("Cannot call '%s' (stat=%d): %s" % (q_cmd, q_stat, str(q_out)),
                      logging_tools.LOG_LEVEL_ERROR)
         else:
             q_dict = {}
             act_dev = None
-            for line in [x.strip() for x in out.split("\n") if x.strip()]:
+            for line in [c_line.strip() for c_line in q_out.split("\n") if c_line.strip()]:
                 if line.startswith("***"):
                     act_dev = line.split()[-1]
                 elif line.startswith("#"):
@@ -524,9 +520,13 @@ class quota_stuff(bg_stuff):
                             self.log("No device known for line '%s'" % (q_line),
                                      logging_tools.LOG_LEVEL_WARN)
             prob_users, prob_devs = ({}, {})
-            mtab_dict = dict([(k, (a, b, c)) for k, a, b, c in [x.strip().split()[:4] for x in file("/etc/mtab", "r").read().split("\n") if x.startswith("/") and len(x.split()) > 3]])
-            if self.glob_config["MONITOR_QUOTA_USAGE"]:
-                self.__quota_cache = []
+            mtab_dict = {}
+            for cur_line in file("/etc/mtab", "r").read().split("\n"):
+                if cur_line.startswith("/") and len(cur_line.split()) > 3:
+                    key, v0, v1, v2 = cur_line.strip().split()[:4]
+                    if key not in mtab_dict:
+                        mtab_dict[key] = (v0, v1, v2)
+            quota_cache = []
             missing_uids = set()
             for dev, u_dict in q_dict.iteritems():
                 try:
@@ -539,10 +539,10 @@ class quota_stuff(bg_stuff):
                     #f_frsize = osres[statvfs.F_FRSIZE]
                     f_frsize = 1024
                     for uid, u_stuff in u_dict.iteritems():
-                        if self.glob_config["MONITOR_QUOTA_USAGE"]:
+                        if self.Meta.creates_machvector:
                             if u_stuff.quotas_defined():
                                 missing_uids.add(uid)
-                                self.__quota_cache.append((dev, uid, u_stuff))
+                                quota_cache.append((dev, uid, u_stuff))
                         if not u_stuff.everything_ok():
                             prob_users.setdefault(uid, {})[dev] = u_stuff.get_prob_str(f_frsize)
                             prob_devs.setdefault(dev, mtab_dict.get(dev, ("unknown mountpoint",
@@ -555,7 +555,7 @@ class quota_stuff(bg_stuff):
                 log_line = "%s violated the quota policies on %s" % (logging_tools.get_plural("user", len(prob_users.keys())),
                                                                      logging_tools.get_plural("device", len(prob_devs.keys())))
                 self.log(log_line)
-                mail_lines["admins"].extend(["Servername: %s" % (self.loc_config["SERVER_FULL_NAME"]),
+                mail_lines["admins"].extend(["Servername: %s" % (global_config["SERVER_FULL_NAME"]),
                                              log_line,
                                              "",
                                              "device info:",
@@ -577,7 +577,7 @@ class quota_stuff(bg_stuff):
                     user_info = self._get_uid_info(uid)
                     mail_lines[uid] = ["This is an informal mail to notify you that",
                                        "you have violated one or more quota-policies",
-                                       "on %s, user info: %s" % (self.loc_config["SERVER_FULL_NAME"], user_info["info"]),
+                                       "on %s, user info: %s" % (global_config["SERVER_FULL_NAME"], user_info["info"]),
                                        ""]
                     if user_info.get("email", ""):
                         if uid not in email_users:
@@ -603,20 +603,55 @@ class quota_stuff(bg_stuff):
                 self.log("Sending %s" % (logging_tools.get_plural("mail", len([u_name for u_name in email_users if u_name != "admins"]))))
                 for email_user in email_users:
                     if email_user == "admins":
-                        to_addrs = self.glob_config["QUOTA_ADMINS"].split(",")
+                        to_addrs = global_config["QUOTA_ADMINS"].split(",")
                     else:
                         to_addrs = [self._get_uid_info(email_user)["email"]]
                     for to_addr in to_addrs:
                         log_lines = self.send_mail(to_addr,
-                                                   "quota warning from %s@%s" % (self.loc_config["SERVER_FULL_NAME"],
+                                                   "quota warning from %s@%s" % (global_config["SERVER_FULL_NAME"],
                                                                                  process_tools.get_cluster_name()),
                                                    mail_lines[email_user])
                         for log_line in log_lines:
                             self.log(log_line)
-        dc.release()
+            if self.Meta.creates_machvector:
+                my_vector = builder("values")
+                # 10 minutes valid
+                valid_until = cur_time + self.Meta.min_time_between_runs * 2
+                for dev_name, uid, u_stuff in quota_cache:
+                    u_name = self._get_uid_info(uid, {}).get("login", "unknown")
+                    block_dict = u_stuff.get_block_dict()
+                    my_vector.append(hm_classes.mvect_entry(
+                        "quota.%s.%s.soft" % (dev_name, u_name),
+                        info="Soft Limit for user $3 on $2",
+                        default=0,
+                        value=block_dict["soft"],
+                        factor=1000,
+                        base=1000,
+                        valid_until=valid_until,
+                        unit="B").build_xml(builder))
+                    my_vector.append(hm_classes.mvect_entry(
+                        "quota.%s.%s.hard" % (dev_name, u_name),
+                        info="Hard Limit for user $3 on $2",
+                        default=0,
+                        value=block_dict["hard"],
+                        factor=1000,
+                        base=1000,
+                        valid_until=valid_until,
+                        unit="B").build_xml(builder))
+                    my_vector.append(hm_classes.mvect_entry(
+                        "quota.%s.%s.used" % (dev_name, u_name),
+                        info="Used quota for user $3 on $2",
+                        default=0,
+                        value=block_dict["used"],
+                        factor=1000,
+                        base=1000,
+                        valid_until=valid_until,
+                        unit="B").build_xml(builder))
         qc_etime = time.time()
-        self.log("quotacheck took %s" % (logging_tools.get_diff_time_str(qc_etime - qc_stime)))
+        self.log("quotacheck took %s" % (logging_tools.get_diff_time_str(qc_etime - cur_time)))
         self.log(sep_str)
+        dc.release()
+        return my_vector
 
 class background_thread(threading_tools.thread_obj):
     def __init__(self, db_con, ss_queue, glob_config, loc_config, logger):
@@ -1028,6 +1063,8 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+    def get_dc(self):
+        return self.__db_con.get_connection(SQL_ACCESS)
     def set_target(self, t_host, t_port):
         self.__target_host, self.__target_port = (t_host, t_port)
         self.__ns = net_tools.network_send(timeout=10, log_hook=self.log, verbose=False)
@@ -1038,9 +1075,10 @@ class server_process(threading_tools.process_pool):
         self.__first_step = True
     def _init_capabilities(self):
         self.log("init server capabilities")
-        self.__server_cap_dict = {"usv_server" : usv_server_stuff(self),
-                                  "quota"      : quota_stuff(self),
-                                  "dummy"      : dummy_stuff(self)}
+        self.__server_cap_dict = {
+            "usv_server" : usv_server_stuff(self),
+            "quota"      : quota_stuff(self),
+            "dummy"      : dummy_stuff(self)}
         self.__cap_list = []
         dc = self.__db_con.get_connection(SQL_ACCESS)
         for key, value in self.__server_cap_dict.iteritems():
