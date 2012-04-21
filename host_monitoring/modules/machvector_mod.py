@@ -730,6 +730,23 @@ class machine_vector(object):
 #             log_t.log("Error: unknown machvector-name '%s'" % (name), logging_tools.LOG_LEVEL_ERROR)
 #         #print "updates %s with value" % (name), value
 #         return
+    def _optimize_list(self, in_list):
+        new_list = []
+        for entry in in_list:
+            if new_list and new_list[-1][0] == entry[0]:
+                new_list[-1][1].append(entry[1:])
+            else:
+                if len(entry) > 1:
+                    new_list.append([entry[0], [entry[1:]]])
+                else:
+                    new_list.append([entry[0], []])
+        new_list = [[entry[0], self._optimize_list(entry[1])] if len(entry) > 1 else entry for entry in new_list]
+        return new_list
+    def _beautify_list(self, in_list):
+        return ",".join(["%s%s" % (entry[0], ".(%s)" % (self._beautify_list(entry[1])) if entry[1] else "") for entry in in_list])
+    def optimize_list(self, in_list):
+        in_list = [entry.split(".") for entry in sorted(in_list)]
+        return self._beautify_list(self._optimize_list(in_list))
     def check_changed(self):
         if self.__changed:
             # attention ! dict.keys() != copy.deppcopy(dict).keys()
@@ -744,12 +761,14 @@ class machine_vector(object):
             lost_keys = last_keys - self.__act_keys
             if new_keys:
                 self.log("%s:" % (logging_tools.get_plural("new key", len(new_keys))))
-                for key_num, key in enumerate(sorted(new_keys)):
-                    self.log(" %3d : %s" % (key_num, key))
+                self.log(self.optimize_list(new_keys))
+                #for key_num, key in enumerate(sorted(new_keys)):
+                #    self.log(" %3d : %s" % (key_num, key))
             if lost_keys:
                 self.log("%s:" % (logging_tools.get_plural("lost key", len(lost_keys))))
-                for key_num, key in enumerate(sorted(lost_keys)):
-                    self.log(" %3d : %s" % (key_num, key))
+                self.log(self.optimize_list(lost_keys))
+                #for key_num, key in enumerate(sorted(lost_keys)):
+                #    self.log(" %3d : %s" % (key_num, key))
             self.log("Machine_vector has changed, setting actual key to %d (%d keys)" % (self.__act_key, len(self.__act_dict)))
     def check_timeout(self):
         cur_time = time.time()

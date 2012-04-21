@@ -88,7 +88,8 @@ class subprocess_struct(object):
             if self.Meta.verbose:
                 self.log("popen '%s'" % (run_info["comline"]))
             self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-    def set_send_stuff(self, src_id, zmq_sock):
+    def set_send_stuff(self, srv_proc, src_id, zmq_sock):
+        self.srv_process = srv_proc
         self.src_id = src_id
         self.zmq_sock = zmq_sock
     def read(self):
@@ -131,10 +132,10 @@ class subprocess_struct(object):
             "reply" : "runtime (%s) exceeded" % (logging_tools.get_plural("second", self.Meta.max_runtime)),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
     def send_return(self):
-        self.zmq_sock.send_unicode(self.src_id, zmq.SNDMORE)
-        self.zmq_sock.send_unicode(unicode(self.srv_com))
+        self.srv_process._send_return(self.zmq_sock, self.src_id, self.srv_com)
         del self.srv_com
         del self.zmq_sock
+        del self.srv_process
         if self.popen:
             del self.popen
 

@@ -45,6 +45,7 @@ import icmp_twisted
 import pprint
 import uuid
 import uuid_tools
+import difflib
 from lxml import etree
 from lxml.builder import E
 import netifaces
@@ -1352,22 +1353,27 @@ class server_process(threading_tools.process_pool):
                 rest_str = u""
             # is a delayed command
             delayed = False
-            cur_com = srv_com["command"].text
-            self.log("got command '%s' from '%s'" % (cur_com,
-                                                     srv_com["source"].attrib["host"]))
+            cur_com = srv_com["command"].text + "."
             srv_com.update_source()
             srv_com["result"] = None
-            srv_com["result"].attrib.update({"state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                                             "reply" : "ok"})
+            srv_com["result"].attrib.update({
+                "state"      : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                "reply"      : "ok",
+                "start_time" : "%d" % (time.time())})
             if cur_com in self.commands:
                 delayed = self._handle_module_command(srv_com, rest_str)
             else:
+                c_matches = difflib.get_close_matches(cur_com, self.commands.keys())
+                if c_matches:
+                    cm_str = "close matches: %s" % (", ".join(c_matches))
+                else:
+                    cm_str = "no matches found"
                 srv_com["result"].attrib.update(
-                    {"reply" : "unknown command '%s'" % (cur_com),
+                    {"reply" : "unknown command '%s', %s" % (cur_com, cm_str),
                      "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             if delayed:
                 # delayed is a subprocess_struct
-                delayed.set_send_stuff(src_id, zmq_sock)
+                delayed.set_send_stuff(self, src_id, zmq_sock)
                 com_usage = len([True for cur_del in self.__delayed if cur_del.command == cur_com])
                 #print "CU", com_usage, [cur_del.target_host for cur_del in self.__delayed]
                 if com_usage > delayed.Meta.max_usage:
@@ -1388,12 +1394,27 @@ class server_process(threading_tools.process_pool):
                         delayed.run()
                     self.__delayed.append(delayed)
             if not delayed:
-                zmq_sock.send_unicode(src_id, zmq.SNDMORE)
-                zmq_sock.send_unicode(unicode(srv_com))
-                del srv_com
+                self._send_return(zmq_sock, src_id, srv_com)
         else:
             self.log("cannot receive more data, already got '%s'" % (src_id),
                      logging_tools.LOG_LEVEL_ERROR)
+    def _send_return(self, zmq_sock, src_id, srv_com):
+        c_time = time.time()
+        info_str = "got command '%s' from '%s' in %s" % (
+            srv_com["command"].text,
+            srv_com["source"].attrib["host"],
+            logging_tools.get_diff_time_str(abs(c_time - int(srv_com["result"].attrib["start_time"]))))
+        if int(srv_com["result"].attrib["state"]) != server_command.SRV_REPLY_STATE_OK:
+            info_str = "%s, result is %s (%s)" % (info_str,
+                                                  srv_com["result"].attrib["reply"],
+                                                  srv_com["result"].attrib["state"])
+            log_level = logging_tools.LOG_LEVEL_WARN
+        else:
+            log_level = logging_tools.LOG_LEVEL_OK
+        self.log(info_str, log_level)
+        zmq_sock.send_unicode(src_id, zmq.SNDMORE)
+        zmq_sock.send_unicode(unicode(srv_com))
+        del srv_com
     def _check_delayed(self):
         cur_time = time.time()
         new_list = []
