@@ -512,15 +512,25 @@ class configuration(object):
                 my_parser.add_argument("--writeback", dest="writeback", default=False, action="store_true", help="write back changes to configfile [%(default)s]")
             if pos_arguments:
                 my_parser.add_argument("arguments", nargs="+", help="additional arguments")
-            if partial:
-                options, rest_args = my_parser.parse_known_args()
-            else:
-                options, rest_args = (my_parser.parse_args(), [])
+            try:
+                if partial:
+                    options, rest_args = my_parser.parse_known_args()
+                else:
+                    options, rest_args = (my_parser.parse_args(), [])
+            except:
+                # catch parse errors
+                if self.exit_code is not None:
+                    # set dummy values
+                    options, rest_args = (argparse.Namespace(), [])
+                else:
+                    raise
             self.other_arguments = rest_args
-            for key in argparse_entries:
-                self[key] = getattr(options, key)
-            self.positional_arguments = options.arguments if pos_arguments else []
-            self.__writeback_changes = options.writeback if add_writeback_option else False
+            if not self.exit_code:
+                # only handle options if exit_code is None
+                for key in argparse_entries:
+                    self[key] = getattr(options, key)
+                self.positional_arguments = options.arguments if pos_arguments else []
+                self.__writeback_changes = options.writeback if add_writeback_option else False
         else:
             options = argparse.Namespace()
         if proxy_call:
