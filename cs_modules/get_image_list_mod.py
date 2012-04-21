@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2008 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2008,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -28,15 +28,14 @@ import process_tools
 NEEDED_IMAGE_DIRS = ["usr", "etc", "bin", "sbin", "var"]
 
 class get_image_list(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_config(["image_server"])
-        self.set_public_via_net(False)
-        self.set_used_config_keys(["IMAGE_SOURCE_DIR"])
-    def call_it(self, opt_dict, call_params):
-        sys.path.append("/usr/local/sbin/modules")
-        if os.path.isdir(call_params.get_g_config()["IMAGE_SOURCE_DIR"]):
-            t_dirs = ["%s/%s" % (call_params.get_g_config()["IMAGE_SOURCE_DIR"], x) for x in os.listdir(call_params.get_g_config()["IMAGE_SOURCE_DIR"]) if os.path.isdir("%s/%s" % (call_params.get_g_config()["IMAGE_SOURCE_DIR"], x))]
+    class Meta:
+        needed_configs = ["image_server"]
+        needed_config_keys = ["IMAGE_SOURCE_DIR"]
+    def _call(self):
+        #sys.path.append("/usr/local/sbin/modules")
+        source_dir = self.global_config["IMAGE_SOURCE_DIR"]
+        if os.path.isdir(source_dir):
+            t_dirs = ["%s/%s" % (source_dir, sub_dir) for sub_dir in os.listdir(source_dir) if os.path.isdir("%s/%s" % (source_dir, sub_dir))]
             valid_sys = {}
             for t_dir in t_dirs:
                 dirs_found = os.listdir(t_dir)
@@ -56,18 +55,23 @@ class get_image_list(cs_base_class.server_com):
                     valid_sys[os.path.basename(t_dir)] = sys_dict
                 else:
                     dirs_missing = [x for x in NEEDED_IMAGE_DIRS if x not in dirs_found]
-                    call_params.log("  ... skipping %s (%s [%s] missing)" % (t_dir,
-                                                                             logging_tools.get_plural("subdirectory", len(dirs_missing)),
-                                                                             ", ".join(dirs_missing)))
-            ret_str = server_command.server_reply()
-            ret_str.set_ok_result("found %s" % (logging_tools.get_plural("image", len(valid_sys.keys()))))
+                    self.log("  ... skipping %s (%s [%s] missing)" % (t_dir,
+                                                                      logging_tools.get_plural("subdirectory", len(dirs_missing)),
+                                                                      ", ".join(dirs_missing)))
+            self.srv_com["result"].attrib.update({
+                "reply" : "found %s" % (logging_tools.get_plural("image", len(valid_sys.keys()))),
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
             if valid_sys:
-                ret_str.set_option_dict({"image_dir" : call_params.get_g_config()["IMAGE_SOURCE_DIR"],
-                                         "images"    : valid_sys})
-            #ret_str = "ok found "
+                image_list = self.srv_com.builder("image_list", image_dir=source_dir)
+                self.srv_com["result"] = image_list
+                for image_name, sys_dict in valid_sys.iteritems():
+                    sys_dict["bitcount"] = "%d" % (sys_dict["bitcount"])
+                    image_list.append(self.srv_com.builder("image", image_name, **sys_dict))
         else:
-            ret_str = "error image-source-dir '%s' not found" % (call_params.get_g_config()["IMAGE_SOURCE_DIR"])
-        return ret_str
+            self.srv_com["result"].attrib.update({
+                "reply" : "error image-source-dir '%s' not found" % (source_dir),
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+        #print unicode(self.srv_com)
     
 if __name__ == "__main__":
     print "Loadable module, exiting ..."

@@ -42,6 +42,8 @@ class server_com(object):
         write_log = True
         # show execution time
         show_execution_time = True
+        # keys needed in config
+        needed_config_keys = []
     def __init__(self):
         # copy Meta keys
         for key in dir(server_com.Meta):
@@ -109,6 +111,11 @@ class server_com(object):
                     err_str = "Server %s has no %s attribute" % (loc_config["SERVER_SHORT_NAME"], " or ".join(self.Meta.needed_configs))
         else:
             doit = True
+        if doit and self.Meta.needed_config_keys:
+            for key in self.Meta.needed_config_keys:
+                if key not in loc_config:
+                    self.log("key '%s' not defined in config" % (key), logging_tools.LOG_LEVEL_ERROR)
+                    doit = False
         if doit and srv_origin == "---":
             srv_origin = "yes"
         return (doit, srv_origin, err_str)

@@ -26,7 +26,6 @@ import sys
 import socket
 import re
 import time
-import getopt
 import net_tools
 import Queue
 import threading_tools
@@ -42,7 +41,7 @@ import pprint
 import uuid_tools
 import mail_tools
 import difflib
-import cs_base_class
+#import cs_base_class
 import config_tools
 import zmq
 import cluster_server
@@ -568,7 +567,7 @@ class quota_stuff(bg_stuff):
                                                                                pd_info[1])
                     self.log(log_line)
                     mail_lines["admins"].append(log_line)
-                if not self.__admin_mail_sent or abs(self.__admin_mail_sent - time.time()) > self.glob_config["USER_MAIL_SEND_TIME"]:
+                if not self.__admin_mail_sent or abs(self.__admin_mail_sent - time.time()) > global_config["USER_MAIL_SEND_TIME"]:
                     self.__admin_mail_sent = time.time()
                 else:
                     email_users.remove("admins")
@@ -603,7 +602,7 @@ class quota_stuff(bg_stuff):
                 self.log("Sending %s" % (logging_tools.get_plural("mail", len([u_name for u_name in email_users if u_name != "admins"]))))
                 for email_user in email_users:
                     if email_user == "admins":
-                        to_addrs = global_config["QUOTA_ADMINS"].split(",")
+                        to_addrs = sum([q_admin.strip().split() for q_admin in global_config["QUOTA_ADMINS"].split(",")], [])
                     else:
                         to_addrs = [self._get_uid_info(email_user)["email"]]
                     for to_addr in to_addrs:
@@ -1414,12 +1413,13 @@ class server_process(threading_tools.process_pool):
         for com_name in cluster_server.command_names:
             act_sc = cluster_server.command_dict[com_name]
             act_sc.link(self)
-            self.log("   com %-30s, %s%s, %s, needed option_keys(s) %s, %s" % (
+            self.log("   com %-30s, %s%s, %s, needed option_key(s) %s, needed config_key(s) %s, %s" % (
                 act_sc.name,
                 logging_tools.get_plural("config", len(act_sc.Meta.needed_configs)),
                 " (%s)" % (", ".join(act_sc.Meta.needed_configs)) if act_sc.Meta.needed_configs else "",
                 "blocking" if act_sc.Meta.blocking else "not blocking",
                 ", ".join(act_sc.Meta.needed_option_keys) if act_sc.Meta.needed_option_keys else "none",
+                ", ".join(act_sc.Meta.needed_config_keys) if act_sc.Meta.needed_config_keys else "none",
                 "restartable" if act_sc.Meta.restartable else "not restartable"))
         self.log("Found %s" % (logging_tools.get_plural("command", len(cluster_server.command_names))))
 
