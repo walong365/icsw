@@ -1358,7 +1358,7 @@ class server_process(threading_tools.process_pool):
             srv_com["result"].attrib.update({
                 "state"      : "%d" % (server_command.SRV_REPLY_STATE_OK),
                 "reply"      : "ok",
-                "start_time" : "%d" % (time.time())})
+                "start_time" : "%.3f" % (time.time())})
             if cur_com in self.commands:
                 delayed = self._handle_module_command(srv_com, rest_str)
             else:
@@ -1399,10 +1399,10 @@ class server_process(threading_tools.process_pool):
                      logging_tools.LOG_LEVEL_ERROR)
     def _send_return(self, zmq_sock, src_id, srv_com):
         c_time = time.time()
-        info_str = "got command '%s' from '%s' in %s" % (
+        info_str = "got command '%s' from '%s', took %s" % (
             srv_com["command"].text,
             srv_com["source"].attrib["host"],
-            logging_tools.get_diff_time_str(abs(c_time - int(srv_com["result"].attrib["start_time"]))))
+            logging_tools.get_diff_time_str(abs(c_time - float(srv_com["result"].attrib["start_time"]))))
         if int(srv_com["result"].attrib["state"]) != server_command.SRV_REPLY_STATE_OK:
             info_str = "%s, result is %s (%s)" % (info_str,
                                                   srv_com["result"].attrib["reply"],
