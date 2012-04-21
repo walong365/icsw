@@ -1112,7 +1112,7 @@ class server_process(threading_tools.process_pool):
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
-        if global_config["DEBUG"] or True:#AEMON"]: and not self.__server_com:
+        if not global_config["DEBUG"] and not global_config["COMMAND"]:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info(self.__pid_name)
             msi_block.add_actual_pid(mult=3)
@@ -1200,7 +1200,9 @@ class server_process(threading_tools.process_pool):
         cur_com = server_command.srv_command(command=global_config["COMMAND"])
         cur_com["command"].attrib["via_comline"] = "1"
         self._process_command(cur_com)
+        self["return_value"] = int(cur_com["result"].attrib["state"])
         self["exit_requested"] = True
+        print cur_com["result"].attrib["reply"]
     def _process_command(self, srv_com):
         com_name = srv_com["command"].text
         self.log("executing command %s" % (com_name))
@@ -1468,7 +1470,7 @@ def main():
         print "Too many log_source with my id present, exiting..."
         dc.release()
         sys.exit(5)
-    if global_config["KILL_RUNNING"]:
+    if global_config["KILL_RUNNING"] and not global_config["COMMAND"]:
         log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
     configfile.read_config_from_db(global_config, dc, "server", [
         ("COM_PORT"              , configfile.int_c_var(SERVER_PORT)),
@@ -1495,7 +1497,8 @@ def main():
         process_tools.set_handles({"out" : (1, "cluster-server.out"),
                                    "err" : (0, "/var/lib/logging-server/py_err")})
     else:
-        print "Debugging cluster-server on %s" % (long_host_name)
+        if global_config["DEBUG"]:
+            print "Debugging cluster-server on %s" % (long_host_name)
     ret_state = server_process(db_con).loop()
     sys.exit(ret_state)
     

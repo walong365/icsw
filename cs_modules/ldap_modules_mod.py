@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2008,2009,2010 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2008,2009,2010,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -27,17 +27,11 @@ import cs_tools
 import time
 import commands
 import pprint
-import pkg_resources
 import process_tools
-import hashlib
 import crypt
-pkg_resources.require("python-LDAP")
-try:
-    import ldap
-except ImportError:
-    ldap = None
-else:
-    import ldap.modlist
+import ldap
+import ldap.modlist
+import server_command
 
 """ possible smb.conf:
 
@@ -67,9 +61,8 @@ else:
 """
 
 class init_ldap_config(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_config(["ldap_server"])
+    class Meta:
+        needed_configs = ["ldap_server"]
     def _add_entry(self, ld, dn, in_dict):
         try:
             ld.add_s(dn, ldap.modlist.addModlist(in_dict))
@@ -100,11 +93,11 @@ class init_ldap_config(cs_base_class.server_com):
     def _get_ldap_err_str(self):
         err_dict = sys.exc_info()[1].args[0]
         return " / ".join(["%s: %s" % (x, err_dict[x]) for x in ["info", "desc"] if err_dict.has_key(x)])
-    def call_it(self, opt_dict, call_params):
+    def _call(self):
         # fetch configs
-        call_params.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
+        self.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
                                "device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
-        par_dict = dict([(x["name"], x["value"]) for x in call_params.dc.fetchall()])
+        par_dict = dict([(x["name"], x["value"]) for x in self.dc.fetchall()])
         errors = []
         needed_keys = ["base_dn", "admin_cn", "root_passwd"]
         missed_keys = [x for x in needed_keys if not par_dict.has_key(x)]
@@ -113,13 +106,13 @@ class init_ldap_config(cs_base_class.server_com):
                                               ", ".join(missed_keys)))
         else:
             full_dn = par_dict["base_dn"]
-            call_params.log("will modify ldap_tree below %s" % (full_dn))
+            self.log("will modify ldap_tree below %s" % (full_dn))
             try:
                 ld_read = ldap.initialize("ldap://localhost")
                 ld_read.simple_bind_s("", "")
             except ldap.LDAPError:
                 ldap_err_str = self._get_ldap_err_str()
-                call_params.log("cannot initialize read_cursor: %s" % (ldap_err_str),
+                self.log("cannot initialize read_cursor: %s" % (ldap_err_str),
                                 logging_tools.LOG_LEVEL_ERROR)
                 errors.append(ldap_err_str)
                 ld_read = None
@@ -131,7 +124,7 @@ class init_ldap_config(cs_base_class.server_com):
                                            par_dict["root_passwd"])
                 except ldap.LDAPError:
                     ldap_err_str = self._get_ldap_err_str()
-                    call_params.log("cannot initialize write_cursor: %s" % (ldap_err_str),
+                    self.log("cannot initialize write_cursor: %s" % (ldap_err_str),
                                     logging_tools.LOG_LEVEL_ERROR)
                     errors.append(ldap_err_str)
                     ld_write = None
@@ -148,20 +141,20 @@ class init_ldap_config(cs_base_class.server_com):
                                                    "dc"          : [par_dict["base_dn"].split(",")[0].split("=")[1]],
                                                    "o"           : [par_dict["base_dn"].split(",")[0].split("=")[1]]})
                     if ok:
-                        call_params.log("added root-entry at %s" % (par_dict["base_dn"]))
+                        self.log("added root-entry at %s" % (par_dict["base_dn"]))
                     else:
                         root_ok = False
                         errors.append(err_str)
-                        call_params.log("cannot add root entry %s: %s" % (par_dict["base_dn"], err_str),
+                        self.log("cannot add root entry %s: %s" % (par_dict["base_dn"], err_str),
                                         logging_tools.LOG_LEVEL_ERROR)
                 if root_ok:
                     if par_dict.has_key("sub_ou"):
                         act_sub_ou = par_dict["sub_ou"]
-                        call_params.log("using %s as default OU" % (par_dict["sub_ou"]))
+                        self.log("using %s as default OU" % (par_dict["sub_ou"]))
                         sub_ou_str = ",".join(["ou=%s" % (sub_str) for sub_str in act_sub_ou.split(",")])
                     else:
                         act_sub_ou = ""
-                        call_params.log("using no default OU")
+                        self.log("using no default OU")
                         sub_ou_str = ""
                     # init main groups
                     needed_dns = []
@@ -174,7 +167,7 @@ class init_ldap_config(cs_base_class.server_com):
                         if dn in needed_dns:
                             needed_dns.remove(dn)
                     if needed_dns:
-                        call_params.log("%s missing: %s" % (logging_tools.get_plural("dn", len(needed_dns)),
+                        self.log("%s missing: %s" % (logging_tools.get_plural("dn", len(needed_dns)),
                                                             ", ".join(needed_dns)))
                         for needed_dn in needed_dns:
                             short_dn = needed_dn.split(",")[0].split("=")[1]
@@ -182,23 +175,23 @@ class init_ldap_config(cs_base_class.server_com):
                                                           needed_dn,
                                                           {"objectClass" : ["top", "organizationalUnit"],
                                                            "ou"          : [short_dn],
-                                                           "description" : "added by cluster-server on %s" % (call_params.get_l_config()["SERVER_SHORT_NAME"])})
+                                                           "description" : "added by cluster-server on %s" % (self.global_config["SERVER_SHORT_NAME"])})
                             if ok:
-                                call_params.log("added entry %s" % (needed_dn))
+                                self.log("added entry %s" % (needed_dn))
                             else:
                                 errors.append(err_str)
-                                call_params.log("cannot add entry %s: %s" % (needed_dn, err_str),
+                                self.log("cannot add entry %s: %s" % (needed_dn, err_str),
                                                 logging_tools.LOG_LEVEL_ERROR)
                     if "sambadomain" in par_dict:
                         samba_dn = "sambaDomainName=%s,%s" % (par_dict["sambadomain"], full_dn)
                         for dn, attrs in ld_read.search_s(full_dn, ldap.SCOPE_SUBTREE, "objectclass=sambaDomain"):
                             ok, err_str = self._delete_entry(ld_write,
                                                              dn)
-                            call_params.log("removed previous sambaDomain '%s'" % (dn))
-                        call_params.log("init SAMBA-structure (domainname is '%s', dn is '%s')" % (par_dict["sambadomain"],
+                            self.log("removed previous sambaDomain '%s'" % (dn))
+                        self.log("init SAMBA-structure (domainname is '%s', dn is '%s')" % (par_dict["sambadomain"],
                                                                                                    samba_dn))
                         local_sid = self.call_command("net", "getlocalsid")[1][0].split()[-1]
-                        call_params.log("local SID is %s" % (local_sid))
+                        self.log("local SID is %s" % (local_sid))
                         ok, err_str = self._add_entry(ld_write,
                                                       samba_dn,
                                                       {"objectClass" : ["sambaDomain"],
@@ -218,22 +211,25 @@ class init_ldap_config(cs_base_class.server_com):
                                                        "sambaRefuseMachinePwdChange"   : "0",
                                                        })
                         if ok:
-                            call_params.log("added entry %s" % (samba_dn))
+                            self.log("added entry %s" % (samba_dn))
                         else:
                             errors.append(err_str)
-                            call_params.log("cannot add entry %s: %s" % (samba_dn, err_str),
+                            self.log("cannot add entry %s: %s" % (samba_dn, err_str),
                                             logging_tools.LOG_LEVEL_ERROR)
                 ld_read.unbind_s()
                 ld_write.unbind_s()
         if errors:
-            return "error %s" % ("; ".join(errors))
+            self.srv_com["result"].attrib.update({
+                "reply" : "error init LDAP tree: %s" % (", ".join(errors)),
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
-            return "ok checked"
+            self.srv_com["result"].attrib.update({
+                "reply" : "ok init ldap tree",
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
 class sync_ldap_config(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_config(["ldap_server"])
+    class Meta:
+        needed_configs = ["ldap_server"]
     def _add_entry(self, ld, dn, in_dict):
         try:
             ld.add_s(dn, ldap.modlist.addModlist(in_dict))
@@ -261,11 +257,11 @@ class sync_ldap_config(cs_base_class.server_com):
     def _get_ldap_err_str(self, dn):
         err_dict = sys.exc_info()[1].args[0]
         return "%s (%s)" % (dn, " / ".join(["%s: %s" % (x, err_dict[x]) for x in ["info", "desc"] if err_dict.get(x, None)]))
-    def call_it(self, opt_dict, call_params):
+    def _call(self):
         # fetch configs
-        call_params.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
-                               "device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
-        par_dict = dict([(x["name"], x["value"]) for x in call_params.dc.fetchall()])
+        self.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
+                        "device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
+        par_dict = dict([(x["name"], x["value"]) for x in self.dc.fetchall()])
         errors = []
         needed_keys = ["base_dn", "admin_cn", "root_passwd"]
         missed_keys = [x for x in needed_keys if not par_dict.has_key(x)]
@@ -278,7 +274,7 @@ class sync_ldap_config(cs_base_class.server_com):
                 ld_read.simple_bind_s("", "")
             except ldap.LDAPError:
                 ldap_err_str = self._get_ldap_err_str("read_access")
-                call_params.log("cannot initialize read_cursor: %s" % (ldap_err_str),
+                self.log("cannot initialize read_cursor: %s" % (ldap_err_str),
                                 logging_tools.LOG_LEVEL_ERROR)
                 errors.append(ldap_err_str)
                 ld_read = None
@@ -290,26 +286,26 @@ class sync_ldap_config(cs_base_class.server_com):
                                            par_dict["root_passwd"])
                 except ldap.LDAPError:
                     ldap_err_str = self._get_ldap_err_str("write_access")
-                    call_params.log("cannot initialize write_cursor: %s" % (ldap_err_str),
+                    self.log("cannot initialize write_cursor: %s" % (ldap_err_str),
                                     logging_tools.LOG_LEVEL_ERROR)
                     errors.append(ldap_err_str)
                     ld_write = None
                     ld_read.unbind_s()
             if ld_read and ld_write:
-                ldap_version = call_params.get_g_config()["LDAP_SCHEMATA_VERSION"]
-                call_params.log("using LDAP_SCHEMATA_VERSION %d" % (ldap_version))
+                ldap_version = self.global_config["LDAP_SCHEMATA_VERSION"]
+                self.log("using LDAP_SCHEMATA_VERSION %d" % (ldap_version))
                 # fetch user / group info
-                call_params.dc.execute("SELECT g.* FROM ggroup g")
-                all_groups = dict([(x["ggroup_idx"], x) for x in call_params.dc.fetchall()])
-                call_params.dc.execute("SELECT u.* FROM user u")
-                all_users = dict([(x["user_idx"], x) for x in call_params.dc.fetchall() if x["ggroup"] in all_groups.keys()])
-                call_params.dc.execute("SELECT d.name, udl.user FROM device d, user_device_login udl WHERE udl.device=d.device_idx")
+                self.dc.execute("SELECT g.* FROM ggroup g")
+                all_groups = dict([(x["ggroup_idx"], x) for x in self.dc.fetchall()])
+                self.dc.execute("SELECT u.* FROM user u")
+                all_users = dict([(x["user_idx"], x) for x in self.dc.fetchall() if x["ggroup"] in all_groups.keys()])
+                self.dc.execute("SELECT d.name, udl.user FROM device d, user_device_login udl WHERE udl.device=d.device_idx")
                 devlog_dict = {}
-                for db_rec in call_params.dc.fetchall():
+                for db_rec in self.dc.fetchall():
                     devlog_dict.setdefault(db_rec["user"], []).append(db_rec["name"])
                 # secondary groups
-                call_params.dc.execute("SELECT * FROM user_ggroup")
-                for db_rec in call_params.dc.fetchall():
+                self.dc.execute("SELECT * FROM user_ggroup")
+                for db_rec in self.dc.fetchall():
                     if all_users.has_key(db_rec["user"]) and all_groups.has_key(db_rec["ggroup"]):
                         all_users[db_rec["user"]].setdefault("secondary_groups", []).append(db_rec["ggroup"])
                 # luts
@@ -318,17 +314,17 @@ class sync_ldap_config(cs_base_class.server_com):
                 # get sub_ou
                 if par_dict.has_key("sub_ou"):
                     act_sub_ou = par_dict["sub_ou"]
-                    call_params.log("using %s as default OU" % (par_dict["sub_ou"]))
+                    self.log("using %s as default OU" % (par_dict["sub_ou"]))
                     sub_ou_str = "%s," % (",".join(["ou=%s" % (sub_str) for sub_str in act_sub_ou.split(",")]))
                 else:
                     act_sub_ou = ""
-                    call_params.log("using no default OU")
+                    self.log("using no default OU")
                     sub_ou_str = ""
                 if "sambadomain" in par_dict:
                     dom_node = ld_read.search_s("%s%s" % (sub_ou_str,
                                                           par_dict["base_dn"]), ldap.SCOPE_SUBTREE, "objectclass=sambaDomain")[0]
                     samba_sid = dom_node[1]["sambaSID"][0]
-                    call_params.log("sambaSID is '%s' (domain %s)" % (samba_sid,
+                    self.log("sambaSID is '%s' (domain %s)" % (samba_sid,
                                                                       par_dict["sambadomain"]))
                 # build ldap structures
                 for g_idx, g_stuff in all_groups.iteritems():
@@ -400,20 +396,20 @@ class sync_ldap_config(cs_base_class.server_com):
                                 group_struct["change_list"] = ldap.modlist.modifyModlist(group_struct["orig_attrs"], group_struct["attrs"])
                                 if group_struct["change_list"]:
                                     # changing group
-                                    call_params.log("changing group %s (content differs)" % (group_name))
+                                    self.log("changing group %s (content differs)" % (group_name))
                                     groups_to_change.append(group_name)
                                 else:
                                     groups_ok.append(group_name)
                             else:
                                 # remove group (no longer active)
-                                call_params.log("removing group %s (not active)" % (group_name))
+                                self.log("removing group %s (not active)" % (group_name))
                                 groups_to_remove.append(group_name)
                         else:
                             # remove group (not found in db)
-                            call_params.log("removing group %s (not found in db)" % (group_name))
+                            self.log("removing group %s (not found in db)" % (group_name))
                             groups_to_remove.append(group_name)
                     else:
-                        call_params.log("ignoring posixGroup with dn %s" % (dn),
+                        self.log("ignoring posixGroup with dn %s" % (dn),
                                         logging_tools.LOG_LEVEL_WARN)
                 # add groups
                 groups_to_add = [x for x in group_lut.keys() if x not in groups_ok and x not in groups_to_change and x not in groups_to_remove]
@@ -424,13 +420,13 @@ class sync_ldap_config(cs_base_class.server_com):
                                                       group_struct["dn"],
                                                       group_struct["attrs"])
                         if ok:
-                            call_params.log("added group %s" % (group_to_add))
+                            self.log("added group %s" % (group_to_add))
                         else:
                             errors.append(err_str)
-                            call_params.log("cannot add group %s: %s" % (group_to_add, err_str),
+                            self.log("cannot add group %s: %s" % (group_to_add, err_str),
                                             logging_tools.LOG_LEVEL_ERROR)
                     else:
-                        call_params.log("cannot add group %s: not active" % (group_to_add),
+                        self.log("cannot add group %s: not active" % (group_to_add),
                                         logging_tools.LOG_LEVEL_WARN)
                 # modify groups
                 for group_to_change in groups_to_change:
@@ -439,10 +435,10 @@ class sync_ldap_config(cs_base_class.server_com):
                                                      group_struct["dn"],
                                                      group_struct["change_list"])
                     if ok:
-                        call_params.log("modified group %s" % (group_to_change))
+                        self.log("modified group %s" % (group_to_change))
                     else:
                         errors.append(err_str)
-                        call_params.log("cannot modify group %s: %s" % (group_to_change, err_str),
+                        self.log("cannot modify group %s: %s" % (group_to_change, err_str),
                                         logging_tools.LOG_LEVEL_ERROR)
                 # remove groups
                 for group_to_remove in groups_to_remove:
@@ -452,10 +448,10 @@ class sync_ldap_config(cs_base_class.server_com):
                                                                               par_dict["base_dn"]))
                     
                     if ok:
-                        call_params.log("deleted group %s" % (group_to_remove))
+                        self.log("deleted group %s" % (group_to_remove))
                     else:
                         errors.append(err_str)
-                        call_params.log("cannot delete group %s: %s" % (group_to_remove, err_str),
+                        self.log("cannot delete group %s: %s" % (group_to_remove, err_str),
                                         logging_tools.LOG_LEVEL_ERROR)
                 # fetch all users from ldap
                 users_ok, users_to_change, users_to_remove = ([], [], [])
@@ -475,20 +471,20 @@ class sync_ldap_config(cs_base_class.server_com):
                                 user_struct["change_list"] = ldap.modlist.modifyModlist(user_struct["orig_attrs"], user_struct["attrs"], [sub_key for sub_key in user_struct["attrs"].keys() if sub_key.startswith("shadow") or sub_key.lower() in (["userpassword"] if ("do_not_sync_password" in par_dict) else [])])
                                 if user_struct["change_list"]:
                                     # changing user
-                                    call_params.log("changing user %s (content differs)" % (user_name))
+                                    self.log("changing user %s (content differs)" % (user_name))
                                     users_to_change.append(user_name)
                                 else:
                                     users_ok.append(user_name)
                             else:
                                 # remove user (no longer active)
-                                call_params.log("removing user %s (not active or group not active or no group_homestart)" % (user_name))
+                                self.log("removing user %s (not active or group not active or no group_homestart)" % (user_name))
                                 users_to_remove.append(user_name)
                         else:
                             # remove user (not found in db)
-                            call_params.log("removing user %s (not found in db)" % (user_name))
+                            self.log("removing user %s (not found in db)" % (user_name))
                             users_to_remove.append(user_name)
                     else:
-                        call_params.log("ignoring posixUser with dn %s" % (dn),
+                        self.log("ignoring posixUser with dn %s" % (dn),
                                         logging_tools.LOG_LEVEL_WARN)
                 # add users
                 users_to_add = [x for x in user_lut.keys() if x not in users_ok and x not in users_to_change and x not in users_to_remove]
@@ -499,13 +495,13 @@ class sync_ldap_config(cs_base_class.server_com):
                                                       user_struct["dn"],
                                                       user_struct["attrs"])
                         if ok:
-                            call_params.log("added user %s" % (user_to_add))
+                            self.log("added user %s" % (user_to_add))
                         else:
                             errors.append(err_str)
-                            call_params.log("cannot add user %s: %s" % (user_to_add, err_str),
+                            self.log("cannot add user %s: %s" % (user_to_add, err_str),
                                             logging_tools.LOG_LEVEL_ERROR)
                     else:
-                        call_params.log("cannot add user %s: not active" % (user_to_add),
+                        self.log("cannot add user %s: not active" % (user_to_add),
                                         logging_tools.LOG_LEVEL_WARN)
                 # modify users
                 for user_to_change in users_to_change:
@@ -514,10 +510,10 @@ class sync_ldap_config(cs_base_class.server_com):
                                                      user_struct["dn"],
                                                      user_struct["change_list"])
                     if ok:
-                        call_params.log("modified user %s" % (user_to_change))
+                        self.log("modified user %s" % (user_to_change))
                     else:
                         errors.append(err_str)
-                        call_params.log("cannot modify user %s: %s" % (user_to_change, err_str),
+                        self.log("cannot modify user %s: %s" % (user_to_change, err_str),
                                         logging_tools.LOG_LEVEL_ERROR)
                 # remove users
                 for user_to_remove in users_to_remove:
@@ -527,18 +523,18 @@ class sync_ldap_config(cs_base_class.server_com):
                                                                                 par_dict["base_dn"]))
                     
                     if ok:
-                        call_params.log("deleted user %s" % (user_to_remove))
+                        self.log("deleted user %s" % (user_to_remove))
                     else:
                         errors.append(err_str)
-                        call_params.log("cannot delete user %s: %s" % (user_to_remove, err_str),
+                        self.log("cannot delete user %s: %s" % (user_to_remove, err_str),
                                         logging_tools.LOG_LEVEL_ERROR)
                 # automounter
-                call_params.dc.execute("SELECT d.name, cs.name AS csname, cs.value, cs.new_config FROM device d INNER JOIN new_config c INNER JOIN device_config dc INNER JOIN config_str cs INNER JOIN " + \
+                self.dc.execute("SELECT d.name, cs.name AS csname, cs.value, cs.new_config FROM device d INNER JOIN new_config c INNER JOIN device_config dc INNER JOIN config_str cs INNER JOIN " + \
                                        "device_group dg INNER JOIN device_type dt LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_type=dt.device_type_idx AND dt.identifier='H' AND d.device_group=dg.device_group_idx " + \
                                        "AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND (cs.name='export' OR cs.name='import' OR cs.name='options' or cs.name='node_postfix') ORDER BY d.name, cs.config")
                 export_dict = {}
                 ei_dict = {}
-                for entry in call_params.dc.fetchall():
+                for entry in self.dc.fetchall():
                     dev_name, act_idx = (entry["name"], entry["new_config"])
                     # generate a small dict for each export-entry (per device)
                     ei_dict.setdefault(dev_name, {}).setdefault(act_idx, {"export"       : None,
@@ -551,10 +547,10 @@ class sync_ldap_config(cs_base_class.server_com):
                             aeid["import"] = cs_tools.hostname_expand(mach, aeid["import"])
                             export_dict[aeid["import"]] = (aeid["options"], "%s%s:%s" % (mach, aeid["node_postfix"], aeid["export"]))
                 # home-exports
-                call_params.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, device_config dc, config_str cs, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
+                self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, device_config dc, config_str cs, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
                                        "dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='homeexport' OR cs.name='options' OR cs.name='node_postfix') ORDER BY d.name")
                 home_exp_dict = {}
-                for entry in call_params.dc.fetchall():
+                for entry in self.dc.fetchall():
                     home_exp_dict.setdefault(entry["device_config_idx"], {"name"         : entry["name"],
                                                                           "options"      : "",
                                                                           "node_postfix" : "",
@@ -564,10 +560,10 @@ class sync_ldap_config(cs_base_class.server_com):
                 for ihk in invalid_home_keys:
                     del home_exp_dict[ihk]
                 # scratch-exports
-                call_params.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, config_str cs, device_config dc, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
+                self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, config_str cs, device_config dc, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
                                        "dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='scratchexport' OR cs.name='options' OR cs.name='node_postfix') ORDER BY d.name")
                 scratch_exp_dict = {}
-                for entry in call_params.dc.fetchall():
+                for entry in self.dc.fetchall():
                     scratch_exp_dict.setdefault(entry["device_config_idx"], {"name"          : entry["name"],
                                                                              "options"       : "",
                                                                              "node_postfix"  : "",
@@ -607,7 +603,7 @@ class sync_ldap_config(cs_base_class.server_com):
                 # remove mount_points which would overwrite '/'
                 error_keys = sorted([key for key in export_dict.keys() if os.path.dirname(key) == "/"])
                 if error_keys:
-                    call_params.log("found %s: %s; ignoring them" % (logging_tools.get_plural("wrong key", len(error_keys)),
+                    self.log("found %s: %s; ignoring them" % (logging_tools.get_plural("wrong key", len(error_keys)),
                                                                      ", ".join(error_keys)),
                                     logging_tools.LOG_LEVEL_ERROR)
                 mount_points = dict([(os.path.dirname(x), 0) for x in export_dict.keys() if x not in error_keys]).keys()
@@ -660,13 +656,13 @@ class sync_ldap_config(cs_base_class.server_com):
                         map_struct["change_list"] = ldap.modlist.modifyModlist(map_struct["orig_attrs"], map_struct["attrs"])
                         if map_struct["change_list"]:
                             # changing map
-                            call_params.log("changing map %s (content differs)" % (dn))
+                            self.log("changing map %s (content differs)" % (dn))
                             maps_to_change.append(dn)
                         else:
                             maps_ok.append(dn)
                     else:
                         # remove map (not found in db)
-                        call_params.log("removing map %s (not found in db)" % (dn))
+                        self.log("removing map %s (not found in db)" % (dn))
                         maps_to_remove.append(dn)
                 # add maps
                 maps_to_add = [x for x in map_keys if x not in maps_ok and x not in maps_to_change and x not in maps_to_remove]
@@ -676,10 +672,10 @@ class sync_ldap_config(cs_base_class.server_com):
                                                   map_struct["dn"],
                                                   map_struct["attrs"])
                     if ok:
-                        call_params.log("added map %s" % (map_to_add))
+                        self.log("added map %s" % (map_to_add))
                     else:
                         errors.append(err_str)
-                        call_params.log("cannot add map %s: %s" % (map_to_add, err_str),
+                        self.log("cannot add map %s: %s" % (map_to_add, err_str),
                                         logging_tools.LOG_LEVEL_ERROR)
                 # modify maps
                 for map_to_change in maps_to_change:
@@ -688,10 +684,10 @@ class sync_ldap_config(cs_base_class.server_com):
                                                      map_struct["dn"],
                                                      map_struct["change_list"])
                     if ok:
-                        call_params.log("modified map %s" % (map_to_change))
+                        self.log("modified map %s" % (map_to_change))
                     else:
                         errors.append(err_str)
-                        call_params.log("cannot modify map %s: %s" % (map_to_change, err_str),
+                        self.log("cannot modify map %s: %s" % (map_to_change, err_str),
                                         logging_tools.LOG_LEVEL_ERROR)
                 # remove maps
                 maps_to_remove.reverse()
@@ -700,20 +696,23 @@ class sync_ldap_config(cs_base_class.server_com):
                                                      map_to_remove)
                     
                     if ok:
-                        call_params.log("deleted map %s" % (map_to_remove))
+                        self.log("deleted map %s" % (map_to_remove))
                     else:
                         errors.append(err_str)
-                        call_params.log("cannot delete map %s: %s" % (map_to_remove, err_str),
+                        self.log("cannot delete map %s: %s" % (map_to_remove, err_str),
                                         logging_tools.LOG_LEVEL_ERROR)
                 #pprint.pprint(export_dict)
                 ld_read.unbind_s()
                 ld_write.unbind_s()
         if errors:
-            return "error %s" % ("; ".join(errors))
+            self.srv_com["result"].attrib.update({
+                "reply" : "error synced LDAP tree: %s" % (", ".join(errors)),
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
-            return "ok checked"
+            self.srv_com["result"].attrib.update({
+                "reply" : "ok synced LDAP tree",
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
-    
