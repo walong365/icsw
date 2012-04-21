@@ -440,4 +440,3 @@ class server_reply(command_template):
 def main():
     print "Loadable module, exiting..."
     sys.exit(0)
-

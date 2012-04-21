@@ -962,7 +962,8 @@ class process_pool(object):
         # flags for exiting / loop-control
         self.__flags = {"run_flag"                  : True,
                         "signal_handlers_installed" : False,
-                        "exit_requested"            : False}
+                        "exit_requested"            : False,
+                        "return_value"              : 0}
         self.__exception_table = {}
         self.process_init()
         self.set_stack_size(kwargs.get("stack_size", DEFAULT_STACK_SIZE))
@@ -1288,6 +1289,7 @@ class process_pool(object):
         self.uninstall_signal_handlers()
         self.loop_post()
         self._close_pp_sockets()
+        return self["return_value"]
     def loop_function(self):
         print "_dummy_loop_function(), sleeping for 10 seconds"
         time.sleep(10)
