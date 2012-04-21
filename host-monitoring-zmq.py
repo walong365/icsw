@@ -1353,8 +1353,7 @@ class server_process(threading_tools.process_pool):
                 rest_str = u""
             # is a delayed command
             delayed = False
-            cur_com = srv_com["command"].text + "."
-            srv_com.update_source()
+            cur_com = srv_com["command"].text
             srv_com["result"] = None
             srv_com["result"].attrib.update({
                 "state"      : "%d" % (server_command.SRV_REPLY_STATE_OK),
@@ -1412,6 +1411,7 @@ class server_process(threading_tools.process_pool):
         else:
             log_level = logging_tools.LOG_LEVEL_OK
         self.log(info_str, log_level)
+        srv_com.update_source()
         zmq_sock.send_unicode(src_id, zmq.SNDMORE)
         zmq_sock.send_unicode(unicode(srv_com))
         del srv_com
