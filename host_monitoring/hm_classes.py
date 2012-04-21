@@ -45,7 +45,17 @@ def sys_to_net(in_val):
     return cPickle.dumps(in_val)
 
 class subprocess_struct(object):
+    class Meta:
+        max_usage = 2
+        twisted = False
+        max_runtime = 300
+        use_popen = True
+        verbose = False
     def __init__(self, srv_com, com_line, cb_func=None):
+        # copy Meta keys
+        for key in dir(subprocess_struct.Meta):
+            if not key.startswith("__") and not hasattr(self.Meta, key):
+                setattr(self.Meta, key, getattr(subprocess_struct.Meta, key))
         self.srv_com = srv_com
         self.command = srv_com["command"].text
         self.command_line = com_line
@@ -75,6 +85,8 @@ class subprocess_struct(object):
             run_info["comline"] = self.command_line
         self.run_info = run_info
         if run_info["comline"]:
+            if self.Meta.verbose:
+                self.log("popen '%s'" % (run_info["comline"]))
             self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     def set_send_stuff(self, src_id, zmq_sock):
         self.src_id = src_id
@@ -91,6 +103,8 @@ class subprocess_struct(object):
             fin = True
         else:
             self.run_info["result"] = self.popen.poll()
+            if self.Meta.verbose:
+                self.log("finished with %s" % (str(self.run_info["result"])))
             fin = False
             if self.run_info["result"] is not None:
                 self.process()
@@ -123,11 +137,6 @@ class subprocess_struct(object):
         del self.zmq_sock
         if self.popen:
             del self.popen
-    class Meta:
-        max_usage = 2
-        twisted = False
-        max_runtime = 300
-        use_popen = True
 
 class hm_module(object):
     class Meta:

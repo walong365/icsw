@@ -170,8 +170,13 @@ class ctrl_type(object):
             return False
 
 class ctrl_check_struct(hm_classes.subprocess_struct):
-    def __init__(self, srv_com, ct_struct, ctrl_list=[]):
+    class Meta:
+        verbose = True
+    def __init__(self, log_com, srv_com, ct_struct, ctrl_list=[]):
+        self.__log_com = log_com
         hm_classes.subprocess_struct.__init__(self, srv_com, ct_struct.get_exec_list(), ct_struct.process)
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[ccs] %s" % (what), level)
         
 class ctrl_type_tw(ctrl_type):
     class Meta:
@@ -577,11 +582,53 @@ class ctrl_type_megaraid_sas(ctrl_type):
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+        return [("%s -ldInfo -Lall -a%d" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
+               [("%s -AdpBbuCmd -GetBbuStatus -a%d" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list]
     def scan_ctrl(self):
-        cur_stat, cur_lines = self.exec_command(" info", post="strip")
-    def update_ctrl(self, ctrl_ids):
-        print ctrl_ids
+        cur_stat, cur_lines = self.exec_command(" -AdpAllInfo -aAll", post="strip")
+        if not cur_stat:
+            adp_check = False
+            for line in cur_lines:
+                if line.lower().startswith("adapter #"):
+                    line_p = line.split()
+                    ctrl_num = int(line_p[-1][1:])
+                    self._dict[ctrl_num] = {"info"          : " ".join(line_p),
+                                            "logical_lines" : {}}
+                    self.log("Found Controller '%s' with ID %d" % (self._dict[ctrl_num]["info"],
+                                                                   ctrl_num))
+    def process(self, ccs):
+        com_line, ctrl_id, run_type = ccs.run_info["command"]
+        ctrl_stuff = self._dict[ctrl_id]
+        if run_type == "ld":
+            log_drive_num = None
+            for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n") if cur_line.strip()]:
+                if line.lower().count("virtual disk:"):
+                    log_drive_num = int(line.strip().split()[2])
+                    ctrl_stuff["logical_lines"][log_drive_num] = []
+                if log_drive_num is not None:
+                    if line.count(":"):
+                        ctrl_stuff["logical_lines"][log_drive_num].append([part.strip() for part in line.split(":", 1)])
+        elif run_type == "bbu":
+            ctrl_stuff["bbu_keys"] = {}
+            main_key = "main"
+            for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n") if cur_line.strip()]:
+                if not line.startswith(" "):
+                    main_key = "main"
+                if line.count(":"):
+                    if line.endswith(":"):
+                        main_key = line.strip()[:-1].lower()
+                    else:
+                        if main_key in ["bbu firmware status"]:
+                            pass
+                        else:
+                            key, value = line.split(":", 1)
+                            act_key = key.strip().lower()
+                            value = value.strip()
+                            value = {"no" : False,
+                                     "yes" : True}.get(value.lower(), value)
+                            ctrl_stuff["bbu_keys"].setdefault(main_key, {})[act_key] = value
+            # store in ccs
+            ccs.srv_com["result:ctrl_%d" % (ctrl_id)] = ctrl_stuff
     def update_ok(self, srv_com):
         if self._dict:
             return ctrl_type.update_ok(self, srv_com)
@@ -589,8 +636,6 @@ class ctrl_type_megaraid_sas(ctrl_type):
             srv_com["result"].attrib.update({"reply" : "no controller found",
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
-    def process(self, ccs):
-        ccs.srv_com["result"] = "OK"
     def _interpret(self, ctrl_dict, cur_ns):
         num_c, num_d, num_e = (len(ctrl_dict.keys()), 0, 0)
         ret_state = limits.nag_STATE_OK
@@ -613,7 +658,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                                 logging_tools.get_plural("logical drive", num_d),
                                                 logging_tools.get_plural("controller", num_c),
                                                 ", ".join(drive_stats))
-        
+
 class ctrl_type_megaraid(ctrl_type):
     class Meta:
         name = "megaraid"
@@ -622,7 +667,7 @@ class ctrl_type_megaraid(ctrl_type):
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+        return ["%s info %s" % (self._check_exec, ctrl_id) for ctrl_id in ctrl_list]
     def scan_ctrl(self):
         cur_stat, cur_lines = self.exec_command(" info", post="strip")
     def update_ctrl(self, ctrl_ids):
@@ -1061,7 +1106,7 @@ class tw_status_command(hm_classes.hm_command):
         else:
             ctrl_list = []
         if ctrl_type.ctrl("tw").update_ok(srv_com):
-            return ctrl_check_struct(srv_com, ctrl_type.ctrl("tw"), ctrl_list)
+            return ctrl_check_struct(self.log, srv_com, ctrl_type.ctrl("tw"), ctrl_list)
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("tw")._interpret(ctrl_dict, cur_ns)
     def interpret(self, srv_com, cur_ns):
@@ -1082,7 +1127,7 @@ class aac_status_command(hm_classes.hm_command):
         else:
             ctrl_list = []
         if ctrl_type.ctrl("ips").update_ok(srv_com):
-            return ctrl_check_struct(srv_com, ctrl_type.ctrl("ips"), ctrl_list)
+            return ctrl_check_struct(self.log, srv_com, ctrl_type.ctrl("ips"), ctrl_list)
     def interpret(self, srv_com, cur_ns):
         return self._interpret(marshal.loads(bz2.decompress(base64.b64decode(srv_com["ips_dict_base64"].text))), cur_ns)
     def interpret_old(self, result, cur_ns):
@@ -1092,10 +1137,15 @@ class aac_status_command(hm_classes.hm_command):
         return ctrl_type.ctrl("ips")._interpret(aac_dict, cur_ns)
 
 class megaraid_sas_status_command(hm_classes.hm_command):
-    def server_call(self, cm):
-        self.module_info.init_ctrl_dict(self.logger)
-        self.module_info.update_ctrl_dict(self.logger)
-        return "ok %s" % (hm_classes.sys_to_net(self.module_info.get_ctrl_config()))
+    def __call__(self, srv_com, cur_ns):
+        ctrl_type.update("megaraid_sas")
+        if ctrl_type.ctrl("megaraid_sas").update_ok(srv_com):
+            return ctrl_check_struct(self.log, srv_com, ctrl_type.ctrl("megaraid_sas"), [])
+    def interpret(self, srv_com, cur_ns):
+        ctrl_dict = {}
+        for res in srv_com["result"]:
+            ctrl_dict[int(res.tag.split("}")[1].split("_")[-1])] = srv_com._interpret_el(res)
+        return self._interpret(ctrl_dict, cur_ns)
     def interpret_old(self, result, cur_ns):
         ctrl_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(ctrl_dict, cur_ns)
@@ -1121,7 +1171,7 @@ class gdth_status_command(hm_classes.hm_command):
         else:
             ctrl_list = []
         if ctrl_type.ctrl("gdth").update_ok(srv_com):
-            return ctrl_check_struct(srv_com, ctrl_type.ctrl("gdth"), ctrl_list)
+            return ctrl_check_struct(self.log, srv_com, ctrl_type.ctrl("gdth"), ctrl_list)
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("gdth")._interpret(ctrl_dict, cur_ns)
     def interpret(self, srv_com, cur_ns):
