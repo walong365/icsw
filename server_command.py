@@ -145,15 +145,26 @@ class srv_command(object):
         xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
         return self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS})
     def __getitem__(self, key):
+        if key.startswith("*"):
+            interpret = True
+            key = key[1:]
+        else:
+            interpret = False
         xpath_res = self.get_element(key)
         if len(xpath_res) == 1:
             xpath_res = xpath_res[0]
             if xpath_res.attrib.get("type") == "dict":
                 return self._interpret_el(xpath_res)
             else:
-                return xpath_res
+                if interpret:
+                    return self._interpret_el(xpath_res)
+                else:
+                    return xpath_res
         elif len(xpath_res) > 1:
-            return [cur_res for cur_res in xpath_res]
+            if interpret:
+                return [self._interpret_el(cur_res) for cur_res in xpath_res]
+            else:
+                return [cur_res for cur_res in xpath_res]
         else:
             raise KeyError, "key %s not found in srv_command" % (key)
     def _to_unicode(self, value):
