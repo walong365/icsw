@@ -24,26 +24,31 @@ import server_command
 import check_scripts
 import uuid_tools
 import pprint
+import cluster_server
 
 class check_server(cs_base_class.server_com):
     def _call(self):
-        #res_struct = server_command.server_reply()
-        #res_struct.set_state_and_result(0, "ok")
         opt_dict = check_scripts.get_default_opt_dict()
-        opt_dict["full_status"] = 1
-        opt_dict["mem_info"] = 1
+        opt_dict["full_status"] = True
+        opt_dict["mem_info"] = True
         ret_dict = check_scripts.check_system(opt_dict, {}, self.dc)
-        pprint.pprint(ret_dict)
-        pub_coms  = sorted([com_name for com_name, com_struct in [(com_name, call_params.get_l_config()["COM_DICT"][com_name]) for com_name in call_params.get_l_config()["COM_LIST"]] if     com_struct.get_public_via_net()])
-        priv_coms = sorted([com_name for com_name, com_struct in [(com_name, call_params.get_l_config()["COM_DICT"][com_name]) for com_name in call_params.get_l_config()["COM_LIST"]] if not com_struct.get_public_via_net()])
-        res_struct.set_option_dict({"version"          : call_params.get_l_config()["VERSION_STRING"],
-                                    "uuid"             : uuid_tools.get_uuid().get_urn(),
-                                    "server_status"    : ret_dict,
-                                    "public_commands"  : pub_coms,
-                                    "private_commands" : priv_coms})
-        return res_struct
+        pub_coms   = sorted([com_name for com_name, com_struct in cluster_server.command_dict.iteritems() if com_struct.Meta.public_via_net])
+        priv_coms  = sorted([com_name for com_name, com_struct in cluster_server.command_dict.iteritems() if not com_struct.Meta.public_via_net])
+        # FIXME, sql info not transfered
+        for key, value in ret_dict.iteritems():
+            if type(value) == dict and "sql" in value:
+                value["sql"] = str(value["sql"])
+        self.srv_com["result"].attrib.update({
+            "reply" : "returned server info",
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+        self.srv_com["result:server_info"] = {
+            "version"          : self.global_config["VERSION"],
+            "uuid"             : uuid_tools.get_uuid().get_urn(),
+            "server_status"    : ret_dict,
+            "public_commands"  : pub_coms,
+            "private_commands" : priv_coms}
     
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
-    
+

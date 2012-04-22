@@ -1220,7 +1220,7 @@ class server_process(threading_tools.process_pool):
                                                                err_str))
             if do_it:
                 try:
-                    found_keys = [key for key in com_obj.Meta.needed_option_keys if key in srv_com]
+                    found_keys = [key for key in com_obj.Meta.needed_option_keys if "server_key:%s" % (key) in srv_com]
                 except:
                     srv_com["result"].attrib.update({
                         "reply" : "error parsing options_keys: %s" % (process_tools.get_except_info()),
@@ -1239,6 +1239,7 @@ class server_process(threading_tools.process_pool):
                         com_obj.global_config = global_config
                         # salt com_obj with some settings
                         com_obj.server_idx = global_config["SERVER_IDX"]
+                        com_obj.option_dict = dict([(key, srv_com["*server_key:%s" % (key)]) for key in com_obj.Meta.needed_option_keys])
                         com_obj.write_start_log()
                         try:
                             result = com_obj()

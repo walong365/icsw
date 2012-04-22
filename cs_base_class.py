@@ -44,6 +44,8 @@ class server_com(object):
         show_execution_time = True
         # keys needed in config
         needed_config_keys = []
+        # public via network
+        public_via_net = True
     def __init__(self):
         # copy Meta keys
         for key in dir(server_com.Meta):
@@ -123,6 +125,10 @@ class server_com(object):
         self.start_time = time.time()
         result = self._call()
         self.end_time = time.time()
+        if int(self.srv_com["result"].attrib["state"]):
+            self.log("result is (%d) %s" % (int(self.srv_com["result"].attrib["state"]),
+                                            self.srv_com["result"].attrib["reply"]),
+                     logging_tools.LOG_LEVEL_ERROR)
         if self.Meta.show_execution_time:
             self.log("run took %s" % (logging_tools.get_diff_time_str(self.end_time - self.start_time)))
             self.srv_com["result"].attrib["reply"] = "%s in %s" % (
