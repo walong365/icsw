@@ -32,6 +32,7 @@ import server_command
 import process_tools
 import time
 import sys
+import os
 import ipvx_tools
 
 class ordered_iteritems_iterator(object):
@@ -626,13 +627,28 @@ class s_command(object):
                     self.hostname = hosts.keys()[0]
                 targ_ip = hosts[self.hostname]
                 self.set_possible_hosts(hosts.keys())
+            # target type, TCP or 0MQ
+            web_srv_name = "/etc/sysconfig/cluster/srv_targets"
+            st_dict = {}
+            if os.path.isfile(web_srv_name):
+                for srv_ip, srv_port, srv_type in [line.strip().split(":") for line in file(web_srv_name, "r").read().split("\n") if line.strip() and line.count(":") == 2]:
+                    st_dict["%s:%s" % (srv_ip, srv_port)] = srv_type
+            self.srv_type = st_dict.get("%s:%d" % (targ_ip, port), "T")
             if targ_ip:
                 self.hostip = targ_ip
-                self.server_com.set_nodes(self.devs.keys())
-                self.server_com.set_node_commands({})
-                for dev, com in self.devs.iteritems():
-                    if com:
-                        self.server_com.set_node_command(dev, com)
+                if self.srv_type == "0":
+                    # rewrite server_command to srv_command
+                    srv_com = server_command.srv_command(command=self.command)
+##                    print srv_com, unicode(srv_com)
+##                    print self.server_com.get_option_dict()
+                    self.server_com = srv_com
+                else:
+                    print self.command
+                    self.server_com.set_nodes(self.devs.keys())
+                    self.server_com.set_node_commands({})
+                    for dev, com in self.devs.iteritems():
+                        if com:
+                            self.server_com.set_node_command(dev, com)
         else:
             self.set_state("e", "error unknown config %s" % (config))
             self.req.info_stack.add_error("unknown config %s" % (config), "config")
@@ -642,7 +658,10 @@ class s_command(object):
         elif key == "port":
             return self.port
         elif key == "command":
-            return self.server_com.create_string()
+            if self.srv_type == "0":
+                return unicode(self.server_com)
+            else:
+                return self.server_com.create_string()
         else:
             print "Unknown key %s for __getitem__ in s_command (tools.py)" % (key)
     def get(self, key, default_value):
@@ -650,6 +669,9 @@ class s_command(object):
             return self[key]
         else:
             return default_value
+    def get_conn_str(self):
+        return "tcp://%s:%d" % (self.hostip,
+                                self.port)
     def get_hostname(self):
         return self.hostname
     def set_possible_hosts(self, h_list=[]):
@@ -667,11 +689,13 @@ class s_command(object):
     def get_return(self):
         return self.act_return
     def get_info(self):
-        return "%s [%s:%d], command %s%s" % (self.config,
-                                             self.hostip or "notset",
-                                             self.port,
-                                             self.command,
-                                             self.hostname and ", host %s" % (self.hostname) or "")
+        return "%s [%s:%d, %s], command %s%s" % (
+            self.config,
+            self.hostip or "notset",
+            self.port,
+            "TCP" if self.srv_type == "T" else "0MQ",
+            self.command,
+            self.hostname and ", host %s" % (self.hostname) or "")
     def add_to_log(self, log, info, res, stat=None):
         if log:
             if stat is None:
@@ -745,16 +769,32 @@ class s_command(object):
                                 compr_list = ", ".join(sorted(value))
                             self.add_to_log(log, " - %s" % (value), key)
     def __repr__(self):
-        return "%s to %s on %s (port %d), %s (%s)" % (self.command, self.config, self.hostname, self.port, self.get_state(), self.get_return())
+        return "%s to %s on %s (port %d, %s), %s (%s)" % (
+            self.command,
+            self.config,
+            self.hostname,
+            self.port,
+            "TCP" if self.srv_type == "T" else "0MQ",
+            self.get_state(),
+            self.get_return())
 
 def iterate_s_commands(s_list, log=None, **args):
     if s_list:
         target_list = [target for target in s_list if target.get_state() != "e"]
-        # build dict
-        res_dict = net_tools.multiple_connections(save_logs=True, target_list=target_list, timeout=args.get("timeout", 30)).iterate()
-        for idx, act_command in enumerate(target_list):
-            res_stuff = res_dict[idx]
-            act_command.set_result((res_stuff["errnum"], res_stuff["ret_str"]), log)
+        tcp_list = [target for target in target_list if target.srv_type == "T"]
+        if tcp_list:
+            # build dict
+            res_dict = net_tools.multiple_connections(save_logs=True, target_list=target_list, timeout=args.get("timeout", 30)).iterate()
+            for idx, act_command in enumerate(target_list):
+                res_stuff = res_dict[idx]
+                act_command.set_result((res_stuff["errnum"], res_stuff["ret_str"]), log)
+        zmq_list = [target for target in target_list if target.srv_type == "0"]
+        if zmq_list:
+            # iterate
+            for zmq_command in zmq_list:
+                result = net_tools.zmq_connection("%s:wfe" % (process_tools.get_machine_name()),
+                                                  timeout=args.get("timeout", 30)).add_connection(zmq_command.get_conn_str(), zmq_command.server_com)
+                print unicode(result)
         
 def get_user_list(dc, idxs, all_flag=False):
     if idxs == []:

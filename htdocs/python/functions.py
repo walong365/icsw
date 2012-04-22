@@ -90,7 +90,7 @@ def write_body(req):
     req.write("<body class=\"blind\">\n")
     
 def write_error_footer(req):
-    req.write(req.info_stack.generate_stack("Internal log for this page (%s):" % (logging_tools.get_plural("entry", req.info_stack.get_num_lines()))))
+    req.write(str(req.info_stack.generate_stack("Internal log for this page (%s):" % (logging_tools.get_plural("entry", req.info_stack.get_num_lines())))))
     # add profile log
     if req.conf.has_key("stats"):
         p_data = req.conf["stats"]
@@ -118,7 +118,7 @@ def write_error_footer(req):
         req.write("%s%s" % (html_tools.gen_hline("Profile info: %d function calls (%d primitive) in %.3f CPU seconds" % (p_data.total_calls,
                                                                                                                          p_data.prim_calls,
                                                                                                                          p_data.total_tt), 3),
-                            profile_table("")))
+                            str(profile_table(""))))
     # add sql-debug log
     if req.session_data and req.user_info and req.user_info.capability_ok("sql"):
         sql_stack = req.sql_stack
@@ -129,7 +129,7 @@ def write_error_footer(req):
         else:
             sql_stack.log_ok(("total execution time: %.2f msec" % (1000 * req.sql_exec_time), "info"), 0)
         sql_stack.set_pre_and_post_tags("<small>", "</small>")
-        req.write(sql_stack.generate_stack("SQL log"))
+        req.write(str(sql_stack.generate_stack("SQL log")))
     
 def write_footer(req):
     req.conf["end_time"] = time.time()
