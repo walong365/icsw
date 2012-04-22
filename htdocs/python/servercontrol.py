@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -281,12 +281,13 @@ def process_page(req):
     for sc in c_list:
         if sc.server_reply:
             if sc.get_state() != "e":
-                is_virtual, act_host_name = parse_server_commands(req, sc_dict, sc.get_hostname(), sc.server_reply.get_option_dict(), host_lut)
+                #print sc.server_reply["result:server_info"]
+                is_virtual, act_host_name = parse_server_commands(req, sc_dict, sc.get_hostname(), sc.server_reply["result:server_info"], host_lut)
                 if is_virtual:
                     virtual_hosts.append(act_host_name)
                 else:
                     ok_hosts.append(sc.get_hostname())
-                    parse_cluster_tasks(req, st_dict, sc.get_hostname(), sc.server_reply.get_option_dict())
+                    parse_cluster_tasks(req, st_dict, sc.get_hostname(), sc.server_reply["result:server_info"])
             else:
                 pass
     virtual_hosts.sort()
@@ -407,5 +408,3 @@ def process_page(req):
         req.write(html_tools.gen_hline("Found no active and reachable server", 2))
     req.write("</form>\n")
     req.write(scon_logs.generate_stack("Server connection log"))
-        
-    

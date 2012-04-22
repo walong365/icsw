@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -590,7 +590,7 @@ class display_list(object):
     
 # server command struct
 class s_command(object):
-    def __init__(self, req, config, port, command, devs, timeout=5, hostname=None, add_dict={}, **args):
+    def __init__(self, req, config, port, command, devs, timeout=5, hostname=None, add_dict={}, **kwargs):
         self.config, self.hostname, self.port = (config, hostname, port)
         self.start_time = time.time()
         self.req = req
@@ -639,6 +639,10 @@ class s_command(object):
                 if self.srv_type == "0":
                     # rewrite server_command to srv_command
                     srv_com = server_command.srv_command(command=self.command)
+                    opt_dict = self.server_com.get_option_dict()
+                    if opt_dict:
+                        for key, value in opt_dict.iteritems():
+                            srv_com["server_key:%s" % (key)] = value
 ##                    print srv_com, unicode(srv_com)
 ##                    print self.server_com.get_option_dict()
                     self.server_com = srv_com
@@ -716,6 +720,25 @@ class s_command(object):
                         log.add(info, res.strip(), 1)
             else:
                 log.add(info, res.strip(), stat)
+    def set_0mq_result(self, srv_reply):
+        self.end_time = time.time()
+        time_info = logging_tools.get_diff_time_str(self.end_time - self.start_time)
+        com_str = "command '%s' to %s (%s%s) in %s" % (self.command,
+                                                       self.hostname,
+                                                       "[%s] " % (self.hostip) if self.hostip else "",
+                                                       self.config,
+                                                       time_info)
+        error = int(srv_reply["result"].attrib["state"])
+        reply_str = srv_reply["result"].attrib["reply"]
+        if error:
+            self.set_state("e", "error %s" % (reply_str))
+            self.req.info_stack.add_error("info (%s, %s, %d): %s" % (self.get_info(),
+                                                                     time_info,
+                                                                     error,
+                                                                     reply_str), "result")
+        else:
+            self.set_state("o", reply_str)
+        self.server_reply = srv_reply
     def set_result(self, what, log=None):
         self.end_time = time.time()
         time_info = logging_tools.get_diff_time_str(self.end_time - self.start_time)
@@ -778,13 +801,13 @@ class s_command(object):
             self.get_state(),
             self.get_return())
 
-def iterate_s_commands(s_list, log=None, **args):
+def iterate_s_commands(s_list, log=None, **kwargs):
     if s_list:
         target_list = [target for target in s_list if target.get_state() != "e"]
         tcp_list = [target for target in target_list if target.srv_type == "T"]
         if tcp_list:
             # build dict
-            res_dict = net_tools.multiple_connections(save_logs=True, target_list=target_list, timeout=args.get("timeout", 30)).iterate()
+            res_dict = net_tools.multiple_connections(save_logs=True, target_list=target_list, timeout=kwargs.get("timeout", 30)).iterate()
             for idx, act_command in enumerate(target_list):
                 res_stuff = res_dict[idx]
                 act_command.set_result((res_stuff["errnum"], res_stuff["ret_str"]), log)
@@ -793,8 +816,9 @@ def iterate_s_commands(s_list, log=None, **args):
             # iterate
             for zmq_command in zmq_list:
                 result = net_tools.zmq_connection("%s:wfe" % (process_tools.get_machine_name()),
-                                                  timeout=args.get("timeout", 30)).add_connection(zmq_command.get_conn_str(), zmq_command.server_com)
-                print unicode(result)
+                                                  timeout=kwargs.get("timeout", 30)).add_connection(zmq_command.get_conn_str(), zmq_command.server_com)
+                #print len(unicode(result))
+                zmq_command.set_0mq_result(result)
         
 def get_user_list(dc, idxs, all_flag=False):
     if idxs == []:

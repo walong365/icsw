@@ -266,7 +266,8 @@ def process_page(req):
             tools.iterate_s_commands(im_list_commands, action_log)
             im_found = {}
             for im_list_command in im_list_commands:
-                if im_list_command.get_state() == "o" and im_list_command.server_reply.get_option_dict():
+                if not int(im_list_command.server_reply["result"].attrib["state"]):
+                    # FIXME
                     opt_dict = im_list_command.server_reply.get_option_dict()
                     im_found[im_list_command.get_hostname()] = {"image_source" : opt_dict["image_dir"],
                                                                 "images"       : opt_dict["images"]}

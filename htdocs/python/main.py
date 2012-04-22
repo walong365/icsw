@@ -1,7 +1,7 @@
 #!/usr/bin/python -Otv
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -213,9 +213,10 @@ def find_server_routes(req, when):
                 req.dc.execute(sql_str)
                 if req.user_info:
                     if req.dc.rowcount:
-                        req.info_stack.add_error("Cannot rebuild server_routes (%s): failure: cannot determine webfrontend-host (check /etc/http*/httpd.conf, name found there is '%s', used name is '%s')" % (when,
-                                                                                                                                                                                                               req.environ["SERVER_NAME"],
-                                                                                                                                                                                                               req.conf["server_name"]),
+                        req.info_stack.add_error("Cannot rebuild server_routes (%s): failure: cannot determine webfrontend-host (check /etc/apache*/httpd.conf or /etc/sysconfig/apache2, name found there is '%s', used name is '%s')" % (
+                            when,
+                            req.environ["SERVER_NAME"],
+                            req.conf["server_name"]),
                                                  "conf")
                     else:
                         req.info_stack.add_error("Cannot rebuild server_routes (%s): no devices defined" % (when),
@@ -477,6 +478,7 @@ def application(environ, start_response):
         handle_direct_module_call(req, module_name)
     else:
         handle_normal_module_call(req, module_name)
+    req.output = [cur_str.encode("utf-8") if type(cur_str) == unicode else cur_str for cur_str in req.output]
     return req.response()
 
 def handler(req):
@@ -561,14 +563,12 @@ def handle_normal_module_call(req, module_name):
     else:
         req.write("<br>mysql_tools not found<br>")
         return
-        #return apache.OK
     try:
         dc = dbcon.get_connection("cluster_full_access")
     except:
         req.write("<br>Unable to initialise a database connection: %s<br>" % (process_tools.get_except_info()))
         del dbcon
         return
-        #return apache.OK
     req.dbcon = dbcon
     req.dc = dc
     req.conf = read_standard_config(req)
