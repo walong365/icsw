@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -23,17 +23,17 @@ import cs_base_class
 import server_command
 import check_scripts
 import uuid_tools
+import pprint
 
 class check_server(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-    def call_it(self, opt_dict, call_params):
-        res_struct = server_command.server_reply()
-        res_struct.set_state_and_result(0, "ok")
+    def _call(self):
+        #res_struct = server_command.server_reply()
+        #res_struct.set_state_and_result(0, "ok")
         opt_dict = check_scripts.get_default_opt_dict()
         opt_dict["full_status"] = 1
         opt_dict["mem_info"] = 1
-        ret_dict = check_scripts.check_system(opt_dict, {}, call_params.dc)
+        ret_dict = check_scripts.check_system(opt_dict, {}, self.dc)
+        pprint.pprint(ret_dict)
         pub_coms  = sorted([com_name for com_name, com_struct in [(com_name, call_params.get_l_config()["COM_DICT"][com_name]) for com_name in call_params.get_l_config()["COM_LIST"]] if     com_struct.get_public_via_net()])
         priv_coms = sorted([com_name for com_name, com_struct in [(com_name, call_params.get_l_config()["COM_DICT"][com_name]) for com_name in call_params.get_l_config()["COM_LIST"]] if not com_struct.get_public_via_net()])
         res_struct.set_option_dict({"version"          : call_params.get_l_config()["VERSION_STRING"],
