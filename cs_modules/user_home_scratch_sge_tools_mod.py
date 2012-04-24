@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -25,30 +25,29 @@ import commands
 import cs_tools
 import tempfile
 import shutil
+import server_command
 
 class create_user_home(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        #self.set_config_type(["e"])
-        self.set_needed_option_keys(["username"])
-    def call_it(self, opt_dict, call_params):
+    class Meta:
+        needed_option_keys = ["username"]
+    def _call(self):
         def change_own(arg, act_dir, entries):
             uid, gid = arg
             for entry in entries:
                 fname = "%s/%s" % (act_dir, entry)
                 os.chown(fname, uid, gid)
-        user = opt_dict["username"]
-        call_params.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='homeexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
-        if call_params.dc.rowcount == 1:
+        user = self.option_dict["username"]
+        self.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='homeexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
+        if self.dc.rowcount == 1:
             os.umask(0022)
-            dset = call_params.dc.fetchone()
+            dset = self.dc.fetchone()
             # check for skeleton directory
             skel_dir = None
             for skel_dir in ["/usr/local/cluster/skel", "/etc/skel"]:
                 if os.path.isdir(skel_dir):
                     skel_dir = skel_dir
                     break
-            home_start = cs_tools.hostname_expand(call_params.get_l_config()["SERVER_SHORT_NAME"], dset["value"])
+            home_start = cs_tools.hostname_expand(self.global_config["SERVER_SHORT_NAME"], dset["value"])
             uid = dset["uid"]
             gid = dset["gid"]
             if not os.path.isdir(home_start):
@@ -81,7 +80,6 @@ class create_user_home(cs_base_class.server_com):
                 if hdir_ok:
                     os.chown(full_home, uid, gid)
                     os.path.walk(full_home, change_own, (uid, gid))
-                    ret_str = "ok created homedirectory '%s' for user '%s" % (full_home, user)
                     try:
                         os.chmod(full_home, 0755)
                     except:
@@ -89,52 +87,68 @@ class create_user_home(cs_base_class.server_com):
                     post_create_user_command = "/etc/sysconfig/post_create_user"
                     if os.path.isfile(post_create_user_command):
                         pcun_args = "0 %d %d %s %s" % (uid, gid, user, full_home)
-                        stat, out = commands.getstatusoutput("%s %s" % (post_create_user_command, pcun_args))
-                        call_params.log("Calling '%s %s' gave (%d): %s" % (post_create_user_command, pcun_args, stat, out))
+                        pc_stat, pc_out = commands.getstatusoutput("%s %s" % (post_create_user_command, pcun_args))
+                        self.log("Calling '%s %s' gave (%d): %s" % (post_create_user_command, pcun_args, pc_stat, pc_out))
+                    self.srv_com["result"].attrib.update({
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                        "reply" : "ok created homedirectory '%s' for user '%s" % (full_home, user)
+                        })
                 else:
-                    ret_str = "error %s" % (hdir_err_str)
+                    self.srv_com["result"].attrib.update({
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                        "reply" : "error %s" % (hdir_err_str)
+                        })
             else:
-                ret_str = "error no homestart directory '%s'" % (home_start)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply" : "error no homestart directory '%s'" % (home_start)
+                })
         else:
-            ret_str = "error cannot find user '%s'" % (user)
-        return ret_str
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply" : "error cannot find user '%s'" % (user)
+            })
 
 class delete_user_home(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        #self.set_config_type(["e"])
-        self.set_needed_option_keys(["username"])
-    def call_it(self, opt_dict, call_params):
-        user = opt_dict["username"]
-        call_params.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='homeexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
-        if call_params.dc.rowcount == 1:
-            dset = call_params.dc.fetchone()
-            full_home = os.path.normpath("%s/%s" % (cs_tools.hostname_expand(call_params.get_l_config()["SERVER_SHORT_NAME"], dset["value"]), dset["home"]))
+    class Meta:
+        needed_option_keys = ["username"]
+    def _call(self):
+        user = self.option_dict["username"]
+        self.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='homeexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
+        if self.dc.rowcount == 1:
+            dset = self.dc.fetchone()
+            full_home = os.path.normpath("%s/%s" % (cs_tools.hostname_expand(self.global_config["SERVER_SHORT_NAME"], dset["value"]), dset["home"]))
             if os.path.isdir(full_home):
                 shutil.rmtree(full_home, 1)
-                ret_str = "ok delete homedirectory '%s' for user '%s'" % (full_home, user)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                    "reply" : "ok delete homedirectory '%s' for user '%s'" % (full_home, user)
+                })
             else:
-                ret_str = "error no homedirecotry '%s' for user '%s'" % (full_home, user)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply" : "error no homedirecotry '%s' for user '%s'" % (full_home, user)
+                })
         else:
-            ret_str = "error cannot find user '%s'" % (user)
-        return ret_str
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply" : "error cannot find user '%s'" % (user)
+            })
 
 class create_user_scratch(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        #self.set_config_type(["e"])
-        self.set_needed_option_keys(["username"])
-    def call_it(self, opt_dict, call_params):
-        def change_own(arg, dir, entries):
+    class Meta:
+        needed_option_keys = ["username"]
+    def _call(self):
+        def change_own(arg, t_dir, entries):
             uid, gid = arg
             for entry in entries:
-                fname = "%s/%s" % (dir, entry)
+                fname = "%s/%s" % (t_dir, entry)
                 os.chown(fname, uid, gid)
-        user = opt_dict["username"]
-        call_params.dc.execute("SELECT u.login, u.uid, u.scratch, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='scratchexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export_scr = dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
-        if call_params.dc.rowcount == 1:
-            dset = call_params.dc.fetchone()
-            scratch_start = cs_tools.hostname_expand(call_params.get_l_config()["SERVER_SHORT_NAME"], dset["value"])
+        user = self.option_dict["username"]
+        self.dc.execute("SELECT u.login, u.uid, u.scratch, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='scratchexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export_scr = dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
+        if self.dc.rowcount == 1:
+            dset = self.dc.fetchone()
+            scratch_start = cs_tools.hostname_expand(self.global_config["SERVER_SHORT_NAME"], dset["value"])
             uid = dset["uid"]
             gid = dset["gid"]
             if os.path.isdir(scratch_start):
@@ -150,50 +164,64 @@ class create_user_scratch(cs_base_class.server_com):
                 if hdir_ok:
                     os.chown(full_scratch, uid, gid)
                     os.path.walk(full_scratch, change_own, (uid, gid))
-                    ret_str = "ok create scratchdirectory '%s' for user '%s" % (full_scratch, user)
+                    self.srv_com["result"].attrib.update({
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                        "reply" : "ok create scratchdirectory '%s' for user '%s" % (full_scratch, user)
+                    })
                 else:
-                    ret_str = "error %s" % (hdir_err_str)
+                    self.srv_com["result"].attrib.update({
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                        "reply" : "error %s" % (hdir_err_str)
+                    })
             else:
-                ret_str = "error no scratchstart directory '%s'" % (scratch_start)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply" : "error no scratchstart directory '%s'" % (scratch_start)
+                })
         else:
-            ret_str = "error cannot find user '%s'" % (user)
-        return ret_str
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply" : "error cannot find user '%s'" % (user)
+            })
 
 class delete_user_scratch(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        #self.set_config_type(["e"])
-        self.set_needed_option_keys(["username"])
-    def call_it(self, opt_dict, call_params):
-        user = opt_dict["username"]
-        call_params.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='scratchexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export_scr=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
-        if call_params.dc.rowcount == 1:
-            dset = call_params.dc.fetchone()
-            full_scratch = os.path.normpath("%s/%s" % (cs_tools.hostname_expand(call_params.get_l_config()["SERVER_SHORT_NAME"], dset["value"]), dset["home"]))
+    class Meta:
+        needed_option_keys = ["username"]
+    def _call(self):
+        user = self.option_dict["username"]
+        self.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='scratchexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export_scr=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
+        if self.dc.rowcount == 1:
+            dset = self.dc.fetchone()
+            full_scratch = os.path.normpath("%s/%s" % (cs_tools.hostname_expand(self.global_config["SERVER_SHORT_NAME"], dset["value"]), dset["home"]))
             if os.path.isdir(full_scratch):
                 shutil.rmtree(full_scratch, 1)
-                ret_str = "ok delete scratchdirectory '%s' for user '%s'" % (full_scratch, user)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                    "reply" : "ok delete scratchdirectory '%s' for user '%s'" % (full_scratch, user)
+                })
             else:
-                ret_str = "error no scratchdirecotry '%s' for user '%s'" % (full_scratch, user)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply" : "error no scratchdirecotry '%s' for user '%s'" % (full_scratch, user)
+                })
         else:
-            ret_str = "error cannot find user '%s'" % (user)
-        return ret_str
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply" : "error cannot find user '%s'" % (user)
+            })
 
 class create_all_user_scratches(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        #self.set_config_type(["e"])
-    def call_it(self, opt_dict, call_params):
-        def change_own(arg, dir, entries):
+    def _call(self):
+        def change_own(arg, t_dir, entries):
             uid, gid = arg
             for entry in entries:
-                fname = "%s/%s" % (dir, entry)
+                fname = "%s/%s" % (t_dir, entry)
                 os.chown(fname, uid, gid)
-        call_params.dc.execute("SELECT u.login, u.uid, u.scratch, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='scratchexport' AND u.ggroup=g.ggroup_idx AND u.export_scr = dc.device_config_idx AND dc.device=%d AND dc.new_config=c.new_config_idx ORDER BY u.login" % (call_params.get_server_idx()))
-        if call_params.dc.rowcount:
+        self.dc.execute("SELECT u.login, u.uid, u.scratch, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='scratchexport' AND u.ggroup=g.ggroup_idx AND u.export_scr = dc.device_config_idx AND dc.device=%d AND dc.new_config=c.new_config_idx ORDER BY u.login" % (self.server_idx))
+        if self.dc.rowcount:
             error_dict, ok_list = ({}, [])
-            for dset in call_params.dc.fetchall():
-                scratch_start = cs_tools.hostname_expand(call_params.get_l_config()["SERVER_SHORT_NAME"], dset["value"])
+            for dset in self.dc.fetchall():
+                scratch_start = cs_tools.hostname_expand(self.global_config["SERVER_SHORT_NAME"], dset["value"])
                 uid = dset["uid"]
                 gid = dset["gid"]
                 if os.path.isdir(scratch_start):
@@ -208,33 +236,39 @@ class create_all_user_scratches(cs_base_class.server_com):
                         ok_list.append(dset["login"])
                 else:
                     error_dict.setdefault("error no scratchstart directory '%s'" % (scratch_start), []).append(dset["login"])
-            ret_str = "ok"
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                "reply" : "ok created user scratches"
+            })
         else:
-            ret_str = "error no users scratch-directories on this server"
-        return ret_str
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply" : "error no users scratch-directories on this server"
+            })
 
 class create_sge_user(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_config(["sge_server"])
-        self.set_needed_option_keys(["username"])
-    def call_it(self, opt_dict, call_params):
+    needed_configs = ["sge_server"]
+    needed_option_keys = ["username"]
+    def _call(self):
         # get fairshare-value
-        call_params.dc.execute("SELECT ci.value FROM new_config c, config_int ci, device_config dc WHERE ci.new_config=c.new_config_idx AND ci.name='fairshare' AND dc.new_config=c.new_config_idx AND dc.device=%d AND c.name='sge_server'" % (call_params.get_server_idx()))
-        if call_params.dc.rowcount == 1:
-            fshare = call_params.dc.fetchone()["value"]
+        self.dc.execute("SELECT ci.value FROM new_config c, config_int ci, device_config dc WHERE ci.new_config=c.new_config_idx AND ci.name='fairshare' AND dc.new_config=c.new_config_idx AND dc.device=%d AND c.name='sge_server'" % (self.server_idx))
+        if self.dc.rowcount == 1:
+            fshare = self.dc.fetchone()["value"]
             f_str = "fairshare-value"
         else:
             fshare = 30
             f_str = "default fairshare-value"
         f_str += " %s" % (str(fshare))
-        user = opt_dict["username"]
+        user = self.option_dict["username"]
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
-            stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
+            sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
-            ret_str = "error sge-/etc/files not found"
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply" : "error sge-/etc/files not found"
+            })
         else:
             if os.path.isfile("%s/%s/common/product_mode" % (sge_root, sge_cell)):
                 sge60 = 0
@@ -250,59 +284,76 @@ class create_sge_user(cs_base_class.server_com):
             os.environ["SGE_CELL"] = sge_cell
             cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -Auser %s" % (sge_root, sge_arch, tmp_name))
             if cstat:
-                ret_str = "error cannot create SGE user %s: '%s'" % (user, cout)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply" : "error cannot create SGE user %s: '%s'" % (user, cout)
+                })
             else:
-                ret_str = "ok created user %s for SGE (%s)" % (user, f_str)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                    "reply" : "ok created user %s for SGE (%s)" % (user, f_str)
+                })
             try:
                 os.unlink(tmp_name)
             except:
                 pass
-        return ret_str
 
 class delete_sge_user(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_needed_option_keys(["username"])
-    def call_it(self, opt_dict, call_params):
-        user = opt_dict["username"]
+    class Meta:
+        needed_option_keys = ["username"]
+    def _call(self):
+        user = self.option_dict["username"]
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
-            stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
+            sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
-            ret_str = "error sge-/etc/files not found"
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply" : "error sge-/etc/files not found"
+            })
         else:
             os.environ["SGE_ROOT"] = sge_root
             os.environ["SGE_CELL"] = sge_cell
             cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -duser %s" % (sge_root, sge_arch, user))
             if cstat:
-                ret_str = "error cannot delete SGE user %s: '%s'" % (user, cout)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply" : "error cannot delete SGE user %s: '%s'" % (user, cout)
+                })
             else:
-                ret_str = "ok deleted user %s for SGE" % (user)
-        return ret_str
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                    "reply" : "ok deleted user %s for SGE" % (user)
+                })
 
 class rename_sge_user(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_config(["sge_server"])
-        self.set_needed_option_keys(["username", "old_username"])
-    def call_it(self, opt_dict, call_params):
-        user, old_user = (opt_dict["username"],
-                          opt_dict["old_username"])
+    class Meta:
+        needed_configs = ["sge_server"]
+        needed_option_keys = ["username", "old_username"]
+    def _call(self):
+        user, old_user = (self.option_dict["username"],
+                          self.option_dict["old_username"])
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
-            stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
+            sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
-            ret_str = "error sge-/etc/files not found"
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply" : "error sge-/etc/files not found"
+            })
         else:
             if os.path.isfile("%s/%s/common/product_mode" % (sge_root, sge_cell)):
-                sge60 = 0
+                sge60 = False
             else:
-                sge60 = 1
+                sge60 = True
             cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -suser %s" % (sge_root, sge_arch, old_user))
             if cstat:
-                ret_str = "error cannot fetch info for SGE user %s: %s" % (old_user, cout)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply" : "error cannot fetch info for SGE user %s: %s" % (old_user, cout)
+                })
             else:
                 user_dict = dict([(a, b) for a, b in [x.strip().split(None, 1) for x in cout.strip().split("\n")] if a != "name"])
                 user_dict["name"] = user
@@ -313,37 +364,51 @@ class rename_sge_user(cs_base_class.server_com):
                 commands.getstatusoutput("/%s/bin/%s/qconf -duser %s" % (sge_root, sge_arch, old_user))
                 cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -Auser %s" % (sge_root, sge_arch, tmp_name))
                 if cstat:
-                    ret_str = "error cannot create modified SGE user %s: '%s'" % (user, cout)
+                    self.srv_com["result"].attrib.update({
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                        "reply" : "error cannot create modified SGE user %s: '%s'" % (user, cout)
+                    })
                 else:
-                    ret_str = "ok modified SGE user %s" % (user)
+                    self.srv_com["result"].attrib.update({
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                        "reply" : "ok modified SGE user %s" % (user)
+                    })
                 try:
                     os.unlink(tmp_name)
                 except:
                     pass
-        return ret_str
 
 class create_user_quota(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_config(["quota"])
-        self.set_needed_option_keys(["username"])
-    def call_it(self, opt_dict, call_params):
-        call_params.dc.execute("SELECT cs.value FROM new_config c, config_str cs, device_config dc WHERE cs.new_config=c.new_config_idx AND cs.name='dummyuser' AND dc.new_config=c.new_config_idx AND dc.device=%d AND c.name='quota'" % (call_params.get_server_idx()))
-        if call_params.dc.rowcount == 1:
-            quota_prot = call_params.dc.fetchone()["value"]
-            user = opt_dict["username"]
+    class Meta:
+        needed_configs = ["quota"]
+        needed_option_keys = ["username"]
+    def _call(self):
+        self.dc.execute("SELECT cs.value FROM new_config c, config_str cs, device_config dc WHERE cs.new_config=c.new_config_idx AND cs.name='dummyuser' AND dc.new_config=c.new_config_idx AND dc.device=%d AND c.name='quota'" % (self.server_idx))
+        if self.dc.rowcount == 1:
+            quota_prot = self.dc.fetchone()["value"]
+            user = self.option_dict["username"]
             cstat, cout = commands.getstatusoutput("/usr/sbin/edquota -p %s %s" % (quota_prot, user))
             if cstat:
-                ret_str = "error cannot duplicate quotas for user %s from proto %s: '%s'" % (user, quota_prot, cout)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply" : "error cannot duplicate quotas for user %s from proto %s: '%s'" % (user, quota_prot, cout)
+                })
             else:
-                ret_str = "ok duplicated quotas for user %s from proto %s" % (user, quota_prot)
-        elif call_params.dc.rowcount:
-            ret_str = "error more than one quota-config found (%d)" % (call_params.dc.rowcount)
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                    "reply" : "ok duplicated quotas for user %s from proto %s" % (user, quota_prot)
+                })
+        elif self.dc.rowcount:
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply" : "error more than one quota-config found (%d)" % (self.dc.rowcount)
+            })
         else:
-            ret_str = "error quotas not configured"
-        return ret_str
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply" : "error quotas not configured"
+            })
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
-    
