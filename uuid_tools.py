@@ -54,3 +54,4 @@ def get_uuid():
 
 if __name__ == "__main__":
     print get_uuid()
+

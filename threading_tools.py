@@ -976,7 +976,7 @@ class process_pool(object):
         self.__loop_granularity = val
     def renice(self, nice_level=16):
         try:
-            os.nice(self.pid)
+            os.nice(nice_level)
         except:
             self.log("cannot renice pid %d to %d: %s" % (self.pid,
                                                          nice_level,
