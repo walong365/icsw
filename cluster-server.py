@@ -831,97 +831,97 @@ class socket_server_thread(threading_tools.thread_obj):
     def _send_ok(self, (s_host, s_port, mode, what)):
         self.log("send_ok (%s, %s %d): %s" % (s_host, mode, s_port, what))
         
-class monitor_thread(threading_tools.thread_obj):
-    def __init__(self, db_con, glob_config, loc_config, logger):
-        self.__db_con = db_con
-        self.__logger = logger
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        threading_tools.thread_obj.__init__(self, "monitor", queue_size=50)
-        self.__esd, self.__nvn = ("/tmp/.machvect_es", "cluster_div")
-        self.__ext_keys = {}
-        self.register_func("update", self._update)
-        self._init_cap_list()
-    def thread_running(self):
-        self.send_pool_message(("new_pid", self.pid))
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__logger.log(lev, what)
-    def _init_cap_list(self):
-        # init value
-        self.__init_ext_ok = False
-        self.__cap_list = []
-        dc =  self.__db_con.get_connection(SQL_ACCESS)
-        for what in self.__server_cap_dict.keys():
-            sql_info = config_tools.server_check(dc=dc, server_type=what)
-            if sql_info.num_servers:
-                self.__cap_list.append(what)
-        dc.release()
-        self.__any_capabilities = len(self.__cap_list)
-        if self.__any_capabilities:
-            self.log("Found %s: %s" % (logging_tools.get_plural("capability", len(self.__cap_list)),
-                                       ", ".join(self.__cap_list)))
-        else:
-            self.log("Found no capabilities")
-        self.__mv_caps, self.__other_caps = ([], [])
-        if self.__any_capabilities:
-            init_list, act_list = (self._init_machvector(),
-                                   self._get_machvector())
-            self.__act_init_list = init_list
-            self.__init_ext_ok = self._write_ext(init_list, True)
-            if self.__init_ext_ok:
-                self._write_ext(act_list)
-        self.__last_update = None
-    def _init_machvector(self):
-        init_list = []
-        self.__mv_caps, self.__other_caps = ([], [])
-        for cap in self.__cap_list:
-            if self.__server_cap_dict[cap].get_creates_machvector():
-                self.__mv_caps.append(cap)
-                init_list.extend(self.__server_cap_dict[cap].init_machvector())
-            else:
-                self.__other_caps.append(cap)
-        return init_list
-    def _get_machvector(self):
-        act_list = []
-        for cap in self.__cap_list:
-            if self.__server_cap_dict[cap].get_creates_machvector():
-                act_list.extend(self.__server_cap_dict[cap].get_machvector())
-        return act_list
-    def _write_ext(self, out_list, init=False):
-        if init:
-            out_file = "%s/%s.mvd" % (self.__esd, self.__nvn)
-        else:
-            out_file = "%s/%s.mvv" % (self.__esd, self.__nvn)
-        ret_state = False
-        if os.path.isdir(self.__esd):
-            try:
-                file(out_file, "w").write("\n".join(out_list + [""]))
-            except:
-                self.log("cannot create file %s: %s" % (out_file, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-            else:
-                ret_state = True
-        else:
-            self.log("directory %s not found" % (self.__esd), logging_tools.LOG_LEVEL_WARN)
-        return ret_state
-    def _update(self):
-        min_wakeup_time = 10.
-        act_time = time.time()
-        if not self.__last_update or abs(act_time - self.__last_update) > min_wakeup_time:
-            self.__last_update = act_time
-            if self.__any_capabilities and self.__init_ext_ok:
-                act_init_list = self._init_machvector()
-                if act_init_list != self.__act_init_list:
-                    self.__act_init_list = act_init_list
-                    self.__init_ext_ok = self._write_ext(act_init_list, True)
-                if self.__init_ext_ok:
-                    act_list = self._get_machvector()
-                    self._write_ext(act_list)
-            for cap in self.__other_caps:
-                if self.__server_cap_dict[cap].check_for_wakeup(act_time):
-                    self.__server_cap_dict[cap].wakeup()
-        else:
-            self.log("Too many update requests...", logging_tools.LOG_LEVEL_WARN)
-        
-# --------- connection objects ------------------------------------
+##class monitor_thread(threading_tools.thread_obj):
+##    def __init__(self, db_con, glob_config, loc_config, logger):
+##        self.__db_con = db_con
+##        self.__logger = logger
+##        self.__glob_config, self.__loc_config = (glob_config, loc_config)
+##        threading_tools.thread_obj.__init__(self, "monitor", queue_size=50)
+##        self.__esd, self.__nvn = ("/tmp/.machvect_es", "cluster_div")
+##        self.__ext_keys = {}
+##        self.register_func("update", self._update)
+##        self._init_cap_list()
+##    def thread_running(self):
+##        self.send_pool_message(("new_pid", self.pid))
+##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+##        self.__logger.log(lev, what)
+##    def _init_cap_list(self):
+##        # init value
+##        self.__init_ext_ok = False
+##        self.__cap_list = []
+##        dc =  self.__db_con.get_connection(SQL_ACCESS)
+##        for what in self.__server_cap_dict.keys():
+##            sql_info = config_tools.server_check(dc=dc, server_type=what)
+##            if sql_info.num_servers:
+##                self.__cap_list.append(what)
+##        dc.release()
+##        self.__any_capabilities = len(self.__cap_list)
+##        if self.__any_capabilities:
+##            self.log("Found %s: %s" % (logging_tools.get_plural("capability", len(self.__cap_list)),
+##                                       ", ".join(self.__cap_list)))
+##        else:
+##            self.log("Found no capabilities")
+##        self.__mv_caps, self.__other_caps = ([], [])
+##        if self.__any_capabilities:
+##            init_list, act_list = (self._init_machvector(),
+##                                   self._get_machvector())
+##            self.__act_init_list = init_list
+##            self.__init_ext_ok = self._write_ext(init_list, True)
+##            if self.__init_ext_ok:
+##                self._write_ext(act_list)
+##        self.__last_update = None
+##    def _init_machvector(self):
+##        init_list = []
+##        self.__mv_caps, self.__other_caps = ([], [])
+##        for cap in self.__cap_list:
+##            if self.__server_cap_dict[cap].get_creates_machvector():
+##                self.__mv_caps.append(cap)
+##                init_list.extend(self.__server_cap_dict[cap].init_machvector())
+##            else:
+##                self.__other_caps.append(cap)
+##        return init_list
+##    def _get_machvector(self):
+##        act_list = []
+##        for cap in self.__cap_list:
+##            if self.__server_cap_dict[cap].get_creates_machvector():
+##                act_list.extend(self.__server_cap_dict[cap].get_machvector())
+##        return act_list
+##    def _write_ext(self, out_list, init=False):
+##        if init:
+##            out_file = "%s/%s.mvd" % (self.__esd, self.__nvn)
+##        else:
+##            out_file = "%s/%s.mvv" % (self.__esd, self.__nvn)
+##        ret_state = False
+##        if os.path.isdir(self.__esd):
+##            try:
+##                file(out_file, "w").write("\n".join(out_list + [""]))
+##            except:
+##                self.log("cannot create file %s: %s" % (out_file, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+##            else:
+##                ret_state = True
+##        else:
+##            self.log("directory %s not found" % (self.__esd), logging_tools.LOG_LEVEL_WARN)
+##        return ret_state
+##    def _update(self):
+##        min_wakeup_time = 10.
+##        act_time = time.time()
+##        if not self.__last_update or abs(act_time - self.__last_update) > min_wakeup_time:
+##            self.__last_update = act_time
+##            if self.__any_capabilities and self.__init_ext_ok:
+##                act_init_list = self._init_machvector()
+##                if act_init_list != self.__act_init_list:
+##                    self.__act_init_list = act_init_list
+##                    self.__init_ext_ok = self._write_ext(act_init_list, True)
+##                if self.__init_ext_ok:
+##                    act_list = self._get_machvector()
+##                    self._write_ext(act_list)
+##            for cap in self.__other_caps:
+##                if self.__server_cap_dict[cap].check_for_wakeup(act_time):
+##                    self.__server_cap_dict[cap].wakeup()
+##        else:
+##            self.log("Too many update requests...", logging_tools.LOG_LEVEL_WARN)
+##        
+### --------- connection objects ------------------------------------
 
 ##class new_tcp_con(net_tools.buffer_object):
 ##    # connection object for cluster-server
@@ -1270,6 +1270,9 @@ class server_process(threading_tools.process_pool):
                 "reply" : "command %s not known" % (com_name),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
                 })
+        self.log("result for %s was (%d) %s" % (com_name,
+                                                int(srv_com["result"].attrib["state"]),
+                                                srv_com["result"].attrib["reply"]))
     def _update(self):
         cur_time = time.time()
         drop_com = server_command.srv_command(command="set_vector")
@@ -1413,17 +1416,27 @@ class server_process(threading_tools.process_pool):
                 self.log("%2d : %s" % (line_num + 1,
                                        err_line),
                          logging_tools.LOG_LEVEL_ERROR)
+        del_names = []
         for com_name in cluster_server.command_names:
             act_sc = cluster_server.command_dict[com_name]
-            act_sc.link(self)
-            self.log("   com %-30s, %s%s, %s, needed option_key(s) %s, needed config_key(s) %s, %s" % (
-                act_sc.name,
-                logging_tools.get_plural("config", len(act_sc.Meta.needed_configs)),
-                " (%s)" % (", ".join(act_sc.Meta.needed_configs)) if act_sc.Meta.needed_configs else "",
-                "blocking" if act_sc.Meta.blocking else "not blocking",
-                ", ".join(act_sc.Meta.needed_option_keys) if act_sc.Meta.needed_option_keys else "none",
-                ", ".join(act_sc.Meta.needed_config_keys) if act_sc.Meta.needed_config_keys else "none",
-                "restartable" if act_sc.Meta.restartable else "not restartable"))
+            if hasattr(act_sc, "_call"):
+                act_sc.link(self)
+                self.log("   com %-30s, %s%s, %s, %s, %s, %s" % (
+                    act_sc.name,
+                    logging_tools.get_plural("config", len(act_sc.Meta.needed_configs)),
+                    " (%s)" % (", ".join(act_sc.Meta.needed_configs)) if act_sc.Meta.needed_configs else "",
+                    "blocking" if act_sc.Meta.blocking else "not blocking",
+                    "%s: %s" % (logging_tools.get_plural("option key", len(act_sc.Meta.needed_option_keys)),
+                                ", ".join(act_sc.Meta.needed_option_keys)) if act_sc.Meta.needed_option_keys else "no option keys",
+                    "%s: %s" % (logging_tools.get_plural("config key", len(act_sc.Meta.needed_config_keys)),
+                                ", ".join(act_sc.Meta.needed_config_keys)) if act_sc.Meta.needed_config_keys else "no config keys",
+                    "restartable" if act_sc.Meta.restartable else "not restartable"))
+            else:
+                self.log("command %s has no _call function" % (com_name), logging_tools.LOG_LEVEL_ERROR)
+                del_names.append(com_name)
+        for del_name in del_names:
+            cluster_server.command_names.remove(del_name)
+            del cluster_server.command_dict[del_name]
         self.log("Found %s" % (logging_tools.get_plural("command", len(cluster_server.command_names))))
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
@@ -1479,12 +1492,11 @@ def main():
         ("LOG_NAME"              , configfile.str_c_var("cluster-server")),
         ("IMAGE_SOURCE_DIR"      , configfile.str_c_var("/usr/local/share/cluster/images")),
         ("UPDATE_SITE"           , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
-        ("RPM_TARGET_DIR"        , configfile.str_c_var("/root/RPMs")),
         ("MAILSERVER"            , configfile.str_c_var("localhost")),
         ("FROM_NAME"             , configfile.str_c_var("quotawarning")),
         ("FROM_ADDR"             , configfile.str_c_var(long_host_name)),
         ("VERSION"               , configfile.str_c_var(VERSION_STRING, database=False)),
-        ("QUOTA_ADMINS"          , configfile.str_c_var("lang-nevyjel@init.at")),
+        ("QUOTA_ADMINS"          , configfile.str_c_var("cluster@init.at")),
         ("LDAP_SCHEMATA_VERSION" , configfile.int_c_var(1)),
         ("MONITOR_QUOTA_USAGE"   , configfile.bool_c_var(False)),
         ("QUOTA_CHECK_TIME_SECS" , configfile.int_c_var(3600)),

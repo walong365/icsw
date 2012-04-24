@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -21,20 +21,18 @@
 import sys
 import cs_base_class
 import configfile
+import server_command
 
 class reload_config(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-        self.set_write_log(0)
-    def call_it(self, opt_dict, call_params):
-        g_config = call_params.get_g_config()
-        configfile.reload_global_config(call_params.dc, g_config, "server")
+    def _call(self):
+        configfile.read_config_from_db(self.global_config, self.dc, "server")
         # log config
-        for conf in g_config.get_config_info():
-            call_params.log("Config : %s" % (conf))
-        return "ok config reloaded"
+        for conf_line in self.global_config.get_config_info():
+            self.log("Config : %s" % (conf_line))
+        self.srv_com["result"].attrib.update({
+            "reply" : "ok reloaded config",
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
-    

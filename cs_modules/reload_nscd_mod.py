@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -21,18 +21,21 @@
 import sys
 import cs_base_class
 import process_tools
+import server_command
 
 class reload_nscd(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-    def call_it(self, opt_dict, call_params):
+    def _call(self):
         cstat, log_f = process_tools.submit_at_command("/etc/init.d/nscd restart", 1)
         for log_line in log_f:
-            call_params.log(log_f)
+            self.log(log_line)
         if cstat:
-            return "error unable to submit at-command (%d, please check logs) to restart nscd" % (cstat)
+            self.srv_com["result"].attrib.update({
+                "reply" : "error unable to submit at-command (%d, please check logs) to restart nscd" % (cstat),
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
-            return "ok successfully restarted nscd"
+            self.srv_com["result"].attrib.update({
+                "reply" : "ok successfully restarted nscd",
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
     
 if __name__ == "__main__":
     print "Loadable module, exiting ..."

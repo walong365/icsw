@@ -28,6 +28,7 @@ import re
 import shutil
 import time
 import commands
+import server_command
 
 class write_yp_config(cs_base_class.server_com):
     class Meta:
@@ -201,7 +202,9 @@ class write_yp_config(cs_base_class.server_com):
                                   self.global_config["SERVER_FULL_NAME"])]
         temp_map_dir = "/var/yp/%s" % (temp_map_dir)
         if not os.path.isdir("/var/yp"):
-            ret_str = "error not /var/yp directory"
+            self.srv_com["result"].attrib.update({
+                "reply" : "error no /var/yp directory",
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
             if os.path.isdir(temp_map_dir):
                 shutil.rmtree(temp_map_dir, 1)
@@ -232,14 +235,14 @@ class write_yp_config(cs_base_class.server_com):
             else:
                 cstat, cout = commands.getstatusoutput("/usr/lib/yp/makedbm -c")
             if cstat:
-                ret_str = "error wrote %d yp-maps, reloading gave :'%s'" % (num_maps, cout)
+                self.srv_com["result"].attrib.update({
+                    "reply" : "error wrote %d yp-maps, reloading gave :'%s'" % (num_maps, cout),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             else:
-                ret_str = "ok wrote %d yp-maps and successfully reloaded configuration" % (num_maps)
-        #if call_params.nss_queue:
-        #    call_params.nss_queue.put(("send_broadcast", "reload_nscd"))
-        return ret_str
+                self.srv_com["result"].attrib.update({
+                    "reply" : "ok wrote %d yp-maps and successfully reloaded configuration" % (num_maps),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
-    
