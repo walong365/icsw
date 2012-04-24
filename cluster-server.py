@@ -581,7 +581,7 @@ class quota_stuff(bg_stuff):
                     if user_info.get("email", ""):
                         if uid not in email_users:
                             # only send mail if at least USER_MAIL_SEND_TIME seconds
-                            if not user_info["last_mail_sent"] or abs(user_info["last_mail_sent"] - time.time()) > self.glob_config["USER_MAIL_SEND_TIME"]:
+                            if not user_info["last_mail_sent"] or abs(user_info["last_mail_sent"] - time.time()) > global_config["USER_MAIL_SEND_TIME"]:
                                 email_users.append(uid)
                                 user_info["last_mail_sent"] = time.time()
                         mail_lines["admins"].append("%s (send mail to %s)" % (user_info["info"],
