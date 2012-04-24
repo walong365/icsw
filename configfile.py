@@ -677,7 +677,7 @@ def read_config_from_db(g_config, dc, server_type, init_list=[], host_name="", *
         host_name = process_tools.get_machine_name()
     g_config.add_config_entries(init_list, database=True)
     if dc is not None:
-        num_serv, serv_idx, s_type, s_str, config_idx, real_config_name = process_tools.is_server(dc, server_type.replace("%", ""), True, False, host_name.split(".")[0])
+        num_serv, serv_idx, s_type, s_str, config_idx, real_config_name=process_tools.is_server(dc, server_type.replace("%", ""), True, False, host_name.split(".")[0])
         #print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
         if num_serv:
             # dict of local vars without specified host
