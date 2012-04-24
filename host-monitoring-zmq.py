@@ -732,7 +732,7 @@ class relay_process(threading_tools.process_pool):
         self.__autosense = global_config["AUTOSENSE"]
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.renice()
+        self.renice(global_config["NICE_LEVEL"])
         #pending_connection.init(self)
         self.__global_timeout = global_config["TIMEOUT"]
         host_connection.init(self, global_config["BACKLOG_SIZE"], self.__global_timeout, self.__verbose)
@@ -1193,7 +1193,7 @@ class server_process(threading_tools.process_pool):
         self.global_config = global_config
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.renice()
+        self.renice(global_config["NICE_LEVEL"])
         if not global_config["DEBUG"]:
             process_tools.set_handles({"out" : (1, "host-monitoring.out"),
                                        "err" : (0, "/var/lib/logging-server/py_err")},
@@ -1527,6 +1527,7 @@ def main():
         ("SHOW-COMMAND-INFO"   , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
         ("BACKLOG_SIZE"        , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("NICE_LEVEL"          , configfile.int_c_var(10, help_string="nice level [%(default)d]")),
         ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name,
                                                                  prog_name)))])
     if prog_name == "collserver":
