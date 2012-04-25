@@ -1,13 +1,10 @@
-#!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
-""" toolkit for alfresco """
+
+""" Toolkit for alfresco """
 
 from pkg_resources import require
 require("Suds")
 import suds
-from suds.client import Client
-#from suds.wsse import Security, UsernameToken
-from suds.sax.element import Element
 import urllib2
 import suds.wsse
 import time
@@ -21,7 +18,21 @@ import pprint
 import types
 import logging
 import mimetypes
+
+from suds.client import Client
+#from suds.wsse import Security, UsernameToken
+from suds.sax.element import Element
+
 from django.conf import settings
+from django.utils.encoding import smart_unicode
+
+ALFRESCO_WS_CML_NS             = "http://www.alfresco.org/ws/cml/1.0"
+ALFRESCO_WS_MODEL_CONTENT_NS   = "http://www.alfresco.org/ws/model/content/1.0"
+ALFRESCO_WS_SERVICE_CONTENT_NS = "http://www.alfresco.org/ws/service/content/1.0"
+ALFRESCO_WS_SERVICE_CLASS_NS   = "http://www.alfresco.org/ws/service/classification/1.0"
+ALFRESCO_MODEL_CONTENT_NS      = "http://www.alfresco.org/model/content/1.0"
+ALFRESCO_MODEL_SYSTEM_NS       = "http://www.alfresco.org/model/system/1.0"
+
 
 def keyword_check(*kwarg_list):
     def decorator(func):
@@ -33,12 +44,6 @@ def keyword_check(*kwarg_list):
         return _wrapped_view
     return decorator
 
-ALFRESCO_WS_CML_NS             = "http://www.alfresco.org/ws/cml/1.0"
-ALFRESCO_WS_MODEL_CONTENT_NS   = "http://www.alfresco.org/ws/model/content/1.0"
-ALFRESCO_WS_SERVICE_CONTENT_NS = "http://www.alfresco.org/ws/service/content/1.0"
-ALFRESCO_WS_SERVICE_CLASS_NS   = "http://www.alfresco.org/ws/service/classification/1.0"
-ALFRESCO_MODEL_CONTENT_NS      = "http://www.alfresco.org/model/content/1.0"
-ALFRESCO_MODEL_SYSTEM_NS       = "http://www.alfresco.org/model/system/1.0"
 
 def add_tzinfo(dt_obj):
     dt_obj = dt_obj.replace(tzinfo=pytz.timezone("Europe/Vienna"))
@@ -81,8 +86,10 @@ class alfresco_content(object):
     def __repr__(self):
         return "alfresco content %s" % (self.node_obj.reference.path)
 
+
 def get_content_dict(in_str):
     return dict([(str(key), value) for key, value in [sub_str.split("=", 1) for sub_str in in_str.split("|")[1:]]])
+
 
 class CMLCreate(suds.wsse.Token):
     def __init__(self, create_id, parent, node_type, prop_list):
@@ -473,6 +480,7 @@ class alfresco_handler(object):
 
         f_content is stored under full_path on the DMS.
         """
+        full_path = smart_unicode(full_path)
         self._fetch_class_tree(cache=True)
         # generate path
         self._init_errors()
@@ -555,7 +563,7 @@ class alfresco_handler(object):
             if type(f_content) != types.UnicodeType:
                 f_content = base64.b64encode(f_content)
             write_res = self("Content", "write", cur_ref,
-                             "{%s}content" % (ALFRESCO_MODEL_CONTENT_NS),
+                             "{%s}content" % ALFRESCO_MODEL_CONTENT_NS,
                              f_content,
                              cur_type,
                              info="set content (length %d)" % (len(f_content)))
@@ -568,6 +576,12 @@ class alfresco_handler(object):
                     self.set_tags(node_pred, kwargs.get("tags", []))
                 # read node after writing to get the version_label and other stuff
                 call_result = self("Repository", "get", node_pred)[0]
+                if call_result:
+                    call_result = call_result[0]
+                else:
+                    print "WARNING"
+                    call_result = True
+
         self.__latest_result = call_result
         success = True if not len(self._get_errors()) else False
         return success
@@ -641,23 +655,26 @@ class alfresco_handler(object):
                     ret_node[cur_vers.label] = cur_vers.id.uuid
         success = ret_node if not len(self._get_errors()) else False
         return success
+
     def get_predicate(self, **kwargs):
         self._fetch_stores()
         cur_pred = self["Content"].factory.create("{%s}Predicate" % (ALFRESCO_WS_MODEL_CONTENT_NS))
         if "node" in kwargs:
             cur_pred.nodes = [kwargs["node"]]
         return cur_pred
+
     def _encode_path(self, f_path):
+        """ Encode objects in iterable according to ISO-9075. """
         return [self._iso9075_encode(part) for part in f_path]
-    def _safe_dir_name(self, dir_name, **kwargs):
-        if dir_name.endswith("."):
-            dir_name = "%s{dot}" % (dir_name[:-1])
-        return dir_name.replace(":", "{colon}").replace("/", "{slash}").replace("?", "{qm}").replace('"', "")
+
     def _iso9075_encode(self, p_part):
+        """ Encode string according to ISO-9075. """
         self._first_char = True
         cur_path = "".join([self._iso9075_char(char) for char in p_part])
         return cur_path
+
     def _iso9075_char(self, char):
+        """ Encode single char according to ISO-9075."""
         if char.isdigit() and self._first_char:
             char = "_x00%x_" % (ord(char))
         elif char in [" ", ",", ".", "(", ")", ":", "[", "]", "{", "}", "#", "&", "+", u"®", u"ä", u"ö", u"ü", u"Ä", u"Ü", u"Ö", u"°", u"?", unichr(186), unichr(39), '"', "~"]:
@@ -666,6 +683,12 @@ class alfresco_handler(object):
             pass
         self._first_char = False
         return char
+
+    def _safe_dir_name(self, dir_name, **kwargs):
+        if dir_name.endswith("."):
+            dir_name = "%s{dot}" % (dir_name[:-1])
+        return dir_name.replace(":", "{colon}").replace("/", "{slash}").replace("?", "{qm}").replace('"', "")
+
     def get_parent_reference(self, f_path, f_name):
         self._fetch_stores()
         par_ref = self["Content"].factory.create("{%s}ParentReference" % (ALFRESCO_WS_MODEL_CONTENT_NS))
@@ -677,6 +700,7 @@ class alfresco_handler(object):
         par_ref.associationType = "{%s}contains" % (ALFRESCO_MODEL_CONTENT_NS)
         par_ref.childName = "{%s}%s" % (ALFRESCO_MODEL_CONTENT_NS, f_name)
         return par_ref
+
     def get_reference(self, f_path, **kwargs):
         self._fetch_stores()
         cur_ref = self["Content"].factory.create("{%s}Reference" % (ALFRESCO_WS_MODEL_CONTENT_NS))
