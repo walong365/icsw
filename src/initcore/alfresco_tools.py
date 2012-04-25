@@ -49,7 +49,7 @@ def add_tzinfo(dt_obj):
     else:
         iso_date = "%s.000+%s" % (iso_dt, iso_utc)
     return iso_date
-    
+
 class alfresco_content(object):
     def __init__(self, alf_handler, node_obj, **kwargs):
         self.node_obj = node_obj
@@ -80,10 +80,10 @@ class alfresco_content(object):
         return get_content_dict(self["content"])
     def __repr__(self):
         return "alfresco content %s" % (self.node_obj.reference.path)
-        
+
 def get_content_dict(in_str):
     return dict([(str(key), value) for key, value in [sub_str.split("=", 1) for sub_str in in_str.split("|")[1:]]])
-    
+
 class CMLCreate(suds.wsse.Token):
     def __init__(self, create_id, parent, node_type, prop_list):
         suds.wsse.Token.__init__(self)
@@ -91,19 +91,19 @@ class CMLCreate(suds.wsse.Token):
         self.parent = parent
         self.type = node_type
         self.property = prop_list
-        
+
 class CMLDelete(suds.wsse.Token):
     def __init__(self, pred):
         suds.wsse.Token.__init__(self)
         self.where = pred
-        
+
 class CMLaddAspect(suds.wsse.Token):
     def __init__(self, aspect, pred):
         suds.wsse.Token.__init__(self)
         self.aspect = aspect
         self.property = []
         self.where = [pred]
-    
+
 class alfresco_token(suds.wsse.Token):
     def __init__(self, username=None, password=None):
         suds.wsse.Token.__init__(self)
@@ -121,6 +121,13 @@ class alfresco_token(suds.wsse.Token):
         return root
 
 class alfresco_handler(object):
+    """ Interface to an Alfresco DMS.
+
+    Make sure the time is correct on the Alfresco server. If it's not -
+    authentication problems will bite you.
+
+    To get the result of the last request use *get_result*.
+    """
     def __init__(self, log_com, **kwargs):
         self.log_com = log_com
         self.host = kwargs.get("host", settings.ALFRESCO_SERVER)
@@ -140,17 +147,31 @@ class alfresco_handler(object):
         self._init_errors()
         # caching flag
         self.class_tree_already_fetched = False
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[ah] %s" % (what), log_level)
+
     def get_credentials(self, folder):
+        """ Return authentication credentials. """
         return settings.ALFRESCO_DIRS.get(folder)
+
     def get_url(self, url_type):
+        """ Return base URL for all requests against Alfresco API. """
         return "%s/%sService?wsdl" % (self.base_url, url_type)
+
     def set_admin_credentials(self, user_name, password):
+        """ Set the admin credentials. """
         self.__admin_user, self.__admin_password = (user_name, password)
+
     def set_user_credentials(self, user_name, password):
+        """ Set the user credentials. """
         self.__user, self.__password = (user_name, password)
+
     def create_admin_session(self):
+        """ Authenticate against Alfresco with the admin credentials.
+
+        You have to set the admin credentials first.
+        """
         if not self.__admin_session:
             self.__admin_session = self["Authentication"].service.startSession(self.__admin_user,
                                                                                self.__admin_password)[1]
@@ -160,6 +181,7 @@ class alfresco_handler(object):
                                                  self.__admin_session.ticket))
             self.__admin_security = cur_sec
         return self.__admin_security
+
     def _init_errors(self):
         self.__error_list = []
     def _get_errors(self):
@@ -174,7 +196,9 @@ class alfresco_handler(object):
     def _remove_last_error(self):
         if self.__error_list:
             self.__error_list.pop(-1)
+
     def create_user_session(self):
+        """ Authenticate against Alfresco with user credentials."""
         if not self.__user_session:
             self.__user_session = self["Authentication"].service.startSession(self.__user,
                                                                               self.__password)[1]
@@ -185,8 +209,11 @@ class alfresco_handler(object):
                                                  self.__user_session.ticket))
             self.__user_security = cur_sec
         return self.__user_security
+
     def get_user_session(self):
+        """ Return the current user session. """
         return self.__user_session
+
     def __getitem__(self, sess_type):
         if sess_type not in self.__clients:
             if settings.DEBUG:
@@ -196,9 +223,13 @@ class alfresco_handler(object):
         if sess_type not in ["Authentication"]:
             self.__clients[sess_type].set_options(wsse=self.create_user_session())
         return self.__clients[sess_type]
+
     def get_result(self, **kwargs):
+        """ Return the result of the latest query. """
         return self.__latest_result
+
     def close(self):
+        """ Close all the existing sessions. """
         if self.__user_session:
             self.log("closing user session (%s)" % (self.__user_session.ticket))
             self["Authentication"].service.endSession(self.__user_session.ticket)
@@ -209,6 +240,7 @@ class alfresco_handler(object):
             self["Authentication"].service.endSession(self.__admin_session.ticket)
             self.__admin_session = None
             self.__admin_security = None
+
     def _fetch_aspect_tree(self, parent=None, parent_name=None):
         # not really working right now ...
         return
@@ -231,6 +263,7 @@ class alfresco_handler(object):
             short_tags = [key for key in self.class_tree.keys() if not key.startswith("/")]
             self.log("found %s: %s" % (logging_tools.get_plural("tag", len(short_tags)),
                                        ", ".join(sorted(short_tags))))
+
     def _fetch_class_tree(self, parent=None, parent_name=None, **kwargs):
         if kwargs.get("cache", False) and self.class_tree_already_fetched:
             return
@@ -243,6 +276,7 @@ class alfresco_handler(object):
         else:
             cur_classes = self["Classification"].service.getChildCategories(parent)[1]
             prefix = "%s/" % (parent_name)
+
         for cur_class in cur_classes:
             cur_name = "%s%s" % (prefix, cur_class.title)
             self.class_tree[cur_class.id.path] = cur_class
@@ -254,6 +288,7 @@ class alfresco_handler(object):
                                        ", ".join(sorted(short_tags))))
         if kwargs.get("cache", False):
             self.class_tree_already_fetched = True
+
     def _fetch_stores(self):
         if not self.stores:
             #print self["Repository"].service.getStores()
@@ -283,11 +318,13 @@ class alfresco_handler(object):
         node_pred.nodes = [self.get_reference(full_path)]
         self.__latest_result = self("Repository", "get", node_pred, ignore_errors=kwargs.get("ignore_errors", False))
         return True if self.__latest_result else False
+
     def get_dir_list(self, full_path, **kwargs):
         if kwargs.get("init_errors", True):
             self._init_errors()
         self.__latest_result = self._rewrite_query_result(self("Repository", "queryChildren", self.get_reference(full_path)), **kwargs)
         return True if self.__latest_result else False
+
     def _rewrite_query_result(self, q_result, **kwargs):
         ref_rowindex, ref_name, ref_uuid = (kwargs.get("rqr_rowindex", True),
                                             kwargs.get("rqr_name", True),
@@ -347,6 +384,7 @@ class alfresco_handler(object):
             self.__latest_result = ret_val
         success = True if not len(self._get_errors()) else False
         return success
+
     def check_path_case(self, full_path, **kwargs):
         if kwargs.get("init_errors", True):
             self._init_errors()
@@ -368,7 +406,12 @@ class alfresco_handler(object):
         self.log("sanitized path_name is %s" % (dir_name))
         full_path = dir_name
         return full_path
+
     def create_folder(self, full_path, **kwargs):
+        """ Create a folder recursively. """
+        if full_path.endswith("/"):
+            full_path = full_path[:-1]
+
         if kwargs.get("init_errors", True):
             self._init_errors()
         # now handled by iterative creation, much faster
@@ -424,7 +467,12 @@ class alfresco_handler(object):
             return full_path
         else:
             return success
+
     def store_content(self, full_path, f_content, **kwargs):
+        """ Upload a document to Alfresco.
+
+        f_content is stored under full_path on the DMS.
+        """
         self._fetch_class_tree(cache=True)
         # generate path
         self._init_errors()
