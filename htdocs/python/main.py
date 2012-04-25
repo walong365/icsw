@@ -347,6 +347,8 @@ def make_basic_entries(req, def_admin, def_passwd):
                                                                                                                          ("n", "Node properties"    ),
                                                                                                                          ("h", "Hardware properites"),
                                                                                                                          ("e", "Export entries"     )]])))
+    # partition_fs
+    req.dc.execute("INSERT INTO `partition_fs` VALUES (1,'reiserfs','f','ReiserFS Filesystem','83','2006-06-01 09:44:27'),(2,'ext2','f','Extended 2 Filesystem','83','2006-06-01 09:44:27'),(3,'ext3','f','Extended 3 Filesystem','83','2006-06-01 09:44:27'),(4,'swap','s','SwapSpace','82','2006-06-01 09:44:27'),(5,'ext','e','Extended Partition','f','2006-06-01 09:44:27'),(6,'empty','d','Empty Partition','0','2006-06-01 09:44:27'),(7,'lvm','l','LVM Partition','8e','2007-06-08 08:21:19')")
     # log status
     req.dc.execute("INSERT INTO log_status VALUES%s" % (",".join(["(0, '%s', %d, '%s', null)" % (st, sev, lt) for st, sev, lt in [("c", 200, "critical"),
                                                                                                                                   ("e", 100, "error"   ),
@@ -393,8 +395,8 @@ def handle_direct_module_call(req, module_name):
     return
 
 def apache_error(start_response, status, output):
-    response_headers = [('Content-type', 'text/plain'),
-                        ('Content-Length', "%d" % (len(output)))]
+    response_headers = [("Content-type"  , "text/plain"),
+                        ("Content-Length", "%d" % (len(output)))]
     start_response(status, response_headers)
     return [output]
 
