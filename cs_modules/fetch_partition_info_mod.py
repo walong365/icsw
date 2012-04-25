@@ -49,12 +49,18 @@ class fetch_partition_info(cs_base_class.server_com):
         num_errors, ret_f = (0, [])
         for idx, target_dev in zip(range(len(target_devs)), target_devs):
             t_stuff = res_dict[idx]
-            was_error = int(t_stuff["result"].attrib["state"])
+            if t_stuff is None:
+                was_error = -1
+            else:
+                was_error = int(t_stuff["result"].attrib["state"])
             if was_error:
                 num_errors += 1
-                ret_f.append("%s: network error %d: %s" % (target_dev,
-                                                           int(t_stuff["result"].attrib["state"]),
-                                                           t_stuff["result"].attrib["reply"]))
+                if t_stuff is None:
+                    ret_f.append("%s: no result" % (target_dev))
+                else:
+                    ret_f.append("%s: network error %d: %s" % (target_dev,
+                                                               int(t_stuff["result"].attrib["state"]),
+                                                               t_stuff["result"].attrib["reply"]))
 ##            elif not t_stuff["ret_str"].startswith("ok "):
 ##                num_errors += 1
 ##                if t_stuff["ret_str"].startswith("error"):
@@ -205,4 +211,3 @@ class fetch_partition_info(cs_base_class.server_com):
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
-    
