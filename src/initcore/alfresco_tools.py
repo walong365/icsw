@@ -575,13 +575,7 @@ class alfresco_handler(object):
                     self("Repository", "update", cur_create, info="set aspects", ignore_errors=True)
                     self.set_tags(node_pred, kwargs.get("tags", []))
                 # read node after writing to get the version_label and other stuff
-                call_result = self("Repository", "get", node_pred)
-                if call_result:
-                    call_result = call_result[0]
-                else:
-                    print "WARNING", node_pred
-                    call_result = True
-
+                call_result = self("Repository", "get", node_pred)[0]
         self.__latest_result = call_result
         success = True if not len(self._get_errors()) else False
         return success
