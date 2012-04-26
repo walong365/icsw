@@ -1,30 +1,35 @@
+#!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
-
-""" Toolkit for alfresco """
+""" toolkit for accessing alfresco """
 
 from pkg_resources import require
 require("Suds")
 import suds
+from suds.client import Client
+from suds.sax.element import Element
+
+from initcore.helper_functions import keyword_check
+
 import urllib2
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 import suds.wsse
 import time
 import base64
 import datetime
 import sys
 import pytz
+import re
 import logging_tools
 import os
 import pprint
 import types
 import logging
 import mimetypes
-
-from suds.client import Client
-#from suds.wsse import Security, UsernameToken
-from suds.sax.element import Element
-
 from django.conf import settings
-from django.utils.encoding import smart_unicode
+try:
+    import cmislib
+except:
+    cmislib = None
 
 ALFRESCO_WS_CML_NS             = "http://www.alfresco.org/ws/cml/1.0"
 ALFRESCO_WS_MODEL_CONTENT_NS   = "http://www.alfresco.org/ws/model/content/1.0"
@@ -32,18 +37,9 @@ ALFRESCO_WS_SERVICE_CONTENT_NS = "http://www.alfresco.org/ws/service/content/1.0
 ALFRESCO_WS_SERVICE_CLASS_NS   = "http://www.alfresco.org/ws/service/classification/1.0"
 ALFRESCO_MODEL_CONTENT_NS      = "http://www.alfresco.org/model/content/1.0"
 ALFRESCO_MODEL_SYSTEM_NS       = "http://www.alfresco.org/model/system/1.0"
+ALFRESCO_MODEL_APPLICATION_NS  = "http://www.alfresco.org/model/application/1.0"
 
-
-def keyword_check(*kwarg_list):
-    def decorator(func):
-        def _wrapped_view(*args, **kwargs):
-            diff_set = set(kwargs.keys()) - set(kwarg_list)
-            if diff_set:
-                raise KeyError, "Invalid keyword arguments: %s" % (str(diff_set))
-            return func(*args, **kwargs)
-        return _wrapped_view
-    return decorator
-
+CASE_INSENSITIVE = False
 
 def add_tzinfo(dt_obj):
     dt_obj = dt_obj.replace(tzinfo=pytz.timezone("Europe/Vienna"))
@@ -86,10 +82,8 @@ class alfresco_content(object):
     def __repr__(self):
         return "alfresco content %s" % (self.node_obj.reference.path)
 
-
 def get_content_dict(in_str):
     return dict([(str(key), value) for key, value in [sub_str.split("=", 1) for sub_str in in_str.split("|")[1:]]])
-
 
 class CMLCreate(suds.wsse.Token):
     def __init__(self, create_id, parent, node_type, prop_list):
@@ -98,6 +92,18 @@ class CMLCreate(suds.wsse.Token):
         self.parent = parent
         self.type = node_type
         self.property = prop_list
+
+class CMLUpdate(suds.wsse.Token):
+    def __init__(self, where_id, prop_list):
+        suds.wsse.Token.__init__(self)
+        self.where_id = where_id
+        self.property = prop_list
+
+class CMLMove(suds.wsse.Token):
+    def __init__(self, where, to):
+        suds.wsse.Token.__init__(self)
+        self.where = where
+        self.to = to
 
 class CMLDelete(suds.wsse.Token):
     def __init__(self, pred):
@@ -128,13 +134,6 @@ class alfresco_token(suds.wsse.Token):
         return root
 
 class alfresco_handler(object):
-    """ Interface to an Alfresco DMS.
-
-    Make sure the time is correct on the Alfresco server. If it's not -
-    authentication problems will bite you.
-
-    To get the result of the last request use *get_result*.
-    """
     def __init__(self, log_com, **kwargs):
         self.log_com = log_com
         self.host = kwargs.get("host", settings.ALFRESCO_SERVER)
@@ -146,7 +145,7 @@ class alfresco_handler(object):
                                       directory_credentials.get("PASSWORD"))
         self.base_url = "http://%s:%d/alfresco/api" % (self.host,
                                                        self.port)
-        #self.log("base_url is '%s'" % (self.base_url))
+        self.log("base_url is '%s'" % (self.base_url))
         self.__admin_user, self.__admin_password = (None, None)
         self.__admin_session, self.__user_session = (None, None)
         self.__clients = {}
@@ -154,31 +153,17 @@ class alfresco_handler(object):
         self._init_errors()
         # caching flag
         self.class_tree_already_fetched = False
-
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[ah] %s" % (what), log_level)
-
     def get_credentials(self, folder):
-        """ Return authentication credentials. """
         return settings.ALFRESCO_DIRS.get(folder)
-
     def get_url(self, url_type):
-        """ Return base URL for all requests against Alfresco API. """
         return "%s/%sService?wsdl" % (self.base_url, url_type)
-
     def set_admin_credentials(self, user_name, password):
-        """ Set the admin credentials. """
         self.__admin_user, self.__admin_password = (user_name, password)
-
     def set_user_credentials(self, user_name, password):
-        """ Set the user credentials. """
         self.__user, self.__password = (user_name, password)
-
     def create_admin_session(self):
-        """ Authenticate against Alfresco with the admin credentials.
-
-        You have to set the admin credentials first.
-        """
         if not self.__admin_session:
             self.__admin_session = self["Authentication"].service.startSession(self.__admin_user,
                                                                                self.__admin_password)[1]
@@ -188,7 +173,6 @@ class alfresco_handler(object):
                                                  self.__admin_session.ticket))
             self.__admin_security = cur_sec
         return self.__admin_security
-
     def _init_errors(self):
         self.__error_list = []
     def _get_errors(self):
@@ -203,9 +187,7 @@ class alfresco_handler(object):
     def _remove_last_error(self):
         if self.__error_list:
             self.__error_list.pop(-1)
-
     def create_user_session(self):
-        """ Authenticate against Alfresco with user credentials."""
         if not self.__user_session:
             self.__user_session = self["Authentication"].service.startSession(self.__user,
                                                                               self.__password)[1]
@@ -216,11 +198,8 @@ class alfresco_handler(object):
                                                  self.__user_session.ticket))
             self.__user_security = cur_sec
         return self.__user_security
-
     def get_user_session(self):
-        """ Return the current user session. """
         return self.__user_session
-
     def __getitem__(self, sess_type):
         if sess_type not in self.__clients:
             if settings.DEBUG:
@@ -230,13 +209,9 @@ class alfresco_handler(object):
         if sess_type not in ["Authentication"]:
             self.__clients[sess_type].set_options(wsse=self.create_user_session())
         return self.__clients[sess_type]
-
     def get_result(self, **kwargs):
-        """ Return the result of the latest query. """
         return self.__latest_result
-
     def close(self):
-        """ Close all the existing sessions. """
         if self.__user_session:
             self.log("closing user session (%s)" % (self.__user_session.ticket))
             self["Authentication"].service.endSession(self.__user_session.ticket)
@@ -247,9 +222,8 @@ class alfresco_handler(object):
             self["Authentication"].service.endSession(self.__admin_session.ticket)
             self.__admin_session = None
             self.__admin_security = None
-
     def _fetch_aspect_tree(self, parent=None, parent_name=None):
-        # not really working right now ...
+        # not really working right now, FIXME
         return
         if parent is None:
             self._fetch_stores()
@@ -270,7 +244,6 @@ class alfresco_handler(object):
             short_tags = [key for key in self.class_tree.keys() if not key.startswith("/")]
             self.log("found %s: %s" % (logging_tools.get_plural("tag", len(short_tags)),
                                        ", ".join(sorted(short_tags))))
-
     def _fetch_class_tree(self, parent=None, parent_name=None, **kwargs):
         if kwargs.get("cache", False) and self.class_tree_already_fetched:
             return
@@ -283,7 +256,6 @@ class alfresco_handler(object):
         else:
             cur_classes = self["Classification"].service.getChildCategories(parent)[1]
             prefix = "%s/" % (parent_name)
-
         for cur_class in cur_classes:
             cur_name = "%s%s" % (prefix, cur_class.title)
             self.class_tree[cur_class.id.path] = cur_class
@@ -295,7 +267,6 @@ class alfresco_handler(object):
                                        ", ".join(sorted(short_tags))))
         if kwargs.get("cache", False):
             self.class_tree_already_fetched = True
-
     def _fetch_stores(self):
         if not self.stores:
             #print self["Repository"].service.getStores()
@@ -303,40 +274,27 @@ class alfresco_handler(object):
             self.store_dict = dict([(cur_store.address, cur_store) for cur_store in self.stores])
             self.log("fetched %s: %s" % (logging_tools.get_plural("store", len(self.store_dict)),
                                          ", ".join(sorted(self.store_dict))))
-    def child_exists_in_dir(self, full_path, child_name, **kwargs):
-        # case insensitive
-        if kwargs.get("init_errors", True):
-            self._init_errors()
-        cur_res = self._rewrite_query_result(self("Repository", "queryChildren", self.get_reference(full_path), ignore_errors=True), rqr_rowindex=False, rqr_uuid=False)
-        if cur_res is None:
-            # no result, child does not exist
-            return None
-        else:
-            res_dict = dict([(key.lower().replace("{colon}", ":").replace("{slash}", "/"), key.replace("{colon}", ":").replace("{slash}", "/")) for key in cur_res.keys()])
-            if child_name.lower() in res_dict:
-                return res_dict[child_name.lower()]
-            else:
-                return child_name
-    def node_exists(self, full_path, **kwargs):
-        # case sensitive
+    def _node_exists(self, full_path, **kwargs):
+        """ case sensitive if a node with path full_path exists, internal function """
         if kwargs.get("init_errors", True):
             self._init_errors()
         node_pred = self.get_predicate()
         node_pred.nodes = [self.get_reference(full_path)]
         self.__latest_result = self("Repository", "get", node_pred, ignore_errors=kwargs.get("ignore_errors", False))
         return True if self.__latest_result else False
-
     def get_dir_list(self, full_path, **kwargs):
+        """ a simple 'ls' command """
         if kwargs.get("init_errors", True):
             self._init_errors()
         self.__latest_result = self._rewrite_query_result(self("Repository", "queryChildren", self.get_reference(full_path)), **kwargs)
         return True if self.__latest_result else False
-
     def _rewrite_query_result(self, q_result, **kwargs):
+        """ rewrite result of get_dir_list() to pythonic dictionary """
         ref_rowindex, ref_name, ref_uuid = (kwargs.get("rqr_rowindex", True),
                                             kwargs.get("rqr_name", True),
                                             kwargs.get("rqr_uuid", True))
         if q_result:
+            #pprint.pprint(q_result)
             r_dict = {}
             if q_result.resultSet.totalRowCount:
                 for node in q_result.resultSet.rows:
@@ -349,28 +307,34 @@ class alfresco_handler(object):
                     # always store name
                     if ref_rowindex:
                         r_dict[node.rowIndex] = node_ref
-                    if ref_name and "{%s}name" % (ALFRESCO_MODEL_CONTENT_NS) in node_ref:
-                        r_dict[node_ref["{%s}name" % (ALFRESCO_MODEL_CONTENT_NS)].value] = node_ref
+                    if ref_name and "associationName" in node_ref:
+                        # return association name (lowercase) and not full name
+                        r_dict[node_ref["associationName"].value.split("}", 1)[1]] = node_ref
                     if ref_uuid and "{%s}node-uuid" % (ALFRESCO_MODEL_SYSTEM_NS) in node_ref:
                         r_dict[node_ref["{%s}node-uuid" % (ALFRESCO_MODEL_SYSTEM_NS)].value] = node_ref
         else:
             r_dict = None
         return r_dict
+    def move_node(self, src_uuid, dst_path, **kwargs):
+        if kwargs.get("init_errors", True):
+            self._init_errors()
+        cur_pred = self.get_predicate()
+        cur_pred.nodes = [self.get_reference(None, uuid=src_uuid)]
+        parent_ref = self.get_parent_reference(dst_path, "test")
+        my_update = CMLMove(cur_pred, parent_ref)
+        cur_move = self["Repository"].factory.create("{%s}CML" % (ALFRESCO_WS_CML_NS))
+        cur_move.move = my_update
+        ret_val = self("Repository", "update", cur_move, info="move node")
+        self.__latest_result = ret_val
+        success = True if not len(self._get_errors()) else False
+        return success
     def delete_node(self, **kwargs):
+        """ deletes node by path or uuid """
         if kwargs.get("init_errors", True):
             self._init_errors()
         cur_pred, ret_node = (None, None)
-        #if not self.node_exists(full_path, init_errors=False):
-        #    self.add_error("path '%s' does not exist" % (full_path))
-        #    return False
-        #elif not self.node_exists(f_path, init_errors=False):
-        #    self.add_error("parent path '%s' does not exist" % (full_path))
-        #    return False
-        #else:
-        #    print self["Repository"]
         if "path" in kwargs:
             f_path, f_name = os.path.split(kwargs.get("path"))
-            #f_path, f_name = os.path.split(full_path)
             cur_pred = self.get_predicate()
             cur_pred.nodes = [self.get_reference(f_path)]
         elif "uuid" in kwargs:
@@ -391,50 +355,46 @@ class alfresco_handler(object):
             self.__latest_result = ret_val
         success = True if not len(self._get_errors()) else False
         return success
-
-    def check_path_case(self, full_path, **kwargs):
-        if kwargs.get("init_errors", True):
-            self._init_errors()
-        f_path = full_path
-        path_parts = []
-        while True:
-            f_path, dir_name = os.path.split(f_path)
-            path_parts.append(dir_name)
-            if not f_path:
-                break
-        path_parts.reverse()
-        self.log("path_parts of '%s' is %s" % (full_path, ", ".join(path_parts)))
-        dir_name = path_parts.pop(0)
-        for sub_name in path_parts:
-            real_sub_name = self.child_exists_in_dir(dir_name, sub_name)
-            if real_sub_name is not None:
-                sub_name = real_sub_name
-            dir_name = os.path.join(dir_name, sub_name)
-        self.log("sanitized path_name is %s" % (dir_name))
-        full_path = dir_name
-        return full_path
-
+##    def check_path_case(self, full_path, **kwargs):
+##        """ check path for case problems, no longer needed when all paths are lower case """
+##        if kwargs.get("init_errors", True):
+##            self._init_errors()
+##        f_path = full_path
+##        path_parts = []
+##        while True:
+##            f_path, dir_name = os.path.split(f_path)
+##            path_parts.append(dir_name)
+##            if not f_path:
+##                break
+##        path_parts.reverse()
+##        self.log("path_parts of '%s' is %s" % (full_path, ", ".join(path_parts)))
+##        dir_name = path_parts.pop(0)
+##        for sub_name in path_parts:
+##            real_sub_name = self.child_exists_in_dir(dir_name, sub_name)
+##            if real_sub_name is not None:
+##                sub_name = real_sub_name
+##            dir_name = os.path.join(dir_name, sub_name)
+##        self.log("sanitized path_name is %s" % (dir_name))
+##        full_path = dir_name
+##        return full_path
     def create_folder(self, full_path, **kwargs):
-        """ Create a folder recursively. """
-        if full_path.endswith("/"):
-            full_path = full_path[:-1]
-
+        """ creates a folder """
         if kwargs.get("init_errors", True):
             self._init_errors()
-        # now handled by iterative creation, much faster
-        #if not kwargs.get("path_name_is_sane", False):
-        #    full_path = self.check_path_case(full_path)
-        #    kwargs["path_name_is_sane"] = True
+        dummy_path, dir_name = os.path.split(full_path)
+        if kwargs.get("ignore_case", CASE_INSENSITIVE):
+            full_path = full_path.lower()
+        # dir_name_ci : case insensitive dir_name
+        f_path, dir_name_ci = os.path.split(full_path)
         check_for_existing = kwargs.get("check_for_existing", False)
-        f_path, dir_name = os.path.split(full_path)
         # check for existing parent_path
-        if not self.node_exists(f_path, init_errors=False, ignore_errors=True):
+        if not self._node_exists(f_path, init_errors=False, ignore_errors=True):
             if kwargs.get("recursive", False):
                 kwargs["init_errors"] = False
                 kwargs["return_path_on_success"] = True
                 new_dir_path = self.create_folder(f_path, **kwargs)
                 if new_dir_path:
-                    full_path = os.path.join(new_dir_path, dir_name)
+                    full_path = os.path.join(new_dir_path, dir_name_ci)
                     f_path = new_dir_path
             else:
                 self.add_error("parent folder '%s' does not exist" % (f_path))
@@ -442,11 +402,11 @@ class alfresco_handler(object):
             retry, retry_count = (True, 0)
             while retry and retry_count < 2:
                 retry = False
-                if check_for_existing and self.node_exists(full_path, ignore_errors=True, init_errors=False):
+                if check_for_existing and self._node_exists(full_path, ignore_errors=True, init_errors=False):
                     self.log("folder '%s' already exists in '%s'" % (dir_name,
                                                                      f_path))
                 else:
-                    parent_ref = self.get_parent_reference(f_path, dir_name)
+                    parent_ref = self.get_parent_reference(f_path, dir_name_ci)
                     property_list = [self.get_named_value("name", self._safe_dir_name(dir_name))]
                     for add_nv in ["author", "description"]:
                         if add_nv in kwargs:
@@ -458,39 +418,39 @@ class alfresco_handler(object):
                                                   property_list)
                     # node predicate
                     ret_val = self("Repository", "update", cur_create, info="create folder '%s' beneath '%s'" % (dir_name, f_path))
-                    if ret_val is None:
-                        if "DuplicateChildNodeNameException" in self._get_errors()[0]:
-                            self.log("problem with case detected, checking...", logging_tools.LOG_LEVEL_ERROR)
-                            real_dir_name = self.child_exists_in_dir(f_path, dir_name)
-                            self.log("dir_name tried was '%s', should be '%s'" % (dir_name,
-                                                                                  real_dir_name), logging_tools.LOG_LEVEL_WARN)
-                            dir_name = real_dir_name
-                            full_path = os.path.join(f_path, dir_name)
-                            retry = True
-                            retry_count += 1
+##                    """ the next block is no longer needed when all paths are lower case """
+##                    if ret_val is None:
+##                        if "DuplicateChildNodeNameException" in self._get_errors()[0]:
+##                            self.log("problem with case detected, checking...", logging_tools.LOG_LEVEL_ERROR)
+##                            real_dir_name = self.child_exists_in_dir(f_path, dir_name_ci)
+##                            self.log("dir_name tried was '%s', should be '%s'" % (dir_name,
+##                                                                                  real_dir_name), logging_tools.LOG_LEVEL_WARN)
+##                            dir_name_ci = real_dir_name
+##                            full_path = os.path.join(f_path, dir_name)
+##                            retry = True
+##                            retry_count += 1
                     self.__latest_result = ret_val
         success = True if not len(self._get_errors()) else False
         if success and kwargs.get("return_path_on_success"):
             return full_path
         else:
             return success
-
     def store_content(self, full_path, f_content, **kwargs):
-        """ Upload a document to Alfresco.
-
-        f_content is stored under full_path on the DMS.
-        """
-        full_path = smart_unicode(full_path)
+        # full_path can be a simple filename if parent_uuid is set
         self._fetch_class_tree(cache=True)
+        dummy_path, f_name = os.path.split(full_path)
+        if kwargs.get("ignore_case", CASE_INSENSITIVE):
+            full_path = full_path.lower()
         # generate path
         self._init_errors()
-        f_path, f_name = os.path.split(full_path)
+        # f_name_ci : case insensitive f_name
+        f_path, f_name_ci = os.path.split(full_path)
         # guess mimetype if not set
         if "mimetype" not in kwargs:
             g_mimetype, g_encoding = mimetypes.guess_type(f_name)
             if g_mimetype:
                 kwargs["mimetype"] = g_mimetype
-        parent_ref = self.get_parent_reference(f_path, f_name)
+        parent_ref = self.get_parent_reference(f_path, f_name_ci)
         cur_type = self.get_content_format(**kwargs)
         property_list = [self.get_named_value("name", f_name)]
         for add_nv in ["author", "description", "created"]:
@@ -513,11 +473,10 @@ class alfresco_handler(object):
         call_result = None
         node_exists = False
         if check_for_existing:
-            if self.get_dir_list(f_path):
-                if f_name in self.get_result().keys():
-                    self.log("node '%s' in %s already exists" % (f_name,
-                                                                 f_path))
-                    node_exists = True
+            node_exists = self._node_exists(full_path, ignore_errors=True, init_errors=False)
+            if node_exists:
+                self.log("node '%s' in %s already exists" % (f_name_ci,
+                                                             f_path))
         if node_exists:
             if create_new_version_if_exists:
                 self.log("found previous version, creating new version")
@@ -558,15 +517,31 @@ class alfresco_handler(object):
                     self._remove_last_error()
         if ret_val:
             cur_ref = self.get_reference(full_path)
+            self.log("content for path '%s' is of type %s" % (full_path,
+                                                              type(f_content)))
+
             if type(f_content) == file:
-                f_content = f_content.read()
-            if type(f_content) != types.UnicodeType:
-                f_content = base64.b64encode(f_content)
-            write_res = self("Content", "write", cur_ref,
-                             "{%s}content" % ALFRESCO_MODEL_CONTENT_NS,
-                             f_content,
-                             cur_type,
-                             info="set content (length %d)" % (len(f_content)))
+                f_content_obj = f_content
+            elif type(f_content) in [InMemoryUploadedFile, TemporaryUploadedFile]:
+                f_content_obj = f_content
+            else:
+                f_content_obj = None
+            if cmislib is not None and f_content_obj is not None:
+                cmis_url = "http://%s:%d/alfresco/service/cmis" % (self.host,
+                                                                   self.port)
+                self.log("using cmislib for uploading, url is %s" % (cmis_url))
+                write_res = True
+            else:
+                cmis_url = None
+                if f_content_obj is not None:
+                    f_content = f_content_obj.read()
+                if type(f_content) == type(u""):
+                    f_content = f_content.encode("utf-8")
+                write_res = self("Content", "write", cur_ref,
+                                 "{%s}content" % (ALFRESCO_MODEL_CONTENT_NS),
+                                 base64.b64encode(f_content),
+                                 cur_type,
+                                 info="set content (length %d)" % (len(f_content)))
             if write_res:
                 if set_flags:
                     cur_create = self["Repository"].factory.create("{%s}CML" % (ALFRESCO_WS_CML_NS))
@@ -576,6 +551,15 @@ class alfresco_handler(object):
                     self.set_tags(node_pred, kwargs.get("tags", []))
                 # read node after writing to get the version_label and other stuff
                 call_result = self("Repository", "get", node_pred)[0]
+                if cmis_url:
+                    my_client = cmislib.CmisClient(cmis_url, self.__user, self.__password)
+                    def_repo = my_client.defaultRepository
+                    cmis_doc = def_repo.getObject("workspace://SpacesStore/%s" % (call_result.reference.uuid))
+                    self.log("storing content with setContentStream()")
+                    cmis_doc.setContentStream(contentFile=f_content_obj)
+                    #print dir(cmis_doc)
+                    #print dir(my_client)
+                    del my_client
         self.__latest_result = call_result
         success = True if not len(self._get_errors()) else False
         return success
@@ -616,6 +600,8 @@ class alfresco_handler(object):
         cur_pred, ret_node = (None, None)
         if "path" in kwargs:
             full_path = kwargs.get("path")
+            if kwargs.get("ignore_case", CASE_INSENSITIVE):
+                full_path = full_path.lower()
             f_path, f_name = os.path.split(full_path)
             cur_pred = self.get_predicate()
             cur_pred.nodes = [self.get_reference(full_path)]
@@ -639,6 +625,7 @@ class alfresco_handler(object):
         success = ret_node if not len(self._get_errors()) else False
         return success
     def get_version_history(self, **kwargs):
+        """ returns version history for given uuid """
         self._init_errors()
         ret_node = None
         ret_state, ret_list = self["Authoring"].service.getVersionHistory(self.get_reference(None, uuid=kwargs["uuid"]))
@@ -649,26 +636,23 @@ class alfresco_handler(object):
                     ret_node[cur_vers.label] = cur_vers.id.uuid
         success = ret_node if not len(self._get_errors()) else False
         return success
-
     def get_predicate(self, **kwargs):
         self._fetch_stores()
         cur_pred = self["Content"].factory.create("{%s}Predicate" % (ALFRESCO_WS_MODEL_CONTENT_NS))
         if "node" in kwargs:
             cur_pred.nodes = [kwargs["node"]]
         return cur_pred
-
     def _encode_path(self, f_path):
-        """ Encode objects in iterable according to ISO-9075. """
         return [self._iso9075_encode(part) for part in f_path]
-
+    def _safe_dir_name(self, dir_name, **kwargs):
+        if dir_name.endswith("."):
+            dir_name = "%s{dot}" % (dir_name[:-1])
+        return dir_name.replace(":", "{colon}").replace("/", "{slash}").replace("?", "{qm}").replace('"', "")
     def _iso9075_encode(self, p_part):
-        """ Encode string according to ISO-9075. """
         self._first_char = True
         cur_path = "".join([self._iso9075_char(char) for char in p_part])
         return cur_path
-
     def _iso9075_char(self, char):
-        """ Encode single char according to ISO-9075."""
         if char.isdigit() and self._first_char:
             char = "_x00%x_" % (ord(char))
         elif char in [" ", ",", ".", "(", ")", ":", "[", "]", "{", "}", "#", "&", "+", u"®", u"ä", u"ö", u"ü", u"Ä", u"Ü", u"Ö", u"°", u"?", unichr(186), unichr(39), '"', "~"]:
@@ -677,25 +661,57 @@ class alfresco_handler(object):
             pass
         self._first_char = False
         return char
-
-    def _safe_dir_name(self, dir_name, **kwargs):
-        if dir_name.endswith("."):
-            dir_name = "%s{dot}" % (dir_name[:-1])
-        return dir_name.replace(":", "{colon}").replace("/", "{slash}").replace("?", "{qm}").replace('"', "")
-
-    def get_parent_reference(self, f_path, f_name):
+    def _iso9075_recode(self, p_part):
+        iso_re = re.compile("^(?P<pre>.*)_x00(?P<code>[^_]+)_(?P<post>.*)")
+        while True:
+            re_found = iso_re.match(p_part)
+            if re_found:
+                p_part = "".join([re_found.group("pre"),
+                                  unichr(int(re_found.group("code"), 16)),
+                                  re_found.group("post")])
+            else:
+                break
+        return p_part
+    def _iso9075_char_recode(self, char):
+        if char.isdigit() and self._first_char:
+            char = "_x00%x_" % (ord(char))
+        elif char in [" ", ",", ".", "(", ")", ":", "[", "]", "{", "}", "#", "&", "+", u"®", u"ä", u"ö", u"ü", u"Ä", u"Ü", u"Ö", u"°", u"?", unichr(186), unichr(39), '"', "~"]:
+            char = "_x00%x_" % (ord(char))
+        else:
+            pass
+        self._first_char = False
+        return char
+    def get_parent_reference(self, f_path, f_name, **kwargs):
+        """ return ParentReference structure, case sensitive """
         self._fetch_stores()
         par_ref = self["Content"].factory.create("{%s}ParentReference" % (ALFRESCO_WS_MODEL_CONTENT_NS))
-        if type(f_path) in [type(""), type(u"")]:
-            f_path = f_path.split("/")
-        f_path = self._encode_path(f_path)
-        par_ref.path = "/app:company_home/%s" % ("/".join(["cm:%s" % (part) for part in f_path]))
+        if f_path:
+            if type(f_path) in [type(""), type(u"")]:
+                f_path = f_path.split("/")
+                f_path = self._encode_path(f_path)
+            par_ref.path = "/app:company_home/%s" % ("/".join(["cm:%s" % (part) for part in f_path]))
+        else:
+            par_ref.uuid = kwargs["parent_uuid"]
         par_ref.store = self.store_dict["SpacesStore"]
         par_ref.associationType = "{%s}contains" % (ALFRESCO_MODEL_CONTENT_NS)
         par_ref.childName = "{%s}%s" % (ALFRESCO_MODEL_CONTENT_NS, f_name)
         return par_ref
-
+    def get_node_by_uuid(self, uuid, **kwargs):
+        """ a simple 'node_by_uuid' command """
+        if kwargs.get("init_errors", True):
+            self._init_errors()
+        cur_pred = self.get_predicate()
+        cur_pred.nodes = [self.get_reference(None, uuid=uuid)]
+        return alfresco_content(None, self("Repository", "get", cur_pred, **kwargs)[0])
+    def get_node_by_path(self, full_path, **kwargs):
+        """ a simple 'node_by_uuid' command """
+        if kwargs.get("init_errors", True):
+            self._init_errors()
+        node_pred = self.get_predicate()
+        node_pred.nodes = [self.get_reference(full_path)]
+        return alfresco_content(None, self("Repository", "get", node_pred, **kwargs)[0])
     def get_reference(self, f_path, **kwargs):
+        """ return Reference structure, case sensitive """
         self._fetch_stores()
         cur_ref = self["Content"].factory.create("{%s}Reference" % (ALFRESCO_WS_MODEL_CONTENT_NS))
         if f_path:
@@ -763,7 +779,10 @@ class alfresco_handler(object):
 
 if sys.platform in ["linux2"]:
     # add suds logging on linux hosts
-    logging_tools.get_logger("suds.client", "uds:/var/lib/logging-server/py_log", base_log_level=logging.ERROR, init_logger=False)
+    logging_tools.get_logger("suds.client",
+                             "uds:/var/lib/logging-server/py_log",
+                             base_log_level=logging.ERROR,
+                             init_logger=False)
 
 if __name__ == "__main__":
     print "loadable module, exiting..."
