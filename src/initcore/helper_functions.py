@@ -48,7 +48,6 @@ import reversion
 from django.utils.safestring import mark_safe
 from email.utils import parseaddr, formataddr
 import django.core.urlresolvers
-from initcore.alfresco_tools import alfresco_handler, alfresco_content
 if settings.ZMQ_LOGGING:
     import zmq
 else:
@@ -1534,6 +1533,7 @@ def _get_multi_short_dict(obj, key, col, lang, ret_dict):
 """
 
 def xlsx_export_response(request, xlsx_dict, name=None):
+    from initcore.alfresco_tools import alfresco_handler, alfresco_content
     s_time = time.time()
     if not name:
         name = "xlsx_export"
