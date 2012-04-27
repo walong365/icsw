@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2003,2004,2005,2006 init.at
+# Copyright (c) 2003,2004,2005,2006,2012 init.at
 #
 #
 # RedHat stuff
@@ -17,6 +17,7 @@
 # Description:   start sge-server service
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -24,7 +25,7 @@ else
 fi
 . /etc/init.d/ics_tools.sh
 
-SERVER_BIN=/usr/local/sbin/sge-server.py
+SERVER_BIN=/opt/cluster/sbin/sge-server.py
 SERVER_PID=/var/run/sge-server/sge-server.pid
 PYTHON_BIN=/usr/bin/python-init
 SERVER_DIRS="/var/run/sge-server /var/lib/sge-server"
