@@ -506,8 +506,9 @@ class relay_process(threading_tools.process_pool):
         parameter_ok = False
         if xml_input:
             srv_com = server_command.srv_command(source=body)
-            srv_com["result"] = {"reply" : "no reply set",
-                                 "state" : server_command.SRV_REPLY_STATE_UNSET}
+            srv_com["result"] = None
+            srv_com["result"].attrib.update({"reply" : "no reply set",
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_UNSET)})
             try:
                 host = srv_com.xpath(None, ".//ns:host")[0].text
                 snmp_version = int(srv_com.xpath(None, ".//ns:snmp_version")[0].text)
