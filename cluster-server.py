@@ -1449,7 +1449,7 @@ def main():
         ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("FORCE"               , configfile.bool_c_var(False, help_string="kill running instances [%(default)s]", only_commandline=True)),
-        ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True)),
+        ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True, short_options="C")),
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
@@ -1479,6 +1479,8 @@ def main():
         print "Database error for host %s (nagios_config): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
         dc.release()
         sys.exit(5)
+    if global_config["CHECK"]:
+        sys.exit(0)
     global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(process_tools.create_log_source_entry(dc, global_config["SERVER_IDX"], "cluster-server", "Cluster Server")))])
     if not global_config["LOG_SOURCE_IDX"]:
         print "Too many log_source with my id present, exiting..."
