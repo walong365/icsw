@@ -54,17 +54,29 @@ MIN_UPDATE_TIME = 4
 REMOTE_PING_FILE = "/etc/sysconfig/host-monitoring.d/remote_ping"
 
 class _general(hm_classes.hm_module):
+    class Meta:
+        # high priority to set ethtool_path before init_machine_vector
+        priority = 10
     def init_module(self):
         self.dev_dict = {}
         self.last_update = time.time()
+        # search ethtool
+        ethtool_path = process_tools.find_file("ethtool")
+        if ethtool_path:
+            self.log("ethtool found at %s" % (ethtool_path))
+        else:
+            self.log("not ethtool found", logging_tools.LOG_LEVEL_WARN)
+        self.ethtool_path = None
     def init_machine_vector(self, mv):
-        self.act_nds = netspeed()#self.bonding_devices)
+        self.act_nds = netspeed(self.ethtool_path)#self.bonding_devices)
     def update_machine_vector(self, mv):
         try:
             self._net_int(mv)
         except:
-            self.log("error in net_int: %s" % (process_tools.get_except_info()),
+            self.log("error in net_int:",
                      logging_tools.LOG_LEVEL_ERROR)
+            for log_line in process_tools.exception_info().log_lines:
+                self.log(" - %s" % (log_line), logging_tools.LOG_LEVEL_ERROR)
     def _net_int(self, mvect):
         act_time = time.time()
         time_diff = act_time - self.last_update
@@ -375,9 +387,10 @@ class my_modclass(hm_classes.hm_fileinfo):
 ND_HIST_SIZE = 5
 
 class net_device(object):
-    def __init__(self, name, mapping):
+    def __init__(self, name, mapping, ethtool_path):
         self.name = name
         self.nd_mapping = mapping
+        self.ethtool_path = ethtool_path
         self.nd_keys = set(self.nd_mapping) - set([None])
         self.invalidate()
         self.__history = []
@@ -409,8 +422,8 @@ class net_device(object):
         cur_time = time.time()
         if cur_time > self.last_update + 30:
             res_dict = {}
-            if self.__check_ethtool:
-                ce_stat, ce_out = commands.getstatusoutput("ethtool %s" % (self.name))
+            if self.__check_ethtool and self.ethtool_path:
+                ce_stat, ce_out = commands.getstatusoutput("%s %s" % (self.ethtool_path, self.name))
                 if not ce_stat:
                     res_dict = dict([(key.lower(), value.strip()) for key, value in [line.strip().split(":", 1) for line in ce_out.split("\n") if line.count(":")] if len(value.strip())])
             self.last_update = cur_time
@@ -432,11 +445,12 @@ class net_device(object):
         return result
         
 class netspeed(object):
-    def __init__(self):#, bonding = None):
+    def __init__(self, ethtool_path):#, bonding = None):
+        self.ethtool_path = ethtool_path
         cur_head = sum([part.split() for part in file("/proc/net/dev", "r").readlines()[1].strip().split("|")], [])
         if len(cur_head) == 17:
             self.nd_mapping = ["rx", None, "rxerr", "rxdrop", None, None, None, None,
-                               "tx", None, "txerr", "txdrop", None, None, None, None]
+                               "tx", None, "txerr", "txdrop", None, None, "carrier", None]
         else:
             raise ValueError, "unknown /proc/net/dev layout"
         self.nst_size = 10
@@ -473,20 +487,21 @@ class netspeed(object):
     def is_xen_host(self):
         return self.__is_xen_host
     def make_speed_dict(self):
-        r_dict = {}
-        for ifn, s_list in self.nst.iteritems():
-            speed = dict([(k, 0) for k in self.__keys])
-            num = len(s_list) - 1
-            if not num:
-                if self.nst[ifn]:
-                    speed = s_list[0]
-            else:
-                while len(s_list) > 1:
-                    act_speed = s_list.pop(0)
-                    for k in self.__keys:
-                        speed[k] += act_speed[k] / num
-            r_dict[ifn] = speed
-        return r_dict
+##        r_dict = {}
+##        for ifn, s_list in self.nst.iteritems():
+##            speed = dict([(k, 0) for k in self.__keys])
+##            num = len(s_list) - 1
+##            if not num:
+##                if self.nst[ifn]:
+##                    speed = s_list[0]
+##            else:
+##                while len(s_list) > 1:
+##                    act_speed = s_list.pop(0)
+##                    for k in self.__keys:
+##                        speed[k] += act_speed[k] / num
+##            r_dict[ifn] = speed
+##        return r_dict
+        return dict([(key, self[key].get_speed()) for key in self.keys()])
     def update(self):
         ntime = time.time()
         if abs(ntime - self.__a_time) > 1:
@@ -501,9 +516,13 @@ class netspeed(object):
                     self[key].invalidate()
                 for key, value in line_list:
                     if key not in self:
-                        self[key] = net_device(key, self.nd_mapping)
+                        self[key] = net_device(key, self.nd_mapping, self.ethtool_path)
                     self[key].feed(value)
                     self[key].update_ethtool()
+            self.__a_time = ntime
+        return
+        if False:
+            if False:
                 self.__o_stat, self.__o_time = (self.__a_stat,
                                                 self.__a_time)
                 self.__a_stat, self.__a_time = (dict([(key, dict([(x, value[y]) for x, y in self.__idx_dict.iteritems()])) for key, value in ndev_dict.iteritems()]),
@@ -552,10 +571,13 @@ class netspeed(object):
                 for ifn in self.__a_stat.keys():
                     etht_dict = {}
                     if [True for check_name in ETHTOOL_DEVICES if ifn.startswith(check_name)]:
-                        if ifn.startswith("eth") and self.__a_stat.has_key("p%s" % (ifn)):
-                            stat, out = commands.getstatusoutput("ethtool p%s" % (ifn))
+                        if self.ethtool_path:
+                            if ifn.startswith("eth") and self.__a_stat.has_key("p%s" % (ifn)):
+                                stat, out = commands.getstatusoutput("%s p%s" % (self.ethtool_path, ifn))
+                            else:
+                                stat, out = commands.getstatusoutput("%s %s" % (self.ethtool_path, ifn))
                         else:
-                            stat, out = commands.getstatusoutput("ethtool %s" % (ifn))
+                            stat, out = (1, "ethtool_path not set")
                         if not stat:
                             etht_dict = dict([(k.lower().strip(), v.lower().strip()) for k, v in [y for y in [x.strip().split(":", 1) for x in out.split("\n")] if len(y) == 2] if len(v) and k.lower() in ["speed", "duplex", "link detected"]])
                     elif ifn.startswith("ib"):
