@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008,2009,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -25,19 +25,25 @@ import sys
 import process_tools
 import logging_tools
 import pprint
+try:
+    from lxml import etree
+except:
+    etree = None
 
-class lvm_object(object):
+class lvm_object(dict):
     def __init__(self, lv_type, in_dict):
         self.lv_type = lv_type
         self.__ignore_list = ["percent"]
         self.__int_keys = ["major", "minor", "kernel_major", "kernel_minor", "used", "max_pv", "max_lv", "stripes", "free"]
-        self.__val_dict = {}
-        for key, value in in_dict.iteritems():
-            self[key] = value
-    def __getitem__(self, key):
-        return self.__val_dict[key]
-    def get(self, key, def_value):
-        return self.__val_dict.get(key, def_value)
+        if type(in_dict) == dict:
+            for key, value in in_dict.iteritems():
+                self[key] = value
+        else:
+            # xml input
+            for key, value in in_dict.attrib.iteritems():
+                self[key] = value
+            if len(in_dict):
+                self["mount_options"] = dict([(sub_key, sub_value if sub_key not in ["fsck", "dump"] else int(sub_value)) for sub_key, sub_value in in_dict[0].attrib.iteritems()])
     def __setitem__(self, key, value):
         if key.startswith("%s_" % (self.lv_type)):
             key = key[3:]
@@ -47,15 +53,29 @@ class lvm_object(object):
             value = int(value)
         elif type(value) == type(""):
             value = value.strip()
-        self.__val_dict[key] = value
+        dict.__setitem__(self, key, value)
+    def build_xml(self, builder):
+        cur_el = builder(self.lv_type, **self._get_xml_attributes())
+        if "mount_options" in self:
+            cur_el.append(builder("mount_options", **self._get_xml_attributes(self["mount_options"])))
+        return cur_el
+    def _get_xml_attributes(self, src_obj=None):
+        src_obj = src_obj or self
+        r_dict = {}
+        for key, value in src_obj.iteritems():
+            if type(value) in [str, unicode]:
+                r_dict[key] = value
+            elif type(value) in [int, long]:
+                r_dict[key] = "%d" % (value)
+        return r_dict
     def __repr__(self):
         return "\n".join(["{",
                           "--- name %s, type %s --- " % (self["name"], self.lv_type)] +
-                         ["%-20s: (%s) %s" % (key, str(type(value)), str(value)) for key, value in self.__val_dict.iteritems()] +
+                         ["%-20s: (%s) %s" % (key, str(type(value)), str(value)) for key, value in self.iteritems()] +
                          ["}"])
     
 class lvm_struct(object):
-    def __init__(self, source, **args):
+    def __init__(self, source, **kwargs):
         # represents the LVM-information of a machine, source can be
         # - binaries
         # - dict (rom network)
@@ -65,7 +85,11 @@ class lvm_struct(object):
             self._check_binary_paths()
             self.update()
         elif self.__source == "dict":
-            self._set_dict(args.get("source_dict", {}))
+            self._set_dict(kwargs.get("source_dict", {}))
+        elif self.__source == "xml":
+            self._parse_xml(kwargs["xml"])
+        else:
+            print "unknown source '%s' for lvm_struct.__init__" % (source)
     def _check_binary_paths(self):
         lvm_path = ["/sbin", "/usr/sbin", "/usr/local/sbin"]
         lvm_bins = {"pv" : ["pv_uuid", "pv_fmt", "pv_size", "dev_size",
@@ -94,9 +118,9 @@ class lvm_struct(object):
                 if bin_path:
                     num_sep = len(options)
                     com = "%s --separator \; --units b -o %s" % (bin_path, ",".join(options))
-                    stat, out = commands.getstatusoutput(com)
-                    if not stat:
-                        lines = [x.strip() for x in out.split("\n") if x.strip() and x.count(";") >= num_sep / 2]
+                    c_stat, c_out = commands.getstatusoutput(com)
+                    if not c_stat:
+                        lines = [line.strip() for line in c_out.split("\n") if line.strip() and line.count(";") >= num_sep / 2]
                         if lines:
                             header = lines.pop(0)
                             remove_semic = header.endswith(";")
@@ -126,6 +150,24 @@ class lvm_struct(object):
         return {"version"     : 1,
                 "lvm_present" : self.lvm_present,
                 "lv_dict"     : self.lv_dict}
+    def generate_xml_dict(self, builder):
+        lvm_el = builder("lvm_config",
+                         version="2",
+                         lvm_present="1" if self.lvm_present else "0")
+        for m_key, val_list in self.lv_dict.iteritems():
+            sub_struct = builder("lvm_%s" % (m_key), lvm_type=m_key, entities="%d" % (len(val_list)))
+            lvm_el.append(sub_struct)
+            for el_key, element in val_list.iteritems():
+                sub_struct.append(element.build_xml(builder))
+        return lvm_el
+    def _parse_xml(self, top_el):
+        self.lv_dict = {}
+        for top_struct in top_el[0]:
+            cur_key = top_struct.tag.split("}")[1][4:]
+            for sub_el in top_struct:
+                new_lv_obj = lvm_object(cur_key, sub_el)
+                self.lv_dict.setdefault(cur_key, {})[new_lv_obj["name"]] = new_lv_obj
+        self.lvm_present = True if top_el[0].attrib["lvm_present"] == "1" else False
     def _set_dict(self, in_dict):
         # interpreter for send_dict
         self.lvm_present = in_dict.get("lvm_present", False)
