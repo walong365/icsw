@@ -85,7 +85,7 @@ class fetch_partition_info(cs_base_class.server_com):
                     #pprint.pprint(dev_dict)
                     #pprint.pprint(sys_dict)
                     #pprint.pprint(lvm_dict)
-                    lvm_info = partition_tools.lvm_struct("xml", source_dict=lvm_dict)
+                    lvm_info = partition_tools.lvm_struct("xml", xml=lvm_dict)
                     partition_name, partition_info = ("%s_part" % (target_dev),
                                                       "generated partition_setup from device '%s'" % (target_dev))
                     # any old partitions?
