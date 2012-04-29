@@ -180,7 +180,7 @@ class _general(hm_classes.hm_module):
             found_inst = []
             if os.path.isdir(OPENVPN_DIR):
                 for entry in os.listdir(OPENVPN_DIR):
-                    if entry.endswith(".conf"):
+                    if entry.endswith(".conf") and not entry.startswith("."):
                         e_key = entry[:-5]
                         if self.__inst_dict.has_key(e_key):
                             try:

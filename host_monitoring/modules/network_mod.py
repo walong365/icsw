@@ -66,7 +66,7 @@ class _general(hm_classes.hm_module):
             self.log("ethtool found at %s" % (ethtool_path))
         else:
             self.log("not ethtool found", logging_tools.LOG_LEVEL_WARN)
-        self.ethtool_path = None
+        self.ethtool_path = ethtool_path
     def init_machine_vector(self, mv):
         self.act_nds = netspeed(self.ethtool_path)#self.bonding_devices)
     def update_machine_vector(self, mv):
@@ -116,11 +116,11 @@ class _general(hm_classes.hm_module):
             mvect.register_entry("net.%s.rx" % (key), 0, "bytes per second received by $2"   , "Byte/s", 1024)
             mvect.register_entry("net.%s.tx" % (key), 0, "bytes per second transmitted by $2", "Byte/s", 1024)
             if [True for x in DETAIL_DEVICES if key.startswith(x)]:
-                mvect.register_entry("net.%s.rxerr"   % (key), 0, "receive error packets per second on $2"   , "1/s", 1000)
-                mvect.register_entry("net.%s.txerr"   % (key), 0, "transmit error packets per second on $2"  , "1/s", 1000)
-                mvect.register_entry("net.%s.rxdrop"  % (key), 0, "received packets dropped per second on $2", "1/s", 1000)
-                mvect.register_entry("net.%s.txdrop"  % (key), 0, "received packets dropped per second on $2", "1/s", 1000)
-                mvect.register_entry("net.%s.carrier" % (key), 0, "carrier errors per second on $2"          , "1/s", 1000)
+                mvect.register_entry("net.%s.rxerr"   % (key), 0, "receive error packets per second on $2"   , "1/s", 1024)
+                mvect.register_entry("net.%s.txerr"   % (key), 0, "transmit error packets per second on $2"  , "1/s", 1024)
+                mvect.register_entry("net.%s.rxdrop"  % (key), 0, "received packets dropped per second on $2", "1/s", 1024)
+                mvect.register_entry("net.%s.txdrop"  % (key), 0, "received packets dropped per second on $2", "1/s", 1024)
+                mvect.register_entry("net.%s.carrier" % (key), 0, "carrier errors per second on $2"          , "1/s", 1024)
         self.dev_dict = nd_dict
         for key in self.dev_dict.keys():
             mvect["net.%s.rx" % (key)] = self.dev_dict[key]["rx"]
@@ -259,11 +259,11 @@ class my_modclass(hm_classes.hm_fileinfo):
             mvect.reg_entry("net.%s.rx" % (key), 0, "bytes per second received by $2"   , "Byte/s", 1024)
             mvect.reg_entry("net.%s.tx" % (key), 0, "bytes per second transmitted by $2", "Byte/s", 1024)
             if [True for x in DETAIL_DEVICES if key.startswith(x)]:
-                mvect.reg_entry("net.%s.rxerr"   % (key), 0, "receive error packets per second on $2"   , "1/s", 1000)
-                mvect.reg_entry("net.%s.txerr"   % (key), 0, "transmit error packets per second on $2"  , "1/s", 1000)
-                mvect.reg_entry("net.%s.rxdrop"  % (key), 0, "received packets dropped per second on $2", "1/s", 1000)
-                mvect.reg_entry("net.%s.txdrop"  % (key), 0, "received packets dropped per second on $2", "1/s", 1000)
-                mvect.reg_entry("net.%s.carrier" % (key), 0, "carrier errors per second on $2"          , "1/s", 1000)
+                mvect.reg_entry("net.%s.rxerr"   % (key), 0, "receive error packets per second on $2"   , "1/s", 1024)
+                mvect.reg_entry("net.%s.txerr"   % (key), 0, "transmit error packets per second on $2"  , "1/s", 1024)
+                mvect.reg_entry("net.%s.rxdrop"  % (key), 0, "received packets dropped per second on $2", "1/s", 1024)
+                mvect.reg_entry("net.%s.txdrop"  % (key), 0, "received packets dropped per second on $2", "1/s", 1024)
+                mvect.reg_entry("net.%s.carrier" % (key), 0, "carrier errors per second on $2"          , "1/s", 1024)
         self.dev_dict = nd_dict
         for key in self.dev_dict.keys():
             mvect.reg_update(logger, "net.%s.rx" % (key), self.dev_dict[key]["rx"])
@@ -699,11 +699,11 @@ class net_command(hm_classes.hm_command):
         self.parser.add_argument("-w", dest="warn", type=str)
         self.parser.add_argument("-c", dest="crit", type=str)
         self.parser.add_argument("-s", dest="speed", type=str)
-        self.parser.add_argument("-d", dest="duplex", type=str)
+        self.parser.add_argument("--duplex", dest="duplex", type=str)
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
             srv_com["result"].attrib.update({"reply" : "missing argument",
-                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
             net_device = srv_com["arguments:arg0"].text.strip()
             if net_device in self.module.act_nds:
@@ -743,10 +743,10 @@ class net_command(hm_classes.hm_command):
             else:
                 raise ValueError, "Cannot parse postfix '%s' of target_speed" % ("%s%s%s" % (pfix, post, per_sec and "/s" or ""))
             targ_speed = {""  : 1,
-                          "k" : 1000,
-                          "m" : 1000 * 1000,
-                          "g" : 1000 * 1000 * 1000,
-                          "t" : 1000 * 1000 * 1000 * 1000}[pfix] * num * mult
+                          "k" : 1024,
+                          "m" : 1024 * 1024,
+                          "g" : 1024 * 1024 * 1024,
+                          "t" : 1024 * 1024 * 1024 * 1024}[pfix] * num * mult
             return targ_speed
         elif in_str_l.startswith("unkn"):
             return -1
@@ -788,17 +788,30 @@ class net_command(hm_classes.hm_command):
         if not connected:
             add_errors.append("No cable connected?")
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
-        if cur_ns.speed and connected:
-            target_speed = self._parse_speed_str(cur_ns.speed)
-            if ethtool_dict.get("speed", -1) != -1:
-                if target_speed == ethtool_dict["speed"]:
-                    add_oks.append("target_speed %s" % (ethtool_dict["speed"]))
+        else:
+            if cur_ns.speed:
+                target_speed = self._parse_speed_str(cur_ns.speed)
+                if ethtool_dict.get("speed", -1) != -1:
+                    if target_speed == ethtool_dict["speed"]:
+                        add_oks.append("target_speed %s" % (self.beautify_speed(ethtool_dict["speed"])))
+                    else:
+                        add_errors.append("target_speed differ: %s (target) != %s (measured)" % (self.beautify_speed(target_speed), ethtool_dict["speed"]))
+                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                 else:
-                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (self.beautify_speed(targ_speed_bit), ethtool_dict["speed"]))
+                    add_errors.append("Cannot check target_speed: no ethtool information")
                     ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-            else:
-                add_errors.append("Cannot check target_speed: no ethtool information")
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            if cur_ns.duplex:
+                if "duplex" in ethtool_dict:
+                    ethtool_duplex = self._parse_duplex_str(ethtool_dict["duplex"])
+                    target_duplex = self._parse_duplex_str(cur_ns.duplex)
+                    if target_duplex == ethtool_duplex:
+                        add_oks.append("duplex is %s" % (target_duplex))
+                    else:
+                        add_errors.append("duplex differs: %s (target) != %s (measured)" % (target_duplex, ethtool_duplex))
+                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                else:
+                    add_errors.append("Cannot check duplex mode: not present in ethtool information")
+                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state, "%s, %s rx; %s tx%s%s" % (
             dev_name,
             self.beautify_speed(value_dict["rx"]),
@@ -821,22 +834,22 @@ class net_command(hm_classes.hm_command):
         def bit_str(i_val):
             if i_val < 500:
                 return "%d B/s" % (i_val)
-            i_val /= 1000
+            i_val /= 1024
             if i_val < 500:
                 return "%d kB/s" % (i_val)
-            i_val /= 1000
+            i_val /= 1024
             if i_val < 500:
                 return "%d MB/s" % (i_val)
-            i_val /= 1000
+            i_val /= 1024
             return "%d GB/s" % (i_val)
         def parse_ib_speed_bit(in_str):
             # parse speed for ib rate and return bits/sec
             parts = in_str.split()
             try:
                 pfix = int(parts.pop(0))
-                pfix *= {"g" : 1000 * 1000 * 1000,
-                         "m" : 1000 * 1000,
-                         "k" : 1000}.get(parts[0][0].lower(), 1)
+                pfix *= {"g" : 1024 * 1024 * 1024,
+                         "m" : 1024 * 1024,
+                         "k" : 1024}.get(parts[0][0].lower(), 1)
             except:
                 raise ValueError, "Cannot parse ib_speed '%s'" % (in_str)
             return pfix
@@ -863,10 +876,10 @@ class net_command(hm_classes.hm_command):
                 else:
                     raise ValueError, "Cannot parse postfix '%s' of target_speed" % ("%s%s%s" % (pfix, post, per_sec and "/s" or ""))
                 targ_speed = {""  : 1,
-                              "k" : 1000,
-                              "m" : 1000 * 1000,
-                              "g" : 1000 * 1000 * 1000,
-                              "t" : 1000 * 1000 * 1000 * 1000}[pfix] * num * mult
+                              "k" : 1024,
+                              "m" : 1024 * 1024,
+                              "g" : 1024 * 1024 * 1024,
+                              "t" : 1024 * 1024 * 1024 * 1024}[pfix] * num * mult
                 return targ_speed
             elif in_str_l.startswith("unkn"):
                 return -1
@@ -1034,22 +1047,22 @@ class net_command_old(hm_classes.hmb_command):
         def bit_str(i_val):
             if i_val < 500:
                 return "%d B/s" % (i_val)
-            i_val /= 1000
+            i_val /= 1024
             if i_val < 500:
                 return "%d kB/s" % (i_val)
-            i_val /= 1000
+            i_val /= 1024
             if i_val < 500:
                 return "%d MB/s" % (i_val)
-            i_val /= 1000
+            i_val /= 1024
             return "%d GB/s" % (i_val)
         def parse_ib_speed_bit(in_str):
             # parse speed for ib rate and return bits/sec
             parts = in_str.split()
             try:
                 pfix = int(parts.pop(0))
-                pfix *= {"g" : 1000 * 1000 * 1000,
-                         "m" : 1000 * 1000,
-                         "k" : 1000}.get(parts[0][0].lower(), 1)
+                pfix *= {"g" : 1024 * 1024 * 1024,
+                         "m" : 1024 * 1024,
+                         "k" : 1024}.get(parts[0][0].lower(), 1)
             except:
                 raise ValueError, "Cannot parse ib_speed '%s'" % (in_str)
             return pfix
@@ -1076,10 +1089,10 @@ class net_command_old(hm_classes.hmb_command):
                 else:
                     raise ValueError, "Cannot parse postfix '%s' of target_speed" % ("%s%s%s" % (pfix, post, per_sec and "/s" or ""))
                 targ_speed = {""  : 1,
-                              "k" : 1000,
-                              "m" : 1000 * 1000,
-                              "g" : 1000 * 1000 * 1000,
-                              "t" : 1000 * 1000 * 1000 * 1000}[pfix] * num * mult
+                              "k" : 1024,
+                              "m" : 1024 * 1024,
+                              "g" : 1024 * 1024 * 1024,
+                              "t" : 1024 * 1024 * 1024 * 1024}[pfix] * num * mult
                 return targ_speed
             elif in_str_l.startswith("unkn"):
                 return -1

@@ -98,7 +98,12 @@ def client_code():
             else:
                 ret_state, ret_str = (limits.nag_STATE_CRITICAL, "timeout")
     else:
-        ret_str = "unknown command %s" % (com_name)
+        c_matches = difflib.get_close_matches(com_name, modules.command_dict.keys())
+        if c_matches:
+            cm_str = "close matches: %s" % (", ".join(c_matches))
+        else:
+            cm_str = "no matches found"
+        ret_str = "unknown command %s, %s" % (com_name, cm_str)
         ret_state = limits.nag_STATE_CRITICAL
     print ret_str
     return ret_state
@@ -971,6 +976,7 @@ class relay_process(threading_tools.process_pool):
                                                                   srv_com["host"].text,
                                                                   str(xml_input)))
             if "host" in srv_com and "port" in srv_com:
+                # check target host, rewrite to ip
                 t_host = srv_com["host"].text
                 ip_addr = self._resolve_address(t_host)
                 srv_com["host"] = ip_addr
