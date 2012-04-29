@@ -2028,38 +2028,55 @@ class cpuinfo_command(hm_classes.hm_command):
 class lvminfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         self.module.local_lvm_info.update()
-        srv_com["lvm_dict"] = server_command.compress(self.module.local_lvm_info.generate_send_dict(), pickle=True)
+        srv_com["lvm_dict"] = self.module.local_lvm_info.generate_xml_dict(srv_com.builder)
     def interpret(self, srv_com, cur_ns):
-        lvm_dict = server_command.decompress(srv_com["lvm_dict"].text, pickle=True)
-        print lvm_dict
-        lv_stuff = partition_tools.lvm_struct("dict", source_dict=lvm_dict)
-        if lv_stuff.lvm_present:
-            lv_elements = ["pv", "vg", "lv"]
-            if True:#list_mode:
-                out_f = ["%s:" % (", ".join([logging_tools.get_plural("%s element" % (lv_element), len(lv_stuff.lv_dict.get(lv_element, {}).keys())) for lv_element in lv_elements]))]
-                for lv_element in lv_elements:
-                    act_el_dict = lv_stuff.lv_dict.get(lv_element, {})
-                    for el_name, act_el in act_el_dict.iteritems():
-                        out_f.append("%s %-20s: %s" % (lv_element, el_name, act_el["uuid"]))
-                return limits.nag_STATE_OK, "ok %s" % ("\n".join(out_f))
-            else:
-                return limits.nag_STATE_OK, "ok %s" % (lv_stuff.get_info())
+        lvm_struct = srv_com["lvm_dict"]
+        if lvm_struct.get("type", "???") == "str":
+            return limits.nag_STATE_CRITICAL, "cannot interpret old return value"
         else:
-            return limits.nag_STATE_OK, "ok no LVM-binaries found"
+            lvm_struct = lvm_struct[0]
+            if lvm_struct.attrib["lvm_present"] == "1":
+                out_f = [", ".join([logging_tools.get_plural("%s element" % (sub_struct.attrib["lvm_type"]), int(sub_struct.attrib["entities"])) for sub_struct in lvm_struct]) or "no LVM-elements found"]
+                for sub_struct in lvm_struct:
+                    for sub_el in sub_struct:
+                        out_f.append("%s %-20s: %s" % (sub_el.tag.split("}")[1],
+                                                       sub_el.attrib["name"],
+                                                       sub_el.attrib["uuid"]))
+                return limits.nag_STATE_OK, "\n".join(out_f)
+            else:
+                return limits.nag_STATE_WARNING, "no LVM-binaries found"
+##            lv_stuff = partition_tools.lvm_struct("dict", source_dict=lvm_dict)
+##            if lv_stuff.lvm_present:
+##                lv_elements = ["pv", "vg", "lv"]
+##                if True:#list_mode:
+##                    out_f = ["%s:" % (", ".join([logging_tools.get_plural("%s element" % (lv_element), len(lv_stuff.lv_dict.get(lv_element, {}).keys())) for lv_element in lv_elements]))]
+##                    for lv_element in lv_elements:
+##                        act_el_dict = lv_stuff.lv_dict.get(lv_element, {})
+##                        for el_name, act_el in act_el_dict.iteritems():
+##                            out_f.append("%s %-20s: %s" % (lv_element, el_name, act_el["uuid"]))
+##                    return limits.nag_STATE_OK, "ok %s" % ("\n".join(out_f))
+##                else:
+##                    return limits.nag_STATE_OK, "ok %s" % (lv_stuff.get_info())
+##            else:
+##                return limits.nag_STATE_OK, "ok no LVM-binaries found"
 
 class partinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         self.module.local_lvm_info.update()
         ret_str, dev_dict, sys_dict = self.module._partinfo_int()
         srv_com["ret_str"] = ret_str
-        srv_com["dev_dict"] = server_command.compress(dev_dict, marshal=True)
-        srv_com["sys_dict"] = server_command.compress(sys_dict, marshal=True)
-        srv_com["lvm_dict"] = server_command.compress(self.module.local_lvm_info.generate_send_dict(), pickle=True)
+        srv_com["dev_dict"] = dev_dict
+        srv_com["sys_dict"] = sys_dict
+        srv_com["lvm_dict"] = self.module.local_lvm_info.generate_xml_dict(srv_com.builder)
     def interpret(self, srv_com, cur_ns):
-        dev_dict, sys_dict, lvm_dict = (server_command.decompress(srv_com["dev_dict"].text, marshal=True),
-                                        server_command.decompress(srv_com["sys_dict"].text, marshal=True),
-                                        server_command.decompress(srv_com["lvm_dict"].text, pickle=True))
-        lvm_stuff = partition_tools.lvm_struct("dict", source_dict=lvm_dict)
+        dev_dict, sys_dict, lvm_dict = (
+            srv_com["dev_dict"],
+            srv_com["sys_dict"],
+            srv_com["lvm_dict"])
+        #(server_command.decompress(srv_com["dev_dict"].text, marshal=True),
+        #                                server_command.decompress(srv_com["sys_dict"].text, marshal=True),
+        #                                server_command.decompress(srv_com["lvm_dict"].text, pickle=True))
+        lvm_stuff = partition_tools.lvm_struct("xml", xml=lvm_dict)
         all_disks = sorted(dev_dict.keys())
         all_sys = sorted(sys_dict.keys())
         ret_f = ["found %s and %s:" % (logging_tools.get_plural("disc"         , len(all_disks)),
