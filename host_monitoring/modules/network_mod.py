@@ -150,6 +150,81 @@ class _general(hm_classes.hm_module):
                                                                    fast_mode=False,
                                                                    finish_call=self._icmp_finish,
                                                                    flood_ping=False))
+    def _check_for_bridges(self):
+        b_dict = {}
+        virt_dir = "/sys/devices/virtual/net"
+        net_dir = "/sys/class/net"
+        # dict of ent/dir keys with brdige-info
+        bdir_dict = {}
+        if os.path.isdir(virt_dir):
+            # check for bridges in virt_dir
+            for ent in os.listdir(virt_dir):
+                if os.path.isdir("%s/%s/bridge" % (virt_dir, ent)):
+                    loc_dir = "%s/%s" % (virt_dir, ent)
+                    bdir_dict[ent] = loc_dir
+        elif os.path.isdir(net_dir):
+            # check for bridges in net_dir
+            for ent in os.listdir(net_dir):
+                if os.path.isdir("%s/%s/bridge" % (net_dir, ent)):
+                    bdir_dict[ent] = "%s/%s" % (net_dir, ent)
+        for ent, loc_dir in bdir_dict.iteritems():
+            b_dict[ent] = {"interfaces" : os.listdir("%s/brif" % (loc_dir))}
+            for key in ["address", "addr_len", "features", "flags", "mtu"]:
+                value = file("%s/%s" % (loc_dir, key), "r").read().strip()
+                if value.isdigit():
+                    b_dict[ent][key] = int(value)
+                elif value.startswith("0x"):
+                    b_dict[ent][key] = int(value, 16)
+                else:
+                    b_dict[ent][key] = value
+        return b_dict
+    def _check_for_networks(self):
+        n_dict = {}
+        ip_com = "ip addr show"
+        c_stat, c_out = commands.getstatusoutput(ip_com)
+        if c_stat:
+            self.log("error calling %s (%d): %s" % (ip_com,
+                                                    c_stat,
+                                                    c_out),
+                     logging_tools.LOG_LEVEL_ERROR)
+        else:
+            lines = c_out.split("\n")
+            dev_dict = {}
+            for line in lines:
+                if line[0].isdigit():
+                    if line.count(":") == 2:
+                        act_net_num, act_net_name, info = line.split(":")
+                        info = info.split()
+                        flags = info.pop(0)
+                        f_dict = {}
+                        while info:
+                            key = info.pop(0)
+                            if info:
+                                value = info.pop(0)
+                                if value.isdigit():
+                                    value = int(value)
+                                f_dict[key] = value
+                        dev_dict = {"idx"      : int(act_net_num),
+                                    "flags"    : flags[1:-1].split(","),
+                                    "features" : f_dict,
+                                    "links"    : {},
+                                    "inet"     : []}
+                        n_dict[act_net_name.strip()] = dev_dict
+                    else:
+                        self.log("cannot parse line %s" % (line), logging_tools.LOG_LEVEL_ERROR)
+                        dev_dict = {}
+                else:
+                    if dev_dict:
+                        line_parts = line.split()
+                        if line_parts[0].startswith("link/"):
+                            link_type = line_parts[0][5:]
+                            if link_type == "loopback":
+                                dev_dict["links"].setdefault(link_type, []).append(True)
+                            else:
+                                dev_dict["links"].setdefault(link_type, []).append(" ".join(line_parts[1:]))
+                        elif line_parts[0] == "inet":
+                            dev_dict["inet"].append(" ".join(line_parts[1:]))
+        return n_dict
     
 class my_modclass(hm_classes.hm_fileinfo):
     def __init__(self, **args):
@@ -987,277 +1062,251 @@ class net_command(hm_classes.hm_command):
                                                       add_errors and "; %s" % ("; ".join(add_errors)) or "",
                                                       report_device != device and "; reporting device is %s" % (report_device) or "")
         
-class net_command_old(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "net", **args)
-        self.help_str = "returns the througput of netdevice NET"
-        self.net_only = True
-        self.short_client_info = "-w N1, -c N2, -s target speed, -d duplex"
-        self.long_client_info = "sets the warning or critical value to N1/N2"
-        self.short_client_opts = "w:c:s:d:"
-        self.short_server_info = BONDFILE_NAME
-        self.long_server_info = "comma seperated list of bonding-device definitions bondX=ethY:ethZ"
-    def server_call(self, cm):
-        try:
-            if len(cm) == 1:
-                netdev_name = cm[0]
-                report_netdev_name = netdev_name
-                self.module_info.act_nds.lock()
-                nds = self.module_info.act_nds.make_speed_dict()
-                ethtool_dict = copy.deepcopy(self.module_info.act_nds.ethtool_dict)
-                extra_dict   = copy.deepcopy(self.module_info.act_nds.extra_dict)
-                self.module_info.act_nds.unlock()
-                # check for eth0-request if only one eth-device is specified (for xen-driven hosts)
-                if not nds.has_key(netdev_name) and self.module_info.act_nds.is_xen_host():
-                    # check for other netdevice if only one eth-device can be found
-                    eth_devs = [x for x in nds.keys() if x.startswith("eth")]
-                    if netdev_name.startswith("eth") and len(eth_devs) == 1:
-                        report_netdev_name = eth_devs[0]
-                if nds.has_key(report_netdev_name):
-                    ethtool_info = ethtool_dict.get(report_netdev_name, None)
-                    # map to pethX for xen-machines
-                    if not ethtool_info and report_netdev_name.startswith("eth"):
-                        ethtool_info = ethtool_dict.get("p%s" % (report_netdev_name), None)
-                    rets = "ok %s" % (hm_classes.sys_to_net({"device"        : netdev_name,
-                                                             "rx"            : nds[report_netdev_name]["rx"],
-                                                             "tx"            : nds[report_netdev_name]["tx"],
-                                                             "ethtool"       : ethtool_info,
-                                                             "extra"         : extra_dict.get(report_netdev_name, {}),
-                                                             "report_device" : report_netdev_name}))
-                else:
-                    rets = "invalid netdevice %s" % (netdev_name)
-            else:
-                rets = "error wrong number of arguments "
-            return rets
-        except:
-            return "error %s" % (process_tools.get_except_info())
-    def client_call(self, result, parsed_coms):
-        def b_str(i_val):
-            f_val = float(i_val)
-            if f_val < 500.:
-                return "%.0f B/s" % (f_val)
-            f_val /= 1000.
-            if f_val < 500.:
-                return "%.2f kB/s" % (f_val)
-            f_val /= 1000.
-            if f_val < 500.:
-                return "%.2f MB/s" % (f_val)
-            f_val /= 1000.
-            return "%.2f GB/s" % (f_val)
-        def bit_str(i_val):
-            if i_val < 500:
-                return "%d B/s" % (i_val)
-            i_val /= 1000
-            if i_val < 500:
-                return "%d kB/s" % (i_val)
-            i_val /= 1000
-            if i_val < 500:
-                return "%d MB/s" % (i_val)
-            i_val /= 1000
-            return "%d GB/s" % (i_val)
-        def parse_ib_speed_bit(in_str):
-            # parse speed for ib rate and return bits/sec
-            parts = in_str.split()
-            try:
-                pfix = int(parts.pop(0))
-                pfix *= {"g" : 1000 * 1000 * 1000,
-                         "m" : 1000 * 1000,
-                         "k" : 1000}.get(parts[0][0].lower(), 1)
-            except:
-                raise ValueError, "Cannot parse ib_speed '%s'" % (in_str)
-            return pfix
-        def parse_speed_bit(in_str):
-            in_str_l = in_str.lower().strip()
-            in_p = re.match("^(?P<num>\d+)\s*(?P<post>\S*)$", in_str_l)
-            if in_p:
-                num, post = (int(in_p.group("num")), in_p.group("post"))
-                pfix = ""
-                for act_pfix in ["k", "m", "g", "t"]:
-                    if post.startswith(act_pfix):
-                        pfix = act_pfix
-                        post = post[1:]
-                        break
-                if post.endswith("/s"):
-                    per_sec = True
-                    post = post[:-2]
-                else:
-                    per_sec = False
-                if post in ["byte", "bytes"]:
-                    mult = 8
-                elif post in ["b", "bit", "bits", "baud", ""]:
-                    mult = 1
-                else:
-                    raise ValueError, "Cannot parse postfix '%s' of target_speed" % ("%s%s%s" % (pfix, post, per_sec and "/s" or ""))
-                targ_speed = {""  : 1,
-                              "k" : 1000,
-                              "m" : 1000 * 1000,
-                              "g" : 1000 * 1000 * 1000,
-                              "t" : 1000 * 1000 * 1000 * 1000}[pfix] * num * mult
-                return targ_speed
-            elif in_str_l.startswith("unkn"):
-                return -1
-            else:
-                raise ValueError, "Cannot parse target_speed"
-        result = hm_classes.net_to_sys(result[3:])
-        if result.has_key("rx"):
-            rx_str, tx_str = ("rx", "tx")
-        else:
-            rx_str, tx_str = ("in", "out")
-        maxs = max(result[rx_str], result[tx_str])
-        ret_state, state = lim.check_ceiling(maxs)
-        add_errors, add_oks = ([], [])
-        device = result.get("device", "eth0")
-        ethtool_stuff = result.get("ethtool", {})
-        if ethtool_stuff is None:
-            ethtool_stuff = {}
-        connected = False if ethtool_stuff.get("link detected", "yes") == "no" else True
-        if lim.has_add_var("sc"):
-            if device.startswith("ib"):
-                if ethtool_stuff.has_key("state"):
-                    if ethtool_stuff["state"][0] == "4":
-                        # check if link is up
-                        try:
-                            targ_speed_bit = parse_speed_bit(lim.get_add_var("sc"))
-                        except ValueError:
-                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '%s' for net: %s" % (lim.get_add_var("sc"),
-                                                                                                               process_tools.get_except_info())
-                        else:
-                            if ethtool_stuff.has_key("rate"):
-                                if targ_speed_bit == parse_ib_speed_bit(ethtool_stuff["rate"]):
-                                    add_oks.append("target_speed %s" % (ethtool_stuff["rate"]))
-                                else:
-                                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (bit_str(targ_speed_bit), ethtool_stuff["rate"]))
-                            else:
-                                add_errors.append("no rate entry found")
-                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
-                    else:
-                        add_errors.append("Link has wrong state (%s)" % (ethtool_stuff["state"]))
-                        ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
-                else:
-                    # no state, cannot check if up or down
-                    add_errors.append("Cannot check target_speed: no state information")
-                    ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
-                    connected = False
-            else:
-                if connected:
-                    if ethtool_stuff.has_key("speed"):
-                        try:
-                            targ_speed_bit = parse_speed_bit(lim.get_add_var("sc"))
-                        except ValueError:
-                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '%s' for net: %s" % (lim.get_add_var("sc"),
-                                                                                                               process_tools.get_except_info())
-                        else:
-                            if targ_speed_bit == parse_speed_bit(ethtool_stuff["speed"]):
-                                add_oks.append("target_speed %s" % (ethtool_stuff["speed"]))
-                            else:
-                                if parse_speed_bit(ethtool_stuff["speed"]) == -1:
-                                    connected = False
-                                else:
-                                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (bit_str(targ_speed_bit), ethtool_stuff["speed"]))
-                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
-                    else:
-                        add_errors.append("Cannot check target_speed: no ethtool information")
-                        ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
-        if lim.has_add_var("dp") and not device.startswith("ib"):
-            if connected:
-                if ethtool_stuff.has_key("duplex"):
-                    try:
-                        targ_duplex = parse_duplex_str(lim.get_add_var("dp"))
-                    except ValueError:
-                        return limits.nag_STATE_CRITICAL, "Error parsing target_duplex '%s' for net: %s" % (lim.get_add_var("dp"),
-                                                                                                            process_tools.get_except_info())
-                    else:
-                        if targ_duplex == parse_duplex_str(ethtool_stuff["duplex"]):
-                            add_oks.append("duplex_mode is %s" % (ethtool_stuff["duplex"]))
-                        else:
-                            if connected:
-                                if parse_duplex_str(ethtool_stuff["duplex"]) == "unknown":
-                                    connected = False
-                                else:
-                                    add_errors.append("duplex_mode differ: %s != %s" % (lim.get_add_var("dp"), ethtool_stuff["duplex"]))
-                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
-                else:
-                    add_errors.append("Cannot check duplex mode: no ethtool information")
-                    ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
-        if not connected:
-            add_errors.append("No cable connected?")
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
-            state = limits.get_state_str(ret_state)
-        report_device = result.get("report_device", device)
-        return ret_state, "%s: %s, %s rx; %s tx%s%s%s" % (state,
-                                                          device,
-                                                          b_str(result[rx_str]),
-                                                          b_str(result[tx_str]),
-                                                          add_oks and "; %s" % ("; ".join(add_oks)) or "",
-                                                          add_errors and "; %s" % ("; ".join(add_errors)) or "",
-                                                          report_device != device and "; reporting device is %s" % (report_device) or "")
+##class net_command_old(hm_classes.hmb_command):
+##    def __init__(self, **args):
+##        hm_classes.hmb_command.__init__(self, "net", **args)
+##        self.help_str = "returns the througput of netdevice NET"
+##        self.net_only = True
+##        self.short_client_info = "-w N1, -c N2, -s target speed, -d duplex"
+##        self.long_client_info = "sets the warning or critical value to N1/N2"
+##        self.short_client_opts = "w:c:s:d:"
+##        self.short_server_info = BONDFILE_NAME
+##        self.long_server_info = "comma seperated list of bonding-device definitions bondX=ethY:ethZ"
+##    def server_call(self, cm):
+##        try:
+##            if len(cm) == 1:
+##                netdev_name = cm[0]
+##                report_netdev_name = netdev_name
+##                self.module_info.act_nds.lock()
+##                nds = self.module_info.act_nds.make_speed_dict()
+##                ethtool_dict = copy.deepcopy(self.module_info.act_nds.ethtool_dict)
+##                extra_dict   = copy.deepcopy(self.module_info.act_nds.extra_dict)
+##                self.module_info.act_nds.unlock()
+##                # check for eth0-request if only one eth-device is specified (for xen-driven hosts)
+##                if not nds.has_key(netdev_name) and self.module_info.act_nds.is_xen_host():
+##                    # check for other netdevice if only one eth-device can be found
+##                    eth_devs = [x for x in nds.keys() if x.startswith("eth")]
+##                    if netdev_name.startswith("eth") and len(eth_devs) == 1:
+##                        report_netdev_name = eth_devs[0]
+##                if nds.has_key(report_netdev_name):
+##                    ethtool_info = ethtool_dict.get(report_netdev_name, None)
+##                    # map to pethX for xen-machines
+##                    if not ethtool_info and report_netdev_name.startswith("eth"):
+##                        ethtool_info = ethtool_dict.get("p%s" % (report_netdev_name), None)
+##                    rets = "ok %s" % (hm_classes.sys_to_net({"device"        : netdev_name,
+##                                                             "rx"            : nds[report_netdev_name]["rx"],
+##                                                             "tx"            : nds[report_netdev_name]["tx"],
+##                                                             "ethtool"       : ethtool_info,
+##                                                             "extra"         : extra_dict.get(report_netdev_name, {}),
+##                                                             "report_device" : report_netdev_name}))
+##                else:
+##                    rets = "invalid netdevice %s" % (netdev_name)
+##            else:
+##                rets = "error wrong number of arguments "
+##            return rets
+##        except:
+##            return "error %s" % (process_tools.get_except_info())
+##    def client_call(self, result, parsed_coms):
+##        def b_str(i_val):
+##            f_val = float(i_val)
+##            if f_val < 500.:
+##                return "%.0f B/s" % (f_val)
+##            f_val /= 1000.
+##            if f_val < 500.:
+##                return "%.2f kB/s" % (f_val)
+##            f_val /= 1000.
+##            if f_val < 500.:
+##                return "%.2f MB/s" % (f_val)
+##            f_val /= 1000.
+##            return "%.2f GB/s" % (f_val)
+##        def bit_str(i_val):
+##            if i_val < 500:
+##                return "%d B/s" % (i_val)
+##            i_val /= 1000
+##            if i_val < 500:
+##                return "%d kB/s" % (i_val)
+##            i_val /= 1000
+##            if i_val < 500:
+##                return "%d MB/s" % (i_val)
+##            i_val /= 1000
+##            return "%d GB/s" % (i_val)
+##        def parse_ib_speed_bit(in_str):
+##            # parse speed for ib rate and return bits/sec
+##            parts = in_str.split()
+##            try:
+##                pfix = int(parts.pop(0))
+##                pfix *= {"g" : 1000 * 1000 * 1000,
+##                         "m" : 1000 * 1000,
+##                         "k" : 1000}.get(parts[0][0].lower(), 1)
+##            except:
+##                raise ValueError, "Cannot parse ib_speed '%s'" % (in_str)
+##            return pfix
+##        def parse_speed_bit(in_str):
+##            in_str_l = in_str.lower().strip()
+##            in_p = re.match("^(?P<num>\d+)\s*(?P<post>\S*)$", in_str_l)
+##            if in_p:
+##                num, post = (int(in_p.group("num")), in_p.group("post"))
+##                pfix = ""
+##                for act_pfix in ["k", "m", "g", "t"]:
+##                    if post.startswith(act_pfix):
+##                        pfix = act_pfix
+##                        post = post[1:]
+##                        break
+##                if post.endswith("/s"):
+##                    per_sec = True
+##                    post = post[:-2]
+##                else:
+##                    per_sec = False
+##                if post in ["byte", "bytes"]:
+##                    mult = 8
+##                elif post in ["b", "bit", "bits", "baud", ""]:
+##                    mult = 1
+##                else:
+##                    raise ValueError, "Cannot parse postfix '%s' of target_speed" % ("%s%s%s" % (pfix, post, per_sec and "/s" or ""))
+##                targ_speed = {""  : 1,
+##                              "k" : 1000,
+##                              "m" : 1000 * 1000,
+##                              "g" : 1000 * 1000 * 1000,
+##                              "t" : 1000 * 1000 * 1000 * 1000}[pfix] * num * mult
+##                return targ_speed
+##            elif in_str_l.startswith("unkn"):
+##                return -1
+##            else:
+##                raise ValueError, "Cannot parse target_speed"
+##        result = hm_classes.net_to_sys(result[3:])
+##        if result.has_key("rx"):
+##            rx_str, tx_str = ("rx", "tx")
+##        else:
+##            rx_str, tx_str = ("in", "out")
+##        maxs = max(result[rx_str], result[tx_str])
+##        ret_state, state = lim.check_ceiling(maxs)
+##        add_errors, add_oks = ([], [])
+##        device = result.get("device", "eth0")
+##        ethtool_stuff = result.get("ethtool", {})
+##        if ethtool_stuff is None:
+##            ethtool_stuff = {}
+##        connected = False if ethtool_stuff.get("link detected", "yes") == "no" else True
+##        if lim.has_add_var("sc"):
+##            if device.startswith("ib"):
+##                if ethtool_stuff.has_key("state"):
+##                    if ethtool_stuff["state"][0] == "4":
+##                        # check if link is up
+##                        try:
+##                            targ_speed_bit = parse_speed_bit(lim.get_add_var("sc"))
+##                        except ValueError:
+##                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '%s' for net: %s" % (lim.get_add_var("sc"),
+##                                                                                                               process_tools.get_except_info())
+##                        else:
+##                            if ethtool_stuff.has_key("rate"):
+##                                if targ_speed_bit == parse_ib_speed_bit(ethtool_stuff["rate"]):
+##                                    add_oks.append("target_speed %s" % (ethtool_stuff["rate"]))
+##                                else:
+##                                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (bit_str(targ_speed_bit), ethtool_stuff["rate"]))
+##                            else:
+##                                add_errors.append("no rate entry found")
+##                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+##                    else:
+##                        add_errors.append("Link has wrong state (%s)" % (ethtool_stuff["state"]))
+##                        ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+##                else:
+##                    # no state, cannot check if up or down
+##                    add_errors.append("Cannot check target_speed: no state information")
+##                    ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+##                    connected = False
+##            else:
+##                if connected:
+##                    if ethtool_stuff.has_key("speed"):
+##                        try:
+##                            targ_speed_bit = parse_speed_bit(lim.get_add_var("sc"))
+##                        except ValueError:
+##                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '%s' for net: %s" % (lim.get_add_var("sc"),
+##                                                                                                               process_tools.get_except_info())
+##                        else:
+##                            if targ_speed_bit == parse_speed_bit(ethtool_stuff["speed"]):
+##                                add_oks.append("target_speed %s" % (ethtool_stuff["speed"]))
+##                            else:
+##                                if parse_speed_bit(ethtool_stuff["speed"]) == -1:
+##                                    connected = False
+##                                else:
+##                                    add_errors.append("target_speed differ: %s (target) != %s (measured)" % (bit_str(targ_speed_bit), ethtool_stuff["speed"]))
+##                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+##                    else:
+##                        add_errors.append("Cannot check target_speed: no ethtool information")
+##                        ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+##        if lim.has_add_var("dp") and not device.startswith("ib"):
+##            if connected:
+##                if ethtool_stuff.has_key("duplex"):
+##                    try:
+##                        targ_duplex = parse_duplex_str(lim.get_add_var("dp"))
+##                    except ValueError:
+##                        return limits.nag_STATE_CRITICAL, "Error parsing target_duplex '%s' for net: %s" % (lim.get_add_var("dp"),
+##                                                                                                            process_tools.get_except_info())
+##                    else:
+##                        if targ_duplex == parse_duplex_str(ethtool_stuff["duplex"]):
+##                            add_oks.append("duplex_mode is %s" % (ethtool_stuff["duplex"]))
+##                        else:
+##                            if connected:
+##                                if parse_duplex_str(ethtool_stuff["duplex"]) == "unknown":
+##                                    connected = False
+##                                else:
+##                                    add_errors.append("duplex_mode differ: %s != %s" % (lim.get_add_var("dp"), ethtool_stuff["duplex"]))
+##                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+##                else:
+##                    add_errors.append("Cannot check duplex mode: no ethtool information")
+##                    ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+##        if not connected:
+##            add_errors.append("No cable connected?")
+##            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+##            state = limits.get_state_str(ret_state)
+##        report_device = result.get("report_device", device)
+##        return ret_state, "%s: %s, %s rx; %s tx%s%s%s" % (state,
+##                                                          device,
+##                                                          b_str(result[rx_str]),
+##                                                          b_str(result[tx_str]),
+##                                                          add_oks and "; %s" % ("; ".join(add_oks)) or "",
+##                                                          add_errors and "; %s" % ("; ".join(add_errors)) or "",
+##                                                          report_device != device and "; reporting device is %s" % (report_device) or "")
 
-class bridge_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "bridge_info", **args)
-        self.help_str = "returns Bridge information"
-        self.short_client_info = "-r, --raw"
-        self.long_client_info = "sets raw-output (for scripts)"
-        self.short_client_opts = "r"
-        self.long_client_opts = ["raw"]
-    def server_call(self, cm):
-        bridge_dict = self.module_info._check_for_bridges(self.logger)
-        return "ok %s" % (hm_classes.sys_to_net(bridge_dict))
-    def client_call(self, result, parsed_coms):
-        lim = parsed_coms[0]
-        raw_output = lim.get_add_flag("R")
-        if raw_output:
-            return limits.nag_STATE_OK, result[3:]
-        else:
-            bridge_dict = hm_classes.net_to_sys(result[3:])
-            br_names = sorted(bridge_dict.keys())
-            out_f = ["found %s:" % (logging_tools.get_plural("bridge", len(br_names)))]
-            for br_name in br_names:
-                br_stuff = bridge_dict[br_name]
-                out_f.append("%-16s: mtu %4d, flags 0x%x, features 0x%x, %s: %s" % (br_name,
-                                                                                    br_stuff["mtu"],
-                                                                                    br_stuff["flags"],
-                                                                                    br_stuff["features"],
-                                                                                    logging_tools.get_plural("interface", len(br_stuff["interfaces"])),
-                                                                                    ", ".join(sorted(br_stuff["interfaces"]))))
-            return limits.nag_STATE_OK, "ok %s" % ("\n".join(out_f))
+class bridge_info_command(hm_classes.hm_command):
+    info_str = "bridge information"
+    def __call__(self, srv_com, cur_ns):
+        srv_com["bridges"] = self.module._check_for_bridges()
+    def interpret(self, srv_com, cur_ns):
+        bridge_dict = srv_com["bridges"]
+        br_names = sorted(bridge_dict.keys())
+        out_f = ["found %s:" % (logging_tools.get_plural("bridge", len(br_names)))]
+        for br_name in br_names:
+            br_stuff = bridge_dict[br_name]
+            out_f.append("%-16s: mtu %4d, flags 0x%x, features 0x%x, %s: %s" % (br_name,
+                                                                                br_stuff["mtu"],
+                                                                                br_stuff["flags"],
+                                                                                br_stuff["features"],
+                                                                                logging_tools.get_plural("interface", len(br_stuff["interfaces"])),
+                                                                                ", ".join(sorted(br_stuff["interfaces"]))))
+        return limits.nag_STATE_OK, "%s" % ("\n".join(out_f))
 
-class network_info_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "network_info", **args)
-        self.help_str = "returns Network information"
-        self.short_client_info = "-r, --raw"
-        self.long_client_info = "sets raw-output (for scripts)"
-        self.short_client_opts = "r"
-        self.long_client_opts = ["raw"]
-    def server_call(self, cm):
-        network_dict = self.module_info._check_for_networks(self.logger)
-        bridge_dict = self.module_info._check_for_bridges(self.logger)
-        return "ok %s" % (hm_classes.sys_to_net({"net"    : network_dict,
-                                                 "bridge" : bridge_dict}))
-    def client_call(self, result, parsed_coms):
-        lim = parsed_coms[0]
-        raw_output = lim.get_add_flag("R")
-        if raw_output:
-            return limits.nag_STATE_OK, result[3:]
-        else:
-            net_dict = hm_classes.net_to_sys(result[3:])
-            bridge_dict = net_dict["bridge"]
-            net_dict    = net_dict["net"]
-            net_names = sorted(net_dict.keys())
-            out_f = []
-            out_list = logging_tools.form_list()
-            out_list.set_header_string(0, ["name", "bridge", "flags", "features"])
-            for net_name in net_names:
-                net_stuff = net_dict[net_name]
-                out_list.add_line((net_name,
-                                   "yes" if net_name in bridge_dict.keys() else "no",
-                                   ",".join(net_stuff["flags"]),
-                                   ", ".join(["%s=%s" % (key, str(net_stuff["features"][key])) for key in sorted(net_stuff["features"].keys())]) if net_stuff["features"] else "none"))
-                for net in net_stuff["inet"]:
-                    out_list.add_line(("  - %s" % (net)))
-            return limits.nag_STATE_OK, "ok found %s:\n%s" % (logging_tools.get_plural("network device", len(net_names)),
-                                                              str(out_list))
+class network_info_command(hm_classes.hm_command):
+    info_str = "network information"
+    def __call__(self, srv_com, cur_ns):
+        srv_com["bridges"] = self.module._check_for_bridges()
+        srv_com["networks"] = self.module._check_for_networks()
+    def interpret(self, srv_com, cur_ns):
+        bridge_dict = srv_com["bridges"]
+        net_dict = srv_com["networks"]
+        net_names = sorted(net_dict.keys())
+        out_f = []
+        out_list = logging_tools.form_list()
+        out_list.set_header_string(0, ["name", "bridge", "flags", "features"])
+        for net_name in net_names:
+            net_stuff = net_dict[net_name]
+            out_list.add_line((net_name,
+                               "yes" if net_name in bridge_dict.keys() else "no",
+                               ",".join(net_stuff["flags"]),
+                               ", ".join(["%s=%s" % (key, str(net_stuff["features"][key])) for key in sorted(net_stuff["features"].keys())]) if net_stuff["features"] else "none"))
+            for net in net_stuff["inet"]:
+                out_list.add_line(("  - %s" % (net)))
+        return limits.nag_STATE_OK, "found %s:\n%s" % (logging_tools.get_plural("network device", len(net_names)),
+                                                       str(out_list))
         
 if __name__ == "__main__":
     print "This is a loadable module."

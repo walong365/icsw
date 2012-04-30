@@ -24,6 +24,7 @@ import os.path
 import re
 import time
 import Queue
+import signal
 from host_monitoring import limits
 import logging_tools
 import process_tools
@@ -619,105 +620,75 @@ class ipckill_command(hm_classes.hmb_command):
         ret_state, ret_str = (limits.nag_STATE_OK, result)
         return ret_state, ret_str
         
-class pskill_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "pskill", **args)
-        self.help_str = "kills processes according to a given rule"
-        self.short_client_info = "SIGNUM MIN_UID[:MAX_UID] EXCL_LIST"
-        self.long_client_info = "SIGNUM sets the signal number, default is 9, MIN_UID the minium uid to be killed, MAX_UID the (optional) maximum UID, EXCL_LIST is a coma separated list of process heads to be excluded"
-        self.log_level = 1
-    def server_call(self, cm):
+class signal_command(hm_classes.hm_command):
+    info_str = "send signal to processes"
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        self.server_arguments = True
+        self.server_parser.add_argument("--signal", dest="signal", type=int, default=15)
+        self.server_parser.add_argument("--min-uid", dest="min_uid", type=int, default=0)
+        self.server_parser.add_argument("--max-uid", dest="max_uid", type=int, default=65535)
+        self.server_parser.add_argument("--exclude", dest="exclude", type=str, default="")
+        self.__signal_dict = dict([(getattr(signal, name), name) for name in dir(signal) if name.startswith("SIG") and not name.startswith("SIG_")])
+    def get_signal_string(self, cur_sig):
+        return self.__signal_dict.get(cur_sig, "#%d" % (cur_sig))
+    def __call__(self, srv_com, cur_ns):
         def priv_check(key, what):
-            if what["name"] in excl_list:
-                return -1
-            else:
-                if what["uid"] >= min_uid and what["uid"] <= max_uid:
+            if include_list:
+                if what["name"] in include_list or "%d" % (what["pid"]) in include_list:
+                    # take it and everything beneath
                     return 1
                 else:
+                    # do not take it
                     return 0
-        if len(cm) != 3:
-            return "invalid number of operands (%d != 3)" % (len(cm))
-        else:
-            signum = int(cm[0])
-            if cm[1].isdigit():
-                min_uid, max_uid = (int(cm[1]), 65536)
+            if what["name"] in exclude_list:
+                # do not take leaf and stop iteration
+                return -1
             else:
-                min_uid, max_uid = tuple([int(x) for x in cm[1].split(":")])
-            sig_str = "signal %d (uid %d:%d)" % (signum, min_uid, max_uid)
-            excl_list = cm[2].split(",")
-            kill_array, err_array = ([], [])
-            pid_list = find_pids(process_tools.build_ps_tree(process_tools.get_proc_list()), priv_check)
-            for struct in pid_list:
-                # uhhh, baby
-                try:
-                    os.kill(int(struct["pid"]), signum)
-                except OSError:
-                    err_array.append(struct)
+                if what["uid"] >= cur_ns.min_uid and what["uid"] <= cur_ns.max_uid:
+                    # take it 
+                    return 1
                 else:
-                    kill_array.append(struct)
-            if err_array:
-                log_str = "error sending %s to the following %s : %s" % (sig_str,
-                                                                         logging_tools.get_plural("pid", len(err_array)),
-                                                                         ", ".join(["%s (%d)" % (s["name"], s["pid"]) for s in err_array]))
-                logging_tools.my_syslog(log_str)
-                self.log(log_str, logging_tools.LOG_LEVEL_ERROR)
-            if kill_array:
-                log_str = "sent %s to the following %s : %s" % (sig_str,
-                                                                logging_tools.get_plural("pid", len(kill_array)),
-                                                                ", ".join(["%s (%d)" % (s["name"], s["pid"]) for s in kill_array]))
+                    # do not take it
+                    return 0
+        # check arguments
+        exclude_list = cur_ns.exclude.split(",")
+        include_list = cur_ns.arguments
+        sig_str = "signal %d[%s] (uid %d:%d), exclude_list is %s, include_list is %s" % (
+            cur_ns.signal,
+            self.get_signal_string(cur_ns.signal),
+            cur_ns.min_uid,
+            cur_ns.max_uid,
+            ", ".join(exclude_list) or "<empty>",
+            ", ".join(include_list) or "<empty>"
+        )
+        self.log(sig_str)
+        done_list = []
+        srv_com["signal_list"] = []
+        pid_list = find_pids(process_tools.build_ps_tree(process_tools.get_proc_list()), priv_check)
+        for struct in pid_list:
+            try:
+                os.kill(struct["pid"], cur_ns.signal)
+            except:
+                info_str, is_error = (process_tools.get_except_info(), True)
             else:
-                log_str = "sent %s to no processes" % (sig_str)
-            logging_tools.my_syslog(log_str)
-            self.log(log_str)
-            return "ok %s" % (log_str)
-    def client_call(self, result, parsed_coms):
-        ret_state, ret_str = (limits.nag_STATE_OK, result)
-        return ret_state, ret_str
-
-class signal_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "signal", **args)
-        self.help_str = "sends a given signal to a list of processes"
-        self.short_client_info = "SIGNUM PID_LIST"
-        self.long_client_info = "SIGNUM sets the signal number, PID_LIST is a coma separated list of process ids (the signal is also sended to all subprocesses)"
-        self.log_level = 1
-    def server_call(self, cm):
-        def priv_check(key, what):
-            if key in pid_list:
-                return 1
-            else:
-                return 0
-        if len(cm) < 2:
-            return "invalid number of operands (%d < 2)" % (len(cm))
-        else:
-            signum = int(cm[0])
-            pid_list = [int(x.strip()) for x in cm[1].split(",")]
-            kill_array, err_array = ([], [])
-            pid_list = find_pids(process_tools.build_ps_tree(process_tools.get_proc_list()), priv_check)
-            for struct in pid_list:
-                # uhhh, baby
-                try:
-                    os.kill(int(struct["pid"]), signum)
-                except OSError:
-                    err_array.append(struct)
-                else:
-                    kill_array.append(struct)
-            if err_array:
-                log_str = "error sending signal %d to the following %s : %s" % (signum,
-                                                                                logging_tools.get_plural("pid", len(err_array)),
-                                                                                ", ".join(["%s (%d)" % (s["name"], s["pid"]) for s in err_array]))
-                logging_tools.my_syslog(log_str)
-            if kill_array:
-                log_str = "sent signal %d to the following %s : %s" % (signum,
-                                                                       logging_tools.get_plural("pid", len(kill_array)),
-                                                                       ", ".join(["%s (%d)" % (s["name"], s["pid"]) for s in kill_array]))
-            else:
-                log_str = "sent signal %d to no processes" % (signum)
-            logging_tools.my_syslog(log_str)
-            return "ok %s" % (log_str)
-    def client_call(self, result, parsed_coms):
-        ret_state, ret_str = (limits.nag_STATE_OK, result)
-        return ret_state, ret_str
+                info_str, is_error = ("sent %d to %d" % (cur_ns.signal, struct["pid"]), False)
+            done_list.append((is_error, info_str, struct))
+            self.log("%d: %s" % (struct["pid"], info_str), logging_tools.LOG_LEVEL_ERROR if is_error else logging_tools.LOG_LEVEL_OK)
+            srv_com["signal_list"].append(srv_com.builder("signal", struct["name"],
+                                                          error="1" if is_error else "0",
+                                                          result=info_str,
+                                                          cmdline=" ".join(struct["cmdline"])))
+        srv_com["signal_list"].attrib.update({"signal" : "%d" % (cur_ns.signal)})
+    def interpret(self, srv_com, cur_ns):
+        ok_list, error_list = (srv_com.xpath(None, ".//ns:signal[@error='0']/text()"),
+                               srv_com.xpath(None, ".//ns:signal[@error='1']/text()"))
+        cur_sig = int(srv_com["signal_list"].attrib["signal"])
+        return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "sent %d[%s] to %s%s" % (
+            cur_sig,
+            self.get_signal_string(cur_sig),
+            logging_tools.get_plural("process", len(ok_list) + len(error_list)),
+            " (%s)" % (logging_tools.get_plural("problem", len(error_list))) if error_list else "")
 
 def find_pids(ptree, check):
     def search(dict, add, start):
