@@ -3149,12 +3149,12 @@ def main():
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
+        ("PID_NAME"            , configfile.str_c_var(os.path.join(prog_name, prog_name))),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
-        ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True)),
+        ("CHECK"               , configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
         ("USER"                , configfile.str_c_var("sge", help_string="user to run as [%(default)s")),
         ("GROUP"               , configfile.str_c_var("sge", help_string="group to run as [%(default)s]")),
-        ("GROUPS"              , configfile.array_c_var([])),
+        ("GROUPS"              , configfile.array_c_var(["idg"])),
         ("FORCE"               , configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
@@ -3258,6 +3258,7 @@ def main():
         #process_tools.create_log_source_entry(dc, 0, "sgeflat", "SGE Message (unparsed)", "Info from the SunGridEngine")
     if dc:
         dc.release()
+    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/%s" % (os.path.dirname(global_config["PID_NAME"]))])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
         process_tools.become_daemon()
