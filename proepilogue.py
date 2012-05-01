@@ -25,6 +25,7 @@ import sys
 import getopt
 import pwd, grp
 import time
+import stat
 import socket
 import os
 import os.path
@@ -36,16 +37,12 @@ import pprint
 import server_command
 import net_tools
 import threading_tools
-try:
-    import net_logging_tools
-except ImportError:
-    net_logging_tools = None
 import argparse
     
 SEP_LEN = 70
 LOCAL_IP = "127.0.0.1"
-PROFILE_PREFIX = ".mon"
-CONFIG_FILE_NAME = "proepilogue.xml"
+#PROFILE_PREFIX = ".mon"
+CONFIG_FILE_NAME = "proepilogue.conf"
 
 def sec_to_str(in_sec):
     diff_d = int(in_sec / (3600 * 24))
@@ -107,31 +104,31 @@ class job_thread(threading_tools.thread_obj):
             self._print("%s%s" % ("[%s] " % (logging_tools.get_log_level_str(log_level)) if log_level != logging_tools.LOG_LEVEL_OK else "", what))
         if log_level != logging_tools.LOG_LEVEL_OK:
             self.send_pool_message(("log", (what, log_level)))
-    def _print(self, what):
-        try:
-            print what
-        except:
-            self.log("cannot print '%s': %s" % (what,
-                                                process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
-    def _init_log_template(self):
-        self.__log_dir = time.strftime("%Y/%m/%d/%%s%%s") % (self.__opt_dict["JOB_ID"],
-                                                             ".%s" % (os.environ["SGE_TASK_ID"]) if os.environ.has_key("SGE_TASK_ID") else "")
-        self.__log_name = "%s/log" % (self.__log_dir)
-        logger, log_template = (None, None)
-        try:
-            logger = logging_tools.get_logger("%s.%s" % (self.__glob_config["LOG_NAME"],
-                                                         self.__log_name.replace(".", "\.")),
-                                              self.__glob_config["LOG_DESTINATION"],
-                                              init_logger=True)
-        except:
-            log_template = net_logging_tools.log_command("%s.d" % (self.__glob_config["LOG_NAME"]), thread_safe=True, thread="job")
-            log_template.set_destination(self.__glob_config["LOG_DESTINATION"])
-            log_template.set_sub_names(self.__log_name)
-            log_template.set_command_and_send("open_log")
-            log_template.set_command("log")
-        self.__log_template = log_template
-        self.__logger = logger
+##    def _print(self, what):
+##        try:
+##            print what
+##        except:
+##            self.log("cannot print '%s': %s" % (what,
+##                                                process_tools.get_except_info()),
+##                     logging_tools.LOG_LEVEL_ERROR)
+##    def _init_log_template(self):
+##        self.__log_dir = time.strftime("%Y/%m/%d/%%s%%s") % (self.__opt_dict["JOB_ID"],
+##                                                             ".%s" % (os.environ["SGE_TASK_ID"]) if os.environ.get("SGE_TASK_ID", "unknown") != "unknown" else "")
+##        self.__log_name = "%s/log" % (self.__log_dir)
+##        logger, log_template = (None, None)
+##        try:
+##            logger = logging_tools.get_logger("%s.%s" % (self.__glob_config["LOG_NAME"],
+##                                                         self.__log_name.replace(".", "\.")),
+##                                              self.__glob_config["LOG_DESTINATION"],
+##                                              init_logger=True)
+##        except:
+##            log_template = net_logging_tools.log_command("%s.d" % (self.__glob_config["LOG_NAME"]), thread_safe=True, thread="job")
+##            log_template.set_destination(self.__glob_config["LOG_DESTINATION"])
+##            log_template.set_sub_names(self.__log_name)
+##            log_template.set_command_and_send("open_log")
+##            log_template.set_command("log")
+##        self.__log_template = log_template
+##        self.__logger = logger
     def _log_arguments(self):
         out_list = logging_tools.new_form_list()
         for key in sorted(self.__opt_dict.keys()):
@@ -140,34 +137,6 @@ class job_thread(threading_tools.thread_obj):
                              logging_tools.form_entry(self.__opt_dict[key], header="value")])
         for line in str(out_list).split("\n"):
             self.log(line)
-    def _read_config(self):
-        if self.__glob_config.has_key("CONFIG_FILE"):
-            sections = ["queue_%s" % (self.__opt_dict["QUEUE"]),
-                        "node_%s" % (self.__opt_dict["HOST_SHORT"])]
-            if self.is_pe_call():
-                sections.append("pe_%s" % (self.__opt_dict["PE"]))
-                sections.append("queue_%s_pe_%s" % (self.__opt_dict["QUEUE"],
-                                                self.__opt_dict["PE"]))
-            self.log("scanning configfile %s for %s: %s" % (self.__glob_config["CONFIG_FILE"],
-                                                            logging_tools.get_plural("section", len(sections)),
-                                                            ", ".join(sections)))
-            for section in sections:
-                try:
-                    self.__glob_config.parse_file(self.__glob_config["CONFIG_FILE"],
-                                                  section=section)
-                except:
-                    self.log("error scanning for section %s: %s" % (section,
-                                                                    process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-            try:
-                for line, log_level in self.__glob_config.get_log(clear=True):
-                    self.log(line, log_level)
-            except:
-                self.log("error getting config_log: %s" % (process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("no key CONFIG_FILE in glob_config, strange ...",
-                     logging_tools.LOG_LEVEL_WARN)
     def _log_config(self):
         self.log("Config info:")
         try:
@@ -188,27 +157,9 @@ class job_thread(threading_tools.thread_obj):
 ##                                                            process_tools.get_except_info()),
 ##                     logging_tools.LOG_LEVEL_ERROR)
 ##            self.__opt_dict["HOST_IP"] = "127.0.0.1"
-    def _copy_environments(self):
-        self.__env_dict = dict([(key, str(os.environ[key])) for key in os.environ.keys()])
-        self.__env_int_dict = dict([(key, value) for key, value in [line.split("=", 1) for line in file("%s/config" % (self.__env_dict["SGE_JOB_SPOOL_DIR"]), "r").read().strip().split("\n") if line.count("=")]])
-        if r_dict:
-            res_keys = sorted(r_dict.keys())
-            self.log("%s defined" % (logging_tools.get_plural("limit", len(res_keys))))
-            res_list = logging_tools.new_form_list()
-            for key in res_keys:
-                val = r_dict[key]
-                if type(val) == type(""):
-                    info_str = val
-                elif type(val) == type(()):
-                    info_str = "%8d (hard), %8d (soft)" % val
-                else:
-                    info_str = "None (error?)"
-                res_list.append([logging_tools.form_entry(key, header="key"),
-                                 logging_tools.form_entry(info_str, header="value")])
-            self.write_file("limits_%s" % (self.__opt_dict["CALLER_NAME_SHORT"]),
-                            str(res_list).split("\n"))
-        else:
-            self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
+##    def _copy_environments(self):
+##        self.__env_dict = dict([(key, str(os.environ[key])) for key in os.environ.keys()])
+##        self.__env_int_dict = dict([(key, value) for key, value in [line.split("=", 1) for line in file("%s/config" % (self.__env_dict["SGE_JOB_SPOOL_DIR"]), "r").read().strip().split("\n") if line.count("=")]])
     # loop functions
     def loop_start(self):
         # OLD CODE, be aware
@@ -1462,8 +1413,9 @@ class my_thread_pool(threading_tools.thread_pool):
 class job_object(object):
     def __init__(self, p_pool):
         self.p_pool = p_pool
-        self.__log_dir = time.strftime("%Y/%m/%d/%%s%%s") % (global_config["JOB_ID"],
-                                                             ".%s" % (os.environ["SGE_TASK_ID"]) if os.environ.has_key("SGE_TASK_ID") else "")
+        self.__log_dir = time.strftime("%Y/%m/%d/%%s%%s") % (
+            global_config["JOB_ID"],
+            ".%s" % (os.environ["SGE_TASK_ID"]) if os.environ.get("SGE_TASK_ID", "undefined") != "undefined" else "")
         self.__log_name = "%s" % (self.__log_dir)
         self.__log_template = logging_tools.get_logger(
             "%s.%s/log" % (global_config["LOG_NAME"],
@@ -1630,6 +1582,12 @@ class job_object(object):
                 unlock_cpuset(act_job, my_lockf)
             else:
                 act_job.log("Cannot find cpuset-file '%s', strange ..." % (cpuset_file_name), 1)
+    def _add_script_var(self, key, value):
+        var_file = self._get_var_script_name()
+        self.log("adding variable (%s=%s) to var_file %s" % (key,
+                                                             value,
+                                                             var_file))
+        file(var_file, "a").write("export %s=%s\n" % (key, value))
     def is_start_call(self):
         return global_config["CALLER_NAME"] in ["prologue",
                                                 "lamstart",
@@ -1882,6 +1840,34 @@ class job_object(object):
             out_list.append([logging_tools.form_entry(key, header="Key"),
                              logging_tools.form_entry(self.__env_int_dict[key], header="Value")])
         self.write_file("env_int_%s" % (global_config["CALLER_NAME"]), str(out_list).split("\n"))
+    def _read_config(self):
+        if "CONFIG_FILE" in global_config:
+            sections = ["queue_%s" % (global_config["JOB_QUEUE"]),
+                        "node_%s" % (global_config["HOST_SHORT"])]
+            if self.is_pe_call():
+                sections.append("pe_%s" % (global_config["PE"]))
+                sections.append("queue_%s_pe_%s" % (global_config["JOB_QUEUE"],
+                                                    global_config["PE"]))
+            self.log("scanning configfile %s for %s: %s" % (global_config["CONFIG_FILE"],
+                                                            logging_tools.get_plural("section", len(sections)),
+                                                            ", ".join(sections)))
+            for section in sections:
+                try:
+                    global_config.parse_file(global_config["CONFIG_FILE"],
+                                             section=section)
+                except:
+                    self.log("error scanning for section %s: %s" % (section,
+                                                                    process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+            try:
+                for line, log_level in global_config.get_log(clear=True):
+                    self.log(line, log_level)
+            except:
+                self.log("error getting config_log: %s" % (process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("no key CONFIG_FILE in glob_config, strange ...",
+                     logging_tools.LOG_LEVEL_WARN)
     def _log_resources(self):
         res_used = {}
         jsd = os.environ.get("SGE_JOB_SPOOL_DIR", "")
@@ -1980,6 +1966,24 @@ class job_object(object):
                 r_dict[av_r] = "invalid resource"
             except:
                 r_dict[av_r] = None
+        if r_dict:
+            res_keys = sorted(r_dict.keys())
+            self.log("%s defined" % (logging_tools.get_plural("limit", len(res_keys))))
+            res_list = logging_tools.new_form_list()
+            for key in res_keys:
+                val = r_dict[key]
+                if type(val) == type(""):
+                    info_str = val
+                elif type(val) == type(()):
+                    info_str = "%8d (hard), %8d (soft)" % val
+                else:
+                    info_str = "None (error?)"
+                res_list.append([logging_tools.form_entry(key, header="key"),
+                                 logging_tools.form_entry(info_str, header="value")])
+            self.write_file("limits_%s" % (global_config["CALLER_NAME"]),
+                            str(res_list).split("\n"))
+        else:
+            self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
     def _prologue(self):
         self._create_wrapper_script()
     def _epilogue(self):
@@ -1996,6 +2000,7 @@ class job_object(object):
         self._parse_sge_env()
         self._check_user()
         self._parse_job_script()
+        self._read_config()
         self._show_config()
         # just for testing
         #self.write_file("aha", "/etc/hosts")
@@ -2050,6 +2055,7 @@ class process_pool(threading_tools.process_pool):
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
         self._set_sge_environment()
+        self._read_config()
         self._show_config()
         self._job = job_object(p_pool=self)
         self.loop_function = self._job.loop_function
@@ -2102,11 +2108,35 @@ class process_pool(threading_tools.process_pool):
                 self.log("Cannot assign environment-variable '%s', problems ahead ..." % (v_name),
                          logging_tools.LOG_LEVEL_ERROR)
                 #sys.exit(1)
-                global_config.add_config_entries([
-                    (v_name, configfile.str_c_var(v_val, source=v_src))])
+            global_config.add_config_entries([
+                (v_name, configfile.str_c_var(v_val, source=v_src))])
         if "SGE_ROOT" in global_config and "SGE_CELL" in global_config:
             global_config.add_config_entries([
                 ("SGE_VERSION", configfile.str_c_var("6", source="intern"))])
+    def _read_config(self):
+        # reading the config
+        conf_dir = "%s/3rd_party" % (global_config["SGE_ROOT"])
+        if not os.path.isdir(conf_dir):
+            self.log("no config_dir %s found, using defaults" % (conf_dir),
+                     logging_tools.LOG_LEVEL_ERROR,
+                     do_print=True)
+        else:
+            conf_file = os.path.join(conf_dir, CONFIG_FILE_NAME)
+            if not os.path.isfile(conf_file):
+                self.log("no config_file %s found, using defaults" % (conf_file),
+                         logging_tools.LOG_LEVEL_ERROR,
+                         do_print=True)
+                self._print("Copy the following lines to %s :" % (conf_file))
+                self._print("")
+                self._print("[global]")
+                for key in [c_key for c_key in sorted(global_config.keys()) if not c_key.startswith("SGE_") and global_config.get_source(c_key) == "default"]:
+                    # don't write SGE_* stuff
+                    self._print("%s=%s" % (key, str(global_config[key])))
+                self._print("")
+            else:
+                global_config.add_config_entries([("CONFIG_FILE", configfile.str_c_var(conf_file))])
+                self.log("reading config from %s" % (conf_file))
+                global_config.parse_file(global_config["CONFIG_FILE"])
     def loop_end(self):
         self.log("execution time was %s" % (logging_tools.get_diff_time_str(time.time() - self.start_time)))
     def loop_post(self):
@@ -2149,38 +2179,38 @@ def zmq_main_code():
     options = global_config.handle_commandline(add_writeback_option=True,
                                                positional_arguments=True)
     _exit = False
-    if len(options.arguments) == 5:
+    if len(options.arguments) in [5, 8]:
         global_config.add_config_entries([
-            ("HOST_LONG", configfile.str_c_var(options.arguments[0])),
-            ("JOB_OWNER", configfile.str_c_var(options.arguments[1])),
-            ("JOB_ID"   , configfile.str_c_var(options.arguments[2])),
-            ("JOB_NAME" , configfile.str_c_var(options.arguments[3])),
-            ("JOB_QUEUE", configfile.str_c_var(options.arguments[4]))
+            ("HOST_LONG", configfile.str_c_var(options.arguments[0], source="cmdline")),
+            ("JOB_OWNER", configfile.str_c_var(options.arguments[1], source="cmdline")),
+            ("JOB_ID"   , configfile.str_c_var(options.arguments[2], source="cmdline")),
+            ("JOB_NAME" , configfile.str_c_var(options.arguments[3], source="cmdline")),
+            ("JOB_QUEUE", configfile.str_c_var(options.arguments[4], source="cmdline"))
         ])
-    elif len(options.arguments) == 8:
-        global_config.add_config_entries([
-            ("HOST_LONG"  , configfile.str_c_var(options.arguments[0])),
-            ("JOB_OWNER"  , configfile.str_c_var(options.arguments[1])),
-            ("JOB_ID"     , configfile.str_c_var(options.arguments[2])),
-            ("JOB_NAME"   , configfile.str_c_var(options.arguments[3])),
-            ("JOB_QUEUE"  , configfile.str_c_var(options.arguments[4]))
-            ("PE_HOSTFILE", configfile.str_c_var(options.arguments[5]))
-            ("PE"         , configfile.str_c_var(options.arguments[6]))
-            ("PE_SLOTS"   , configfile.str_c_var(options.arguments[7]))
-        ])
+        if len(options.arguments) == 8:
+            global_config.add_config_entries([
+                ("PE_HOSTFILE", configfile.str_c_var(options.arguments[5], source="cmdline"))
+                ("PE"         , configfile.str_c_var(options.arguments[6], source="cmdline"))
+                ("PE_SLOTS"   , configfile.str_c_var(options.arguments[7], source="cmdline"))
+            ])
     else:
         print "Unable to determine execution mode for %s, exiting (%d args)" % (
             global_config.name(),
             len(options.arguments))
         _exit = True
     if not _exit:
-        # add more entries
-        global_config.add_config_entries([
-            ("HOST_SHORT"       , configfile.str_c_var(global_config["HOST_LONG"].split(".")[0])),
-            ("CALLER_NAME"      , configfile.str_c_var(global_config.name())),
-            ("HOST_IP"          , configfile.str_c_var("unknown")),
-        ])
-        return process_pool().loop()
+        cf_time = time.localtime(os.stat(configfile.__file__)[stat.ST_MTIME])
+        if (cf_time.tm_year, cf_time.tm_mon, cf_time.tm_mday) < (2012, 5, 1):
+            print "your python-modules-base are too old, please upgrade"
+            return 0
+        else:
+            # add more entries
+            global_config.add_config_entries([
+                ("HOST_SHORT"       , configfile.str_c_var(global_config["HOST_LONG"].split(".")[0], source="cmdline")),
+                ("CALLER_NAME"      , configfile.str_c_var(global_config.name(), source="cmdline")),
+                ("HOST_IP"          , configfile.str_c_var("unknown", source="cmdline")),
+            ])
+            return process_pool().loop()
     else:
         return -1
     

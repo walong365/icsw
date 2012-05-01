@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: iso-8859-1 -*-
 #
-# Copyright (C) 2005,2007,2008 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005,2007,2008,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -30,7 +30,7 @@ import shutil
 def read_base_config():
     files_ok = True
     var_dict = {}
-    for var_name in ["SGE_%s" % (x) for x in ["ROOT", "CELL", "SERVER"]]:
+    for var_name in ["SGE_%s" % (var_name) for var_name in ["ROOT", "CELL", "SERVER"]]:
         file_name = "/etc/sge_%s" % (var_name.split("_")[1].lower())
         if not os.path.isfile(file_name):
             print "File %s not found" % (file_name)
@@ -45,7 +45,7 @@ def read_base_config():
 def call_command(com):
     stat, out = commands.getstatusoutput(com)
     if stat:
-        print "Callong %s resulted in an error occured (%d)" % (com, stat)
+        print "Calling %s resulted in an error (%d):" % (com, stat)
         print out
         sys.exit(3)
     else:
@@ -53,6 +53,8 @@ def call_command(com):
     return out.split("\n")
 
 def create_blu_links(var_dict):
+    # deprecated, do not use
+    sys.exit(0)
     t_dirs = dict([("%s/%s" % (var_dict["SGE_ROOT"], x), {}) for x in ["bin", "lib", "utilbin"]])
     all_kvers, all_mach_types = ([], [])
     for t_dir in t_dirs.keys():
@@ -143,7 +145,7 @@ def generate_links(l_dict):
 def main():
     # read basic vars
     var_dict = read_base_config()
-    var_dict["SGE_DIST_DIR"] = "/usr/local/sge_init"
+    var_dict["SGE_DIST_DIR"] = "/opt/cluster/sge"
     # check for util-dir
     util_dir = "%s/util" % (var_dict["SGE_ROOT"])
     if not os.path.isdir(util_dir):
@@ -152,10 +154,10 @@ def main():
     # get SGE_ARCH
     var_dict["SGE_ARCH"] = call_command("%s/util/arch" % (var_dict["SGE_ROOT"]))[0]
     # show variables
-    for k, v in var_dict.iteritems():
-        print "%-12s : %s" % (k, v)
+    for key, value in var_dict.iteritems():
+        print "%-12s : %s" % (key, value)
     # create bin/lib/utilbin links
-    all_archs = create_blu_links(var_dict)
+    #all_archs = create_blu_links(var_dict)
     # check for missing dirs
     mis_dirs = ["%s/%s" % (var_dict["SGE_ROOT"], x) for x in ["bin/noarch",
                                                               "3rd_party",
@@ -186,4 +188,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
