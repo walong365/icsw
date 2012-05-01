@@ -1683,55 +1683,40 @@ class macinfo_command(hm_classes.hm_command):
         else:
             return limits.nag_STATE_CRITICAL, "error parsing return"
 
-class umount_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "umount", **args)
-        self.help_str = "unmounts all unused nfs-mounts"
-    def server_call(self, cm):
-        ignore_list = [x.strip() for x in cm if x.strip()]
+class umount_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+    def __call__(self, srv_com, cur_ns):
+        ignore_list = (srv_com["arguments:rest"].text or "").strip().split()
         mount_dict = get_nfs_mounts()
         auto_list = [m_point for src, m_point in mount_dict.get("autofs", [])]
+        srv_com["umount_list"] = []
         if mount_dict and auto_list:
             ok_list, err_list = ([], [])
-            for src, m_point in mount_dict.get("nfs", []):
+            for src, m_point in mount_dict.get("nfs", []) + mount_dict.get("nfs4", []) + mount_dict.get("nfs3", []):
                 # mount points must not be in ignore list and have to be below an automount-directory
-                if not [True for ignore_part in ignore_list if m_point.startswith(ignore_part)] and [True for a_mpoint in auto_list if m_point.startswith(a_mpoint)]:
-                    stat, out = commands.getstatusoutput("umount %s" % (m_point))
-                    if stat:
-                        # unify out-lines
-                        out_l = []
-                        for line in [x.startswith(m_point) and x[len(m_point) + 1:].strip() or x for x in [y.startswith("umount:") and y[7:].strip() or y.strip() for y in out.split("\n")]]:
-                            if line not in out_l:
-                                out_l.append(line)
-                        err_list.append((src, m_point, stat, " ".join(out_l)))
-                        self.log("umounting %s: %s (%d)" % (m_point, " ".join(out_l), stat),
+                if not (any([m_point.startswith(ignore_part) for ignore_part in ignore_list]) or any([m_point.startswith(a_mpoint) for a_mpoint in auto_list])):
+                    self.log("trying to umount %s (source is %s)" % (m_point, src))
+                    um_stat, um_out = commands.getstatusoutput("umount %s" % (m_point))
+                    cur_umount_node = srv_com.builder("umount_result", m_point, src=src, error="0")
+                    if um_stat:
+                        cur_umount_node.attrib.update({"error"  : "1",
+                                                       "status" : "%d" % (um_stat),
+                                                       "log"    : " ".join([cur_line.strip() for cur_line in um_out.split("\n")])})
+                        self.log("umounting %s: %s (%d)" % (m_point, cur_umount_node.attrib["log"], um_stat),
                                  logging_tools.LOG_LEVEL_ERROR)
                     else:
-                        ok_list.append((src, m_point))
                         self.log("ok umounting %s" % (m_point))
-            ok_list.sort()
-            err_list.sort()
-            return "ok %s" % (hm_classes.sys_to_net({"ok_list"  : ok_list,
-                                                     "err_list" : err_list}))
-        else:
-            return "ok %s" % (hm_classes.sys_to_net({}))
-    def client_call(self, result, parsed_coms):
-        if result.startswith("ok "):
-            um_dict = hm_classes.net_to_sys(result[3:])
-            str_f = []
-            ret_state = limits.nag_STATE_OK
-            if um_dict.get("ok_list", []):
-                str_f.append("%s: %s" % (logging_tools.get_plural("ok umount", len(um_dict["ok_list"])),
-                                         ", ".join(["%s from %s" % (x[1], x[0]) for x in um_dict["ok_list"]])))
-            if um_dict.get("err_list", []):
-                ret_state = limits.nag_STATE_WARNING
-                str_f.append("%s: %s" % (logging_tools.get_plural("error umount", len(um_dict["err_list"])),
-                                         ", ".join(["%s from %s (%d, %s)" % (x[1], x[0], x[2], x[3]) for x in um_dict["err_list"]])))
-            if not str_f:
-                str_f.append("nothing to umount")
-            return ret_state, "; ".join(str_f)
-        else:
-            return limits.nag_STATE_CRITICAL, "error: %s" % (result)
+                    srv_com["umount_list"].append(cur_umount_node)
+    def interpret(self, srv_com, cur_ns):
+        ok_list, error_list = (srv_com.xpath(None, ".//ns:umount_result[@error='0']"),
+                               srv_com.xpath(None, ".//ns:umount_result[@error='1']"))
+        return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, \
+               "".join([
+                   "tried to unmount %s" % (logging_tools.get_plural("entry", len(ok_list) + len(error_list))),
+                   ", ok: %s" % (",".join([ok_node.text for ok_node in ok_list])) if ok_list else "",
+                   ", error: %s" % (",".join([error_node.text for error_node in error_list])) if error_list else "",
+               ])
 
 class pciinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
