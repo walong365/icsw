@@ -312,6 +312,7 @@ try:
                 logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
             self.__lock.release()
         def close(self):
+            self.log_command("close")
             for handle in self.logger.handlers:
                 if hasattr(handle, "close"):
                     handle.close()
@@ -337,6 +338,8 @@ class zmq_handler(logging.Handler):
         return p_str
     def emit(self, record):
         self.__target.send(self.makePickle(record))
+    def close(self):
+        self.__target.close()
         
 class queue_handler(logging.Handler):
     """ sends log requests to other queues """

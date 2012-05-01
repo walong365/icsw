@@ -1256,32 +1256,32 @@ class process_pool(object):
                 if not self["loop_start_called"]:
                     self["loop_start_called"] = True
                     self.loop_start()
-                while self["run_flag"]:
-                    if self["exit_requested"]:
-                        self.stop_running_processes()
-                    cur_time = time.time()
-                    if self.__next_timeout and cur_time > self.__next_timeout:
-                        self._handle_timer(cur_time)
-                    if not self["exit_requested"] or self.__processes_running:
-                        # only check sockets if no exit was requested by one of the timer funcs above
-                        # otherwise we have to wait for loop_granularity milliseconds
-                        try:
-                            _socks = self.poller.poll(timeout=self.__loop_granularity)
-                        except:
-                            raise
-                        for sock, c_type in _socks:
-                            if sock in self.poller_handler:
-                                if c_type in self.poller_handler[sock]:
-                                    self.poller_handler[sock][c_type](sock)
-                                else:
-                                    print "???0", sock, c_type
-                                    time.sleep(1)
-                            else:
-                                print "???1", sock, c_type
-                                time.sleep(1)
-                    if self["exit_requested"] and not self.__processes_running:
-                        self.log("loop exit")
-                        self["run_flag"] = False
+                if self.__blocking_loop:
+                    while self["run_flag"]:
+                        if self["exit_requested"]:
+                            self.stop_running_processes()
+                        cur_time = time.time()
+                        if self.__next_timeout and cur_time > self.__next_timeout:
+                            self._handle_timer(cur_time)
+                        if not self["exit_requested"] or self.__processes_running:
+                            self._poll()
+                        if self["exit_requested"] and not self.__processes_running:
+                            self.log("loop exit")
+                            self["run_flag"] = False
+                else:
+                    for do_loop in self.loop_function():
+                        if not do_loop:
+                            self["exit_requested"] = True
+                        if self["exit_requested"]:
+                            self.stop_running_processes()
+                        cur_time = time.time()
+                        if self.__next_timeout and cur_time > self.__next_timeout:
+                            self._handle_timer(cur_time)
+                        if not self["exit_requested"] or self.__processes_running:
+                            self._poll()
+                        if self["exit_requested"] and not self.__processes_running:
+                            self.log("loop exit")
+                            break
                 self.loop_end()
                 excepted = False
             except:
@@ -1290,9 +1290,28 @@ class process_pool(object):
         self.loop_post()
         self._close_pp_sockets()
         return self["return_value"]
+    def _poll(self):
+        # only check sockets if no exit was requested by one of the timer funcs above
+        # otherwise we have to wait for loop_granularity milliseconds
+        try:
+            _socks = self.poller.poll(timeout=self.__loop_granularity)
+        except:
+            raise
+        for sock, c_type in _socks:
+            if sock in self.poller_handler:
+                if c_type in self.poller_handler[sock]:
+                    self.poller_handler[sock][c_type](sock)
+                else:
+                    print "???0", sock, c_type
+                    time.sleep(1)
+            else:
+                print "???1", sock, c_type
+                time.sleep(1)
     def loop_function(self):
+        # generator
         print "_dummy_loop_function(), sleeping for 10 seconds"
         time.sleep(10)
+        yield None
     def stop_running_processes(self):
         pri_dict = {}
         for key, value in self.__processes.iteritems():

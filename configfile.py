@@ -64,6 +64,8 @@ class config_proxy(BaseProxy):
         return self._callmethod("keys")
     def __getitem__(self, key):
         return self._callmethod("__getitem__", (key,))
+    def get(self, key, default):
+        return self._callmethod("get", (key, default))
     def __setitem__(self, key, value):
         return self._callmethod("__setitem__", (key, value))
     def __contains__(self, key):
@@ -340,6 +342,8 @@ class configuration(object):
             return self.__c_dict[key].value
         else:
             raise KeyError, "Key %s not found in c_dict" % (key)
+    def get(self, key, default):
+        return self.__c_dict.get(key, default)
     def __setitem__(self, key, value):
         if key in self.__c_dict:
             if type(value) == type(()):
@@ -539,7 +543,7 @@ class configuration(object):
             return options
 
 config_manager.register("config", configuration, config_proxy, exposed=["parse_file", "add_config_entries", "set_uid_gid",
-                                                                        "get_log", "handle_commandline", "keys", "get_type",
+                                                                        "get_log", "handle_commandline", "keys", "get_type", "get",
                                                                         "is_global", "database",
                                                                         "__getitem__", "__setitem__", "__contains__",
                                                                         "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])
