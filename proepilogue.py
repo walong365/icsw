@@ -180,52 +180,17 @@ class job_thread(threading_tools.thread_obj):
         self.log("Found %d valid config-lines:" % (len(conf_info)))
         for conf in conf_info:
             self.log("Config : %s" % (conf))
-    def _set_localhost_stuff(self):
-        try:
-            self.__opt_dict["HOST_IP"] = socket.gethostbyname(self.__opt_dict["HOST_SHORT"])
-        except:
-            self.log("cannot resolve host_name '%s': %s" % (self.__opt_dict["HOST_SHORT"],
-                                                            process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
-            self.__opt_dict["HOST_IP"] = "127.0.0.1"
-    def _write_run_info(self):
-        self.log("running on host %s (IP %s)" % (self.__opt_dict["HOST_SHORT"],
-                                                 self.__opt_dict["HOST_IP"]),
-                 do_print=True)
-    def get_stat_str(self, ret_value):
-        stat_dict = {0 : "OK",
-                     1 : "Error",
-                     2 : "Warning"}
-        return stat_dict.get(ret_value, "unknown ret_value %d" % (ret_value))
+##    def _set_localhost_stuff(self):
+##        try:
+##            self.__opt_dict["HOST_IP"] = socket.gethostbyname(self.__opt_dict["HOST_SHORT"])
+##        except:
+##            self.log("cannot resolve host_name '%s': %s" % (self.__opt_dict["HOST_SHORT"],
+##                                                            process_tools.get_except_info()),
+##                     logging_tools.LOG_LEVEL_ERROR)
+##            self.__opt_dict["HOST_IP"] = "127.0.0.1"
     def _copy_environments(self):
         self.__env_dict = dict([(key, str(os.environ[key])) for key in os.environ.keys()])
         self.__env_int_dict = dict([(key, value) for key, value in [line.split("=", 1) for line in file("%s/config" % (self.__env_dict["SGE_JOB_SPOOL_DIR"]), "r").read().strip().split("\n") if line.count("=")]])
-    def _log_environments(self):
-        out_list = logging_tools.new_form_list()
-        for key in sorted(self.__env_dict.keys()):
-            out_list.append([logging_tools.form_entry(key, header="Key"),
-                             logging_tools.form_entry(self.__env_dict[key], header="Value")])
-        self.write_file("env_%s" % (self.__opt_dict["CALLER_NAME_SHORT"]), str(out_list).split("\n"))
-        out_list = logging_tools.new_form_list()
-        for key in sorted(self.__env_int_dict.keys()):
-            out_list.append([logging_tools.form_entry(key, header="Key"),
-                             logging_tools.form_entry(self.__env_int_dict[key], header="Value")])
-        self.write_file("env_int_%s" % (self.__opt_dict["CALLER_NAME_SHORT"]), str(out_list).split("\n"))
-    def _log_limits(self):
-        # read limits
-        r_dict = {}
-        try:
-            import resource
-        except ImportError:
-            pass
-        available_resources = [key for key in dir(resource) if key.startswith("RLIMIT")]
-        for av_r in available_resources:
-            try:
-                r_dict[av_r] = resource.getrlimit(getattr(resource, av_r))
-            except ValueError:
-                r_dict[av_r] = "invalid resource"
-            except:
-                r_dict[av_r] = None
         if r_dict:
             res_keys = sorted(r_dict.keys())
             self.log("%s defined" % (logging_tools.get_plural("limit", len(res_keys))))
@@ -244,91 +209,9 @@ class job_thread(threading_tools.thread_obj):
                             str(res_list).split("\n"))
         else:
             self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
-    def _log_resources(self):
-        res_used = {}
-        jsd = os.environ.get("SGE_JOB_SPOOL_DIR", "")
-        if jsd:
-            usage_file = "%s/usage" % (jsd)
-            if os.path.isfile(usage_file):
-                try:
-                    ufl = dict([[part.strip() for part in line.strip().split("=", 1)] for line in file(usage_file, "r").read().split("\n") if line.count("=")])
-                except:
-                    self.log("error reading usage_file %s: %s" % (usage_file,
-                                                                  process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    try:
-                        if ufl.has_key("ru_wallclock"):
-                            res_used["time_wall"] = sec_to_str(int(ufl["ru_wallclock"]))
-                        if ufl.has_key("start_time") and ufl.has_key("end_time"):
-                            res_used["elapsed"] = sec_to_str(int(ufl["end_time"]) - int(ufl["start_time"]))
-                        if ufl.has_key("exit_status"):
-                            res_used["exit_status"] = str(ufl["exit_status"])
-                        if ufl.has_key("ru_utime"):
-                            res_used["time_user"] = sec_to_str(int(ufl["ru_utime"]))
-                        if ufl.has_key("ru_stime"):
-                            res_used["time_system"] = sec_to_str(int(ufl["ru_stime"]))
-    ##                     if ufl.has_key("ru_ixrss"):
-    ##                         res_used["shared memory size"] = str(ufl["ru_ixrss"])
-    ##                     if ufl.has_key("ru_isrss"):
-    ##                         res_used["memory size"] = str(ufl["ru_isrss"])
-                    except:
-                        pass
-            else:
-                self.log("no useage file in %s" % (jsd),
-                         logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("no SGE_JOB_SPOOL_DIR in os.environ defined",
-                     logging_tools.LOG_LEVEL_ERROR)
-        if res_used:
-            self._print("Resources used:")
-            log_res = []
-            out_list = logging_tools.new_form_list()
-            #f_str = "%%%ds : %%s%%s" % (max([len(x) for x in res_used.keys()]))
-            for key, value in [(key, res_used[key]) for key in sorted(res_used.keys())]:
-                ext_str = ""
-                if key == "exit_status":
-                    try:
-                        i_val = int(value)
-                    except:
-                        pass
-                    else:
-                        ext_str = {0   : "no failure",
-                                   1   : "error before job",
-                                   2   : "before writing config",
-                                   3   : "before writing pid",
-                                   4   : "before writing pid",
-                                   5   : "reading config file",
-                                   6   : "setting processor set",
-                                   7   : "before prolog",
-                                   8   : "in prolog",
-                                   9   : "before pestart",
-                                   10  : "in pestart",
-                                   11  : "before job",
-                                   12  : "before pestop",
-                                   13  : "in pestop",
-                                   14  : "before epilogue",
-                                   15  : "in epilog",
-                                   16  : "releasing processor set",
-                                   24  : "migrating",
-                                   25  : "rescheduling",
-                                   26  : "opening output file",
-                                   27  : "searching requested shell",
-                                   28  : "changing to working directory",
-                                   100 : "assumedly after job"}.get(i_val, "")
-                        if i_val == 99:
-                            self._set_exit_code("requeue requested", i_val)
-                        ext_str = ext_str and " (%s)" % (ext_str) or ""
-                out_list.append([logging_tools.form_entry(key, header="key"),
-                                 logging_tools.form_entry(value, header="value"),
-                                 logging_tools.form_entry(ext_str, header="info")])
-                log_res.append("%s:%s%s" % (key, value, ext_str))
-            self._print("\n".join(["  %s" % (line) for line in str(out_list).split("\n")]))
-            self.log("reported %d resources: %s" % (len(log_res), ", ".join(log_res)))
-        else:
-            self.log("No resources found", do_print=True)
     # loop functions
     def loop_start(self):
+        # OLD CODE, be aware
         self.__send_idx, self.__pending_dict = (0, {})
         self.__start_time = time.time()
         self.send_pool_message(("log", "log_name is %s" % (self.__log_name)))
@@ -707,179 +590,119 @@ class job_thread(threading_tools.thread_obj):
                                                              value,
                                                              var_file))
         file(var_file, "a").write("export %s=%s\n" % (key, value))
-    def _parse_job_script(self):
-        if os.environ.has_key("JOB_SCRIPT"):
-            script_file = os.environ["JOB_SCRIPT"]
-            try:
-                lines = [line.strip() for line in file(script_file, "r").read().split("\n")]
-            except:
-                self.log("Cannot read Scriptfile '%s' (%s)" % (script_file,
-                                                               process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                if self.__opt_dict["CALLER_NAME_SHORT"] == "prologue":
-                    s_list = logging_tools.new_form_list()
-                else:
-                    s_list = None
-                num_lines, num_sge, num_init = (len(lines), 0, 0)
-                init_dict = {}
-                for line, line_num in zip(lines, xrange(len(lines))):
-                    if s_list is not None:
-                        s_list.append([logging_tools.form_entry(line_num + 1, header="line"),
-                                       logging_tools.form_entry(line, header="content")])
-                    if line.startswith("#$ "):
-                        num_sge += 1
-                    elif line.startswith("#init "):
-                        # valid init-keys:
-                        # MONITOR=<type>
-                        # MONITOR_KEYS=<key_list;>
-                        # MONITOR_FULL_KEY_LIST=<true>
-                        # TRIGGER_ERROR (flag, triggers error)
-                        # EXTRA_WAIT=x (waits for x seconds)
-                        num_init += 1
-                        line_parts = [x.split("=", 1) for x in line[5:].strip().split(",")]
-                        self.log("found #init-line '%s'" % (line))
-                        if line_parts:
-                            for key, value in [x for x in line_parts if len(x) == 2]:
-                                key, value = (key.strip().upper(), value.strip().lower())
-                                if key and value:
-                                    init_dict[key] = value
-                                    self.log("recognised init option '%s' (value '%s')" % (key, value))
-                                    self.__opt_dict.add_config_dict({key : configfile.str_c_var(value, source="jobscript")})
-                            for key in [x[0].strip().upper() for x in line_parts if len(x) == 1]:
-                                init_dict[key] = True
-                                self.log("recognised init option '%s' (value '%s')" % (key, True))
-                                self.__opt_dict.add_config_dict({key : configfile.bool_c_var(True, source="jobscript")})
-                self.log("Scriptfile '%s' has %d lines (%s and %s)" % (script_file,
-                                                                       num_lines,
-                                                                       logging_tools.get_plural("SGE related line", num_sge),
-                                                                       logging_tools.get_plural("init.at related line", num_init)))
-                if s_list:
-                    self.write_file("jobscript", str(s_list).split("\n"), linenumbers=False)
-        else:
-            self.log("environ has no JOB_SCRIPT key", logging_tools.LOG_LEVEL_WARN)
-    def _parse_server_addresses(self):
-        for src_file, key, default in [("/etc/motherserver", "MOTHER_SERVER", "localhost"),
-                                       ("/etc/sge_server"  , "SGE_SERVER"   , "localhost")]:
-            try:
-                act_val = file(src_file, "r").read().split()[0]
-            except:
-                self.log("cannot read %s from %s: %s" % (key,
-                                                         src_file,
-                                                         process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-                act_val = default
-            self.__glob_config.add_config_dict({key : configfile.str_c_var(act_val, source=src_file)})
-    def _parse_sge_env(self):
-        # pe name
-        if os.environ.has_key("PE") and os.environ.has_key("PE_HOSTFILE"):
-            self.__opt_dict["PE"] = os.environ["PE"]
-        else:
-            self.__opt_dict["PE"] = ""
-        # TASK_ID
-        if os.environ.has_key("SGE_TASK_FIRST") and os.environ.has_key("SGE_TASK_LAST") and os.environ.has_key("SGE_TASK_ID") and os.environ.has_key("SGE_TASK_STEPSIZE"):
-            if os.environ["SGE_TASK_ID"] == "undefined":
-                self.__opt_dict["TASK_ID"] = 0
-            else:
-                try:
-                    self.__opt_dict["TASK_ID"] = int(os.environ["SGE_TASK_ID"])
-                except:
-                    self.log("error extracting SGE_TASK_ID: %s" % (process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-                    self.__opt_dict["TASK_ID"] = 0
-                else:
-                    pass
-        else:
-            self.__opt_dict["TASK_ID"] = 0
-        self.__opt_dict["FULL_JOB_ID"] = "%s%s" % (self.__opt_dict["JOB_ID"],
-                                                   ".%s" % (self.__opt_dict["TASK_ID"]) if self.__opt_dict["TASK_ID"] else "")
-    def _check_user(self):
-        try:
-            pw_data = pwd.getpwnam(self.__opt_dict["JOB_OWNER"])
-        except KeyError:
-            pw_data = None
-            uid, gid, group = (0, 0, "unknown")
-            self.log("Unknown user '%s', using ('%s', %d, %d) as (group, uid, gid)" % (self.__opt_dict["JOB_OWNER"],
-                                                                                       group,
-                                                                                       uid,
-                                                                                       gid),
-                     logging_tools.LOG_LEVEL_ERROR)
-        else:
-            uid = pw_data[2]
-            gid = pw_data[3]
-            try:
-                grp_data = grp.getgrgid(gid)
-            except KeyError:
-                group = "unknown"
-                self.log("Unknown group-id %d for user '%s', using %s as group" % (gid,
-                                                                                   user,
-                                                                                   group),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                group = grp_data[0]
-        self.__opt_dict["GROUP"] = group
-        self.__opt_dict["UID"] = uid
-        self.__opt_dict["GID"] = gid
-    def get_owner_str(self):
-        return "user %s (%d), group %s (%d)" % (self.__opt_dict["JOB_OWNER"],
-                                                self.__opt_dict["UID"],
-                                                self.__opt_dict["GROUP"],
-                                                self.__opt_dict["GID"])
-    def write_file(self, name, content, **args):
-        ss_time = time.time()
-        log_t, logger = (None, None)
-        try:
-            logger = logging_tools.get_logger("%s.%s.%s" % (self.__glob_config["LOG_NAME"],
-                                                            self.__log_dir.replace(".", "\."),
-                                                            name),
-                                              self.__glob_config["LOG_DESTINATION"],
-                                              init_logger=True)
-        except:
-            log_t = net_logging_tools.log_command("%s.d" % (self.__glob_config["LOG_NAME"]), thread="job")
-            log_t.set_destination(self.__glob_config["LOG_DESTINATION"])
-            log_t.set_sub_names("%s/%s" % (self.__log_dir, name))
-            log_t.set_command_and_send("open_log")
-            log_t.set_command_and_send("set_uid")
-            log_t.set_command("log")
-        if type(content) == type("") and content.startswith("/"):
-            # content is a filename
-            content = file(content, "r").read().split("\n")
-        if type(content) == type(""):
-            content = content.split("\n")
-        log_str = "content '%s', %s:" % (name,
-                                         logging_tools.get_plural("line", len(content)))
-        if logger:
-            logger.log(logging_tools.LOG_LEVEL_OK, log_str)
-        else:
-            log_t.log(log_str)
-        if args.get("linenumbers", True):
-            for line_num, line in zip(xrange(len(content)), content):
-                log_str = "%3d %s" % (line_num + 1, line)
-                if logger:
-                    logger.log(logging_tools.LOG_LEVEL_OK, log_str)
-                else:
-                    log_t.log(log_str)
-        else:
-            for line in content:
-                if logger:
-                    logger.log(logging_tools.LOG_LEVEL_OK, line)
-                else:
-                    log_t.log(line)
-        if log_t:
-            log_t.set_command_and_send("close_log")
-        else:
-            logger.log_command("CLOSE")
-        se_time = time.time()
-        self.log("storing content to file %s (%s) in %s" % (name,
-                                                            logging_tools.get_plural("line", len(content)),
-                                                            logging_tools.get_diff_time_str(se_time - ss_time)))
-    def _init_exit_code(self):
-        self.__return_value = 0
-    def _set_exit_code(self, cause, exit_code):
-        self.__return_value = exit_code
-        self.log("setting exit_code to %d because of %s" % (exit_code,
-                                                            cause),
-                 logging_tools.LOG_LEVEL_ERROR)
+##    def _parse_job_script(self):
+##        if os.environ.has_key("JOB_SCRIPT"):
+##            script_file = os.environ["JOB_SCRIPT"]
+##            try:
+##                lines = [line.strip() for line in file(script_file, "r").read().split("\n")]
+##            except:
+##                self.log("Cannot read Scriptfile '%s' (%s)" % (script_file,
+##                                                               process_tools.get_except_info()),
+##                         logging_tools.LOG_LEVEL_ERROR)
+##            else:
+##                if self.__opt_dict["CALLER_NAME_SHORT"] == "prologue":
+##                    s_list = logging_tools.new_form_list()
+##                else:
+##                    s_list = None
+##                num_lines, num_sge, num_init = (len(lines), 0, 0)
+##                init_dict = {}
+##                for line, line_num in zip(lines, xrange(len(lines))):
+##                    if s_list is not None:
+##                        s_list.append([logging_tools.form_entry(line_num + 1, header="line"),
+##                                       logging_tools.form_entry(line, header="content")])
+##                    if line.startswith("#$ "):
+##                        num_sge += 1
+##                    elif line.startswith("#init "):
+##                        # valid init-keys:
+##                        # MONITOR=<type>
+##                        # MONITOR_KEYS=<key_list;>
+##                        # MONITOR_FULL_KEY_LIST=<true>
+##                        # TRIGGER_ERROR (flag, triggers error)
+##                        # EXTRA_WAIT=x (waits for x seconds)
+##                        num_init += 1
+##                        line_parts = [x.split("=", 1) for x in line[5:].strip().split(",")]
+##                        self.log("found #init-line '%s'" % (line))
+##                        if line_parts:
+##                            for key, value in [x for x in line_parts if len(x) == 2]:
+##                                key, value = (key.strip().upper(), value.strip().lower())
+##                                if key and value:
+##                                    init_dict[key] = value
+##                                    self.log("recognised init option '%s' (value '%s')" % (key, value))
+##                                    self.__opt_dict.add_config_dict({key : configfile.str_c_var(value, source="jobscript")})
+##                            for key in [x[0].strip().upper() for x in line_parts if len(x) == 1]:
+##                                init_dict[key] = True
+##                                self.log("recognised init option '%s' (value '%s')" % (key, True))
+##                                self.__opt_dict.add_config_dict({key : configfile.bool_c_var(True, source="jobscript")})
+##                self.log("Scriptfile '%s' has %d lines (%s and %s)" % (script_file,
+##                                                                       num_lines,
+##                                                                       logging_tools.get_plural("SGE related line", num_sge),
+##                                                                       logging_tools.get_plural("init.at related line", num_init)))
+##                if s_list:
+##                    self.write_file("jobscript", str(s_list).split("\n"), linenumbers=False)
+##        else:
+##            self.log("environ has no JOB_SCRIPT key", logging_tools.LOG_LEVEL_WARN)
+##    def _parse_server_addresses(self):
+##        for src_file, key, default in [("/etc/motherserver", "MOTHER_SERVER", "localhost"),
+##                                       ("/etc/sge_server"  , "SGE_SERVER"   , "localhost")]:
+##            try:
+##                act_val = file(src_file, "r").read().split()[0]
+##            except:
+##                self.log("cannot read %s from %s: %s" % (key,
+##                                                         src_file,
+##                                                         process_tools.get_except_info()),
+##                         logging_tools.LOG_LEVEL_ERROR)
+##                act_val = default
+##            self.__glob_config.add_config_dict({key : configfile.str_c_var(act_val, source=src_file)})
+##    def _parse_sge_env(self):
+##        # pe name
+##        if os.environ.has_key("PE") and os.environ.has_key("PE_HOSTFILE"):
+##            self.__opt_dict["PE"] = os.environ["PE"]
+##        else:
+##            self.__opt_dict["PE"] = ""
+##        # TASK_ID
+##        if os.environ.has_key("SGE_TASK_FIRST") and os.environ.has_key("SGE_TASK_LAST") and os.environ.has_key("SGE_TASK_ID") and os.environ.has_key("SGE_TASK_STEPSIZE"):
+##            if os.environ["SGE_TASK_ID"] == "undefined":
+##                self.__opt_dict["TASK_ID"] = 0
+##            else:
+##                try:
+##                    self.__opt_dict["TASK_ID"] = int(os.environ["SGE_TASK_ID"])
+##                except:
+##                    self.log("error extracting SGE_TASK_ID: %s" % (process_tools.get_except_info()),
+##                             logging_tools.LOG_LEVEL_ERROR)
+##                    self.__opt_dict["TASK_ID"] = 0
+##                else:
+##                    pass
+##        else:
+##            self.__opt_dict["TASK_ID"] = 0
+##        self.__opt_dict["FULL_JOB_ID"] = "%s%s" % (self.__opt_dict["JOB_ID"],
+##                                                   ".%s" % (self.__opt_dict["TASK_ID"]) if self.__opt_dict["TASK_ID"] else "")
+##    def _check_user(self):
+##        try:
+##            pw_data = pwd.getpwnam(self.__opt_dict["JOB_OWNER"])
+##        except KeyError:
+##            pw_data = None
+##            uid, gid, group = (0, 0, "unknown")
+##            self.log("Unknown user '%s', using ('%s', %d, %d) as (group, uid, gid)" % (self.__opt_dict["JOB_OWNER"],
+##                                                                                       group,
+##                                                                                       uid,
+##                                                                                       gid),
+##                     logging_tools.LOG_LEVEL_ERROR)
+##        else:
+##            uid = pw_data[2]
+##            gid = pw_data[3]
+##            try:
+##                grp_data = grp.getgrgid(gid)
+##            except KeyError:
+##                group = "unknown"
+##                self.log("Unknown group-id %d for user '%s', using %s as group" % (gid,
+##                                                                                   user,
+##                                                                                   group),
+##                         logging_tools.LOG_LEVEL_ERROR)
+##            else:
+##                group = grp_data[0]
+##        self.__opt_dict["GROUP"] = group
+##        self.__opt_dict["UID"] = uid
+##        self.__opt_dict["GID"] = gid
     def _call_command(self, com_names, arg_form="%s", **args):
         # args: retries (default 2)
         max_retries = args.get("retries", 2)
@@ -1065,144 +888,6 @@ class job_thread(threading_tools.thread_obj):
                         os.kill(kill_pid, 9)
                     except:
                         pass
-    # wrapper script tools
-    def _get_wrapper_script_name(self):
-        return  "%s/%s.new" % (os.path.dirname(self.__env_dict["JOB_SCRIPT"]),
-                               self.__opt_dict["FULL_JOB_ID"])
-    def _get_var_script_name(self):
-        return  "%s/%s.var" % (os.path.dirname(self.__env_dict["JOB_SCRIPT"]),
-                               self.__opt_dict["FULL_JOB_ID"])
-    def _create_wrapper_script(self):
-        # only sensible if sge_starter_method for queue is set
-        src_file = self.__env_dict["JOB_SCRIPT"]
-        dst_file = self._get_wrapper_script_name()
-        var_file = self._get_var_script_name()
-        if not dst_file.startswith("/"):
-            self.log("refuse to create wrapper script %s" % (dst_file),
-                     logging_tools.LOG_LEVEL_ERROR)
-            return
-        self.log("Creating wrapper-script (%s for %s)" % (dst_file,
-                                                          src_file))
-        shell_path, shell_start_mode = (self.__env_int_dict.get("shell_path", "/bin/bash"),
-                                        self.__env_int_dict.get("shell_start_mode", "posix_compliant"))
-        cluster_queue_name = self.__opt_dict["QUEUE"]
-        self.log("shell_path is '%s', shell_start_mode is '%s'" % (shell_path,
-                                                                   shell_start_mode))
-        #cpuset_dir_name = "%s/cpuset" % (g_config["SGE_ROOT"])
-        do_cpuset = False
-        no_cpuset_cause = []
-        if self.__glob_config.get("CPUSET_PE", "notset") == self.__opt_dict.get("PE", "unknown"):
-            # not fixed
-            num_cpus = int(int_env["pe_slots"])
-            act_job.log("requested pe is '%s', trying to allocate a cpuset with %s on queue %s" % (int_env["pe"],
-                                                                                                   logging_tools.get_plural("cpu", num_cpus),
-                                                                                                   cluster_queue_name),
-                        1)
-            if os.path.isdir(cpuset_dir_name):
-                cpuset_file_name = "%s/%s" % (cpuset_dir_name, cluster_queue_name)
-                if os.path.isfile(cpuset_file_name):
-                    do_cpuset = True
-                else:
-                    act_job.log("no cpuset-file '%s', doing normal startmethod" % (cpuset_file_name))
-                    no_cpuset_cause.append("no queue-local cpuset config %s" % (cpuset_file_name))
-            else:
-                act_job.log("no cpuset-dir %s" % (cpuset_dir_name))
-                no_cpuset_cause.append("no cpuset-director %s" % (cpuset_dir_name))
-            if do_cpuset:
-                lock_f = lock_cpuset(act_job)
-                act_cpu_set = cpu_set(act_job, cpuset_dir_name, cpuset_file_name)
-                # generate new cpuset_name
-                act_cpu_set.increase_cpuset_name()
-                act_job.log("found cpuset-file at %s, cpuset_name is '%s'" % (cpuset_file_name,
-                                                                              act_cpu_set.get_act_cpuset_name()), 1)
-                a_lists = act_cpu_set.find_allocation_schemes(num_cpus)
-                if a_lists:
-                    cpus = a_lists[0]
-                    act_cpu_set.allocate_cpus(cpus)
-                    act_cpu_set.generate_cpuset(cpus)
-                    cpu_set_name = act_cpu_set.get_act_cpuset_name()
-                else:
-                    do_cpuset = False
-                    no_cpuset_cause.append("cannot allocate %s" % (logging_tools.get_plural("cpu", num_cpus)))
-                act_cpu_set.write_occupation_to_file()
-                unlock_cpuset(act_job, lock_f)
-        if do_cpuset:
-            if shell_start_mode == "posix_compliant" and shell_path:
-                df_lines = ["#!%s" % ("/bin/sh"),
-                            "echo 'wrapper_script, with cpu_set'",
-                            "export BASH_ENV=$HOME/.bashrc",
-                            "export CPUS=\"%s\"" % (" ".join(["%d" % (x) for x in cpus])),
-                            "export NCPUS=%d" % (len(cpus)),
-                            ". %s" % (var_file),
-                            "exec cpuset -q %s -A %s %s $*" % (cpu_set_name, shell_path, src_file),
-                            ""]
-            else:
-                df_lines = ["#!%s" % ("/bin/sh"),
-                            "echo 'wrapper_script, with cpu_set'",
-                            "export BASH_ENV=$HOME/.bashrc",
-                            "export CPUS=\"%s\"" % (" ".join(["%d" % (x) for x in cpus])),
-                            "export NCPUS=%d" % (len(cpus)),
-                            ". %s" % (var_file),
-                            "exec cpuset -q -A %s $*" % (cpu_set_name, src_file),
-                            ""]
-        else:
-            if no_cpuset_cause:
-                self.log("not using cpuset because: %s" % (", ".join(no_cpuset_cause)))
-            if shell_start_mode == "posix_compliant" and shell_path:
-                df_lines = ["#!%s" % ("/bin/sh"),
-                            "echo 'wrapper_script, no cpu_set'",
-                            "export BASH_ENV=$HOME/.bashrc",
-                            ". %s" % (var_file),
-                            "exec %s %s $*" % (shell_path, src_file),
-                            ""]
-            else:
-                df_lines = ["#!%s" % ("/bin/sh"),
-                            "echo 'wrapper_script, no cpu_set'",
-                            "export BASH_ENV=$HOME/.bashrc",
-                            ". %s" % (var_file),
-                            "exec %s $*" % (src_file),
-                            ""]
-        file(dst_file, "w").write("\n".join(df_lines))
-        file(var_file, "w").write("#!/bin/bash\n")
-        self.write_file("wrapper_script", df_lines)
-        os.chmod(dst_file, 0755)
-        os.chmod(var_file, 0755)
-        os.chown(var_file, self.__opt_dict["UID"], self.__opt_dict["GID"])
-    def _delete_wrapper_script(self):
-        env_keys = sorted(self.__env_int_dict.keys())
-        src_file = self.__env_dict["JOB_SCRIPT"]
-        dst_file = self._get_wrapper_script_name()
-        if not dst_file.startswith("/"):
-            self.log("refuse to delete wrapper script %s" % (dst_file),
-                     logging_tools.LOG_LEVEL_ERROR)
-            return
-        self.log("Deleting wrapper-script (%s for %s)" % (dst_file,
-                                                          src_file))
-        if os.path.isfile(dst_file):
-            try:
-                os.unlink(dst_file)
-            except:
-                self.log("error deleting %s: %s" % (dst_file,
-                                                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                self.log("deleted %s" % (dst_file))
-        else:
-            self.log("no such file: %s" % (dst_file),
-                     logging_tools.LOG_LEVEL_ERROR)
-        if self.__glob_config.get("CPUSET_PE", "notset") == self.__opt_dict.get("PE", "unknown"):
-            cpuset_dir_name = "%s/cpuset" % (g_config["SGE_ROOT"])
-            cpuset_file_name = "%s/%s" % (cpuset_dir_name, int_env["queue"].split("@")[0])
-            if os.path.isfile(cpuset_file_name):
-                my_lockf = lock_cpuset(act_job)
-                act_cpu_set = cpu_set(act_job, cpuset_dir_name, cpuset_file_name)
-                act_cpu_set.read_cpuset_name()
-                act_cpu_set.free_cpus()
-                act_cpu_set.remove_cpuset()
-                act_cpu_set.write_occupation_to_file()
-                unlock_cpuset(act_job, my_lockf)
-            else:
-                act_job.log("Cannot find cpuset-file '%s', strange ..." % (cpuset_file_name), 1)
     # network related calls (highlevel)
     def _send_tag(self, tag_name, **args):
         s_time = time.time()
@@ -1544,62 +1229,7 @@ class job_thread(threading_tools.thread_obj):
                  logging_tools.LOG_LEVEL_ERROR)
         self.__pending_dict[s_id] = (False, (e_flag, e_cause))
     # calls to determine the actual runmode
-    def is_start_call(self):
-        return self.__opt_dict["CALLER_NAME_SHORT"] in ["prologue",
-                                                        "lamstart",
-                                                        "mvapich2start",
-                                                        "pvmstart",
-                                                        "pestart"]
-    def is_pe_start_call(self):
-        return self.__opt_dict["CALLER_NAME_SHORT"] in ["lamstart",
-                                                        "pestart",
-                                                        "pvmstart",
-                                                        "mvapich2start"]
-    def is_pe_stop_call(self):
-        return self.__opt_dict["CALLER_NAME_SHORT"] in ["lamstop",
-                                                        "pestop",
-                                                        "pvmstop",
-                                                        "mvapich2stop"]
-    def is_proepilogue_call(self):
-        return self.__opt_dict["CALLER_NAME_SHORT"] in ["prologue",
-                                                        "epilogue"]
-    def is_pe_call(self):
-        return self.__opt_dict["CALLER_NAME_SHORT"] in ["lamstart",
-                                                        "pestart",
-                                                        "pvmstart",
-                                                        "mvapich2start",
-                                                        "lamstop",
-                                                        "pestop",
-                                                        "pvmstop",
-                                                        "mvapich2stop"]
     # headers / footers
-    def _write_proepi_header(self):
-        sep_str = "-" * self.__glob_config["SEP_LEN"]
-        self._print(sep_str)
-        self._print("Starting %s for job %s, %s at %s" % (self.__opt_dict["CALLER_NAME_SHORT"],
-                                                          self.__opt_dict["FULL_JOB_ID"],
-                                                          self.get_owner_str(),
-                                                          time.ctime(time.time())))
-        self.log("writing %s-header for job %s, %s" % (self.__opt_dict["CALLER_NAME_SHORT"],
-                                                       self.__opt_dict["FULL_JOB_ID"],
-                                                       self.get_owner_str()))
-        self.log("Jobname is '%s' in queue '%s'" % (self.__opt_dict["JOB_NAME"],
-                                                    self.__opt_dict["QUEUE"]),
-                 do_print=True)
-    def _write_proepi_footer(self):
-        sep_str = "-" * self.__glob_config["SEP_LEN"]
-        self.log("writing %s-footer for job %s, return value is %d (%s)" % (self.__opt_dict["CALLER_NAME_SHORT"],
-                                                                            self.__opt_dict["FULL_JOB_ID"],
-                                                                            self.__return_value,
-                                                                            self.get_stat_str(self.__return_value)))
-        spent_time = logging_tools.get_diff_time_str(self.__end_time - self.__start_time)
-        self._print("%s finished for job %s, status %s, spent %s" % (self.__opt_dict["CALLER_NAME_SHORT"],
-                                                                     self.__opt_dict["FULL_JOB_ID"],
-                                                                     self.get_stat_str(self.__return_value),
-                                                                     spent_time))
-        self.log("%s took %s" % (self.__opt_dict["CALLER_NAME"],
-                                 spent_time))
-        self._print(sep_str)
     def _write_pe_header(self):
         sep_str = "-" * self.__glob_config["SEP_LEN"]
         self._print(sep_str)
@@ -1715,7 +1345,7 @@ class my_thread_pool(threading_tools.thread_pool):
                 v_val = file(v_src, "r").read().strip()
                 self.log("Setting environment-variable '%s' to %s" % (v_name, v_val))
             else:
-                self.log("Cannot assign environment-variable '%s', problems ahead ..." % (v_name),
+                self.log("Cannot assign environment-variable '%s', problems *ahead ..." % (v_name),
                          logging_tools.LOG_LEVEL_ERROR)
                 #sys.exit(1)
             self.__glob_config.add_config_dict({v_name : configfile.str_c_var(v_val, source=v_src)})
@@ -1829,30 +1459,205 @@ class my_thread_pool(threading_tools.thread_pool):
 ##        print "Error parsing arguments: %s" % (what)
 ##        self.__error = True
 
-class process_pool(threading_tools.process_pool):
-    def __init__(self):
-        self.global_config = global_config
-        self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        self.install_signal_handlers()
-        self.register_exception("int_error", self._sigint)
-        self.register_exception("term_error", self._sigint)
-        self._show_config()
-        #self["return_value"] = "a"
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            while self.__log_cache:
-                cur_lev, cur_what = self.__log_cache.pop(0)
-                self.__log_template.log(cur_lev, cur_what)
-            self.__log_template.log(lev, what)
+class job_object(object):
+    def __init__(self, p_pool):
+        self.p_pool = p_pool
+        self.__log_dir = time.strftime("%Y/%m/%d/%%s%%s") % (global_config["JOB_ID"],
+                                                             ".%s" % (os.environ["SGE_TASK_ID"]) if os.environ.has_key("SGE_TASK_ID") else "")
+        self.__log_name = "%s" % (self.__log_dir)
+        self.__log_template = logging_tools.get_logger(
+            "%s.%s/log" % (global_config["LOG_NAME"],
+                           self.__log_name.replace(".", "\.")),
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.p_pool.zmq_context)
+        self._init_exit_code()
+    def _init_exit_code(self):
+        self.p_pool["return_value"] = 0
+    def _set_exit_code(self, cause, exit_code):
+        self.p_pool["return_value"] = exit_code
+        self.log("setting exit_code to %d because of %s" % (exit_code,
+                                                            cause),
+                 logging_tools.LOG_LEVEL_ERROR)
+    def log(self, what, lev=logging_tools.LOG_LEVEL_OK, **kwargs):
+        self.__log_template.log(lev, what)
+        if kwargs.get("do_print", False):
+            self._print("%s%s" % ("[%s] " % (logging_tools.get_log_level_str(lev)) if lev != logging_tools.LOG_LEVEL_OK else "", what))
+        if lev != logging_tools.LOG_LEVEL_OK or kwargs.get("pool", False):
+            self.p_pool.log(what, lev)
+    def _print(self, what):
+        try:
+            print what
+        except:
+            self.log("cannot print '%s': %s" % (what,
+                                                process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+    # wrapper script tools
+    def _get_wrapper_script_name(self):
+        return  "%s/%s.new" % (os.path.dirname(self.__env_dict["JOB_SCRIPT"]),
+                               global_config["FULL_JOB_ID"])
+    def _get_var_script_name(self):
+        return  "%s/%s.var" % (os.path.dirname(self.__env_dict["JOB_SCRIPT"]),
+                               global_config["FULL_JOB_ID"])
+    def _create_wrapper_script(self):
+        # only sensible if sge_starter_method for queue is set
+        src_file = self.__env_dict["JOB_SCRIPT"]
+        dst_file = self._get_wrapper_script_name()
+        var_file = self._get_var_script_name()
+        if not dst_file.startswith("/"):
+            self.log("refuse to create wrapper script %s" % (dst_file),
+                     logging_tools.LOG_LEVEL_ERROR)
+            return
+        self.log("Creating wrapper-script (%s for %s)" % (dst_file,
+                                                          src_file))
+        shell_path, shell_start_mode = (self.__env_int_dict.get("shell_path", "/bin/bash"),
+                                        self.__env_int_dict.get("shell_start_mode", "posix_compliant"))
+        cluster_queue_name = global_config["JOB_QUEUE"]
+        self.log("shell_path is '%s', shell_start_mode is '%s'" % (shell_path,
+                                                                   shell_start_mode))
+        #cpuset_dir_name = "%s/cpuset" % (g_config["SGE_ROOT"])
+        do_cpuset = False
+        no_cpuset_cause = []
+        if global_config.get("CPUSET_PE", "notset") == global_config.get("PE", "unknown"):
+            # not fixed
+            num_cpus = int(int_env["pe_slots"])
+            act_job.log("requested pe is '%s', trying to allocate a cpuset with %s on queue %s" % (int_env["pe"],
+                                                                                                   logging_tools.get_plural("cpu", num_cpus),
+                                                                                                   cluster_queue_name),
+                        1)
+            if os.path.isdir(cpuset_dir_name):
+                cpuset_file_name = "%s/%s" % (cpuset_dir_name, cluster_queue_name)
+                if os.path.isfile(cpuset_file_name):
+                    do_cpuset = True
+                else:
+                    act_job.log("no cpuset-file '%s', doing normal startmethod" % (cpuset_file_name))
+                    no_cpuset_cause.append("no queue-local cpuset config %s" % (cpuset_file_name))
+            else:
+                act_job.log("no cpuset-dir %s" % (cpuset_dir_name))
+                no_cpuset_cause.append("no cpuset-director %s" % (cpuset_dir_name))
+            if do_cpuset:
+                lock_f = lock_cpuset(act_job)
+                act_cpu_set = cpu_set(act_job, cpuset_dir_name, cpuset_file_name)
+                # generate new cpuset_name
+                act_cpu_set.increase_cpuset_name()
+                act_job.log("found cpuset-file at %s, cpuset_name is '%s'" % (cpuset_file_name,
+                                                                              act_cpu_set.get_act_cpuset_name()), 1)
+                a_lists = act_cpu_set.find_allocation_schemes(num_cpus)
+                if a_lists:
+                    cpus = a_lists[0]
+                    act_cpu_set.allocate_cpus(cpus)
+                    act_cpu_set.generate_cpuset(cpus)
+                    cpu_set_name = act_cpu_set.get_act_cpuset_name()
+                else:
+                    do_cpuset = False
+                    no_cpuset_cause.append("cannot allocate %s" % (logging_tools.get_plural("cpu", num_cpus)))
+                act_cpu_set.write_occupation_to_file()
+                unlock_cpuset(act_job, lock_f)
+        if do_cpuset:
+            if shell_start_mode == "posix_compliant" and shell_path:
+                df_lines = ["#!%s" % ("/bin/sh"),
+                            "echo 'wrapper_script, with cpu_set'",
+                            "export BASH_ENV=$HOME/.bashrc",
+                            "export CPUS=\"%s\"" % (" ".join(["%d" % (x) for x in cpus])),
+                            "export NCPUS=%d" % (len(cpus)),
+                            ". %s" % (var_file),
+                            "exec cpuset -q %s -A %s %s $*" % (cpu_set_name, shell_path, src_file),
+                            ""]
+            else:
+                df_lines = ["#!%s" % ("/bin/sh"),
+                            "echo 'wrapper_script, with cpu_set'",
+                            "export BASH_ENV=$HOME/.bashrc",
+                            "export CPUS=\"%s\"" % (" ".join(["%d" % (x) for x in cpus])),
+                            "export NCPUS=%d" % (len(cpus)),
+                            ". %s" % (var_file),
+                            "exec cpuset -q -A %s $*" % (cpu_set_name, src_file),
+                            ""]
         else:
-            self.__log_cache.append((lev, what))
-    def _sigint(self, err_cause):
-        if self["exit_requested"]:
-            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
+            if no_cpuset_cause:
+                self.log("not using cpuset because: %s" % (", ".join(no_cpuset_cause)))
+            if shell_start_mode == "posix_compliant" and shell_path:
+                df_lines = ["#!%s" % ("/bin/sh"),
+                            "echo 'wrapper_script, no cpu_set'",
+                            "export BASH_ENV=$HOME/.bashrc",
+                            ". %s" % (var_file),
+                            "exec %s %s $*" % (shell_path, src_file),
+                            ""]
+            else:
+                df_lines = ["#!%s" % ("/bin/sh"),
+                            "echo 'wrapper_script, no cpu_set'",
+                            "export BASH_ENV=$HOME/.bashrc",
+                            ". %s" % (var_file),
+                            "exec %s $*" % (src_file),
+                            ""]
+        file(dst_file, "w").write("\n".join(df_lines))
+        file(var_file, "w").write("#!/bin/bash\n")
+        self.write_file("wrapper_script", df_lines)
+        os.chmod(dst_file, 0755)
+        os.chmod(var_file, 0755)
+        os.chown(var_file, global_config["UID"], global_config["GID"])
+    def _delete_wrapper_script(self):
+        env_keys = sorted(self.__env_int_dict.keys())
+        src_file = self.__env_dict["JOB_SCRIPT"]
+        dst_file = self._get_wrapper_script_name()
+        if not dst_file.startswith("/"):
+            self.log("refuse to delete wrapper script %s" % (dst_file),
+                     logging_tools.LOG_LEVEL_ERROR)
+            return
+        self.log("Deleting wrapper-script (%s for %s)" % (dst_file,
+                                                          src_file))
+        if os.path.isfile(dst_file):
+            try:
+                os.unlink(dst_file)
+            except:
+                self.log("error deleting %s: %s" % (dst_file,
+                                                    process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("deleted %s" % (dst_file))
         else:
-            self["exit_requested"] = True
+            self.log("no such file: %s" % (dst_file),
+                     logging_tools.LOG_LEVEL_ERROR)
+        if global_config.get("CPUSET_PE", "notset") == global_config.get("PE", "unknown"):
+            cpuset_dir_name = "%s/cpuset" % (global_config["SGE_ROOT"])
+            cpuset_file_name = "%s/%s" % (cpuset_dir_name, int_env["queue"].split("@")[0])
+            if os.path.isfile(cpuset_file_name):
+                my_lockf = lock_cpuset(act_job)
+                act_cpu_set = cpu_set(act_job, cpuset_dir_name, cpuset_file_name)
+                act_cpu_set.read_cpuset_name()
+                act_cpu_set.free_cpus()
+                act_cpu_set.remove_cpuset()
+                act_cpu_set.write_occupation_to_file()
+                unlock_cpuset(act_job, my_lockf)
+            else:
+                act_job.log("Cannot find cpuset-file '%s', strange ..." % (cpuset_file_name), 1)
+    def is_start_call(self):
+        return global_config["CALLER_NAME"] in ["prologue",
+                                                "lamstart",
+                                                "mvapich2start",
+                                                "pvmstart",
+                                                "pestart"]
+    def is_pe_start_call(self):
+        return global_config["CALLER_NAME"] in ["lamstart",
+                                                "pestart",
+                                                "pvmstart",
+                                                "mvapich2start"]
+    def is_pe_stop_call(self):
+        return global_config["CALLER_NAME"] in ["lamstop",
+                                                "pestop",
+                                                "pvmstop",
+                                                "mvapich2stop"]
+    def is_proepilogue_call(self):
+        return global_config["CALLER_NAME"] in ["prologue",
+                                                      "epilogue"]
+    def is_pe_call(self):
+        return global_config["CALLER_NAME"] in ["lamstart",
+                                                "pestart",
+                                                "pvmstart",
+                                                "mvapich2start",
+                                                "lamstop",
+                                                "pestop",
+                                                "pvmstop",
+                                                "mvapich2stop"]
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
@@ -1864,6 +1669,448 @@ class process_pool(threading_tools.process_pool):
         self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
             self.log("Config : %s" % (conf))
+    def write_file(self, name, content, **args):
+        ss_time = time.time()
+        logger = logging_tools.get_logger("%s.%s/%s" % (global_config["LOG_NAME"],
+                                                        self.__log_dir.replace(".", "\."),
+                                                        name),
+                                          global_config["LOG_DESTINATION"],
+                                          zmq=True,
+                                          context=self.p_pool.zmq_context)
+        if type(content) == type("") and content.startswith("/"):
+            # content is a filename
+            content = file(content, "r").read().split("\n")
+        if type(content) == type(""):
+            content = content.split("\n")
+        log_str = "content '%s', %s:" % (name,
+                                         logging_tools.get_plural("line", len(content)))
+        logger.log(logging_tools.LOG_LEVEL_OK, log_str)
+        if args.get("linenumbers", True):
+            for line_num, line in zip(xrange(len(content)), content):
+                log_str = "%3d %s" % (line_num + 1, line)
+                logger.log(logging_tools.LOG_LEVEL_OK, log_str)
+        else:
+            for line in content:
+                logger.log(logging_tools.LOG_LEVEL_OK, line)
+        se_time = time.time()
+        self.log("storing content to file %s (%s) in %s" % (name,
+                                                            logging_tools.get_plural("line", len(content)),
+                                                            logging_tools.get_diff_time_str(se_time - ss_time)))
+        logger.close()
+    def _copy_environments(self):
+        self.__env_dict = dict([(key, str(os.environ[key])) for key in os.environ.keys()])
+        if "SGE_JOB_SPOOL_DIR" in self.__env_dict:
+            self.__env_int_dict = dict([(key, value) for key, value in [line.split("=", 1) for line in file("%s/config" % (self.__env_dict["SGE_JOB_SPOOL_DIR"]), "r").read().strip().split("\n") if line.count("=")]])
+        else:
+            self.__env_int_dict = {}
+    def _parse_server_addresses(self):
+        for src_file, key, default in [("/etc/motherserver", "MOTHER_SERVER", "localhost"),
+                                       ("/etc/sge_server"  , "SGE_SERVER"   , "localhost")]:
+            try:
+                act_val = file(src_file, "r").read().split()[0]
+            except:
+                self.log("cannot read %s from %s: %s" % (key,
+                                                         src_file,
+                                                         process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+                act_val = default
+            global_config.add_config_entries([(key, configfile.str_c_var(act_val, source=src_file))])
+    def _set_localhost_stuff(self):
+        try:
+            host_ip = socket.gethostbyname(global_config["HOST_SHORT"])
+        except:
+            self.log("cannot resolve host_name '%s': %s" % (global_config["HOST_SHORT"],
+                                                            process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+            host_ip = "127.0.0.1"
+        global_config.add_config_entries([("HOST_IP", configfile.str_c_var(host_ip, source="env"))])
+    def _parse_job_script(self):
+        if os.environ.has_key("JOB_SCRIPT"):
+            script_file = os.environ["JOB_SCRIPT"]
+            try:
+                lines = [line.strip() for line in file(script_file, "r").read().split("\n")]
+            except:
+                self.log("Cannot read Scriptfile '%s' (%s)" % (script_file,
+                                                               process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                if global_config["CALLER_NAME"] == "prologue":
+                    s_list = logging_tools.new_form_list()
+                else:
+                    s_list = None
+                num_lines, num_sge, num_init = (len(lines), 0, 0)
+                init_dict = {}
+                for line, line_num in zip(lines, xrange(len(lines))):
+                    if s_list is not None:
+                        s_list.append([logging_tools.form_entry(line_num + 1, header="line"),
+                                       logging_tools.form_entry(line, header="content")])
+                    if line.startswith("#$ "):
+                        num_sge += 1
+                    elif line.startswith("#init "):
+                        # valid init-keys:
+                        # MONITOR=<type>
+                        # MONITOR_KEYS=<key_list;>
+                        # MONITOR_FULL_KEY_LIST=<true>
+                        # TRIGGER_ERROR (flag, triggers error)
+                        # EXTRA_WAIT=x (waits for x seconds)
+                        num_init += 1
+                        line_parts = [x.split("=", 1) for x in line[5:].strip().split(",")]
+                        self.log("found #init-line '%s'" % (line))
+                        if line_parts:
+                            for key, value in [x for x in line_parts if len(x) == 2]:
+                                key, value = (key.strip().upper(), value.strip().lower())
+                                if key and value:
+                                    init_dict[key] = value
+                                    self.log("recognised init option '%s' (value '%s')" % (key, value))
+                                    global_config.add_config_entries([(key, configfile.str_c_var(value, source="jobscript"))])
+                            for key in [x[0].strip().upper() for x in line_parts if len(x) == 1]:
+                                init_dict[key] = True
+                                self.log("recognised init option '%s' (value '%s')" % (key, True))
+                                global_config.add_config_entries([(key, configfile.bool_c_var(True, source="jobscript"))])
+                self.log("Scriptfile '%s' has %d lines (%s and %s)" % (script_file,
+                                                                       num_lines,
+                                                                       logging_tools.get_plural("SGE related line", num_sge),
+                                                                       logging_tools.get_plural("init.at related line", num_init)))
+                if s_list:
+                    self.write_file("jobscript", str(s_list).split("\n"), linenumbers=False)
+        else:
+            self.log("environ has no JOB_SCRIPT key", logging_tools.LOG_LEVEL_WARN)
+    def _parse_sge_env(self):
+        # pe name
+        if os.environ.has_key("PE") and os.environ.has_key("PE_HOSTFILE"):
+            global_config.add_config_entries([("PE", configfile.str_c_var(os.environ["PE"], source="env"))])
+        else:
+            global_config.add_config_entries([("PE", configfile.str_c_var("", source="env"))])
+        # TASK_ID
+        if os.environ.has_key("SGE_TASK_FIRST") and os.environ.has_key("SGE_TASK_LAST") and os.environ.has_key("SGE_TASK_ID") and os.environ.has_key("SGE_TASK_STEPSIZE"):
+            if os.environ["SGE_TASK_ID"] == "undefined":
+                task_id = 0
+            else:
+                try:
+                    task_id = int(os.environ["SGE_TASK_ID"])
+                except:
+                    self.log("error extracting SGE_TASK_ID: %s" % (process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                    task_id = 0
+                else:
+                    pass
+        else:
+            task_id = 0
+        full_job_id = "%s%s" % (global_config["JOB_ID"],
+                                ".%d" % (task_id) if task_id else "")
+        global_config.add_config_entries([("TASK_ID", configfile.int_c_var(task_id, source="env")),
+                                          ("FULL_JOB_ID", configfile.str_c_var(full_job_id, source="env"))])
+    def _check_user(self):
+        try:
+            pw_data = pwd.getpwnam(global_config["JOB_OWNER"])
+        except KeyError:
+            pw_data = None
+            uid, gid, group = (0, 0, "unknown")
+            self.log("Unknown user '%s', using ('%s', %d, %d) as (group, uid, gid)" % (
+                global_config["JOB_OWNER"],
+                group,
+                uid,
+                gid),
+                     logging_tools.LOG_LEVEL_ERROR)
+        else:
+            uid = pw_data[2]
+            gid = pw_data[3]
+            try:
+                grp_data = grp.getgrgid(gid)
+            except KeyError:
+                group = "unknown"
+                self.log("Unknown group-id %d for user '%s', using %s as group" % (gid,
+                                                                                   user,
+                                                                                   group),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                group = grp_data[0]
+        global_config.add_config_entries([
+            ("GROUP", configfile.str_c_var(group, source="env")),
+            ("UID"  , configfile.int_c_var(uid, source="env")),
+            ("GID"  , configfile.int_c_var(gid, source="env"))
+        ])
+    def get_stat_str(self, ret_value):
+        stat_dict = {0 : "OK",
+                     1 : "Error",
+                     2 : "Warning"}
+        return stat_dict.get(ret_value, "unknown ret_value %d" % (ret_value))
+    def _write_proepi_header(self):
+        sep_str = "-" * global_config["SEP_LEN"]
+        self._print(sep_str)
+        self._print("Starting %s for job %s, %s at %s" % (global_config["CALLER_NAME"],
+                                                          global_config["FULL_JOB_ID"],
+                                                          self.get_owner_str(),
+                                                          time.ctime(time.time())))
+        self.log("writing %s-header for job %s, %s" % (global_config["CALLER_NAME"],
+                                                       global_config["FULL_JOB_ID"],
+                                                       self.get_owner_str()))
+        self.log("Jobname is '%s' in queue '%s'" % (global_config["JOB_NAME"],
+                                                    global_config["JOB_QUEUE"]),
+                 do_print=True)
+    def _write_proepi_footer(self):
+        sep_str = "-" * global_config["SEP_LEN"]
+        self.log("writing %s-footer for job %s, return value is %d (%s)" % (global_config["CALLER_NAME"],
+                                                                            global_config["FULL_JOB_ID"],
+                                                                            self.p_pool["return_value"],
+                                                                            self.get_stat_str(self.p_pool["return_value"])))
+        spent_time = logging_tools.get_diff_time_str(self.__end_time - self.__start_time)
+        self._print("%s finished for job %s, status %s, spent %s" % (global_config["CALLER_NAME"],
+                                                                     global_config["FULL_JOB_ID"],
+                                                                     self.get_stat_str(self.p_pool["return_value"]),
+                                                                     spent_time))
+        self.log("%s took %s" % (global_config["CALLER_NAME"],
+                                 spent_time))
+        self._print(sep_str)
+    def get_owner_str(self):
+        return "user %s (%d), group %s (%d)" % (global_config["JOB_OWNER"],
+                                                global_config["UID"],
+                                                global_config["GROUP"],
+                                                global_config["GID"])
+    def _write_run_info(self):
+        self.log("running on host %s (IP %s)" % (global_config["HOST_SHORT"],
+                                                 global_config["HOST_IP"]),
+                 do_print=True)
+    def _log_environments(self):
+        out_list = logging_tools.new_form_list()
+        for key in sorted(self.__env_dict.keys()):
+            out_list.append([logging_tools.form_entry(key, header="Key"),
+                             logging_tools.form_entry(self.__env_dict[key], header="Value")])
+        self.write_file("env_%s" % (global_config["CALLER_NAME"]), str(out_list).split("\n"))
+        out_list = logging_tools.new_form_list()
+        for key in sorted(self.__env_int_dict.keys()):
+            out_list.append([logging_tools.form_entry(key, header="Key"),
+                             logging_tools.form_entry(self.__env_int_dict[key], header="Value")])
+        self.write_file("env_int_%s" % (global_config["CALLER_NAME"]), str(out_list).split("\n"))
+    def _log_resources(self):
+        res_used = {}
+        jsd = os.environ.get("SGE_JOB_SPOOL_DIR", "")
+        if jsd:
+            usage_file = "%s/usage" % (jsd)
+            if os.path.isfile(usage_file):
+                try:
+                    ufl = dict([[part.strip() for part in line.strip().split("=", 1)] for line in file(usage_file, "r").read().split("\n") if line.count("=")])
+                except:
+                    self.log("error reading usage_file %s: %s" % (usage_file,
+                                                                  process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    try:
+                        if ufl.has_key("ru_wallclock"):
+                            res_used["time_wall"] = sec_to_str(int(ufl["ru_wallclock"]))
+                        if ufl.has_key("start_time") and ufl.has_key("end_time"):
+                            res_used["elapsed"] = sec_to_str(int(ufl["end_time"]) - int(ufl["start_time"]))
+                        if ufl.has_key("exit_status"):
+                            res_used["exit_status"] = str(ufl["exit_status"])
+                        if ufl.has_key("ru_utime"):
+                            res_used["time_user"] = sec_to_str(int(ufl["ru_utime"]))
+                        if ufl.has_key("ru_stime"):
+                            res_used["time_system"] = sec_to_str(int(ufl["ru_stime"]))
+    ##                     if ufl.has_key("ru_ixrss"):
+    ##                         res_used["shared memory size"] = str(ufl["ru_ixrss"])
+    ##                     if ufl.has_key("ru_isrss"):
+    ##                         res_used["memory size"] = str(ufl["ru_isrss"])
+                    except:
+                        pass
+            else:
+                self.log("no useage file in %s" % (jsd),
+                         logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("no SGE_JOB_SPOOL_DIR in os.environ defined",
+                     logging_tools.LOG_LEVEL_ERROR)
+        if res_used:
+            self._print("Resources used:")
+            log_res = []
+            out_list = logging_tools.new_form_list()
+            #f_str = "%%%ds : %%s%%s" % (max([len(x) for x in res_used.keys()]))
+            for key, value in [(key, res_used[key]) for key in sorted(res_used.keys())]:
+                ext_str = ""
+                if key == "exit_status":
+                    try:
+                        i_val = int(value)
+                    except:
+                        pass
+                    else:
+                        ext_str = {0   : "no failure",
+                                   1   : "error before job",
+                                   2   : "before writing config",
+                                   3   : "before writing pid",
+                                   4   : "before writing pid",
+                                   5   : "reading config file",
+                                   6   : "setting processor set",
+                                   7   : "before prolog",
+                                   8   : "in prolog",
+                                   9   : "before pestart",
+                                   10  : "in pestart",
+                                   11  : "before job",
+                                   12  : "before pestop",
+                                   13  : "in pestop",
+                                   14  : "before epilogue",
+                                   15  : "in epilog",
+                                   16  : "releasing processor set",
+                                   24  : "migrating",
+                                   25  : "rescheduling",
+                                   26  : "opening output file",
+                                   27  : "searching requested shell",
+                                   28  : "changing to working directory",
+                                   100 : "assumedly after job"}.get(i_val, "")
+                        if i_val == 99:
+                            self._set_exit_code("requeue requested", i_val)
+                        ext_str = ext_str and " (%s)" % (ext_str) or ""
+                out_list.append([logging_tools.form_entry(key, header="key"),
+                                 logging_tools.form_entry(value, header="value"),
+                                 logging_tools.form_entry(ext_str, header="info")])
+                log_res.append("%s:%s%s" % (key, value, ext_str))
+            self._print("\n".join(["  %s" % (line) for line in str(out_list).split("\n")]))
+            self.log("reported %d resources: %s" % (len(log_res), ", ".join(log_res)))
+        else:
+            self.log("No resources found", do_print=True)
+    def _log_limits(self):
+        # read limits
+        r_dict = {}
+        try:
+            import resource
+        except ImportError:
+            pass
+        available_resources = [key for key in dir(resource) if key.startswith("RLIMIT")]
+        for av_r in available_resources:
+            try:
+                r_dict[av_r] = resource.getrlimit(getattr(resource, av_r))
+            except ValueError:
+                r_dict[av_r] = "invalid resource"
+            except:
+                r_dict[av_r] = None
+    def _prologue(self):
+        self._create_wrapper_script()
+    def _epilogue(self):
+        self._delete_wrapper_script()
+    def loop_function(self):
+        self.__start_time = time.time()
+        self.log("log_name is %s/%s" % (global_config["LOG_NAME"], self.__log_name), pool=True)
+        # copy environment
+        self._copy_environments()
+        # populate glob_config
+        self._parse_server_addresses()
+        self._set_localhost_stuff()
+        # populate opt_dict
+        self._parse_sge_env()
+        self._check_user()
+        self._parse_job_script()
+        self._show_config()
+        # just for testing
+        #self.write_file("aha", "/etc/hosts")
+##        for i in xrange(10):
+##            time.sleep(1)
+##            yield True
+        if self.is_start_call():
+            self._log_environments()
+            self._log_limits()
+        if self.is_proepilogue_call():
+            self._write_proepi_header()
+        #elif self.is_pe_call():
+        #    self._write_pe_header()
+        if self.is_start_call():
+            self._write_run_info()
+        if "JOB_SCRIPT" in self.__env_dict:
+            self.log("starting inner loop")
+            if global_config["CALLER_NAME"] == "prologue":
+                self._prologue()
+            elif global_config["CALLER_NAME"] == "epilogue":
+                self._epilogue()
+            self.log("ending inner loop")
+        else:
+            self.log("no JOB_SCRIPT in env_dict, skipping inner loop", logging_tools.LOG_LEVEL_ERROR)
+        if global_config["CALLER_NAME"] == "epilogue":
+            self._log_resources()
+        self.__end_time = time.time()
+        if self.is_proepilogue_call():
+            self._write_proepi_footer()
+        #elif self.is_pe_call():
+        #    self._write_pe_footer()
+        self.log("took %s" % (logging_tools.get_diff_time_str(self.__end_time - self.__start_time)))
+        yield None
+##        print "ce"
+##        a = 0
+##        for i in xrange(5):
+##            print "*", i, a
+##            a += i
+##            yield a + 1
+##            #yield 
+        self.__log_template.close()
+        
+class process_pool(threading_tools.process_pool):
+    def __init__(self):
+        self.start_time = time.time()
+        self.global_config = global_config
+        self.__log_cache, self.__log_template = ([], None)
+        threading_tools.process_pool.__init__(self, "main", zmq=True,
+                                              blocking_loop=False)
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.install_signal_handlers()
+        self.register_exception("int_error", self._sigint)
+        self.register_exception("term_error", self._sigint)
+        self._set_sge_environment()
+        self._show_config()
+        self._job = job_object(p_pool=self)
+        self.loop_function = self._job.loop_function
+        #self["return_value"] = "a"
+        self.register_timer(self._force_exit, global_config["MAX_RUN_TIME"])
+    def log(self, what, lev=logging_tools.LOG_LEVEL_OK, **kwargs):
+        if self.__log_template:
+            while self.__log_cache:
+                cur_lev, cur_what = self.__log_cache.pop(0)
+                self.__log_template.log(cur_lev, cur_what)
+            self.__log_template.log(lev, what)
+        else:
+            self.__log_cache.append((lev, what))
+        if kwargs.get("do_print", False):
+            self._print("%s%s" % ("[%s]" % (logging_tools.get_log_level_str(lev)) if lev != logging_tools.LOG_LEVEL_OK else "",
+                                  what))
+    def _print(self, what):
+        try:
+            print what
+        except:
+            self.log("cannot print '%s': %s" % (what,
+                                                process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+    def _sigint(self, err_cause):
+        if self["exit_requested"]:
+            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
+        else:
+            self["exit_requested"] = True
+    def _force_exit(self):
+        self.log("forcing exit")
+        self["exit_requested"] = True
+    def _show_config(self):
+        try:
+            for log_line, log_level in global_config.get_log():
+                self.log("Config info : [%d] %s" % (log_level, log_line))
+        except:
+            self.log("error showing configfile log, old configfile ? (%s)" % (process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+        conf_info = global_config.get_config_info()
+        self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
+        for conf in conf_info:
+            self.log("Config : %s" % (conf))
+    def _set_sge_environment(self):
+        for v_name, v_src in [("SGE_ROOT", "/etc/sge_root"),
+                              ("SGE_CELL", "/etc/sge_cell")]:
+            if os.path.isfile(v_src):
+                v_val = file(v_src, "r").read().strip()
+                self.log("Setting environment-variable '%s' to %s" % (v_name, v_val))
+            else:
+                self.log("Cannot assign environment-variable '%s', problems ahead ..." % (v_name),
+                         logging_tools.LOG_LEVEL_ERROR)
+                #sys.exit(1)
+                global_config.add_config_entries([
+                    (v_name, configfile.str_c_var(v_val, source=v_src))])
+        if "SGE_ROOT" in global_config and "SGE_CELL" in global_config:
+            global_config.add_config_entries([
+                ("SGE_VERSION", configfile.str_c_var("6", source="intern"))])
+    def loop_end(self):
+        self.log("execution time was %s" % (logging_tools.get_diff_time_str(time.time() - self.start_time)))
+    def loop_post(self):
+        self.__log_template.close()
         
 #for key in sorted(global_config.keys()):
 #    print key, type(global_config[key]), global_config[key]
@@ -1886,7 +2133,17 @@ def zmq_main_code():
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME"            , configfile.str_c_var("proepilogue")),
+        ("LOG_NAME"             , configfile.str_c_var("proepilogue")),
+        ("MAX_RUN_TIME"         , configfile.int_c_var(60)),
+        ("SEP_LEN"              , configfile.int_c_var(80)),
+        ("HAS_MPI_INTERFACE"    , configfile.bool_c_var(True)),
+        ("MPI_POSTFIX"          , configfile.str_c_var("mp")),
+        ("BRUTAL_CLEAR_MACHINES", configfile.bool_c_var(False)),
+        ("SIMULTANEOUS_PINGS"   , configfile.int_c_var(128)),
+        ("PING_PACKETS"         , configfile.int_c_var(5)),
+        ("PING_TIMEOUT"         , configfile.float_c_var(5.0)),
+        ("MIN_KILL_UID"         , configfile.int_c_var(110)),
+        ("UMOUNT_CALL"          , configfile.bool_c_var(True))
     ])
     global_config.parse_file()
     options = global_config.handle_commandline(add_writeback_option=True,
@@ -1921,6 +2178,7 @@ def zmq_main_code():
         global_config.add_config_entries([
             ("HOST_SHORT"       , configfile.str_c_var(global_config["HOST_LONG"].split(".")[0])),
             ("CALLER_NAME"      , configfile.str_c_var(global_config.name())),
+            ("HOST_IP"          , configfile.str_c_var("unknown")),
         ])
         return process_pool().loop()
     else:
