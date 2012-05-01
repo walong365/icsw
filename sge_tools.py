@@ -1630,11 +1630,11 @@ class sge_info(object):
             self.__act_dicts[dict_name] = self.__update_call_dict[dict_name]()
         self._unlock()
         return self.__act_dicts[dict_name]
-    def update(self, **args):
+    def update(self, **kwargs):
         self._lock()
-        upd_dicts = args.get("update_list", self.__valid_dicts)
+        upd_dicts = kwargs.get("update_list", self.__valid_dicts)
         # determine which dicts to update
-        dicts_to_update = [dict_name for dict_name in upd_dicts if self._check_for_update(dict_name, args.get("force_update", False))]
+        dicts_to_update = [dict_name for dict_name in upd_dicts if self._check_for_update(dict_name, kwargs.get("force_update", False))]
         #print "to update: ", dicts_to_update
         server_update = [dict_name for dict_name in dicts_to_update if (self.__update_pref_dict[dict_name] + ["not set"])[0] == "server"]
         if server_update:
@@ -1656,8 +1656,16 @@ class sge_info(object):
             client.setsockopt(zmq.LINGER, 100)
             client.connect("tcp://%s:8009" % (srv_name))
             srv_com = server_command.srv_command(command="get_config")
+            my_poller = zmq.Poller()
+            my_poller.register(client, zmq.POLLIN)
             client.send_unicode(unicode(srv_com))
-            recv = client.recv_unicode()
+            timeout_secs = kwargs.get("timeout", 5)
+            poll_result = my_poller.poll(timeout=timeout_secs * 1000)
+            if poll_result:
+                recv = client.recv_unicode()
+            else:
+                print "timeout after %d seconds" % (timeout_secs)
+                recv = None
             client.close()
             zmq_context.term()
             try:
@@ -1681,7 +1689,7 @@ class sge_info(object):
             lock_file_name = "%s.LOCK" % (db_file_name)
             # update is needed
             s_time = time.time()
-            if os.path.isfile(db_file_name) and not args.get("no_file_cache", False):
+            if os.path.isfile(db_file_name) and not kwargs.get("no_file_cache", False):
                 cached = True
                 lf = file(lock_file_name, "w")
                 fcntl.flock(lf, fcntl.LOCK_SH)
@@ -1778,7 +1786,7 @@ class sge_info(object):
         return "/%s/bin/%s/%s" % (self.__sge_dict["SGE_ROOT"],
                                   self.__sge_dict["SGE_ARCH"],
                                   c_name)
-    def _execute_command(self, command, **args):
+    def _execute_command(self, command, **kwargs):
         # fancy, fancy
         os.environ["SGE_CELL"] = self.__sge_dict["SGE_CELL"]
         os.environ["SGE_SINGLE_LINE"] = "1"
@@ -1790,7 +1798,7 @@ class sge_info(object):
                                                            c_stat,
                                                            logging_tools.get_diff_time_str(e_time - s_time),
                                                            c_out))
-        if args.get("simple_split", False) and not c_stat:
+        if kwargs.get("simple_split", False) and not c_stat:
             c_out = [line.split(None, 1) for line in c_out.split("\n")]
         return c_stat, c_out
     def _check_queueconf_dict(self):
