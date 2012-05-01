@@ -64,14 +64,16 @@ class config_proxy(BaseProxy):
         return self._callmethod("keys")
     def __getitem__(self, key):
         return self._callmethod("__getitem__", (key,))
+    def get_source(self, key):
+        return self._callmethod("get_source", (key,))
     def get(self, key, default):
         return self._callmethod("get", (key, default))
     def __setitem__(self, key, value):
         return self._callmethod("__setitem__", (key, value))
     def __contains__(self, key):
         return self._callmethod("__contains__", (key,))
-    def parse_file(self, *args):
-        return self._callmethod("parse_file", (args))
+    def parse_file(self, *args, **kwargs):
+        return self._callmethod("parse_file", (args), kwargs)
     def write_file(self, *args):
         return self._callmethod("write_file", (args))
     def get_config_info(self):
@@ -543,7 +545,7 @@ class configuration(object):
             return options
 
 config_manager.register("config", configuration, config_proxy, exposed=["parse_file", "add_config_entries", "set_uid_gid",
-                                                                        "get_log", "handle_commandline", "keys", "get_type", "get",
+                                                                        "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
                                                                         "is_global", "database",
                                                                         "__getitem__", "__setitem__", "__contains__",
                                                                         "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])
