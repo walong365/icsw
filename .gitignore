@@ -1,0 +1,9 @@
+*.pyc
+*.pyo
+*.swp
+
+# distutils build directories and
+# helper files
+dist
+build
+MANIFEST
