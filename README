@@ -1,14 +1,14 @@
-A django app for interacting with jqGrids.
+A django app that contains helpers for logging, rendering, alfresco interaction, ...
 
 Running tests
 =============
 
-Test run against postgresql. A user "initjqgrid" with password "initjqgrid" must exist.
-A database named "initjqgrid" has to be created. 
+Test run against postgresql. A user "initcore" with password "initcore" must exist.
+A database named "initcore" has to be created. 
 
-$ createuser -U postgres initjqgrid -d -S -R -P
-$ createdb -U postgres -O initjqgrid initjqgrid
+$ createuser -U postgres initcore -d -S -R -P
+$ createdb -U postgres -O initcore initcore
 
 $ cd src/test_project
-$ ./manage.py test initjqgrid
+$ ./manage.py test initcore
 
