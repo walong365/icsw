@@ -1,6 +1,10 @@
+#!/usr/bin/python-init 
+
 from distutils.core import setup
 
-setup(name="initcore
+setup(name="initcore",
       version="1.0.0",
-      py_modules=["initcore"],
+      package_dir={"": "src"},
+      packages=["initcore", "initcore.management", "initcore.management.commands",
+          "initcore.templatetags"],
       )
