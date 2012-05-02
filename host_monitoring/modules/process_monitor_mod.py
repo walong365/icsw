@@ -567,58 +567,65 @@ class proclist_command(hm_classes.hm_command):
             ret_a.extend(str(form_list).split("\n"))
             return ret_state, "\n".join(ret_a)
 
-class ipckill_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "ipckill", **args)
-        self.help_str = "deletes shared-memory segments and message queues"
-        self.short_client_info = "MIN_UID[:MAX_UID]"
-        self.long_client_info = "MIN_UID the minium uid to be killed, MAX_UID the maximum uid to be killed (optional)"
-        self.log_level = 1
-    def server_call(self, cm):
-        if len(cm) != 1:
-            return "invalid number of operands (%d != 1)" % (len(cm))
-        else:
-            if cm[0].isdigit():
-                min_uid, max_uid = (int(cm[0]), 65536)
+class ipckill_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        self.server_arguments = True
+        self.server_parser.add_argument("--min-uid", dest="min_uid", type=int, default=0)
+        self.server_parser.add_argument("--max-uid", dest="max_uid", type=int, default=65535)
+    def __call__(self, srv_com, cur_ns):
+        sig_str = "remove all all shm/msg/sem objects for uid %d:%d" % (
+            cur_ns.min_uid,
+            cur_ns.max_uid,
+        )
+        self.log(sig_str)
+        srv_com["ipc_result"] = []
+        for ipc_dict in [{"file" : "shm", "key_name" : "shmid", "ipcrm_opt" : "m"},
+                         {"file" : "msg", "key_name" : "msqid", "ipcrm_opt" : "q"},
+                         {"file" : "sem", "key_name" : "semid", "ipcrm_opt" : "s"}]:
+            ipcv_file = "/proc/sysvipc/%s" % (ipc_dict["file"])
+            d_key = ipc_dict["file"]
+            cur_typenode = srv_com.builder("ipc_list", ipctype=ipc_dict["file"])
+            srv_com["ipc_result"].append(cur_typenode)
+            try:
+                ipcv_lines = open(ipcv_file, "r").readlines()
+            except:
+                cur_typenode.attrib["error"] = "error reading %s: %s" % (ipcv_file, process_tools.get_except_info())
+                self.log(cur_typenode.attrib["error"], logging_tools.LOG_LEVEL_ERROR)
             else:
-                min_uid, max_uid = tuple([int(x) for x in cm[0].split(":")])
-            stat_dict = {}
-            for ipc_dict in [{"file" : "shm", "key_name" : "shmid", "ipcrm_opt" : "m"},
-                             {"file" : "msg", "key_name" : "msqid", "ipcrm_opt" : "q"},
-                             {"file" : "sem", "key_name" : "semid", "ipcrm_opt" : "s"}]:
-                ipcv_file = "/proc/sysvipc/%s" % (ipc_dict["file"])
-                d_key = ipc_dict["file"]
-                stat_dict[d_key] = []
                 try:
-                    ipcv_lines = open(ipcv_file, "r").readlines()
+                    ipcv_header = [line.strip().split() for line in ipcv_lines[0:1]][0]
+                    ipcv_lines = [[int(part) for part in line.strip().split()] for line in ipcv_lines[1:]]
                 except:
-                    stat_dict[d_key].append("error reading %s" % (ipcv_file))
+                    cur_typenode.attrib["error"] = "error parsing %d ipcv_lines: %s" % (len(ipcv_lines),
+                                                                                        process_tools.get_except_info())
+                    self.log(cur_typenode.attrib["error"], logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    try:
-                        ipcv_header = [x.strip().split() for x in ipcv_lines[0:1]][0]
-                        ipcv_lines = [[int(y) for y in x.strip().split()] for x in ipcv_lines[1:]]
-                    except:
-                        stat_dict[d_key].append("error parsing %d ipcv_lines" % (len(ipcv_lines)))
-                    else:
-                        for ipcv_line in ipcv_lines:
-                            act_dict = dict([(key, value) for key, value in zip(ipcv_header, ipcv_line)])
-                            if act_dict["uid"] >= min_uid and act_dict["uid"] <= max_uid:
-                                key = act_dict[ipc_dict["key_name"]]
-                                com = "/usr/bin/ipcrm -%s %d" % (ipc_dict["ipcrm_opt"], key)
-                                stat, out = commands.getstatusoutput(com)
-                                #stat, out = (1, "???")
-                                if stat:
-                                    stat_dict[d_key].append("error while executing command %s (%d): %s" % (com, stat, out))
-                                else:
-                                    stat_dict[d_key].append("ok deleted %s (%s %d uid %d)" % (ipc_dict["file"], ipc_dict["key_name"], key, act_dict["uid"]))
-                        if not stat_dict[d_key]:
-                            stat_dict[d_key] = ["nothing to do"]
-            log_str = ";".join(["%s:%s" % (x, ",".join(stat_dict[x])) for x in stat_dict.keys()])
-            logging_tools.my_syslog(log_str)
-            return "ok %s" % (log_str)
-    def client_call(self, result, parsed_coms):
-        ret_state, ret_str = (limits.nag_STATE_OK, result)
-        return ret_state, ret_str
+                    for ipcv_line in ipcv_lines:
+                        act_dict = dict([(key, value) for key, value in zip(ipcv_header, ipcv_line)])
+                        rem_node = srv_com.builder("rem_result", key="%d" % (act_dict[ipc_dict["key_name"]]))
+                        if act_dict["uid"] >= cur_ns.min_uid and act_dict["uid"] <= cur_ns.max_uid:
+                            key = act_dict[ipc_dict["key_name"]]
+                            rem_com = "/usr/bin/ipcrmx -%s %d" % (ipc_dict["ipcrm_opt"], key)
+                            rem_stat, rem_out = commands.getstatusoutput(rem_com)
+                            #stat, out = (1, "???")
+                            if rem_stat:
+                                rem_node.attrib.update({
+                                    "error"  : "1",
+                                    "result" : "error while executing command %s (%d): %s" % (rem_com, rem_stat, rem_out)})
+                            else:
+                                rem_node.attrib.update({
+                                    "error"  : "0",
+                                    "result" : "ok deleted %s (%s %d uid %d)" % (ipc_dict["file"], ipc_dict["key_name"], key, act_dict["uid"])})
+                            cur_typenode.append(rem_node)
+                    if not len(cur_typenode):
+                        cur_typenode.attrib["info"] = "nothing to do"
+    def interpret(self, srv_com, cur_ns):
+        ok_list, error_list = (srv_com.xpath(None, ".//ns:rem_result[@error='0']"),
+                               srv_com.xpath(None, ".//ns:rem_result[@error='1']"))
+        return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "removed %s%s" % (
+            logging_tools.get_plural("entry", len(ok_list)),
+            ", error for %s" % (logging_tools.get_plural("entry", len(error_list))) if error_list else "")
         
 class signal_command(hm_classes.hm_command):
     info_str = "send signal to processes"
@@ -663,7 +670,6 @@ class signal_command(hm_classes.hm_command):
             ", ".join(include_list) or "<empty>"
         )
         self.log(sig_str)
-        done_list = []
         srv_com["signal_list"] = []
         pid_list = find_pids(process_tools.build_ps_tree(process_tools.get_proc_list()), priv_check)
         for struct in pid_list:
@@ -673,7 +679,6 @@ class signal_command(hm_classes.hm_command):
                 info_str, is_error = (process_tools.get_except_info(), True)
             else:
                 info_str, is_error = ("sent %d to %d" % (cur_ns.signal, struct["pid"]), False)
-            done_list.append((is_error, info_str, struct))
             self.log("%d: %s" % (struct["pid"], info_str), logging_tools.LOG_LEVEL_ERROR if is_error else logging_tools.LOG_LEVEL_OK)
             srv_com["signal_list"].append(srv_com.builder("signal", struct["name"],
                                                           error="1" if is_error else "0",
