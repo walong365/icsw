@@ -1,6 +1,6 @@
 from distutils.core import setup
 
-setup(name="initjqgrid",
+setup(name="initcore
       version="1.0.0",
-      py_modules=["initjqgrid"],
+      py_modules=["initcore"],
       )
