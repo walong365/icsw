@@ -1,0 +1,14 @@
+A django app for interacting with jqGrids.
+
+Running tests
+=============
+
+Test run against postgresql. A user "initjqgrid" with password "initjqgrid" must exist.
+A database named "initjqgrid" has to be created. 
+
+$ createuser -U postgres initjqgrid -d -S -R -P
+$ createdb -U postgres -O initjqgrid initjqgrid
+
+$ cd src/test_project
+$ ./manage.py test initjqgrid
+
