@@ -548,40 +548,36 @@ class create_file(hm_classes.hmb_command):
         else:
             return limits.nag_STATE_OK, result
 
-class check_dir(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "check_dir", **args)
-        self.help_str = "checks a directory and returns it stat"
-        self.short_client_info = "dir"
-        self.long_client_info = "dir checker"
-        self.short_client_opts = ""
-        self.long_client_opts = []
-    def server_call(self, cm):
-        if len(cm) < 1:
-            return "error need dirname"
-        dir_name = cm[0]
-        link_followed = False
-        while os.path.islink(dir_name):
-            link_followed = True
-            dir_name = os.readlink(dir_name)
-        if os.path.isdir(dir_name):
-            f_stat = os.stat(dir_name)
-            return "ok %s" % (hm_classes.sys_to_net({"dir"           : dir_name,
-                                                     "stat"          : f_stat,
-                                                     "link_followed" : link_followed,
-                                                     "local_time"    : time.time()}))
+class check_dir_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+    def __call__(self, srv_com, cur_ns):
+        if len(cur_ns.arguments) != 1:
+            srv_com["result"].attrib.update({
+                "reply" : "missing argument",
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
-            return "error dir %s not found%s" % (dir_name,
-                                                 " (link_followed)" if link_followed else "")
-    def client_call(self, result, parsed_coms):
-        if result.startswith("error"):
-            return limits.nag_STATE_CRITICAL, result
-        else:
-            f_dict = hm_classes.net_to_sys(result[3:])
-            ret_state = limits.nag_STATE_OK
-            dir_stat = f_dict["stat"]
-            return ret_state, "%s dir %s exists" % (limits.get_state_str(ret_state),
-                                                    f_dict["dir"])
+            dir_name = cur_ns.arguments[0]
+            link_followed = False
+            while os.path.islink(dir_name):
+                link_followed = True
+                dir_name = os.readlink(dir_name)
+            if os.path.isdir(dir_name):
+                f_stat = os.stat(dir_name)
+                srv_com["result"].append(srv_com.builder(
+                    "dir_stat",
+                    directory=dir_name,
+                    local_time="%d" % (time.time()),
+                    link_followed="1" if link_followed else "0",
+                ))
+                srv_com["result:dir_result:stat"] = dict([(key, getattr(stat,key)) for key in dir(stat) if key.startswith("ST")])
+            else:
+                srv_com["result"].attrib.update({
+                    "reply" : "directory %s not found" % (dir_name),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+    def interpret(self, srv_com, cur_ns):
+        f_stat = srv_com["result:dir_result"]
+        return limits.nag_STATE_OK, "dir %s exists" % (srv_com["result:dir_stat"].attrib["directory"])
 
 if __name__ == "__main__":
     print "This is a loadable module."
