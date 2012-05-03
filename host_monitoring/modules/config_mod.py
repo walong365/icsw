@@ -422,82 +422,60 @@ class resync_config_command(hm_classes.hmb_command):
         else:
             return limits.nag_STATE_OK, result
 
-class call_script_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "call_script", **args)
-        self.help_str = "calls the given script with the supplied arguments"
-        self.timeout = 30
-    def server_call(self, cm):
-        if cm:
-            s_name = cm.pop(0)
-            if os.path.isfile(s_name):
-                self.log("Starting skript %s with %s: %s" % (s_name,
-                                                             logging_tools.get_plural("argument", len(cm)),
-                                                             " ".join(cm)))
-                stat, ipl = commands.getstatusoutput("%s %s" % (s_name, " ".join(cm)))
-                log_lines = ipl.split("\n")
-                self.log(" - gave stat %d (%s):" % (stat,
-                                                            logging_tools.get_plural("log line", len(log_lines))))
-                for line in [x.rstrip() for x in log_lines]:
+class call_script_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True, server_arguments=True)
+        self.server_parser.add_argument("--at-time", dest="time", type=int, default=0)
+        self.server_parser.add_argument("--use-at", dest="use_at", default=False, action="store_true")
+    def __call__(self, srv_com, cur_ns):
+        if not "arguments:arg0" in srv_com:
+            srv_com["result"].attrib.update({
+                "reply" : "missing argument",
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+        else:
+            script_name = srv_com["arguments:arg0"].text
+            args = []
+            while "arguments:arg%d" % (len(args) + 1) in srv_com:
+                args.append(srv_com["arguments:arg%d" % (len(args) + 1)].text)
+            if os.path.isfile(script_name):
+                if cur_ns.time:
+                    cur_ns.use_at = True
+                info_str = "Starting script %s with %s: %s" % (
+                    script_name,
+                    logging_tools.get_plural("argument", len(args)),
+                    " ".join(args))
+                if cur_ns.use_at:
+                    info_str = "%s after %s" % (
+                        info_str,
+                        logging_tools.get_plural("minute", cur_ns.time))
+                self.log(info_str)
+                if cur_ns.use_at:
+                    c_stat, log_lines = process_tools.submit_at_command(
+                        " ".join([script_name] + args),
+                        cur_ns.time)
+                    ipl = "\n".join(log_lines)
+                else:
+                    c_stat, ipl = commands.getstatusoutput(
+                        " ".join([script_name] + args))
+                    log_lines = ipl.split("\n")
+                self.log(" - gave stat %d (%s):" % (c_stat,
+                                                    logging_tools.get_plural("log line", len(log_lines))))
+                for line in map(lambda s_line: s_line.strip(), log_lines):
                     self.log("   - %s" % (line))
-                if stat:
-                    return "error problems while executing script %s" % (s_name)
+                if c_stat:
+                    srv_com["result"].attrib.update({
+                        "reply" : "problem while executing %s: %s" % (script_name, ipl),
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
                 else:
-                    return "ok executed script %s (gave %s)" % (s_name,
-                                                                logging_tools.get_plural("log line", len(log_lines)))
+                    srv_com["result"].attrib.update({
+                        "reply" : "script %s gave: %s" % (script_name, ipl),
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
             else:
-                return "error skript %s not found" % (s_name)
-        else:
-            return "error need skriptname"
-    def client_call(self, result, parsed_coms):
-        if result.startswith("error"):
-            return limits.nag_STATE_CRITICAL, result
-        else:
-            return limits.nag_STATE_OK, result
-
-class call_at_script_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "call_at_script", **args)
-        self.help_str = "calls the given script via the at-command at the given time with the supplied arguments"
-        self.timeout = 30
-    def server_call(self, cm):
-        if cm:
-            s_name = cm.pop(0)
-            if os.path.isfile(s_name):
-                if cm:
-                    diff_time = cm.pop(0)
-                    try:
-                        diff_time_i = int(diff_time)
-                    except:
-                        return "error parsing time '%s'" % (diff_time)
-                    else:
-                        pass
-                else:
-                    diff_time_i = 0
-                self.log("Starting skript %s after %s with %s: %s" % (s_name,
-                                                                      logging_tools.get_plural("minute", diff_time_i),
-                                                                      logging_tools.get_plural("argument", len(cm)),
-                                                                      " ".join(cm)))
-                stat, log_lines = process_tools.submit_at_command("%s %s" % (s_name, " ".join(cm)), diff_time_i)
-                self.log(" - gave stat %d (%s):" % (stat,
-                                                        logging_tools.get_plural("log line", len(log_lines))))
-                for line in [x.rstrip() for x in log_lines]:
-                    self.log("   - %s" % (line))
-                if stat:
-                    return "error problems while executing script %s" % (s_name)
-                else:
-                    return "ok submitted script %s (%s, gave %s)" % (s_name,
-                                                                     logging_tools.get_plural("minute", diff_time_i),
-                                                                     logging_tools.get_plural("log line", len(log_lines)))
-            else:
-                return "error skript %s not found" % (s_name)
-        else:
-            return "error need skriptname"
-    def client_call(self, result, parsed_coms):
-        if result.startswith("error"):
-            return limits.nag_STATE_CRITICAL, result
-        else:
-            return limits.nag_STATE_OK, result
+                srv_com["result"].attrib.update({
+                    "reply" : "script  %s not found" % (script_name),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+    def interpret(self, srv_com, cur_ns):
+        return limits.nag_STATE_OK, srv_com["result"].attrib["reply"]
 
 class create_file(hm_classes.hmb_command):
     def __init__(self, **args):
