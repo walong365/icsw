@@ -1,0 +1,11 @@
+1.0.1
+-----
+
+* inspectdb_schema now understands date annotations
+  with ISO date strings
+
+1.0.0
+-----
+
+* Initial release
+
