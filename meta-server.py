@@ -45,7 +45,7 @@ class main_thread(threading_tools.process_pool):
     def __init__(self, glob_config):
         self.__glob_config = glob_config
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=glob_config["ZMQ_DEBUG"])
         self.renice()
         if not self.__glob_config["DEBUG"]:
             process_tools.set_handles({"out" : (1, "meta-server.out"),
@@ -93,6 +93,7 @@ class main_thread(threading_tools.process_pool):
             raise
         else:
             self.register_poller(client, zmq.POLLIN, self._recv_command)
+        self.network_socket = client
     def _recv_command(self, zmq_sock):
         src_id = zmq_sock.recv()
         more = zmq_sock.getsockopt(zmq.RCVMORE)
@@ -298,23 +299,28 @@ class main_thread(threading_tools.process_pool):
                 self.log("removed %s: %s" % (logging_tools.get_plural("block", len(del_list)), ", ".join(del_list)))
                 for d_p in del_list:
                     del self.__check_dict[d_p]
+    def loop_post(self):
+        self.network_socket.close()
+        self.__log_template.close()
 
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
-    glob_config = configfile.configuration("meta-server", [("MAILSERVER"          , configfile.str_c_var("localhost", info="Mail Server")),
-                                                           ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-                                                           ("COM_PORT"            , configfile.int_c_var(8012, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
-                                                           ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log")),
-                                                           ("LOG_NAME"            , configfile.str_c_var("meta-server")),
-                                                           ("MAIN_DIR"            , configfile.str_c_var("/var/lib/meta-server")),
-                                                           ("FROM_NAME"           , configfile.str_c_var("meta-server")),
-                                                           ("FROM_ADDR"           , configfile.str_c_var(socket.getfqdn())),
-                                                           ("TO_ADDR"             , configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-emails to [%(default)s]", short_options="t")),
-                                                           ("FAILED_CHECK_TIME"   , configfile.int_c_var(120, info="time in seconds to wait befor we do something")),
-                                                           ("MIN_CHECK_TIME"      , configfile.int_c_var(6, info="minimum time between two checks")),
-                                                           ("KILL_RUNNING"        , configfile.bool_c_var(True)),
-                                                           ("SERVER_FULL_NAME"    , configfile.str_c_var(long_host_name)),
-                                                           ("PID_NAME"            , configfile.str_c_var("meta-server"))])
+    glob_config = configfile.configuration("meta-server", [
+        ("MAILSERVER"          , configfile.str_c_var("localhost", info="Mail Server")),
+        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+        ("COM_PORT"            , configfile.int_c_var(8012, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
+        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log")),
+        ("LOG_NAME"            , configfile.str_c_var("meta-server")),
+        ("MAIN_DIR"            , configfile.str_c_var("/var/lib/meta-server")),
+        ("FROM_NAME"           , configfile.str_c_var("meta-server")),
+        ("FROM_ADDR"           , configfile.str_c_var(socket.getfqdn())),
+        ("TO_ADDR"             , configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-emails to [%(default)s]", short_options="t")),
+        ("FAILED_CHECK_TIME"   , configfile.int_c_var(120, info="time in seconds to wait befor we do something")),
+        ("MIN_CHECK_TIME"      , configfile.int_c_var(6, info="minimum time between two checks")),
+        ("KILL_RUNNING"        , configfile.bool_c_var(True)),
+        ("SERVER_FULL_NAME"    , configfile.str_c_var(long_host_name)),
+        ("PID_NAME"            , configfile.str_c_var("meta-server"))])
     glob_config.parse_file()
     options = glob_config.handle_commandline(description="meta-server, version is %s" % (VERSION_STRING))
     glob_config.write_file()
