@@ -56,6 +56,7 @@ except ImportError:
     VERSION_STRING = "?.?"
 
 MAX_USED_MEM = 150
+TIME_FORMAT = "%.3f"
 
 CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
 MAPPING_FILE_IDS = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
@@ -1364,7 +1365,7 @@ class server_process(threading_tools.process_pool):
             srv_com["result"].attrib.update({
                 "state"      : "%d" % (server_command.SRV_REPLY_STATE_OK),
                 "reply"      : "ok",
-                "start_time" : "%.3f" % (time.time())})
+                "start_time" : TIME_FORMAT % (time.time())})
             if cur_com in self.commands:
                 delayed = self._handle_module_command(srv_com, rest_str)
             else:
@@ -1405,6 +1406,7 @@ class server_process(threading_tools.process_pool):
                      logging_tools.LOG_LEVEL_ERROR)
     def _send_return(self, zmq_sock, src_id, srv_com):
         c_time = time.time()
+        srv_com["result"].attrib["end_time"] = TIME_FORMAT % c_time
         info_str = "got command '%s' from '%s', took %s" % (
             srv_com["command"].text,
             srv_com["source"].attrib["host"],
