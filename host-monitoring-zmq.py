@@ -678,6 +678,7 @@ class twisted_process(threading_tools.process_obj):
                                                          zmq=True,
                                                          context=self.zmq_context)
         log.startLoggingWithObserver(my_observer, setStdout=False)
+        self.twisted_observer = my_observer
         self.tcp_factory = tcp_factory(self)
         self.register_func("connection", self._connection)
         # clear flag for extra twisted thread
@@ -714,6 +715,9 @@ class twisted_process(threading_tools.process_obj):
         self.send_to_socket(self.__relayer_socket, ["twisted_result", src_id, srv_com, data])
     def send_ping_result(self, *args):
         self.send_to_socket(self.__relayer_socket, ["twisted_ping_result"] + list(args))
+    def loop_post(self):
+        self.twisted_observer.close()
+        self.__log_template.close()
 
 class my_cached_file(process_tools.cached_file):
     def __init__(self, name, **kwargs):
@@ -737,7 +741,7 @@ class relay_process(threading_tools.process_pool):
         self.__verbose = global_config["VERBOSE"]
         self.__autosense = global_config["AUTOSENSE"]
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.renice(global_config["NICE_LEVEL"])
         #pending_connection.init(self)
         self.__global_timeout = global_config["TIMEOUT"]
@@ -1199,7 +1203,11 @@ class server_process(threading_tools.process_pool):
         # copy to access from modules
         self.global_config = global_config
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.process_pool.__init__(self,
+                                              "main",
+                                              zmq=True,
+                                              zmq_contexts=1,
+                                              zmq_debug=global_config["ZMQ_DEBUG"])
         self.renice(global_config["NICE_LEVEL"])
         if not global_config["DEBUG"]:
             process_tools.set_handles({"out" : (1, "host-monitoring.out"),
@@ -1209,6 +1217,7 @@ class server_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
         self._init_msi_block()
+        self._change_socket_settings()
         self._init_network_sockets()
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
@@ -1229,6 +1238,36 @@ class server_process(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+    def _change_socket_settings(self):
+        # hm, really needed ?
+        for sys_name, sys_value in [
+            ("net.core.rmem_default", 524288),
+            ("net.core.rmem_max", 5242880),
+            ("net.core.wmem_default", 524288),
+            ("net.core.wmem_max", 5242880)]:
+            f_path = "/proc/sys/%s" % (sys_name.replace(".", "/"))
+            if os.path.isfile(f_path):
+                cur_value = int(open(f_path, "r").read().strip())
+                if cur_value < sys_value:
+                    try:
+                        file(f_path, "w").write("%d" % (sys_value))
+                    except:
+                        self.log("cannot change of %s from %d to %d: %s" % (
+                            f_path,
+                            cur_value,
+                            sys_value,
+                            process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        self.log("changed %s from %d to %d" % (
+                            f_path,
+                            cur_value,
+                            sys_value))
+                else:
+                    self.log("%s is now %d (needed: %d), OK" % (
+                        f_path,
+                        cur_value,
+                        sys_value))
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
@@ -1253,6 +1292,7 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.add_actual_pid(src_pid, mult=3)
             self.__msi_block.save_block()
     def _init_network_sockets(self):
+        self.socket_list = []
         zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
         if not os.path.isfile(zmq_id_name):
             my_0mq_id = uuid_tools.get_uuid().get_urn()
@@ -1310,10 +1350,13 @@ class server_process(threading_tools.process_pool):
                          logging_tools.LOG_LEVEL_CRITICAL)
                 if not is_virtual:
                     raise
+                client.close()
             else:
                 self.register_poller(client, zmq.POLLIN, self._recv_command)
-        sock_list = [("ipc", "vector"  , zmq.PULL  , 512 )]
-        for sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
+                self.socket_list.append(client)
+        sock_list = [("ipc", "vector" , zmq.PULL, 512, None),
+                     ("ipc", "command", zmq.REP , 512, self._recv_ext_command)]
+        for sock_proto, short_sock_name, sock_type, hwm_size, dst_func in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
             file_name = sock_name[5:]
             self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
@@ -1344,14 +1387,23 @@ class server_process(threading_tools.process_pool):
                 os.chmod(file_name, 0777)
                 cur_socket.setsockopt(zmq.LINGER, 0)
                 cur_socket.setsockopt(zmq.HWM, hwm_size)
+                if dst_func:
+                    self.register_poller(cur_socket, zmq.POLLIN, dst_func)
     def register_vector_receiver(self, t_func):
         self.register_poller(self.vector_socket, zmq.POLLIN, t_func)
+    def _recv_ext_command(self, zmq_sock):
+        data = [zmq_sock.recv()]
+        while zmq_sock.getsockopt(zmq.RCVMORE):
+            data.append(zmq_sock.recv())
+        print "ext_command", data
+        zmq_sock.send_unicode("test")
     def _recv_command(self, zmq_sock):
-        src_id = zmq_sock.recv()
-        more = zmq_sock.getsockopt(zmq.RCVMORE)
-        if more:
-            data = zmq_sock.recv()
-            more = zmq_sock.getsockopt(zmq.RCVMORE)
+        data = [zmq_sock.recv()]
+        while zmq_sock.getsockopt(zmq.RCVMORE):
+            data.append(zmq_sock.recv())
+        if len(data) == 2:
+            src_id = data.pop(0)
+            data = data[0]
             srv_com = server_command.srv_command(source=data)
             rest_el = srv_com.xpath(None, ".//ns:arguments/ns:rest")
             if rest_el:
@@ -1402,7 +1454,7 @@ class server_process(threading_tools.process_pool):
             if not delayed:
                 self._send_return(zmq_sock, src_id, srv_com)
         else:
-            self.log("cannot receive more data, already got '%s'" % (src_id),
+            self.log("cannot receive more data, already got '%s'" % (", ".join(data)),
                      logging_tools.LOG_LEVEL_ERROR)
     def _send_return(self, zmq_sock, src_id, srv_com):
         c_time = time.time()
@@ -1508,6 +1560,12 @@ class server_process(threading_tools.process_pool):
             if not _init_ok:
                 break
         return _init_ok
+    def loop_post(self):
+        for cur_sock in self.socket_list:
+            cur_sock.close()
+        self.vector_socket.close()
+        self.command_socket.close()
+        self.__log_template.close()
 
 def show_command_info():
     from host_monitoring import modules
@@ -1529,6 +1587,7 @@ def main():
     global_config.add_config_entries([
         #("MAILSERVER"          , configfile.str_c_var("localhost", info="Mail Server")),
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("KILL_RUNNING"        , configfile.bool_c_var(True)),
