@@ -290,6 +290,9 @@ class host_connection(object):
         cur_time = time.time()
         id_discovery.check_timeout(cur_time)
         [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict.itervalues()]
+    @staticmethod
+    def close():
+        host_connection.zmq_socket.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         host_connection.relayer_process.log("[hc] %s" % (what), log_level)
     def check_timeout(self, cur_time):
@@ -1164,11 +1167,14 @@ class relay_process(threading_tools.process_pool):
         if self.client_socket is not None:
             self.unregister_poller(self.client_socket, zmq.POLLIN)
             self.client_socket.close()
+        host_connection.close()
     def loop_end(self):
         self._close_ipc_sockets()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+    def loop_post(self):
+        self.__log_template.close()
     def _init_commands(self):
         self.log("init commands")
         self.module_list = self.modules.module_list
