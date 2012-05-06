@@ -1446,6 +1446,9 @@ class client(object):
         log_com("init client struct (%s, %s)" % (client.dsc_id,
                                                  client.router_id))
     @staticmethod
+    def close():
+        client.socket.close()
+    @staticmethod
     def get_client(key):
         return client.c_dict[key]
     @staticmethod
@@ -1463,6 +1466,8 @@ class client(object):
             if kwargs.get("connect", True):
                 client.socket.connect(t_addr)
                 c_struct.connected = True
+        # some time to let thins settle, receive
+        time.sleep(0.001)
     def send(self, srv_com):
         client.socket.send_unicode(self.zmq_id, zmq.SNDMORE)
         client.socket.send_unicode(unicode(srv_com))
@@ -1503,7 +1508,7 @@ class client(object):
                         t_struct.log("timeout triggered, resending", logging_tools.LOG_LEVEL_WARN)
                         t_struct.send(srv_com)
                     else:
-                        t_struct.result = Non
+                        t_struct.result = None
                         t_struct.log("timeout triggered", logging_tools.LOG_LEVEL_ERROR)
                         pending -= 1
         return dict([(key, client.target_dict[key].result) for key in send_list])
@@ -2093,12 +2098,18 @@ class job_object(object):
     def _prologue(self):
         client.setup(self.log, self.p_pool.zmq_context)
         self._create_wrapper_script()
+        #conn_str = process_tools.get_zmq_ipc_name("command", s_name="collserver")
+        #vector_socket = self.p_pool.zmq_context.socket(zmq.REQ)
+        #vector_socket.connect(conn_str)
+        #vector_socket.send_unicode(unicode(server_command.srv_command(command="load")))
+        #print vector_socket.recv_unicode()
         client("127.0.0.1", 2001)
         client("192.168.44.25", 2001)
         # discovery part
         client.discover_0mq()
         # send command
         print client.send_srv_command(server_command.srv_command(command="load"), timeout=0.1, resend=5)
+        client.close()
         yield False
     def _epilogue(self):
         self._delete_wrapper_script()
@@ -2160,6 +2171,7 @@ class job_object(object):
 ##            a += i
 ##            yield a + 1
 ##            #yield 
+    def close(self):
         self.__log_template.close()
         
 class process_pool(threading_tools.process_pool):
@@ -2260,6 +2272,7 @@ class process_pool(threading_tools.process_pool):
     def loop_end(self):
         self.log("execution time was %s" % (logging_tools.get_diff_time_str(time.time() - self.start_time)))
     def loop_post(self):
+        self._job.close()
         self.__log_template.close()
         
 #for key in sorted(global_config.keys()):
