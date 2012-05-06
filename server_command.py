@@ -85,9 +85,11 @@ class srv_command(object):
             self.__tree = self.__builder.ics_batch(
                 self.__builder.source(host=os.uname()[1],
                                       pid="%d" % (os.getpid())),
-                self.__builder.command(kwargs.get("command", "not set")),
-                self.__builder.identity(kwargs.get("identity", "not set")),
-                version="%d" % (kwargs.get("version", 1)))
+                self.__builder.command(kwargs.pop("command", "not set")),
+                self.__builder.identity(kwargs.pop("identity", "not set")),
+                version="%d" % (kwargs.pop("version", 1)))
+            for key, value in kwargs.iteritems():
+                self[key] = value
     def xpath(self, start_el=None, *args, **kwargs):
         if "namespace" not in kwargs:
             kwargs["namespaces"] = {"ns" : XML_NS}
@@ -294,8 +296,10 @@ class srv_command(object):
         self.__tree.xpath(".//ns:source", namespaces={"ns" : XML_NS})[0].attrib.update({
             "host" : os.uname()[1],
             "pid" : "%d" % (os.getpid())})
-    def __unicode__(self):
+    def pretty_print(self):
         return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)
+    def __unicode__(self):
+        return etree.tostring(self.__tree, encoding=unicode)
     def __del__(self):
         srv_command.srvc_open -= 1
         

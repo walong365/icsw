@@ -1036,12 +1036,18 @@ class process_pool(object):
         for mask in self.poller_handler[zmq_socket].iterkeys():
             cur_mask |= mask
         self.poller.register(zmq_socket, cur_mask)
-    def unregister_poller(self, zmq_socket, sock_type):
+    def unregister_poller(self, zmq_socket, sock_type, **kwargs):
         del self.poller_handler[zmq_socket][sock_type]
+        self.poller.unregister(zmq_socket)
         if not self.poller_handler[zmq_socket]:
             del self.poller_handler[zmq_socket]
-        self.poller.unregister(zmq_socket)
-        zmq_socket.close()
+            if kwargs.get("close_socket", False):
+                zmq_socket.close()
+        else:
+            cur_mask = 0
+            for mask in self.poller_handler[zmq_socket].iterkeys():
+                cur_mask |= mask
+            self.poller.register(zmq_socket, cur_mask)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print "process_pool %s (%d) %s: %s" % (self.get_name(),
                                                os.getpid(),
@@ -1299,11 +1305,17 @@ class process_pool(object):
             raise
         for sock, c_type in _socks:
             if sock in self.poller_handler:
-                if c_type in self.poller_handler[sock]:
-                    self.poller_handler[sock][c_type](sock)
-                else:
-                    print "???0", sock, c_type
-                    time.sleep(1)
+                for r_type in set([zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]):
+                    if c_type & r_type:
+                        if r_type in self.poller_handler[sock]:
+                            try:
+                                self.poller_handler[sock][r_type](sock)
+                            except:
+                                self.log("error calling handler: %s" % (process_tools.get_except_info()),
+                                         logging_tools.LOG_LEVEL_CRITICAL)
+                        else:
+                            print "???0", sock, c_type
+                            time.sleep(1)
             else:
                 print "???1", sock, c_type
                 time.sleep(1)
