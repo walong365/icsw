@@ -38,6 +38,7 @@ import server_command
 import net_tools
 import threading_tools
 import argparse
+import zmq
     
 SEP_LEN = 70
 LOCAL_IP = "127.0.0.1"
@@ -1211,18 +1212,19 @@ class my_thread_pool(threading_tools.thread_pool):
     def __init__(self, opt_dict):
         self.__opt_dict = opt_dict
         # init gonfig
-        self.__glob_config = configfile.configuration("proepilogue", {"LOG_NAME"              : configfile.str_c_var("proepilogue"),
-                                                                      "LOG_DESTINATION"       : configfile.str_c_var("uds:/var/lib/logging-server/py_log"),
-                                                                      "MAX_RUN_TIME"          : configfile.int_c_var(60),
-                                                                      "SEP_LEN"               : configfile.int_c_var(80),
-                                                                      "HAS_MPI_INTERFACE"     : configfile.bool_c_var(True),
-                                                                      "MPI_POSTFIX"           : configfile.str_c_var("mp"),
-                                                                      "BRUTAL_CLEAR_MACHINES" : configfile.bool_c_var(False),
-                                                                      "SIMULTANEOUS_PINGS"    : configfile.int_c_var(128),
-                                                                      "PING_PACKETS"          : configfile.int_c_var(5),
-                                                                      "PING_TIMEOUT"          : configfile.float_c_var(5.0),
-                                                                      "MIN_KILL_UID"          : configfile.int_c_var(110),
-                                                                      "UMOUNT_CALL"           : configfile.bool_c_var(True)})
+        self.__glob_config = configfile.configuration("proepilogue", {
+            "LOG_NAME"              : configfile.str_c_var("proepilogue"),
+            "LOG_DESTINATION"       : configfile.str_c_var("uds:/var/lib/logging-server/py_log"),
+            "MAX_RUN_TIME"          : configfile.int_c_var(60),
+            "SEP_LEN"               : configfile.int_c_var(80),
+            "HAS_MPI_INTERFACE"     : configfile.bool_c_var(True),
+            "MPI_POSTFIX"           : configfile.str_c_var("mp"),
+            "BRUTAL_CLEAR_MACHINES" : configfile.bool_c_var(False),
+            "SIMULTANEOUS_PINGS"    : configfile.int_c_var(128),
+            "PING_PACKETS"          : configfile.int_c_var(5),
+            "PING_TIMEOUT"          : configfile.float_c_var(5.0),
+            "MIN_KILL_UID"          : configfile.int_c_var(110),
+            "UMOUNT_CALL"           : configfile.bool_c_var(True)})
         self._init_log_template()
         threading_tools.thread_pool.__init__(self, "proepilogue", blocking_loop=False)
         self.register_exception("int_error", self._int_error)
@@ -1238,70 +1240,70 @@ class my_thread_pool(threading_tools.thread_pool):
         self.__start_time = time.time()
         self._init_netserver()
         self.__job_thread = self.add_thread(job_thread(self.__glob_config, self.__opt_dict, self.__netserver), start_thread=True).get_thread_queue()
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, **args):
-        if type(what) == type(()):
-            what, log_level = what
-        if self.__logger:
-            self.__logger.log(log_level, what)
-        else:
-            self.__log_template.log(what, log_level)
-        if args.get("do_print", False):
-            self._print("%s%s" % ("[%s] " % (logging_tools.get_log_level_str(log_level)) if log_level != logging_tools.LOG_LEVEL_OK else "", what))
-    def _print(self, what):
-        try:
-            print what
-        except:
-            self.log("cannot print '%s': %s" % (what,
-                                                process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
-    
-    def set_exit_code(self, exit_code):
-        self.__exit_code = exit_code
-        self.log("exit_code set to %d" % (self.__exit_code))
-    def get_exit_code(self):
-        return self.__exit_code
-    exit_code = property(get_exit_code, set_exit_code)
-    def _set_exit_code(self, ex_code):
-        self.exit_code = ex_code
-    def _init_netserver(self):
-        self.__netserver = net_tools.network_server(timeout=4, log_hook=self.log)
-    def _read_config(self):
-        # reading the config
-        conf_dir = "%s/3rd_party" % (self.__glob_config["SGE_ROOT"])
-        if not os.path.isdir(conf_dir):
-            self.log("no config_dir %s found, using defaults" % (conf_dir),
-                     logging_tools.LOG_LEVEL_ERROR,
-                     do_print=True)
-        else:
-            conf_file = "%s/proepilogue.conf" % (conf_dir)
-            if not os.path.isfile(conf_file):
-                self.log("no config_file %s found, using defaults" % (conf_file),
-                         logging_tools.LOG_LEVEL_ERROR,
-                         do_print=True)
-                self._print("Copy the following lines to %s :" % (conf_file))
-                self._print("")
-                self._print("[global]")
-                for key in sorted(self.__glob_config.keys()):
-                    if not key.startswith("SGE_"):
-                        # don't write SGE_* stuff
-                        self._print("%s = %s" % (key, str(self.__glob_config[key])))
-                self._print("")
-            else:
-                self.__glob_config.add_config_dict({"CONFIG_FILE" : configfile.str_c_var(conf_file)})
-                self.log("reading config from %s" % (conf_file))
-                self.__glob_config.parse_file(conf_file)
-    def _set_sge_environment(self):
-        for v_name, v_src in [("SGE_ROOT", "/etc/sge_root"), ("SGE_CELL", "/etc/sge_cell")]:
-            if os.path.isfile(v_src):
-                v_val = file(v_src, "r").read().strip()
-                self.log("Setting environment-variable '%s' to %s" % (v_name, v_val))
-            else:
-                self.log("Cannot assign environment-variable '%s', problems *ahead ..." % (v_name),
-                         logging_tools.LOG_LEVEL_ERROR)
-                #sys.exit(1)
-            self.__glob_config.add_config_dict({v_name : configfile.str_c_var(v_val, source=v_src)})
-        if self.__glob_config.has_key("SGE_ROOT") and self.__glob_config.has_key("SGE_CELL"):
-            self.__glob_config.add_config_dict({"SGE_VERSION" : configfile.str_c_var("6", source="intern")})
+##    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, **args):
+##        if type(what) == type(()):
+##            what, log_level = what
+##        if self.__logger:
+##            self.__logger.log(log_level, what)
+##        else:
+##            self.__log_template.log(what, log_level)
+##        if args.get("do_print", False):
+##            self._print("%s%s" % ("[%s] " % (logging_tools.get_log_level_str(log_level)) if log_level != logging_tools.LOG_LEVEL_OK else "", what))
+##    def _print(self, what):
+##        try:
+##            print what
+##        except:
+##            self.log("cannot print '%s': %s" % (what,
+##                                                process_tools.get_except_info()),
+##                     logging_tools.LOG_LEVEL_ERROR)
+##    
+##    def set_exit_code(self, exit_code):
+##        self.__exit_code = exit_code
+##        self.log("exit_code set to %d" % (self.__exit_code))
+##    def get_exit_code(self):
+##        return self.__exit_code
+##    exit_code = property(get_exit_code, set_exit_code)
+##    def _set_exit_code(self, ex_code):
+##        self.exit_code = ex_code
+##    def _init_netserver(self):
+##        self.__netserver = net_tools.network_server(timeout=4, log_hook=self.log)
+##    def _read_config(self):
+##        # reading the config
+##        conf_dir = "%s/3rd_party" % (self.__glob_config["SGE_ROOT"])
+##        if not os.path.isdir(conf_dir):
+##            self.log("no config_dir %s found, using defaults" % (conf_dir),
+##                     logging_tools.LOG_LEVEL_ERROR,
+##                     do_print=True)
+##        else:
+##            conf_file = "%s/proepilogue.conf" % (conf_dir)
+##            if not os.path.isfile(conf_file):
+##                self.log("no config_file %s found, using defaults" % (conf_file),
+##                         logging_tools.LOG_LEVEL_ERROR,
+##                         do_print=True)
+##                self._print("Copy the following lines to %s :" % (conf_file))
+##                self._print("")
+##                self._print("[global]")
+##                for key in sorted(self.__glob_config.keys()):
+##                    if not key.startswith("SGE_"):
+##                        # don't write SGE_* stuff
+##                        self._print("%s = %s" % (key, str(self.__glob_config[key])))
+##                self._print("")
+##            else:
+##                self.__glob_config.add_config_dict({"CONFIG_FILE" : configfile.str_c_var(conf_file)})
+##                self.log("reading config from %s" % (conf_file))
+##                self.__glob_config.parse_file(conf_file)
+##    def _set_sge_environment(self):
+##        for v_name, v_src in [("SGE_ROOT", "/etc/sge_root"), ("SGE_CELL", "/etc/sge_cell")]:
+##            if os.path.isfile(v_src):
+##                v_val = file(v_src, "r").read().strip()
+##                self.log("Setting environment-variable '%s' to %s" % (v_name, v_val))
+##            else:
+##                self.log("Cannot assign environment-variable '%s', problems *ahead ..." % (v_name),
+##                         logging_tools.LOG_LEVEL_ERROR)
+##                #sys.exit(1)
+##            self.__glob_config.add_config_dict({v_name : configfile.str_c_var(v_val, source=v_src)})
+##        if self.__glob_config.has_key("SGE_ROOT") and self.__glob_config.has_key("SGE_CELL"):
+##            self.__glob_config.add_config_dict({"SGE_VERSION" : configfile.str_c_var("6", source="intern")})
     def _log_arguments(self):
         out_list = logging_tools.new_form_list()
         for key in sorted(self.__opt_dict.keys()):
@@ -1309,24 +1311,24 @@ class my_thread_pool(threading_tools.thread_pool):
                              logging_tools.form_entry(self.__opt_dict[key], header="value")])
         for line in str(out_list).split("\n"):
             self.log(line)
-    def _init_log_template(self):
-        logger, log_template = (None, None)
-        try:
-            logger = logging_tools.get_logger(self.__glob_config["LOG_NAME"],
-                                              self.__glob_config["LOG_DESINATION"],
-                                              init_logger=True)
-        except:
-            log_template = net_logging_tools.log_command(self.__glob_config["LOG_NAME"], thread_safe=True, thread="proepilogue")
-            log_template.set_destination(self.__glob_config["LOG_DESTINATION"])
-            log_template.set_command_and_send("open_log")
-            log_template.set_command("log")
-        self.__log_template = log_template
-        self.__logger = logger
-    def _close_logs(self):
-        if self.__log_template:
-            self.__log_template.set_command_and_send("close_log")
-        else:
-            self.__logger.log_command("CLOSE")
+##    def _init_log_template(self):
+##        logger, log_template = (None, None)
+##        try:
+##            logger = logging_tools.get_logger(self.__glob_config["LOG_NAME"],
+##                                              self.__glob_config["LOG_DESINATION"],
+##                                              init_logger=True)
+##        except:
+##            log_template = net_logging_tools.log_command(self.__glob_config["LOG_NAME"], thread_safe=True, thread="proepilogue")
+##            log_template.set_destination(self.__glob_config["LOG_DESTINATION"])
+##            log_template.set_command_and_send("open_log")
+##            log_template.set_command("log")
+##        self.__log_template = log_template
+##        self.__logger = logger
+##    def _close_logs(self):
+##        if self.__log_template:
+##            self.__log_template.set_command_and_send("close_log")
+##        else:
+##            self.__logger.log_command("CLOSE")
     def _int_error(self, err_cause):
         self.log("_int_error() called, cause %s" % (str(err_cause)), logging_tools.LOG_LEVEL_WARN)
         if self["exit_requested"]:
@@ -1338,10 +1340,10 @@ class my_thread_pool(threading_tools.thread_pool):
     def _done(self, ret_value):
         self.exit_code = ret_value
         self._int_error("done")
-    def _break_netserver(self):
-        if self.__netserver:
-            self.log("Sending break to netserver")
-            self.__netserver.break_call()
+##    def _break_netserver(self):
+##        if self.__netserver:
+##            self.log("Sending break to netserver")
+##            self.__netserver.break_call()
     def loop_function(self):
         act_time = time.time()
         run_time = abs(act_time - self.__start_time)
@@ -1358,13 +1360,13 @@ class my_thread_pool(threading_tools.thread_pool):
                 self.exit_code = 2
                 self._int_error("runtime")
         self.__netserver.step()
-    def thread_loop_post(self):
-        del self.__netserver
-        self.log("execution time: %s" % (logging_tools.get_diff_time_str(time.time() - self.__start_time)))
-        self._close_logs()
-        #process_tools.delete_pid("collserver/collserver")
-        #if self.__msi_block:
-        #    self.__msi_block.remove_meta_block()
+##    def thread_loop_post(self):
+##        del self.__netserver
+##        self.log("execution time: %s" % (logging_tools.get_diff_time_str(time.time() - self.__start_time)))
+##        self._close_logs()
+##        #process_tools.delete_pid("collserver/collserver")
+##        #if self.__msi_block:
+##        #    self.__msi_block.remove_meta_block()
     
 ##class my_opt_parser(optparse.OptionParser):
 ##    def __init__(self):
@@ -1410,6 +1412,102 @@ class my_thread_pool(threading_tools.thread_pool):
 ##        print "Error parsing arguments: %s" % (what)
 ##        self.__error = True
 
+class client(object):
+    """ client to connect to, needed for 0MQ-related stuff """
+    def __init__(self, addr, port):
+        self.addr = addr
+        self.port = port
+        self.target_str = "tcp://%s:%d" % (self.addr, self.port)
+        self.log("add to dict")
+        client.c_dict[self.target_str] = self
+        client.c_dict[self.addr] = self
+        client.target_dict[self.target_str] = self
+        self.zmq_id = None
+        self.send_list = []
+        self.recv_list = []
+        self.connected = False
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        client.log_com("[%s] %s" % (self.target_str, what), log_level)
+    @staticmethod
+    def setup(log_com, zmq_context):
+        client.c_dict = {}
+        client.target_dict = {}
+        client.log_com = log_com
+        client.zmq_context = zmq_context
+        client.dsc_id = "sgepe_discovery_%s:%d" % (process_tools.get_machine_name(),
+                                                   os.getpid())
+        client.router_id = "sgepe_router_%s:%d" % (process_tools.get_machine_name(),
+                                                   os.getpid())
+        client.socket = zmq_context.socket(zmq.ROUTER)
+        client.socket.setsockopt(zmq.IDENTITY, client.router_id)
+        client.socket.setsockopt(zmq.LINGER, 0)
+        client.socket.setsockopt(zmq.HWM, 100)
+        client.socket.setsockopt(zmq.BACKLOG, 100)
+        log_com("init client struct (%s, %s)" % (client.dsc_id,
+                                                 client.router_id))
+    @staticmethod
+    def get_client(key):
+        return client.c_dict[key]
+    @staticmethod
+    def discover_0mq(**kwargs):
+        for t_addr, c_struct in client.target_dict.iteritems():
+            dsc_socket = client.zmq_context.socket(zmq.DEALER)
+            dsc_socket.setsockopt(zmq.IDENTITY, client.dsc_id)
+            dsc_socket.connect(t_addr)
+            dsc_socket.send_unicode(unicode(server_command.srv_command(command="get_0mq_id", target_ip=c_struct.addr)))
+            zmq_id = server_command.srv_command(source=dsc_socket.recv_unicode())["zmq_id"].text
+            c_struct.zmq_id = zmq_id
+            c_struct.log("0MQ id is %s" % (c_struct.zmq_id))
+            client.c_dict[zmq_id] = c_struct
+            dsc_socket.close()
+            if kwargs.get("connect", True):
+                client.socket.connect(t_addr)
+                c_struct.connected = True
+    def send(self, srv_com):
+        client.socket.send_unicode(self.zmq_id, zmq.SNDMORE)
+        client.socket.send_unicode(unicode(srv_com))
+        self.send_list.append(time.time())
+    def recv(self, srv_com):
+        self.send_list.pop(0)
+        self.result = srv_com
+    @staticmethod
+    def send_srv_command(srv_com, **kwargs):
+        local_poller = zmq.Poller()
+        local_poller.register(client.socket, zmq.POLLIN)
+        timeout = kwargs.get("timeout", 5)
+        num_resend = kwargs.get("resend", 1)
+        send_list = set()
+        pending = 0
+        for t_addr, c_struct in client.target_dict.iteritems():
+            if c_struct.connected:
+                c_struct.send(srv_com)
+                pending += 1
+                c_struct.resend_counter = num_resend
+                send_list.add(t_addr)
+        while pending:
+            poll_result = local_poller.poll(timeout=1000 * timeout / 10)
+            if poll_result:
+                data = [client.socket.recv_unicode()]
+                while client.socket.getsockopt(zmq.RCVMORE):
+                    data.append(client.socket.recv_unicode())
+                c_struct = client.c_dict[data.pop(0)]
+                c_struct.recv(server_command.srv_command(source=data[0]))
+                pending -= 1
+            else:
+                cur_time = time.time()
+                to_structs = [value for value in client.target_dict.itervalues() if value.send_list and abs(value.send_list[0] - cur_time) > timeout]
+                for t_struct in to_structs:
+                    t_struct.send_list.pop(0)
+                    if t_struct.resend_counter:
+                        t_struct.resend_counter -= 1
+                        t_struct.log("timeout triggered, resending", logging_tools.LOG_LEVEL_WARN)
+                        t_struct.send(srv_com)
+                    else:
+                        t_struct.result = Non
+                        t_struct.log("timeout triggered", logging_tools.LOG_LEVEL_ERROR)
+                        pending -= 1
+        return dict([(key, client.target_dict[key].result) for key in send_list])
+        
 class job_object(object):
     def __init__(self, p_pool):
         self.p_pool = p_pool
@@ -1664,12 +1762,20 @@ class job_object(object):
     def _parse_server_addresses(self):
         for src_file, key, default in [("/etc/motherserver", "MOTHER_SERVER", "localhost"),
                                        ("/etc/sge_server"  , "SGE_SERVER"   , "localhost")]:
-            try:
-                act_val = file(src_file, "r").read().split()[0]
-            except:
-                self.log("cannot read %s from %s: %s" % (key,
-                                                         src_file,
-                                                         process_tools.get_except_info()),
+            if os.path.isfile(src_file):
+                try:
+                    act_val = file(src_file, "r").read().split()[0]
+                except:
+                    self.log("cannot read %s from %s: %s" % (
+                        key,
+                        src_file,
+                        process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                    act_val = default
+            else:
+                self.log("file %s does not exist (key %s)" % (
+                    src_file,
+                    key),
                          logging_tools.LOG_LEVEL_ERROR)
                 act_val = default
             global_config.add_config_entries([(key, configfile.str_c_var(act_val, source=src_file))])
@@ -1942,7 +2048,7 @@ class job_object(object):
                                    100 : "assumedly after job"}.get(i_val, "")
                         if i_val == 99:
                             self._set_exit_code("requeue requested", i_val)
-                        ext_str = ext_str and " (%s)" % (ext_str) or ""
+                        ext_str = " (%s)" % (ext_str) if ext_str else ""
                 out_list.append([logging_tools.form_entry(key, header="key"),
                                  logging_tools.form_entry(value, header="value"),
                                  logging_tools.form_entry(ext_str, header="info")])
@@ -1985,7 +2091,15 @@ class job_object(object):
         else:
             self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
     def _prologue(self):
+        client.setup(self.log, self.p_pool.zmq_context)
         self._create_wrapper_script()
+        client("127.0.0.1", 2001)
+        client("192.168.44.25", 2001)
+        # discovery part
+        client.discover_0mq()
+        # send command
+        print client.send_srv_command(server_command.srv_command(command="load"), timeout=0.1, resend=5)
+        yield False
     def _epilogue(self):
         self._delete_wrapper_script()
     def loop_function(self):
@@ -2017,11 +2131,16 @@ class job_object(object):
         if self.is_start_call():
             self._write_run_info()
         if "JOB_SCRIPT" in self.__env_dict:
-            self.log("starting inner loop")
+            self.log("starting inner loop for %s" % (global_config["CALLER_NAME"]))
             if global_config["CALLER_NAME"] == "prologue":
-                self._prologue()
+                for p_res in self._prologue():
+                    if p_res:
+                        yield p_res
             elif global_config["CALLER_NAME"] == "epilogue":
                 self._epilogue()
+            else:
+                self.log("unknown runmode %s" % (global_config["CALLER_NAME"]),
+                         logging_tools.LOG_LEVEL_ERROR)
             self.log("ending inner loop")
         else:
             self.log("no JOB_SCRIPT in env_dict, skipping inner loop", logging_tools.LOG_LEVEL_ERROR)
@@ -2049,7 +2168,8 @@ class process_pool(threading_tools.process_pool):
         self.global_config = global_config
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True,
-                                              blocking_loop=False)
+                                              blocking_loop=False,
+                                              loop_granularity=100)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
         self.register_exception("int_error", self._sigint)
@@ -2085,7 +2205,7 @@ class process_pool(threading_tools.process_pool):
         else:
             self["exit_requested"] = True
     def _force_exit(self):
-        self.log("forcing exit")
+        self.log("forcing exit", logging_tools.LOG_LEVEL_WARN)
         self["exit_requested"] = True
     def _show_config(self):
         try:
@@ -2161,8 +2281,8 @@ def zmq_main_code():
     # brand new 0MQ-based code
     my_parser = argparse.ArgumentParser()
     global_config.add_config_entries([
-        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("DEBUG"                , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("LOG_DESTINATION"      , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"             , configfile.str_c_var("proepilogue")),
         ("MAX_RUN_TIME"         , configfile.int_c_var(60)),
         ("SEP_LEN"              , configfile.int_c_var(80)),
@@ -2206,9 +2326,9 @@ def zmq_main_code():
         else:
             # add more entries
             global_config.add_config_entries([
-                ("HOST_SHORT"       , configfile.str_c_var(global_config["HOST_LONG"].split(".")[0], source="cmdline")),
-                ("CALLER_NAME"      , configfile.str_c_var(global_config.name(), source="cmdline")),
-                ("HOST_IP"          , configfile.str_c_var("unknown", source="cmdline")),
+                ("HOST_SHORT" , configfile.str_c_var(global_config["HOST_LONG"].split(".")[0], source="cmdline")),
+                ("CALLER_NAME", configfile.str_c_var(global_config.name(), source="cmdline")),
+                ("HOST_IP"    , configfile.str_c_var("unknown", source="cmdline")),
             ])
             return process_pool().loop()
     else:
