@@ -826,6 +826,7 @@ class process_obj(multiprocessing.Process):
             new_q.subscribe("")
             new_q.gotMessage = self._recv_message
             self.tz_factory = my_factory
+            self.zmq_subcon = new_q
         else:
             new_q = self.zmq_context.socket(zmq.PULL)
             process_tools.bind_zmq_socket(new_q, process_tools.get_zmq_ipc_name(self.name))
@@ -876,6 +877,9 @@ class process_obj(multiprocessing.Process):
         self.loop_end()
         self.process_exit()
         self._close_sockets()
+        self.loop_post()
+    def loop_post(self):
+        pass
     def connect_to_socket(self, name):
         cur_socket = self.zmq_context.socket(zmq.PUSH)
         cur_socket.connect(process_tools.get_zmq_ipc_name(name))
@@ -932,6 +936,50 @@ class process_obj(multiprocessing.Process):
                                                          process_tools.get_except_info())
                     raise
 
+class debug_zmq_sock(object):
+    open_fd = set()
+    def __init__(self, zmq_sock):
+        self._sock = zmq_sock
+        debug_zmq_sock.open_fd.add(self.fileno())
+    def bind(self, name):
+        print "bind %d to %s" % (self.fileno(), name)
+        return self._sock.bind(name)
+    def connect(self, name):
+        print "connect %d to %s" % (self.fileno(), name)
+        return self._sock.connect(name)
+    def send(self, *args, **kwargs):
+        return self._sock.send(*args, **kwargs)
+    def send_pyobj(self, *args, **kwargs):
+        return self._sock.send_pyobj(*args, **kwargs)
+    def send_unicode(self, *args, **kwargs):
+        return self._sock.send_unicode(*args, **kwargs)
+    def recv(self, *args, **kwargs):
+        return self._sock.recv(*args, **kwargs)
+    def recv_pyobj(self, *args, **kwargs):
+        return self._sock.recv_pyobj(*args, **kwargs)
+    def recv_unicode(self, *args, **kwargs):
+        return self._sock.recv_unicode(*args, **kwargs)
+    def setsockopt(self, *args):
+        return self._sock.setsockopt(*args)
+    def getsockopt(self, *args):
+        return self._sock.getsockopt(*args)
+    def fileno(self):
+        return self._sock.getsockopt(zmq.FD)
+    def poll(self):
+        return self._sock.poll()
+    def close(self):
+        print "close %d" % (self.fileno())
+        debug_zmq_sock.open_fd.remove(self.fileno())
+        if debug_zmq_sock.open_fd:
+            print "still open: %s" % (", ".join(["%d" % (cur_fd) for cur_fd in debug_zmq_sock.open_fd]))
+        return self._sock.close()
+        
+class debug_zmq_ctx(zmq.Context):
+    def socket(self, sock_type, *args, **kwargs):
+        ret_socket = super(debug_zmq_ctx, self).socket(sock_type, *args, **kwargs)
+        print "socket(%d) == %d" % (sock_type, ret_socket.fd)
+        return debug_zmq_sock(ret_socket)
+
 class process_pool(object):
     def __init__(self, name, **kwargs):
         self.name = name
@@ -939,7 +987,11 @@ class process_pool(object):
         self.__sockets = {}
         self.__socket_buffer = {}
         self.__processes = {}
-        self.zmq_context = zmq.Context()
+        self.__debug_zmq = kwargs.get("zmq_debug", False)
+        if self.__debug_zmq:
+            self.zmq_context = debug_zmq_ctx(kwargs.pop("zmq_contexts", 1))
+        else:
+            self.zmq_context = zmq.Context(kwargs.pop("zmq_contexts", 1))
         self.poller = zmq.Poller()
         self.loop_granularity = kwargs.get("loop_granularity", 1000)
         self.__timer_list, self.__next_timeout = ([], None)
@@ -1027,19 +1079,27 @@ class process_pool(object):
             #zmq_socket.setsockopt(zmq.RCVBUF, 65536)
             #zmq_socket.setsockopt(zmq.HWM, 10)
             self.poller_handler = {}
+            self.fd_lookup = {}
             self.register_poller(zmq_socket, zmq.POLLIN, self._tp_message_received)
             self.__sockets[q_name] = zmq_socket
         return zmq_socket
     def register_poller(self, zmq_socket, sock_type, callback):
+        if self.__debug_zmq:
+            self.fd_lookup[zmq_socket._sock] = zmq_socket
         self.poller_handler.setdefault(zmq_socket, {})[sock_type] = callback
         cur_mask = 0
         for mask in self.poller_handler[zmq_socket].iterkeys():
             cur_mask |= mask
-        self.poller.register(zmq_socket, cur_mask)
+        if self.__debug_zmq:
+            self.poller.register(zmq_socket._sock, cur_mask)
+        else:
+            self.poller.register(zmq_socket, cur_mask)
     def unregister_poller(self, zmq_socket, sock_type, **kwargs):
         del self.poller_handler[zmq_socket][sock_type]
         self.poller.unregister(zmq_socket)
         if not self.poller_handler[zmq_socket]:
+            if self.__debug_zmq:
+                del self.fd_lookup[zmq_socket._sock]
             del self.poller_handler[zmq_socket]
             if kwargs.get("close_socket", False):
                 zmq_socket.close()
@@ -1069,6 +1129,7 @@ class process_pool(object):
     def _close_pp_sockets(self):
         for sock_name, zmq_sock in self.__sockets.iteritems():
             zmq_sock.close()
+        self.zmq_context.term()
     def add_process(self, t_obj, **kwargs):
         # add a process_object to the process_pool
         if t_obj.getName() in self.__processes:
@@ -1148,6 +1209,7 @@ class process_pool(object):
         else:
             self.log("process %s forced exit" % (t_name))
         del self.__processes[t_name]
+        self.__sockets[t_name].close()
         del self.__sockets[t_name]
         # for subclassing
         self.process_exit(t_name, t_pid)
@@ -1304,6 +1366,8 @@ class process_pool(object):
         except:
             raise
         for sock, c_type in _socks:
+            if self.__debug_zmq:
+                sock = self.fd_lookup[sock]
             if sock in self.poller_handler:
                 for r_type in set([zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]):
                     if c_type & r_type:
@@ -1311,13 +1375,16 @@ class process_pool(object):
                             try:
                                 self.poller_handler[sock][r_type](sock)
                             except:
+                                exc_info = process_tools.exception_info()
                                 self.log("error calling handler: %s" % (process_tools.get_except_info()),
                                          logging_tools.LOG_LEVEL_CRITICAL)
+                                for line in exc_info.log_lines:
+                                    self.log("   %s" % (line), logging_tools.LOG_LEVEL_ERROR)
                         else:
                             print "???0", sock, c_type
                             time.sleep(1)
             else:
-                print "???1", sock, c_type
+                print "???1", sock, c_type, self.poller_handler.keys()
                 time.sleep(1)
     def loop_function(self):
         # generator

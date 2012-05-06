@@ -206,6 +206,9 @@ class twisted_log_observer(object):
                 self.__last_cinfo = act_time
             for line in in_dict["failure"].getTraceback().split("\n"):
                 self.__logger.log(LOG_LEVEL_CRITICAL, line)
+    def close(self):
+        for handle in self.__logger.logger.handlers:
+            handle.close()
         
 def get_logger(name, destination, **kwargs):
     """ specify init_logger=True to append init.at to the logname """
@@ -322,6 +325,7 @@ except:
 class zmq_handler(logging.Handler):
     def __init__(self, t_sock):
         self.__target = t_sock
+        self._open = True
         logging.Handler.__init__(self)
     def makePickle(self, record):
         """
@@ -339,7 +343,9 @@ class zmq_handler(logging.Handler):
     def emit(self, record):
         self.__target.send(self.makePickle(record))
     def close(self):
-        self.__target.close()
+        if self._open:
+            self._open = False
+            self.__target.close()
         
 class queue_handler(logging.Handler):
     """ sends log requests to other queues """
