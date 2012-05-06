@@ -477,7 +477,7 @@ class log_receiver(threading_tools.process_obj):
 class main_process(threading_tools.process_pool):
     def __init__(self, options):
         self.__options = options
-        threading_tools.process_pool.__init__(self, "main", stack_size=2*1024*1024, zmq=True)
+        threading_tools.process_pool.__init__(self, "main", stack_size=2*1024*1024, zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         process_tools.delete_lockfile(global_config["LOCKFILE_NAME"])
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
@@ -542,6 +542,7 @@ class main_process(threading_tools.process_pool):
             client.bind(io_stream_helper.zmq_socket_name(global_config[h_name], check_ipc_prefix=True))
             os.chmod(io_stream_helper.zmq_socket_name(global_config[h_name]), 0777)
         self.register_poller(client, zmq.POLLIN, self._recv_data)
+        self.std_client = client
     def _heartbeat(self):
         #self.send_to_process("twisted", "ping", 0)
         if self.__msi_block:
@@ -578,32 +579,35 @@ class main_process(threading_tools.process_pool):
         process_tools.delete_pid("logserver/logserver")
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-
+        self.std_client.close()
+        
 global_config = configfile.get_global_config("logging-server")
 
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
-    global_config.add_config_entries([("MAILSERVER"          , configfile.str_c_var("localhost", help_string="mailserver for sending [%(default)s]", short_options="M")),
-                                      ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-                                      ("FROM_NAME"           , configfile.str_c_var("pyerror")),
-                                      ("FROM_ADDR"           , configfile.str_c_var(socket.getfqdn())),
-                                      ("LOG_FORMAT"          , configfile.str_c_var("%(asctime)s : %(levelname)-5s (%(threadName)s.%(process)d) %(message)s")),
-                                      ("DATE_FORMAT"         , configfile.str_c_var("%a %b %d %H:%M:%S %Y")),
-                                      ("OUT_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_out")),
-                                      ("ERR_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_err")),
-                                      ("LOG_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_log")),
-                                      ("LOG_DESTINATION"     , configfile.str_c_var("/var/log/cluster/logging-server")),
-                                      ("LOCKFILE_NAME"       , configfile.str_c_var("/var/lock/logserver/logging_server.lock")),
-                                      ("LISTEN_PORT"         , configfile.int_c_var(8011)),
-                                      ("STATISTICS_TIMER"    , configfile.int_c_var(600)),
-                                      ("LOG_COMMANDS"        , configfile.bool_c_var(True)),
-                                      ("MAX_AGE_FILES"       , configfile.int_c_var(365, help_string="max age for logfiles in days [%(default)i]", short_options="age")),
-                                      ("USER"                , configfile.str_c_var("idlog", help_string="run as user [%(default)s]", short_options="u")),
-                                      ("GROUP"               , configfile.str_c_var("idg", help_string="run as group [%(default)s]", short_options="g")),
-                                      ("TO_ADDR"             , configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-mails [%(default)s]")),
-                                      ("SEND_INITIAL_MAIL"   , configfile.bool_c_var(False, help_string="send initial mail after start [%(default)s]")),
-                                      ("LONG_HOST_NAME"      , configfile.str_c_var(long_host_name)),
-                                      ("MAX_LINE_LENGTH"     , configfile.int_c_var(0))])
+    global_config.add_config_entries([
+        ("MAILSERVER"          , configfile.str_c_var("localhost", help_string="mailserver for sending [%(default)s]", short_options="M")),
+        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+        ("FROM_NAME"           , configfile.str_c_var("pyerror")),
+        ("FROM_ADDR"           , configfile.str_c_var(socket.getfqdn())),
+        ("LOG_FORMAT"          , configfile.str_c_var("%(asctime)s : %(levelname)-5s (%(threadName)s.%(process)d) %(message)s")),
+        ("DATE_FORMAT"         , configfile.str_c_var("%a %b %d %H:%M:%S %Y")),
+        ("OUT_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_out")),
+        ("ERR_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_err")),
+        ("LOG_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_log")),
+        ("LOG_DESTINATION"     , configfile.str_c_var("/var/log/cluster/logging-server")),
+        ("LOCKFILE_NAME"       , configfile.str_c_var("/var/lock/logserver/logging_server.lock")),
+        ("LISTEN_PORT"         , configfile.int_c_var(8011)),
+        ("STATISTICS_TIMER"    , configfile.int_c_var(600)),
+        ("LOG_COMMANDS"        , configfile.bool_c_var(True)),
+        ("MAX_AGE_FILES"       , configfile.int_c_var(365, help_string="max age for logfiles in days [%(default)i]", short_options="age")),
+        ("USER"                , configfile.str_c_var("idlog", help_string="run as user [%(default)s]", short_options="u")),
+        ("GROUP"               , configfile.str_c_var("idg", help_string="run as group [%(default)s]", short_options="g")),
+        ("TO_ADDR"             , configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-mails [%(default)s]")),
+        ("SEND_INITIAL_MAIL"   , configfile.bool_c_var(False, help_string="send initial mail after start [%(default)s]")),
+        ("LONG_HOST_NAME"      , configfile.str_c_var(long_host_name)),
+        ("MAX_LINE_LENGTH"     , configfile.int_c_var(0))])
     global_config.parse_file()
     options = global_config.handle_commandline(description="logging server, version is %s" % (logging_server_version.VERSION_STRING))
     # daemon has to be a local variable, otherwise system startup can be severly damaged
