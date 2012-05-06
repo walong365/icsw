@@ -1096,7 +1096,10 @@ class process_pool(object):
             self.poller.register(zmq_socket, cur_mask)
     def unregister_poller(self, zmq_socket, sock_type, **kwargs):
         del self.poller_handler[zmq_socket][sock_type]
-        self.poller.unregister(zmq_socket)
+        if self.__debug_zmq:
+            self.poller.unregister(zmq_socket._sock)
+        else:
+            self.poller.unregister(zmq_socket)
         if not self.poller_handler[zmq_socket]:
             if self.__debug_zmq:
                 del self.fd_lookup[zmq_socket._sock]
