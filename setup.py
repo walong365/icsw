@@ -15,8 +15,7 @@ for root, dirs, files in os.walk("src/initcore/media"):
 setup(name="initcore",
       version="1.0.1",
       package_dir={"initcore": "src/initcore"},
-      packages=["initcore", "initcore.management", "initcore.management.commands",
-          "initcore.templatetags"],
+      packages=["initcore", "initcore.templatetags"],
       package_data={"initcore": ["templates/*.html", "templates/initcore/*.html",
       "templates/initcore/*.css"] +  media_files}
       )
