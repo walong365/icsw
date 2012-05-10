@@ -887,8 +887,8 @@ class relay_process(threading_tools.process_pool):
         # nhm (not host monitoring) dictionary for timeout
         self.__nhm_dict = {}
         self.__nhm_connections = set()
-        sock_list = [("ipc", "receiver", zmq.PULL  , 2   ),
-                     ("ipc", "sender"  , zmq.PUB   , 1024)]
+        sock_list = [("ipc", "receiver", zmq.PULL, 2   ),
+                     ("ipc", "sender"  , zmq.PUB , 1024)]
         [setattr(self, "%s_socket" % (short_sock_name), None) for sock_proto, short_sock_name, a0, b0 in sock_list]
         for sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
@@ -1361,7 +1361,8 @@ class server_process(threading_tools.process_pool):
                 self.register_poller(client, zmq.POLLIN, self._recv_command)
                 self.socket_list.append(client)
         sock_list = [("ipc", "vector" , zmq.PULL, 512, None),
-                     ("ipc", "command", zmq.REP , 512, self._recv_ext_command)]
+                     ("ipc", "command", zmq.PULL, 512, self._recv_ext_command),
+                     ("ipc", "result" , zmq.PUB , 512, None)]
         for sock_proto, short_sock_name, sock_type, hwm_size, dst_func in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
             file_name = sock_name[5:]
@@ -1401,8 +1402,15 @@ class server_process(threading_tools.process_pool):
         data = [zmq_sock.recv()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
             data.append(zmq_sock.recv())
-        print "ext_command", data
-        zmq_sock.send_unicode("test")
+        data = data[0]
+        if data.startswith("<"):
+            srv_com = server_command.srv_command(source=data)
+            src_id = srv_com["identity"].text
+        else:
+            src_id = data.split(";")[0]
+        #print len(data), len(unicode(srv_com)), src_id
+        self.result_socket.send_unicode(src_id, zmq.SNDMORE)
+        self.result_socket.send_unicode("test")
     def _recv_command(self, zmq_sock):
         data = [zmq_sock.recv()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
@@ -1571,6 +1579,7 @@ class server_process(threading_tools.process_pool):
             cur_sock.close()
         self.vector_socket.close()
         self.command_socket.close()
+        self.result_socket.close()
         self.__log_template.close()
 
 def show_command_info():

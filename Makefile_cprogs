@@ -3,7 +3,7 @@
 .PHONY: clean all
 
 comp=gcc
-progs=ccollclient csnmpclient csnmpclientmorph csnmpclientzmq
+progs=ccollclient csnmpclient csnmpclientmorph csnmpclientzmq ccollclientzmq
 
 ifeq ($(shell uname -m), x86_64)
         LIB_DIR=lib64

@@ -173,6 +173,8 @@ int main (int argc, char** argv) {
         // send
         zmq_connect(requester, "ipc:///var/log/cluster/sockets/collrelay/receiver");
         zmq_connect(receiver, "ipc:///var/log/cluster/sockets/collrelay/sender");
+        //zmq_connect(requester, "ipc:///var/log/cluster/sockets/collserver/command");
+        //zmq_connect(receiver, "ipc:///var/log/cluster/sockets/collserver/result");
         /* set filter */
         zmq_setsockopt(receiver, ZMQ_SUBSCRIBE, identity_str, strlen(identity_str));
         //zmq_connect(requester, "ipc:///tmp/bla");
