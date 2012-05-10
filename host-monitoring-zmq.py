@@ -721,6 +721,7 @@ class twisted_process(threading_tools.process_obj):
     def loop_post(self):
         self.twisted_observer.close()
         self.__log_template.close()
+        self.__relayer_socket.close()
 
 class my_cached_file(process_tools.cached_file):
     def __init__(self, name, **kwargs):
@@ -1399,10 +1400,7 @@ class server_process(threading_tools.process_pool):
     def register_vector_receiver(self, t_func):
         self.register_poller(self.vector_socket, zmq.POLLIN, t_func)
     def _recv_ext_command(self, zmq_sock):
-        data = [zmq_sock.recv()]
-        while zmq_sock.getsockopt(zmq.RCVMORE):
-            data.append(zmq_sock.recv())
-        data = data[0]
+        data = zmq_sock.recv()
         if data.startswith("<"):
             srv_com = server_command.srv_command(source=data)
             src_id = srv_com["identity"].text
