@@ -818,10 +818,15 @@ class process_obj(multiprocessing.Process):
     def send_pool_message(self, *args):
         self.__pp_queue.send_pyobj([self.name, self.pid] + list(args))
     def _init_sockets(self):
-        self.zmq_context = zmq.Context()
+        if self.debug_zmq:
+            self.zmq_context = debug_zmq_ctx()
+        else:
+            self.zmq_context = zmq.Context()
         if self.__twisted:
             my_factory = tz_factory(self.zmq_context)
-            new_q = ZmqSubConnection(my_factory, ZmqEndpoint("bind", process_tools.get_zmq_ipc_name(self.name)))
+            tw_endpoint = ZmqEndpoint("bind", process_tools.get_zmq_ipc_name(self.name))
+            self.tw_endpoint = tw_endpoint
+            new_q = ZmqSubConnection(my_factory, tw_endpoint)
             # no filter
             new_q.subscribe("")
             new_q.gotMessage = self._recv_message
@@ -845,6 +850,9 @@ class process_obj(multiprocessing.Process):
         if not self.__twisted:
             self.__process_queue.close()
             time.sleep(0.1)
+        else:
+            pass
+        self.__pp_queue.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print "process %s (%d) %s: %s" % (self.name,
                                           self.pid,
@@ -878,8 +886,11 @@ class process_obj(multiprocessing.Process):
         self.process_exit()
         self._close_sockets()
         self.loop_post()
+        self.zmq_finish()
     def loop_post(self):
         pass
+    def zmq_finish(self):
+        self.zmq_context.term()
     def connect_to_socket(self, name):
         cur_socket = self.zmq_context.socket(zmq.PUSH)
         cur_socket.connect(process_tools.get_zmq_ipc_name(name))
@@ -937,15 +948,16 @@ class process_obj(multiprocessing.Process):
                     raise
 
 class debug_zmq_sock(object):
-    open_fd = set()
     def __init__(self, zmq_sock):
         self._sock = zmq_sock
-        debug_zmq_sock.open_fd.add(self.fileno())
+    def register(self, ctx):
+        self.ctx = ctx
+        ctx._sockets_open.add(self.fileno())
     def bind(self, name):
-        print "bind %d to %s" % (self.fileno(), name)
+        self.ctx.log("bind %d to %s" % (self.fileno(), name))
         return self._sock.bind(name)
     def connect(self, name):
-        print "connect %d to %s" % (self.fileno(), name)
+        self.ctx.log("connect %d to %s" % (self.fileno(), name))
         return self._sock.connect(name)
     def send(self, *args, **kwargs):
         return self._sock.send(*args, **kwargs)
@@ -968,17 +980,31 @@ class debug_zmq_sock(object):
     def poll(self):
         return self._sock.poll()
     def close(self):
-        print "close %d" % (self.fileno())
-        debug_zmq_sock.open_fd.remove(self.fileno())
-        if debug_zmq_sock.open_fd:
-            print "still open: %s" % (", ".join(["%d" % (cur_fd) for cur_fd in debug_zmq_sock.open_fd]))
+        self.ctx.log("close %d" % (self.fileno()))
+        self.ctx._sockets_open.remove(self.fileno())
+        if self.ctx._sockets_open:
+            self.ctx.log("    still open: %s" % (", ".join(["%d" % (cur_fd) for cur_fd in self.ctx._sockets_open])))
         return self._sock.close()
         
 class debug_zmq_ctx(zmq.Context):
+    ctx_idx = 0
+    def __init__(self, *args, **kwargs):
+        self.zmq_idx = debug_zmq_ctx.ctx_idx
+        debug_zmq_ctx.ctx_idx += 1
+        zmq.Context.__init__(self, *args, **kwargs)
+        self._sockets_open = set()
+    def log(self, out_str):
+        print "[[%d]] %s" % (self.zmq_idx, out_str)
     def socket(self, sock_type, *args, **kwargs):
         ret_socket = super(debug_zmq_ctx, self).socket(sock_type, *args, **kwargs)
-        print "socket(%d) == %d" % (sock_type, ret_socket.fd)
-        return debug_zmq_sock(ret_socket)
+        self._sockets_open.add(ret_socket.fd)
+        self.log("socket(%d) == %d, now open: %s" % (
+            sock_type,
+            ret_socket.fd,
+            ", ".join(["%d" % (cur_fd) for cur_fd in self._sockets_open])))
+        ret_sock = debug_zmq_sock(ret_socket)
+        ret_sock.register(self)
+        return ret_sock
 
 class process_pool(object):
     def __init__(self, name, **kwargs):
@@ -987,8 +1013,8 @@ class process_pool(object):
         self.__sockets = {}
         self.__socket_buffer = {}
         self.__processes = {}
-        self.__debug_zmq = kwargs.get("zmq_debug", False)
-        if self.__debug_zmq:
+        self.debug_zmq = kwargs.get("zmq_debug", False)
+        if self.debug_zmq:
             self.zmq_context = debug_zmq_ctx(kwargs.pop("zmq_contexts", 1))
         else:
             self.zmq_context = zmq.Context(kwargs.pop("zmq_contexts", 1))
@@ -1084,24 +1110,24 @@ class process_pool(object):
             self.__sockets[q_name] = zmq_socket
         return zmq_socket
     def register_poller(self, zmq_socket, sock_type, callback):
-        if self.__debug_zmq:
+        if self.debug_zmq:
             self.fd_lookup[zmq_socket._sock] = zmq_socket
         self.poller_handler.setdefault(zmq_socket, {})[sock_type] = callback
         cur_mask = 0
         for mask in self.poller_handler[zmq_socket].iterkeys():
             cur_mask |= mask
-        if self.__debug_zmq:
+        if self.debug_zmq:
             self.poller.register(zmq_socket._sock, cur_mask)
         else:
             self.poller.register(zmq_socket, cur_mask)
     def unregister_poller(self, zmq_socket, sock_type, **kwargs):
         del self.poller_handler[zmq_socket][sock_type]
-        if self.__debug_zmq:
+        if self.debug_zmq:
             self.poller.unregister(zmq_socket._sock)
         else:
             self.poller.unregister(zmq_socket)
         if not self.poller_handler[zmq_socket]:
-            if self.__debug_zmq:
+            if self.debug_zmq:
                 del self.fd_lookup[zmq_socket._sock]
             del self.poller_handler[zmq_socket]
             if kwargs.get("close_socket", False):
@@ -1156,6 +1182,7 @@ class process_pool(object):
             for key in [sub_key for sub_key in sorted(kwargs.keys()) if sub_key not in ["twisted", "start"]]:
                 self.log("setting attribute '%s' for %s" % (key, t_obj.getName()))
                 setattr(t_obj, key, kwargs[key])
+            t_obj.debug_zmq = self.debug_zmq
             if kwargs.get("start", False):
                 self.start_process(t_obj.getName())
             self._flush_process_buffers(t_obj.getName())
@@ -1369,7 +1396,7 @@ class process_pool(object):
         except:
             raise
         for sock, c_type in _socks:
-            if self.__debug_zmq:
+            if self.debug_zmq:
                 sock = self.fd_lookup[sock]
             if sock in self.poller_handler:
                 for r_type in set([zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]):
