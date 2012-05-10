@@ -803,10 +803,19 @@ def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
     else:
         log_type = syslog.LOG_INFO    | syslog.LOG_USER
     try:
-        syslog.syslog(log_type, str(out_str))
+        if type(out_str) == unicode:
+            syslog.syslog(log_type, out_str.encode("utf-8"))
+        else:
+            syslog.syslog(log_type, str(out_str))
     except:
-        syslog.syslog(syslog.LOG_ERR | syslog.LOG_USER, "error logging string (len %d, log_type %d)" % (len(str(out_str)),
-                                                                                                        log_type))
+        if type(out_str) == unicode:
+            syslog.syslog(syslog.LOG_ERR | syslog.LOG_USER, "error logging string (len %d, log_type %d)" % (
+                len(out_str),
+                log_type))
+        else:
+            syslog.syslog(syslog.LOG_ERR | syslog.LOG_USER, "error logging string (len %d, log_type %d)" % (
+                len(str(out_str)),
+                log_type))
     if out:
         print out_str
 
