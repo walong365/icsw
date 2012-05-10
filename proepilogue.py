@@ -1453,20 +1453,61 @@ class client(object):
         return client.c_dict[key]
     @staticmethod
     def discover_0mq(**kwargs):
+        t_sock = client.zmq_context.socket(zmq.PUSH)
+        r_sock = client.zmq_context.socket(zmq.SUB)
+        r_sock.setsockopt(zmq.SUBSCRIBE, client.dsc_id)
+        #t_sock.setsockopt(zmq.IDENTITY, client.dsc_id)
+        t_sock.connect(process_tools.get_zmq_ipc_name("command", s_name="collserver"))
+        r_sock.connect(process_tools.get_zmq_ipc_name("result", s_name="collserver"))
+        srv_com = server_command.srv_command(command="load", identity=client.dsc_id)
+        t_sock.send_unicode(unicode(srv_com))
+        # tight inner loop to let the dust settle
+        if not r_sock.poll(10):
+            t_sock.send_unicode(unicode(srv_com))
+        t_sock.close()
+        data = [r_sock.recv()]
+        while r_sock.getsockopt(zmq.RCVMORE):
+            data.append(r_sock.recv_unicode())
+        print data
+        r_sock.close()
+        return
+        timeout = kwargs.get("timeout", 2)
+        local_poller = zmq.Poller()
+        dsc_lut = {}
         for t_addr, c_struct in client.target_dict.iteritems():
             dsc_socket = client.zmq_context.socket(zmq.DEALER)
             dsc_socket.setsockopt(zmq.IDENTITY, client.dsc_id)
+            dsc_socket.setsockopt(zmq.LINGER, 100)
             dsc_socket.connect(t_addr)
             dsc_socket.send_unicode(unicode(server_command.srv_command(command="get_0mq_id", target_ip=c_struct.addr)))
-            zmq_id = server_command.srv_command(source=dsc_socket.recv_unicode())["zmq_id"].text
-            c_struct.zmq_id = zmq_id
-            c_struct.log("0MQ id is %s" % (c_struct.zmq_id))
-            client.c_dict[zmq_id] = c_struct
-            dsc_socket.close()
-            if kwargs.get("connect", True):
-                client.socket.connect(t_addr)
-                c_struct.connected = True
-        # some time to let thins settle, receive
+            local_poller.register(dsc_socket, zmq.POLLIN)
+            c_struct.dsc_socket = dsc_socket
+            dsc_lut[dsc_socket] = c_struct
+        s_time = time.time()
+        while time.time() < abs(s_time + timeout):
+            for cur_sock, cur_type in local_poller.poll(1000):
+                if cur_type == zmq.POLLIN:
+                    #print cur_sock, cur_type, dsc_lut, zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR
+                    c_struct = dsc_lut[cur_sock]
+                    zmq_id = server_command.srv_command(source=cur_sock.recv_unicode())["zmq_id"].text
+                    c_struct.zmq_id = zmq_id
+                    c_struct.log("0MQ id is %s" % (c_struct.zmq_id))
+                    client.c_dict[zmq_id] = c_struct
+                    if kwargs.get("connect", True):
+                        client.socket.connect(c_struct.target_str)
+                        c_struct.connected = True
+            if all([c_struct.zmq_id != None for c_struct in client.target_dict.itervalues()]):
+                break
+        client.log_com("discovery took %s, %s tried, %s" % (
+            logging_tools.get_diff_time_str(abs(time.time() - s_time)),
+            logging_tools.get_plural("host", len(client.target_dict)),
+            logging_tools.get_plural("error", len(dsc_lut))),
+                   logging_tools.LOG_LEVEL_OK if not dsc_lut else logging_tools.LOG_LEVEL_ERROR)
+        dsc_lut = None
+        for c_struct in client.target_dict.itervalues():
+            c_struct.dsc_socket.close()
+            c_struct.dsc_socket = None
+        # some time to let things settle, receive
         time.sleep(0.001)
     def send(self, srv_com):
         client.socket.send_unicode(self.zmq_id, zmq.SNDMORE)
@@ -1477,6 +1518,7 @@ class client(object):
         self.result = srv_com
     @staticmethod
     def send_srv_command(srv_com, **kwargs):
+        return {}
         local_poller = zmq.Poller()
         local_poller.register(client.socket, zmq.POLLIN)
         timeout = kwargs.get("timeout", 5)
@@ -2181,6 +2223,8 @@ class process_pool(threading_tools.process_pool):
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True,
                                               blocking_loop=False,
+                                              #zmq_debug=True,
+                                              zmq_contexts=1,
                                               loop_granularity=100)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
