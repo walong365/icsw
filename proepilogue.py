@@ -2145,12 +2145,12 @@ class job_object(object):
         #vector_socket.connect(conn_str)
         #vector_socket.send_unicode(unicode(server_command.srv_command(command="load")))
         #print vector_socket.recv_unicode()
-        client("127.0.0.1", 2001)
-        client("192.168.44.25", 2001)
+        #client("127.0.0.1", 2001)
+        #client("192.168.44.25", 2001)
         # discovery part
-        client.discover_0mq()
+        #client.discover_0mq()
         # send command
-        print client.send_srv_command(server_command.srv_command(command="load"), timeout=0.1, resend=5)
+        #print client.send_srv_command(server_command.srv_command(command="load"), timeout=0.1, resend=5)
         client.close()
         yield False
     def _epilogue(self):
