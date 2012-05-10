@@ -90,18 +90,30 @@ class twisted_process(threading_tools.process_obj):
         bind_errors = 0
         log_recv = twisted_log_receiver(self)
         for h_name in ["LOG", "ERR", "OUT"]:
+            h_name = global_config["%s_HANDLE" % (h_name)]
+            if os.path.isfile(h_name):
+                try:
+                    os.unlink(h_name)
+                except:
+                    self.log("error removing (stale) UDS-handle %s: %s" % (h_name,
+                                                                           process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("remove stale UDS-handle %s" % (h_name))
             try:
-                reactor.listenUNIXDatagram(global_config["%s_HANDLE" % (h_name)], log_recv)
+                reactor.listenUNIXDatagram(h_name, log_recv)
             except:
-                self.log("cannot listen to UDS %s: %s" % (global_config["%s_HANDLE" % (h_name)],
+                self.log("cannot listen to UDS %s: %s" % (h_name,
                                                           process_tools.get_except_info()),
                           logging_tools.LOG_LEVEL_ERROR)
                 bind_errors += 1
+            else:
+                self.log("listening on UDS %s" % (h_name))
         try:
             reactor.listenUDP(global_config["LISTEN_PORT"], log_recv)
         except:
             self.log("cannot listen to UDP port %d: %s" % (global_config["LISTEN_PORT"],
-                                                            process_tools.get_except_info()),
+                                                           process_tools.get_except_info()),
                       logging_tools.LOG_LEVEL_ERROR)
             bind_errors += 1
         self.register_func("ping", self._ping)
@@ -486,9 +498,9 @@ class main_process(threading_tools.process_pool):
         self.renice()
         self._init_msi_block()
         self.add_process(log_receiver("receiver"), start=True)
-        self.add_process(twisted_process("twisted"), twisted=True, start=True)
         self._log_config()
         self._init_network_sockets()
+        self.add_process(twisted_process("twisted"), twisted=True, start=True)
         self.register_timer(self._heartbeat, 30, instant=True)
         self.register_timer(self._update, 60)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
@@ -525,10 +537,14 @@ class main_process(threading_tools.process_pool):
                                             logging_tools.get_diff_time_str(e_time - s_time),
                                             (e_time - s_time) * 1000000 / NUM_TESTS))
     def _remove_handles(self):
+        any_removed = False
         for act_hname in self.__open_handles:
             if os.path.exists(act_hname):
                 self.log("removing previous handle %s" % (act_hname))
                 os.unlink(act_hname)
+                any_removed = True
+        if any_removed:
+            time.sleep(1)
     def _pong(self, src_name, src_pid, *args, **kwargs):
         if args[0] % 10000 == 0:
             self.log("index: %d" % (args[0]))
