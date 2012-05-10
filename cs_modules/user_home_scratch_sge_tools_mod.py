@@ -247,8 +247,9 @@ class create_all_user_scratches(cs_base_class.server_com):
             })
 
 class create_sge_user(cs_base_class.server_com):
-    needed_configs = ["sge_server"]
-    needed_option_keys = ["username"]
+    class Meta:
+        needed_configs = ["sge_server"]
+        needed_option_keys = ["username"]
     def _call(self):
         # get fairshare-value
         self.dc.execute("SELECT ci.value FROM new_config c, config_int ci, device_config dc WHERE ci.new_config=c.new_config_idx AND ci.name='fairshare' AND dc.new_config=c.new_config_idx AND dc.device=%d AND c.name='sge_server'" % (self.server_idx))
