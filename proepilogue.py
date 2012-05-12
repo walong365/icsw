@@ -22,7 +22,6 @@
 """ pro/epilogue script """
 
 import sys
-import getopt
 import pwd, grp
 import time
 import stat
@@ -37,7 +36,6 @@ import pprint
 import server_command
 import net_tools
 import threading_tools
-import argparse
 import zmq
     
 SEP_LEN = 70
@@ -58,33 +56,6 @@ def sec_to_str(in_sec):
     #    out_f = "%2d:%02d:%02d" % (diff_h, diff_m, dt)
     return out_f
 
-# --connection objects-------------------------------------
-class simple_tcp_obj(net_tools.buffer_object):
-    # connects to a foreign host-monitor
-    def __init__(self, d_queue, (send_id, res_type, send_str)):
-        self.__d_queue = d_queue
-        self.__send_str = send_str
-        self.__res_type = res_type
-        self.__send_id = send_id
-        net_tools.buffer_object.__init__(self)
-    def setup_done(self):
-        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__send_str, True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
-        if p1_ok:
-            self.__d_queue.put(("result_ok", (self.__send_id, self.__res_type, p1_data)))
-            self.delete()
-    def report_problem(self, flag, what):
-        self.__d_queue.put(("result_error", (self.__send_id, flag, what)))
-        self.delete()
-# ----------------------------------------------------
 
 class job_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, opt_dict, net_server):
@@ -105,31 +76,6 @@ class job_thread(threading_tools.thread_obj):
             self._print("%s%s" % ("[%s] " % (logging_tools.get_log_level_str(log_level)) if log_level != logging_tools.LOG_LEVEL_OK else "", what))
         if log_level != logging_tools.LOG_LEVEL_OK:
             self.send_pool_message(("log", (what, log_level)))
-##    def _print(self, what):
-##        try:
-##            print what
-##        except:
-##            self.log("cannot print '%s': %s" % (what,
-##                                                process_tools.get_except_info()),
-##                     logging_tools.LOG_LEVEL_ERROR)
-##    def _init_log_template(self):
-##        self.__log_dir = time.strftime("%Y/%m/%d/%%s%%s") % (self.__opt_dict["JOB_ID"],
-##                                                             ".%s" % (os.environ["SGE_TASK_ID"]) if os.environ.get("SGE_TASK_ID", "unknown") != "unknown" else "")
-##        self.__log_name = "%s/log" % (self.__log_dir)
-##        logger, log_template = (None, None)
-##        try:
-##            logger = logging_tools.get_logger("%s.%s" % (self.__glob_config["LOG_NAME"],
-##                                                         self.__log_name.replace(".", "\.")),
-##                                              self.__glob_config["LOG_DESTINATION"],
-##                                              init_logger=True)
-##        except:
-##            log_template = net_logging_tools.log_command("%s.d" % (self.__glob_config["LOG_NAME"]), thread_safe=True, thread="job")
-##            log_template.set_destination(self.__glob_config["LOG_DESTINATION"])
-##            log_template.set_sub_names(self.__log_name)
-##            log_template.set_command_and_send("open_log")
-##            log_template.set_command("log")
-##        self.__log_template = log_template
-##        self.__logger = logger
     def _log_arguments(self):
         out_list = logging_tools.new_form_list()
         for key in sorted(self.__opt_dict.keys()):
@@ -138,18 +84,6 @@ class job_thread(threading_tools.thread_obj):
                              logging_tools.form_entry(self.__opt_dict[key], header="value")])
         for line in str(out_list).split("\n"):
             self.log(line)
-    def _log_config(self):
-        self.log("Config info:")
-        try:
-            for line, log_level in self.__glob_config.get_log(clear=True):
-                self.log(" - clf: [%d] %s" % (log_level, line))
-        except:
-            self.log("error reading log from glob_config: %s" % (process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
-        conf_info = self.__glob_config.get_config_info()
-        self.log("Found %d valid config-lines:" % (len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : %s" % (conf))
 ##    def _set_localhost_stuff(self):
 ##        try:
 ##            self.__opt_dict["HOST_IP"] = socket.gethostbyname(self.__opt_dict["HOST_SHORT"])
@@ -178,7 +112,7 @@ class job_thread(threading_tools.thread_obj):
         self._parse_job_script()
         self._log_arguments()
         self._read_config()
-        self._log_config()
+        #self._log_config()
         #self.write_file("aha", "/etc/hosts")
         #self.write_file("aha", "/etc/services")
         if self.is_start_call():
@@ -281,126 +215,6 @@ class job_thread(threading_tools.thread_obj):
         self._write_hosts_file("delete")
     # helper functions
     # for pe (parallel)
-    def _generate_hosts_file(self):
-        orig_file, new_file = (self.__env_dict["PE_HOSTFILE"],
-                               "/tmp/%s_%s" % (os.path.basename(self.__env_dict["PE_HOSTFILE"]),
-                                                                self.__opt_dict["FULL_JOB_ID"]))
-        # node_file ok
-        nf_ok = False
-        if os.path.isfile(orig_file):
-            try:
-                node_list = [line.strip() for line in file(orig_file, "r").readlines() if line.strip()]
-            except:
-                self.log("Cannot read node_file %s: %s" % (orig_file,
-                                                           process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                nf_ok = True
-                self.__node_list = [node_name.split(".")[0] for node_name in [line.split()[0] for line in node_list]]
-                node_dict = dict([(node_name.split(".")[0], {"num" : int(node_num)}) for node_name, node_num in [line.split()[0 : 2] for line in node_list]])
-        else:
-            self.log("No node_file name '%s' found" % (orig_file),
-                     logging_tools.LOG_LEVEL_ERROR)
-        if not nf_ok:
-            # dummy default node dict
-            self.__node_list = [self.__opt_dict["HOST_SHORT"]]
-            node_dict = {self.__opt_dict["HOST_SHORT"] : {"num" : 1}}
-        # node_list is now a dict {short host-name : {num : #instnaces }}
-        if not self.__glob_config.get("HAS_MPI_INTERFACE", True):
-            # no mpi-interfaces
-            pass
-        else:
-            mpi_postfix = self.__glob_config.get("MPI_POSTFIX", "mp")
-            self.log("using mpi_postfix '%s' for PE '%s' on queue '%s'" % (mpi_postfix,
-                                                                           self.__opt_dict["PE"],
-                                                                           self.__opt_dict["QUEUE"]))
-            for key, value in node_dict.iteritems():
-                value["mpi_name"] = "%s%s" % (key, mpi_postfix)
-        # resolve names
-        for node_name in self.__node_list:
-            node_stuff = node_dict[node_name]
-            try:
-                node_ip = socket.gethostbyname(node_name)
-            except:
-                self.log("error resolving %s to IP: %s" % (node_name,
-                                                           process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-                node_ip = node_name
-            node_stuff["ip"] = node_ip
-            node_stuff["ip_list"] = [node_ip]
-            if node_stuff.has_key("mpi_name"):
-                try:
-                    mpi_ip = socket.gethostbyname(node_stuff["mpi_name"])
-                except:
-                    self.log("error resolving %s to IP: %s" % (node_stuff["mpi_name"],
-                                                               process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-                    mpi_ip = node_stuff["mpi_name"]
-                node_stuff["mpi_ip"] = mpi_ip
-                node_stuff["ip_list"].append(mpi_ip)
-        self.log("content of node_list")
-        content = pprint.PrettyPrinter(indent=1, width=10).pformat(self.__node_list)
-        for line in content.split("\n"):
-            self.log(" - %s" % (line))
-        self.log("content of node_dict")
-        content = pprint.PrettyPrinter(indent=1, width=10).pformat(node_dict)
-        for line in content.split("\n"):
-            self.log(" - %s" % (line))
-        self.__node_dict = node_dict
-    def _write_hosts_file(self, action):
-        # generate various versions of host-file
-        for var_name, file_name, generator in [# to be compatible
-                                               # short file without MPI/IB-Interfacepostfix
-                                               ("HOSTFILE_SHORT"     , "/tmp/pe_hostfile_s_%s" % (self.__opt_dict["FULL_JOB_ID"])     , self._whf_short),
-                                               ("HOSTFILE_OLD"       , "/tmp/pe_hostfile_%s" % (self.__opt_dict["FULL_JOB_ID"])       , self._whf_plain),
-                                               ("HOSTFILE_PLAIN_MPI" , "/tmp/hostfile_plain_mpi_%s" % (self.__opt_dict["FULL_JOB_ID"]), self._whf_plain_mpi),
-                                               ("HOSTFILE_PLAIN"     , "/tmp/hostfile_plain_%s" % (self.__opt_dict["FULL_JOB_ID"])    , self._whf_plain),
-                                               ("HOSTFILE_WITH_CPUS" , "/tmp/hostfile_wcpu_%s" % (self.__opt_dict["FULL_JOB_ID"])     , self._whf_wcpu),
-                                               ("HOSTFILE_WITH_SLOTS", "/tmp/hostfile_wslot_%s" % (self.__opt_dict["FULL_JOB_ID"])    , self._whf_wslot)]:
-            #("PE_HOSTFILE"        , "/tmp/hostfile_sge_%s" % (self.__opt_dict["FULL_JOB_ID"]), self._whf_sge)]:
-            self.__opt_dict[var_name] = file_name
-            self._add_script_var(var_name, file_name)
-            if action == "save":
-                open(file_name, "w").write("\n".join(generator()) + "\n")
-            elif action == "delete":
-                if os.path.isfile(file_name):
-                    try:
-                        os.unlink(file_name)
-                    except:
-                        self.log("cannot remove %s: %s" % (file_name,
-                                                           process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
-    def _show_pe_hosts(self):
-        # show pe_hosts
-        self._print("  %s defined: %s" % (logging_tools.get_plural("NFS host", len(self.__node_list)),
-                                          ", ".join(["%s (%s, %d)" % (node_name,
-                                                                      self.__node_dict[node_name]["ip"],
-                                                                      self.__node_dict[node_name]["num"]) for node_name in self.__node_list])))
-        # mpi hosts
-        mpi_nodes = [node_name for node_name in self.__node_list if self.__node_dict[node_name].has_key("mpi_name")]
-        self._print("  %s defined: %s" % (logging_tools.get_plural("MPI host", len(mpi_nodes)),
-                                          ", ".join(["%s (on %s, %s, %d)" % (self.__node_dict[node_name]["mpi_name"],
-                                                                             node_name,
-                                                                             self.__node_dict[node_name]["mpi_ip"],
-                                                                             self.__node_dict[node_name]["num"]) for node_name in mpi_nodes]) or "---"))
-    def _get_mpi_name(self, n_name):
-        return self.__node_dict[n_name].get("mpi_name", n_name)
-    def _whf_short(self):
-        return self.__node_list
-    def _whf_plain_mpi(self):
-        return sum([[self._get_mpi_name(node_name)] * self.__node_dict[node_name]["num"] for node_name in self.__node_list], [])
-    def _whf_plain(self):
-        return sum([[node_name] * self.__node_dict[node_name]["num"] for node_name in self.__node_list], [])
-    def _whf_wcpu(self):
-        return ["%s cpu=%d" % (self._get_mpi_name(node_name), self.__node_dict[node_name]["num"]) for node_name in self.__node_list]
-    def _whf_wslot(self):
-        return ["%s max_slots=%d" % (self._get_mpi_name(node_name), self.__node_dict[node_name]["num"]) for node_name in self.__node_list]
-    def _whf_sge(self):
-        # like PE_HOSTFILE just with the Parallel Interfaces
-        return ["%s %d %s@%s <NULL>" % (self._get_mpi_name(node_name),
-                                        self.__node_dict[node_name]["num"],
-                                        self.__opt_dict["QUEUE"],
-                                        node_name) for node_name in self.__node_list]
     # job monitor stuff
     def _start_monitor_threads(self, con_list, mon_id):
         self.log("Starting monitor threads with id %s on %s" % (mon_id,
@@ -461,80 +275,6 @@ class job_thread(threading_tools.thread_obj):
                                                               logging_tools.get_plural("host", len(mon_hosts)),
                                                               logging_tools.compress_list(mon_hosts)))
         self._print("")
-    def _decode_monitor_result(self, arg, **args):
-        #if type(arg) == type({}):
-        src_host = args.get("host")
-        if arg.startswith("cok"):
-            if bz2:
-                try:
-                    ret_dict = server_command.net_to_sys(bz2.decompress(arg[4:]))
-                except:
-                    ret_dict = {}
-                    self.log("cannot interpret %s from %s: %s" % (arg,
-                                                                  src_host,
-                                                                  process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    self.log("decoded bz2-dict with %s from %s" % (logging_tools.get_plural("byte", len(arg)),
-                                                                   src_host))
-            else:
-                ret_dict = {}
-                self.log("cannnot decode bz2 input from %s (no bz2 module found)" % (src_host),
-                         logging_tools.LOG_LEVEL_ERROR)
-        elif arg.startswith("ok"):
-            try:
-                ret_dict = server_command.net_to_sys(arg[3:])
-            except:
-                ret_dict = {}
-                self.log("cannot interpret %s from %s: %s" % (arg,
-                                                              src_host,
-                                                              process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                self.log("decoded dict with %s from %s" % (logging_tools.get_plural("byte", len(arg)),
-                                                           src_host))
-        else:
-            ret_dict = {}
-            self.log("cannot interpret result %s from %s" % (arg,
-                                                             src_host),
-                     logging_tools.LOG_LEVEL_ERROR)
-        if ret_dict:
-            # migrate old version to new version
-            if ret_dict.has_key("cache"):
-                for key, value in ret_dict["cache"].iteritems():
-                    if type(value) == type({}):
-                        try:
-                            # convert to new style
-                            if value.has_key("default"):
-                                # new-style collserver
-                                new_value = hm_classes.mvect_entry(key,
-                                                                   default=value["default"],
-                                                                   base=value["base"],
-                                                                   factor=value["factor"],
-                                                                   info=value["info"],
-                                                                   unit=value["unit"])
-                            else:
-                                # old-style collserver
-                                new_value = hm_classes.mvect_entry(key,
-                                                                   default=value["d"],
-                                                                   base=value["b"],
-                                                                   factor=value["f"],
-                                                                   info=value["i"],
-                                                                   unit=value["u"])
-                            # set monitor values
-                            new_value.min_value = value["min"]
-                            new_value.max_value = value["max"]
-                            new_value.total_value = value["tot"]
-                            new_value.num = value["num"]
-                            ret_dict["cache"][key] = new_value
-                        except:
-                            self.log("cannot convert key %s (host %s): %s" % (key,
-                                                                              src_host,
-                                                                              process_tools.get_except_info()),
-                                     logging_tools.LOG_LEVEL_ERROR)
-            self.__act_monitor_dict[src_host] = ret_dict.get("cache", {})
-        return "ok dict with %s (cache_dict has %s)" % (logging_tools.get_plural("key", len(ret_dict.keys())),
-                                                        logging_tools.get_plural("key", len(ret_dict.get("cache", {}).keys())))
     # general
     def _add_script_var(self, key, value):
         var_file = self._get_var_script_name()
@@ -762,84 +502,6 @@ class job_thread(threading_tools.thread_obj):
                                error=args.get("error_str", "error in call_command (%s)" % (", ".join(com_names))),
                                fail_objects=[self.__opt_dict["FULL_JOB_ID"]])
     # local kill stuff
-    def _kill_stdout_stderr_childs(self):
-        sge_stdout_path = self.__env_dict["SGE_STDOUT_PATH"]
-        sge_stderr_path = self.__env_dict["SGE_STDERR_PATH"]
-        pid_dict = process_tools.get_proc_list()
-        # build list of pids up to the init-process (pid 1)
-        act_pid = os.getpid()
-        my_exe_path = os.readlink("/proc/%d/exe" % (act_pid))
-        self.log("sge_stdout_path: %s" % (sge_stdout_path))
-        self.log("sge_stderr_path: %s" % (sge_stderr_path))
-        self.log("my_exe_path: %s" % (my_exe_path))
-        my_pid_list = [act_pid]
-        while act_pid != 1:
-            act_pid = pid_dict[act_pid]["ppid"]
-            my_pid_list.append(act_pid)
-        kill_pids = []
-        check_paths = [act_p for act_p in [sge_stdout_path, sge_stderr_path] if act_p not in ["/dev/null"]]
-        p_dir = "/proc"
-        for p_id in [int(act_p) for act_p in os.listdir(p_dir) if act_p.isdigit()]:
-            full_path = "%s/%d" % (p_dir, p_id)
-            cwd_file = "%s/cwd" % (full_path)
-            try:
-                exe_path = os.readlink("%s/exe" % (full_path))
-            except:
-                exe_path = ""
-            if exe_path != my_exe_path:
-                try:
-                    cwd_path = os.readlink(cwd_file)
-                except:
-                    pass
-                else:
-                    fd_dir = "%s/fd" % (full_path)
-                    if os.path.isdir(fd_dir):
-                        for fd_num in os.listdir(fd_dir):
-                            try:
-                                fd_path = "%s/%s" % (fd_dir, fd_num)
-                                if os.path.islink(fd_path):
-                                    link_target = os.readlink(fd_path)
-                                    if link_target in check_paths:
-                                        if i_p_id not in my_pid_list and i_p_id not in kill_pids:
-                                            kill_pids.append(i_p_id)
-                                        #print "+++", p_id, fd_path, link_target
-                            except:
-                                self.log("cannot read fd %s from %s: %s" % (str(fd_num),
-                                                                            fd_dir,
-                                                                            process_tools.get_except_info()),
-                                         logging_tools.LOG_LEVEL_ERROR)
-        if kill_pids:
-            self.log("trying to kill %s: %s" % (logging_tools.get_plural("pid", len(kill_pids)),
-                                                ", ".join(["%d" % (pid) for pid in sorted(kill_pids)])))
-            for kill_pid in kill_pids:
-                try:
-                    exe_path = os.readlink("/proc/%d/exe" % (kill_pid))
-                except:
-                    exe_path = "<not readable>"
-                self.log("trying to kill pid %d (exe_path %s)" % (kill_pid, exe_path))
-                try:
-                    os.kill(kill_pid, 15)
-                except:
-                    pass
-            self.log("waiting for 10 seconds for %s to terminate ..." % (logging_tools.get_plural("task", len(kill_pids))),
-                     do_print=True)
-            for w_idx in xrange(10):
-                time.sleep(1)
-                still_present_pids = []
-                for kill_pid in kill_pids:
-                    if os.path.isdir("/proc/%d" % (kill_pid)):
-                        still_present_pids.append(kill_pid)
-                kill_pids = still_present_pids
-                if not kill_pids:
-                    break
-            if kill_pids:
-                self.log("killing remaing %s ..." % (logging_tools.get_plural("task", len(kill_pids))),
-                         do_print=True)
-                for kill_pid in kill_pids:
-                    try:
-                        os.kill(kill_pid, 9)
-                    except:
-                        pass
     # network related calls (highlevel)
     def _send_tag(self, tag_name, **args):
         s_time = time.time()
@@ -1149,7 +811,8 @@ class job_thread(threading_tools.thread_obj):
             # to escape from waiting loop
             self.get_thread_queue().put(("result_error", (send_id, -1, "connect timeout")))
     def _new_tcp_con(self, sock):
-        return simple_tcp_obj(self.get_thread_queue(), sock.get_add_data())
+        return None
+        #return simple_tcp_obj(self.get_thread_queue(), sock.get_add_data())
     def _result_ok(self, (s_id, s_type, res_str)):
         if s_type == "s":
             # srv_command
@@ -1182,31 +845,6 @@ class job_thread(threading_tools.thread_obj):
         self.__pending_dict[s_id] = (False, (e_flag, e_cause))
     # calls to determine the actual runmode
     # headers / footers
-    def _write_pe_header(self):
-        sep_str = "-" * self.__glob_config["SEP_LEN"]
-        self._print(sep_str)
-        self._print("Starting %s for job %s, %s at %s" % (self.__opt_dict["CALLER_NAME_SHORT"],
-                                                          self.__opt_dict["FULL_JOB_ID"],
-                                                          self.get_owner_str(),
-                                                          time.ctime(time.time())))
-        self.log("writing %s-header for job %s, %s" % (self.__opt_dict["CALLER_NAME_SHORT"],
-                                                       self.__opt_dict["FULL_JOB_ID"],
-                                                       self.get_owner_str()))
-    def _write_pe_footer(self):
-        sep_str = "-" * self.__glob_config["SEP_LEN"]
-        self.log("writing %s-footer for job %s, return value is %d (%s)" % (self.__opt_dict["CALLER_NAME_SHORT"],
-                                                                            self.__opt_dict["FULL_JOB_ID"],
-                                                                            self.__return_value,
-                                                                            self.get_stat_str(self.__return_value)))
-        spent_time = logging_tools.get_diff_time_str(self.__end_time - self.__start_time)
-        self._print("%s finished for job %s, status %s, spent %s" % (self.__opt_dict["CALLER_NAME_SHORT"],
-                                                                     self.__opt_dict["FULL_JOB_ID"],
-                                                                     self.get_stat_str(self.__return_value),
-                                                                     spent_time))
-        self.log("%s took %s" % (self.__opt_dict["CALLER_NAME"],
-                                 spent_time))
-        self._print(sep_str)
-        
         
 class my_thread_pool(threading_tools.thread_pool):
     def __init__(self, opt_dict):
@@ -1615,77 +1253,22 @@ class job_object(object):
         #cpuset_dir_name = "%s/cpuset" % (g_config["SGE_ROOT"])
         do_cpuset = False
         no_cpuset_cause = []
-        if global_config.get("CPUSET_PE", "notset") == global_config.get("PE", "unknown"):
-            # not fixed
-            num_cpus = int(int_env["pe_slots"])
-            act_job.log("requested pe is '%s', trying to allocate a cpuset with %s on queue %s" % (int_env["pe"],
-                                                                                                   logging_tools.get_plural("cpu", num_cpus),
-                                                                                                   cluster_queue_name),
-                        1)
-            if os.path.isdir(cpuset_dir_name):
-                cpuset_file_name = "%s/%s" % (cpuset_dir_name, cluster_queue_name)
-                if os.path.isfile(cpuset_file_name):
-                    do_cpuset = True
-                else:
-                    act_job.log("no cpuset-file '%s', doing normal startmethod" % (cpuset_file_name))
-                    no_cpuset_cause.append("no queue-local cpuset config %s" % (cpuset_file_name))
-            else:
-                act_job.log("no cpuset-dir %s" % (cpuset_dir_name))
-                no_cpuset_cause.append("no cpuset-director %s" % (cpuset_dir_name))
-            if do_cpuset:
-                lock_f = lock_cpuset(act_job)
-                act_cpu_set = cpu_set(act_job, cpuset_dir_name, cpuset_file_name)
-                # generate new cpuset_name
-                act_cpu_set.increase_cpuset_name()
-                act_job.log("found cpuset-file at %s, cpuset_name is '%s'" % (cpuset_file_name,
-                                                                              act_cpu_set.get_act_cpuset_name()), 1)
-                a_lists = act_cpu_set.find_allocation_schemes(num_cpus)
-                if a_lists:
-                    cpus = a_lists[0]
-                    act_cpu_set.allocate_cpus(cpus)
-                    act_cpu_set.generate_cpuset(cpus)
-                    cpu_set_name = act_cpu_set.get_act_cpuset_name()
-                else:
-                    do_cpuset = False
-                    no_cpuset_cause.append("cannot allocate %s" % (logging_tools.get_plural("cpu", num_cpus)))
-                act_cpu_set.write_occupation_to_file()
-                unlock_cpuset(act_job, lock_f)
-        if do_cpuset:
-            if shell_start_mode == "posix_compliant" and shell_path:
-                df_lines = ["#!%s" % ("/bin/sh"),
-                            "echo 'wrapper_script, with cpu_set'",
-                            "export BASH_ENV=$HOME/.bashrc",
-                            "export CPUS=\"%s\"" % (" ".join(["%d" % (x) for x in cpus])),
-                            "export NCPUS=%d" % (len(cpus)),
-                            ". %s" % (var_file),
-                            "exec cpuset -q %s -A %s %s $*" % (cpu_set_name, shell_path, src_file),
-                            ""]
-            else:
-                df_lines = ["#!%s" % ("/bin/sh"),
-                            "echo 'wrapper_script, with cpu_set'",
-                            "export BASH_ENV=$HOME/.bashrc",
-                            "export CPUS=\"%s\"" % (" ".join(["%d" % (x) for x in cpus])),
-                            "export NCPUS=%d" % (len(cpus)),
-                            ". %s" % (var_file),
-                            "exec cpuset -q -A %s $*" % (cpu_set_name, src_file),
-                            ""]
+        if no_cpuset_cause:
+            self.log("not using cpuset because: %s" % (", ".join(no_cpuset_cause)))
+        if shell_start_mode == "posix_compliant" and shell_path:
+            df_lines = ["#!%s" % ("/bin/sh"),
+                        "echo 'wrapper_script, no cpu_set'",
+                        "export BASH_ENV=$HOME/.bashrc",
+                        ". %s" % (var_file),
+                        "exec %s %s $*" % (shell_path, src_file),
+                        ""]
         else:
-            if no_cpuset_cause:
-                self.log("not using cpuset because: %s" % (", ".join(no_cpuset_cause)))
-            if shell_start_mode == "posix_compliant" and shell_path:
-                df_lines = ["#!%s" % ("/bin/sh"),
-                            "echo 'wrapper_script, no cpu_set'",
-                            "export BASH_ENV=$HOME/.bashrc",
-                            ". %s" % (var_file),
-                            "exec %s %s $*" % (shell_path, src_file),
-                            ""]
-            else:
-                df_lines = ["#!%s" % ("/bin/sh"),
-                            "echo 'wrapper_script, no cpu_set'",
-                            "export BASH_ENV=$HOME/.bashrc",
-                            ". %s" % (var_file),
-                            "exec %s $*" % (src_file),
-                            ""]
+            df_lines = ["#!%s" % ("/bin/sh"),
+                        "echo 'wrapper_script, no cpu_set'",
+                        "export BASH_ENV=$HOME/.bashrc",
+                        ". %s" % (var_file),
+                        "exec %s $*" % (src_file),
+                        ""]
         file(dst_file, "w").write("\n".join(df_lines))
         file(var_file, "w").write("#!/bin/bash\n")
         self.write_file("wrapper_script", df_lines)
@@ -1714,19 +1297,6 @@ class job_object(object):
         else:
             self.log("no such file: %s" % (dst_file),
                      logging_tools.LOG_LEVEL_ERROR)
-        if global_config.get("CPUSET_PE", "notset") == global_config.get("PE", "unknown"):
-            cpuset_dir_name = "%s/cpuset" % (global_config["SGE_ROOT"])
-            cpuset_file_name = "%s/%s" % (cpuset_dir_name, int_env["queue"].split("@")[0])
-            if os.path.isfile(cpuset_file_name):
-                my_lockf = lock_cpuset(act_job)
-                act_cpu_set = cpu_set(act_job, cpuset_dir_name, cpuset_file_name)
-                act_cpu_set.read_cpuset_name()
-                act_cpu_set.free_cpus()
-                act_cpu_set.remove_cpuset()
-                act_cpu_set.write_occupation_to_file()
-                unlock_cpuset(act_job, my_lockf)
-            else:
-                act_job.log("Cannot find cpuset-file '%s', strange ..." % (cpuset_file_name), 1)
     def _add_script_var(self, key, value):
         var_file = self._get_var_script_name()
         self.log("adding variable (%s=%s) to var_file %s" % (key,
@@ -1931,7 +1501,7 @@ class job_object(object):
             except KeyError:
                 group = "unknown"
                 self.log("Unknown group-id %d for user '%s', using %s as group" % (gid,
-                                                                                   user,
+                                                                                   global_config["JOB_OWNER"],
                                                                                    group),
                          logging_tools.LOG_LEVEL_ERROR)
             else:
@@ -1960,6 +1530,30 @@ class job_object(object):
                                                     global_config["JOB_QUEUE"]),
                  do_print=True)
     def _write_proepi_footer(self):
+        sep_str = "-" * global_config["SEP_LEN"]
+        self.log("writing %s-footer for job %s, return value is %d (%s)" % (global_config["CALLER_NAME"],
+                                                                            global_config["FULL_JOB_ID"],
+                                                                            self.p_pool["return_value"],
+                                                                            self.get_stat_str(self.p_pool["return_value"])))
+        spent_time = logging_tools.get_diff_time_str(self.__end_time - self.__start_time)
+        self._print("%s finished for job %s, status %s, spent %s" % (global_config["CALLER_NAME"],
+                                                                     global_config["FULL_JOB_ID"],
+                                                                     self.get_stat_str(self.p_pool["return_value"]),
+                                                                     spent_time))
+        self.log("%s took %s" % (global_config["CALLER_NAME"],
+                                 spent_time))
+        self._print(sep_str)
+    def _write_pe_header(self):
+        sep_str = "-" * global_config["SEP_LEN"]
+        self._print(sep_str)
+        self._print("Starting %s for job %s, %s at %s" % (global_config["CALLER_NAME"],
+                                                          global_config["FULL_JOB_ID"],
+                                                          self.get_owner_str(),
+                                                          time.ctime(time.time())))
+        self.log("writing %s-header for job %s, %s" % (global_config["CALLER_NAME"],
+                                                       global_config["FULL_JOB_ID"],
+                                                       self.get_owner_str()))
+    def _write_pe_footer(self):
         sep_str = "-" * global_config["SEP_LEN"]
         self.log("writing %s-footer for job %s, return value is %d (%s)" % (global_config["CALLER_NAME"],
                                                                             global_config["FULL_JOB_ID"],
@@ -2137,6 +1731,126 @@ class job_object(object):
                             str(res_list).split("\n"))
         else:
             self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
+    def _generate_hosts_file(self):
+        orig_file, new_file = (self.__env_dict["PE_HOSTFILE"],
+                               "/tmp/%s_%s" % (os.path.basename(self.__env_dict["PE_HOSTFILE"]),
+                                                                global_config["FULL_JOB_ID"]))
+        # node_file ok
+        nf_ok = False
+        if os.path.isfile(orig_file):
+            try:
+                node_list = [line.strip() for line in file(orig_file, "r").readlines() if line.strip()]
+            except:
+                self.log("Cannot read node_file %s: %s" % (orig_file,
+                                                           process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                nf_ok = True
+                self.__node_list = [node_name.split(".")[0] for node_name in [line.split()[0] for line in node_list]]
+                node_dict = dict([(node_name.split(".")[0], {"num" : int(node_num)}) for node_name, node_num in [line.split()[0 : 2] for line in node_list]])
+        else:
+            self.log("No node_file name '%s' found" % (orig_file),
+                     logging_tools.LOG_LEVEL_ERROR)
+        if not nf_ok:
+            # dummy default node dict
+            self.__node_list = [global_config["HOST_SHORT"]]
+            node_dict = {global_config["HOST_SHORT"] : {"num" : 1}}
+        # node_list is now a dict {short host-name : {num : #instnaces }}
+        if not global_config.get("HAS_MPI_INTERFACE", True):
+            # no mpi-interfaces
+            pass
+        else:
+            mpi_postfix = global_config.get("MPI_POSTFIX", "mp")
+            self.log("using mpi_postfix '%s' for PE '%s' on queue '%s'" % (mpi_postfix,
+                                                                           global_config["PE"],
+                                                                           global_config["JOB_QUEUE"]))
+            for key, value in node_dict.iteritems():
+                value["mpi_name"] = "%s%s" % (key, mpi_postfix)
+        # resolve names
+        for node_name in self.__node_list:
+            node_stuff = node_dict[node_name]
+            try:
+                node_ip = socket.gethostbyname(node_name)
+            except:
+                self.log("error resolving %s to IP: %s" % (node_name,
+                                                           process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+                node_ip = node_name
+            node_stuff["ip"] = node_ip
+            node_stuff["ip_list"] = [node_ip]
+            if node_stuff.has_key("mpi_name"):
+                try:
+                    mpi_ip = socket.gethostbyname(node_stuff["mpi_name"])
+                except:
+                    self.log("error resolving %s to IP: %s" % (node_stuff["mpi_name"],
+                                                               process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                    mpi_ip = node_stuff["mpi_name"]
+                node_stuff["mpi_ip"] = mpi_ip
+                node_stuff["ip_list"].append(mpi_ip)
+        self.log("content of node_list")
+        content = pprint.PrettyPrinter(indent=1, width=10).pformat(self.__node_list)
+        for line in content.split("\n"):
+            self.log(" - %s" % (line))
+        self.log("content of node_dict")
+        content = pprint.PrettyPrinter(indent=1, width=10).pformat(node_dict)
+        for line in content.split("\n"):
+            self.log(" - %s" % (line))
+        self.__node_dict = node_dict
+    def _write_hosts_file(self, action):
+        # generate various versions of host-file
+        for var_name, file_name, generator in [# to be compatible
+                                               # short file without MPI/IB-Interfacepostfix
+                                               ("HOSTFILE_SHORT"     , "/tmp/pe_hostfile_s_%s" % (global_config["FULL_JOB_ID"])     , self._whf_short),
+                                               ("HOSTFILE_OLD"       , "/tmp/pe_hostfile_%s" % (global_config["FULL_JOB_ID"])       , self._whf_plain),
+                                               ("HOSTFILE_PLAIN_MPI" , "/tmp/hostfile_plain_mpi_%s" % (global_config["FULL_JOB_ID"]), self._whf_plain_mpi),
+                                               ("HOSTFILE_PLAIN"     , "/tmp/hostfile_plain_%s" % (global_config["FULL_JOB_ID"])    , self._whf_plain),
+                                               ("HOSTFILE_WITH_CPUS" , "/tmp/hostfile_wcpu_%s" % (global_config["FULL_JOB_ID"])     , self._whf_wcpu),
+                                               ("HOSTFILE_WITH_SLOTS", "/tmp/hostfile_wslot_%s" % (global_config["FULL_JOB_ID"])    , self._whf_wslot)]:
+            #("PE_HOSTFILE"        , "/tmp/hostfile_sge_%s" % (global_config["FULL_JOB_ID"]), self._whf_sge)]:
+            global_config.add_config_entries([(var_name, configfile.str_c_var(file_name))])
+            self._add_script_var(var_name, file_name)
+            if action == "save":
+                open(file_name, "w").write("\n".join(generator()) + "\n")
+            elif action == "delete":
+                if os.path.isfile(file_name):
+                    try:
+                        os.unlink(file_name)
+                    except:
+                        self.log("cannot remove %s: %s" % (file_name,
+                                                           process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+    def _show_pe_hosts(self):
+        # show pe_hosts
+        self._print("  %s defined: %s" % (logging_tools.get_plural("NFS host", len(self.__node_list)),
+                                          ", ".join(["%s (%s, %d)" % (node_name,
+                                                                      self.__node_dict[node_name]["ip"],
+                                                                      self.__node_dict[node_name]["num"]) for node_name in self.__node_list])))
+        # mpi hosts
+        mpi_nodes = [node_name for node_name in self.__node_list if self.__node_dict[node_name].has_key("mpi_name")]
+        self._print("  %s defined: %s" % (logging_tools.get_plural("MPI host", len(mpi_nodes)),
+                                          ", ".join(["%s (on %s, %s, %d)" % (self.__node_dict[node_name]["mpi_name"],
+                                                                             node_name,
+                                                                             self.__node_dict[node_name]["mpi_ip"],
+                                                                             self.__node_dict[node_name]["num"]) for node_name in mpi_nodes]) or "---"))
+    def _get_mpi_name(self, n_name):
+        return self.__node_dict[n_name].get("mpi_name", n_name)
+    def _whf_short(self):
+        return self.__node_list
+    def _whf_plain_mpi(self):
+        return sum([[self._get_mpi_name(node_name)] * self.__node_dict[node_name]["num"] for node_name in self.__node_list], [])
+    def _whf_plain(self):
+        return sum([[node_name] * self.__node_dict[node_name]["num"] for node_name in self.__node_list], [])
+    def _whf_wcpu(self):
+        return ["%s cpu=%d" % (self._get_mpi_name(node_name), self.__node_dict[node_name]["num"]) for node_name in self.__node_list]
+    def _whf_wslot(self):
+        return ["%s max_slots=%d" % (self._get_mpi_name(node_name), self.__node_dict[node_name]["num"]) for node_name in self.__node_list]
+    def _whf_sge(self):
+        # like PE_HOSTFILE just with the Parallel Interfaces
+        return ["%s %d %s@%s <NULL>" % (self._get_mpi_name(node_name),
+                                        self.__node_dict[node_name]["num"],
+                                        global_config["JOB_QUEUE"],
+                                        node_name) for node_name in self.__node_list]
     def _prologue(self):
         client.setup(self.log, self.p_pool.zmq_context)
         self._create_wrapper_script()
@@ -2155,6 +1869,35 @@ class job_object(object):
         yield False
     def _epilogue(self):
         self._delete_wrapper_script()
+        yield False
+    def _pe_start(self):
+        self.log("pe_start called")
+        self._generate_hosts_file()
+        #self._send_tag("pe_start", queue_list=self.__node_list)
+        self._write_hosts_file("save")
+        self._show_pe_hosts()
+        # check reachability of user-homes
+        #self._check_homedir(self.__node_list)
+        #if not self.__return_value:
+        #    self._flight_check("preflight")
+        #if not self.__return_value:
+        #    # check if exit_code is still ok
+        #    self._kill_foreign_pids(self.__node_list)
+        #    self._remove_foreign_ipcs(self.__node_list)
+        yield False
+    def _pe_stop(self):
+        self.log("pe_stop called")
+        self._generate_hosts_file()
+        #self._send_tag("pe_stop", queue_list=self.__node_list)
+        self._show_pe_hosts()
+        self._write_hosts_file("keep")
+        #self._kill_foreign_pids(self.__node_list)
+        #self._remove_foreign_ipcs(self.__node_list)
+        #if self.__glob_config.get("UMOUNT_CALL", True):
+        #    self._umount_nfs_mounts(self.__node_list)
+        #self._flight_check("postflight")
+        self._write_hosts_file("delete")
+        yield False
     def loop_function(self):
         self.__start_time = time.time()
         self.log("log_name is %s/%s" % (global_config["LOG_NAME"], self.__log_name), pool=True)
@@ -2179,21 +1922,29 @@ class job_object(object):
             self._log_limits()
         if self.is_proepilogue_call():
             self._write_proepi_header()
-        #elif self.is_pe_call():
-        #    self._write_pe_header()
+        elif self.is_pe_call():
+            self._write_pe_header()
         if self.is_start_call():
             self._write_run_info()
         if "JOB_SCRIPT" in self.__env_dict:
             self.log("starting inner loop for %s" % (global_config["CALLER_NAME"]))
             if global_config["CALLER_NAME"] == "prologue":
-                for p_res in self._prologue():
-                    if p_res:
-                        yield p_res
+                sub_func = self._prologue
             elif global_config["CALLER_NAME"] == "epilogue":
-                self._epilogue()
+                sub_func = self._epilogue
+            elif self.is_pe_start_call():
+                sub_func = self._pe_start
+            elif self.is_pe_stop_call():
+                sub_func = self._pe_stop
             else:
+                sub_func = None
+            if sub_func is None:
                 self.log("unknown runmode %s" % (global_config["CALLER_NAME"]),
                          logging_tools.LOG_LEVEL_ERROR)
+            else:
+                for p_res in sub_func():
+                    if p_res:
+                        yield p_res
             self.log("ending inner loop")
         else:
             self.log("no JOB_SCRIPT in env_dict, skipping inner loop", logging_tools.LOG_LEVEL_ERROR)
@@ -2202,8 +1953,8 @@ class job_object(object):
         self.__end_time = time.time()
         if self.is_proepilogue_call():
             self._write_proepi_footer()
-        #elif self.is_pe_call():
-        #    self._write_pe_footer()
+        elif self.is_pe_call():
+            self._write_pe_footer()
         self.log("took %s" % (logging_tools.get_diff_time_str(self.__end_time - self.__start_time)))
         yield None
 ##        print "ce"
@@ -2221,6 +1972,7 @@ class process_pool(threading_tools.process_pool):
         self.start_time = time.time()
         self.global_config = global_config
         self.__log_cache, self.__log_template = ([], None)
+        self.log("-" * SEP_LEN)
         threading_tools.process_pool.__init__(self, "main", zmq=True,
                                               blocking_loop=False,
                                               #zmq_debug=True,
@@ -2324,19 +2076,18 @@ class process_pool(threading_tools.process_pool):
             
 def new_main_code():
     ret_value = 1
-    opt_dict = my_opt_parser().parse()
-    if opt_dict:
-        hs_ok = process_tools.set_handles({"err" : (0, "/var/lib/logging-server/py_err")}, error_only = True)
-        my_tp = my_thread_pool(opt_dict)
-        my_tp.thread_loop()
-        ret_value = my_tp.exit_code
+##    opt_dict = my_opt_parser().parse()
+##    if opt_dict:
+##        hs_ok = process_tools.set_handles({"err" : (0, "/var/lib/logging-server/py_err")}, error_only = True)
+##        my_tp = my_thread_pool(opt_dict)
+##        my_tp.thread_loop()
+##        ret_value = my_tp.exit_code
     return ret_value
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 def zmq_main_code():
     # brand new 0MQ-based code
-    my_parser = argparse.ArgumentParser()
     global_config.add_config_entries([
         ("DEBUG"                , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("LOG_DESTINATION"      , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
@@ -2366,8 +2117,8 @@ def zmq_main_code():
         ])
         if len(options.arguments) == 8:
             global_config.add_config_entries([
-                ("PE_HOSTFILE", configfile.str_c_var(options.arguments[5], source="cmdline"))
-                ("PE"         , configfile.str_c_var(options.arguments[6], source="cmdline"))
+                ("PE_HOSTFILE", configfile.str_c_var(options.arguments[5], source="cmdline")),
+                ("PE"         , configfile.str_c_var(options.arguments[6], source="cmdline")),
                 ("PE_SLOTS"   , configfile.str_c_var(options.arguments[7], source="cmdline"))
             ])
     else:
