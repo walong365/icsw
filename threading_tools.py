@@ -788,6 +788,8 @@ class process_obj(multiprocessing.Process):
         # run flag
         # process priority: when stopping processes start with the lowest priority and end with the highest
         self["priority"] = kwargs.get("priority", 0)
+        self.cb_func = kwargs.get("cb_func", None)
+        self.loop_timer = kwargs.get("loop_timer", 0)
         # copy kwargs for reference
         self.start_kwargs = kwargs
     @property
@@ -940,12 +942,18 @@ class process_obj(multiprocessing.Process):
             cur_q = self.__process_queue
             while self["run_flag"]:
                 try:
-                    cur_mes = cur_q.recv_pyobj()
-                    self._handle_message(cur_mes)
+                    if self.loop_timer:
+                        while cur_q.poll(timeout=self.loop_timer):
+                            self._handle_message(cur_q.recv_pyobj())
+                    else:
+                        cur_mes = cur_q.recv_pyobj()
+                        self._handle_message(cur_mes)
                 except:
                     print "process_obj.loop() %s: %s" % (self.name,
                                                          process_tools.get_except_info())
                     raise
+                if self.cb_func:
+                    self.cb_func()
 
 class debug_zmq_sock(object):
     def __init__(self, zmq_sock):

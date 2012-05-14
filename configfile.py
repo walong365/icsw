@@ -447,13 +447,23 @@ class configuration(object):
                             if ma:
                                 key, value = (ma.group("key"), ma.group("value"))
                                 try:
-                                    self[key] = (value, "%s, sec %s" % (file_name, act_section))
+                                    cur_type = self.get_type(key)
                                 except KeyError:
-                                    self.log("Error: key %s not defined in dictionary" % (key),
+                                    self.log("Error: key %s not defined in dictionary for get_type" % (key),
                                              logging_tools.LOG_LEVEL_ERROR)
                                 else:
-                                    if self.__verbose:
-                                        self.log("Changing value of key %s to %s" % (key, self.__c_dict[key]))
+                                    # interpret using eval
+                                    if cur_type == "s":
+                                        # escape strings
+                                        value = "\"%s\"" % (value)
+                                    try:
+                                        self[key] = (eval("%s" % (value)), "%s, sec %s" % (file_name, act_section))
+                                    except KeyError:
+                                        self.log("Error: key %s not defined in dictionary" % (key),
+                                                 logging_tools.LOG_LEVEL_ERROR)
+                                    else:
+                                        if self.__verbose:
+                                            self.log("Changing value of key %s to %s" % (key, self.__c_dict[key]))
                             else:
                                 self.log("Error parsing line '%s'" % (str(line)),
                                          logging_tools.LOG_LEVEL_ERROR)
