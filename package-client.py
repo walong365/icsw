@@ -31,6 +31,8 @@ import copy
 import cPickle
 import zmq
 import net_tools
+import uuid_tools
+import server_command
 try:
     import bz2
 except:
@@ -46,6 +48,7 @@ import tempfile
 import fcntl
 import threading_tools
 import rpm_module
+import zmq
 
 try:
     from package_client_version import *
@@ -60,11 +63,12 @@ try:
 except locale.Error:
     CB_ENCODING = "C"
 
-P_CLIENT_PORT      = 2003
-P_SERVER_NODE_PORT = 8008
+P_SERVER_PUB_PORT   = 8007
+P_SERVER_PULL_PORT  = 8008
+PACKAGE_CLIENT_PORT = 2003
 
 LF_NAME = "/var/lock/package_client.lock"
-    
+
 def call_command(com, logger, mode=""):
     start_time = time.time()
     try:
@@ -1745,6 +1749,26 @@ class server_process(threading_tools.process_pool):
         self.log("bind to %s" % (conn_str))
         self.com_socket = client
         self.register_poller(self.com_socket, zmq.POLLIN, self._recv)
+        # connect to server
+        srv_port = self.zmq_context.socket(zmq.DEALER)
+        srv_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
+        #srv_port.setsockopt(zmq.SUBSCRIBE, "")
+        conn_str = "tcp://127.0.0.1:%d" % (global_config["SERVER_PUB_PORT"])
+        srv_port.connect(conn_str)
+        self.log("connectecd to %s" % (conn_str))
+        print srv_port.send_unicode(unicode(server_command.srv_command(command="hello")))
+        print srv_port.recv_unicode()
+        print srv_port.send_unicode(unicode(server_command.srv_command(command="hello2")))
+        print srv_port.recv_unicode()
+        print srv_port.recv_unicode()
+        print srv_port.recv_unicode()
+        print srv_port.recv_unicode()
+        print srv_port.recv_unicode()
+        print srv_port.recv_unicode()
+        print srv_port.recv_unicode()
+        print srv_port.recv_unicode()
+        print srv_port.recv_unicode()
+        print "done"
     def _recv(self, zmq_sock):
         data = []
         while True:
@@ -1863,8 +1887,9 @@ def main():
         ("KILL_RUNNING"           , configfile.bool_c_var(True)),
         ("POLL_INTERVALL"         , configfile.int_c_var(5, help_string="poll intervall")),
         ("EXIT_ON_FAIL"           , configfile.bool_c_var(False, help_string="exit on fail [%(default)s]")),
-        ("COM_PORT"               , configfile.int_c_var(P_CLIENT_PORT, help_string="node to bind to [%(default)d]")),
-        ("SERVER_PORT"            , configfile.int_c_var(P_SERVER_NODE_PORT, help_string="server to to connect to [%(default)d]")),
+        ("COM_PORT"               , configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="node to bind to [%(default)d]")),
+        ("SERVER_PUB_PORT"          , configfile.int_c_var(P_SERVER_PUB_PORT, help_string="server publish port [%(default)d]")),
+        ("SERVER_PULL_PORT"         , configfile.int_c_var(P_SERVER_PULL_PORT, help_string="server pull port [%(default)d]")),
         ("LOG_DESTINATION"        , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"               , configfile.str_c_var(prog_name)),
         ("CHECK_AUTOMOUNTER"      , configfile.bool_c_var(True, help_string="check automounter [%(default)s]")),

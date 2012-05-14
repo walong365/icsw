@@ -28,13 +28,11 @@ try:
     import bz2
 except:
     bz2 = None
-import getopt
 import configfile_old as configfile
-import os.path
-import socket
 import time
 import datetime
-import threading
+import configfile
+import uuid_tools
 import logging_tools
 import process_tools
 import mysql_tools
@@ -52,14 +50,15 @@ import stat
 import config_tools
 sys.path.append("/usr/local/sbin")
 import insert_package_info
+import zmq
 
 try:
     from package_server_version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "unknown.unknown"
 
-P_SERVER_COM_PORT   = 8007
-P_SERVER_NODE_PORT  = 8008
+P_SERVER_PUB_PORT   = 8007
+P_SERVER_PULL_PORT  = 8008
 PACKAGE_CLIENT_PORT = 2003
 
 ADD_PACK_PATH = "additional_packages"
@@ -614,32 +613,42 @@ class package_status_thread(threading_tools.thread_obj):
     def loop_end(self):
         self.__dc.release()
 
-class watcher_thread(threading_tools.thread_obj):
-    def __init__(self, log_queue, db_con, glob_config):
-        self.__log_queue = log_queue
+class watcher_process(threading_tools.process_obj):
+    def __init__(self, name, db_con):
         self.__db_con = db_con
-        self.__glob_config = glob_config
-        threading_tools.thread_obj.__init__(self, "watcher", queue_size=100, loop_function=self._check)
+        threading_tools.process_obj.__init__(
+            self,
+            name,
+            cb_func=self.call_watcher,
+            loop_timer=1000)
+        self.__export_dir = global_config["ROOT_EXPORT_DIR"]
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+            init_logger=True)
         if inotify_tools.inotify_ok():
             self.log("watching via inotify")
             self.__my_watcher = inotify_tools.inotify_watcher()
-            self.__my_watcher.add_watcher("packageserver",
-                                          self.__glob_config["ROOT_EXPORT_DIR"],
-                                          inotify_tools.IN_MODIFY | inotify_tools.IN_CLOSE_WRITE | inotify_tools.IN_DELETE,
-                                          self._process_event)
+            self.__my_watcher.add_watcher(
+                "packageserver",
+                self.__export_dir,
+                inotify_tools.IN_MODIFY | inotify_tools.IN_CLOSE_WRITE | inotify_tools.IN_DELETE,
+                self._process_event)
         else:
             self.log("watching via polling-loop", logging_tools.LOG_LEVEL_WARN)
             self.__my_watcher = None
-        self.register_func("update", self._update)
+        #self.register_func("update", self._update)
         self.register_func("delete_packages", self._delete_packages)
         self.__package_dict = {}
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK, node_name=""):
-        self.__log_queue.put(("log", (what, lev, self.name, node_name)))
-    def thread_running(self):
-        self.send_pool_message(("new_pid", self.pid))
-        self._check_package_dir()
-    def _update(self):
-        pass
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def loop_post(self):
+        self.__log_template.close()
+    def call_watcher(self):
+        self.__my_watcher.check(timeout=500)
     def _check(self):
         if self.__my_watcher:
             self.__my_watcher.check(5000)
@@ -697,20 +706,18 @@ class watcher_thread(threading_tools.thread_obj):
                                                               inotify_tools.mask_to_str(mask)))
         # check dir
         self._check_package_dir()
-        # check for new messages
-        self.inner_loop()
     def _check_package_dir(self):
-        if os.path.isdir(self.__glob_config["ROOT_EXPORT_DIR"]):
+        if os.path.isdir(self.__export_dir):
             dc = None
             # step one: check packages on disk
             s_time = time.time()
-            self.log("checking package_dir %s" % (self.__glob_config["ROOT_EXPORT_DIR"]))
+            self.log("checking package_dir %s" % (self.__export_dir))
             num_packages, num_checked, num_ignored = (0, 0, 0)
             act_packs_found = []
-            for ent in sorted(os.listdir(self.__glob_config["ROOT_EXPORT_DIR"])):
+            for ent in sorted(os.listdir(self.__export_dir)):
                 if ent.endswith(".rpm") or ent.endswith(".deb"):
                     num_packages += 1
-                    full_name = "%s/%s" % (self.__glob_config["ROOT_EXPORT_DIR"], ent)
+                    full_name = "%s/%s" % (self.__export_dir, ent)
                     act_packs_found.append(full_name)
                     act_mtime = os.stat(full_name)[stat.ST_MTIME]
                     check_file = True
@@ -770,8 +777,8 @@ class watcher_thread(threading_tools.thread_obj):
             all_packs = dc.fetchall()
             for db_rec in all_packs:
                 file_name = os.path.basename(db_rec["location"])
-                full_path = os.path.normpath("%s/%s" % (self.__glob_config["ROOT_EXPORT_DIR"],
-                                                        file_name))
+                full_path = os.path.normpath(os.path.join(self.__export_dir,
+                                                          file_name))
                 if not os.path.isfile(full_path):
                     self.log("package %s (path %s) no longer present on disk" % (db_rec["name"],
                                                                                  full_path),
@@ -791,7 +798,7 @@ class watcher_thread(threading_tools.thread_obj):
             if dc:
                 dc.release()
         else:
-            self.log("package_dir %s not found" % (self.__glob_config["ROOT_EXPORT_DIR"]), logging_tools.LOG_LEVEL_ERROR)
+            self.log("package_dir %s not found" % (self.__export_dir), logging_tools.LOG_LEVEL_ERROR)
 
 class node_thread(threading_tools.thread_obj):
     def __init__(self, log_queue, db_con, glob_config, loc_config):
@@ -1200,24 +1207,147 @@ class node_thread(threading_tools.thread_obj):
     def loop_end(self):
         self.__dc.release()
     
-class server_thread_pool(threading_tools.thread_pool):
-    def __init__(self, n_retry, log_lines, daemon, db_con, glob_config, loc_config):
-        self.__log_buffer = []
-        self.__log_queue = None
-        self.__daemon = daemon
-        self.__glob_config = glob_config
-        self.__loc_config = loc_config
-        threading_tools.thread_pool.__init__(self, "main_thread", blocking_loop=False)
+class server_process(threading_tools.process_pool):
+    def __init__(self, db_con):
+        self.__log_cache, self.__log_template = ([], None)
+        self.__db_con = db_con
+        self.__pid_name = global_config["PID_NAME"]
+        self.__queue_file_name = "%s/.queue_signal" % (global_config["ROOT_EXPORT_DIR"])
+        threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
-        self.register_func("new_pid", self._new_pid)
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self._log_config()
+        self.__msi_block = self._init_msi_block()
+        self._init_network_sockets()
+        self._check_database()
+        self.add_process(watcher_process("watcher", self.__db_con), start=True)
+        #self.register_timer(self._send_update, global_config["RENOTIFY_CLIENTS_TIMEOUT"], instant=True)
+        self.register_timer(self._send_update, 30, instant=True)
+    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+        if self.__log_template:
+            while self.__log_cache:
+                self.__log_template.log(*self.__log_cache.pop(0))
+            self.__log_template.log(lev, what)
+        else:
+            self.__log_cache.append((lev, what))
+    def _init_msi_block(self):
+        process_tools.save_pid(self.__pid_name, mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        if not global_config["DEBUG"] or True:
+            self.log("Initialising meta-server-info block")
+            msi_block = process_tools.meta_server_info("package-server")
+            msi_block.add_actual_pid(mult=3)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+            msi_block.start_command = "/etc/init.d/package-server start"
+            msi_block.stop_command = "/etc/init.d/package-server force-stop"
+            msi_block.kill_pids = True
+            msi_block.save_block()
+        else:
+            msi_block = None
+        return msi_block
+    def _log_config(self):
+        self.log("Config info:")
+        for line, log_level in global_config.get_log(clear=True):
+            self.log(" - clf: [%d] %s" % (log_level, line))
+        conf_info = global_config.get_config_info()
+        self.log("Found %d valid config-lines:" % (len(conf_info)))
+        for conf in conf_info:
+            self.log("Config : %s" % (conf))
+    def _int_error(self, err_cause):
+        if self["exit_requested"]:
+            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
+        else:
+            self["exit_requested"] = True
+            # signal via file-creating
+            try:
+                file(self.__queue_file_name, "w").write("-")
+            except:
+                self.log("cannot create file in %s: %s" % (self.__queue_file_name,
+                                                           process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+    def process_start(self, src_process, src_pid):
+        # twisted needs 4 threads if connecting to TCP clients, 3 if not (???)
+        mult = 3
+        process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
+        if self.__msi_block:
+            self.__msi_block.add_actual_pid(src_pid, mult=mult)
+            self.__msi_block.save_block()
+    def loop_end(self):
+        process_tools.delete_pid(self.__pid_name)
+        if self.__msi_block:
+            self.__msi_block.remove_meta_block()
+    def loop_post(self):
+        for open_sock in self.socket_dict.itervalues():
+            open_sock.close()
+        self.__log_template.close()
+    def _check_database(self):
+        dc = self.__db_con.get_connection(SQL_ACCESS)
+        # rewrite inst_package for expansion variable
+        dc.execute("SELECT ip.inst_package_idx, ip.location FROM inst_package ip ORDER BY ip.location")
+        all_recs = dc.fetchall()
+        modified = 0
+        for db_rec in all_recs:
+            if db_rec["location"].startswith(global_config["ROOT_IMPORT_DIR"]):
+                modified += 1
+                dc.execute("UPDATE inst_package SET location=%s WHERE inst_package_idx=%s", (db_rec["location"].replace(global_config["ROOT_IMPORT_DIR"], "%{ROOT_IMPORT_DIR}"),
+                                                                                             db_rec["inst_package_idx"]))
+        self.log("modified %s in database" % (logging_tools.get_plural("package", modified)))
+        dc.release()
+    def _new_com(self, zmq_sock):
+        data = [zmq_sock.recv_unicode()]
+        while zmq_sock.getsockopt(zmq.RCVMORE):
+            data.append(zmq_sock.recv_unicode())
+        zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+        zmq_sock.send_unicode("test")
+        zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+        zmq_sock.send_unicode("bla")
+        print data
+    def _init_network_sockets(self):
+        my_0mq_id = uuid_tools.get_uuid().get_urn()
+        self.socket_dict = {}
+        # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
+        for key, sock_type, bind_port, target_func in [
+            ("router", zmq.ROUTER, global_config["SERVER_PUB_PORT"] , self._new_com),
+            ("pull"  , zmq.PULL  , global_config["SERVER_PULL_PORT"], self._new_com),
+            ]:
+            client = self.zmq_context.socket(sock_type)
+            client.setsockopt(zmq.IDENTITY, my_0mq_id)
+            client.setsockopt(zmq.LINGER, 100)
+            client.setsockopt(zmq.HWM, 256)
+            client.setsockopt(zmq.BACKLOG, 1)
+            conn_str = "tcp://*:%d" % (bind_port)
+            try:
+                client.bind(conn_str)
+            except zmq.core.error.ZMQError:
+                self.log("error binding to %s{%d}: %s" % (
+                    conn_str,
+                    sock_type, 
+                    process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_CRITICAL)
+                client.close()
+            else:
+                self.log("bind to port %s{%d}" % (conn_str,
+                                                  sock_type))
+                self.register_poller(client, zmq.POLLIN, target_func)
+                self.socket_dict[key] = client
+    def _send_update(self):
+        print "update"
+        #self.socket_dict["router"].send_unicode(unicode(server_command.srv_command(command="update")))
+        target_id = "urn:uuid:49481fb4-4ca7-11e1-85fb-001f161a5a03"
+        send_sock = self.socket_dict["router"]
+        for i in xrange(10):
+            send_sock.send_unicode(target_id, zmq.SNDMORE|zmq.NOBLOCK)
+            send_sock.send_unicode("test4", zmq.NOBLOCK)
+        print "sent 10"
+
+class server_thread_pool(threading_tools.thread_pool):
+    def __init__(self, n_retry, log_lines, daemon, db_con, glob_config, loc_config):
         # msi_block
-        self.__msi_block = self._init_msi_block(daemon)
         # log thread
         self.__log_queue = self.add_thread(logging_thread(self.__glob_config), start_thread=True).get_thread_queue()
         for what, lev in log_lines:
             self.log(what, lev)
-        self._log_config()
         self._check_database(db_con)
         self.__ns = net_tools.network_server(timeout=1, log_hook=self.log, poll_verbose=False)
         self.__bind_states = {}
@@ -1232,67 +1362,12 @@ class server_thread_pool(threading_tools.thread_pool):
         self.__node_queue.put(("set_queue", ("command", self.__command_queue)))
         self.__command_queue.put(("set_queue", ("watcher", self.__watcher_queue)))
         self.__command_queue.put(("set_net_server", self.__ns))
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_queue:
-            if self.__log_buffer:
-                self.__log_queue.put([("log", x) for x in self.__log_buffer])
-                self.__log_buffer = []
-            self.__log_queue.put(("log", (what, lev, threading.currentThread().getName())))
-        else:
-            self.__log_buffer.append((what, lev, threading.currentThread().getName()))
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in self.__glob_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = self.__glob_config.get_config_info()
-        self.log("Found %d valid config-lines:" % (len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : %s" % (conf))
     def _new_pid(self, new_pid):
         self.log("received new_pid message")
         process_tools.append_pids("package-server/package-server", new_pid)
         if self.__msi_block:
             self.__msi_block.add_actual_pid(new_pid)
             self.__msi_block.save_block()
-    def _init_msi_block(self, daemon):
-        process_tools.save_pid("package-server/package-server")
-        if daemon or True:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("package-server")
-            msi_block.add_actual_pid()
-            msi_block.start_command = "/etc/init.d/package-server start"
-            msi_block.stop_command = "/etc/init.d/package-server force-stop"
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
-        return msi_block
-    def _check_database(self, db_con):
-        dc = db_con.get_connection(SQL_ACCESS)
-        # rewrite inst_package for expansion variable
-        dc.execute("SELECT ip.inst_package_idx, ip.location FROM inst_package ip ORDER BY ip.location")
-        all_recs = dc.fetchall()
-        modified = 0
-        for db_rec in all_recs:
-            if db_rec["location"].startswith(self.__glob_config["ROOT_IMPORT_DIR"]):
-                modified += 1
-                dc.execute("UPDATE inst_package SET location=%s WHERE inst_package_idx=%s", (db_rec["location"].replace(self.__glob_config["ROOT_IMPORT_DIR"], "%{ROOT_IMPORT_DIR}"),
-                                                                                             db_rec["inst_package_idx"]))
-        self.log("modified %s in database" % (logging_tools.get_plural("package", modified)))
-        dc.release()
-    def _int_error(self, err_cause):
-        if self["exit_requested"]:
-            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
-        else:
-            self["exit_requested"] = True
-            self.__ns.set_timeout(0.1)
-            # signal via file-creating
-            try:
-                file("%s/.queue_signal" % (self.__glob_config["ROOT_EXPORT_DIR"]), "w").write("-")
-            except:
-                self.log("cannot create file in %s: %s" % (self.__glob_config["ROOT_EXPORT_DIR"],
-                                                           process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
     def loop_function(self):
         if not self["exit_requested"]:
             self.__command_queue.put("update")
@@ -1300,132 +1375,75 @@ class server_thread_pool(threading_tools.thread_pool):
                 self.__watcher_queue.put("update")
         self.__ns.step()
         self.log(", ".join(["%s: %d of %d used" % (name, act_used, max_size) for name, (max_size, act_used) in self.get_thread_queue_info().iteritems()]))
-    def thread_loop_post(self):
-        process_tools.delete_pid("package-server/package-server")
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
-    def _bind_state_call(self, **args):
-        if args["state"] == "error":
-            self.log("unable to bind to all ports, exiting", logging_tools.LOG_LEVEL_ERROR)
-            self._int_error("bind problem")
-        elif args["state"] == "ok":
-            self.__bind_states[args["port"]] = "ok"
-            if len(self.__bind_states.keys()) == 2:
-                self.__ns.set_timeout(self.__daemon and 60 or 2)
     def _new_node_con(self, sock, src):
         return connection_from_node(sock, src, self.__node_queue)
     def _new_command_con(self, sock, src):
         return connection_for_command(sock, src, self.__command_queue)
 
+global_config = configfile.get_global_config(process_tools.get_programm_name())
+
 def main():
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "dVvr:hCfu:g:k", ["help", "comp", "nodep", "force"])
-    except getopt.GetoptError, bla:
-        print "Commandline error : %s" % (process_tools.get_except_info())
-        sys.exit(2)
-    verbose, daemon, n_retry, check, kill_running, force_start = (0, 1, 5, 0, 1, False)
-    gcom_port = P_SERVER_COM_PORT
-    gnode_port = P_SERVER_NODE_PORT
-    user, group, fixit = ("root", "root", 0)
-    pname = os.path.basename(sys.argv[0])
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print "Usage: %s [OPTIONS]" % (pname)
-            print "where OPTIONS are:"
-            print " -C              check if this is a package-server"
-            print " -h,--help       this help"
-            print " -d              run in debug mode (no forking)"
-            print " -v              be verbose"
-            print " -V              show version"
-            print " --comp port     connect to given port for commands, default is %d" % (gcom_port)
-            print " --nodep port    connect to given port for node requests, default is %d" % (gnode_port)
-            print " -f              create and fix needed files and directories"
-            print " --force         start even if no package-server"
-            print " -u user         run as user USER"
-            print " -g group        run as group GROUP"
-            print " -k              do not kill running %s" % (pname)
-            sys.exit(0)
-        if opt == "-k":
-            kill_running = 0
-        if opt == "-C":
-            check = 1
-        if opt == "-d":
-            daemon = 0
-        if opt == "-V":
-            print "Version %s" % (VERSION_STRING)
-            sys.exit(0)
-        if opt == "-p":
-            g_port = int(arg)
-        if opt == "-v":
-            verbose = 1
-        if opt == "-r":
-            try:
-                n_retry = int(arg)
-            except:
-                print "Error parsing n_retry"
-                sys.exit(2)
-        if opt == "-f":
-            fixit = 1
-        if opt == "--force":
-            force_start = True
-        if opt == "-u":
-            user = arg
-        if opt == "-g":
-            group = arg
-    long_host_name = socket.getfqdn(socket.gethostname())
-    short_host_name = long_host_name.split(".")[0]
-    ret_code = 1
-    db_con = mysql_tools.dbcon_container(with_logging=not daemon)
+    long_host_name, mach_name = process_tools.get_fqdn()
+    prog_name = global_config.name()
+    global_config.add_config_entries([
+        ("DEBUG"                    , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("PID_NAME"                 , configfile.str_c_var(os.path.join(prog_name, prog_name))),
+        ("KILL_RUNNING"             , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
+        ("CHECK"                    , configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
+        ("USER"                     , configfile.str_c_var("root", help_string="user to run as [%(default)s")),
+        ("GROUP"                    , configfile.str_c_var("root", help_string="group to run as [%(default)s]")),
+        ("GROUPS"                   , configfile.array_c_var(["idg"])),
+        ("FORCE"                    , configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
+        ("LOG_DESTINATION"          , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"                 , configfile.str_c_var(prog_name)),
+        ("VERBOSE"                  , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("SERVER_PUB_PORT"          , configfile.int_c_var(P_SERVER_PUB_PORT, help_string="server publish port [%(default)d]")),
+        ("SERVER_PULL_PORT"         , configfile.int_c_var(P_SERVER_PULL_PORT, help_string="server pull port [%(default)d]")),
+        ("NODE_PORT"                , configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port where the package-clients are listengin [%(default)d]")),
+        ("ROOT_EXPORT_DIR"          , configfile.str_c_var("/usr/local/share/cluster/packages/RPMs")),
+        ("ROOT_IMPORT_DIR"          , configfile.str_c_var("/packages/RPMs")),
+        ("CACHE_TIMEOUT"            , configfile.int_c_var(15 * 60)),
+        ("RENOTIFY_CLIENTS_TIMEOUT" , configfile.int_c_var(60 * 60 * 24)),
+        ("SHOW_CACHE_LOG"           , configfile.int_c_var(0)),
+        ("MAX_BLOCK_SIZE"           , configfile.int_c_var(50)),
+        ("WATCHER_TIMEOUT"          , configfile.int_c_var(120)),
+        ("REALLY_DELETE_PACKAGES"   , configfile.bool_c_var(False))
+    ])
+    global_config.parse_file()
+    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
+                                                                                  VERSION_STRING),
+                                               add_writeback_option=True,
+                                               positional_arguments=False)
+    global_config.write_file()
+    db_con = mysql_tools.dbcon_container()
     try:
         dc = db_con.get_connection(SQL_ACCESS)
     except MySQLdb.OperationalError:
         sys.stderr.write(" Cannot connect to SQL-Server ")
         sys.exit(1)
-    loc_config = configfile.configuration("local_config", {"SERVER_IDX" : configfile.int_c_var(0)})
-    glob_config = configfile.read_global_config(dc, "package_server", {"LOG_DIR"                  : configfile.str_c_var("/var/log/cluster/package-server"),
-                                                                       "COMMAND_PORT"             : configfile.int_c_var(gcom_port),
-                                                                       "NODE_PORT"                : configfile.int_c_var(gnode_port),
-                                                                       "CLIENT_PORT"              : configfile.int_c_var(PACKAGE_CLIENT_PORT),
-                                                                       "ROOT_EXPORT_DIR"          : configfile.str_c_var("/usr/local/share/cluster/packages/RPMs"),
-                                                                       "ROOT_IMPORT_DIR"          : configfile.str_c_var("/packages/RPMs"),
-                                                                       "CACHE_TIMEOUT"            : configfile.int_c_var(15 * 60),
-                                                                       "RENOTIFY_CLIENTS_TIMEOUT" : configfile.int_c_var(60 * 60 * 24),
-                                                                       "SHOW_CACHE_LOG"           : configfile.int_c_var(0),
-                                                                       "MAX_BLOCK_SIZE"           : configfile.int_c_var(50),
-                                                                       "WATCHER_TIMEOUT"          : configfile.int_c_var(120),
-                                                                       "REALLY_DELETE_PACKAGES"   : configfile.bool_c_var(False)})
-    glob_config.add_config_dict({"VERBOSE" : configfile.int_c_var(verbose)})
     sql_info = config_tools.server_check(dc=dc, server_type="package_server")
-    loc_config["SERVER_IDX"] = sql_info.server_device_idx
-    if sql_info.num_servers == 0 and not force_start:
+    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.server_device_idx))])
+    if sql_info.num_servers == 0 and not global_config["FORCE"]:
         sys.stderr.write(" Host %s is no package-server" % (long_host_name))
         sys.exit(5)
-    if check:
+    if global_config["CHECK"]:
         sys.exit(0)
-    if sql_info.num_servers > 1 and not force_start:
+    if sql_info.num_servers > 1 and not global_config["FORCE"]:
         print "Database error for host %s (package_server): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
         dc.release()
     else:
-        if kill_running:
-            kill_dict = process_tools.build_kill_dict(pname)
-            for key, value in kill_dict.iteritems():
-                log_str = "Trying to kill pid %d (%s) with signal 9 ..." % (key, value)
-                try:
-                    os.kill(key, 9)
-                except:
-                    log_str = "%s error (%s)" % (log_str, process_tools.get_except_info())
-                else:
-                    log_str = "%s ok" % (log_str)
-                logging_tools.my_syslog(log_str)
+        if global_config["KILL_RUNNING"]:
+            log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
         log_source_idx = process_tools.create_log_source_entry(dc, sql_info.server_device_idx, "package_server", "Package Server")
-        dir_list = ["%s" % (glob_config["ROOT_EXPORT_DIR"]),
-                    "%s/%s" % (glob_config["ROOT_EXPORT_DIR"], ADD_PACK_PATH),
-                    "%s/%s" % (glob_config["ROOT_EXPORT_DIR"], DEL_PACK_PATH)]
-        dir_fix_list = [glob_config["LOG_DIR"],
-                        "/var/run/package-server",
-                        "%s" % (glob_config["ROOT_EXPORT_DIR"]),
-                        "%s/%s" % (glob_config["ROOT_EXPORT_DIR"], ADD_PACK_PATH),
-                        "%s/%s" % (glob_config["ROOT_EXPORT_DIR"], DEL_PACK_PATH)]
+        dir_list = [
+            "%s" % (global_config["ROOT_EXPORT_DIR"]),
+            "%s/%s" % (global_config["ROOT_EXPORT_DIR"], ADD_PACK_PATH),
+            "%s/%s" % (global_config["ROOT_EXPORT_DIR"], DEL_PACK_PATH)]
+        dir_fix_list = [
+            "/var/run/package-server",
+            "%s" % (global_config["ROOT_EXPORT_DIR"]),
+            "%s/%s" % (global_config["ROOT_EXPORT_DIR"], ADD_PACK_PATH),
+            "%s/%s" % (global_config["ROOT_EXPORT_DIR"], DEL_PACK_PATH)]
         log_lines = []
         for dir_val in dir_list:
             if not os.path.isdir(dir_val):
@@ -1436,22 +1454,18 @@ def main():
                 else:
                     log_lines.append(("Created directory %s" % (dir_val), logging_tools.LOG_LEVEL_OK))
                     dir_fix_list.append(dir_val)
-        if fixit:
-            process_tools.fix_directories(user, group, dir_fix_list)
-            process_tools.fix_files(user, group, ["/var/log/package-server.out", "/tmp/package-server.out"])
-        configfile.write_config(dc, "package_server", glob_config)
+        # not implemented, FIXME, AL 20120512
+        #configfile.write_config(dc, "package_server", glob_config)
         dc.release()
         process_tools.renice()
-        process_tools.change_user_group(user, group)
-        if daemon:
+        process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
+        if not global_config["DEBUG"]:
             process_tools.become_daemon()
             process_tools.set_handles({"out" : (1, "package-server.out"),
                                        "err" : (0, "/var/lib/logging-server/py_err")})
         else:
             print "Debugging package-server on %s" % (long_host_name)
-        thread_pool = server_thread_pool(n_retry, log_lines, daemon, db_con, glob_config, loc_config)
-        thread_pool.thread_loop()
-        ret_code = 0
+        ret_code = server_process(db_con).loop()
     db_con.close()
     del db_con
     sys.exit(ret_code)
