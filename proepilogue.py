@@ -1302,7 +1302,12 @@ class job_object(object):
         self.log("adding variable (%s=%s) to var_file %s" % (key,
                                                              value,
                                                              var_file))
-        file(var_file, "a").write("export %s=%s\n" % (key, value))
+        try:
+            file(var_file, "a").write("export %s=%s\n" % (key, value))
+        except:
+            self.log("error writing to %s: %s" % (var_file,
+                                                  process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
     def is_start_call(self):
         return global_config["CALLER_NAME"] in ["prologue",
                                                 "lamstart",
@@ -2127,9 +2132,9 @@ def zmq_main_code():
             len(options.arguments))
         _exit = True
     if not _exit:
-        cf_time = time.localtime(os.stat(configfile.__file__)[stat.ST_MTIME])
+        cf_time = time.localtime(os.stat(configfile.__file__.replace(".pyc", ".py").replace(".pyo", ".py"))[stat.ST_MTIME])
         if (cf_time.tm_year, cf_time.tm_mon, cf_time.tm_mday) < (2012, 5, 1):
-            print "your python-modules-base are too old, please upgrade"
+            print "your python-modules-base are too old, please upgrade (%d, %d, %d)" % (cf_time.tm_year, cf_time.tm_mon, cf_time.tm_mday)
             return 0
         else:
             # add more entries
