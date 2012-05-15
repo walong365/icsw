@@ -24,15 +24,14 @@
 import sys
 import os
 import os.path
-import getopt
 import configfile
-import socket
 import copy
 import cPickle
 import zmq
 import net_tools
 import uuid_tools
 import server_command
+import pprint
 try:
     import bz2
 except:
@@ -43,25 +42,14 @@ import commands
 import process_tools
 import stat
 import xml_tools
-import codecs
-import tempfile
-import fcntl
 import threading_tools
 import rpm_module
-import zmq
 
 try:
     from package_client_version import *
 except ImportError:
     # instead of unknown-unknown
     VERSION_STRING = "0.0-0"
-
-import locale
-
-try:
-    CB_ENCODING = locale.getpreferredencoding()
-except locale.Error:
-    CB_ENCODING = "C"
 
 P_SERVER_PUB_PORT   = 8007
 P_SERVER_PULL_PORT  = 8008
@@ -144,105 +132,6 @@ class connection_from_server(net_tools.buffer_object):
         self.close()
 # --------------------------------------------------------------------------------
 
-class callback_func(object):
-    def __init__(self, rpm, logger, lt_pf):
-        self.rpm = rpm
-        self.logger = logger
-        self.__fdnos = {}
-        self.last_perc = -100
-        self.pfix = lt_pf
-        self.__rpmout = None
-        self.__rpmoutbuffer = ""
-    def log(self, what):
-        for line in what.split("\n"):
-            self.logger.info("%s: %s" % (self.pfix, line))
-    def grab_output(self, init):
-        if init:
-            if not self.__rpmout:
-                self.__stdout = sys.stdout
-                self.__stderr = sys.stderr
-                fd, rpm_out_path = tempfile.mkstemp("-package-client-out.txt")
-                os.dup2(fd, 1)
-                os.dup2(fd, 2)
-                os.close(fd)
-                reader = codecs.getreader(CB_ENCODING)
-                self.__rpmout = reader(open(rpm_out_path))
-                os.unlink(rpm_out_path)
-        else:
-            if self.__rpmout:
-                self.process_rpmout()
-                os.dup2(sys.stdout.fileno(), 1)
-                if hasattr(sys.stderr, "fileno"):
-                    os.dup2(sys.stderr.fileno(), 2)
-                sys.stdout = self.__stdout
-                sys.stderr = self.__stderr
-                del self.__stdout
-                del self.__stderr
-                self.__rpmout.close()
-                self.__rpmout = None
-                self.__rpmoutbuffer = ""
-    def process_rpmout(self, to_buffer=False):
-        if self.__rpmout:
-            output = self.__rpmout.read()
-            if output or not to_buffer and self.__rpmoutbuffer:
-                if to_buffer:
-                    self.__rpmoutbuffer += output
-                else:
-                    output = self.__rpmoutbuffer + output
-                    self.__rpmoutbuffer = ""
-                    for line in [x for x in str(output).split("\n")]:
-                        self.log("(dc) %s" % (line))
-    def __call__(self, what, amount, total, mydata, wibble):
-##    	"""what -- callback type, 
-##         amount -- bytes processed
-## 	   total -- total bytes
-##         mydata -- package key (hdr, path)
-## 	   wibble -- user data - unused here"""
-        if self.__rpmout:
-            self.process_rpmout()
-        if what == self.rpm.RPMCALLBACK_TRANS_START:
-            self.log("transaction start")
-        elif what == self.rpm.RPMCALLBACK_TRANS_PROGRESS:
-            self.log("transaction progress")
-        elif what == self.rpm.RPMCALLBACK_TRANS_STOP:
-            self.log("transaction stop")
-        elif what == self.rpm.RPMCALLBACK_INST_OPEN_FILE:
-            hdr, path = mydata
-            self.log("Installing %s" % (hdr["name"]))
-            fd = os.open(path, os.O_RDONLY)
-            nvr = "%s-%s-%s" % (hdr["name"], hdr["version"], hdr["release"])
-            set_close_on_exec(fd)
-            self.__fdnos[nvr] = fd
-            return fd
-        elif what == self.rpm.RPMCALLBACK_INST_CLOSE_FILE:
-            self.log("close")
-            hdr, path = mydata
-            nvr = "%s-%s-%s" % (hdr["name"], hdr["version"], hdr["release"])
-            os.close(self.__fdnos[nvr])
-            del self.__fdnos[nvr]
-        elif what == self.rpm.RPMCALLBACK_INST_PROGRESS:
-            hdr, path = mydata
-            act_perc = (float(amount) / total) * 100
-            if act_perc == 0. or int(act_perc) in [100] or int(act_perc) > self.last_perc + 9:
-                self.last_perc = int(act_perc)
-                self.log("package %s:  %.2f %% done\r" % (hdr["name"], act_perc))
-        elif what == self.rpm.RPMCALLBACK_INST_START:
-            self.log("Starting install")
-        elif what == self.rpm.RPMCALLBACK_UNINST_START:
-            self.log("Starting uninstall")
-        elif what == self.rpm.RPMCALLBACK_UNINST_STOP:
-            self.log("Stopping uninstall")
-        else:
-            self.log("Unhandled RPMCALLBACK %d: %s" % (what, dict([(getattr(self.rpm, k), k) for k in dir(self.rpm) if k.startswith("RPMCALLBACK")]).get(what, "UNKNOWN")))
-
-def set_close_on_exec(fd):
-    try:
-        flags = fcntl.fcntl(fd, fcntl.F_GETFL, 0)
-        flags |= fcntl.FD_CLOEXEC
-        fcntl.fcntl(fd, fcntl.F_SETFL, flags)
-    except IOError:
-        pass
-    
 class i_rpm(object):
     def __init__(self, logger, nr_dict, is_debian):
         self.nr_dict = nr_dict
@@ -255,9 +144,7 @@ class i_rpm(object):
                           "delete"  : "D",
                           "keep"    : "N"}[nr_dict["command"]]
         self.__nodep_flag, self.__force_flag = (nr_dict["nodeps"], nr_dict["force"])
-        self.__native_flag = nr_dict.get("native", True)
         # override, FIXME
-        self.__native_flag = False
         logger.info("  adding package_info name %s, req_state %s, add_flags '%s', location %s" % (self.full_name, self.req_state, self.get_add_flags(), self.location))
         self.set_act_state(logger)
         self.set_iter_value()
@@ -303,8 +190,6 @@ class i_rpm(object):
             ret_a.append(self.__is_debian and "--force-depends" or "--nodeps")
         if self.__force_flag and ins_com != "delete":
             ret_a.append(self.__is_debian and "--force-conflicts" or "--force")
-        if self.__native_flag:
-            ret_a.append("native")
         return (" ".join(ret_a)).strip()
     
 class install_thread(threading_tools.thread_obj):
@@ -465,84 +350,6 @@ class install_thread(threading_tools.thread_obj):
             else:
                 query_str = "dpkg %s -i %s" % (deb_flags, location)
             p_stat, result = call_command(query_str, self.__logger)
-        elif rpm_module.rpm_module_ok() and "native" in flag_field:
-            ts = rpm_module.get_TransactionSet()
-            rpm = rpm_module.get_rpm_module()
-            rpm.setVerbosity(rpm.RPMLOG_INFO)
-            try:
-                hdr = rpm_module.return_package_header(location)
-            except:
-                p_stat, result = (3, "error getting package_header: %s" % (process_tools.get_except_info()))
-            else:
-                prob_filter = None
-                if command == "delete":
-                    try:
-                        ts.addErase(name)
-                    except:
-                        logger.error("  error triggered for ts.addErase(%s): %s" % (name,
-                                                                                    process_tools.get_except_info()))
-                elif command == "upgrade":
-                    prob_filter = rpm.RPMPROB_FILTER_OLDPACKAGE
-                    ts.addInstall(hdr, (hdr, location), "u")
-                    if "--force" in flag_field:
-                        prob_filter |= rpm.RPMPROB_FILTER_REPLACEOLDFILES | rpm.RPMPROB_FILTER_OLDPACKAGE
-                else:
-                    prob_filter = rpm.RPMPROB_FILTER_OLDPACKAGE
-                    ts.addInstall(hdr, (hdr, location), "i")
-                    if "--force" in flag_field:
-                        prob_filter |= rpm.RPMPROB_FILTER_REPLACEOLDFILES | rpm.RPMPROB_FILTER_OLDPACKAGE
-                if prob_filter is not None:
-                    ts.setProbFilter(prob_filter)
-                check_result = ts.check()
-                if not check_result:
-                    logger.info("ts.check() gave no result, OK")
-                    cont = True
-                else:
-                    logger.info("ts.check() gave %s:" % (logging_tools.get_plural("unsatisfied dependency", len(check_result))))
-                    idx = 0
-                    for ((p_name, p_vers, p_rel), (req_pack, req_version), needs_flags, suggested_packs, sense) in check_result:
-                        idx += 1
-                        p_full_name = "%s-%s-%s" % (p_name, p_vers, p_rel)
-                        if req_version:
-                            req_pack = "%s %s %s" % (req_pack, rpm_module.get_needs_string(needs_flags), req_version)
-                        log_str = "%s is needed by %s" % (req_pack, p_full_name)
-                        extra_error_field.append(log_str)
-                        logger.warning("  %2d : %s" % (idx, log_str))
-                    if "--nodeps" in flag_field:
-                        cont = True
-                        logger.info("  continuing command %s due to --nodeps flag; cleaning extra_error_field" % (command))
-                        extra_error_field = []
-                    else:
-                        logger.warning("  not executing command %s" % (command))
-                        cont = False
-                        p_stat, result = (1, logging_tools.get_plural("dependency problem", idx))
-                if cont:
-                    order_result = ts.order()
-                    cb_pfix = "CB()"
-                    logger.info("ts.order() gave '%s'" % (str(order_result)))
-                    cb = callback_func(rpm, logger, cb_pfix)
-                    if not self.__glob_config["VERBOSE"]:
-                        cb.grab_output(True)
-                    # better try fix at http://lists.labix.org/pipermail/smart-labix.org/2005-December/000246.html
-                    # removed as of 6. May 2006, 13:35:00
-                    run_result = None
-                    try:
-                        run_result = ts.run(cb, "")
-                    finally:
-                        cb.grab_output(False)
-                        logger.info("run_result: %s" % (str(run_result)))
-                    if run_result:
-                        logger.warning("ts.run() gave %s:" % (logging_tools.get_plural("problem", len(run_result))))
-                        idx = 0
-                        for p_info, (needs_flags, suggested_packs, sense) in run_result:
-                            idx += 1
-                            logger.info("  %2d : %s" % (idx, p_info))
-                        p_stat, result = (2, logging_tools.get_plural("installation error", idx))
-                    else:
-                        logger.info("ts.run() gave no result, OK")
-                        p_stat, result = (0, "OK")
-                del rpm
-                del ts
         else:
             rpm_flags = " ".join([x for x in add_flags.strip().split() if x in ["--force", "--nodeps"]])
             if command == "install":
@@ -1628,6 +1435,29 @@ class comsend_thread(threading_tools.thread_obj):
             if all_ok:
                 self.send_pool_message("start_sge_execd")
 
+def get_srv_command(**kwargs):
+    return server_command.srv_command(
+        package_client_version=VERSION_STRING,
+        debian="1" if global_config["DEBIAN"] else "0",
+        **kwargs)
+
+class install_process(threading_tools.process_obj):
+    def __init__(self, name):
+        threading_tools.process_obj.__init__(
+            self,
+            name)
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+            init_logger=True)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def loop_post(self):
+        self.__log_template.close()
+    
 class server_process(threading_tools.process_pool):
     def __init__(self):
         self.global_config = global_config
@@ -1652,6 +1482,7 @@ class server_process(threading_tools.process_pool):
         # log limits
         self._log_limits()
         self._init_network_sockets()
+        self.add_process(install_process("install"), start=True)
         if False:
             # automounter check counter
             self.__automounter_checks = 0
@@ -1713,69 +1544,70 @@ class server_process(threading_tools.process_pool):
         try:
             import resource
         except ImportError:
-            self.log("cannot import resource", logging_tools.LOG_LEVEL_ERROR)
-        available_resources = [key for key in dir(resource) if key.startswith("RLIMIT")]
-        for av_r in available_resources:
-            try:
-                r_dict[av_r] = resource.getrlimit(getattr(resource, av_r))
-            except ValueError:
-                r_dict[av_r] = "invalid resource"
-            except:
-                r_dict[av_r] = None
-        if r_dict:
-            res_keys = sorted(r_dict.keys())
-            self.log("%s defined" % (logging_tools.get_plural("limit", len(res_keys))))
-            res_list = logging_tools.new_form_list()
-            for key in res_keys:
-                val = r_dict[key]
-                if type(val) == type(""):
-                    info_str = val
-                elif type(val) == type(()):
-                    info_str = "%8d (hard), %8d (soft)" % val
-                else:
-                    info_str = "None (error?)"
-                res_list.append([logging_tools.form_entry(key, header="key"),
-                                 logging_tools.form_entry(info_str, header="value")])
-            for line in str(res_list).split("\n"):
-                self.log(line)
+            self.log("cannot import resource", logging_tools.LOG_LEVEL_CRITICAL)
         else:
-            self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
+            available_resources = [key for key in dir(resource) if key.startswith("RLIMIT")]
+            for av_r in available_resources:
+                try:
+                    r_dict[av_r] = resource.getrlimit(getattr(resource, av_r))
+                except ValueError:
+                    r_dict[av_r] = "invalid resource"
+                except:
+                    r_dict[av_r] = None
+            if r_dict:
+                res_keys = sorted(r_dict.keys())
+                self.log("%s defined" % (logging_tools.get_plural("limit", len(res_keys))))
+                res_list = logging_tools.new_form_list()
+                for key in res_keys:
+                    val = r_dict[key]
+                    if type(val) == type(""):
+                        info_str = val
+                    elif type(val) == type(()):
+                        info_str = "%8d (hard), %8d (soft)" % val
+                    else:
+                        info_str = "None (error?)"
+                    res_list.append([logging_tools.form_entry(key, header="key"),
+                                     logging_tools.form_entry(info_str, header="value")])
+                for line in str(res_list).split("\n"):
+                    self.log(line)
+            else:
+                self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
     def _init_network_sockets(self):
-        client = self.zmq_context.socket(zmq.ROUTER)
-        client.setsockopt(zmq.IDENTITY, "package-client:%s" % (process_tools.get_machine_name()))
-        client.setsockopt(zmq.HWM, 256)
-        conn_str = "tcp://*:%d" % (global_config["COM_PORT"])
-        client.bind(conn_str)
-        self.log("bind to %s" % (conn_str))
-        self.com_socket = client
-        self.register_poller(self.com_socket, zmq.POLLIN, self._recv)
+        #client = self.zmq_context.socket(zmq.ROUTER)
+        #client.setsockopt(zmq.IDENTITY, "package-client:%s" % (process_tools.get_machine_name()))
+        #client.setsockopt(zmq.HWM, 256)
+        #conn_str = "tcp://*:%d" % (global_config["COM_PORT"])
+        #client.bind(conn_str)
+        #self.log("bind to %s" % (conn_str))
+        #self.com_socket = client
+        #self.register_poller(self.com_socket, zmq.POLLIN, self._recv)
         # connect to server
         srv_port = self.zmq_context.socket(zmq.DEALER)
         srv_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
         #srv_port.setsockopt(zmq.SUBSCRIBE, "")
-        conn_str = "tcp://127.0.0.1:%d" % (global_config["SERVER_PUB_PORT"])
+        conn_str = "tcp://%s:%d" % (global_config["PACKAGE_SERVER"],
+                                    global_config["SERVER_PUB_PORT"])
         srv_port.connect(conn_str)
-        self.log("connectecd to %s" % (conn_str))
-        print srv_port.send_unicode(unicode(server_command.srv_command(command="hello")))
-        print srv_port.recv_unicode()
-        print srv_port.send_unicode(unicode(server_command.srv_command(command="hello2")))
-        print srv_port.recv_unicode()
-        print srv_port.recv_unicode()
-        print srv_port.recv_unicode()
-        print srv_port.recv_unicode()
-        print srv_port.recv_unicode()
-        print srv_port.recv_unicode()
-        print srv_port.recv_unicode()
-        print srv_port.recv_unicode()
-        print srv_port.recv_unicode()
-        print "done"
+        #pull_port = self.zmq_context.socket(zmq.PUSH)
+        #pull_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
+        self.register_poller(srv_port, zmq.POLLIN, self._recv)
+        srv_port.send_unicode(unicode(get_srv_command(command="register")))
+        srv_port.send_unicode(unicode(get_srv_command(command="get_package_list")))
+        srv_port.send_unicode(unicode(get_srv_command(command="get_rsync_list")))
+        self.srv_port = srv_port
+        self.log("connected to %s" % (conn_str))
     def _recv(self, zmq_sock):
-        data = []
+        batch_list = []
         while True:
-            data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):
+            data = []
+            while True:
+                data.append(zmq_sock.recv())
+                if not zmq_sock.getsockopt(zmq.RCVMORE):
+                    break
+            batch_list.append(data)
+            if not zmq_sock.poll(zmq.POLLIN):
                 break
-        print data
+        pprint.pprint(batch_list)
     def _threads_alive(self):
         self.log("All threads alive")
         if not self.__automounter_valid:
@@ -1855,6 +1687,10 @@ class server_process(threading_tools.process_pool):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+    def loop_post(self):
+        self.srv_port.close()
+        #self.com_socket.close()
+        self.__log_template.close()
     def _start_sge_execd(self):
         if not self.__sge_execd_started:
             if self.__glob_config["START_SGE_EXECD"]:

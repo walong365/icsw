@@ -70,198 +70,198 @@ DIRECT_MODE_VAR_NAME     = "package_client_direct_mode"
 
 SQL_ACCESS = "cluster_full_access"
 
-# --------------------------------------------------------------------------------
-class connection_from_node(net_tools.buffer_object):
-    # receiving connection object for node connection
-    def __init__(self, sock, src, dest_queue):
-        self.__dest_queue = dest_queue
-        self.__src = src
-        net_tools.buffer_object.__init__(self)
-    def __del__(self):
-        #print "- del new_relay_con"
-        pass
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        is_p1, what = net_tools.check_for_proto_1_header(self.in_buffer)
-        if is_p1:
-            self.__dest_queue.put(("node_connection", (self, self.__src, what)))
-    def send_return(self, what):
-        self.lock()
-        if self.socket:
-            self.add_to_out_buffer(net_tools.add_proto_1_header(what))
-        else:
-            pass
-        self.unlock()
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-            self.close()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def report_problem(self, flag, what):
-        self.__dest_queue.put(("node_error", "%s : %s, src is %s" % (net_tools.net_flag_to_str(flag),
-                                                                     what,
-                                                                     str(self.__src))))
-        self.close()
+### --------------------------------------------------------------------------------
+##class connection_from_node(net_tools.buffer_object):
+##    # receiving connection object for node connection
+##    def __init__(self, sock, src, dest_queue):
+##        self.__dest_queue = dest_queue
+##        self.__src = src
+##        net_tools.buffer_object.__init__(self)
+##    def __del__(self):
+##        #print "- del new_relay_con"
+##        pass
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        is_p1, what = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if is_p1:
+##            self.__dest_queue.put(("node_connection", (self, self.__src, what)))
+##    def send_return(self, what):
+##        self.lock()
+##        if self.socket:
+##            self.add_to_out_buffer(net_tools.add_proto_1_header(what))
+##        else:
+##            pass
+##        self.unlock()
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##            self.close()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def report_problem(self, flag, what):
+##        self.__dest_queue.put(("node_error", "%s : %s, src is %s" % (net_tools.net_flag_to_str(flag),
+##                                                                     what,
+##                                                                     str(self.__src))))
+##        self.close()
+##
+##class connection_for_command(net_tools.buffer_object):
+##    # receiving connection object for command connection
+##    def __init__(self, sock, src, dest_queue):
+##        self.__dest_queue = dest_queue
+##        self.__src = src
+##        net_tools.buffer_object.__init__(self)
+##    def __del__(self):
+##        #print "- del new_relay_con"
+##        pass
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        is_p1, what = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if is_p1:
+##            self.__dest_queue.put(("new_command", (self, self.__src, what)))
+##    def send_return(self, what):
+##        self.lock()
+##        if self.socket:
+##            self.add_to_out_buffer(net_tools.add_proto_1_header(what))
+##        else:
+##            pass
+##        self.unlock()
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##            self.close()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def report_problem(self, flag, what):
+##        self.__dest_queue.put(("command_error", (self, self.__src, "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
+##        self.close()
+##
+##class connection_to_node(net_tools.buffer_object):
+##    # connects to a foreign package-client
+##    def __init__(self, (act_dict, mach), ret_queue):
+##        self.__act_dict = act_dict
+##        self.__mach = mach
+##        self.__ret_queue = ret_queue
+##        net_tools.buffer_object.__init__(self)
+##    def setup_done(self):
+##        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__act_dict["command"].get_command(), True))
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if p1_ok:
+##            self.__ret_queue.put(("send_ok", ((self.__act_dict, self.__mach), p1_data)))
+##            self.delete()
+##    def report_problem(self, flag, what):
+##        self.__ret_queue.put(("send_error", ((self.__act_dict, self.__mach), "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
+##        self.delete()
+##
+##class connection_to_cluster_server(net_tools.buffer_object):
+##    # connects to a foreign package-client
+##    def __init__(self, (srv_com, srv_name), ret_queue):
+##        self.__srv_com = srv_com
+##        self.__srv_name = srv_name
+##        self.__ret_queue = ret_queue
+##        net_tools.buffer_object.__init__(self)
+##    def setup_done(self):
+##        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__srv_com, True))
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if p1_ok:
+##            self.__ret_queue.put(("srv_send_ok", ((self.__srv_com, self.__srv_name), p1_data)))
+##            self.delete()
+##    def report_problem(self, flag, what):
+##        self.__ret_queue.put(("srv_send_error", ((self.__srv_com, self.__srv_name), "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
+##        self.delete()
+### --------------------------------------------------------------------------------
 
-class connection_for_command(net_tools.buffer_object):
-    # receiving connection object for command connection
-    def __init__(self, sock, src, dest_queue):
-        self.__dest_queue = dest_queue
-        self.__src = src
-        net_tools.buffer_object.__init__(self)
-    def __del__(self):
-        #print "- del new_relay_con"
-        pass
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        is_p1, what = net_tools.check_for_proto_1_header(self.in_buffer)
-        if is_p1:
-            self.__dest_queue.put(("new_command", (self, self.__src, what)))
-    def send_return(self, what):
-        self.lock()
-        if self.socket:
-            self.add_to_out_buffer(net_tools.add_proto_1_header(what))
-        else:
-            pass
-        self.unlock()
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-            self.close()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def report_problem(self, flag, what):
-        self.__dest_queue.put(("command_error", (self, self.__src, "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
-        self.close()
-
-class connection_to_node(net_tools.buffer_object):
-    # connects to a foreign package-client
-    def __init__(self, (act_dict, mach), ret_queue):
-        self.__act_dict = act_dict
-        self.__mach = mach
-        self.__ret_queue = ret_queue
-        net_tools.buffer_object.__init__(self)
-    def setup_done(self):
-        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__act_dict["command"].get_command(), True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
-        if p1_ok:
-            self.__ret_queue.put(("send_ok", ((self.__act_dict, self.__mach), p1_data)))
-            self.delete()
-    def report_problem(self, flag, what):
-        self.__ret_queue.put(("send_error", ((self.__act_dict, self.__mach), "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
-        self.delete()
-
-class connection_to_cluster_server(net_tools.buffer_object):
-    # connects to a foreign package-client
-    def __init__(self, (srv_com, srv_name), ret_queue):
-        self.__srv_com = srv_com
-        self.__srv_name = srv_name
-        self.__ret_queue = ret_queue
-        net_tools.buffer_object.__init__(self)
-    def setup_done(self):
-        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__srv_com, True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
-        if p1_ok:
-            self.__ret_queue.put(("srv_send_ok", ((self.__srv_com, self.__srv_name), p1_data)))
-            self.delete()
-    def report_problem(self, flag, what):
-        self.__ret_queue.put(("srv_send_error", ((self.__srv_com, self.__srv_name), "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
-        self.delete()
-# --------------------------------------------------------------------------------
-
-class logging_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config):
-        self.__glob_config = glob_config
-        self.__handles, self.__log_buffer, self.__global_log = ({}, [], None)
-        self.__sep_str = "-" * 50
-        threading_tools.thread_obj.__init__(self, "log", queue_size=100, priority=10)
-        self.register_func("log", self._log)
-        self.register_func("write_file", self._write_file)
-    def thread_running(self):
-        self.send_pool_message(("new_pid", self.pid))
-        self.__root = self.__glob_config["LOG_DIR"]
-        if not os.path.isdir(self.__root):
-            try:
-                os.makedirs(self.__root)
-            except OSError:
-                # we have to write to syslog
-                self.log("Unable to create '%s' directory" % (self.__root), logging_tools.LOG_LEVEL_ERROR)
-                self.__root = "/tmp"
-            else:
-                pass
-        glog_name = "%s/log" % (self.__root)
-        self.__global_log = logging_tools.logfile(glog_name)
-        self.__global_log.write(self.__sep_str, header = 0)
-        self.__global_log.write("(%s) Opening log" % (self.name))
-    def _get_handle(self, dev_name, file_name="log", register=True):
-        full_name = "%s/%s" % (dev_name, file_name)
-        if self.__handles.has_key(full_name):
-            handle = self.__handles[full_name]
-        else:
-            machdir = "%s/%s" % (self.__root, dev_name)
-            if not os.path.isdir(machdir):
-                self.__global_log.write("Creating dir %s for %s" % (machdir, dev_name))
-                os.makedirs(machdir)
-            if register:
-                handle = logging_tools.logfile("%s/%s" % (machdir, file_name))
-                self.__handles[full_name] = handle
-                handle.write(self.__sep_str)
-                handle.write("Opening log")
-            else:
-                handle = file("%s/%s" % (machdir, file_name), "w")
-        return handle
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__global_log:
-            if self.__log_buffer:
-                for b_what, b_line in self.__log_buffer:
-                    self._log((b_what, b_line))
-                self.__log_buffer = []
-            self._log((what, lev))
-        else:
-            self.__log_buffer.append((what, lev))
-    def _log(self, l_stuff):
-        if len(l_stuff) == 2:
-            what, lev = l_stuff
-            thread_name, node_name = (self.name, "")
-        elif len(l_stuff) == 3:
-            what, lev, thread_name = l_stuff
-            node_name = ""
-        else:
-            what, lev, thread_name, node_name = l_stuff
-        if node_name:
-            handle = self._get_handle(node_name)
-        else:
-            handle = self.__global_log
-        thread_pfix = "(%s)" % (thread_name.endswith("_thread") and thread_name[:-7] or thread_name)
-        handle.write("%-6s%s %s" % (logging_tools.get_log_level_str(lev), thread_pfix, what))
-    def _write_file(self, (dev_name, file_name, what)):
-        self._get_handle(dev_name, file_name, False).write(what)
-    def loop_end(self):
-        for mach in self.__handles.keys():
-            self.__handles[mach].write("Closing log")
-            self.__handles[mach].close()
-        self.__global_log.write("Closed %s" % (logging_tools.get_plural("machine log", len(self.__handles.keys()))))
-        self.__global_log.write("Closing log")
-        self.__global_log.close()
+##class logging_thread(threading_tools.thread_obj):
+##    def __init__(self, glob_config):
+##        self.__glob_config = glob_config
+##        self.__handles, self.__log_buffer, self.__global_log = ({}, [], None)
+##        self.__sep_str = "-" * 50
+##        threading_tools.thread_obj.__init__(self, "log", queue_size=100, priority=10)
+##        self.register_func("log", self._log)
+##        self.register_func("write_file", self._write_file)
+##    def thread_running(self):
+##        self.send_pool_message(("new_pid", self.pid))
+##        self.__root = self.__glob_config["LOG_DIR"]
+##        if not os.path.isdir(self.__root):
+##            try:
+##                os.makedirs(self.__root)
+##            except OSError:
+##                # we have to write to syslog
+##                self.log("Unable to create '%s' directory" % (self.__root), logging_tools.LOG_LEVEL_ERROR)
+##                self.__root = "/tmp"
+##            else:
+##                pass
+##        glog_name = "%s/log" % (self.__root)
+##        self.__global_log = logging_tools.logfile(glog_name)
+##        self.__global_log.write(self.__sep_str, header = 0)
+##        self.__global_log.write("(%s) Opening log" % (self.name))
+##    def _get_handle(self, dev_name, file_name="log", register=True):
+##        full_name = "%s/%s" % (dev_name, file_name)
+##        if self.__handles.has_key(full_name):
+##            handle = self.__handles[full_name]
+##        else:
+##            machdir = "%s/%s" % (self.__root, dev_name)
+##            if not os.path.isdir(machdir):
+##                self.__global_log.write("Creating dir %s for %s" % (machdir, dev_name))
+##                os.makedirs(machdir)
+##            if register:
+##                handle = logging_tools.logfile("%s/%s" % (machdir, file_name))
+##                self.__handles[full_name] = handle
+##                handle.write(self.__sep_str)
+##                handle.write("Opening log")
+##            else:
+##                handle = file("%s/%s" % (machdir, file_name), "w")
+##        return handle
+##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+##        if self.__global_log:
+##            if self.__log_buffer:
+##                for b_what, b_line in self.__log_buffer:
+##                    self._log((b_what, b_line))
+##                self.__log_buffer = []
+##            self._log((what, lev))
+##        else:
+##            self.__log_buffer.append((what, lev))
+##    def _log(self, l_stuff):
+##        if len(l_stuff) == 2:
+##            what, lev = l_stuff
+##            thread_name, node_name = (self.name, "")
+##        elif len(l_stuff) == 3:
+##            what, lev, thread_name = l_stuff
+##            node_name = ""
+##        else:
+##            what, lev, thread_name, node_name = l_stuff
+##        if node_name:
+##            handle = self._get_handle(node_name)
+##        else:
+##            handle = self.__global_log
+##        thread_pfix = "(%s)" % (thread_name.endswith("_thread") and thread_name[:-7] or thread_name)
+##        handle.write("%-6s%s %s" % (logging_tools.get_log_level_str(lev), thread_pfix, what))
+##    def _write_file(self, (dev_name, file_name, what)):
+##        self._get_handle(dev_name, file_name, False).write(what)
+##    def loop_end(self):
+##        for mach in self.__handles.keys():
+##            self.__handles[mach].write("Closing log")
+##            self.__handles[mach].close()
+##        self.__global_log.write("Closed %s" % (logging_tools.get_plural("machine log", len(self.__handles.keys()))))
+##        self.__global_log.write("Closing log")
+##        self.__global_log.close()
         
 class command_thread(threading_tools.thread_obj):
     def __init__(self, log_queue, db_con, glob_config):
@@ -840,49 +840,6 @@ class node_thread(threading_tools.thread_obj):
         self.__last_received_cache = {}
         # act_version cache
         self.__act_version_cache = {}
-    def _modify_device_variable(self, c_dict, var_name, var_descr, h_name, dev_idx, var_type, var_value):
-        var_type_name = "val_%s" % ({"s" : "str" ,
-                                     "i" : "int" ,
-                                     "b" : "blob",
-                                     "t" : "time",
-                                     "d" : "date"}[var_type])
-        if not c_dict.has_key(h_name):
-            self.__dc.execute("SELECT dv.device_variable_idx, dv.%s FROM device_variable dv WHERE dv.device=%%s AND dv.name=%%s" % (var_type_name), (dev_idx,
-                                                                                                                                                     var_name))
-            if self.__dc.rowcount:
-                line = self.__dc.fetchone()
-                c_dict[h_name] = {"idx"   : line["device_variable_idx"],
-                                  "value" : line[var_type_name]}
-                self.node_log("Found device_variable named '%s' (idx %d)" % (var_name, c_dict[h_name]["idx"]), h_name)
-            else:
-                self.__dc.execute("INSERT INTO device_variable SET device=%s, name=%s, description=%s, var_type=%s", (dev_idx,
-                                                                                                                      var_name,
-                                                                                                                      var_descr,
-                                                                                                                      var_type))
-                c_dict[h_name] = {"idx"   : self.__dc.insert_id(),
-                                  "value" : None}
-                self.node_log("Creating device_variable named '%s' (idx %d)" % (var_name, c_dict[h_name]["idx"]), h_name)
-        if c_dict[h_name]["value"] != var_value:
-            self.__dc.execute("UPDATE device_variable SET %s=%%s, description=%%s WHERE device_variable_idx=%%s" % (var_type_name), (var_value,
-                                                                                                                                     var_descr,
-                                                                                                                                     c_dict[h_name]["idx"]))
-            c_dict[h_name]["value"] = var_value
-            if not self.__dc.rowcount:
-                self.node_log("UPDATE resulted in no rowchange, checking for device_variable '%s' ..." % (var_name), h_name)
-                # in case the device_variable was deleted while the package-server was running
-                self.__dc.execute("SELECT dv.device_variable_idx FROM device_variable dv WHERE dv.device=%s AND dv.name=%s", (dev_idx,
-                                                                                                                              var_name))
-                if not self.__dc.rowcount:
-                    self.__dc.execute("INSERT INTO device_variable SET device=%s, name=%s, description=%s, var_type=%s", (dev_idx,
-                                                                                                                          var_name,
-                                                                                                                          var_descr,
-                                                                                                                          var_type))
-                    c_dict[h_name] = {"idx"   : self.__dc.insert_id(),
-                                      "value" : None}
-                    self.node_log("Creating device_variable named '%s' (idx %d)" % (var_name, c_dict[h_name]["idx"]), h_name)
-                self.__dc.execute("UPDATE device_variable SET %s=%%s WHERE device_variable_idx=%%s" % (var_type_name), (var_value,
-                                                                                                                        c_dict[h_name]["idx"]))
-                c_dict[h_name]["value"] = var_value
     def _get_cached_ip_dict(self, host_ip):
         was_cached = False
         c_start = time.time()
@@ -944,15 +901,15 @@ class node_thread(threading_tools.thread_obj):
         return com, xml_doc, err_str
     def _node_error(self, what):
         self.log("Node error: %s" % (what), logging_tools.LOG_LEVEL_ERROR)
-    def _node_connection(self, (con_obj, src, what)):
-        src_ip, src_port = src
-        dev_idx, host_name, bz2_flag, was_cached = self._get_cached_ip_dict(src_ip)
-        if dev_idx:
-            self._handle_node_request(con_obj, dev_idx, src_ip, host_name, bz2_flag, what)
-        else:
-            ret_str = "error no package client at %s (com '%s' [first 20 bytes])" % (src_ip, what[:20])
-            self.log(ret_str, logging_tools.LOG_LEVEL_ERROR)
-            con_obj.send_return(ret_str)
+##    def _node_connection(self, (con_obj, src, what)):
+##        src_ip, src_port = src
+##        dev_idx, host_name, bz2_flag, was_cached = self._get_cached_ip_dict(src_ip)
+##        if dev_idx:
+##            self._handle_node_request(con_obj, dev_idx, src_ip, host_name, bz2_flag, what)
+##        else:
+##            ret_str = "error no package client at %s (com '%s' [first 20 bytes])" % (src_ip, what[:20])
+##            self.log(ret_str, logging_tools.LOG_LEVEL_ERROR)
+##            con_obj.send_return(ret_str)
     def _get_glob_net_devices(self):
         self.__dc.execute("SELECT i.ip, n.netdevice_idx FROM netdevice n, netip i, network nw WHERE n.device=%d AND i.netdevice=n.netdevice_idx AND i.network=nw.network_idx" % (self.__loc_config["SERVER_IDX"]))
         self.__glob_net_devices = {}
@@ -1206,7 +1163,172 @@ class node_thread(threading_tools.thread_obj):
         return is_error, ret_str
     def loop_end(self):
         self.__dc.release()
-    
+
+class client(object):
+    all_clients = {}
+    def __init__(self, c_uid, srv_com):
+        self.uid = c_uid
+        self.name = srv_com["source"].attrib["host"]
+        self.__log_template = logging_tools.get_logger(
+            "%s.%s" % (global_config["LOG_NAME"],
+                       self.name.replace(".", r"\.")),
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=client.srv_process.zmq_context,
+            init_logger=True)
+        self.log("added client")
+        self.__version = ""
+        self.__dev_idx = 0
+    @staticmethod
+    def init(srv_process):
+        client.srv_process = srv_process
+        client.uid_set = set()
+        client.name_set = set()
+        client.lut = {}
+    @staticmethod
+    def get(key):
+        return client.lut[key]
+    @staticmethod
+    def register(uid, srv_com):
+        name = srv_com["source"].attrib["host"]
+        if uid not in client.uid_set:
+            client.uid_set.add(uid)
+            client.name_set.add(name)
+            new_client = client(uid, srv_com)
+            client.lut[uid] = new_client
+            client.lut[name] = new_client
+            client.srv_process.log("added client %s (%s)" % (name, uid))
+    def close(self):
+        self.__log_template.close()
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(level, what)
+    def send_reply(self, srv_com):
+        self.srv_process.send_reply(self.uid, srv_com)
+    def __unicode__(self):
+        return u"%s (%s)" % (self.name,
+                             self.uid)
+    #def _modify_device_variable(self, c_dict, var_name, var_descr, h_name, dev_idx, var_type, var_value):
+    def _get_dev_idx(self, dc):
+        if not self.__dev_idx:
+            dc.execute("SELECT d.device_idx FROM device d WHERE d.name=%s", (self.name))
+            if dc.rowcount == 1:
+                self.__dev_idx = dc.fetchone()["device_idx"]
+                self.log("set device_idx to %d" % (self.__dev_idx))
+            else:
+                self.log("cannot determine device_idx", logging_tools.LOG_LEVEL_ERROR)
+        return self.__dev_idx
+    def _modify_device_variable(self, var_name, var_descr, var_type, var_value):
+        var_type_name = "val_%s" % ({"s" : "str" ,
+                                     "i" : "int" ,
+                                     "b" : "blob",
+                                     "t" : "time",
+                                     "d" : "date"}[var_type])
+        dc = client.srv_process.get_dc()
+        if self._get_dev_idx(dc):
+            dc.execute("SELECT dv.device_variable_idx, dv.%s FROM device_variable dv WHERE dv.device=%%s AND dv.name=%%s" % (var_type_name),
+                       (self.__dev_idx,
+                        var_name))
+            if dc.rowcount:
+                line = dc.fetchone()
+                c_dict = {"idx"   : line["device_variable_idx"],
+                          "value" : line[var_type_name]}
+                self.log("Found device_variable named '%s' (idx %d)" % (var_name, c_dict["idx"]))
+            else:
+                dc.execute("INSERT INTO device_variable SET device=%s, name=%s, description=%s, var_type=%s", (
+                    self.__dev_idx,
+                    var_name,
+                    var_descr,
+                    var_type))
+                c_dict = {"idx"   : dc.insert_id(),
+                          "value" : None}
+                self.log("Creating device_variable named '%s' (idx %d)" % (var_name, c_dict["idx"]))
+            if c_dict["value"] != var_value:
+                dc.execute("UPDATE device_variable SET %s=%%s, description=%%s WHERE device_variable_idx=%%s" % (var_type_name), (
+                    var_value,
+                    var_descr,
+                    c_dict["idx"]))
+                c_dict["value"] = var_value
+                if not dc.rowcount:
+                    self.log("UPDATE resulted in no rowchange, checking for device_variable '%s' ..." % (var_name))
+                    dc.execute("SELECT dv.device_variable_idx FROM device_variable dv WHERE dv.device=%s AND dv.name=%s", (
+                        dev_idx,
+                        var_name))
+                    if not dc.rowcount:
+                        dc.execute("INSERT INTO device_variable SET device=%s, name=%s, description=%s, var_type=%s", (
+                            dev_idx,
+                            var_name,
+                            var_descr,
+                            var_type))
+                        c_dict = {"idx"   : dc.insert_id(),
+                                  "value" : None}
+                        self.log("Creating device_variable named '%s' (idx %d)" % (var_name, c_dict["idx"]))
+                    dc.execute("UPDATE device_variable SET %s=%%s WHERE device_variable_idx=%%s" % (var_type_name), (
+                        var_value,
+                        c_dict["idx"]))
+                    c_dict["value"] = var_value
+        dc.release()
+    def _set_version(self, new_vers):
+        if new_vers != self.__version:
+            self.log("changed version from '%s' to '%s'" % (self.__version,
+                                                            new_vers))
+            self.__version = new_vers
+            self._modify_device_variable(
+                PACKAGE_VERSION_VAR_NAME,
+                "actual version of the client",
+                "s",
+                self.__version)
+    def _expand_var(self, var):
+        return var.replace("%{ROOT_IMPORT_DIR}", global_config["ROOT_IMPORT_DIR"])
+    def _get_package_list(self, srv_com):
+        dc = client.srv_process.get_dc()
+        if self._get_dev_idx(dc):
+            dc.execute("SELECT p.version, p.release, p.name, ip.location, ipd.install, ipd.upgrade, ipd.del, ipd.nodeps, ip.native, ipd.forceflag, ipd.device FROM package p, inst_package ip, instp_device ipd WHERE " + \
+                       "ip.package=p.package_idx AND ipd.inst_package=ip.inst_package_idx AND (%s) ORDER BY p.name, p.version, p.release" % (" OR ".join(["ipd.device=%d" % (cur_idx) for cur_idx in [self.__dev_idx]])))
+            pack_list = srv_com.builder("packages")
+            srv_com["result"] = pack_list
+            for db_rec in dc.fetchall():
+                new_p = srv_com.builder("package")
+                if db_rec["install"]:
+                    new_p.attrib["command"] = "install"
+                elif db_rec["upgrade"]:
+                    new_p.attrib["command"] = "upgrade"
+                elif db_rec["del"]:
+                    new_p.attrib["command"] = "delete"
+                else:
+                    new_p.attrib["command"] = "keep"
+                new_p.attrib.update({
+                    "nodeps" : "1" if db_rec["nodeps"] else "0",
+                    "force"  : "1" if db_rec["forceflag"] else "0",
+                    "native" : "1" if db_rec["native"] else "0"})
+                for db_name, xml_name, xml_type in [("name"     , "name"    , "s"),
+                                                    ("version"  , "version" , "s"),
+                                                    ("release"  , "release" , "s"),
+                                                    ("location" , "location", "s")]:
+                    new_p.append(srv_com.builder(xml_name, self._expand_var(db_rec[db_name])))
+                pack_list.append(new_p)
+            self.log("package_list has %s" % (logging_tools.get_plural("entry", len(pack_list))))
+        dc.release()
+    def new_command(self, srv_com):
+        s_time = time.time()
+        cur_com = srv_com["command"].text
+        if "package_client_version" in srv_com:
+            self._set_version(srv_com["package_client_version"].text)
+        self._modify_device_variable(LAST_CONTACT_VAR_NAME, "last contact of the client", "d", datetime.datetime(*time.localtime()[0:6]))
+        srv_com.update_source()
+        send_reply = False
+        if cur_com == "get_package_list":
+            self._get_package_list(srv_com)
+            send_reply = True
+        else:
+            self.log("unknown command '%s'" % (cur_com),
+                     logging_tools.LOG_LEVEL_ERROR)
+        if send_reply:
+            self.send_reply(srv_com)
+        e_time = time.time()
+        self.log("handled command %s in %s" % (cur_com,
+                                               logging_tools.get_diff_time_str(e_time - s_time)))
+        
+
 class server_process(threading_tools.process_pool):
     def __init__(self, db_con):
         self.__log_cache, self.__log_template = ([], None)
@@ -1219,11 +1341,12 @@ class server_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._log_config()
         self.__msi_block = self._init_msi_block()
+        self._init_clients()
         self._init_network_sockets()
         self._check_database()
         self.add_process(watcher_process("watcher", self.__db_con), start=True)
         #self.register_timer(self._send_update, global_config["RENOTIFY_CLIENTS_TIMEOUT"], instant=True)
-        self.register_timer(self._send_update, 30, instant=True)
+        self.register_timer(self._send_update, 5, instant=True)
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -1231,6 +1354,12 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+    def _init_clients(self):
+        client.init(self)
+    def _register_client(self, c_uid, srv_com):
+        client.register(c_uid, srv_com)
+    def get_dc(self):
+        return self.__db_con.get_connection(SQL_ACCESS)
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
@@ -1274,6 +1403,8 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.add_actual_pid(src_pid, mult=mult)
             self.__msi_block.save_block()
     def loop_end(self):
+        for c_name in client.name_set:
+            client.get(c_name).close()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
@@ -1298,11 +1429,22 @@ class server_process(threading_tools.process_pool):
         data = [zmq_sock.recv_unicode()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
             data.append(zmq_sock.recv_unicode())
-        zmq_sock.send_unicode(data[0], zmq.SNDMORE)
-        zmq_sock.send_unicode("test")
-        zmq_sock.send_unicode(data[0], zmq.SNDMORE)
-        zmq_sock.send_unicode("bla")
-        print data
+        if len(data) == 2:
+            c_uid, srv_com = (data[0], server_command.srv_command(source=data[1]))
+            cur_com = srv_com["command"].text
+            if cur_com == "register":
+                self._register_client(c_uid, srv_com)
+            else:
+                try:
+                    cur_client = client.get(c_uid)
+                except KeyError:
+                    self.log("unknown uid %s, not known" % (c_uid),
+                             logging_tools.LOG_LEVEL_CRITICAL)
+                else:
+                    cur_client.new_command(srv_com)
+        else:
+            self.log("wrong number of data chunks (%d != 2)" % (len(data)),
+                     logging_tools.LOG_LEVEL_ERROR)
     def _init_network_sockets(self):
         my_0mq_id = uuid_tools.get_uuid().get_urn()
         self.socket_dict = {}
@@ -1331,15 +1473,15 @@ class server_process(threading_tools.process_pool):
                                                   sock_type))
                 self.register_poller(client, zmq.POLLIN, target_func)
                 self.socket_dict[key] = client
-    def _send_update(self):
-        print "update"
-        #self.socket_dict["router"].send_unicode(unicode(server_command.srv_command(command="update")))
-        target_id = "urn:uuid:49481fb4-4ca7-11e1-85fb-001f161a5a03"
+    def send_reply(self, t_uid, srv_com):
         send_sock = self.socket_dict["router"]
-        for i in xrange(10):
-            send_sock.send_unicode(target_id, zmq.SNDMORE|zmq.NOBLOCK)
-            send_sock.send_unicode("test4", zmq.NOBLOCK)
-        print "sent 10"
+        send_sock.send_unicode(t_uid, zmq.SNDMORE|zmq.NOBLOCK)
+        send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
+    def _send_update(self):
+        self.log("send update to %s" % (logging_tools.get_plural("client", len(client.uid_set))))
+        send_com = server_command.srv_command(command="hello")
+        for target_name in sorted(client.name_set):
+            self.send_reply(client.get(target_name).uid, send_com)
 
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, n_retry, log_lines, daemon, db_con, glob_config, loc_config):
@@ -1362,12 +1504,6 @@ class server_thread_pool(threading_tools.thread_pool):
         self.__node_queue.put(("set_queue", ("command", self.__command_queue)))
         self.__command_queue.put(("set_queue", ("watcher", self.__watcher_queue)))
         self.__command_queue.put(("set_net_server", self.__ns))
-    def _new_pid(self, new_pid):
-        self.log("received new_pid message")
-        process_tools.append_pids("package-server/package-server", new_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(new_pid)
-            self.__msi_block.save_block()
     def loop_function(self):
         if not self["exit_requested"]:
             self.__command_queue.put("update")
@@ -1375,10 +1511,10 @@ class server_thread_pool(threading_tools.thread_pool):
                 self.__watcher_queue.put("update")
         self.__ns.step()
         self.log(", ".join(["%s: %d of %d used" % (name, act_used, max_size) for name, (max_size, act_used) in self.get_thread_queue_info().iteritems()]))
-    def _new_node_con(self, sock, src):
-        return connection_from_node(sock, src, self.__node_queue)
-    def _new_command_con(self, sock, src):
-        return connection_for_command(sock, src, self.__command_queue)
+##    def _new_node_con(self, sock, src):
+##        return connection_from_node(sock, src, self.__node_queue)
+##    def _new_command_con(self, sock, src):
+##        return connection_for_command(sock, src, self.__command_queue)
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
