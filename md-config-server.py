@@ -1129,8 +1129,13 @@ class build_process(threading_tools.process_obj):
         else:
             self.__cached_mach_name = mach_name
         if mach_name not in self.__mach_loggers:
-            self.__mach_loggers[mach_name] = logging_tools.get_logger("%s.%s" % (global_config["LOG_NAME"],
-                                                                                 mach_name.replace(".", r"\.")), global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+            self.__mach_loggers[mach_name] = logging_tools.get_logger(
+                "%s.%s" % (global_config["LOG_NAME"],
+                           mach_name.replace(".", r"\.")),
+                global_config["LOG_DESTINATION"],
+                zmq=True,
+                context=self.zmq_context,
+                init_logger=True)
         self.__mach_loggers[mach_name].log(lev, what)
         if kwargs.get("global_flag", False):
             self.log(what, lev)
