@@ -29,11 +29,10 @@ from initcore import menu_tools
 from initcore.render_tools import render_me
 from initcore.helper_functions import init_logging
 from initcore.forms import authentication_form, user_config_form, change_password_form
-from initcore.forms import change_language_form, change_user_form
+from initcore.forms import change_language_form
 from initcore.models import user_variable
 
-from edmdb.models import olimhcm_oetiperson, olimhcm_oetirole
-from edmdb.models import olimhcm_oetipersonoetirole, olimcrm_person, OlimUser
+from edmdb.models import olimhcm_oetiperson
 
 session_history = None
 
@@ -118,9 +117,7 @@ def change_password(request):
     else:
         cur_form = change_password_form(username=request.user.username)
     return render_me(request, "initcore/change_password.html",
-                     {"password_form": cur_form,
-                      "user_form": change_user_form(),
-                      }).render()
+                     {"password_form": cur_form}).render()
 
 
 @init_logging
@@ -374,25 +371,3 @@ def del_user_config(request):
     objs = user_variable.objects.filter(user=user).exclude(query).delete()
     res = E.message(_("User config deleted"))
     return HttpResponse(etree.tostring(res), content_type="text/xml; charset=utf-8")
-
-
-@login_required
-@require_POST
-def change_user(request):
-    res = HttpResponseNotAllowed("Only for superusers!")
-    if request.user.is_superuser:
-        form = change_user_form(request.POST)
-        if form.is_valid():
-            try:
-                user = OlimUser.objects.get(username=form.cleaned_data["username"])
-            except OlimUser.DoesNotExist:
-                res = HttpResponseRedirect(settings.SITE_ROOT)
-            else:
-                user.backend = "edmdb.auth.olim_backend"
-                django.contrib.auth.login(request, user)
-                request.session.update(get_user_variables(request))
-                request.session.update(set_css_values(request))
-                request.session.update(additional_session(request))
-                request.session.save()
-                res = HttpResponseRedirect(settings.SITE_ROOT)
-    return res

@@ -16,7 +16,6 @@ urlpatterns = patterns(
     url(r"^get_menu/(.*)$", "get_menu", name="get_menu"),
     url(r"^switch_ua/$", "switch_useragent", name="switch_useragent"),
     url(r"^change_language/$", "change_language", name="change_language"),
-    url(r"^change_user/$", "change_user", name="change_user"),
     url(r"^set_colorscheme/(\S+)/$", "set_color_scheme", name="set_color_scheme"),
     url(r"^menu_folder/(\S+)/$", "menu_folder", name="menu_folder"),
     url(r"^layout/set_state/$", "save_layout_state", name="save_layout_state"),

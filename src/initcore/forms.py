@@ -39,11 +39,6 @@ class change_language_form(forms.Form):
                                  choices=settings.LANGUAGES)
 
 
-class change_user_form(forms.Form):
-    username = forms.ChoiceField(widget=forms.widgets.Select(),
-                             choices=[(i.username, i.username) for i in OlimUser.objects.all()])
-
-
 class user_config_form(forms.Form):
     css_theme = forms.ChoiceField(
         widget=forms.widgets.Select(
