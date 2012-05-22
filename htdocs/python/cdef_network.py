@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: iso-8859-1 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -168,33 +168,36 @@ class netdevice(cdef_basics.db_obj):
                         new_ip.set_suffix(self.get_new_netip_suffix())
                     new_ip.set_parameters(in_dict)
                     self.ips[i_idx] = new_ip
-                    self.ip_lut[in_dict["ip"]] = i_idx
+                    self.ip_lut[(in_dict["ip"], in_dict["network"])] = i_idx
         else:
             # add an netip-object
             if not in_dict.get_name() in self.ip_lut.keys():
                 i_idx = in_dict.get_idx()
                 self.ips[i_idx] = in_dict
-                self.ip_lut[in_dict.get_name()] = i_idx
+                self.ip_lut[(in_dict.get_name(), in_dict["network"])] = i_idx
     def set_values_as_default(self):
         for act_val in self.ips.values():
             act_val.act_values_are_default()
         self.act_values_are_default()
     def add_netip(self, n_ip):
         self.ips[n_ip.get_idx()] = n_ip
-        self.ip_lut[n_ip.get_name()] = n_ip.get_idx()
+        self.ip_lut[(n_ip.get_name(), n_ip["network"])] = n_ip.get_idx()
+        # self.ip_lut.keys()
     def delete_ip(self, ip_idx):
-        del self.ip_lut[self.ips[ip_idx].get_name()]
+        del self.ip_lut[(self.ips[ip_idx].get_name(), self.ips[ip_idx]["network"])]
         del self.ips[ip_idx]
     def enqueue_new_netip(self, n_ip, has_old=1):
         new_ip = n_ip["ip"]
+        new_net = n_ip["network"]
         new_idx = n_ip.get_idx()
         if has_old:
             old_ip  = "0.0.0.0"
+            old_net = 0
             old_idx = -1
-            del self.ip_lut[old_ip]
+            del self.ip_lut[(old_ip, old_net)]
             del self.ips[old_idx]
         n_ip.set_name(new_ip)
-        self.ip_lut[new_ip] = n_ip.get_idx()
+        self.ip_lut[(new_ip, new_net)] = n_ip.get_idx()
         self.ips[new_idx] = n_ip
     def get_vlan_id(self):
         return self["vlan_id"]
@@ -444,7 +447,7 @@ class netip(cdef_basics.db_obj):
         except ValueError:
             return 2, "no IPV4 address", {"no_log" : ["network"]}
         else:
-            if new_ip in stuff["netdevice"].get_all_defined_ips(self.get_idx()):
+            if False and new_ip in stuff["netdevice"].get_all_defined_ips(self.get_idx()):
                 return 2, "IP already defined on this netdevice", {"no_log" : ["network"]}
             else:
                 if stuff["net_tree"].has_key(int(new_net)) and new_ipv4.network_matches(stuff["net_tree"][int(new_net)]):
