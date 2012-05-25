@@ -602,7 +602,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
         if run_type == "ld":
             log_drive_num = None
             for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n") if cur_line.strip()]:
-                if line.lower().count("virtual disk:"):
+                if line.lower().count("virtual disk:") or line.lower().count("virtual drive:"):
                     log_drive_num = int(line.strip().split()[2])
                     ctrl_stuff["logical_lines"][log_drive_num] = []
                 if log_drive_num is not None:
