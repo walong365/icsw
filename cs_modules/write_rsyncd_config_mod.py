@@ -125,7 +125,7 @@ class write_rsyncd_config(cs_base_class.server_com):
                               "[%s]" % (rsync_stuff["rsync_name"]),
                               "    path = %s" % (rsync_stuff["export_rsync"])])
             if rsync_stuff.get("excluded_dirs", ""):
-                def_lines.append("    exclude = %s" % (" ".join([os.path.normpath("%s/%s" % (rsync_stuff["export_rsync"], x)) for x in rsync_stuff["excluded_dirs"].strip().split()])))
+                def_lines.append("    exclude = %s" % (" ".join([os.path.normpath(x) for x in rsync_stuff["excluded_dirs"].strip().split()])))
         def_lines.append("")
         # add post lines
         def_lines.extend(["### AER-START-POST insert post-rsyncd.conf lines below"] +
