@@ -136,6 +136,9 @@ boot_system () {
 	ifconfig ${valid_net} 0.0.0.0 down
 	cp -a /sbin/stage3 /$basedir/linuxrc
 	chmod +x /$basedir/linuxrc
+	# the exec is important
+	exec switch_root /$basedir linuxrc
+	# normally not reached if switch_root is working properly
 	pivot_root . initrd || {
 	    echo ${echo_opt} "${RED}Fatal: pivot_root . initrd failed ($?), trying run-init code ${OFF}"
 	    # run-init code

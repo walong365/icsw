@@ -65,7 +65,7 @@ stage1_file_dict = {0 : ["inetd", "xinetd", "in.rshd", "tcpd", "in.rlogind", "wh
                          "tar", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "rm", "chmod", "basename",
                          "sed", "dmesg", "ping", "mknod", "true", "false", "logger", "modprobe", "bash", "load_firmware.sh",
                          "lsmod", "depmod", "insmod", "mkfs.ext2",
-                         "ifconfig", "pivot_root", "init", "tell_mother", "bzip2", "bunzip2", "cut", "tr", "chroot",
+                         "ifconfig", "pivot_root", "switch_root", "init", "tell_mother", "bzip2", "bunzip2", "cut", "tr", "chroot",
                          "killall", "seq", "hoststatus", "chown", "ldconfig",
                          "df", "wc", "tftp", "mkfifo", "sleep", "reboot", "stty", "reset", "du", "tail", "lspci", "tee"]}
 
@@ -603,7 +603,14 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                                        "/lib/tls",
                                        "/usr/lib64",
                                        "/usr/lib",
-                                       "/usr/local/lib64"]}
+                                       "/usr/local/lib64"],
+                  "/etc/netconfig" : ['udp        tpi_clts      v     inet     udp     -       -',
+                                      'tcp        tpi_cots_ord  v     inet     tcp     -       -',
+                                      'udp6       tpi_clts      v     inet6    udp     -       -',
+                                      'tcp6       tpi_cots_ord  v     inet6    tcp     -       -',
+                                      'rawip      tpi_raw       -     inet      -      -       -',
+                                      'local      tpi_cots_ord  -     loopback  -      -       -',
+                                      'unix       tpi_cots_ord  -     loopback  -      -       -']}
     if os.path.isfile(pci_f_name):
         sfile_dict["/usr/share/pci.ids"] = file(pci_f_name, "r").read().split("\n")
     sfile_dict["/etc/xinetd.conf"] = {1 : ["defaults",
