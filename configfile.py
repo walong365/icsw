@@ -34,11 +34,9 @@ import config_tools
 import types
 import argparse
 from collections import OrderedDict
-from multiprocessing import Manager
-from multiprocessing.managers import BaseManager, BaseProxy, DictProxy
-
-class config_manager(BaseManager):
-    pass
+import threading
+from multiprocessing import Manager, current_process
+from multiprocessing.managers import BaseManager, BaseProxy, DictProxy, Server
 
 class config_proxy(BaseProxy):
     def add_config_entries(self, ce_list, **kwargs):
@@ -554,15 +552,47 @@ class configuration(object):
         else:
             return options
 
+class my_server(Server):
+    def serve_forever(self):
+        '''
+        Run the server forever, modified version to prevent early exit.
+        '''
+        current_process()._manager_server = self
+        _run = True
+        try:
+            while _run:
+                try:
+                    while 1:
+                        try:
+                            c = self.listener.accept()
+                        except (OSError, IOError):
+                            continue
+                        t = threading.Thread(target=self.handle_request, args=(c,))
+                        t.daemon = True
+                        t.start()
+                except (KeyboardInterrupt, SystemExit):
+                    #print "+++", process_tools.get_except_info()
+                    pass
+        finally:
+            #print "***", process_tools.get_except_info()
+            self.stop = 999
+            self.listener.close()
+
+class config_manager(BaseManager):
+    # monkey-patch Server
+    _Server = my_server
+
 config_manager.register("config", configuration, config_proxy, exposed=["parse_file", "add_config_entries", "set_uid_gid",
                                                                         "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
                                                                         "is_global", "database",
                                                                         "__getitem__", "__setitem__", "__contains__",
                                                                         "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])
+
 cur_manager = config_manager()
 
 def get_global_config(c_name):
     cur_manager.start()
+    #print cur_manager.get_server()
     return cur_manager.config(c_name)
 
 def enable_config_access(user_name, group_name):

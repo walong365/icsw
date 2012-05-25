@@ -792,6 +792,9 @@ class process_obj(multiprocessing.Process):
         self.loop_timer = kwargs.get("loop_timer", 0)
         # copy kwargs for reference
         self.start_kwargs = kwargs
+        # timer structure
+        self.__timer_list, self.__next_timeout = ([], None)
+        self.__exit_locked = False
     @property
     def twisted(self):
         return self.__twisted
@@ -805,6 +808,10 @@ class process_obj(multiprocessing.Process):
     @global_config.setter
     def global_config(self, g_conf):
         self.__global_config = g_conf
+    def lock_exit(self):
+        self.__exit_locked = True
+    def unlock_exit(self):
+        self.__exit_locked = False
     def set_process_pool(self, p_pool):
         self.__process_pool = p_pool
     def getName(self):
@@ -819,6 +826,33 @@ class process_obj(multiprocessing.Process):
         t_socket.send_pyobj([self.name, self.pid] + data)
     def send_pool_message(self, *args):
         self.__pp_queue.send_pyobj([self.name, self.pid] + list(args))
+    def register_timer(self, cb_func, timeout, **kwargs):
+        s_time = time.time()
+        if not kwargs.get("instant", False):
+            s_time = s_time + timeout
+        self.__timer_list.append((timeout, s_time, cb_func))
+        self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+    def unregister_timer(self, ut_cb_func):
+        new_tl = []
+        for cur_to, t_time, cb_func in self.__timer_list:
+            if cb_func != ut_cb_func:
+                new_tl.append((cur_to, t_time, cb_func))
+        self.__timer_list = new_tl
+    def _handle_timer(self, cur_time):
+        new_tl, t_funcs = ([], [])
+        for cur_to, t_time, cb_func in self.__timer_list:
+            if t_time <= cur_time:
+                t_funcs.append(cb_func)
+                new_tl.append((cur_to, t_time + cur_to, cb_func))
+            else:
+                new_tl.append((cur_to, t_time, cb_func))
+        self.__timer_list = new_tl
+        if self.__timer_list:
+            self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+        else:
+            self.__next_timeout = None
+        for t_func in t_funcs:
+            t_func()
     def _init_sockets(self):
         if self.debug_zmq:
             self.zmq_context = debug_zmq_ctx()
@@ -940,9 +974,12 @@ class process_obj(multiprocessing.Process):
             reactor.run(installSignalHandlers=False)
         else:
             cur_q = self.__process_queue
-            while self["run_flag"]:
+            while self["run_flag"] or self.__exit_locked:
                 try:
                     if self.loop_timer:
+                        cur_time = time.time()
+                        if self.__next_timeout and cur_time > self.__next_timeout:
+                            self._handle_timer(cur_time)
                         while cur_q.poll(timeout=self.loop_timer):
                             self._handle_message(cur_q.recv_pyobj())
                     else:
@@ -985,8 +1022,8 @@ class debug_zmq_sock(object):
         return self._sock.getsockopt(*args)
     def fileno(self):
         return self._sock.getsockopt(zmq.FD)
-    def poll(self):
-        return self._sock.poll()
+    def poll(self, **kwargs):
+        return self._sock.poll(**kwargs)
     def close(self):
         self.ctx.log("close %d" % (self.fileno()))
         self.ctx._sockets_open.remove(self.fileno())
@@ -1013,6 +1050,9 @@ class debug_zmq_ctx(zmq.Context):
         ret_sock = debug_zmq_sock(ret_socket)
         ret_sock.register(self)
         return ret_sock
+    def term(self):
+        self.log("term, %s open" % (logging_tools.get_plural("socket", len(self._sockets_open))))
+        super(debug_zmq_ctx, self).term()
 
 class process_pool(object):
     def __init__(self, name, **kwargs):
