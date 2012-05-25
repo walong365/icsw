@@ -43,7 +43,9 @@ import process_tools
 import stat
 import xml_tools
 import threading_tools
-import rpm_module
+import subprocess
+import select
+from lxml import etree
 
 try:
     from package_client_version import *
@@ -71,65 +73,65 @@ def call_command(com, logger, mode=""):
     return my_stat, result
 
 # --------------------------------------------------------------------------------
-class connection_to_server(net_tools.buffer_object):
-    # connects to the package-server
-    def __init__(self, com, ret_queue):
-        self.__act_com = com
-        self.__ret_queue = ret_queue
-        net_tools.buffer_object.__init__(self)
-    def setup_done(self):
-        send_str = self.__act_com.toxml()
-        if bz2:
-            send_str = bz2.compress(send_str)
-        self.add_to_out_buffer(net_tools.add_proto_1_header(send_str, True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
-        if p1_ok:
-            self.__ret_queue.put(("send_ok", (self.__act_com, p1_data)))
-            self.delete()
-    def report_problem(self, flag, what):
-        self.__ret_queue.put(("send_error", (self.__act_com, "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
-        self.delete()
+##class connection_to_server(net_tools.buffer_object):
+##    # connects to the package-server
+##    def __init__(self, com, ret_queue):
+##        self.__act_com = com
+##        self.__ret_queue = ret_queue
+##        net_tools.buffer_object.__init__(self)
+##    def setup_done(self):
+##        send_str = self.__act_com.toxml()
+##        if bz2:
+##            send_str = bz2.compress(send_str)
+##        self.add_to_out_buffer(net_tools.add_proto_1_header(send_str, True))
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if p1_ok:
+##            self.__ret_queue.put(("send_ok", (self.__act_com, p1_data)))
+##            self.delete()
+##    def report_problem(self, flag, what):
+##        self.__ret_queue.put(("send_error", (self.__act_com, "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
+##        self.delete()
 
-class connection_from_server(net_tools.buffer_object):
-    # receiving connection object for server connection
-    def __init__(self, sock, src, dest_queue):
-        self.__dest_queue = dest_queue
-        self.__src = src
-        net_tools.buffer_object.__init__(self)
-    def __del__(self):
-        pass
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        is_p1, what = net_tools.check_for_proto_1_header(self.in_buffer)
-        if is_p1:
-            self.__dest_queue.put(("server_ok", (self, self.__src, what)))
-    def send_return(self, what):
-        self.lock()
-        if self.socket:
-            self.__tot_sent = 0
-            self.add_to_out_buffer(net_tools.add_proto_1_header(what))
-        else:
-            pass
-        self.unlock()
-    def out_buffer_sent(self, send_len):
-        self.__tot_sent += send_len
-        if self.__tot_sent == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-            self.close()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def report_problem(self, flag, what):
-        self.__dest_queue.put(("server_error", "%s : %s" % (net_tools.net_flag_to_str(flag), what)))
-        self.close()
+##class connection_from_server(net_tools.buffer_object):
+##    # receiving connection object for server connection
+##    def __init__(self, sock, src, dest_queue):
+##        self.__dest_queue = dest_queue
+##        self.__src = src
+##        net_tools.buffer_object.__init__(self)
+##    def __del__(self):
+##        pass
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        is_p1, what = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if is_p1:
+##            self.__dest_queue.put(("server_ok", (self, self.__src, what)))
+##    def send_return(self, what):
+##        self.lock()
+##        if self.socket:
+##            self.__tot_sent = 0
+##            self.add_to_out_buffer(net_tools.add_proto_1_header(what))
+##        else:
+##            pass
+##        self.unlock()
+##    def out_buffer_sent(self, send_len):
+##        self.__tot_sent += send_len
+##        if self.__tot_sent == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##            self.close()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def report_problem(self, flag, what):
+##        self.__dest_queue.put(("server_error", "%s : %s" % (net_tools.net_flag_to_str(flag), what)))
+##        self.close()
 # --------------------------------------------------------------------------------
 
 class i_rpm(object):
@@ -204,14 +206,6 @@ class install_thread(threading_tools.thread_obj):
         self.register_func("upgrade", self._upgrade)
     def thread_running(self):
         self.send_pool_message(("new_pid", self.pid))
-        self.__query_format_str = "n%{NAME}\\nv%{VERSION}\\nr%{RELEASE}\\nt%{INSTALLTIME}\\ns%{SIZE}\\na%{ARCH}\\nS%{SUMMARY}\\n"
-        self.__rel_dict = {"n" : "name",
-                           "r" : "release",
-                           "v" : "version",
-                           "t" : "installtime",
-                           "s" : "size",
-                           "a" : "arch",
-                           "S" : "summary"}
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         self.__logger.log(lev, what)
     def _get_rpm_list(self):
@@ -262,21 +256,6 @@ class install_thread(threading_tools.thread_obj):
                     leading_dig = pack_version.split(":")[0]
                     if leading_dig.isdigit():
                         pack_version = ":".join(pack_version.split(":")[1:])
-        elif rpm_module.rpm_module_ok():
-            logger.info("Querying package file %s (new method)" % (location))
-            rpm = rpm_module.get_rpm_module()
-            rpm.setVerbosity(rpm.RPMLOG_ERR)
-            try:
-                inst_pack = rpm_module.rpm_package(rpm_module.return_package_header(location))
-            except:
-                #print sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-                #print process_tools.get_except_info()
-                ret_state, ret_str = ("error", "error querying %s: %s" % (location, process_tools.get_except_info()))
-            else:
-                pack_name, pack_version, pack_release = (inst_pack.bi["name"],
-                                                         inst_pack.bi["version"],
-                                                         inst_pack.bi["release"])
-            del rpm
         else:
             query_str = "rpm -qp %s --queryformat=\"%s\"" % (location, self.__query_format_str)
             log_str = "Querying package file %s via %s (old method)" % (location, query_str)
@@ -311,19 +290,6 @@ class install_thread(threading_tools.thread_obj):
                     if line.count("=") > 20:
                         break
                 pre_package = self._parse_query_result("\n".join(lines))
-        elif rpm_module.rpm_module_ok():
-            logger.info("querying package '%s' for %s" % (pack_name, mode))
-            ts = rpm_module.get_TransactionSet()
-            rpm = rpm_module.get_rpm_module()
-            rpm.setVerbosity(rpm.RPMLOG_ERR)
-            db_match = ts.dbMatch("name", pack_name)
-            pre_package = {}
-            for hdr in db_match:
-                new_rpm = rpm_module.rpm_package(hdr)
-                act_p = dict([(k, new_rpm.bi[k]) for k in self.__rel_dict.values()])
-                pre_package.setdefault(act_p["name"], []).append(act_p)
-            del rpm
-            del ts
         else:
             query_str = "rpm -q %s --queryformat=\"%s\"" % (pack_name, self.__query_format_str)
             p_stat, result = call_command(query_str, self.__logger, mode)
@@ -382,101 +348,87 @@ class install_thread(threading_tools.thread_obj):
         g_logger.info(act_log_line)
         logger.info(act_log_line)
         return p_stat, result, extra_error_field
-    def _parse_query_result(self, q_result, set_install_times=False):
-        packages, act_p = ({}, None)
-        if self.__glob_config["DEBIAN"]:
-            for line in [y for y in [x.strip() for x in q_result.split("\n")] if y]:
-                try:
-                    flags, name, verrel, info = line.split(None, 3)
-                except:
-                    pass
-                else:
-                    if verrel.count("-"):
-                        ver, rel = verrel.split("-", 1)
-                    else:
-                        ver, rel = (verrel, "0")
-                    if len(flags) == 2:
-                        desired_flag, status_flag = flags
-                        error_flag = ""
-                    else:
-                        desired_flag, status_flag, error_flag = flags
-                    if desired_flag == "p":
-                        # package is purged
-                        pass
-                    elif desired_flag == "r":
-                        # package is removed
-                        pass
-                    else:
-                        packages.setdefault(name, []).append({"flags"       : (desired_flag, status_flag, error_flag),
-                                                              "version"     : ver,
-                                                              "release"     : rel,
-                                                              "summary"     : info,
-                                                              "installtime" : time.time(),
-                                                              "name"        : name})
-        else:
-            for pfix, pline in  [(y[0], y[1:]) for y in [x.strip() for x in q_result.split("\n")] if y]:
-                if pline:
-                    if pfix == "n":
-                        act_p = {"name" : pline}
-                    else:
-                        # ignore unknown prefixes
-                        if act_p and self.__rel_dict.has_key(pfix):
-                            dname = self.__rel_dict[pfix]
-                            act_p[dname] = pline.strip()
-                    if pfix == "t" and act_p:
-                        packages.setdefault(act_p["name"], []).append(act_p)
-                        act_p = {}
-        return packages
-    def _get_rpm_list_int(self):
-        start_time = time.time()
-        if self.__glob_config["DEBIAN"]:
-            query_str = "dpkg -l"
-            self.log("Started query of dpkg-list")
-            p_stat, p_list = call_command(query_str, self.__logger)
-            if p_stat:
-                ret_state = "error"
-            else:
-                ret_state = "ok"
-                lines = [x.strip() for x in p_list.split("\n")]
-                # drop header-lines
-                while True:
-                    line = lines.pop(0)
-                    if line.count("=") > 20:
-                        break
-                packages = self._parse_query_result("\n".join(lines), set_install_times = True)
-        elif rpm_module.rpm_module_ok():
-            self.log("Started query of rpm-list (new method via rpm_module)")
-            rpm = rpm_module.get_rpm_module()
-            ts = rpm_module.get_TransactionSet()
-            rpm.setVerbosity(rpm.RPMLOG_ERR)
-            db_match = ts.dbMatch()
-            packages = {}
-            for hdr in db_match:
-                new_rpm = rpm_module.rpm_package(hdr)
-                act_p = dict([(k, new_rpm.bi[k]) for k in self.__rel_dict.values()])
-                packages.setdefault(act_p["name"], []).append(act_p)
-            ret_state, query_str = ("ok", "<direct access via rpm_module>")
-            del rpm
-            del ts
-        else:
-            query_str = "rpm -qa --queryformat=\"%s\"" % (self.__query_format_str)
-            self.log("Started query of rpm-list (old method, queryformat=%s)" % (self.__query_format_str))
-            p_stat, p_list = call_command(query_str, self.__logger)
-            if p_stat:
-                ret_state = "error"
-            else:
-                ret_state = "ok"
-                packages = self._parse_query_result(p_list)
-        self.log("%s (%s): %s" % (ret_state,
-                                  logging_tools.get_diff_time_str(time.time() - start_time),
-                                  query_str))
-        if ret_state == "ok":
-            self.log("Found %s [%s where more than one version/release is installed: %s]" % (logging_tools.get_plural("unique package-name", len(packages)),
-                                                                                             logging_tools.get_plural("package", len([x for x in packages.keys() if len(packages[x]) > 1])),
-                                                                                             ", ".join(["%s (%s)" % (x, logging_tools.get_plural("instance", len(packages[x]))) for x in packages.keys() if len(packages[x]) > 1])))
-        else:
-            packages = {}
-        return packages
+##    def _parse_query_result(self, q_result):
+##        packages, act_p = ({}, None)
+##        if self.__glob_config["DEBIAN"]:
+##            for line in [y for y in [x.strip() for x in q_result.split("\n")] if y]:
+##                try:
+##                    flags, name, verrel, info = line.split(None, 3)
+##                except:
+##                    pass
+##                else:
+##                    if verrel.count("-"):
+##                        ver, rel = verrel.split("-", 1)
+##                    else:
+##                        ver, rel = (verrel, "0")
+##                    if len(flags) == 2:
+##                        desired_flag, status_flag = flags
+##                        error_flag = ""
+##                    else:
+##                        desired_flag, status_flag, error_flag = flags
+##                    if desired_flag == "p":
+##                        # package is purged
+##                        pass
+##                    elif desired_flag == "r":
+##                        # package is removed
+##                        pass
+##                    else:
+##                        packages.setdefault(name, []).append({"flags"       : (desired_flag, status_flag, error_flag),
+##                                                              "version"     : ver,
+##                                                              "release"     : rel,
+##                                                              "summary"     : info,
+##                                                              "installtime" : time.time(),
+##                                                              "name"        : name})
+##        else:
+##            for pfix, pline in  [(y[0], y[1:]) for y in [x.strip() for x in q_result.split("\n")] if y]:
+##                if pline:
+##                    if pfix == "n":
+##                        act_p = {"name" : pline}
+##                    else:
+##                        # ignore unknown prefixes
+##                        if act_p and self.__rel_dict.has_key(pfix):
+##                            dname = self.__rel_dict[pfix]
+##                            act_p[dname] = pline.strip()
+##                    if pfix == "t" and act_p:
+##                        packages.setdefault(act_p["name"], []).append(act_p)
+##                        act_p = {}
+##        return packages
+##    def _get_rpm_list_int(self):
+##        start_time = time.time()
+##        if self.__glob_config["DEBIAN"]:
+##            query_str = "dpkg -l"
+##            self.log("Started query of dpkg-list")
+##            p_stat, p_list = call_command(query_str, self.__logger)
+##            if p_stat:
+##                ret_state = "error"
+##            else:
+##                ret_state = "ok"
+##                lines = [x.strip() for x in p_list.split("\n")]
+##                # drop header-lines
+##                while True:
+##                    line = lines.pop(0)
+##                    if line.count("=") > 20:
+##                        break
+##                packages = self._parse_query_result("\n".join(lines))
+##        else:
+##            query_str = "rpm -qa --queryformat=\"%s\"" % (self.__query_format_str)
+##            self.log("Started query of rpm-list (old method, queryformat=%s)" % (self.__query_format_str))
+##            p_stat, p_list = call_command(query_str, self.__logger)
+##            if p_stat:
+##                ret_state = "error"
+##            else:
+##                ret_state = "ok"
+##                packages = self._parse_query_result(p_list)
+##        self.log("%s (%s): %s" % (ret_state,
+##                                  logging_tools.get_diff_time_str(time.time() - start_time),
+##                                  query_str))
+##        if ret_state == "ok":
+##            self.log("Found %s [%s where more than one version/release is installed: %s]" % (logging_tools.get_plural("unique package-name", len(packages)),
+##                                                                                             logging_tools.get_plural("package", len([x for x in packages.keys() if len(packages[x]) > 1])),
+##                                                                                             ", ".join(["%s (%s)" % (x, logging_tools.get_plural("instance", len(packages[x]))) for x in packages.keys() if len(packages[x]) > 1])))
+##        else:
+##            packages = {}
+##        return packages
     def _install(self, package):
         self._package_handler("install", package)
     def _upgrade(self, package):
@@ -1009,11 +961,11 @@ class comsend_thread(threading_tools.thread_obj):
         self.__retry_queue = []
         # init info files
         self._init_info_files()
-    def thread_running(self):
-        self.send_pool_message(("new_pid", self.pid))
-        self._log_send_status()
-        self._start_rpm_thread()
-        self._start_rsync_thread()
+##    def thread_running(self):
+##        self.send_pool_message(("new_pid", self.pid))
+##        self._log_send_status()
+##        self._start_rpm_thread()
+##        self._start_rsync_thread()
     def _thread_alive(self, t_name):
         self.__alive_threads.append(t_name)
         self.log("%s alive: %s" % (logging_tools.get_plural("thread", len(self.__alive_threads)),
@@ -1038,30 +990,6 @@ class comsend_thread(threading_tools.thread_obj):
                         ext_list[-1][1].append(new_el[1])
                     else:
                         break
-        return ext_list
-        #print "oml_in:", len(in_list)
-        ext_list, last_mes, last_type = ([], None, "")
-        for mes in in_list:
-            act_type = ""
-            if last_mes == mes and type(last_mes) == type(""):
-                # discard duplicate string message
-                pass
-            else:
-                if type(mes) == type(()):
-                    act_type = mes[0]
-                    # bug when trying to pack rsync_info -> removed
-                    if act_type in ["package_info"]:
-                        if act_type == last_type:
-                            last_mes[1].append(mes[1])
-                            mes = None
-                        else:
-                            mes = (act_type, [mes[1]])
-                if mes:
-                    ext_list.append(mes)
-            last_type = act_type
-            if mes:
-                last_mes = mes
-        #print "oml_ext:", len(ext_list)
         return ext_list
     def _start_rpm_thread(self):
         if not self.__rpm_queue:
@@ -1143,7 +1071,7 @@ class comsend_thread(threading_tools.thread_obj):
                 act_com.add_flag("bz2compression", bz2 and True or False)
                 act_com.add_flag("debian_client", self.__glob_config["DEBIAN"])
                 act_com.add_flag("version", VERSION_STRING)
-                act_com.add_flag("rpm_direct", rpm_module.rpm_module_ok())
+                #act_com.add_flag("rpm_direct", rpm_module.rpm_module_ok())
                 p_list = act_com.top_element().appendChild(act_com.createElement("packages"))
                 send_list.append(act_com)
                 actual_txt_com = com
@@ -1232,7 +1160,8 @@ class comsend_thread(threading_tools.thread_obj):
             self.__num_con_refused = -1
         return next_try
     def _new_server_connection(self, sock):
-        return connection_to_server(sock.get_add_data(), self.get_thread_queue())
+        pass
+        #return connection_to_server(sock.get_add_data(), self.get_thread_queue())
     def _send_error(self, (err_com, why)):
         # as of 22.8.2003 changed the target-queue from own_queue to retry_queue
         #retry_list.append(packet_server_finish((1, inc_idx)))
@@ -1293,6 +1222,7 @@ class comsend_thread(threading_tools.thread_obj):
                     p_elements = recv_command.getElementsByTagName("packages").item(0).getElementsByTagName("package")
                     self.log("got package_list from server with %s" % (logging_tools.get_plural("package", len(p_elements))))
                     self._start_rpm_thread()
+                    # send request to rpm_queue
                     self.__rpm_queue.put(("rpm_request", p_elements))
                     del p_elements
                     #glfs_wfpi = 1
@@ -1362,6 +1292,7 @@ class comsend_thread(threading_tools.thread_obj):
                                                     rsync_info)
         elif command in ["rpm_list", "rpm_list_force"]:
             if command == "rpm_list_force":
+                # send reload to rpm_queue
                 self.__rpm_queue.put(("reload"))
             self.__rpm_queue.put(("get_rpm_list", com_obj))
             ret_str = ""
@@ -1435,34 +1366,510 @@ class comsend_thread(threading_tools.thread_obj):
             if all_ok:
                 self.send_pool_message("start_sge_execd")
 
+class p_struct(object):
+    def __init__(self, in_xml):
+        self.in_xml = in_xml
+        self.command = in_xml.attrib["command"]
+        self.flag_names = ["nodeps", "force"]
+        for f_name in self.flag_names:
+            setattr(self, f_name, True if in_xml.attrib[f_name] == "1" else False)
+        for s_name in ["name", "version", "release", "location"]:
+            setattr(self, s_name, in_xml.xpath(".//ns:%s/text()" % (s_name), namespaces={"ns" : server_command.XML_NS})[0])
+        self.__log_template = logging_tools.get_logger(
+            "%s.%s" % (global_config["LOG_NAME"],
+                       self.name.replace(".", r"\.")),
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=p_struct.ips.zmq_context,
+            init_logger=True)
+        self.log("V/R is %s/%s" % (self.version, self.release))
+        self.log("location is %s" % (self.location))
+    def start(self):
+        if self.command in ["install", "upgrade"]:
+            self.__query_ok = False
+            # init query of package on disk
+            p_struct.ips._start_command(
+                "dpkg -I %s" % (
+                    self.location) if global_config["DEBIAN"] else "rpm -qp %s --queryformat=\"%s\"" % (
+                        self.location,
+                        p_struct.ips.query_format_str),
+                self._disc_query_done,
+                log_com=self.log)
+    def set_result(self, res_str, res_level=logging_tools.LOG_LEVEL_OK):
+        self.log(res_str, res_level)
+        self.in_xml.attrib.update({
+            "result_level" : "%d" % (res_level),
+            "result_str"   : res_str,
+            "result_ok"    : "1" if res_level in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN] else "0"})
+        del self.in_xml.attrib["pending"]
+        self.send_info()
+        print etree.tostring(self.in_xml, pretty_print=True)
+        p_struct.handle()
+        #p_struct.ips.package_command_done(self)
+    def send_info(self):
+        send_com = get_srv_command(command="package_info")
+        send_com["package_info"] = copy.deepcopy(self.in_xml)
+        p_struct.ips.send_to_server(send_com)
+    @staticmethod
+    def setup(ips, in_com):
+        p_struct.ips = ips
+        p_struct.cur_com = in_com
+        pack_list = in_com.xpath(None, ".//ns:package")
+        for pack in pack_list:
+            # move to __init__
+            print etree.tostring(pack)
+            pack.attrib.update({
+                "runs"   : "%d" % (0),
+                "result" : "%d" % (0),
+            })
+        p_struct.p_struct_list = [p_struct(pack) for pack in pack_list]
+        p_struct.p_struct_dict = dict([(cur_p.name, cur_p) for cur_p in p_struct.p_struct_list])
+        p_struct.g_log("init with %s" % (logging_tools.get_plural("package", len(pack_list))))
+        p_struct.handle()
+    @staticmethod
+    def handle():
+        p_list = p_struct.cur_com.xpath(None, ".//ns:package[@pending]")
+        if not p_list:
+            # nothing pending
+            # find packages in non-OK state
+            first_np = p_struct.cur_com.xpath(None, ".//ns:package[not(@pending) and not(@result_ok='1')]")
+            if first_np:
+                # generate run_dict
+                first_np = sorted(first_np, lambda x: int(x.attrib["runs"]))
+                #print first_np
+                first_np = first_np[0]
+                np_name = first_np.xpath(".//ns:name/text()", namespaces={"ns" : server_command.XML_NS})[0]
+                first_np.attrib["pending"] = "1"
+                first_np.attrib["runs"] = "%d" % (int(first_np.attrib["runs"]) + 1)
+                p_struct.p_struct_dict[np_name].send_info()
+                p_struct.p_struct_dict[np_name].start()
+            else:
+                # decide to go into another loop
+                p_struct.destroy()
+    @staticmethod
+    def destroy():
+        p_struct.g_log("destroying")
+        for pack in p_struct.p_struct_list:
+            pack.close()
+        p_struct.p_struct_list, p_struct.p_struct_dict = ([], {})
+        p_struct.ips.package_command_done(p_struct)
+    @staticmethod
+    def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+        p_struct.ips.log("[p_struct] %s" % (what), log_level)
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(what, level)
+    def close(self):
+        self.log("close")
+        self.__log_template.close()
+    def _disc_query_done(self, sps):
+        dp_info = None
+        self.log("disc query of %s gave %d%s" % (
+            self.location,
+            sps.result,
+            " (%s)" % (sps.stderr) if sps.result else ""),
+                 logging_tools.LOG_LEVEL_ERROR if sps.result else logging_tools.LOG_LEVEL_OK)
+        if not sps.result:
+            if global_config["DEBIAN"]:
+                val_dict = {}
+                descr_mode = False
+                for line in [s_line.strip() for s_line in sps.stdout.split("\n") if s_line.strip()]:
+                    if descr_mode:
+                        val_dict["description"] = "%s %s" % (val_dict["description"], line)
+                    line_parts = line.split()
+                    if line_parts[0].isdigit():
+                        pass
+                    else:
+                        key = line_parts.pop(0).lower()
+                        if key.endswith(":"):
+                            key = key[:-1]
+                        elif key in ["size"]:
+                            pass
+                        else:
+                            key = None
+                        if key:
+                            val_dict[key] = " ".join(line_parts)
+                            if key == "description":
+                                descr_mode = True
+                dp_info = {"name"    : val_dict["package"],
+                           "version" : "-".join(val_dict["version"].split("-")[:-1]),
+                           "release" : val_dict["version"].split("-")[-1]}
+                # remove leading ":" from version
+                if dp_info["version"].count(":"):
+                    leading_dig = dp_info["version"].split(":")[0]
+                    if leading_dig.isdigit():
+                        dp_info["version"] = ":".join(dp_info["version"].split(":")[1:])
+            else:
+                p_info = p_struct.ips._parse_query_result(sps.stdout)
+                if len(p_info) != 1:
+                    self.set_result("error parsing result (%d != 1)" % (len(p_info)), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    pack_name, vr_info  = (p_info.keys()[0], p_info.values()[0])
+                    if len(vr_info) != 1:
+                        self.set_result("found more than one package info (%d)" % (len(vr_info)),
+                                        logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        vr_info = vr_info[0]
+                        dp_info = {"name"    : pack_name,
+                                   "version" : vr_info["version"],
+                                   "release" : vr_info["release"]}
+        sps.close()
+        if dp_info:
+            # compare
+            if all([getattr(self, key) == value for key, value in dp_info.iteritems()]):
+                self.log("querying of disk package successfull")
+                self.__query_ok = True
+                # init query of (maybe) already installed package
+                self._issue_sys_query("pre")
+            else:
+                self.set_result("disk_package differs from XML info", logging_tools.LOG_LEVEL_ERROR)
+    def _issue_sys_query(self, mode="unknown"):
+        self.sys_query_mode = mode
+        p_struct.ips._start_command(
+            "dpkg -l %s" % (
+                self.name) if global_config["DEBIAN"] else "rpm -q %s --queryformat=\"%s\"" % (
+                    self.name,
+                    p_struct.ips.query_format_str),
+            self._sys_query_done,
+            log_com=self.log)
+    def _sys_query_done(self, sps):
+        self.log("sys query of %s (%s) gave %d (%s)" % (
+            self.name,
+            self.sys_query_mode,
+            sps.result,
+            sps.stderr.strip() or "<no stderr>"),
+                 logging_tools.LOG_LEVEL_ERROR if sps.result else logging_tools.LOG_LEVEL_OK)
+        if sps.result:
+            self.log(sps.stdout.strip(), logging_tools.LOG_LEVEL_ERROR)
+            pre_package = {}
+        else:
+            if global_config["DEBIAN"]:
+                lines = [s_line.strip() for s_line in sps.stdout.split("\n")]
+                # drop header-lines
+                while True:
+                    if lines.pop(0).count("=") > 20:
+                        break
+                pre_package = self._parse_query_result("\n".join(lines))
+            else:
+                pre_package = p_struct.ips._parse_query_result(sps.stdout)
+        # build dict
+        sys_dict = dict([("%s-%s-%s" % (self.name, value["version"], value["release"]), value) for value in pre_package.get(self.name, [])])
+        if self.sys_query_mode == "pre":
+            # store for post run
+            self.pre_query_dict = sys_dict
+            # pre-install mode
+            if "%s-%s-%s" % (self.name, self.version, self.release) in sys_dict:
+                # already installed
+                self.set_result("package is already installed")
+                #p_struct.ips.package_command_done(self)
+            else:
+                self._start_iue()
+        elif self.sys_query_mode == "post":
+            if not sys_dict:
+                self.set_result("cannot verify installation", logging_tools.LOG_LEVEL_ERROR)
+            else:
+                if self.name in sys_dict:
+                    for inst_pack in sys_dict[self.name]:
+                        version_ok = (inst_pack["version"], inst_pack["release"]) == (self.version, self.release)
+                        if version_ok:
+                            self.set_result("found package")
+                        else:
+                            self.set_result("found package with wrong V/R %s/%s" % (
+                                inst_pack["version"],
+                                inst_pack["release"]),
+                                            logging_tools.LOG_LEVEL_WARN)
+                else:
+                    self.set_result("package not found in dict (%s)" % (", ".join(sys_dict.keys())),
+                                    logging_tools.LOG_LEVEL_ERROR)
+            pre_dict = self.pre_query_dict
+            if sys_dict and pre_dict:
+                print "***", sys_dict, pre_dict
+            #p_struct.ips.package_command_done(self)
+        else:
+            self.set_result("unknown query_mode %s, exiting" % (self.sys_query_mode),
+                     logging_tools.LOG_LEVEL_ERROR)
+            #p_struct.ips.package_command_done(self)
+    def _start_iue(self):
+        # start install / upgrade / erase
+        if global_config["DEBIAN"]:
+            pass
+        else:
+            rpm_flags = " ".join([value for key, value in [
+                ("nodeps", "--nodeps"),
+                ("force" , "--force" )] if getattr(self, key)])
+            if self.command == "install":
+                com_line = "rpm -iv %s %s" % (rpm_flags, 
+                                              self.location)
+            elif self.command == "upgrade":
+                com_line = "rpm -Uv %s %s" % (rpm_flags, 
+                                              self.location)
+            else:
+                com_line = "rpm -e %s %s" % (rpm_flags,
+                                             self.name)
+        self.log("issuing %s (%s) via %s" % (
+            self.command,
+            ", ".join(["%s=%s" % (key, str(getattr(self, key))) for key in self.flag_names]),
+            com_line
+        ))
+        p_struct.ips._start_command(
+            com_line,
+            self._iue_command_done,
+            log_com=self.log,
+            stderr_join=True)
+    def _iue_command_done(self, sps):
+        self.log("iue command %s for %s gave %d" % (
+            self.command,
+            self.name,
+            sps.result),
+                 logging_tools.LOG_LEVEL_ERROR if sps.result else logging_tools.LOG_LEVEL_OK)
+        for l_num, cur_line in enumerate(sps.stdout.strip().split("\n")):
+            self.log(" - %3d %s" % (l_num + 1, cur_line))
+        if sps.result:
+            # error, close 
+            self.set_result("iue command %s gave (%d): %s" % (
+                self.command,
+                sps.result,
+                sps.stdout.strip()),
+                            logging_tools.LOG_LEVEL_ERROR)
+            #p_struct.ips.package_command_done(self)
+        else:
+            # check install
+            self._issue_sys_query("post")
+    def __unicode__(self):
+        return "%s (%s-%s) %s from %s" % (
+            self.command,
+            self.version,
+            self.release,
+            self.name,
+            self.location)
+
 def get_srv_command(**kwargs):
     return server_command.srv_command(
         package_client_version=VERSION_STRING,
         debian="1" if global_config["DEBIAN"] else "0",
         **kwargs)
 
+class subprocess_struct(object):
+    cur_idx = 0
+    def __init__(self, com_line, log_com, cb_func=None, **kwargs):
+        self.com_line = com_line
+        self.log_com = log_com
+        subprocess_struct.cur_idx += 1
+        self.cur_idx = subprocess_struct.cur_idx
+        self.log("commandline is '%s'" % (self.com_line))
+        self.result = None
+        self.cb_func = cb_func
+        self.stderr_join = kwargs.get("stderr_join", False)
+        self.s_time = time.time()
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.log_com("[sp %d] %s" % (self.cur_idx, what), log_level)
+    def run(self):
+        self.popen = subprocess.Popen(
+            self.com_line,
+            shell=True, 
+            stderr=subprocess.STDOUT if self.stderr_join else subprocess.PIPE,
+            stdout=subprocess.PIPE)
+        self.stderr, self.stdout = ("", "")
+    def check(self):
+        p_res = self.popen.poll()
+        self._read()
+        if p_res is not None:
+            self.result = p_res
+            self.log("finished in %s" % (logging_tools.get_diff_time_str(time.time() - self.s_time)))
+            if self.cb_func:
+                self._read()
+                self.cb_func(self)
+    def _read(self):
+        if not self.stderr_join:
+            if select.select([self.popen.stderr.fileno()], [], [], 0)[0]:
+                self.stderr = "%s%s" % (self.stderr, self.popen.stderr.read())
+        if select.select([self.popen.stdout.fileno()], [], [], 0)[0]:
+            self.stdout = "%s%s" % (self.stdout, self.popen.stdout.read())
+    def close(self):
+        self.cb_func = None
+        del self.popen
+        self.stderr = None
+        self.stdout = None
+            
 class install_process(threading_tools.process_obj):
+    """ handles all install and external command stuff """
     def __init__(self, name):
         threading_tools.process_obj.__init__(
             self,
-            name)
+            name,
+            loop_timer=1000.0)
+        self.commands = []
+        self.register_func("get_rpm_list", self._get_rpm_list)
+        self.register_func("command_batch", self._command_batch)
+        # set rpm-query options
+        self.query_format_str = "n%{NAME}\\nv%{VERSION}\\nr%{RELEASE}\\nt%{INSTALLTIME}\\ns%{SIZE}\\na%{ARCH}\\nS%{SUMMARY}\\n"
+        self.rel_dict = {"n" : "name",
+                         "r" : "release",
+                         "v" : "version",
+                         "t" : "installtime",
+                         "s" : "size",
+                         "a" : "arch",
+                         "S" : "summary"}
+        self.packages_valid = False
+        # commands pending becaus of missing package list
+        self.pending_commands = []
+        # list of pending package commands
+        self.package_commands = []
+    @property
+    def packages(self):
+        return self._packages
+    @packages.setter
+    def packages(self, in_list):
+        self._packages = in_list
+        self.packages_valid = True
+        self.handle_pending_commands()
+    @packages.deleter
+    def packages(self):
+        if self.packages_valid:
+            self.packages_valid = False
+            del self._packages
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
             zmq=True,
+            zmq_debug=global_config["ZMQ_DEBUG"],
             context=self.zmq_context,
             init_logger=True)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
         self.__log_template.close()
+    def _get_rpm_list(self, *args, **kwargs):
+        del self.packages
+        if global_config["DEBIAN"]:
+            self._start_command("dpkg -l", self._dpkg_list_done)
+        else:
+            self._start_command("rpm -qa --queryformat=\"%s\"" % (self.query_format_str), self._rpm_list_done)
+        #self._start_command("rpm -qa", self._rpm_list_done)
+    def _dpkg_list_done(self, sps):
+        self.log("dpkg_list_done not implemented", logging_tools.LOG_LEVEL_CRITICAL)
+    def _rpm_list_done(self, sps):
+        packages = self._parse_query_result(sps.stdout)
+        sps.close()
+        mult_keys = [key for key, p_list in packages.iteritems() if len(p_list) > 1]
+        self.log("Found %s [%s where more than one version/release is installed: %s]" % (
+            logging_tools.get_plural("unique package-name", len(packages)),
+            logging_tools.get_plural("package", len(mult_keys)),
+            ", ".join(["%s (%s)" % (key, logging_tools.get_plural("instance", len(packages[key]))) for key in mult_keys])))
+        self.packages = packages
+    def _parse_query_result(self, lines):
+        packages, act_p = ({}, None)
+        if global_config["DEBIAN"]:
+            for line in [s_line for s_line in [c_line.strip() for c_line in lines.split("\n")] if c_line]:
+                try:
+                    flags, name, verrel, info = line.split(None, 3)
+                except:
+                    pass
+                else:
+                    if verrel.count("-"):
+                        ver, rel = verrel.split("-", 1)
+                    else:
+                        ver, rel = (verrel, "0")
+                    if len(flags) == 2:
+                        desired_flag, status_flag = flags
+                        error_flag = ""
+                    else:
+                        desired_flag, status_flag, error_flag = flags
+                    if desired_flag == "p":
+                        # package is purged
+                        pass
+                    elif desired_flag == "r":
+                        # package is removed
+                        pass
+                    else:
+                        packages.setdefault(name, []).append({
+                            "flags"       : (desired_flag, status_flag, error_flag),
+                            "version"     : ver,
+                            "release"     : rel,
+                            "summary"     : info,
+                            "installtime" : time.time(),
+                            "name"        : name})
+        else:
+            for pfix, pline in map(lambda c_line: (c_line[0], c_line[1:]), map(lambda el: el.strip() if el.strip() else "- ", lines.split("\n"))):
+                if pline.strip():
+                    if pfix == "n":
+                        act_p = {"name" : pline.strip()}
+                    else:
+                        # ignore unknown prefixes
+                        if act_p and self.rel_dict.has_key(pfix):
+                            dname = self.rel_dict[pfix]
+                            act_p[dname] = pline.strip()
+                    if pfix == "t" and act_p:
+                        packages.setdefault(act_p["name"], []).append(act_p)
+                        act_p = {}
+        return packages
+    def _start_command(self, com_line, cb_func, **kwargs):
+        if not self.commands:
+            # first command
+            self.register_timer(self._check_delayed, 1.)
+            self.loop_granularity = 10.0
+            self.lock_exit()
+        new_sp = subprocess_struct(com_line, kwargs.pop("log_com", self.log), cb_func, **kwargs)
+        new_sp.run()
+        self.commands.append(new_sp)
+    def _check_delayed(self):
+        done_list = []
+        for cur_com in self.commands:
+            cur_com.check()
+        self.commands = [cur_com for cur_com in self.commands if cur_com.result is None]
+        if not self.commands:
+            self.unregister_timer(self._check_delayed)
+            self.unlock_exit()
+    def _command_batch(self, com_list, *args, **kwargs):
+        com_list = [server_command.srv_command(source=cur_com) for cur_com in com_list]
+        self.pending_commands.extend(com_list)
+        self.handle_pending_commands()
+    def send_to_server(self, send_xml):
+        self.send_pool_message("send_to_server", send_xml["command"].text, unicode(send_xml))
+    def _transform(self, in_com):
+        t_result = None
+        # transform xml snippet (or other data) to a valid package_struct
+        if type(in_com) == server_command.srv_command and in_com.xpath(None, ".//ns:packages"):
+            p_struct.setup(self, in_com)
+            t_result = p_struct
+        else:
+            self.log("unknown type '%s' for _transform" % (str(type(in_com))), logging_tools.LOG_LEVEL_ERROR)
+        return t_result
+    def add_package_command(self, in_com):
+        t_com = self._transform(in_com)
+        if t_com is not None:
+            self.package_commands.append(t_com)
+        self.log(logging_tools.get_plural("package command", len(self.package_commands)))
+    def package_command_done(self, t_com):
+        self.package_commands.remove(t_com)
+        self.handle_pending_commands()
+    def handle_pending_commands(self):
+        self.log("%s, packages_list is %s" % (logging_tools.get_plural("pending command", len(self.pending_commands)),
+                                              "valid" if self.packages_valid else "invalid"))
+        while self.packages_valid and self.pending_commands and not self.package_commands:
+            # now the fun starts, we have a list of commands and a valid local package list
+            first_com = self.pending_commands.pop(0)
+            cur_com = first_com["command"].text
+            self.log("try to handle %s" % (cur_com))
+            if cur_com in ["send_info"]:
+                self.log("... ignoring", logging_tools.LOG_LEVEL_WARN)
+            elif cur_com in ["package_list"]:
+                if len(first_com.xpath(None, ".//ns:packages/ns:package")):
+                    #cur_pack = p_list[0]
+                    #cur_pack.getparent().remove(cur_pack)
+                    # reinsert
+                    #self.pending_commands.insert(0, first_com)
+                    self.add_package_command(first_com)
+                else:
+                    self.log("empty package_list, removing")
     
 class server_process(threading_tools.process_pool):
     def __init__(self):
         self.global_config = global_config
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.process_pool.__init__(self, "main", zmq=True,
+            zmq_debug=global_config["ZMQ_DEBUG"]
+            )
         if not global_config["DEBUG"]:
             process_tools.set_handles({"out" : (1, "package_client.out"),
                                        "err" : (0, "/var/lib/logging-server/py_err")},
@@ -1482,7 +1889,10 @@ class server_process(threading_tools.process_pool):
         # log limits
         self._log_limits()
         self._init_network_sockets()
+        self.register_func("send_to_server", self._send_to_server)
         self.add_process(install_process("install"), start=True)
+        self.send_to_process("install",
+                             "get_rpm_list")
         if False:
             # automounter check counter
             self.__automounter_checks = 0
@@ -1583,6 +1993,7 @@ class server_process(threading_tools.process_pool):
         #self.register_poller(self.com_socket, zmq.POLLIN, self._recv)
         # connect to server
         srv_port = self.zmq_context.socket(zmq.DEALER)
+        srv_port.setsockopt(zmq.LINGER, 1000)
         srv_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
         #srv_port.setsockopt(zmq.SUBSCRIBE, "")
         conn_str = "tcp://%s:%d" % (global_config["PACKAGE_SERVER"],
@@ -1596,18 +2007,33 @@ class server_process(threading_tools.process_pool):
         srv_port.send_unicode(unicode(get_srv_command(command="get_rsync_list")))
         self.srv_port = srv_port
         self.log("connected to %s" % (conn_str))
+    def _send_to_server(self, src_proc, *args, **kwargs):
+        src_pid, com_name, send_com = args
+        self.log("sending %s to server" % (com_name))
+        self.srv_port.send_unicode(send_com)
     def _recv(self, zmq_sock):
         batch_list = []
         while True:
             data = []
             while True:
-                data.append(zmq_sock.recv())
+                try:
+                    data.append(server_command.srv_command(source=zmq_sock.recv_unicode()))
+                except:
+                    self.log("error decoding command: %s" % (process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
                 if not zmq_sock.getsockopt(zmq.RCVMORE):
                     break
-            batch_list.append(data)
+            batch_list.extend(data)
             if not zmq_sock.poll(zmq.POLLIN):
                 break
-        pprint.pprint(batch_list)
+        batch_list = self._optimize_list(batch_list)
+        self.send_to_process("install",
+                             "command_batch",
+                             [unicode(cur_com) for cur_com in batch_list])
+    def _optimize_list(self, in_list):
+        #print [cur_el["command"].text for cur_el in in_list]
+        #print in_list[0].pretty_print()
+        return in_list
     def _threads_alive(self):
         self.log("All threads alive")
         if not self.__automounter_valid:
@@ -1719,6 +2145,7 @@ def main():
     global_config.add_config_entries([
         ("PID_NAME"               , configfile.str_c_var("%s/%s" % (prog_name, prog_name))),
         ("DEBUG"                  , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"              , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("VERBOSE"                , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("KILL_RUNNING"           , configfile.bool_c_var(True)),
         ("POLL_INTERVALL"         , configfile.int_c_var(5, help_string="poll intervall")),

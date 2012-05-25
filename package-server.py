@@ -1282,7 +1282,7 @@ class client(object):
     def _get_package_list(self, srv_com):
         dc = client.srv_process.get_dc()
         if self._get_dev_idx(dc):
-            dc.execute("SELECT p.version, p.release, p.name, ip.location, ipd.install, ipd.upgrade, ipd.del, ipd.nodeps, ip.native, ipd.forceflag, ipd.device FROM package p, inst_package ip, instp_device ipd WHERE " + \
+            dc.execute("SELECT p.version, p.release, p.name, ip.location, ipd.install, ipd.upgrade, ipd.del, ipd.nodeps, ip.native, ipd.forceflag, ipd.device, ipd.instp_device_idx FROM package p, inst_package ip, instp_device ipd WHERE " + \
                        "ip.package=p.package_idx AND ipd.inst_package=ip.inst_package_idx AND (%s) ORDER BY p.name, p.version, p.release" % (" OR ".join(["ipd.device=%d" % (cur_idx) for cur_idx in [self.__dev_idx]])))
             pack_list = srv_com.builder("packages")
             srv_com["result"] = pack_list
@@ -1297,6 +1297,7 @@ class client(object):
                 else:
                     new_p.attrib["command"] = "keep"
                 new_p.attrib.update({
+                    "instp_idx" : "%d" % (db_rec["instp_device_idx"]),
                     "nodeps" : "1" if db_rec["nodeps"] else "0",
                     "force"  : "1" if db_rec["forceflag"] else "0",
                     "native" : "1" if db_rec["native"] else "0"})
@@ -1308,6 +1309,31 @@ class client(object):
                 pack_list.append(new_p)
             self.log("package_list has %s" % (logging_tools.get_plural("entry", len(pack_list))))
         dc.release()
+    def _get_package_info(self, srv_com):
+        dc = client.srv_process.get_dc()
+        if self._get_dev_idx(dc):
+            p_el = srv_com["package_info:package"]
+            instp_idx = int(p_el.attrib["instp_idx"])
+            # get record
+            dc.execute("SELECT * FROM instp_device WHERE instp_device_idx=%d" % (instp_idx))
+            if dc.rowcount:
+                db_rec = dc.fetchone()
+                if "pending" in p_el.attrib:
+                    res_str = "w waiting for action"
+                else:
+                    res_level = int(p_el.attrib["result_level"])
+                    prefix = {logging_tools.LOG_LEVEL_OK : "ok",
+                              logging_tools.LOG_LEVEL_WARN : "w",
+                              logging_tools.LOG_LEVEL_ERROR : "error"}[res_level]
+                    res_str = "%s %s" % (prefix, p_el.attrib["result_str"])
+                dc.execute("UPDATE instp_device SET status=%%s WHERE instp_device_idx=%d" % (instp_idx),
+                           (res_str))
+                self.log("set status of %s to %s" % (p_el.xpath("ns:name/text()", namespaces={"ns" : server_command.XML_NS})[0],
+                                                     res_str))
+            else:
+                self.log("no instp_device structure found with idx=%d" % (instp_idx),
+                         logging_tools.LOG_LEVEL_ERROR)
+        dc.release()
     def new_command(self, srv_com):
         s_time = time.time()
         cur_com = srv_com["command"].text
@@ -1317,8 +1343,11 @@ class client(object):
         srv_com.update_source()
         send_reply = False
         if cur_com == "get_package_list":
+            srv_com["command"] = "package_list"
             self._get_package_list(srv_com)
             send_reply = True
+        elif cur_com == "package_info":
+            self._get_package_info(srv_com)
         else:
             self.log("unknown command '%s'" % (cur_com),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -1479,7 +1508,7 @@ class server_process(threading_tools.process_pool):
         send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
     def _send_update(self):
         self.log("send update to %s" % (logging_tools.get_plural("client", len(client.uid_set))))
-        send_com = server_command.srv_command(command="hello")
+        send_com = server_command.srv_command(command="send_info")
         for target_name in sorted(client.name_set):
             self.send_reply(client.get(target_name).uid, send_com)
 
