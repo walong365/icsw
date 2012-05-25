@@ -113,14 +113,14 @@ class image_struct(object):
                 dc.execute("UPDATE image SET bitcount=%s WHERE image_idx=%s", (new_bc,
                                                                                self.__image_idx))
                 
-def add_image(req, action_log, image_name, image_source, im_dict, im_fields, sys_dict, arch_lut):
+def add_image(req, action_log, image_name, image_source, im_dict, im_fields, im_el, arch_lut):
     if image_name in [x["name"] for x in im_dict.values()]:
         action_log.add_error("Cannot add image with name '%s'" % (image_name), "Name already used")
     elif not image_source.startswith("/") or image_source.count("/") < 2:
         action_log.add_error("Cannot add image with name '%s', source_path '%s'" % (image_name, image_source), "Path error")
     else:
         action_log.add_ok("Added image '%s', source_path '%s'" % (image_name, image_source), "OK")
-        ver_str = sys_dict.get("version", "unknown")
+        ver_str = im_el.get("version", "unknown")
         if ver_str.count("."):
             rel_str = ".".join(ver_str.split(".")[1:])
             ver_str = ver_str.split(".")[0]
@@ -128,11 +128,11 @@ def add_image(req, action_log, image_name, image_source, im_dict, im_fields, sys
             rel_str = ""
         req.dc.execute("INSERT INTO image SET name=%s, source=%s, sys_vendor=%s, sys_version=%s, sys_release=%s, architecture=%s, bitcount=%s", (image_name,
                                                                                                                                                  image_source,
-                                                                                                                                                 sys_dict.get("vendor", "unknown"),
+                                                                                                                                                 im_el.get("vendor", "unknown"),
                                                                                                                                                  ver_str,
                                                                                                                                                  rel_str,
-                                                                                                                                                 arch_lut.get(sys_dict.get("arch", "unknown"), 0),
-                                                                                                                                                 sys_dict.get("bitcount", 0)))
+                                                                                                                                                 arch_lut.get(im_el.get("arch", "unknown"), 0),
+                                                                                                                                                 im_el.get("bitcount", 0)))
         ins_idx = req.dc.insert_id()
         req.dc.execute("SELECT i.* FROM image i WHERE i.image_idx=%d" % (ins_idx))
         db_rec = req.dc.fetchone()
@@ -268,9 +268,11 @@ def process_page(req):
             for im_list_command in im_list_commands:
                 if not int(im_list_command.server_reply["result"].attrib["state"]):
                     # FIXME
-                    opt_dict = im_list_command.server_reply.get_option_dict()
-                    im_found[im_list_command.get_hostname()] = {"image_source" : opt_dict["image_dir"],
-                                                                "images"       : opt_dict["images"]}
+                    im_found[im_list_command.get_hostname()] = {
+                        "image_source" : im_list_command.server_reply["result:image_list"].attrib["image_dir"],
+                        "images"       : im_list_command.server_reply.xpath(None, ".//ns:image")}
+                    #".//image_list"opt_dict["image_dir"],
+                    #                                            "images"       : opt_dict["images"]}
                 else:
                     im_found[im_list_command.get_hostname()] = im_list_command.get_return()
             if im_found:
@@ -296,30 +298,30 @@ def process_page(req):
                 sim_table[None][0:len(headers)] = html_tools.content("host %s: %s" % (s_name, s_dict), cls="left", type="th")
             else:
                 sim_table[0]["class"] = "line01"
-                if type(s_dict["images"]) == type([]):
-                    s_dict["images"] = dict([(x, {}) for x in s_dict["images"]])
-                sim_table[None][0:len(headers)] = html_tools.content("host %s, %s, source_dir %s" % (s_name, logging_tools.get_plural("image", len(s_dict["images"].keys())), s_dict["image_source"]), cls="center", type="th")
+                #if type(s_dict["images"]) == type([]):
+                #    s_dict["images"] = dict([(x, {}) for x in s_dict["images"]])
+                sim_table[None][0:len(headers)] = html_tools.content("host %s, %s, source_dir %s" % (s_name, logging_tools.get_plural("image", len(s_dict["images"])), s_dict["image_source"]), cls="center", type="th")
                 sim_table[0]["class"] = "line00"
                 for head in headers:
                     sim_table[None][0] = html_tools.content(head, type="th", cls="center")
-                for im_name in sorted(s_dict["images"].keys()):
-                    s_stuff = s_dict["images"][im_name]
-                    im_suff = suffix = "%s%s" % (s_name, im_name)
-                    if s_stuff.has_key("arch") and not arch_lut.has_key(s_stuff["arch"]):
-                        req.dc.execute("INSERT INTO architecture SET architecture=%s", (s_stuff["arch"]))
+                for im_el in sorted(s_dict["images"]):
+                    #s_stuff = s_dict["images"][im_name]
+                    im_suff = suffix = "%s%s" % (s_name, im_el.text)
+                    if "arch" in im_el.attrib and not arch_lut.has_key(im_el.attrib["arch"]):
+                        req.dc.execute("INSERT INTO architecture SET architecture=%s", (im_el.attrib["arch"]))
                         arch_dict, arch_list, arch_lut = get_archs(req)
                     if take_image.check_selection(im_suff):
-                        add_image(req, action_log, im_name, "%s/%s" % (s_dict["image_source"], im_name), im_dict, im_fields, s_stuff, arch_lut)
+                        add_image(req, action_log, im_el.text, "%s/%s" % (s_dict["image_source"], im_el.text), im_dict, im_fields, im_el, arch_lut)
                     line_idx = 1 - line_idx
                     sim_table[0]["class"] = "line1%d" % (line_idx)
-                    name_used = im_name in [x["name"] for x in im_dict.values()]
-                    source_used = "%s/%s" % (s_dict["image_source"], im_name) in [x.extra_dict["source"] for x in im_dict.values()]
+                    name_used = im_el.text in [x["name"] for x in im_dict.values()]
+                    source_used = "%s/%s" % (s_dict["image_source"], im_el.text) in [x.extra_dict["source"] for x in im_dict.values()]
                     sim_table[None][0] = html_tools.content((name_used or source_used) and "name or source path used" or take_image, suffix = im_suff, cls="center")
-                    sim_table[None][0] = html_tools.content(im_name, cls="left")
-                    sim_table[None][0] = html_tools.content(s_stuff.get("vendor"  , "unknown"), cls="center")
-                    sim_table[None][0] = html_tools.content(s_stuff.get("version" , "unknown"), cls="center")
-                    sim_table[None][0] = html_tools.content(s_stuff.get("arch"    , "unknown"), cls="center")
-                    sim_table[None][0] = html_tools.content(s_stuff.get("bitcount", "unknown"), cls="center")
+                    sim_table[None][0] = html_tools.content(im_el.text, cls="left")
+                    sim_table[None][0] = html_tools.content(im_el.get("vendor"  , "unknown"), cls="center")
+                    sim_table[None][0] = html_tools.content(im_el.get("version" , "unknown"), cls="center")
+                    sim_table[None][0] = html_tools.content(im_el.get("arch"    , "unknown"), cls="center")
+                    sim_table[None][0] = html_tools.content(im_el.get("bitcount", "unknown"), cls="center")
         check_image_servers[""] = 1
         req.write("<form action=\"%s.py?%s\" method=post>%s%s<div class=\"center\">Use marked images: %s</div></form>\n" % (req.module_name,
                                                                                                                             functions.get_sid(req),
