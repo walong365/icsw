@@ -594,6 +594,7 @@ class s_command(object):
         self.config, self.hostname, self.port = (config, hostname, port)
         self.start_time = time.time()
         self.req = req
+        self.timeout = timeout
         if type(devs) == type({}):
             self.devs = devs
         else:
@@ -643,11 +644,14 @@ class s_command(object):
                     if opt_dict:
                         for key, value in opt_dict.iteritems():
                             srv_com["server_key:%s" % (key)] = value
+                    srv_com["device_commands"] = []
+                    for dev, com in self.devs.iteritems():
+                        srv_com["device_commands"].append(srv_com.builder("device_command", srv_com.builder("command", com), name=dev))
 ##                    print srv_com, unicode(srv_com)
 ##                    print self.server_com.get_option_dict()
                     self.server_com = srv_com
                 else:
-                    print self.command
+                    #print self.command
                     self.server_com.set_nodes(self.devs.keys())
                     self.server_com.set_node_commands({})
                     for dev, com in self.devs.iteritems():
@@ -728,16 +732,25 @@ class s_command(object):
                                                        "[%s] " % (self.hostip) if self.hostip else "",
                                                        self.config,
                                                        time_info)
-        error = int(srv_reply["result"].attrib["state"])
-        reply_str = srv_reply["result"].attrib["reply"]
-        if error:
-            self.set_state("e", "error %s" % (reply_str))
-            self.req.info_stack.add_error("info (%s, %s, %d): %s" % (self.get_info(),
-                                                                     time_info,
-                                                                     error,
-                                                                     reply_str), "result")
+        if srv_reply is None:
+            self.set_state("e", "error no reply")
+            self.req.info_stack.add_error("info (%s, %s, no reply)" % (self.get_info(),
+                                                                       time_info), "result")
         else:
-            self.set_state("o", reply_str)
+            print srv_reply.pretty_print()
+            error = int(srv_reply["result"].attrib["state"])
+            reply_str = srv_reply["result"].attrib["reply"]
+            print error, reply_str
+            if error in [server_command.SRV_REPLY_STATE_CRITICAL,
+                         server_command.SRV_REPLY_STATE_ERROR,
+                         server_command.SRV_REPLY_STATE_UNSET]:
+                self.set_state("e", "error %s" % (reply_str))
+                self.req.info_stack.add_error("info (%s, %s, %d): %s" % (self.get_info(),
+                                                                         time_info,
+                                                                         error,
+                                                                         reply_str), "result")
+            else:
+                self.set_state("o", reply_str)
         self.server_reply = srv_reply
     def set_result(self, what, log=None):
         self.end_time = time.time()
@@ -815,8 +828,9 @@ def iterate_s_commands(s_list, log=None, **kwargs):
         if zmq_list:
             # iterate
             for zmq_command in zmq_list:
-                result = net_tools.zmq_connection("%s:wfe" % (process_tools.get_machine_name()),
-                                                  timeout=kwargs.get("timeout", 30)).add_connection(zmq_command.get_conn_str(), zmq_command.server_com)
+                result = net_tools.zmq_connection(
+                    "%s:webfrontend" % (process_tools.get_machine_name()),
+                    timeout=kwargs.get("timeout", zmq_command.timeout)).add_connection(zmq_command.get_conn_str(), zmq_command.server_com)
                 #print len(unicode(result))
                 zmq_command.set_0mq_result(result)
         

@@ -31,6 +31,8 @@ import html_tools
 import cdef_device
 import cdef_packages
 
+CONN_TIMEOUT = 5
+
 def module_info():
     return {"pi" : {"description"           : "Package install",
                     "enabled"               : 1,
@@ -320,7 +322,7 @@ def check_for_group_changes(req, scon_logs, ip_dict, list_field, html_stuff, all
         for d_idx in del_dict.keys():
             del ip_dict[d_idx]
         #req.dc.execute("DELETE FROM inst_package WHERE (%s)" % (" OR ".join(["inst_package_idx=%d" % (x) for x in del_dict.values()])))
-        tools.iterate_s_commands([tools.s_command(req, "package_server", 8007, "delete_packages", [], timeout=15, add_dict={"package_idxs" : del_dict.values()})], scon_logs)
+        tools.iterate_s_commands([tools.s_command(req, "package_server", 8007, "delete_packages", [], timeout=CONN_TIMEOUT, add_dict={"package_idxs" : del_dict.values()})], scon_logs)
     return grp_dict
 
 def get_size_str(sz):
@@ -868,7 +870,7 @@ def process_page(req):
                     act_logs.add_ok("removed %s" % (logging_tools.get_plural("package", len(del_ips))), "SQL")
                 req.dc.execute("DELETE FROM instp_device WHERE %s" % (" OR ".join(["instp_device_idx=%d" % (x) for x in del_ips])))
             if refresh_list:
-                tools.iterate_s_commands([tools.s_command(req, "package_server", 8007, "new_config", sorted(refresh_list), 15)], scon_logs)
+                tools.iterate_s_commands([tools.s_command(req, "package_server", 8007, "new_config", sorted(refresh_list), CONN_TIMEOUT)], scon_logs)
                     
         if act_logs:
             req.write(act_logs.generate_stack("Action log"))
