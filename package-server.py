@@ -1375,7 +1375,7 @@ class server_process(threading_tools.process_pool):
         self._check_database()
         self.add_process(watcher_process("watcher", self.__db_con), start=True)
         #self.register_timer(self._send_update, global_config["RENOTIFY_CLIENTS_TIMEOUT"], instant=True)
-        self.register_timer(self._send_update, 5, instant=True)
+        self.register_timer(self._send_update, 3600, instant=True)
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -1464,16 +1464,47 @@ class server_process(threading_tools.process_pool):
             if cur_com == "register":
                 self._register_client(c_uid, srv_com)
             else:
-                try:
-                    cur_client = client.get(c_uid)
-                except KeyError:
-                    self.log("unknown uid %s, not known" % (c_uid),
-                             logging_tools.LOG_LEVEL_CRITICAL)
+                if c_uid.endswith("webfrontend"):
+                    self._handle_wfe_command(zmq_sock, c_uid, srv_com)
                 else:
-                    cur_client.new_command(srv_com)
+                    try:
+                        cur_client = client.get(c_uid)
+                    except KeyError:
+                        self.log("unknown uid %s, not known" % (c_uid),
+                                 logging_tools.LOG_LEVEL_CRITICAL)
+                    else:
+                        cur_client.new_command(srv_com)
         else:
             self.log("wrong number of data chunks (%d != 2)" % (len(data)),
                      logging_tools.LOG_LEVEL_ERROR)
+    def _handle_wfe_command(self, zmq_sock, in_uid, srv_com):
+        in_com = srv_com["command"].text
+        self.log("got server_command %s from %s" % (in_com,
+                                                    in_uid))
+        srv_com.update_source()
+        srv_com["result"] = None
+        srv_com["result"].attrib.update({
+            "reply" : "result not set",
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_UNSET)})
+        if in_com == "new_config":
+            all_devs = srv_com.xpath(None, ".//ns:device_command/@name")
+            valid_devs = [name for name in all_devs if name in client.name_set]
+            self.log("%s requested, %s found" % (logging_tools.get_plural("device", len(all_devs)),
+                                                 logging_tools.get_plural("device" ,len(valid_devs))))
+            for cur_dev in all_devs:
+                srv_com.xpath(None, ".//ns:device_command[@name='%s']" % (cur_dev))[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
+            if valid_devs:
+                self._send_update(valid_devs)
+            srv_com["result"].attrib.update({"reply" : "send update to %d of %d %s" % (len(valid_devs),
+                                                                                       len(all_devs),
+                                                                                       logging_tools.get_plural("device", len(all_devs))),
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK if len(valid_devs) == len(all_devs) else server_command.SRV_REPLY_STATE_WARN)})
+        else:
+            srv_com["result"].attrib.update({"reply" : "command %s not known" % (in_com),
+                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+        #print srv_com.pretty_print()
+        zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
+        zmq_sock.send_unicode(unicode(srv_com))
     def _init_network_sockets(self):
         my_0mq_id = uuid_tools.get_uuid().get_urn()
         self.socket_dict = {}
@@ -1506,10 +1537,11 @@ class server_process(threading_tools.process_pool):
         send_sock = self.socket_dict["router"]
         send_sock.send_unicode(t_uid, zmq.SNDMORE|zmq.NOBLOCK)
         send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
-    def _send_update(self):
-        self.log("send update to %s" % (logging_tools.get_plural("client", len(client.uid_set))))
+    def _send_update(self, dev_list=[]):
+        send_list = dev_list or client.name_set
+        self.log("send update to %s" % (logging_tools.get_plural("client", len(send_list))))
         send_com = server_command.srv_command(command="send_info")
-        for target_name in sorted(client.name_set):
+        for target_name in send_list:
             self.send_reply(client.get(target_name).uid, send_com)
 
 class server_thread_pool(threading_tools.thread_pool):

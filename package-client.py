@@ -1427,24 +1427,43 @@ class p_struct(object):
         p_struct.g_log("init with %s" % (logging_tools.get_plural("package", len(pack_list))))
         p_struct.handle()
     @staticmethod
+    def cmp_element_runs(el_0, el_1):
+        runs_0, runs_1 = (int(el_0.attrib["runs"]),
+                          int(el_1.attrib["runs"]))
+        if runs_0 < runs_1:
+            return -1
+        elif runs_0 == runs_1:
+            return 0
+        else:
+            return 1
+    @staticmethod
     def handle():
         p_list = p_struct.cur_com.xpath(None, ".//ns:package[@pending]")
         if not p_list:
             # nothing pending
             # find packages in non-OK state
-            first_np = p_struct.cur_com.xpath(None, ".//ns:package[not(@pending) and not(@result_ok='1')]")
-            if first_np:
+            not_finished = p_struct.cur_com.xpath(None, ".//ns:package[not(@pending) and not(@result_ok='1')]")
+            if not_finished:
                 # generate run_dict
-                first_np = sorted(first_np, lambda x: int(x.attrib["runs"]))
-                #print first_np
-                first_np = first_np[0]
-                np_name = first_np.xpath(".//ns:name/text()", namespaces={"ns" : server_command.XML_NS})[0]
-                first_np.attrib["pending"] = "1"
-                first_np.attrib["runs"] = "%d" % (int(first_np.attrib["runs"]) + 1)
-                p_struct.p_struct_dict[np_name].send_info()
-                p_struct.p_struct_dict[np_name].start()
-            else:
+                not_finished = sorted(not_finished, p_struct.cmp_element_runs)
                 # decide to go into another loop
+                if len(not_finished) == len(p_struct.cur_com.xpath(None, ".//ns:package[@result_str = @previous_result_str and not(@result_ok='1')]")):
+                    # all previous results are ident to the current ones
+                    p_struct.g_log("results are still the same, exit")
+                    p_struct.destroy()
+                else:
+                    first_nf = not_finished[0]
+                    np_name = first_nf.xpath(".//ns:name/text()", namespaces={"ns" : server_command.XML_NS})[0]
+                    first_nf.attrib["pending"] = "1"
+                    cur_runs = int(first_nf.attrib["runs"])
+                    if "result_str" in first_nf.attrib:
+                        first_nf.attrib["previous_result_str"] = first_nf.attrib["result_str"]
+                    # increase run by 1
+                    first_nf.attrib["runs"] = "%d" % (cur_runs + 1)
+                    p_struct.p_struct_dict[np_name].send_info()
+                    p_struct.p_struct_dict[np_name].start()
+            else:
+                # every package done
                 p_struct.destroy()
     @staticmethod
     def destroy():
