@@ -178,7 +178,7 @@ class srv_command(object):
             return (value, "str")
     def __setitem__(self, key, value):
         cur_element = self._create_element(key)
-        if type(value) == etree._Element:
+        if etree.iselement(value):
             cur_element.append(value)
         else:
             self._element(value, cur_element)
