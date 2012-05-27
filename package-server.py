@@ -41,6 +41,8 @@ import server_command
 import threading_tools
 import net_tools
 import pprint
+from lxml import etree
+from lxml.builder import E
 import xml
 import xml.dom.minidom
 import xml_tools
@@ -69,6 +71,8 @@ PACKAGE_VERSION_VAR_NAME = "package_client_version"
 DIRECT_MODE_VAR_NAME     = "package_client_direct_mode"
 
 SQL_ACCESS = "cluster_full_access"
+
+CONFIG_NAME = "/etc/sysconfig/cluster/package_server_clients.xml"
 
 ### --------------------------------------------------------------------------------
 ##class connection_from_node(net_tools.buffer_object):
@@ -1166,41 +1170,54 @@ class node_thread(threading_tools.thread_obj):
 
 class client(object):
     all_clients = {}
-    def __init__(self, c_uid, srv_com):
+    def __init__(self, c_uid, name):
         self.uid = c_uid
-        self.name = srv_com["source"].attrib["host"]
-        self.__log_template = logging_tools.get_logger(
-            "%s.%s" % (global_config["LOG_NAME"],
-                       self.name.replace(".", r"\.")),
-            global_config["LOG_DESTINATION"],
-            zmq=True,
-            context=client.srv_process.zmq_context,
-            init_logger=True)
-        self.log("added client")
+        self.name = name
         self.__version = ""
         self.__dev_idx = 0
+        self.__log_template = None
+    def create_logger(self):
+        if self.__log_template is None:
+            self.__log_template = logging_tools.get_logger(
+                "%s.%s" % (global_config["LOG_NAME"],
+                           self.name.replace(".", r"\.")),
+                global_config["LOG_DESTINATION"],
+                zmq=True,
+                context=client.srv_process.zmq_context,
+                init_logger=True)
+            self.log("added client")
     @staticmethod
     def init(srv_process):
         client.srv_process = srv_process
         client.uid_set = set()
         client.name_set = set()
         client.lut = {}
+        if not os.path.exists(CONFIG_NAME):
+            file(CONFIG_NAME, "w").write(etree.tostring(E.package_clients(), pretty_print=True))
+        client.xml = etree.fromstring(file(CONFIG_NAME, "r").read())
+        for client_el in client.xml.xpath(".//package_client"):
+            client.register(client_el.text, client_el.attrib["name"])
     @staticmethod
     def get(key):
         return client.lut[key]
     @staticmethod
-    def register(uid, srv_com):
-        name = srv_com["source"].attrib["host"]
+    def register(uid, name):
         if uid not in client.uid_set:
             client.uid_set.add(uid)
             client.name_set.add(name)
-            new_client = client(uid, srv_com)
+            new_client = client(uid, name)
             client.lut[uid] = new_client
             client.lut[name] = new_client
             client.srv_process.log("added client %s (%s)" % (name, uid))
+            cur_el = client.xml.xpath(".//package_client[@name='%s']" % (name))
+            if not cur_el:
+                client.xml.append(E.package_client(uid, name=name))
+                file(CONFIG_NAME, "w").write(etree.tostring(client.xml, pretty_print=True))
     def close(self):
-        self.__log_template.close()
+        if self.__log_template is not None:
+            self.__log_template.close()
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+        self.create_logger()
         self.__log_template.log(level, what)
     def send_reply(self, srv_com):
         self.srv_process.send_reply(self.uid, srv_com)
@@ -1328,6 +1345,10 @@ class client(object):
                     res_str = "%s %s" % (prefix, p_el.attrib["result_str"])
                 dc.execute("UPDATE instp_device SET status=%%s WHERE instp_device_idx=%d" % (instp_idx),
                            (res_str))
+                if "install_time" in p_el.attrib:
+                    dc.execute("UPDATE instp_device SET install_time=FROM_UNIXTIME(%s) WHERE instp_device_idx=%d" % (
+                        p_el.attrib["install_time"],
+                        instp_idx))
                 self.log("set status of %s to %s" % (p_el.xpath("ns:name/text()", namespaces={"ns" : server_command.XML_NS})[0],
                                                      res_str))
             else:
@@ -1356,7 +1377,6 @@ class client(object):
         e_time = time.time()
         self.log("handled command %s in %s" % (cur_com,
                                                logging_tools.get_diff_time_str(e_time - s_time)))
-        
 
 class server_process(threading_tools.process_pool):
     def __init__(self, db_con):
@@ -1386,7 +1406,7 @@ class server_process(threading_tools.process_pool):
     def _init_clients(self):
         client.init(self)
     def _register_client(self, c_uid, srv_com):
-        client.register(c_uid, srv_com)
+        client.register(c_uid, srv_com["source"].attrib["host"])
     def get_dc(self):
         return self.__db_con.get_connection(SQL_ACCESS)
     def _init_msi_block(self):
@@ -1494,7 +1514,7 @@ class server_process(threading_tools.process_pool):
             for cur_dev in all_devs:
                 srv_com.xpath(None, ".//ns:device_command[@name='%s']" % (cur_dev))[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
             if valid_devs:
-                self._send_update(valid_devs)
+                self._send_update(command="new_config", dev_list=valid_devs)
             srv_com["result"].attrib.update({"reply" : "send update to %d of %d %s" % (len(valid_devs),
                                                                                        len(all_devs),
                                                                                        logging_tools.get_plural("device", len(all_devs))),
@@ -1537,10 +1557,11 @@ class server_process(threading_tools.process_pool):
         send_sock = self.socket_dict["router"]
         send_sock.send_unicode(t_uid, zmq.SNDMORE|zmq.NOBLOCK)
         send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
-    def _send_update(self, dev_list=[]):
+    def _send_update(self, command="send_info", dev_list=[]):
         send_list = dev_list or client.name_set
-        self.log("send update to %s" % (logging_tools.get_plural("client", len(send_list))))
-        send_com = server_command.srv_command(command="send_info")
+        self.log("send command %s to %s" % (command,
+                                            logging_tools.get_plural("client", len(send_list))))
+        send_com = server_command.srv_command(command=command)
         for target_name in send_list:
             self.send_reply(client.get(target_name).uid, send_com)
 
@@ -1587,8 +1608,8 @@ def main():
         ("PID_NAME"                 , configfile.str_c_var(os.path.join(prog_name, prog_name))),
         ("KILL_RUNNING"             , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("CHECK"                    , configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
-        ("USER"                     , configfile.str_c_var("root", help_string="user to run as [%(default)s")),
-        ("GROUP"                    , configfile.str_c_var("root", help_string="group to run as [%(default)s]")),
+        ("USER"                     , configfile.str_c_var("idpacks", help_string="user to run as [%(default)s")),
+        ("GROUP"                    , configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
         ("GROUPS"                   , configfile.array_c_var(["idg"])),
         ("FORCE"                    , configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
         ("LOG_DESTINATION"          , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
@@ -1655,6 +1676,8 @@ def main():
         #configfile.write_config(dc, "package_server", glob_config)
         dc.release()
         process_tools.renice()
+        process_tools.fix_sysconfig_rights()
+        configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
         process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
         if not global_config["DEBUG"]:
             process_tools.become_daemon()

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -30,15 +30,16 @@ import pprint
 import time
 import logging_tools
 
-needed_packages = sorted(["python-init",
-                          "ethtool-init",
-                          "host-monitoring",
-                          "meta-server",
-                          "logging-server",
-                          "package-client",
-                          "loadmodules",
-                          "python-modules-base",
-                          "child"])
+needed_packages = sorted([
+    "python-init",
+    "ethtool-init",
+    "host-monitoring",
+    "meta-server",
+    "logging-server",
+    "package-client",
+    "loadmodules",
+    "python-modules-base",
+    "child"])
 
 def main():
     try:
@@ -142,4 +143,3 @@ def main():
   
 if __name__ == "__main__":
     main()
-    

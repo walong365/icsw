@@ -1369,12 +1369,17 @@ class comsend_thread(threading_tools.thread_obj):
 class p_struct(object):
     def __init__(self, in_xml):
         self.in_xml = in_xml
+        self.in_xml.attrib.update({
+            "runs"   : "%d" % (0),
+            "result" : "%d" % (0),
+        })
         self.command = in_xml.attrib["command"]
         self.flag_names = ["nodeps", "force"]
         for f_name in self.flag_names:
             setattr(self, f_name, True if in_xml.attrib[f_name] == "1" else False)
         for s_name in ["name", "version", "release", "location"]:
             setattr(self, s_name, in_xml.xpath(".//ns:%s/text()" % (s_name), namespaces={"ns" : server_command.XML_NS})[0])
+        self.full_key = "%s-%s-%s" % (self.name, self.version, self.release)
         self.__log_template = logging_tools.get_logger(
             "%s.%s" % (global_config["LOG_NAME"],
                        self.name.replace(".", r"\.")),
@@ -1384,17 +1389,22 @@ class p_struct(object):
             init_logger=True)
         self.log("V/R is %s/%s" % (self.version, self.release))
         self.log("location is %s" % (self.location))
+        self.__disc_query_present = False
     def start(self):
         if self.command in ["install", "upgrade"]:
-            self.__query_ok = False
+            # not needed ?
+            #self.__query_ok = False
             # init query of package on disk
-            p_struct.ips._start_command(
-                "dpkg -I %s" % (
-                    self.location) if global_config["DEBIAN"] else "rpm -qp %s --queryformat=\"%s\"" % (
-                        self.location,
-                        p_struct.ips.query_format_str),
-                self._disc_query_done,
-                log_com=self.log)
+            if self.__disc_query_present:
+                self._handle_disc_query_result(self.__disc_query_result)
+            else:
+                p_struct.ips._start_command(
+                    "dpkg -I %s" % (
+                        self.location) if global_config["DEBIAN"] else "rpm -qp %s --queryformat=\"%s\"" % (
+                            self.location,
+                            p_struct.ips.query_format_str),
+                    self._disc_query_done,
+                    log_com=self.log)
     def set_result(self, res_str, res_level=logging_tools.LOG_LEVEL_OK):
         self.log(res_str, res_level)
         self.in_xml.attrib.update({
@@ -1403,28 +1413,21 @@ class p_struct(object):
             "result_ok"    : "1" if res_level in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN] else "0"})
         del self.in_xml.attrib["pending"]
         self.send_info()
-        print etree.tostring(self.in_xml, pretty_print=True)
+        #print etree.tostring(self.in_xml, pretty_print=True)
         p_struct.handle()
         #p_struct.ips.package_command_done(self)
     def send_info(self):
         send_com = get_srv_command(command="package_info")
         send_com["package_info"] = copy.deepcopy(self.in_xml)
-        p_struct.ips.send_to_server(send_com)
+        p_struct.ips.send_to_server(send_com, "%s-%s-%s" % (self.name, self.version, self.release))
     @staticmethod
     def setup(ips, in_com):
+        p_struct.start_time = time.time()
         p_struct.ips = ips
         p_struct.cur_com = in_com
-        pack_list = in_com.xpath(None, ".//ns:package")
-        for pack in pack_list:
-            # move to __init__
-            print etree.tostring(pack)
-            pack.attrib.update({
-                "runs"   : "%d" % (0),
-                "result" : "%d" % (0),
-            })
-        p_struct.p_struct_list = [p_struct(pack) for pack in pack_list]
+        p_struct.p_struct_list = [p_struct(pack) for pack in in_com.xpath(None, ".//ns:package")]
         p_struct.p_struct_dict = dict([(cur_p.name, cur_p) for cur_p in p_struct.p_struct_list])
-        p_struct.g_log("init with %s" % (logging_tools.get_plural("package", len(pack_list))))
+        p_struct.g_log("init with %s" % (logging_tools.get_plural("package", len(p_struct.p_struct_list))))
         p_struct.handle()
     @staticmethod
     def cmp_element_runs(el_0, el_1):
@@ -1467,7 +1470,8 @@ class p_struct(object):
                 p_struct.destroy()
     @staticmethod
     def destroy():
-        p_struct.g_log("destroying")
+        p_struct.end_time = time.time()
+        p_struct.g_log("destroying after %s" % (logging_tools.get_diff_time_str(p_struct.end_time - p_struct.start_time)))
         for pack in p_struct.p_struct_list:
             pack.close()
         p_struct.p_struct_list, p_struct.p_struct_dict = ([], {})
@@ -1533,14 +1537,22 @@ class p_struct(object):
                                    "release" : vr_info["release"]}
         sps.close()
         if dp_info:
-            # compare
-            if all([getattr(self, key) == value for key, value in dp_info.iteritems()]):
-                self.log("querying of disk package successfull")
-                self.__query_ok = True
-                # init query of (maybe) already installed package
-                self._issue_sys_query("pre")
-            else:
-                self.set_result("disk_package differs from XML info", logging_tools.LOG_LEVEL_ERROR)
+            if not self.__disc_query_present:
+                self.__disc_query_present = True
+                self.log("setting disc_query result (%s: %s)" % (logging_tools.get_plural("key", len(dp_info)),
+                                                                 ", ".join(sorted(dp_info.keys()))))
+                self.__disc_query_result = dp_info
+            self._handle_disc_query_result(dp_info)
+    def _handle_disc_query_result(self, dp_info):
+        # compare
+        if all([getattr(self, key) == value for key, value in dp_info.iteritems()]):
+            self.log("querying of disk package successfull")
+            # not needed ?
+            #self.__query_ok = True
+            # init query of (maybe) already installed package
+            self._issue_sys_query("pre")
+        else:
+            self.set_result("disk_package differs from XML info", logging_tools.LOG_LEVEL_ERROR)
     def _issue_sys_query(self, mode="unknown"):
         self.sys_query_mode = mode
         p_struct.ips._start_command(
@@ -1576,8 +1588,9 @@ class p_struct(object):
             # store for post run
             self.pre_query_dict = sys_dict
             # pre-install mode
-            if "%s-%s-%s" % (self.name, self.version, self.release) in sys_dict:
+            if self.full_key in sys_dict:
                 # already installed
+                self.in_xml.attrib["install_time"] = "%d" % (int(sys_dict[self.full_key]["installtime"]))
                 self.set_result("package is already installed")
                 #p_struct.ips.package_command_done(self)
             else:
@@ -1590,6 +1603,7 @@ class p_struct(object):
                     for inst_pack in sys_dict[self.name]:
                         version_ok = (inst_pack["version"], inst_pack["release"]) == (self.version, self.release)
                         if version_ok:
+                            self.in_xml.attrib["install_time"] = "%d" % (int(inst_pack["installtime"]))
                             self.set_result("found package")
                         else:
                             self.set_result("found package with wrong V/R %s/%s" % (
@@ -1635,7 +1649,7 @@ class p_struct(object):
             log_com=self.log,
             stderr_join=True)
     def _iue_command_done(self, sps):
-        self.log("iue command %s for %s gave %d" % (
+        self.log("command %s for %s gave %d" % (
             self.command,
             self.name,
             sps.result),
@@ -1644,7 +1658,7 @@ class p_struct(object):
             self.log(" - %3d %s" % (l_num + 1, cur_line))
         if sps.result:
             # error, close 
-            self.set_result("iue command %s gave (%d): %s" % (
+            self.set_result("command %s gave (%d): %s" % (
                 self.command,
                 sps.result,
                 sps.stdout.strip()),
@@ -1843,8 +1857,8 @@ class install_process(threading_tools.process_obj):
         com_list = [server_command.srv_command(source=cur_com) for cur_com in com_list]
         self.pending_commands.extend(com_list)
         self.handle_pending_commands()
-    def send_to_server(self, send_xml):
-        self.send_pool_message("send_to_server", send_xml["command"].text, unicode(send_xml))
+    def send_to_server(self, send_xml, info_str="no info"):
+        self.send_pool_message("send_to_server", send_xml["command"].text, unicode(send_xml), info_str)
     def _transform(self, in_com):
         t_result = None
         # transform xml snippet (or other data) to a valid package_struct
@@ -2015,31 +2029,42 @@ class server_process(threading_tools.process_pool):
         srv_port.setsockopt(zmq.LINGER, 1000)
         srv_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
         #srv_port.setsockopt(zmq.SUBSCRIBE, "")
-        conn_str = "tcp://%s:%d" % (global_config["PACKAGE_SERVER"],
+        self.conn_str = "tcp://%s:%d" % (global_config["PACKAGE_SERVER"],
                                     global_config["SERVER_PUB_PORT"])
-        srv_port.connect(conn_str)
+        srv_port.connect(self.conn_str)
         #pull_port = self.zmq_context.socket(zmq.PUSH)
         #pull_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
         self.register_poller(srv_port, zmq.POLLIN, self._recv)
-        srv_port.send_unicode(unicode(get_srv_command(command="register")))
-        srv_port.send_unicode(unicode(get_srv_command(command="get_package_list")))
-        srv_port.send_unicode(unicode(get_srv_command(command="get_rsync_list")))
+        self.log("connected to %s" % (self.conn_str))
         self.srv_port = srv_port
-        self.log("connected to %s" % (conn_str))
+        self._send_to_server_int(get_srv_command(command="register"))
+        self._get_new_config()
+    def _send_to_server_int(self, xml_com):
+        self._send_to_server("self", os.getpid(), xml_com["command"].text, unicode(xml_com), "server command")
     def _send_to_server(self, src_proc, *args, **kwargs):
-        src_pid, com_name, send_com = args
-        self.log("sending %s to server" % (com_name))
+        src_pid, com_name, send_com, send_info = args
+        self.log("sending %s (%s) to server %s" % (com_name, send_info, self.conn_str))
         self.srv_port.send_unicode(send_com)
+    def _get_new_config(self):
+        self._send_to_server_int(get_srv_command(command="get_package_list"))
+        self._send_to_server_int(get_srv_command(command="get_rsync_list"))
     def _recv(self, zmq_sock):
         batch_list = []
         while True:
             data = []
             while True:
                 try:
-                    data.append(server_command.srv_command(source=zmq_sock.recv_unicode()))
+                    in_com = server_command.srv_command(source=zmq_sock.recv_unicode())
                 except:
                     self.log("error decoding command: %s" % (process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    rcv_com = in_com["command"].text
+                    self.log("got command %s" % (rcv_com))
+                    if rcv_com == "new_config":
+                        self._get_new_config()
+                    else:
+                        data.append(in_com)
                 if not zmq_sock.getsockopt(zmq.RCVMORE):
                     break
             batch_list.extend(data)
