@@ -240,8 +240,7 @@ def get_logger(name, destination, **kwargs):
                 cur_context = kwargs["context"]
                 pub = cur_context.socket(zmq.PUSH)
                 pub.connect(rewrite_log_destination(act_dest if act_dest.endswith("_zmq") else "%s_zmq" % (act_dest)))
-                act_logger.addHandler(zmq_handler(pub))
-                pass
+                act_logger.addHandler(zmq_handler(pub, act_logger))
             else:
                 if act_dest.count("zmq"):
                     raise ValueError, "requested ZMQ-type destination '%s' without ZMQ-Protocol" % (act_dest)
@@ -323,10 +322,11 @@ except:
     log_adapter = None
 
 class zmq_handler(logging.Handler):
-    def __init__(self, t_sock):
+    def __init__(self, t_sock, logger_struct):
         self.__target = t_sock
         self._open = True
         logging.Handler.__init__(self)
+        self.__logger = logger_struct
     def makePickle(self, record):
         """
         Pickles the record in binary format with a length prefix, and
@@ -345,7 +345,12 @@ class zmq_handler(logging.Handler):
     def close(self):
         if self._open:
             self._open = False
+            # set linger to zero to speed up close process
+            self.__target.setsockopt(zmq.LINGER, 0)
             self.__target.close()
+            del self.__target
+            # remove from handler
+            self.__logger.removeHandler(self)
         
 class queue_handler(logging.Handler):
     """ sends log requests to other queues """
