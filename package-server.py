@@ -1343,11 +1343,16 @@ class client(object):
                               logging_tools.LOG_LEVEL_WARN : "w",
                               logging_tools.LOG_LEVEL_ERROR : "error"}[res_level]
                     res_str = "%s %s" % (prefix, p_el.attrib["result_str"])
+                #print p_el.attrib
                 dc.execute("UPDATE instp_device SET status=%%s WHERE instp_device_idx=%d" % (instp_idx),
                            (res_str))
                 if "install_time" in p_el.attrib:
                     dc.execute("UPDATE instp_device SET install_time=FROM_UNIXTIME(%s) WHERE instp_device_idx=%d" % (
                         p_el.attrib["install_time"],
+                        instp_idx))
+                elif p_el.attrib["command"] == "delete" and p_el.attrib["result_ok"] == "1":
+                    # delete install time
+                    dc.execute("UPDATE instp_device SET install_time=Null WHERE instp_device_idx=%d" % (
                         instp_idx))
                 self.log("set status of %s to %s" % (p_el.xpath("ns:name/text()", namespaces={"ns" : server_command.XML_NS})[0],
                                                      res_str))

@@ -1405,6 +1405,10 @@ class p_struct(object):
                             p_struct.ips.query_format_str),
                     self._disc_query_done,
                     log_com=self.log)
+        elif self.command in ["delete"]:
+            self._issue_sys_query("pre")
+        else:
+            self.set_result("error unknown command %s" % (self.command), logging_tools.LOG_LEVEL_ERROR)
     def set_result(self, res_str, res_level=logging_tools.LOG_LEVEL_OK):
         self.log(res_str, res_level)
         self.in_xml.attrib.update({
@@ -1583,36 +1587,47 @@ class p_struct(object):
             else:
                 pre_package = p_struct.ips._parse_query_result(sps.stdout)
         # build dict
-        sys_dict = dict([("%s-%s-%s" % (self.name, value["version"], value["release"]), value) for value in pre_package.get(self.name, [])])
+        # we create a list with only one entry (for future enhamcements)
+        sys_dict = dict([("%s-%s-%s" % (self.name, value["version"], value["release"]), [value]) for value in pre_package.get(self.name, [])])
         if self.sys_query_mode == "pre":
             # store for post run
             self.pre_query_dict = sys_dict
             # pre-install mode
-            if self.full_key in sys_dict:
+            if self.full_key in sys_dict and self.command in ["install", "upgrade"]:
                 # already installed
-                self.in_xml.attrib["install_time"] = "%d" % (int(sys_dict[self.full_key]["installtime"]))
+                self.in_xml.attrib["install_time"] = "%d" % (int(sys_dict[self.full_key][0]["installtime"]))
                 self.set_result("package is already installed")
                 #p_struct.ips.package_command_done(self)
+            elif self.full_key not in sys_dict and self.command in ["delete"]:
+                # not installed
+                self.set_result("package is not installed")
             else:
                 self._start_iue()
         elif self.sys_query_mode == "post":
-            if not sys_dict:
-                self.set_result("cannot verify installation", logging_tools.LOG_LEVEL_ERROR)
-            else:
-                if self.name in sys_dict:
-                    for inst_pack in sys_dict[self.name]:
-                        version_ok = (inst_pack["version"], inst_pack["release"]) == (self.version, self.release)
-                        if version_ok:
-                            self.in_xml.attrib["install_time"] = "%d" % (int(inst_pack["installtime"]))
-                            self.set_result("found package")
-                        else:
-                            self.set_result("found package with wrong V/R %s/%s" % (
-                                inst_pack["version"],
-                                inst_pack["release"]),
-                                            logging_tools.LOG_LEVEL_WARN)
+            if self.command in ["install", "upgrade"]:
+                if not sys_dict:
+                    self.set_result("cannot verify installation", logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    self.set_result("package not found in dict (%s)" % (", ".join(sys_dict.keys())),
-                                    logging_tools.LOG_LEVEL_ERROR)
+                    #print self.name, sys_dict
+                    if self.full_key in sys_dict:
+                        for inst_pack in sys_dict[self.full_key]:
+                            version_ok = (inst_pack["version"], inst_pack["release"]) == (self.version, self.release)
+                            if version_ok:
+                                self.in_xml.attrib["install_time"] = "%d" % (int(inst_pack["installtime"]))
+                                self.set_result("found package")
+                            else:
+                                self.set_result("found package with wrong V/R %s/%s" % (
+                                    inst_pack["version"],
+                                    inst_pack["release"]),
+                                                logging_tools.LOG_LEVEL_WARN)
+                    else:
+                        self.set_result("package not found in dict (%s)" % (", ".join(sys_dict.keys())),
+                                        logging_tools.LOG_LEVEL_ERROR)
+            elif self.command in ["delete"]:
+                if not sys_dict:
+                    self.set_result("package deleted")
+                else:
+                    print "+++", sys_dict
             pre_dict = self.pre_query_dict
             if sys_dict and pre_dict:
                 print "***", sys_dict, pre_dict
