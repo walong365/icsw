@@ -980,6 +980,12 @@ def change_user_group(user, group, groups=[], **kwargs):
     logging_tools.my_syslog("  ... actual uid/gid of %d is now (%d/%d) ..." % (os.getpid(), new_uid, new_gid))
     return ok
 
+def fix_sysconfig_rights():
+    conf_dir = "/etc/sysconfig/cluster"
+    target_group = "idg"
+    os.chown(conf_dir, 0, grp.getgrnam(target_group)[2])
+    os.chmod(conf_dir, 0775)
+    
 def change_user_group_path(path, user, group):
     try:
         if type(user) == type(0):
