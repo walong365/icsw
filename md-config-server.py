@@ -86,7 +86,7 @@ class main_config(object):
         self.__build_process.log("[mc] %s" % (what), level)
     def _create_directories(self):
         self.__dir_dict = dict([(dir_name, os.path.normpath("%s/%s" % (self.__main_dir, dir_name))) for dir_name in
-                                ["", "etc", "var", "share", "archives", "ssl", "bin"]])
+                                ["", "etc", "var", "share", "archives", "ssl", "bin", "lib"]])
         for dir_name, full_path in self.__dir_dict.iteritems():
             if not os.path.exists(full_path):
                 self.log("Creating directory %s" % (full_path))
@@ -211,9 +211,9 @@ class main_config(object):
                                                                                              self.__dir_dict["etc"],
                                                                                              NDOMOD_NAME)))
         else:
-            main_values.append(("broker_module" , "%s/idomod.o config_file=%s/%s.cfg" % (self.__dir_dict["bin"],
-                                                                                         self.__dir_dict["etc"],
-                                                                                         NDOMOD_NAME)))
+            main_values.append(("broker_module" , "%s/idomod.so config_file=%s/%s.cfg" % (self.__dir_dict["lib"],
+                                                                                          self.__dir_dict["etc"],
+                                                                                          NDOMOD_NAME)))
         if global_config["MD_VERSION"] >= 3:
             main_values.extend([("object_cache_file"            , "%s/object.cache" % (self.__dir_dict["var"])),
                                 ("use_large_installation_tweaks", "1"),
@@ -1117,6 +1117,10 @@ class build_process(threading_tools.process_obj):
         self.register_func("rebuild_config", self._rebuild_config)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+    def loop_post(self):
+        for mach_logger in self.__mach_loggers.itervalues():
+            mach_logger.close()
+        self.__log_template.close()
     def mach_log(self, what, lev=logging_tools.LOG_LEVEL_OK, mach_name=None, **kwargs):
         if mach_name is None:
             mach_name = self.__cached_mach_name
@@ -1208,7 +1212,6 @@ class build_process(threading_tools.process_obj):
             for log_line in log_lines:
                 self.log(log_line)
     def _rebuild_config(self, *args, **kwargs):
-        print args, kwargs
         h_list = args[0] if len(args) else []
         rebuild_it = True
         dc = self.__db_con.get_connection(SQL_ACCESS)
@@ -1871,13 +1874,15 @@ class db_verify_process(threading_tools.process_obj):
         del dbv_struct
         dc.release()
         del db_con
-
+    def loop_post(self):
+        self.__log_template.close()
+        
 class server_process(threading_tools.process_pool):
     def __init__(self, db_con):
         self.__log_cache, self.__log_template = ([], None)
         self.__db_con = db_con
         self.__pid_name = global_config["PID_NAME"]
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
         #self.register_func("new_pid", self._new_pid)
@@ -1934,7 +1939,11 @@ class server_process(threading_tools.process_pool):
                                          nag_dict.values().count(NAG_HOST_UP),
                                          nag_dict.values().count(NAG_HOST_DOWN))
             num_unknown = num_tot - (num_up + num_down)
-            self.log("nagios status is: %d up, %d down, %d unknown (%d total)" % (num_up, num_down, num_unknown, num_tot))
+            self.log("%s status is: %d up, %d down, %d unknown (%d total)" % (global_config["MD_TYPE"],
+                                                                              num_up,
+                                                                              num_down,
+                                                                              num_unknown,
+                                                                              num_tot))
             if not self.__em_ok:
                 self._init_em()
             if self.__em_ok:
@@ -2108,7 +2117,7 @@ class server_process(threading_tools.process_pool):
             self["exit_requested"] = True
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
-        self.__com_queue.put(("rebuild_config", []))
+        self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
         submit_c, log_lines = process_tools.submit_at_command("/etc/init.d/host-relay reload")
         for log_line in log_lines:
             self.log(log_line)
@@ -2172,8 +2181,9 @@ class server_process(threading_tools.process_pool):
                 self.log("got command '%s' from '%s'" % (cur_com,
                                                          srv_com["source"].attrib["host"]))
                 srv_com.update_source()
-                srv_com["result"] = {"state" : server_command.SRV_REPLY_STATE_OK,
-                                     "reply" : "ok"}
+                if cur_com == "rebuild_host_config":
+                    self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
+                srv_com["result"] = None
                 # blabla
                 srv_com["result"].attrib.update({"reply" : "ok processed command",
                                                  "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
@@ -2181,8 +2191,15 @@ class server_process(threading_tools.process_pool):
                 self.com_socket.send_unicode(unicode(srv_com))
         else:
             self.log("wrong count of input data frames: %d, first one is %s" % (len(in_data),
-                                                                               in_data[0]),
+                                                                                in_data[0]),
                      logging_tools.LOG_LEVEL_ERROR)
+    def loop_end(self):
+        process_tools.delete_pid(self.__pid_name)
+        if self.__msi_block:
+            self.__msi_block.remove_meta_block()
+    def loop_post(self):
+        self.com_socket.close()
+        self.__log_template.close()
     def thread_loop_post(self):
         if self.__em_ok:
             for f_name in ["%s/%s.mvd" % (self.__esd, self.__nvn),
@@ -2205,6 +2222,7 @@ def main():
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name, prog_name))),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("CHECK"               , configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
@@ -2213,8 +2231,8 @@ def main():
         ("GROUPS"              , configfile.array_c_var([])),
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
-        ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name,
-                                                                 prog_name))),
+        ("PID_NAME"            , configfile.str_c_var(os.path.join(prog_name,
+                                                                   prog_name))),
         ("COM_PORT"            , configfile.int_c_var(SERVER_COM_PORT)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
     ])
