@@ -10,17 +10,19 @@ __all__ = [cur_entry for cur_entry in [entry.split(".")[0] for entry in os.listd
 
 module_list = []
 command_dict = {}
+IMPORT_ERRORS = []
 
 _new_hm_list = []
 for mod_name in __all__:
-    new_mod = __import__(mod_name, globals(), locals())
-    if hasattr(new_mod, "_general"):
-        new_hm_mod = new_mod._general(mod_name, new_mod)
-        _new_hm_list.append((new_hm_mod.Meta().priority, new_hm_mod))
+    try:
+        new_mod = __import__(mod_name, globals(), locals())
+        if hasattr(new_mod, "_general"):
+            new_hm_mod = new_mod._general(mod_name, new_mod)
+            _new_hm_list.append((new_hm_mod.Meta().priority, new_hm_mod))
+    except:
+        IMPORT_ERRORS.append(("system", "import", process_tools.get_except_info()))
 
 _new_hm_list.sort(reverse=True)
-
-IMPORT_ERRORS = []
 
 for _pri, new_hm_mod in _new_hm_list:
     new_mod = new_hm_mod.obj
