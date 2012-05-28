@@ -27,17 +27,13 @@ import zmq
 import MySQLdb
 import sys
 import os
-import getopt
 import re
 import configfile
 import os.path
-import socket
 import time
 import signal
-import net_tools
 import commands
 import pprint
-import threading
 import logging_tools
 import process_tools
 import mysql_tools
@@ -310,8 +306,6 @@ class main_config(object):
         if self.has_config(config.get_name()):
             config.set_previous_config(self.get_config(config.get_name()))
         self[config.get_name()] = config
-    def has_key(self, key):
-        return self.__dict.has_key(key)
     def __setitem__(self, key, value):
         self.__dict[key] = value
         config_keys = self.__dict.keys()
@@ -2130,7 +2124,7 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("md-config-server")

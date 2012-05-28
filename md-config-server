@@ -36,9 +36,6 @@ test -x ${PYTHON_BIN} || exit 5
 
 rc_reset
 
-id ${SERVER_USER} > /dev/null || { echo "User ${SERVER_USER} for ${SERVER_BIN} not found, exiting..." ; rc_failed 6 ; rc_exit ; }
-[ "`id ${SERVER_USER} -g -n`" != "${SERVER_GROUP}" ] && { echo "Group ${SERVER_GROUP} for ${SERVER_BIN} not found, exiting..." ; rc_failed 6 ; rc_exit ; }
-
 export HOSTNAME=`/bin/hostname`
 case "$1" in
     start)
