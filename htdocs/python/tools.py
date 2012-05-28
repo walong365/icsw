@@ -818,13 +818,13 @@ def iterate_s_commands(s_list, log=None, **kwargs):
     if s_list:
         target_list = [target for target in s_list if target.get_state() != "e"]
         tcp_list = [target for target in target_list if target.srv_type == "T"]
+        zmq_list = [target for target in target_list if target.srv_type == "0"]
         if tcp_list:
             # build dict
-            res_dict = net_tools.multiple_connections(save_logs=True, target_list=target_list, timeout=kwargs.get("timeout", 30)).iterate()
-            for idx, act_command in enumerate(target_list):
+            res_dict = net_tools.multiple_connections(save_logs=True, target_list=tcp_list, timeout=kwargs.get("timeout", 30)).iterate()
+            for idx, act_command in enumerate(tcp_list):
                 res_stuff = res_dict[idx]
                 act_command.set_result((res_stuff["errnum"], res_stuff["ret_str"]), log)
-        zmq_list = [target for target in target_list if target.srv_type == "0"]
         if zmq_list:
             # iterate
             for zmq_command in zmq_list:
