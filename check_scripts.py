@@ -149,7 +149,7 @@ def check_system(opt_dict, checks, db_cursor):
                            "cluster-config-server" : "config_server",
                            "host-relay"            : "nagios_master",
                            "nagios"                : "nagios_master",
-                           "nagios-config-server"  : "nagios_master",
+                           "md-config-server"      : "nagios_master",
                            "cransys"               : "cransys_server",
                            "ansys"                 : "ansys_server"}
         # server-type to runlevel-name mapping
