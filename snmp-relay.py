@@ -292,12 +292,14 @@ class snmp_process(threading_tools.process_obj):
         self.__p_mod.apiPDU.setVarBinds(self.__req_pdu, [(var_x, self.__p_mod.Null("")) for var_x in self.__next_names])
         self.__p_mod.apiPDU.setRequestID(self.__req_pdu, self.__p_mod.getNextRequestID())
         self.__disp.sendMessage(encoder.encode(self.__req_msg), self.__act_domain, self.__act_address)
+    def loop_post(self):
+        self.__log_template.close()
 
 class relay_process(threading_tools.process_pool):
     def __init__(self):
         self.__verbose = global_config["VERBOSE"]
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.renice()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
@@ -616,6 +618,8 @@ class relay_process(threading_tools.process_pool):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+    def loop_post(self):
+        self.__log_template.close()
     
 class my_options(optparse.OptionParser):
     def __init__(self, glob_config):
@@ -662,6 +666,7 @@ def main():
     global_config.add_config_entries([
         ("BASEDIR_NAME"    , configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
         ("DEBUG"           , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"       , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("VERBOSE"         , configfile.int_c_var(0)),
         ("DAEMONIZE"       , configfile.bool_c_var(True)),
         ("SNMP_PROCESSES"  , configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
