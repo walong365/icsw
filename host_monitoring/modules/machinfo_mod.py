@@ -1350,8 +1350,8 @@ class swap_command(hm_classes.hm_command):
         else:
             swap = 100 * float(swap_total - swap_free) / swap_total
             ret_state = limits.check_ceiling(swap, cur_ns.warn , cur_ns.crit)
-            return ret_state, "%d %% of %s swap" % (swap,
-                                                    logging_tools.get_size_str(swap_total * 1024))
+            return ret_state, "swapinfo: %d %% of %s swap" % (swap,
+                                                              logging_tools.get_size_str(swap_total * 1024))
     def interpret_old(self, result, parsed_coms):
         def k_str(i_val):
             f_val = float(i_val)
