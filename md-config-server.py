@@ -2213,7 +2213,7 @@ def main():
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name, prog_name))),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
-        ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True)),
+        ("CHECK"               , configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
         ("USER"                , configfile.str_c_var("idnagios", help_string="user to run as [%(default)s")),
         ("GROUP"               , configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
         ("GROUPS"              , configfile.array_c_var([])),

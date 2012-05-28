@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2003,2004,2005,2006,2008 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2003,2004,2005,2006,2008,2012 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 #
 # RedHat stuff
@@ -30,9 +30,6 @@ SERVER_BIN=/opt/cluster/sbin/md-config-server.py
 PYTHON_BIN=/usr/bin/python-init
 SERVER_PID=/var/run/md-config-server/md-config-server.pid
 SERVER_ARGS=""
-SERVER_USER="idnagios"
-SERVER_GROUP="idg"
-ADD_GROUPS="trusted"
 
 test -x ${SERVER_BIN} || exit 5
 test -x ${PYTHON_BIN} || exit 5
@@ -49,7 +46,7 @@ case "$1" in
 	if [ -f ${SERVER_PID} ] ; then
 	    echo -n " ... already running"
 	else
-	    ${SERVER_BIN} ${SERVER_ARGS} -f -u ${SERVER_USER} -g ${SERVER_GROUP} -G ${ADD_GROUPS}
+	    ${SERVER_BIN} ${SERVER_ARGS}
 	fi
 	rc_status -v
 	;;
