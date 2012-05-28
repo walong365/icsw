@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -20,4 +20,4 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-/usr/local/sbin/check_scripts.py --server ALL $*
+/opt/cluster/sbin/check_scripts.py --server ALL $*
