@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2011 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2011,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -30,6 +30,7 @@ import os
 import array
 import datetime
 import pprint
+import process_tools
 try:
     import infograph
 except ImportError:
@@ -567,20 +568,21 @@ class network_service(service):
     def decode_result(self, in_list):
         for net_stuff in in_list:
             try:
-                str_spl = net_stuff["output"].split(":")
-                if len(str_spl) > 2:
-                    str_spl.pop(0)
+                str_spl = net_stuff["output"].split(",", 1)[1].split(":")
+                if len(str_spl) > 1:
                     stuff = [float(s_num) * {"b"  : 1,
                                              "kb" : 1024,
                                              "mb" : 1024 * 1024,
-                                             "gb" : 1024 * 1024 * 1024}[s_pf.lower()] for s_num, s_pf in [v.split(",")[-1][:-5].split() for k, v in zip(["rx", "tx"], str_spl[0:2])]]
+                                             "gb" : 1024 * 1024 * 1024}[s_pf.lower()] for s_num, s_pf in [
+                                                 value.strip()[:-5].split() for value in str_spl[0:2]]]
                     if min(stuff) < 0:
                         pass
                     else:
                         net_stuff["decoded"] = True
                         net_stuff["decoded_value"] = stuff
             except:
-                pass
+                # write to stdout
+                print process_tools.get_except_info()
 
 class memory_service(service):
     def __init__(self, sql_line):
