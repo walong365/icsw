@@ -113,6 +113,11 @@ def show_device_parameters(req, dev_tree, sub_sel):
     dg_sel, d_sel, dg_sel_eff = dev_tree.get_selection()
     change_log = html_tools.message_log()
     dev_dict = {}
+    req.dc.execute("SELECT val_str FROM device_variable WHERE name='md_type'")
+    if req.dc.rowcount:
+        md_type = req.dc.fetchone()["val_str"]
+    else:
+        md_type = "icinga"
     if sub_sel == "a":
         snmp_dict = tools.get_snmp_class_dict(req.dc)
         loc_dict  = tools.get_device_location_dict(req.dc)
@@ -811,14 +816,16 @@ def show_device_parameters(req, dev_tree, sub_sel):
                     if len(d_sel) > 1:
                         out_table[None][0] = html_tools.content(ng_ext_host, d_stuff.get_suffix(), cls="center")
                         if ng_ext_hosts.has_key(d_stuff["ng_ext_host"]):
-                            out_table[None][0] = html_tools.content("<img src=\"/nagios/images/logos/%s\" border=1>" % (ng_ext_hosts[d_stuff["ng_ext_host"]]["icon_image"]), d_stuff.get_suffix(), cls="center")
+                            out_table[None][0] = html_tools.content("<img src=\"/%s/images/logos/%s\" border=1>" % (md_type,
+                                                                                                                    ng_ext_hosts[d_stuff["ng_ext_host"]]["icon_image"]), d_stuff.get_suffix(), cls="center")
                         else:
                             out_table[None][0] = html_tools.content("N / A", cls="center")
                     else:
                         if ng_ext_hosts:
                             out_table[None][0] = html_tools.content(["keep (", ng_ext_host_rb, ") or choose from below"], "g", cls="center")
                             if ng_ext_hosts.has_key(d_stuff["ng_ext_host"]):
-                                out_table[None][0] = html_tools.content("<img src=\"/nagios/images/logos/%s\" border=1>" % (ng_ext_hosts[d_stuff["ng_ext_host"]]["icon_image"]), d_stuff.get_suffix(), cls="center")
+                                out_table[None][0] = html_tools.content("<img src=\"/%s/images/logos/%s\" border=1>" % (md_type,
+                                                                                                                        ng_ext_hosts[d_stuff["ng_ext_host"]]["icon_image"]), d_stuff.get_suffix(), cls="center")
                             else:
                                 out_table[None][0] = html_tools.content("N / A", cls="center")
                         else:
@@ -913,7 +920,8 @@ def show_device_parameters(req, dev_tree, sub_sel):
             row_idx, line_idx = (1, 1)
             for ng_eh_stuff in ng_ext_hosts.values():
                 np_table[line_idx]["class"] = "line10"
-                np_table[line_idx][row_idx] = html_tools.content("<img src=\"/nagios/images/logos/%s\" border=1>" % (ng_eh_stuff["icon_image"]), cls="center")
+                np_table[line_idx][row_idx] = html_tools.content("<img src=\"/%s/images/logos/%s\" border=1>" % (md_type,
+                                                                                                                 ng_eh_stuff["icon_image"]), cls="center")
                 np_table[line_idx + 1]["class"] = "line11"
                 np_table[line_idx + 1][row_idx] = html_tools.content([ng_eh_stuff["name"], ng_ext_host_rb], cls="center")
                 row_idx += 1
