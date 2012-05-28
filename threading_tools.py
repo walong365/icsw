@@ -148,7 +148,6 @@ class thread_obj(threading.Thread):
                 for mesg in self.__thread_pool_messages:
                     self.__thread_pool.get_own_queue().put(mesg)
                 self.__thread_pool_messages = []
-            self.__thread_pool.get_own_queue().put(what)
             self.any_message_send()
         else:
             self.__thread_pool_messages.append(what)
