@@ -28,8 +28,6 @@ SERVER_BIN=/opt/cluster/sbin/package-server.py
 SERVER_PID=/var/run/package-server/package-server.pid
 PYTHON_BIN=/opt/python-init/bin/python
 SERVER_ARGS=""
-SERVER_USER="idpacks"
-SERVER_GROUP="idg"
 META_FILE="/var/lib/meta-server/package-server"
 
 test -x ${SERVER_BIN} || exit 5
@@ -44,7 +42,7 @@ case "$1" in
 		if [ -f ${SERVER_PID} ] ; then
 			echo -n " ... already running"
 		else
-			${SERVER_BIN} ${SERVER_ARGS} -f -u ${SERVER_USER} -g ${SERVER_GROUP}
+			${SERVER_BIN} ${SERVER_ARGS}
 		fi
 		rc_status -v
 		;;

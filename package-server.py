@@ -1682,6 +1682,7 @@ def main():
         dc.release()
         process_tools.renice()
         process_tools.fix_sysconfig_rights()
+        process_tools.change_user_group_path(os.path.dirname(os.path.join(process_tools.RUN_DIR, global_config["PID_NAME"])), global_config["USER"], global_config["GROUP"])
         configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
         process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
         if not global_config["DEBUG"]:
