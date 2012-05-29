@@ -23,17 +23,14 @@ import zmq
 import time
 import sys
 import os
-import struct
-import socket
 import threading_tools
 import logging_tools
 import process_tools
 import configfile
 import difflib
+import socket
 from host_monitoring import limits
 import pprint
-import optparse
-import threading
 # SNMP related imports
 import pkg_resources
 pkg_resources.require("pyasn1")
@@ -44,7 +41,6 @@ import pyasn1
 from pysnmp.smi import exval
 from pysnmp.proto import api
 import snmp_relay_schemes
-import gc
 import server_command
 
 # non-critical imports
@@ -314,6 +310,8 @@ class relay_process(threading_tools.process_pool):
         self.__verbose = global_config["VERBOSE"]
         self._check_msg_settings()
         self._log_config()
+        # init luts
+        self.__ip_lut, self.__forward_lut = ({}, {})
         self.__last_log_time = time.time() - 3600
         self._check_schemes()
         self._init_host_objects()
@@ -455,6 +453,34 @@ class relay_process(threading_tools.process_pool):
         # no longer needed
         #self.__relay_thread_queue.put("reload")
         pass
+    def _resolve_address(self, target):
+        # to avoid loops in the 0MQ connection scheme (will result to nasty asserts)
+        if target in self.__forward_lut:
+            ip_addr = self.__forward_lut[target]
+        else:
+            orig_target = target
+            if target.lower() in ["localhost", "127.0.0.1", "localhost.localdomain"]:
+                target = process_tools.get_machine_name()
+            # step 1: resolve to ip
+            ip_addr = socket.gethostbyname(target)
+            try:
+                # step 2: try to get full name
+                full_name, aliases, ip_addrs = socket.gethostbyaddr(ip_addr)
+            except:
+                # forget it
+                pass
+            else:
+                # resolve full name
+                ip_addr = socket.gethostbyname(full_name)
+            if ip_addr not in self.__ip_lut:
+                self.log("resolved %s to %s" % (target, ip_addr))
+                self.__ip_lut[ip_addr] = target
+            self.__forward_lut[target] = ip_addr
+            self.log("ip resolving: %s -> %s" % (target, ip_addr))
+            if orig_target != target:
+                self.__forward_lut[orig_target] = ip_addr
+                self.log("ip resolving: %s -> %s" % (orig_target, ip_addr))
+        return ip_addr
     def _snmp_finished(self, src_proc, src_pid, *args, **kwargs):
         proc_struct = self.__process_dict[src_proc]
         proc_struct["in_use"] = False
@@ -538,6 +564,7 @@ class relay_process(threading_tools.process_pool):
             else:
                 act_scheme = self.__all_schemes.get(scheme, None)
                 if act_scheme:
+                    host = self._resolve_address(host)
                     host_obj = self._get_host_object(host, snmp_community, snmp_version)
                     if self.__verbose:
                         self.log("got request for scheme %s (host %s, community %s, version %d, envelope %s)" % (
@@ -621,43 +648,6 @@ class relay_process(threading_tools.process_pool):
     def loop_post(self):
         self.__log_template.close()
     
-class my_options(optparse.OptionParser):
-    def __init__(self, glob_config):
-        self.__glob_config = glob_config
-        optparse.OptionParser.__init__(self,
-                                       usage="%prog [GENERAL OPTIONS] [SERVER/RELAY OPTIONS] command [CLIENT OPTIONS]",
-                                       add_help_option=False)
-        self.add_option("-h", "--help", help="help", action="callback", callback=self.show_help)
-        self.add_option("--longhelp", help="this help (long version)", action="callback", callback=self.show_help)
-        self.add_option("--options", help="show internal options and flags (for dev)", action="callback", callback=self.show_help)
-        self.add_option("-d", dest="daemonize", default=True, action="store_false", help="do not run in debug mode (no forking)") 
-        self.add_option("-k", dest="kill_running", default=True, action="store_false", help="do not kill running instances")
-        self.add_option("-v", dest="verbose", default=0, action="count", help="increase verbosity [%default]")
-        self.add_option("-V", action="callback", callback=self.show_version, help="show Version")
-        self.add_option("-l", dest="show_log_queue", default=False, action="store_true", help="show logging output [%default]")
-        #self.add_option("-b", dest="basedir_name", type="str", default="/etc/sysconfig/snmp-relay.d", help="base name for various config files [%default]")
-        self.add_option("-t", dest="main_timer", type="int", default=60, help="set main timer [%default]")
-        # relayer options
-        relayer_group = optparse.OptionGroup(self, "relayer options")
-        relayer_group.add_option("-n", dest="ipc_key", default=0, type="int", help="key of the IPC Messagequeue (default is [%default], autoseek)")
-        relayer_group.add_option("-f", dest="flood_mode", default=False, action="store_true", help="enable flood mode (faster pings, [%default])")
-        self.add_option_group(relayer_group)
-    def show_help(self, option, opt_str, value, *args, **kwargs):
-        self.print_help()
-        sys.exit(-0)
-    def show_version(self, option, opt_str, value, *args, **kwargs):
-        print "Version %s" % (VERSION_STRING)
-        sys.exit(-0)
-    def parse(self):
-        options, args = self.parse_args()
-        # copy options
-        self.__glob_config["DAEMONIZE"]      = options.daemonize
-        self.__glob_config["VERBOSE"]        = options.verbose
-        self.__glob_config["IPC_SNMP_KEY"]   = int(options.ipc_key)
-        self.__glob_config["MAIN_TIMER"]     = int(options.main_timer)
-        self.__glob_config["BASEDIR_NAME"]   = options.basedir_name
-        return options, args
-
 global_config = configfile.get_global_config(process_tools.get_programm_name())
         
 def main():
