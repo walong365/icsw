@@ -62,7 +62,14 @@ def parse_expected():
     return ret_dict
 
 class special_base(object):
+    class Meta:
+        # number of retries in case of error
+        retries = 1
+        timeout = 15
     def __init__(self, build_proc, dc, s_check, host, valid_ip, global_config):
+        for key in dir(special_base.Meta):
+            if not key.startswith("__") and not hasattr(self.Meta, key):
+                setattr(self.Meta, key, getattr(special_base.Meta, key))
         self.build_process = build_proc
         self.dc = dc
         self.s_check = s_check
@@ -101,43 +108,51 @@ class special_base(object):
     def _call_snmprelay(self, command, *args, **kwargs):
         return self._call_server(command, "snmp_relay", *args, snmp_community=kwargs.get("snmp_community", "public"), snmp_version=kwargs.get("snmp_version", 1))
     def _call_server(self, command, server_name, *args, **kwargs):
-        self.log("calling server '%s', command is '%s', %s, %s" % (
+        self.log("calling server '%s' for %s, command is '%s', %s, %s" % (
             server_name,
+            self.valid_ip,
             command,
             "args is '%s'" % (", ".join([str(value) for value in args])) if args else "no arguments",
             ", ".join(["%s='%s'" % (key, value) for key, value in kwargs.iteritems()]) if kwargs else "no kwargs"
         ))
-        try:
-            srv_reply = ipc_comtools.send_and_receive_zmq(
-                self.valid_ip,
-                command,
-                *args,
-                server=server_name,
-                zmq_context=self.build_process.zmq_context,
-                port=2001,
-                **kwargs)
-        except:
-            self.log("error connecting to '%s' (%s, %s): %s" % (
-                server_name,
-                self.valid_ip,
-                command,
-                process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
-            srv_reply = None
-        else:
-            srv_error = srv_reply.xpath(None, ".//ns:result[@state != '0']")
-            if srv_error:
-                self.log("got an error (%d): %s" % (int(srv_error[0].attrib["state"]),
-                                                    srv_error[0].attrib["reply"]),
+        for cur_iter in xrange(self.Meta.retries):
+            self.log("iteration %d of %d" % (cur_iter, self.Meta.retries))
+            try:
+                srv_reply = ipc_comtools.send_and_receive_zmq(
+                    self.valid_ip,
+                    command,
+                    *args,
+                    server=server_name,
+                    zmq_context=self.build_process.zmq_context,
+                    port=2001,
+                    **kwargs)
+            except:
+                self.log("error connecting to '%s' (%s, %s): %s" % (
+                    server_name,
+                    self.valid_ip,
+                    command,
+                    process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
                 srv_reply = None
             else:
-                self.__server_results.append(srv_reply)
+                srv_error = srv_reply.xpath(None, ".//ns:result[@state != '0']")
+                if srv_error:
+                    self.log("got an error (%d): %s" % (int(srv_error[0].attrib["state"]),
+                                                        srv_error[0].attrib["reply"]),
+                             logging_tools.LOG_LEVEL_ERROR)
+                    srv_reply = None
+                else:
+                    self.__server_results.append(srv_reply)
+            if srv_reply is not None:
+                break
+            self.log("waiting for %d seconds" % (self.Meta.timeout), logging_tools.LOG_LEVEL_WARN)
+            time.sleep(self.Meta.timeout)
         if srv_reply == None and self.__server_calls == 0 and len(self.__cache):
             self.__use_cache = True
         if self.__use_cache:
             if len(self.__cache) > self.__server_calls:
                 srv_reply = self.__cache[self.__server_calls]
+                self.log("take result from cache [index %d]" % (self.__server_calls))
             else:
                 self.log("cache too small", logging_tools.LOG_LEVEL_WARN)
         self.__server_calls += 1
@@ -147,6 +162,7 @@ class special_base(object):
         self.log("starting %s for %s" % (s_name, self.host["name"]))
         s_time = time.time()
         self._load_cache()
+        # init result list and number of server calls
         self.__server_results, self.__server_calls = ([], 0)
         cur_ret = self._call()
         e_time = time.time()
@@ -327,6 +343,8 @@ class special_libvirt(special_base):
         return sc_array
         
 class special_eonstor(special_base):
+    class Meta:
+        retries = 4
     def _call(self):
         sc_array = []
         srv_reply = self._call_snmprelay("eonstor_get_counter",
