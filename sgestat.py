@@ -30,6 +30,11 @@ import time
 import datetime
 import sge_tools
 import pprint
+# from NH
+import signal
+from blessings import Terminal
+import tty, sys, termios
+import urwid
 
 SQL_ACCESS = "cluster_full_access"
 
@@ -148,7 +153,7 @@ def sjs(s_info, opt_dict):
         print w_out_list
 
 def sns(s_info, opt_dict):
-    print time.ctime()
+    #print time.ctime()
     show_users     = set(map(lambda fnc: fnc.strip(), opt_dict.user.split(",")))
     show_complexes = set(map(lambda fnc: fnc.strip(), opt_dict.complexes.split(",")))
     # builder helper dicts
@@ -243,7 +248,10 @@ def sns(s_info, opt_dict):
             act_line.append(logging_tools.form_entry(act_h.get_job_info(s_info["qstat"], q_job_list), header="jobs"))
             out_list.append(act_line)
     if out_list:
-        print out_list
+        if opt_dict.interactive:
+            return "%s\n%s" % (time.ctime(), out_list)
+        else:
+            print out_list
 
 def scs(s_info, opt_dict):
     print time.ctime()
@@ -388,7 +396,174 @@ def sla(opt_dict, add_args):
         dc.execute(sql_str, sql_tuple)
         print "Created sge_log entry"
     dc.release()
+
+# following code from NH for interactive mode
     
+class window(object):
+    def __init__(self, **kwargs):
+        #self.stdscr = curses.initscr()
+        self.callback = kwargs.get("callback", None)
+        self.cb_args = kwargs.get("args", [])
+        #curses.start_color()
+        #curses.init_pair(1, 3, 5) # 3 yellow, 5 magenta,
+        #signal.signal(signal.SIGALRM, self._handler_alarm)
+        #signal.setitimer(signal.ITIMER_REAL, 1, 2)
+        #signal.signal(signal.SIGTERM, self._handler_term)
+        #signal.signal(signal.SIGINT , self._handler_int)
+        #signal.signal(signal.SIGALRM, self._handler_data)
+        #signal.signal(signal.SIGALRM, self._handler_alarm)
+        #signal.alarm(3)
+        # system magic
+        #signal.setitimer(signal.ITIMER_REAL, 1, 3)
+        #self.cur_scr = self.stdscr
+        self.top_text = urwid.Text(("banner", "init"), align="left")
+        self.main_text = urwid.Text("maintext", align="left")
+        self.bottom_text = urwid.Text(["finished", ("bg", "asdqaewe")])
+        palette = [
+            ('banner', 'black', 'light gray', 'standout,underline'),
+            ('streak', 'black', 'dark red', 'standout'),
+            ('bg', 'white', 'dark blue'),
+        ]
+        urwid_map = urwid.AttrMap(
+            urwid.Filler(
+                urwid.Pile([
+                    urwid.AttrMap(
+                        self.top_text,
+                        "streak"),
+                    urwid.AttrMap(
+                        self.main_text,
+                        "banner"),
+                    urwid.AttrMap(
+                        self.bottom_text,
+                        "streak")]),
+                "top"),
+            "banner")
+        self.mainloop = urwid.MainLoop(urwid_map, palette, unhandled_input=self._handler_data)
+        self.mainloop.set_alarm_in(2, self._alarm_callback)
+    def loop(self):
+        self.mainloop.run()
+    def _handler_int(self, signum, frame):
+        #self.stdscr.addstr(0, 0, "int %d\n" % (time.time()))
+        #self.stdscr.refresh()
+        #curses.endwin()
+        print self.terminal.normal
+        sys.exit(0)
+    def _alarm_callback(self, main_loop, user_data):
+        self._handler_data("X")
+        self.mainloop.set_alarm_in(2, self._alarm_callback)
+    def _handler_term(self, signum, frame):
+        #self.stdscr.addstr(0, 0, "term %d\n" % (time.time()))
+        #self.stdscr.refresh()
+        with self.terminal.location(0,self.terminal.height -1):
+            print self.terminal.red + ("term %d" % (time.time()))
+    def _handler_alarm(self, signum, frame):
+        for handler in [self._handler_data]:
+            handler()
+    def _handler_data(self, bla):
+        #self.stdscr.addstr(15,0, "%s\n" % str(self.get_data()))
+        #self.stdscr.refresh()
+        self.top_text.set_text(("streak", "time: %s" % (time.ctime())))
+        self.main_text.set_text(("banner", str(self.get_data())))
+    def get_data(self):
+        if self.callback:
+            return unicode(self.callback(*self.cb_args))
+        else:
+            return "nix"
+    def handle_graph(self, head_node):
+        cur_node = head_node
+        self.run_flag = True
+        while self.run_flag:
+            cur_triggers = cur_node.get_triggers()
+            #self.cur_scr.addstr("\n%s (%s)" % (cur_node.question, ", ".join(cur_triggers)))
+            print self.terminal.green + ("\n%s (%s)" % (cur_node.question, ", ".join(cur_triggers)))
+            #self.cur_scr.refresh()
+            while self.run_flag:
+                #cur_c = self.getch()
+                cur_c = raw_input()
+                if cur_c and cur_c not in ['\n',' ']:
+                    if (cur_c) in cur_triggers:
+                        next_node = cur_node.follow_edge(cur_c)
+                        if next_node.action is None:
+                            # next node
+                            cur_node = next_node
+                            break
+                        elif type(next_node.action) in [unicode, str]:
+                            #self.cur_scr.addstr(next_node.action)
+                            print self.terminal.green + (next_node.action)
+                            #self.cur_scr.refresh()
+                            if next_node.question is None:
+                                self.handle_graph(self._parent_node(cur_node))
+                        else:
+                            target_node = next_node.action(next_node)
+                            if target_node is not None:
+                                cur_node = target_node
+                                break
+                    else:
+                        #self.cur_scr.addstr("invalid keypress")
+                        #self.cur_scr.refresh()
+                        print self.terminal.green + "invalid keypress"
+        print self.terminal.normal
+    def _escape(self, cur_node):
+        self.run_flag = False
+    def _grandparent_node(self, cur_node):
+        return cur_node.prev_node.prev_node
+    def _parent_node(self, cur_node):
+        return cur_node.prev_node
+    def run(self):
+        """
+        stdscr = self.stdscr
+        stdscr.addstr(0, 0, "Current mode: typing mode\n")
+        stdscr.nodelay(0)
+        stdscr.refresh()
+        subscr = stdscr.subwin(3,0)
+        self.cur_scr = subscr
+        subscr.nodelay(0)
+        head_node = dt_node("press p to print and escape to exit")
+        head_node.add_edge(dt_edge("p", dt_node("Are you sure", edges=[dt_edge("y", dt_node(None, action="print")),
+                                                                       dt_edge("n", dt_node(None, action=self._grandparent_node))])))
+        head_node.add_edge(dt_edge("e", dt_node(None, action=self._escape)))
+        #head_node.add_edge(dt_edge("n", dt_node(None, action=my_window._grandparent_node)))
+        self.handle_graph(head_node)
+        return stdscr
+        """
+        #term = Terminal()
+        print self.terminal.orange + "Current mode: typing mode\n"
+        head_node = dt_node("press p to print and escape to exit")
+        head_node.add_edge(dt_edge("p", dt_node("Are you sure", edges=[dt_edge("y", dt_node(None, action="print")),
+                                                                       dt_edge("n", dt_node(None, action=self._grandparent_node))])))
+        head_node.add_edge(dt_edge("e", dt_node(None, action=self._escape)))
+        self.handle_graph(head_node)
+    def getch(self):
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+class dt_node(object):
+    def __init__(self, question, action=None, edges=[]):
+        self.question = question
+        self.edges = []
+        self.__edge_dict = {}
+        self.action = action
+        for edge in edges:
+            self.add_edge(edge)
+    def add_edge(self, edge):
+        edge.target.prev_node = self
+        self.edges.append(edge)
+        self.__edge_dict[edge.trigger] = edge
+    def get_triggers(self):
+        return [edge.trigger for edge in self.edges]
+    def follow_edge(self, trigger):
+        sub_edge = self.__edge_dict[trigger]
+        return sub_edge.target
+
+class dt_edge(object):
+    def __init__(self, trigger, target=None):
+        self.trigger = trigger
+        self.target = target
 class my_opt_parser(optparse.OptionParser):
     def __init__(self, run_mode):
         optparse.OptionParser.__init__(self)
@@ -402,6 +577,7 @@ class my_opt_parser(optparse.OptionParser):
             self.add_option("-u", dest="user", type="str", help="show only jobs of user [%default]", default="ALL")
             self.add_option("-c", dest="complexes", type="str", help="show only jobs with the given complexes [%default]", default="ALL")
             self.add_option("-e", dest="show_nonstd", help="show nonstandard queues, specifiy twice to suppress alarm queues [%default]", action="count", default=0)
+            self.add_option("-i", dest="interactive", help="show info interactive", action="store_true", default=False)
         if run_mode == "sns":
             self.add_option("-t", dest="show_type", help="show queue type [%default]", action="store_true", default=False)
             self.add_option("-C", dest="show_complexes", help="show complexes [%default]", action="store_true", default=False)
@@ -487,9 +663,15 @@ def main():
                                     log_command=log_com,
                                     server=get_server())
     if run_mode == "sjs":
-        sjs(act_si, options)
+        if options.interactive:
+            window(callback=sjs, args=(act_si, options)).loop()
+        else:
+            sjs(act_si, options)
     elif run_mode == "sns":
-        sns(act_si, options)
+        if options.interactive:
+            window(callback=sns, args=(act_si, options)).loop()
+        else:
+            sns(act_si, options)
     elif run_mode == "scs":
         scs(act_si, options)
     elif run_mode == "sls":
@@ -500,6 +682,6 @@ def main():
         print "Unknown runmode %s" % (run_mode)
     e_time = time.time()
     print "took %s" % (logging_tools.get_diff_time_str(e_time - s_time))
-
+    
 if __name__ == "__main__":
     main()
