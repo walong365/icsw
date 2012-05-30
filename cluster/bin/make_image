@@ -110,13 +110,13 @@ if [ ! -d $tftpdir ] ; then
 	exit -1
     fi
 fi
+
 echo "Found tftpdir at $tftpdir" 
 imbasedir=${tftpdir}/images
 imconfig=${imbasedir}/config
 imversdir=${imbasedir}/version_control
 
 [ ! -d "$imbasedir" ] && mkdir -p "$imbasedir"
-
 
 pimnames=$(sql_query "SELECT name FROM image ORDER BY name" | tr "\n" " ")
 
