@@ -242,8 +242,8 @@ class device(models.Model):
     rsync = models.IntegerField(null=True, blank=True)
     rsync_compressed = models.IntegerField(null=True, blank=True)
     prod_link = models.IntegerField(null=True, blank=True)
-    recvstate = models.TextField(blank=True)
-    reqstate = models.TextField(blank=True)
+    recvstate = models.TextField(blank=True, null=True)
+    reqstate = models.TextField(blank=True, null=True)
     bootnetdevice = models.ForeignKey("device", null=True, blank=True)
     bootserver = models.IntegerField(null=True, blank=True)
     reachable_via_bootserver = models.IntegerField(null=True, blank=True)
@@ -260,7 +260,7 @@ class device(models.Model):
     relay_device = models.IntegerField(null=True, blank=True)
     nagios_checks = models.IntegerField(null=True, blank=True)
     show_in_bootcontrol = models.IntegerField(null=True, blank=True)
-    cpu_info = models.TextField(blank=True)
+    cpu_info = models.TextField(blank=True, null=True)
     date = models.DateTimeField()
     class Meta:
         db_table = u'device'
@@ -301,7 +301,9 @@ class device_group(models.Model):
     idx = models.IntegerField(db_column="device_group_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     description = models.CharField(max_length=384)
-    device = models.ForeignKey("device", null=True, blank=True, related_name="group_device")
+    #device = models.ForeignKey("device", null=True, blank=True, related_name="group_device")
+    # must be an IntegerField, otherwise we have a cycle reference
+    device = models.IntegerField(null=True, blank=True)
     cluster_device_group = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField()
     class Meta:
@@ -367,11 +369,11 @@ class device_variable(models.Model):
     name = models.CharField(max_length=765)
     description = models.CharField(max_length=765, blank=True)
     var_type = models.CharField(max_length=3)
-    val_str = models.TextField(blank=True)
+    val_str = models.TextField(blank=True, null=True)
     val_int = models.IntegerField(null=True, blank=True)
-    val_blob = models.TextField(blank=True)
+    val_blob = models.TextField(blank=True, null=True)
     val_date = models.DateTimeField(null=True, blank=True)
-    val_time = models.TextField(blank=True) # This field type is a guess.
+    val_time = models.TextField(blank=True, null=True) # This field type is a guess.
     date = models.DateTimeField()
     class Meta:
         db_table = u'device_variable'
@@ -434,7 +436,7 @@ class extended_log(models.Model):
     class Meta:
         db_table = u'extended_log'
 
-class gen_stuff(models.Model):
+class genstuff(models.Model):
     idx = models.IntegerField(db_column="genstuff_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     description = models.CharField(max_length=384, blank=True)
@@ -777,7 +779,7 @@ class netdevice_speed(models.Model):
     class Meta:
         db_table = u'netdevice_speed'
 
-class net_i_p(models.Model):
+class net_ip(models.Model):
     idx = models.IntegerField(db_column="netip_idx", primary_key=True)
     ip = models.CharField(max_length=48)
     network = models.ForeignKey("network")
@@ -1054,7 +1056,7 @@ class partition(models.Model):
     fs_freq = models.IntegerField(null=True, blank=True)
     fs_passno = models.IntegerField(null=True, blank=True)
     partition_fs = models.IntegerField(null=True, blank=True)
-    lut_blob = models.TextField(blank=True)
+    lut_blob = models.TextField(blank=True, null=True)
     warn_threshold = models.IntegerField(null=True, blank=True)
     crit_threshold = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField()
@@ -1403,11 +1405,11 @@ class user(models.Model):
     login = models.CharField(unique=True, max_length=255)
     uid = models.IntegerField(unique=True)
     ggroup = models.ForeignKey("group")
-    aliases = models.TextField(blank=True)
+    aliases = models.TextField(blank=True, null=True)
     export = models.IntegerField(null=True, blank=True)
     export_scr = models.IntegerField(null=True, blank=True)
-    home = models.TextField(blank=True)
-    scratch = models.TextField(blank=True)
+    home = models.TextField(blank=True, null=True)
+    scratch = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=765, blank=True)
     password = models.CharField(max_length=48, blank=True)
     cluster_contact = models.IntegerField(null=True, blank=True)
@@ -1453,13 +1455,13 @@ class user_var(models.Model):
     class Meta:
         db_table = u'user_var'
 
-class user_cap(models.Model):
+class usercap(models.Model):
     idx = models.IntegerField(db_column="usercap_idx", primary_key=True)
     user = models.ForeignKey("user")
     capability = models.ForeignKey("capability")
     date = models.DateTimeField()
     class Meta:
-        db_table = u'user_cap'
+        db_table = u'usercap'
 
 class vendor(models.Model):
     idx = models.IntegerField(db_column="vendor_idx", primary_key=True)
