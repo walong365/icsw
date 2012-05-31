@@ -426,7 +426,7 @@ class configuration(object):
         sec_re = re.compile("^\[(?P<section>\S+)\]$")
         if os.path.isfile(file_name):
             try:
-                lines = [x for x in [y.strip() for y in file(file_name, "r").read().split("\n")] if x and not x.startswith("#")]
+                lines = [line.strip() for line in file(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
             except:
                 self.log("Error while reading file %s: %s" % (file_name,
                                                               process_tools.get_except_info()),
@@ -582,11 +582,12 @@ class config_manager(BaseManager):
     # monkey-patch Server
     _Server = my_server
 
-config_manager.register("config", configuration, config_proxy, exposed=["parse_file", "add_config_entries", "set_uid_gid",
-                                                                        "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
-                                                                        "is_global", "database",
-                                                                        "__getitem__", "__setitem__", "__contains__",
-                                                                        "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])
+config_manager.register("config", configuration, config_proxy, exposed=[
+    "parse_file", "add_config_entries", "set_uid_gid",
+    "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
+    "is_global", "database",
+    "__getitem__", "__setitem__", "__contains__",
+    "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])
 
 cur_manager = config_manager()
 
@@ -799,16 +800,18 @@ class device_variable(object):
             self.update(dc)
     def update(self, dc):
         if self.__var_idx:
-            dc.execute("UPDATE device_variable SET val_%s=%%s, description=%%s, var_type=%%s WHERE device_variable_idx=%%s" % (self.__var_type_name), (self.__var_value,
-                                                                                                                                                       self.__description,
-                                                                                                                                                       self.__var_type,
-                                                                                                                                                       self.__var_idx))
+            dc.execute("UPDATE device_variable SET val_%s=%%s, description=%%s, var_type=%%s WHERE device_variable_idx=%%s" % (self.__var_type_name),
+                       (self.__var_value,
+                        self.__description,
+                        self.__var_type,
+                        self.__var_idx))
         else:
-            dc.execute("INSERT INTO device_variable SET val_%s=%%s, description=%%s, var_type=%%s, name=%%s, device=%%s" % (self.__var_type_name), (self.__var_value,
-                                                                                                                                                    self.__description,
-                                                                                                                                                    self.__var_type,
-                                                                                                                                                    self.__var_name,
-                                                                                                                                                    self.__dev_idx))
+            dc.execute("INSERT INTO device_variable SET val_%s=%%s, description=%%s, var_type=%%s, name=%%s, device=%%s" % (self.__var_type_name),
+                       (self.__var_value,
+                        self.__description,
+                        self.__var_type,
+                        self.__var_name,
+                        self.__dev_idx))
             self.__var_idx = dc.insert_id()
     def is_set(self):
         return self.__var_idx and True or False
@@ -862,29 +865,33 @@ def write_config(dc, server_type, config):
                 real_k_name = config.is_global(key) and key or "%s:%s" % (host_name, key)
                 sql_str = "SELECT cv.*, dc.device FROM device_config dc INNER JOIN config_%s cv INNER JOIN device d INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE " % (tab_type) + \
                           "d.device_group=dg.device_group_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND " + \
-                          "d.device_idx=%d AND dc.new_config=%d AND cv.new_config=dc.new_config AND cv.name='%s' AND (cv.device=0 OR cv.device=%d)" % (srv_info.server_device_idx,
-                                                                                                                                                       srv_info.config_idx,
-                                                                                                                                                       real_k_name,
-                                                                                                                                                       srv_info.server_device_idx)
+                          "d.device_idx=%d AND dc.new_config=%d AND cv.new_config=dc.new_config AND cv.name='%s' AND (cv.device=0 OR cv.device=%d)" % (
+                              srv_info.server_device_idx,
+                              srv_info.config_idx,
+                              real_k_name,
+                              srv_info.server_device_idx)
                 dc.execute(sql_str)
                 #print dc.rowcount, sql_str
                 if not dc.rowcount:
                     # insert default value
-                    sql_str, sql_tuple = ("INSERT INTO config_%s SET name=%%s, descr=%%s, new_config=%%s, value=%%s" % (tab_type), (real_k_name,
-                                                                                                                                    "%s default value from %s on %s" % (var_range_name,
-                                                                                                                                                                        srv_info.config_name,
-                                                                                                                                                                        full_host_name),
-                                                                                                                                    srv_info.config_idx,
-                                                                                                                                    config[key]))
+                    sql_str, sql_tuple = ("INSERT INTO config_%s SET name=%%s, descr=%%s, new_config=%%s, value=%%s" % (tab_type),
+                                          (real_k_name,
+                                           "%s default value from %s on %s" % (
+                                               var_range_name,
+                                               srv_info.config_name,
+                                               full_host_name),
+                                           srv_info.config_idx,
+                                           config[key]))
                     dc.execute(sql_str, sql_tuple)
                 else:
                     # already in db
                     #sql_str = ""
                     act_db_record = dc.fetchone()
                     if config[key] != act_db_record["value"]:
-                        sql_str, sql_tuple = ("UPDATE config_%s SET value=%%s WHERE config=%%s AND name=%%s" % (tab_type), (config[key],
-                                                                                                                            srv_info.config_idx,
-                                                                                                                            real_k_name))
+                        sql_str, sql_tuple = ("UPDATE config_%s SET value=%%s WHERE config=%%s AND name=%%s" % (tab_type),
+                                              (config[key],
+                                               srv_info.config_idx,
+                                               real_k_name))
                         dc.execute(sql_str, sql_tuple)
                         # changed
                         #print "Change", real_k_name, k, config[k], act_db_record["value"]

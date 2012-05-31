@@ -77,8 +77,9 @@ class hup_error(my_error):
 
 # to avoid import loops
 def get_except_info():
-    return "%s (%s)" % (str(sys.exc_info()[0]),
-                        str(sys.exc_info()[1]))
+    return "%s (%s)" % (
+        str(sys.exc_info()[0]),
+        str(sys.exc_info()[1]))
 
 def get_act_thread_name():
     return threading.currentThread().getName()

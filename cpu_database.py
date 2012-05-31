@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2007,2008,2009,2010,2011 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2007,2008,2009,2010,2011,2012 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -34,10 +34,6 @@ import process_tools
 import base64
 import bz2
 import marshal
-try:
-    from lxml import etree
-except:
-    etree = None
 
 def get_cpu_basic_info():
     try:
