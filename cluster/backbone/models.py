@@ -57,12 +57,12 @@ class capability(models.Model):
     idx = models.IntegerField(db_column="capability_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=45)
     mother_capability = models.IntegerField(null=True, blank=True)
-    mother_capability_name = models.CharField(max_length=45, blank=True)
+    mother_capability_name = models.CharField(max_length=45, blank=True, null=True)
     priority = models.IntegerField(null=True, blank=True)
     defvalue = models.IntegerField(null=True, blank=True)
     enabled = models.IntegerField(null=True, blank=True)
     description = models.CharField(max_length=765, blank=True)
-    modulename = models.CharField(max_length=384, blank=True)
+    modulename = models.CharField(max_length=384, blank=True, null=True)
     left_string = models.CharField(max_length=192, blank=True)
     right_string = models.CharField(max_length=384, blank=True)
     date = models.DateTimeField()
@@ -89,10 +89,10 @@ class ccl_event(models.Model):
     idx = models.IntegerField(db_column="ccl_event_idx", primary_key=True)
     device = models.ForeignKey("device")
     rrd_data = models.ForeignKey("rrd_data")
-    device_class = models.IntegerField(null=True, blank=True)
+    device_class = models.ForeignKey("device_class")
     threshold = models.FloatField(null=True, blank=True)
     threshold_class = models.IntegerField()
-    cluster_event = models.IntegerField(null=True, blank=True)
+    cluster_event = models.ForeignKey("cluster_event")
     hysteresis = models.FloatField(null=True, blank=True)
     disabled = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField()
@@ -102,8 +102,8 @@ class ccl_event(models.Model):
 class ccl_event_log(models.Model):
     idx = models.IntegerField(db_column="ccl_event_log_idx", primary_key=True)
     device = models.ForeignKey("device", null=True, blank=True)
-    ccl_event = models.IntegerField(null=True, blank=True)
-    cluster_event = models.IntegerField(null=True, blank=True)
+    ccl_event = models.ForeignKey("ccl_event")
+    cluster_event = models.ForeignKey("cluster_event")
     passive = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField()
     class Meta:
@@ -133,7 +133,7 @@ class config_blob(models.Model):
     name = models.CharField(max_length=192)
     descr = models.CharField(max_length=765)
     config = models.IntegerField(null=True, blank=True)
-    new_config = models.IntegerField(null=True, blank=True)
+    new_config = models.ForeignKey("new_config")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField()
@@ -145,7 +145,7 @@ class config_bool(models.Model):
     name = models.CharField(max_length=192)
     descr = models.CharField(max_length=765)
     config = models.IntegerField(null=True, blank=True)
-    new_config = models.IntegerField(null=True, blank=True)
+    new_config = models.ForeignKey("new_config")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField()
@@ -157,7 +157,7 @@ class config_int(models.Model):
     name = models.CharField(max_length=192)
     descr = models.CharField(max_length=765)
     config = models.IntegerField(null=True, blank=True)
-    new_config = models.IntegerField(null=True, blank=True)
+    new_config = models.ForeignKey("new_config")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField()
@@ -183,7 +183,7 @@ class config_str(models.Model):
     name = models.CharField(max_length=192)
     descr = models.CharField(max_length=765)
     config = models.IntegerField(null=True, blank=True)
-    new_config = models.IntegerField(null=True, blank=True)
+    new_config = models.ForeignKey("new_config")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField()
@@ -208,44 +208,44 @@ class device(models.Model):
     axnumber = models.CharField(max_length=192, blank=True)
     alias = models.CharField(max_length=384, blank=True)
     comment = models.CharField(max_length=384, blank=True)
-    snmp_class = models.IntegerField(null=True, blank=True)
-    switch = models.IntegerField(null=True, blank=True)
+    snmp_class = models.ForeignKey("snmp_class", null=True)
+    switch = models.ForeignKey("device", null=True, related_name="switch_device")
     switchport = models.IntegerField(null=True, blank=True)
-    ng_device_templ = models.IntegerField(null=True, blank=True)
+    ng_device_templ = models.ForeignKey("ng_device_templ", null=True)
     ng_ext_host = models.IntegerField(null=True, blank=True)
     device_location = models.ForeignKey("device_location", null=True)
-    device_class = models.IntegerField(null=True, blank=True)
-    rrd_class = models.IntegerField(null=True, blank=True)
+    device_class = models.ForeignKey("device_class")
+    rrd_class = models.ForeignKey("rrd_class", null=True)
     save_rrd_vectors = models.IntegerField(null=True, blank=True)
     etherboot_valid = models.IntegerField(null=True, blank=True)
     kernel_append = models.CharField(max_length=384, blank=True)
     newkernel = models.CharField(max_length=192, blank=True)
-    new_kernel = models.IntegerField(null=True, blank=True)
+    new_kernel = models.ForeignKey("kernel", null=True, related_name="new_kernel")
     actkernel = models.CharField(max_length=192, blank=True)
-    act_kernel = models.IntegerField(null=True, blank=True)
+    act_kernel = models.ForeignKey("kernel", null=True, related_name="act_kernel")
     act_kernel_build = models.IntegerField(null=True, blank=True)
     kernelversion = models.CharField(max_length=192, blank=True)
     stage1_flavour = models.CharField(max_length=48, blank=True)
     dom0_memory = models.IntegerField(null=True, blank=True)
     xen_guest = models.IntegerField(null=True, blank=True)
     newimage = models.CharField(max_length=765, blank=True)
-    new_image = models.IntegerField(null=True, blank=True)
+    new_image = models.ForeignKey("image", null=True, related_name="new_image")
     actimage = models.CharField(max_length=765, blank=True)
-    act_image = models.IntegerField(null=True, blank=True)
+    act_image = models.ForeignKey("image", null=True, related_name="act_image")
     imageversion = models.CharField(max_length=192, blank=True)
-    partition_table = models.IntegerField(null=True, blank=True)
-    act_partition_table = models.IntegerField(null=True, blank=True)
+    partition_table = models.ForeignKey("partition_table", null=True, related_name="new_partition_table")
+    act_partition_table = models.ForeignKey("partition_table", null=True, related_name="act_partition_table")
     partdev = models.CharField(max_length=192, blank=True)
     fixed_partdev = models.IntegerField(null=True, blank=True)
     bz2_capable = models.IntegerField(null=True, blank=True)
-    newstate = models.IntegerField(null=True, blank=True)
+    newstate = models.ForeignKey("status", null=True)
     rsync = models.IntegerField(null=True, blank=True)
     rsync_compressed = models.IntegerField(null=True, blank=True)
     prod_link = models.IntegerField(null=True, blank=True)
     recvstate = models.TextField(blank=True, null=True)
     reqstate = models.TextField(blank=True, null=True)
-    bootnetdevice = models.ForeignKey("device", null=True, blank=True)
-    bootserver = models.IntegerField(null=True, blank=True)
+    bootnetdevice = models.ForeignKey("device", null=True, related_name="boot_net_device")
+    bootserver = models.ForeignKey("device", null=True, related_name="boot_server")
     reachable_via_bootserver = models.IntegerField(null=True, blank=True)
     dhcp_mac = models.IntegerField(null=True, blank=True)
     dhcp_write = models.IntegerField(null=True, blank=True)
@@ -257,7 +257,7 @@ class device(models.Model):
     last_kernel = models.CharField(max_length=192, blank=True)
     root_passwd = models.CharField(max_length=192, blank=True)
     device_mode = models.IntegerField(null=True, blank=True)
-    relay_device = models.IntegerField(null=True, blank=True)
+    relay_device = models.ForeignKey("device", null=True)
     nagios_checks = models.IntegerField(null=True, blank=True)
     show_in_bootcontrol = models.IntegerField(null=True, blank=True)
     cpu_info = models.TextField(blank=True, null=True)
@@ -283,8 +283,8 @@ class device_config(models.Model):
 
 class device_connection(models.Model):
     idx = models.IntegerField(db_column="device_connection_idx", primary_key=True)
-    parent = models.IntegerField()
-    child = models.IntegerField()
+    parent = models.ForeignKey("device", related_name="parent_device")
+    child = models.ForeignKey("device", related_name="child_device")
     date = models.DateTimeField()
     class Meta:
         db_table = u'device_connection'
@@ -304,6 +304,7 @@ class device_group(models.Model):
     #device = models.ForeignKey("device", null=True, blank=True, related_name="group_device")
     # must be an IntegerField, otherwise we have a cycle reference
     device = models.IntegerField(null=True, blank=True)
+    # flag
     cluster_device_group = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField()
     class Meta:
@@ -318,8 +319,8 @@ class device_location(models.Model):
 
 class device_relationship(models.Model):
     idx = models.IntegerField(db_column="device_relationship_idx", primary_key=True)
-    host_device = models.IntegerField()
-    domain_device = models.IntegerField()
+    host_device = models.ForeignKey("device", related_name="host_device")
+    domain_device = models.ForeignKey("device", related_name="domain_device")
     relationship = models.CharField(max_length=9, blank=True)
     date = models.DateTimeField()
     class Meta:
@@ -338,7 +339,7 @@ class device_rsync_config(models.Model):
 class device_selection(models.Model):
     idx = models.IntegerField(db_column="device_selection_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
-    user = models.IntegerField(null=True, blank=True)
+    user = models.ForeignKey("user", null=True)
     date = models.DateTimeField()
     class Meta:
         db_table = u'device_selection'
@@ -381,9 +382,9 @@ class device_variable(models.Model):
 class devicelog(models.Model):
     idx = models.IntegerField(db_column="devicelog_idx", primary_key=True)
     device = models.ForeignKey("device", null=True, blank=True)
-    log_source = models.IntegerField(null=True, blank=True)
-    user = models.IntegerField(null=True, blank=True)
-    log_status = models.IntegerField(null=True, blank=True)
+    log_source = models.ForeignKey("log_source", null=True)
+    user = models.ForeignKey("user", null=True)
+    log_status = models.ForeignKey("log_status", null=True)
     text = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField()
     class Meta:
@@ -409,7 +410,7 @@ class dmi_entry(models.Model):
 
 class dmi_ext_key(models.Model):
     idx = models.IntegerField(db_column="dmi_ext_key_idx", primary_key=True)
-    dmi_key = models.IntegerField()
+    dmi_key = models.ForeignKey("dmi_key")
     ext_value_string = models.CharField(max_length=765)
     date = models.DateTimeField()
     class Meta:
@@ -426,9 +427,9 @@ class dmi_key(models.Model):
 
 class extended_log(models.Model):
     idx = models.IntegerField(db_column="extended_log_idx", primary_key=True)
-    devicelog = models.IntegerField(null=True, blank=True)
-    log_source = models.IntegerField(null=True, blank=True)
-    user = models.IntegerField(null=True, blank=True)
+    devicelog = models.ForeignKey("devicelog", null=True)
+    log_source = models.ForeignKey("log_source", null=True)
+    user = models.ForeignKey("user", null=True)
     users = models.CharField(max_length=765, blank=True)
     subject = models.CharField(max_length=765, blank=True)
     description = models.TextField(blank=True)
@@ -508,7 +509,7 @@ class hw_entry_type(models.Model):
 class ibc_connection(models.Model):
     idx = models.IntegerField(db_column="ibc_connection_idx", primary_key=True)
     device = models.ForeignKey("device")
-    slave_device = models.IntegerField(null=True, blank=True)
+    slave_device = models.ForeignKey("device", null=True, related_name="slave_device")
     slave_info = models.CharField(max_length=192, blank=True)
     blade = models.IntegerField()
     state = models.CharField(max_length=96, blank=True)
@@ -534,7 +535,9 @@ class image(models.Model):
     release = models.IntegerField(null=True, blank=True)
     builds = models.IntegerField(null=True, blank=True)
     build_machine = models.CharField(max_length=192, blank=True)
-    device = models.IntegerField(null=True, blank=True)
+    # not a foreign key to break cyclic dependencies
+    #device = models.ForeignKey("device", null=True)
+    device = models.IntegerField(null=True)
     build_lock = models.IntegerField(null=True, blank=True)
     size_string = models.TextField(blank=True)
     sys_vendor = models.CharField(max_length=192, blank=True)
@@ -564,7 +567,7 @@ class inst_package(models.Model):
     native = models.IntegerField(null=True, blank=True)
     last_build = models.IntegerField(null=True, blank=True)
     present_on_disk = models.IntegerField(null=True, blank=True)
-    package_set = models.IntegerField(null=True, blank=True)
+    package_set = models.ForeignKey("package_set", null=True)
     date = models.DateTimeField()
     class Meta:
         db_table = u'inst_package'
@@ -597,9 +600,13 @@ class kernel(models.Model):
     release = models.IntegerField(null=True, blank=True)
     builds = models.IntegerField(null=True, blank=True)
     build_machine = models.CharField(max_length=192, blank=True)
-    master_server = models.IntegerField(null=True, blank=True)
+    # not a foreignkey to break cyclic dependencies
+    #master_server = models.ForeignKey("device", null=True, related_name="master_server")
+    master_server = models.IntegerField(null=True)
     master_role = models.CharField(max_length=192, blank=True)
-    device = models.IntegerField(null=True, blank=True)
+    # not a foreignkey to break cyclic dependencies
+    #device = models.ForeignKey("device", null=True)
+    device = models.IntegerField(null=True)
     build_lock = models.IntegerField(null=True, blank=True)
     config_name = models.CharField(max_length=192, blank=True)
     cpu_arch = models.CharField(max_length=192, blank=True)
@@ -626,7 +633,7 @@ class kernel_build(models.Model):
     idx = models.IntegerField(db_column="kernel_build_idx", primary_key=True)
     kernel = models.ForeignKey("kernel")
     build_machine = models.CharField(max_length=192, blank=True)
-    device = models.IntegerField(null=True, blank=True)
+    device = models.ForeignKey("device", null=True)
     version = models.IntegerField(null=True, blank=True)
     release = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField()
@@ -658,7 +665,7 @@ class log_source(models.Model):
     idx = models.IntegerField(db_column="log_source_idx", primary_key=True)
     identifier = models.CharField(max_length=192)
     name = models.CharField(max_length=192)
-    device = models.IntegerField(null=True, blank=True)
+    device = models.ForeignKey("device", null=True)
     description = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField()
     class Meta:
@@ -683,7 +690,7 @@ class lvm_lv(models.Model):
     fs_freq = models.IntegerField(null=True, blank=True)
     fs_passno = models.IntegerField(null=True, blank=True)
     name = models.CharField(max_length=192)
-    partition_fs = models.IntegerField(null=True, blank=True)
+    partition_fs = models.ForeignKey("partition_fs")
     warn_threshold = models.IntegerField(null=True, blank=True)
     crit_threshold = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField()
@@ -707,11 +714,11 @@ class mac_ignore(models.Model):
 
 class macbootlog(models.Model):
     idx = models.IntegerField(db_column="macbootlog_idx", primary_key=True)
-    device = models.IntegerField(null=True, blank=True)
+    device = models.ForeignKey("device")
     type = models.CharField(max_length=96)
     ip = models.CharField(max_length=96)
     macadr = models.CharField(max_length=192)
-    log_source = models.IntegerField(null=True, blank=True)
+    log_source = models.ForeignKey("log_source", null=True)
     date = models.DateTimeField()
     class Meta:
         db_table = u'macbootlog'
@@ -719,7 +726,7 @@ class macbootlog(models.Model):
 class ms_outlet(models.Model):
     idx = models.IntegerField(db_column="msoutlet_idx", primary_key=True)
     device = models.ForeignKey("device")
-    slave_device = models.IntegerField(null=True, blank=True)
+    slave_device = models.ForeignKey("device", null=True, related_name="ms_slave_device")
     slave_info = models.CharField(max_length=192, blank=True)
     outlet = models.IntegerField()
     state = models.CharField(max_length=96, blank=True)
@@ -754,14 +761,14 @@ class netdevice(models.Model):
     macadr = models.CharField(max_length=177, blank=True)
     driver_options = models.CharField(max_length=672, blank=True)
     speed = models.IntegerField(null=True, blank=True)
-    netdevice_speed = models.IntegerField()
+    netdevice_speed = models.ForeignKey("netdevice_speed")
     driver = models.CharField(max_length=384, blank=True)
     routing = models.IntegerField(null=True, blank=True)
     penalty = models.IntegerField(null=True, blank=True)
     dhcp_device = models.IntegerField(null=True, blank=True)
     ethtool_options = models.IntegerField(null=True, blank=True)
     fake_macadr = models.CharField(max_length=177, blank=True)
-    network_device_type = models.IntegerField(null=True, blank=True)
+    network_device_type = models.ForeignKey("network_device_type")
     description = models.CharField(max_length=765, blank=True)
     is_bridge = models.IntegerField(null=True, blank=True)
     bridge_name = models.CharField(max_length=765, blank=True)
@@ -795,7 +802,7 @@ class network(models.Model):
     idx = models.IntegerField(db_column="network_idx", primary_key=True)
     identifier = models.CharField(unique=True, max_length=255)
     network_type = models.ForeignKey("network_type")
-    master_network = models.IntegerField(null=True, blank=True)
+    master_network = models.ForeignKey("network", null=True, related_name="rel_master_network")
     short_names = models.IntegerField(null=True, blank=True)
     name = models.CharField(max_length=192, blank=True)
     penalty = models.IntegerField()
@@ -894,9 +901,9 @@ class ng_cgservicet(models.Model):
 class ng_check_command(models.Model):
     idx = models.IntegerField(db_column="ng_check_command_idx", primary_key=True)
     config = models.IntegerField(null=True, blank=True)
-    new_config = models.IntegerField(null=True, blank=True)
+    new_config = models.ForeignKey("new_config")
     ng_check_command_type = models.ForeignKey("ng_check_command_type")
-    ng_service_templ = models.IntegerField(null=True, blank=True)
+    ng_service_templ = models.ForeignKey("ng_service_templ", null=True)
     name = models.CharField(max_length=192)
     command_line = models.CharField(max_length=765)
     description = models.CharField(max_length=192, blank=True)
@@ -914,7 +921,7 @@ class ng_check_command_type(models.Model):
 
 class ng_contact(models.Model):
     idx = models.IntegerField(db_column="ng_contact_idx", primary_key=True)
-    user = models.IntegerField(null=True, blank=True)
+    user = models.ForeignKey("user")
     snperiod = models.IntegerField(null=True, blank=True)
     hnperiod = models.IntegerField(null=True, blank=True)
     snrecovery = models.IntegerField(null=True, blank=True)
@@ -949,7 +956,7 @@ class ng_device_contact(models.Model):
 class ng_device_templ(models.Model):
     idx = models.IntegerField(db_column="ng_device_templ_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
-    ng_service_templ = models.IntegerField(null=True, blank=True)
+    ng_service_templ = models.ForeignKey("ng_service_templ")
     ccommand = models.CharField(max_length=192, blank=True)
     max_attempts = models.IntegerField(null=True, blank=True)
     ninterval = models.IntegerField(null=True, blank=True)
@@ -1024,12 +1031,12 @@ class package(models.Model):
     name = models.CharField(max_length=255)
     version = models.CharField(max_length=255)
     release = models.CharField(max_length=255)
-    architecture = models.IntegerField(null=True, blank=True)
+    architecture = models.ForeignKey("architecture")
     size = models.IntegerField(null=True, blank=True)
     pgroup = models.TextField()
     summary = models.TextField()
-    distribution = models.IntegerField(null=True, blank=True)
-    vendor = models.IntegerField(null=True, blank=True)
+    distribution = models.ForeignKey("distribution")
+    vendor = models.ForeignKey("vendor")
     buildtime = models.IntegerField(null=True, blank=True)
     buildhost = models.CharField(max_length=765, blank=True)
     packager = models.CharField(max_length=765, blank=True)
@@ -1055,7 +1062,7 @@ class partition(models.Model):
     bootable = models.IntegerField(null=True, blank=True)
     fs_freq = models.IntegerField(null=True, blank=True)
     fs_passno = models.IntegerField(null=True, blank=True)
-    partition_fs = models.IntegerField(null=True, blank=True)
+    partition_fs = models.ForeignKey("partition_fs")
     lut_blob = models.TextField(blank=True, null=True)
     warn_threshold = models.IntegerField(null=True, blank=True)
     crit_threshold = models.IntegerField(null=True, blank=True)
@@ -1094,7 +1101,7 @@ class partition_table(models.Model):
 
 class pci_entry(models.Model):
     idx = models.IntegerField(db_column="pci_entry_idx", primary_key=True)
-    device_idx = models.IntegerField()
+    device_idx = models.ForeignKey("device")
     domain = models.IntegerField(null=True, blank=True)
     bus = models.IntegerField(null=True, blank=True)
     slot = models.IntegerField(null=True, blank=True)
@@ -1141,7 +1148,7 @@ class rrd_class(models.Model):
 
 class rrd_data(models.Model):
     idx = models.IntegerField(db_column="rrd_data_idx", primary_key=True)
-    rrd_set = models.IntegerField(null=True, blank=True)
+    rrd_set = models.ForeignKey("rrd_set")
     descr = models.CharField(max_length=765)
     descr1 = models.CharField(max_length=189)
     descr2 = models.CharField(max_length=189, blank=True)
@@ -1168,7 +1175,7 @@ class rrd_data_store(models.Model):
 
 class rrd_rra(models.Model):
     idx = models.IntegerField(db_column="rrd_rra_idx", primary_key=True)
-    rrd_class = models.IntegerField()
+    rrd_class = models.ForeignKey("rrd_class")
     cf = models.CharField(max_length=192)
     steps = models.IntegerField()
     rows = models.IntegerField()
@@ -1179,8 +1186,8 @@ class rrd_rra(models.Model):
 
 class rrd_set(models.Model):
     idx = models.IntegerField(db_column="rrd_set_idx", primary_key=True)
-    device = models.IntegerField(null=True, blank=True)
-    filename = models.CharField(max_length=765, blank=True)
+    device = models.ForeignKey("device")
+    filename = models.CharField(max_length=765, blank=True, null=True)
     date = models.DateTimeField()
     class Meta:
         db_table = u'rrd_set'
@@ -1189,7 +1196,7 @@ class session_data(models.Model):
     idx = models.IntegerField(db_column="session_data_idx", primary_key=True)
     session_id = models.CharField(unique=True, max_length=96)
     value = models.TextField()
-    user_idx = models.IntegerField()
+    user = models.ForeignKey("user")
     remote_addr = models.TextField(blank=True)
     alias = models.CharField(max_length=255, blank=True)
     login_time = models.DateTimeField(null=True, blank=True)
@@ -1215,7 +1222,7 @@ class sge_complex(models.Model):
 class sge_host(models.Model):
     idx = models.IntegerField(db_column="sge_host_idx", primary_key=True)
     host_name = models.CharField(max_length=255)
-    device = models.IntegerField(null=True, blank=True)
+    device = models.ForeignKey("device")
     date = models.DateTimeField()
     class Meta:
         db_table = u'sge_host'
@@ -1229,7 +1236,7 @@ class sge_job(models.Model):
     jobowner = models.CharField(max_length=255)
     jobgroup = models.CharField(max_length=255)
     log_path = models.TextField()
-    sge_user = models.IntegerField(null=True, blank=True)
+    sge_user = models.ForeignKey("sge_user")
     queue_time = models.DateTimeField(null=True, blank=True)
     date = models.DateTimeField()
     class Meta:
@@ -1237,10 +1244,10 @@ class sge_job(models.Model):
 
 class sge_job_run(models.Model):
     idx = models.IntegerField(db_column="sge_job_run_idx", primary_key=True)
-    sge_job = models.IntegerField()
+    sge_job = models.ForeignKey("sge_job")
     account = models.CharField(max_length=384)
-    sge_userlist = models.IntegerField(null=True, blank=True)
-    sge_project = models.IntegerField(null=True, blank=True)
+    sge_userlist = models.ForeignKey("sge_userlist")
+    sge_project = models.ForeignKey("sge_project")
     priority = models.IntegerField(null=True, blank=True)
     granted_pe = models.CharField(max_length=192)
     slots = models.IntegerField(null=True, blank=True)
@@ -1265,9 +1272,9 @@ class sge_job_run(models.Model):
 
 class sge_log(models.Model):
     idx = models.IntegerField(db_column="sge_log_idx", primary_key=True)
-    sge_job = models.IntegerField(null=True, blank=True)
-    sge_queue = models.IntegerField(null=True, blank=True)
-    sge_host = models.IntegerField(null=True, blank=True)
+    sge_job = models.ForeignKey("sge_job")
+    sge_queue = models.ForeignKey("sge_queue")
+    sge_host = models.ForeignKey("sge_host")
     log_level = models.IntegerField(null=True, blank=True)
     log_str = models.CharField(max_length=765)
     date = models.DateTimeField()
@@ -1276,8 +1283,8 @@ class sge_log(models.Model):
 
 class sge_pe_host(models.Model):
     idx = models.IntegerField(db_column="sge_pe_host_idx", primary_key=True)
-    sge_job_run = models.IntegerField()
-    device = models.IntegerField(null=True, blank=True)
+    sge_job_run = models.ForeignKey("sge_job_run")
+    device = models.ForeignKey("device")
     hostname = models.CharField(max_length=255)
     num_slots = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField()
@@ -1313,15 +1320,15 @@ class sge_user(models.Model):
     name = models.CharField(unique=True, max_length=255)
     oticket = models.FloatField(null=True, blank=True)
     fshare = models.FloatField(null=True, blank=True)
-    default_project = models.IntegerField(null=True, blank=True)
-    cluster_user = models.IntegerField(null=True, blank=True)
+    default_project = models.ForeignKey("sge_project", null=True)
+    cluster_user = models.ForeignKey("user")
     date = models.DateTimeField()
     class Meta:
         db_table = u'sge_user'
 
 class sge_user_con(models.Model):
     idx = models.IntegerField(db_column="sge_user_con_idx", primary_key=True)
-    user = models.IntegerField()
+    user = models.ForeignKey("user")
     sge_config = models.IntegerField()
     date = models.DateTimeField()
     class Meta:
@@ -1358,9 +1365,9 @@ class snmp_class(models.Model):
 class snmp_config(models.Model):
     idx = models.IntegerField(db_column="snmp_config_idx", primary_key=True)
     config = models.IntegerField(null=True, blank=True)
-    new_config = models.IntegerField(null=True, blank=True)
+    new_config = models.ForeignKey("new_config")
     snmp_mib = models.ForeignKey("snmp_mib")
-    device = models.IntegerField(null=True, blank=True)
+    device = models.ForeignKey("device")
     date = models.DateTimeField()
     class Meta:
         db_table = u'snmp_config'
@@ -1406,8 +1413,8 @@ class user(models.Model):
     uid = models.IntegerField(unique=True)
     ggroup = models.ForeignKey("group")
     aliases = models.TextField(blank=True, null=True)
-    export = models.IntegerField(null=True, blank=True)
-    export_scr = models.IntegerField(null=True, blank=True)
+    export = models.ForeignKey("new_config", null=True, related_name="export")
+    export_scr = models.ForeignKey("new_config", null=True, related_name="export_scr")
     home = models.TextField(blank=True, null=True)
     scratch = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=765, blank=True)

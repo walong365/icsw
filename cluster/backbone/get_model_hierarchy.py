@@ -86,6 +86,8 @@ def main():
     for mod in mod_list:
         if mod._meta.app_label == "backbone":
             print mod._meta.db_table
+    print
+    print " ".join([mod._meta.db_table for mod in mod_list if mod._meta.app_label == "backbone"])
         #print mod._meta.app_label, mod._meta.object_name, mod._meta
     
 if __name__ == "__main__":
