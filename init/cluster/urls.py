@@ -5,12 +5,12 @@ import sys
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
 # admin.autodiscover()
-print type(__file__), __file__
-sys.path.append("/usr/local/share/home/local/development/clustersoftware/build-extern/cluster-backbone-sql/cluster")
 
-import cluster.sub_urls
+import init.cluster.sub_urls
 
-urlpatterns = cluster.sub_urls.sub_patterns
+urlpatterns = init.cluster.sub_urls.sub_patterns
+
+print urlpatterns
 
 ##transfer_patterns = patterns(
 ##    "backbone.transfer",

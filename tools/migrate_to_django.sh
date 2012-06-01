@@ -31,10 +31,10 @@ else
     echo "sync database via django"
 
     # rewrite settings.py
-    sed -i s/\"cluster.backbone\"/#\"cluster.backbone\"/g ${C_DIR}/settings.py
+    sed -i s/\"init.cluster.backbone\"/#\"init.cluster.backbone\"/g ${C_DIR}/settings.py
     ${C_DIR}/manage.py syncdb --noinput
     # reenable cluster.backbone settings.py
-    sed -i s/#\"cluster.backbone\"/\"cluster.backbone\"/g ${C_DIR}/settings.py
+    sed -i s/#\"init.cluster.backbone\"/\"init.cluster.backbone\"/g ${C_DIR}/settings.py
     
     echo "create initial south information"
     

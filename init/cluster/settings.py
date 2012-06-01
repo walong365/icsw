@@ -1,5 +1,8 @@
 # Django settings for cluster project.
 
+import os
+import sys
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
@@ -113,7 +116,7 @@ MIDDLEWARE_CLASSES = (
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-ROOT_URLCONF = 'cluster.urls'
+ROOT_URLCONF = 'init.cluster.urls'
 
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'init.cluster.wsgi.application'
@@ -139,6 +142,20 @@ INSTALLED_APPS = (
     # cluster
     "init.cluster.backbone"
 )
+
+INSTALLED_APPS = list(INSTALLED_APPS)
+# add everything below cluster
+dir_name = os.path.dirname(__file__)
+for sub_dir in os.listdir(dir_name):
+    if os.path.exists(os.path.join(dir_name, sub_dir, "views.py")) and sub_dir != "backbone":
+        add_app = "init.cluster.%s" % (sub_dir)
+        if add_app not in INSTALLED_APPS:
+            INSTALLED_APPS.append(add_app)
+for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
+    add_app = os.environ[add_app_key]
+    if add_app not in INSTALLED_APPS:
+        INSTALLED_APPS.append(add_app)
+INSTALLED_APPS = tuple(INSTALLED_APPS)
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to
