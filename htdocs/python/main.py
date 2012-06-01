@@ -454,7 +454,7 @@ class request_object(object):
         output = "".join(self.output)
         self.send_http_header(output_len=len(output))
         return [output]
-    
+
 def application(environ, start_response):
     # direct modules, no session-id checking
     direct_modules = ["netbotzdrop"]
