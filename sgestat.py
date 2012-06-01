@@ -32,7 +32,6 @@ import sge_tools
 import pprint
 # from NH
 import signal
-from blessings import Terminal
 import tty, sys, termios
 import urwid
 
@@ -50,7 +49,7 @@ def check_environment():
                 sys.exit(1)
 
 def sjs(s_info, opt_dict):
-    print time.ctime()
+    ret_list = [time.ctime()]
     show_users     = set(map(lambda fnc: fnc.strip(), opt_dict.user.split(",")))
     show_complexes = set(map(lambda fnc: fnc.strip(), opt_dict.complexes.split(",")))
     # running jobs
@@ -97,11 +96,12 @@ def sjs(s_info, opt_dict):
                     act_line.append(logging_tools.form_entry(act_job.get_running_nodes(), header="nodes"))
                 r_out_list.append(act_line)
         if len(r_job_ids) == run_counted:
-            print "%s" % (logging_tools.get_plural("running job", len(r_job_ids)))
+            ret_list.append("%s" % (logging_tools.get_plural("running job", len(r_job_ids))))
         else:
-            print "%s, showing only %d (due to filter)" % (logging_tools.get_plural("running job", len(r_job_ids)),
-                                                           run_counted)
-        print r_out_list
+            ret_list.append("%s, showing only %d (due to filter)" % (logging_tools.get_plural("running job", len(r_job_ids)),
+                                                                     run_counted))
+        if r_out_list:
+            ret_list.append(str(r_out_list))
     if w_job_ids:
         w_out_list = logging_tools.new_form_list()
         show_ids = []
@@ -146,11 +146,16 @@ def sjs(s_info, opt_dict):
                                  logging_tools.form_entry(act_job.get_dependency_info(), header="depends")])
                 w_out_list.append(act_line)
         if len(show_ids) == wait_counted:
-            print "%s" % (logging_tools.get_plural("waiting job", len(show_ids)))
+            ret_list.append("%s" % (logging_tools.get_plural("waiting job", len(show_ids))))
         else:
-            print "%s, showing only %d (due to filter)" % (logging_tools.get_plural("waiting job", len(show_ids)),
-                                                           wait_counted)
-        print w_out_list
+            ret_list.append("%s, showing only %d (due to filter)" % (logging_tools.get_plural("waiting job", len(show_ids)),
+                                                                     wait_counted))
+        if w_out_list:
+            ret_list.append(str(w_out_list))
+    if opt_dict.interactive:
+        return "\n".join(ret_list)
+    else:
+        print "\n".join(ret_list)
 
 def sns(s_info, opt_dict):
     #print time.ctime()
@@ -401,24 +406,11 @@ def sla(opt_dict, add_args):
     
 class window(object):
     def __init__(self, **kwargs):
-        #self.stdscr = curses.initscr()
         self.callback = kwargs.get("callback", None)
         self.cb_args = kwargs.get("args", [])
-        #curses.start_color()
-        #curses.init_pair(1, 3, 5) # 3 yellow, 5 magenta,
-        #signal.signal(signal.SIGALRM, self._handler_alarm)
-        #signal.setitimer(signal.ITIMER_REAL, 1, 2)
-        #signal.signal(signal.SIGTERM, self._handler_term)
-        #signal.signal(signal.SIGINT , self._handler_int)
-        #signal.signal(signal.SIGALRM, self._handler_data)
-        #signal.signal(signal.SIGALRM, self._handler_alarm)
-        #signal.alarm(3)
-        # system magic
-        #signal.setitimer(signal.ITIMER_REAL, 1, 3)
-        #self.cur_scr = self.stdscr
-        self.top_text = urwid.Text(("banner", "init"), align="left")
-        self.main_text = urwid.Text("maintext", align="left")
-        self.bottom_text = urwid.Text(["finished", ("bg", "asdqaewe")])
+        self.top_text = urwid.Text(("banner", "Init cluster"), align="left")
+        self.main_text = urwid.Text("Wait please...", align="left")
+        self.bottom_text = urwid.Text(["q/Q - exit ", ("bg", "")])
         palette = [
             ('banner', 'black', 'light gray', 'standout,underline'),
             ('streak', 'black', 'dark red', 'standout'),
@@ -438,32 +430,25 @@ class window(object):
                         "streak")]),
                 "top"),
             "banner")
+        def exit_on_q(input):
+            if input in ('q', 'Q'):
+                raise urwid.ExitMainLoop()
         self.mainloop = urwid.MainLoop(urwid_map, palette, unhandled_input=self._handler_data)
-        self.mainloop.set_alarm_in(2, self._alarm_callback)
+        self.mainloop.set_alarm_in(1, self._alarm_callback)
     def loop(self):
         self.mainloop.run()
-    def _handler_int(self, signum, frame):
-        #self.stdscr.addstr(0, 0, "int %d\n" % (time.time()))
-        #self.stdscr.refresh()
-        #curses.endwin()
-        print self.terminal.normal
-        sys.exit(0)
     def _alarm_callback(self, main_loop, user_data):
         self._handler_data("X")
-        self.mainloop.set_alarm_in(2, self._alarm_callback)
-    def _handler_term(self, signum, frame):
-        #self.stdscr.addstr(0, 0, "term %d\n" % (time.time()))
-        #self.stdscr.refresh()
-        with self.terminal.location(0,self.terminal.height -1):
-            print self.terminal.red + ("term %d" % (time.time()))
+        self.mainloop.set_alarm_in(10, self._alarm_callback)
     def _handler_alarm(self, signum, frame):
         for handler in [self._handler_data]:
             handler()
-    def _handler_data(self, bla):
-        #self.stdscr.addstr(15,0, "%s\n" % str(self.get_data()))
-        #self.stdscr.refresh()
-        self.top_text.set_text(("streak", "time: %s" % (time.ctime())))
-        self.main_text.set_text(("banner", str(self.get_data())))
+    def _handler_data(self, input):
+        if input in ('q', 'Q'):
+            raise urwid.ExitMainLoop()
+        else:
+            self.top_text.set_text(("streak", "time: %s" % (time.ctime())))
+            self.main_text.set_text(("banner", str(self.get_data())))
     def get_data(self):
         if self.callback:
             return unicode(self.callback(*self.cb_args))
@@ -474,23 +459,17 @@ class window(object):
         self.run_flag = True
         while self.run_flag:
             cur_triggers = cur_node.get_triggers()
-            #self.cur_scr.addstr("\n%s (%s)" % (cur_node.question, ", ".join(cur_triggers)))
             print self.terminal.green + ("\n%s (%s)" % (cur_node.question, ", ".join(cur_triggers)))
-            #self.cur_scr.refresh()
             while self.run_flag:
-                #cur_c = self.getch()
                 cur_c = raw_input()
                 if cur_c and cur_c not in ['\n',' ']:
                     if (cur_c) in cur_triggers:
                         next_node = cur_node.follow_edge(cur_c)
                         if next_node.action is None:
-                            # next node
                             cur_node = next_node
                             break
                         elif type(next_node.action) in [unicode, str]:
-                            #self.cur_scr.addstr(next_node.action)
                             print self.terminal.green + (next_node.action)
-                            #self.cur_scr.refresh()
                             if next_node.question is None:
                                 self.handle_graph(self._parent_node(cur_node))
                         else:
@@ -499,8 +478,6 @@ class window(object):
                                 cur_node = target_node
                                 break
                     else:
-                        #self.cur_scr.addstr("invalid keypress")
-                        #self.cur_scr.refresh()
                         print self.terminal.green + "invalid keypress"
         print self.terminal.normal
     def _escape(self, cur_node):
@@ -510,23 +487,6 @@ class window(object):
     def _parent_node(self, cur_node):
         return cur_node.prev_node
     def run(self):
-        """
-        stdscr = self.stdscr
-        stdscr.addstr(0, 0, "Current mode: typing mode\n")
-        stdscr.nodelay(0)
-        stdscr.refresh()
-        subscr = stdscr.subwin(3,0)
-        self.cur_scr = subscr
-        subscr.nodelay(0)
-        head_node = dt_node("press p to print and escape to exit")
-        head_node.add_edge(dt_edge("p", dt_node("Are you sure", edges=[dt_edge("y", dt_node(None, action="print")),
-                                                                       dt_edge("n", dt_node(None, action=self._grandparent_node))])))
-        head_node.add_edge(dt_edge("e", dt_node(None, action=self._escape)))
-        #head_node.add_edge(dt_edge("n", dt_node(None, action=my_window._grandparent_node)))
-        self.handle_graph(head_node)
-        return stdscr
-        """
-        #term = Terminal()
         print self.terminal.orange + "Current mode: typing mode\n"
         head_node = dt_node("press p to print and escape to exit")
         head_node.add_edge(dt_edge("p", dt_node("Are you sure", edges=[dt_edge("y", dt_node(None, action="print")),
