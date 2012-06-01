@@ -46,6 +46,8 @@ LANGUAGE_CODE = 'en-us'
 
 SITE_ID = 1
 
+REL_SITE_ROOT = "cluster"
+
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.
 USE_I18N = True
@@ -59,7 +61,7 @@ USE_TZ = True
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
-MEDIA_ROOT = ''
+MEDIA_ROOT = "/usr/local/share/home/local/development/clustersoftware/build-extern/webfrontend/htdocs/static/"
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash.
@@ -104,7 +106,7 @@ TEMPLATE_LOADERS = (
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    #'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     # Uncomment the next line for simple clickjacking protection:
@@ -114,7 +116,7 @@ MIDDLEWARE_CLASSES = (
 ROOT_URLCONF = 'cluster.urls'
 
 # Python dotted path to the WSGI application used by Django's runserver.
-WSGI_APPLICATION = 'cluster.wsgi.application'
+WSGI_APPLICATION = 'init.cluster.wsgi.application'
 
 TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
@@ -135,7 +137,7 @@ INSTALLED_APPS = (
     'django.contrib.admindocs',
     "south",
     # cluster
-    "cluster.backbone"
+    "init.cluster.backbone"
 )
 
 # A sample logging configuration. The only tangible logging

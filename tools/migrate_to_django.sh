@@ -19,7 +19,7 @@ echo "dump basename is ${dump_name}, postfixes are full and data"
 mysql_dump.sh > ${dump_name}.full
 mysql_dump.sh -d > ${dump_name}.data
 
-C_DIR="/opt/python-init/lib/python/site-packages/cluster/"
+C_DIR="/opt/python-init/lib/python/site-packages/init/cluster/"
 MIG_DIR="${C_DIR}/backbone/migrations/"
 if [ -d ${MIG_DIR} ] ; then
     echo "migration directory ${MIG_DIR} already exists, refuse to operate"
