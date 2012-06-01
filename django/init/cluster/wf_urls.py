@@ -6,10 +6,8 @@ import sys
 # from django.contrib import admin
 # admin.autodiscover()
 
-sys.path.append("/usr/local/share/home/local/development/clustersoftware/build-extern/cluster-backbone-sql/cluster/")
-
 transfer_patterns = patterns(
-    "backbone.transfer",
+    "init.cluster.transfer",
     url(r"(.*)/", "views.transfer", name="transfer")
 )
 
@@ -19,7 +17,7 @@ my_url_patterns = patterns(
     url(r"^", include(transfer_patterns, namespace="transfer"))
 )
 
-urlpatterns = patterns(
+url_patterns = patterns(
     "",
     # hack for icons
     url(r"icons-init/(?P<path>.*)$", "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT[:-14] + "/icons"}),
