@@ -43,7 +43,10 @@ def transfer(request, args):
     #print request, args
     # rewrite for main.py
     #print args, request.META["PATH_INFO"]
-    module_name = request.META["PATH_INFO"].split("/")[-1].split(".")[0]
+    module_name = request.META["PATH_INFO"]
+    if module_name.endswith("/"):
+        module_name = module_name[:-1]
+    module_name = module_name.split("/")[-1].split(".")[0]
     req = request_object(request, module_name)
     #print "module name: %s" % (module_name)
     main.handle_normal_module_call(req, module_name)
