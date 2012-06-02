@@ -8,7 +8,9 @@ import sys
 
 transfer_patterns = patterns(
     "init.cluster.transfer",
-    url(r"(.*)/", "views.transfer", name="transfer")
+    url(r"^$", "views.redirect_to_main"),
+    url(r"transfer/", "views.transfer", name="main"),
+    url(r"transfer/(.*)", "views.transfer", name="main")
 )
 
 my_url_patterns = patterns(
@@ -23,4 +25,3 @@ url_patterns = patterns(
     url(r"icons-init/(?P<path>.*)$", "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT[:-14] + "/icons"}),
     url(r"^%s/" % (settings.REL_SITE_ROOT), include(my_url_patterns)),
 )
-

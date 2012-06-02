@@ -2,13 +2,15 @@
 
 import sys
 from django.shortcuts import render_to_response
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 import os
+import django.core.urlresolvers
 
-OLD_DIR = "/usr/local/share/home/local/development/clustersoftware/build-extern/webfrontend/htdocs/python"
+OLD_DIR = "/srv/www/htdocs/python"
 if not OLD_DIR in sys.path:
     sys.path.append(OLD_DIR)
-    
+
+from django.views.decorators.cache import never_cache
 import main
 import pprint
 import process_tools
@@ -39,7 +41,7 @@ class request_object(object):
         self.output.append(what)
          
         
-def transfer(request, args):
+def transfer(request, *args):
     #print request, args
     # rewrite for main.py
     #print args, request.META["PATH_INFO"]
@@ -51,3 +53,7 @@ def transfer(request, args):
     #print "module name: %s" % (module_name)
     main.handle_normal_module_call(req, module_name)
     return HttpResponse("".join(req.output), content_type="text/html")
+
+@never_cache
+def redirect_to_main(request):
+    return HttpResponseRedirect(django.core.urlresolvers.reverse("transfer:main"))

@@ -753,7 +753,7 @@ def handle_normal_module_call(req, module_name):
     if not special_module:
         find_server_routes(req, "after")
         # check for cluster-support
-        req.dc.execute("SELECT u.useremail, u.login FROM user u WHERE u.cluster_contact AND u.useremail")
+        req.dc.execute("SELECT u.useremail, u.login FROM user u WHERE u.cluster_contact AND u.useremail != ''")
         req.cluster_support = req.dc.fetchall()
         session_handler.update_session(req)
         functions.write_footer(req)
