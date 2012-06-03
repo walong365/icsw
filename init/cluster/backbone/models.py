@@ -10,7 +10,7 @@ class apc_device(models.Model):
     apc_type = models.CharField(max_length=765, blank=True)
     version_info = models.TextField(blank=True)
     num_outlets = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'apc_device'
 
@@ -18,7 +18,7 @@ class app_config_con(models.Model):
     idx = models.IntegerField(db_column="app_config_con_idx", primary_key=True)
     application = models.ForeignKey("application")
     config = models.ForeignKey("new_config")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'app_config_con'
 
@@ -26,7 +26,7 @@ class app_devgroup_con(models.Model):
     idx = models.IntegerField(db_column="app_devgroup_con_idx", primary_key=True)
     application = models.ForeignKey("application")
     device_group = models.ForeignKey("device_group")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'app_devgroup_con'
 
@@ -34,7 +34,7 @@ class app_instpack_con(models.Model):
     idx = models.IntegerField(db_column="app_instpack_con_idx", primary_key=True)
     application = models.ForeignKey("application")
     inst_package = models.ForeignKey("inst_package")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'app_instpack_con'
 
@@ -42,14 +42,14 @@ class application(models.Model):
     idx = models.IntegerField(db_column="application_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=255)
     description = models.TextField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'application'
 
 class architecture(models.Model):
     idx = models.IntegerField(db_column="architecture_idx", primary_key=True)
     architecture = models.TextField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'architecture'
 
@@ -57,7 +57,7 @@ class ccl_dgroup_con(models.Model):
     idx = models.IntegerField(db_column="ccl_dgroup_con_idx", primary_key=True)
     ccl_event = models.ForeignKey("ccl_event")
     device_group = models.ForeignKey("device_group")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ccl_dgroup_con'
 
@@ -65,7 +65,7 @@ class ccl_dloc_con(models.Model):
     idx = models.IntegerField(db_column="ccl_dloc_con_idx", primary_key=True)
     ccl_event = models.ForeignKey("ccl_event")
     device_location = models.ForeignKey("device_location")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ccl_dloc_con'
 
@@ -78,8 +78,8 @@ class ccl_event(models.Model):
     threshold_class = models.IntegerField()
     cluster_event = models.ForeignKey("cluster_event")
     hysteresis = models.FloatField(null=True, blank=True)
-    disabled = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    disabled = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ccl_event'
 
@@ -88,8 +88,8 @@ class ccl_event_log(models.Model):
     device = models.ForeignKey("device", null=True, blank=True)
     ccl_event = models.ForeignKey("ccl_event")
     cluster_event = models.ForeignKey("cluster_event")
-    passive = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    passive = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ccl_event_log'
 
@@ -97,7 +97,7 @@ class ccl_user_con(models.Model):
     idx = models.IntegerField(db_column="ccl_user_con_idx", primary_key=True)
     ccl_event = models.ForeignKey("ccl_event")
     user = models.ForeignKey("user")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ccl_user_con'
 
@@ -107,7 +107,7 @@ class cluster_event(models.Model):
     description = models.CharField(max_length=384, blank=True)
     color = models.CharField(max_length=18, blank=True)
     command = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'cluster_event'
 
@@ -120,7 +120,7 @@ class config_blob(models.Model):
     new_config = models.ForeignKey("new_config")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'config_blob'
 
@@ -132,7 +132,7 @@ class config_bool(models.Model):
     new_config = models.ForeignKey("new_config")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'config_bool'
 
@@ -144,7 +144,7 @@ class config_int(models.Model):
     new_config = models.ForeignKey("new_config")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'config_int'
 
@@ -158,7 +158,7 @@ class config_script(models.Model):
     value = models.TextField(blank=True)
     error_text = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'config_script'
 
@@ -170,7 +170,7 @@ class config_str(models.Model):
     new_config = models.ForeignKey("new_config")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'config_str'
 
@@ -179,7 +179,7 @@ class config_type(models.Model):
     name = models.CharField(unique=True, max_length=192)
     identifier = models.CharField(unique=True, max_length=6)
     description = models.CharField(max_length=384)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'config_type'
 
@@ -200,8 +200,8 @@ class device(models.Model):
     device_location = models.ForeignKey("device_location", null=True)
     device_class = models.ForeignKey("device_class")
     rrd_class = models.ForeignKey("rrd_class", null=True)
-    save_rrd_vectors = models.IntegerField(null=True, blank=True)
-    etherboot_valid = models.IntegerField(null=True, blank=True)
+    save_rrd_vectors = models.BooleanField()
+    etherboot_valid = models.BooleanField()
     kernel_append = models.CharField(max_length=384, blank=True)
     newkernel = models.CharField(max_length=192, blank=True)
     new_kernel = models.ForeignKey("kernel", null=True, related_name="new_kernel")
@@ -211,7 +211,7 @@ class device(models.Model):
     kernelversion = models.CharField(max_length=192, blank=True)
     stage1_flavour = models.CharField(max_length=48, blank=True)
     dom0_memory = models.IntegerField(null=True, blank=True)
-    xen_guest = models.IntegerField(null=True, blank=True)
+    xen_guest = models.BooleanField()
     newimage = models.CharField(max_length=765, blank=True)
     new_image = models.ForeignKey("image", null=True, related_name="new_image")
     actimage = models.CharField(max_length=765, blank=True)
@@ -223,8 +223,8 @@ class device(models.Model):
     fixed_partdev = models.IntegerField(null=True, blank=True)
     bz2_capable = models.IntegerField(null=True, blank=True)
     newstate = models.ForeignKey("status", null=True)
-    rsync = models.IntegerField(null=True, blank=True)
-    rsync_compressed = models.IntegerField(null=True, blank=True)
+    rsync = models.BooleanField()
+    rsync_compressed = models.BooleanField()
     prod_link = models.IntegerField(null=True, blank=True)
     recvstate = models.TextField(blank=True, null=True)
     reqstate = models.TextField(blank=True, null=True)
@@ -240,12 +240,12 @@ class device(models.Model):
     last_boot = models.CharField(max_length=192, blank=True)
     last_kernel = models.CharField(max_length=192, blank=True)
     root_passwd = models.CharField(max_length=192, blank=True)
-    device_mode = models.IntegerField(null=True, blank=True)
+    device_mode = models.BooleanField()
     relay_device = models.ForeignKey("device", null=True)
-    nagios_checks = models.IntegerField(null=True, blank=True)
-    show_in_bootcontrol = models.IntegerField(null=True, blank=True)
+    nagios_checks = models.BooleanField()
+    show_in_bootcontrol = models.BooleanField()
     cpu_info = models.TextField(blank=True, null=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device'
 
@@ -253,7 +253,7 @@ class device_class(models.Model):
     idx = models.IntegerField(db_column="device_class_idx", primary_key=True)
     classname = models.CharField(max_length=192, blank=True)
     priority = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_class'
 
@@ -261,7 +261,7 @@ class device_config(models.Model):
     idx = models.IntegerField(db_column="device_config_idx", primary_key=True)
     device = models.ForeignKey("device")
     new_config = models.ForeignKey("new_config")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_config'
 
@@ -269,7 +269,7 @@ class device_connection(models.Model):
     idx = models.IntegerField(db_column="device_connection_idx", primary_key=True)
     parent = models.ForeignKey("device", related_name="parent_device")
     child = models.ForeignKey("device", related_name="child_device")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_connection'
 
@@ -277,7 +277,7 @@ class device_device_selection(models.Model):
     idx = models.IntegerField(db_column="device_device_selection_idx", primary_key=True)
     device_selection = models.ForeignKey("device_selection")
     device = models.ForeignKey("device")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_device_selection'
 
@@ -289,15 +289,15 @@ class device_group(models.Model):
     # must be an IntegerField, otherwise we have a cycle reference
     device = models.IntegerField(null=True, blank=True)
     # flag
-    cluster_device_group = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    cluster_device_group = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_group'
 
 class device_location(models.Model):
     idx = models.IntegerField(db_column="device_location_idx", primary_key=True)
     location = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_location'
 
@@ -306,7 +306,7 @@ class device_relationship(models.Model):
     host_device = models.ForeignKey("device", related_name="host_device")
     domain_device = models.ForeignKey("device", related_name="domain_device")
     relationship = models.CharField(max_length=9, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_relationship'
 
@@ -316,7 +316,7 @@ class device_rsync_config(models.Model):
     device = models.ForeignKey("device")
     last_rsync_time = models.DateTimeField(null=True, blank=True)
     status = models.TextField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_rsync_config'
 
@@ -324,7 +324,7 @@ class device_selection(models.Model):
     idx = models.IntegerField(db_column="device_selection_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     user = models.ForeignKey("user", null=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_selection'
 
@@ -335,7 +335,7 @@ class device_shape(models.Model):
     x_dim = models.FloatField(null=True, blank=True)
     y_dim = models.FloatField(null=True, blank=True)
     z_dim = models.FloatField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_shape'
 
@@ -343,14 +343,14 @@ class device_type(models.Model):
     idx = models.IntegerField(db_column="device_type_idx", primary_key=True)
     identifier = models.CharField(unique=True, max_length=24)
     description = models.CharField(unique=True, max_length=192)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_type'
 
 class device_variable(models.Model):
     idx = models.IntegerField(db_column="device_variable_idx", primary_key=True)
     device = models.ForeignKey("device")
-    is_public = models.IntegerField(null=True, blank=True)
+    is_public = models.BooleanField()
     name = models.CharField(max_length=765)
     description = models.CharField(max_length=765, blank=True)
     var_type = models.CharField(max_length=3)
@@ -359,7 +359,7 @@ class device_variable(models.Model):
     val_blob = models.TextField(blank=True, null=True)
     val_date = models.DateTimeField(null=True, blank=True)
     val_time = models.TextField(blank=True, null=True) # This field type is a guess.
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_variable'
 
@@ -370,14 +370,14 @@ class devicelog(models.Model):
     user = models.ForeignKey("user", null=True)
     log_status = models.ForeignKey("log_status", null=True)
     text = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'devicelog'
 
 class distribution(models.Model):
     idx = models.IntegerField(db_column="distribution_idx", primary_key=True)
     distribution = models.TextField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'distribution'
 
@@ -388,7 +388,7 @@ class dmi_entry(models.Model):
     handle = models.IntegerField()
     dmi_length = models.IntegerField()
     info = models.CharField(max_length=765)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'dmi_entry'
 
@@ -396,7 +396,7 @@ class dmi_ext_key(models.Model):
     idx = models.IntegerField(db_column="dmi_ext_key_idx", primary_key=True)
     dmi_key = models.ForeignKey("dmi_key")
     ext_value_string = models.CharField(max_length=765)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'dmi_ext_key'
 
@@ -405,7 +405,7 @@ class dmi_key(models.Model):
     dmi_entry = models.ForeignKey("dmi_entry")
     key_string = models.CharField(max_length=765)
     value_string = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'dmi_key'
 
@@ -417,7 +417,7 @@ class extended_log(models.Model):
     users = models.CharField(max_length=765, blank=True)
     subject = models.CharField(max_length=765, blank=True)
     description = models.TextField(blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'extended_log'
 
@@ -426,7 +426,7 @@ class genstuff(models.Model):
     name = models.CharField(unique=True, max_length=192)
     description = models.CharField(max_length=384, blank=True)
     value = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'genstuff'
 
@@ -436,7 +436,7 @@ class hopcount(models.Model):
     d_netdevice = models.ForeignKey("netdevice", related_name="hopcount_d_netdevice")
     value = models.IntegerField(null=True, blank=True)
     trace = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'hopcount'
 
@@ -448,7 +448,7 @@ class hw_entry(models.Model):
     iarg1 = models.IntegerField(null=True, blank=True)
     sarg0 = models.CharField(max_length=765, blank=True)
     sarg1 = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'hw_entry'
 
@@ -460,7 +460,7 @@ class hw_entry_type(models.Model):
     iarg1_descr = models.CharField(max_length=765, blank=True)
     sarg0_descr = models.CharField(max_length=765, blank=True)
     sarg1_descr = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'hw_entry_type'
 
@@ -472,7 +472,7 @@ class ibc_connection(models.Model):
     blade = models.IntegerField()
     state = models.CharField(max_length=96, blank=True)
     blade_exists = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ibc_connection'
 
@@ -481,7 +481,7 @@ class ibc_device(models.Model):
     device = models.ForeignKey("device")
     blade_type = models.CharField(max_length=192, blank=True)
     num_blades = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ibc_device'
 
@@ -496,15 +496,15 @@ class image(models.Model):
     # not a foreign key to break cyclic dependencies
     #device = models.ForeignKey("device", null=True)
     device = models.IntegerField(null=True)
-    build_lock = models.IntegerField(null=True, blank=True)
+    build_lock = models.BooleanField()
     size_string = models.TextField(blank=True)
     sys_vendor = models.CharField(max_length=192, blank=True)
     sys_version = models.CharField(max_length=192, blank=True)
     sys_release = models.CharField(max_length=192, blank=True)
     bitcount = models.IntegerField(null=True, blank=True)
-    architecture = models.IntegerField(null=True, blank=True)
-    full_build = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    architecture = models.ForeignKey("architecture")
+    full_build = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'image'
 
@@ -512,9 +512,9 @@ class image_excl(models.Model):
     idx = models.IntegerField(db_column="image_excl_idx", primary_key=True)
     image = models.ForeignKey("image")
     exclude_path = models.TextField()
-    valid_for_install = models.IntegerField(null=True, blank=True)
-    valid_for_upgrade = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    valid_for_install = models.BooleanField()
+    valid_for_upgrade = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'image_excl'
 
@@ -522,11 +522,11 @@ class inst_package(models.Model):
     idx = models.IntegerField(db_column="inst_package_idx", primary_key=True)
     package = models.ForeignKey("package")
     location = models.TextField()
-    native = models.IntegerField(null=True, blank=True)
+    native = models.BooleanField()
     last_build = models.IntegerField(null=True, blank=True)
-    present_on_disk = models.IntegerField(null=True, blank=True)
+    present_on_disk = models.BooleanField()
     package_set = models.ForeignKey("package_set", null=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'inst_package'
 
@@ -534,16 +534,16 @@ class instp_device(models.Model):
     idx = models.IntegerField(db_column="instp_device_idx", primary_key=True)
     inst_package = models.ForeignKey("inst_package")
     device = models.ForeignKey("device")
-    install = models.IntegerField(null=True, blank=True)
-    upgrade = models.IntegerField(null=True, blank=True)
-    del_field = models.IntegerField(null=True, db_column='del', blank=True) # Field renamed because it was a Python reserved word. Field name made lowercase.
-    nodeps = models.IntegerField(null=True, blank=True)
-    forceflag = models.IntegerField(null=True, blank=True)
+    install = models.BooleanField()
+    upgrade = models.BooleanField()
+    del_field = models.BooleanField(db_column='del') # Field renamed because it was a Python reserved word. Field name made lowercase.
+    nodeps = models.BooleanField()
+    forceflag = models.BooleanField()
     status = models.TextField()
     install_time = models.DateTimeField(null=True, blank=True)
     error_line_num = models.IntegerField(null=True, blank=True)
     error_lines = models.TextField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'instp_device'
 
@@ -565,25 +565,25 @@ class kernel(models.Model):
     # not a foreignkey to break cyclic dependencies
     #device = models.ForeignKey("device", null=True)
     device = models.IntegerField(null=True)
-    build_lock = models.IntegerField(null=True, blank=True)
+    build_lock = models.BooleanField()
     config_name = models.CharField(max_length=192, blank=True)
     cpu_arch = models.CharField(max_length=192, blank=True)
     sub_cpu_arch = models.CharField(max_length=192, blank=True)
     target_dir = models.CharField(max_length=765, blank=True)
     comment = models.TextField(blank=True)
-    enabled = models.IntegerField(null=True, blank=True)
+    enabled = models.BooleanField()
     initrd_version = models.IntegerField(null=True, blank=True)
     initrd_built = models.DateTimeField(null=True, blank=True)
     module_list = models.TextField(blank=True)
     target_module_list = models.TextField(blank=True)
-    xen_host_kernel = models.IntegerField(null=True, blank=True)
-    xen_guest_kernel = models.IntegerField(null=True, blank=True)
+    xen_host_kernel = models.BooleanField()
+    xen_guest_kernel = models.BooleanField()
     bitcount = models.IntegerField(null=True, blank=True)
-    stage1_lo_present = models.IntegerField(null=True, blank=True)
-    stage1_cpio_present = models.IntegerField(null=True, blank=True)
-    stage1_cramfs_present = models.IntegerField(null=True, blank=True)
-    stage2_present = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    stage1_lo_present = models.BooleanField()
+    stage1_cpio_present = models.BooleanField()
+    stage1_cramfs_present = models.BooleanField()
+    stage2_present = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'kernel'
 
@@ -594,7 +594,7 @@ class kernel_build(models.Model):
     device = models.ForeignKey("device", null=True)
     version = models.IntegerField(null=True, blank=True)
     release = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'kernel_build'
 
@@ -604,7 +604,7 @@ class kernel_local_info(models.Model):
     device = models.ForeignKey("device")
     syncer_role = models.CharField(max_length=192, blank=True)
     info_blob = models.TextField(blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'kernel_local_info'
 
@@ -615,7 +615,7 @@ class kernel_log(models.Model):
     syncer_role = models.CharField(max_length=192, blank=True)
     log_level = models.IntegerField(null=True, blank=True)
     log_str = models.TextField(blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'kernel_log'
 
@@ -625,7 +625,7 @@ class log_source(models.Model):
     name = models.CharField(max_length=192)
     device = models.ForeignKey("device", null=True)
     description = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'log_source'
 
@@ -634,7 +634,7 @@ class log_status(models.Model):
     identifier = models.CharField(max_length=12, blank=True)
     log_level = models.IntegerField(null=True, blank=True)
     name = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'log_status'
 
@@ -651,7 +651,7 @@ class lvm_lv(models.Model):
     partition_fs = models.ForeignKey("partition_fs")
     warn_threshold = models.IntegerField(null=True, blank=True)
     crit_threshold = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'lvm_lv'
 
@@ -659,14 +659,14 @@ class lvm_vg(models.Model):
     idx = models.IntegerField(db_column="lvm_vg_idx", primary_key=True)
     partition_table = models.ForeignKey("partition_table")
     name = models.CharField(max_length=192)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'lvm_vg'
 
 class mac_ignore(models.Model):
     idx = models.IntegerField(db_column="mac_ignore_idx", primary_key=True)
     macadr = models.CharField(max_length=192)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'mac_ignore'
 
@@ -677,7 +677,7 @@ class macbootlog(models.Model):
     ip = models.CharField(max_length=96)
     macadr = models.CharField(max_length=192)
     log_source = models.ForeignKey("log_source", null=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'macbootlog'
 
@@ -694,7 +694,7 @@ class ms_outlet(models.Model):
     power_on_delay = models.IntegerField(null=True, blank=True)
     power_off_delay = models.IntegerField(null=True, blank=True)
     reboot_delay = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'msoutlet'
 
@@ -708,7 +708,7 @@ class netbotz_picture(models.Model):
     minute = models.IntegerField()
     second = models.IntegerField()
     path = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'netbotz_picture'
 
@@ -721,26 +721,26 @@ class netdevice(models.Model):
     speed = models.IntegerField(null=True, blank=True)
     netdevice_speed = models.ForeignKey("netdevice_speed")
     driver = models.CharField(max_length=384, blank=True)
-    routing = models.IntegerField(null=True, blank=True)
+    routing = models.BooleanField()
     penalty = models.IntegerField(null=True, blank=True)
     dhcp_device = models.IntegerField(null=True, blank=True)
     ethtool_options = models.IntegerField(null=True, blank=True)
     fake_macadr = models.CharField(max_length=177, blank=True)
     network_device_type = models.ForeignKey("network_device_type")
     description = models.CharField(max_length=765, blank=True)
-    is_bridge = models.IntegerField(null=True, blank=True)
+    is_bridge = models.BooleanField()
     bridge_name = models.CharField(max_length=765, blank=True)
     vlan_id = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'netdevice'
 
 class netdevice_speed(models.Model):
     idx = models.IntegerField(db_column="netdevice_speed_idx", primary_key=True)
     speed_bps = models.BigIntegerField(null=True, blank=True)
-    check_via_ethtool = models.IntegerField(null=True, blank=True)
-    full_duplex = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    check_via_ethtool = models.BooleanField()
+    full_duplex = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'netdevice_speed'
 
@@ -752,7 +752,7 @@ class net_ip(models.Model):
     penalty = models.IntegerField(null=True, blank=True)
     alias = models.CharField(max_length=765, blank=True)
     alias_excl = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'netip'
 
@@ -761,7 +761,7 @@ class network(models.Model):
     identifier = models.CharField(unique=True, max_length=255)
     network_type = models.ForeignKey("network_type")
     master_network = models.ForeignKey("network", null=True, related_name="rel_master_network")
-    short_names = models.IntegerField(null=True, blank=True)
+    short_names = models.BooleanField()
     name = models.CharField(max_length=192, blank=True)
     penalty = models.IntegerField()
     postfix = models.CharField(max_length=12, blank=True)
@@ -771,11 +771,11 @@ class network(models.Model):
     broadcast = models.CharField(max_length=45, blank=True)
     gateway = models.CharField(max_length=45, blank=True)
     gw_pri = models.IntegerField(null=True, blank=True)
-    write_bind_config = models.IntegerField(null=True, blank=True)
-    write_other_network_config = models.IntegerField(null=True, blank=True)
+    write_bind_config = models.BooleanField()
+    write_other_network_config = models.BooleanField()
     start_range = models.CharField(max_length=45, blank=True)
     end_range = models.CharField(max_length=45, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'network'
 
@@ -784,7 +784,7 @@ class network_device_type(models.Model):
     identifier = models.CharField(unique=True, max_length=48)
     description = models.CharField(max_length=192)
     mac_bytes = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'network_device_type'
 
@@ -792,7 +792,7 @@ class network_network_device_type(models.Model):
     idx = models.IntegerField(db_column="network_network_device_type_idx", primary_key=True)
     network = models.ForeignKey("network")
     network_device_type = models.ForeignKey("network_device_type")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'network_network_device_type'
 
@@ -800,7 +800,7 @@ class network_type(models.Model):
     idx = models.IntegerField(db_column="network_type_idx", primary_key=True)
     identifier = models.CharField(unique=True, max_length=3)
     description = models.CharField(max_length=192)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'network_type'
 
@@ -810,7 +810,7 @@ class new_config(models.Model):
     description = models.CharField(max_length=765)
     priority = models.IntegerField(null=True, blank=True)
     new_config_type = models.ForeignKey("new_config_type")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'new_config'
 
@@ -818,7 +818,7 @@ class new_config_type(models.Model):
     idx = models.IntegerField(db_column="new_config_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     description = models.CharField(max_length=765)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'new_config_type'
 
@@ -836,7 +836,7 @@ class new_rrd_data(models.Model):
     base = models.IntegerField(null=True, blank=True)
     factor = models.FloatField(null=True, blank=True)
     var_type = models.CharField(max_length=3, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'new_rrd_data'
 
@@ -844,7 +844,7 @@ class ng_ccgroup(models.Model):
     idx = models.IntegerField(db_column="ng_ccgroup_idx", primary_key=True)
     ng_contact = models.ForeignKey("ng_contact")
     ng_contactgroup = models.ForeignKey("ng_contactgroup")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_ccgroup'
 
@@ -852,7 +852,7 @@ class ng_cgservicet(models.Model):
     idx = models.IntegerField(db_column="ng_cgservicet_idx", primary_key=True)
     ng_contactgroup = models.ForeignKey("ng_contactgroup")
     ng_service_templ = models.ForeignKey("ng_service_templ")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_cgservicet'
 
@@ -866,32 +866,32 @@ class ng_check_command(models.Model):
     command_line = models.CharField(max_length=765)
     description = models.CharField(max_length=192, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_check_command'
 
 class ng_check_command_type(models.Model):
     idx = models.IntegerField(db_column="ng_check_command_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_check_command_type'
 
 class ng_contact(models.Model):
     idx = models.IntegerField(db_column="ng_contact_idx", primary_key=True)
     user = models.ForeignKey("user")
-    snperiod = models.IntegerField(null=True, blank=True)
-    hnperiod = models.IntegerField(null=True, blank=True)
-    snrecovery = models.IntegerField(null=True, blank=True)
-    sncritical = models.IntegerField(null=True, blank=True)
-    snwarning = models.IntegerField(null=True, blank=True)
-    snunknown = models.IntegerField(null=True, blank=True)
-    hnrecovery = models.IntegerField(null=True, blank=True)
-    hndown = models.IntegerField(null=True, blank=True)
-    hnunreachable = models.IntegerField(null=True, blank=True)
+    snperiod = models.BooleanField()
+    hnperiod = models.BooleanField()
+    snrecovery = models.BooleanField()
+    sncritical = models.BooleanField()
+    snwarning = models.BooleanField()
+    snunknown = models.BooleanField()
+    hnrecovery = models.BooleanField()
+    hndown = models.BooleanField()
+    hnunreachable = models.BooleanField()
     sncommand = models.CharField(max_length=192, blank=True)
     hncommand = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_contact'
 
@@ -899,7 +899,7 @@ class ng_contactgroup(models.Model):
     idx = models.IntegerField(db_column="ng_contactgroup_idx", primary_key=True)
     name = models.CharField(max_length=192)
     alias = models.CharField(max_length=255, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_contactgroup'
 
@@ -907,7 +907,7 @@ class ng_device_contact(models.Model):
     idx = models.IntegerField(db_column="ng_device_contact_idx", primary_key=True)
     device_group = models.ForeignKey("device_group")
     ng_contactgroup = models.ForeignKey("ng_contactgroup")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_device_contact'
 
@@ -919,11 +919,11 @@ class ng_device_templ(models.Model):
     max_attempts = models.IntegerField(null=True, blank=True)
     ninterval = models.IntegerField(null=True, blank=True)
     ng_period = models.IntegerField(null=True, blank=True)
-    nrecovery = models.IntegerField(null=True, blank=True)
-    ndown = models.IntegerField(null=True, blank=True)
-    nunreachable = models.IntegerField(null=True, blank=True)
-    is_default = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    nrecovery = models.BooleanField()
+    ndown = models.BooleanField()
+    nunreachable = models.BooleanField()
+    is_default = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_device_templ'
 
@@ -934,7 +934,7 @@ class ng_ext_host(models.Model):
     icon_image_alt = models.CharField(max_length=192, blank=True)
     vrml_image = models.CharField(max_length=192, blank=True)
     statusmap_image = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_ext_host'
 
@@ -949,7 +949,7 @@ class ng_period(models.Model):
     thurange = models.CharField(max_length=48, blank=True)
     frirange = models.CharField(max_length=48, blank=True)
     satrange = models.CharField(max_length=48, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_period'
 
@@ -962,25 +962,25 @@ class ng_service(models.Model):
     parameter2 = models.CharField(max_length=192, blank=True)
     parameter3 = models.CharField(max_length=192, blank=True)
     parameter4 = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_service'
 
 class ng_service_templ(models.Model):
     idx = models.IntegerField(db_column="ng_service_templ_idx", primary_key=True)
     name = models.CharField(max_length=192, blank=True)
-    volatile = models.IntegerField(null=True, blank=True)
+    volatile = models.BooleanField()
     nsc_period = models.IntegerField(null=True, blank=True)
     max_attempts = models.IntegerField(null=True, blank=True)
     check_interval = models.IntegerField(null=True, blank=True)
     retry_interval = models.IntegerField(null=True, blank=True)
     ninterval = models.IntegerField(null=True, blank=True)
     nsn_period = models.IntegerField(null=True, blank=True)
-    nrecovery = models.IntegerField(null=True, blank=True)
-    ncritical = models.IntegerField(null=True, blank=True)
-    nwarning = models.IntegerField(null=True, blank=True)
-    nunknown = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    nrecovery = models.BooleanField()
+    ncritical = models.BooleanField()
+    nwarning = models.BooleanField()
+    nunknown = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_service_templ'
 
@@ -998,14 +998,14 @@ class package(models.Model):
     buildtime = models.IntegerField(null=True, blank=True)
     buildhost = models.CharField(max_length=765, blank=True)
     packager = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'package'
 
 class package_set(models.Model):
     idx = models.IntegerField(db_column="package_set_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=255)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'package_set'
 
@@ -1017,14 +1017,14 @@ class partition(models.Model):
     size = models.IntegerField(null=True, blank=True)
     mount_options = models.CharField(max_length=255, blank=True)
     pnum = models.IntegerField()
-    bootable = models.IntegerField(null=True, blank=True)
+    bootable = models.BooleanField()
     fs_freq = models.IntegerField(null=True, blank=True)
     fs_passno = models.IntegerField(null=True, blank=True)
     partition_fs = models.ForeignKey("partition_fs")
     lut_blob = models.TextField(blank=True, null=True)
     warn_threshold = models.IntegerField(null=True, blank=True)
     crit_threshold = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'partition'
 
@@ -1033,7 +1033,7 @@ class partition_disc(models.Model):
     partition_table = models.ForeignKey("partition_table")
     disc = models.CharField(max_length=192)
     priority = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'partition_disc'
 
@@ -1043,7 +1043,7 @@ class partition_fs(models.Model):
     identifier = models.CharField(max_length=3)
     descr = models.CharField(max_length=765, blank=True)
     hexid = models.CharField(max_length=6)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'partition_fs'
 
@@ -1051,9 +1051,9 @@ class partition_table(models.Model):
     idx = models.IntegerField(db_column="partition_table_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     description = models.CharField(max_length=255, blank=True)
-    valid = models.IntegerField(null=True, blank=True)
+    valid = models.BooleanField()
     modify_bootloader = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'partition_table'
 
@@ -1073,7 +1073,7 @@ class pci_entry(models.Model):
     subclass = models.CharField(max_length=18)
     subclassname = models.CharField(max_length=192)
     revision = models.CharField(max_length=96)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'pci_entry'
 
@@ -1082,7 +1082,7 @@ class peer_information(models.Model):
     s_netdevice = models.ForeignKey("netdevice", related_name="peer_s_netdevice")
     d_netdevice = models.ForeignKey("netdevice", related_name="peer_d_netdevice")
     penalty = models.IntegerField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'peer_information'
 
@@ -1091,7 +1091,7 @@ class pi_connection(models.Model):
     package = models.ForeignKey("package")
     image = models.ForeignKey("image")
     install_time = models.IntegerField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'pi_connection'
 
@@ -1100,7 +1100,7 @@ class rrd_class(models.Model):
     name = models.CharField(unique=True, max_length=255)
     step = models.IntegerField()
     heartbeat = models.IntegerField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'rrd_class'
 
@@ -1114,11 +1114,11 @@ class rrd_data(models.Model):
     descr4 = models.CharField(max_length=189, blank=True)
     unit = models.CharField(max_length=96, blank=True)
     info = models.CharField(max_length=255, blank=True)
-    from_snmp = models.IntegerField(null=True, blank=True)
+    from_snmp = models.BooleanField()
     base = models.IntegerField(null=True, blank=True)
     factor = models.FloatField(null=True, blank=True)
     var_type = models.CharField(max_length=3, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'rrd_data'
 
@@ -1127,7 +1127,7 @@ class rrd_data_store(models.Model):
     device = models.ForeignKey("device")
     recv_time = models.IntegerField()
     data = models.TextField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'rrd_data_store'
 
@@ -1138,7 +1138,7 @@ class rrd_rra(models.Model):
     steps = models.IntegerField()
     rows = models.IntegerField()
     xff = models.FloatField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'rrd_rra'
 
@@ -1146,7 +1146,7 @@ class rrd_set(models.Model):
     idx = models.IntegerField(db_column="rrd_set_idx", primary_key=True)
     device = models.ForeignKey("device")
     filename = models.CharField(max_length=765, blank=True, null=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'rrd_set'
 
@@ -1159,9 +1159,9 @@ class session_data(models.Model):
     alias = models.CharField(max_length=255, blank=True)
     login_time = models.DateTimeField(null=True, blank=True)
     logout_time = models.DateTimeField(null=True, blank=True)
-    forced_logout = models.IntegerField(null=True, blank=True)
+    forced_logout = models.BooleanField()
     rebuild_server_routes = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'session_data'
 
@@ -1173,7 +1173,7 @@ class sge_complex(models.Model):
     pe_slots_min = models.IntegerField(null=True, blank=True)
     pe_slots_max = models.IntegerField(null=True, blank=True)
     default_queue = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_complex'
 
@@ -1181,7 +1181,7 @@ class sge_host(models.Model):
     idx = models.IntegerField(db_column="sge_host_idx", primary_key=True)
     host_name = models.CharField(max_length=255)
     device = models.ForeignKey("device")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_host'
 
@@ -1196,7 +1196,7 @@ class sge_job(models.Model):
     log_path = models.TextField()
     sge_user = models.ForeignKey("sge_user")
     queue_time = models.DateTimeField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_job'
 
@@ -1224,7 +1224,7 @@ class sge_job_run(models.Model):
     sge_iow = models.IntegerField(null=True, blank=True)
     sge_maxvmem = models.IntegerField(null=True, blank=True)
     sge_parsed = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_job_run'
 
@@ -1235,7 +1235,7 @@ class sge_log(models.Model):
     sge_host = models.ForeignKey("sge_host")
     log_level = models.IntegerField(null=True, blank=True)
     log_str = models.CharField(max_length=765)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_log'
 
@@ -1245,7 +1245,7 @@ class sge_pe_host(models.Model):
     device = models.ForeignKey("device")
     hostname = models.CharField(max_length=255)
     num_slots = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_pe_host'
 
@@ -1254,14 +1254,14 @@ class sge_project(models.Model):
     name = models.CharField(unique=True, max_length=255)
     oticket = models.FloatField(null=True, blank=True)
     fshare = models.FloatField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_project'
 
 class sge_queue(models.Model):
     idx = models.IntegerField(db_column="sge_queue_idx", primary_key=True)
     queue_name = models.CharField(max_length=255)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_queue'
 
@@ -1269,7 +1269,7 @@ class sge_ul_ult(models.Model):
     idx = models.IntegerField(db_column="sge_ul_ult_idx", primary_key=True)
     sge_userlist = models.ForeignKey("sge_userlist")
     sge_userlist_type = models.ForeignKey("sge_userlist_type")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_ul_ult'
 
@@ -1280,7 +1280,7 @@ class sge_user(models.Model):
     fshare = models.FloatField(null=True, blank=True)
     default_project = models.ForeignKey("sge_project", null=True)
     cluster_user = models.ForeignKey("user")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_user'
 
@@ -1288,7 +1288,7 @@ class sge_user_con(models.Model):
     idx = models.IntegerField(db_column="sge_user_con_idx", primary_key=True)
     user = models.ForeignKey("user")
     sge_config = models.IntegerField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_user_con'
 
@@ -1297,14 +1297,14 @@ class sge_userlist(models.Model):
     name = models.CharField(unique=True, max_length=255)
     oticket = models.FloatField(null=True, blank=True)
     fshare = models.FloatField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_userlist'
 
 class sge_userlist_type(models.Model):
     idx = models.IntegerField(db_column="sge_userlist_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_userlist_type'
 
@@ -1316,7 +1316,7 @@ class snmp_class(models.Model):
     write_community = models.CharField(max_length=192)
     snmp_version = models.IntegerField(null=True, blank=True)
     update_freq = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'snmp_class'
 
@@ -1326,7 +1326,7 @@ class snmp_config(models.Model):
     new_config = models.ForeignKey("new_config")
     snmp_mib = models.ForeignKey("snmp_mib")
     device = models.ForeignKey("device")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'snmp_config'
 
@@ -1341,15 +1341,15 @@ class snmp_mib(models.Model):
     factor = models.FloatField(null=True, blank=True)
     var_type = models.CharField(max_length=3, blank=True)
     special_command = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'snmp_mib'
 
 class status(models.Model):
     idx = models.IntegerField(db_column="status_idx", primary_key=True)
     status = models.CharField(unique=True, max_length=255)
-    prod_link = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    prod_link = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'status'
 
@@ -1359,7 +1359,7 @@ class sys_partition(models.Model):
     name = models.CharField(max_length=192)
     mountpoint = models.CharField(max_length=192)
     mount_options = models.CharField(max_length=255, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sys_partition'
 
@@ -1370,12 +1370,12 @@ class capability(models.Model):
     mother_capability_name = models.CharField(max_length=45, blank=True, null=True)
     priority = models.IntegerField(null=True, blank=True)
     defvalue = models.IntegerField(null=True, blank=True)
-    enabled = models.IntegerField(null=True, blank=True)
+    enabled = models.BooleanField()
     description = models.CharField(max_length=765, blank=True)
     modulename = models.CharField(max_length=384, blank=True, null=True)
     left_string = models.CharField(max_length=192, blank=True)
     right_string = models.CharField(max_length=384, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'capability'
 
@@ -1392,7 +1392,7 @@ class user(models.Model):
     scratch = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=765, blank=True)
     password = models.CharField(max_length=48, blank=True)
-    cluster_contact = models.IntegerField(null=True, blank=True)
+    cluster_contact = models.BooleanField()
     uservname = models.CharField(max_length=765, blank=True)
     usernname = models.CharField(max_length=765, blank=True)
     usertitan = models.CharField(max_length=765, blank=True)
@@ -1402,7 +1402,7 @@ class user(models.Model):
     usercom = models.CharField(max_length=765, blank=True)
     nt_password = models.CharField(max_length=255, blank=True)
     lm_password = models.CharField(max_length=255, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'user'
         permissions = {
@@ -1470,7 +1470,7 @@ class group(models.Model):
     resptel = models.CharField(max_length=765, blank=True)
     respcom = models.CharField(max_length=765, blank=True)
     groupcom = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ggroup'
     def __unicode__(self):
@@ -1481,7 +1481,7 @@ class group_cap(models.Model):
     idx = models.IntegerField(db_column="ggroupcap_idx", primary_key=True)
     ggroup = models.ForeignKey("group")
     capability = models.ForeignKey("capability")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ggroupcap'
 
@@ -1489,7 +1489,7 @@ class user_device_login(models.Model):
     idx = models.IntegerField(db_column="user_device_login_idx", primary_key=True)
     user = models.ForeignKey("user")
     device = models.ForeignKey("device")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'user_device_login'
 
@@ -1497,7 +1497,7 @@ class user_group(models.Model):
     idx = models.IntegerField(db_column="user_ggroup_idx", primary_key=True)
     group = models.ForeignKey("group", db_column="ggroup_id")
     user = models.ForeignKey("user")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'user_ggroup'
 
@@ -1505,12 +1505,12 @@ class user_var(models.Model):
     idx = models.IntegerField(db_column="user_var_idx", primary_key=True)
     user = models.ForeignKey("user")
     name = models.CharField(max_length=189)
-    hidden = models.IntegerField(null=True, blank=True)
+    hidden = models.BooleanField()
     type = models.CharField(max_length=3, blank=True)
-    editable = models.IntegerField(null=True, blank=True)
+    editable = models.BooleanField()
     value = models.TextField(blank=True)
     description = models.TextField(blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'user_var'
 
@@ -1518,14 +1518,14 @@ class user_cap(models.Model):
     idx = models.IntegerField(db_column="usercap_idx", primary_key=True)
     user = models.ForeignKey("user")
     capability = models.ForeignKey("capability")
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'usercap'
 
 class vendor(models.Model):
     idx = models.IntegerField(db_column="vendor_idx", primary_key=True)
     vendor = models.TextField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'vendor'
 
@@ -1540,9 +1540,9 @@ class wc_files(models.Model):
     dest_type = models.CharField(max_length=3)
     source = models.CharField(max_length=765)
     dest = models.CharField(max_length=765)
-    error_flag = models.IntegerField(null=True, blank=True)
+    error_flag = models.BooleanField()
     content = models.TextField(blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'wc_files'
 
@@ -1554,7 +1554,7 @@ class xen_device(models.Model):
     builder = models.CharField(max_length=15, blank=True)
     cmdline = models.CharField(max_length=765, blank=True)
     vcpus = models.IntegerField()
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'xen_device'
 
@@ -1570,6 +1570,6 @@ class xen_vbd(models.Model):
     iarg1 = models.IntegerField(null=True, blank=True)
     iarg2 = models.IntegerField(null=True, blank=True)
     iarg3 = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField()
+    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'xen_vbd'
