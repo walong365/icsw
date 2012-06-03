@@ -320,66 +320,67 @@ def rescan_files(req):
                 req.dc.execute("INSERT INTO ggroupcap VALUES%s" % ("," .join(["(0, %d, %d, null)" % (admin_idx, x["capability_idx"]) for x in req.dc.fetchall()])))
     #print "***", time.time() - start_time, load_times
     
-def make_basic_entries(req, def_admin, def_passwd):
-    req.info_stack.add_ok("Generating standard table entries", "setup")
-    req.info_stack.add_ok("creating default group/user with all rights", "setup")
-    req.dc.execute("INSERT INTO ggroup SET active=1, ggroupname='admin', gid=666, respemail='lang-nevyjel@init.at', respvname='Andreas', respnname='Lang-Nevyjel', resptitan='DI Dr.'")
-    ggroup_idx = req.dc.insert_id()
-    req.dc.execute("INSERT INTO user SET active=1, login=%s, uid=666, ggroup=%s, useremail='lang-nevyjel@init.at', cluster_contact=1, password=%s", (def_admin or "admin",
-                                                                                                                                                     ggroup_idx,
-                                                                                                                                                     crypt.crypt(def_passwd or "init4u",
-                                                                                                                                                                 "".join([chr(random.randint(97, 122)) for x in range(16)]))))
-    # fetch capabilities
-    req.dc.execute("SELECT c.capability_idx FROM capability c")
-    if req.dc.rowcount:
-        req.dc.execute("INSERT INTO ggroupcap VALUES%s" % (",".join(["(0, %d, %d, null)" % (ggroup_idx, x["capability_idx"]) for x in req.dc.fetchall()])))
-    req.info_stack.add_ok("@creating standard tables", "setup")
-    req.dc.execute("INSERT INTO device_type VALUES%s" % (",".join(["(0, '%s', '%s', null)" % (st, lt) for st, lt in [("H"  , "Host"             ),
-                                                                                                                     ("AM" , "APC Masterswitch" ),
-                                                                                                                     ("NB" , "Netbotz"          ),
-                                                                                                                     ("S"  , "Manageable Switch"),
-                                                                                                                     ("R"  , "Raid box"         ),
-                                                                                                                     ("P"  , "Printer"          ),
-                                                                                                                     ("MD" , "Meta device"      ),
-                                                                                                                     ("IBC", "IBM Blade Center" )]])))
+##def make_basic_entries(req, def_admin, def_passwd):
+##    req.info_stack.add_ok("Generating standard table entries", "setup")
+##    req.info_stack.add_ok("creating default group/user with all rights", "setup")
+    # now handled via commandline and permissions
+##    req.dc.execute("INSERT INTO ggroup SET active=1, ggroupname='admin', gid=666, respemail='lang-nevyjel@init.at', respvname='Andreas', respnname='Lang-Nevyjel', resptitan='DI Dr.'")
+##    ggroup_idx = req.dc.insert_id()
+##    req.dc.execute("INSERT INTO user SET active=1, login=%s, uid=666, ggroup=%s, useremail='lang-nevyjel@init.at', cluster_contact=1, password=%s", (def_admin or "admin",
+##                                                                                                                                                     ggroup_idx,
+##                                                                                                                                                     crypt.crypt(def_passwd or "init4u",
+##                                                                                                                                                                 "".join([chr(random.randint(97, 122)) for x in range(16)]))))
+##    # fetch capabilities
+##    req.dc.execute("SELECT c.capability_idx FROM capability c")
+##    if req.dc.rowcount:
+##        req.dc.execute("INSERT INTO ggroupcap VALUES%s" % (",".join(["(0, %d, %d, null)" % (ggroup_idx, x["capability_idx"]) for x in req.dc.fetchall()])))
+##    req.info_stack.add_ok("@creating standard tables", "setup")
+##    req.dc.execute("INSERT INTO device_type VALUES%s" % (",".join(["(0, '%s', '%s', null)" % (st, lt) for st, lt in [("H"  , "Host"             ),
+##                                                                                                                     ("AM" , "APC Masterswitch" ),
+##                                                                                                                     ("NB" , "Netbotz"          ),
+##                                                                                                                     ("S"  , "Manageable Switch"),
+##                                                                                                                     ("R"  , "Raid box"         ),
+##                                                                                                                     ("P"  , "Printer"          ),
+##                                                                                                                     ("MD" , "Meta device"      ),
+##                                                                                                                     ("IBC", "IBM Blade Center" )]])))
     # old config-types
-    req.dc.execute("INSERT INTO config_type VALUES%s" % (",".join(["(0, '%s', '%s', '', null)" % (lt, st) for st, lt in [("s", "Server properties"  ),
-                                                                                                                         ("n", "Node properties"    ),
-                                                                                                                         ("h", "Hardware properites"),
-                                                                                                                         ("e", "Export entries"     )]])))
+##    req.dc.execute("INSERT INTO config_type VALUES%s" % (",".join(["(0, '%s', '%s', '', null)" % (lt, st) for st, lt in [("s", "Server properties"  ),
+##                                                                                                                         ("n", "Node properties"    ),
+##                                                                                                                         ("h", "Hardware properites"),
+##                                                                                                                         ("e", "Export entries"     )]])))
     # partition_fs
-    req.dc.execute("INSERT INTO `partition_fs` VALUES (1,'reiserfs','f','ReiserFS Filesystem','83','2006-06-01 09:44:27'),(2,'ext2','f','Extended 2 Filesystem','83','2006-06-01 09:44:27'),(3,'ext3','f','Extended 3 Filesystem','83','2006-06-01 09:44:27'),(4,'swap','s','SwapSpace','82','2006-06-01 09:44:27'),(5,'ext','e','Extended Partition','f','2006-06-01 09:44:27'),(6,'empty','d','Empty Partition','0','2006-06-01 09:44:27'),(7,'lvm','l','LVM Partition','8e','2007-06-08 08:21:19')")
+##    req.dc.execute("INSERT INTO `partition_fs` VALUES (1,'reiserfs','f','ReiserFS Filesystem','83','2006-06-01 09:44:27'),(2,'ext2','f','Extended 2 Filesystem','83','2006-06-01 09:44:27'),(3,'ext3','f','Extended 3 Filesystem','83','2006-06-01 09:44:27'),(4,'swap','s','SwapSpace','82','2006-06-01 09:44:27'),(5,'ext','e','Extended Partition','f','2006-06-01 09:44:27'),(6,'empty','d','Empty Partition','0','2006-06-01 09:44:27'),(7,'lvm','l','LVM Partition','8e','2007-06-08 08:21:19')")
     # log status
-    req.dc.execute("INSERT INTO log_status VALUES%s" % (",".join(["(0, '%s', %d, '%s', null)" % (st, sev, lt) for st, sev, lt in [("c", 200, "critical"),
-                                                                                                                                  ("e", 100, "error"   ),
-                                                                                                                                  ("w",  50, "warning" ),
-                                                                                                                                  ("i",   0, "info"    ),
-                                                                                                                                  ("n", -50, "notice"  )]])))
+##    req.dc.execute("INSERT INTO log_status VALUES%s" % (",".join(["(0, '%s', %d, '%s', null)" % (st, sev, lt) for st, sev, lt in [("c", 200, "critical"),
+##                                                                                                                                  ("e", 100, "error"   ),
+##                                                                                                                                  ("w",  50, "warning" ),
+##                                                                                                                                  ("i",   0, "info"    ),
+##                                                                                                                                  ("n", -50, "notice"  )]])))
     # hardware entry types
-    req.dc.execute("INSERT INTO hw_entry_type VALUES%s" % (",".join(["(0, '%s', '%s', '%s', '%s', '%s', '%s', null)" % (hw_id, descr, ia0d, ia1d, sa0d, sa1d) for
-                                                                     hw_id, descr, ia0d, ia1d, sa0d, sa1d in [("cpu"   , "CPU"         , "Speed in MHz"       , ""              , "Model Type" , ""),
-                                                                                                              ("mem"   , "Memory"      , "Phyiskal Memory"    , "Virtual Memory", ""           , ""),
-                                                                                                              ("disks" , "Harddisks"   , "Number of harddisks", "total Size"    , ""           , ""),
-                                                                                                              ("cdroms", "CDRoms"      , "Number of CD-Roms"  , ""              , ""           , ""),
-                                                                                                              ("gfx"   , "Graphicscard", ""                   , ""              , "Type of Gfx", "")]])))
-    # SNMP classes
-    req.dc.execute("INSERT INTO snmp_class SET name='default_class', snmp_version=2, descr='Standard Class for SNMP-devices (v2c)'")
-    req.dc.execute("INSERT INTO snmp_class SET name='default_class', snmp_version=1, descr='Standard Class for SNMP-devices (v1)'")
-    # device classes
-    req.dc.execute("INSERT INTO device_class SET classname='normal'")
-    # device location
-    req.dc.execute("INSERT INTO device_location SET location='room00'")
+##    req.dc.execute("INSERT INTO hw_entry_type VALUES%s" % (",".join(["(0, '%s', '%s', '%s', '%s', '%s', '%s', null)" % (hw_id, descr, ia0d, ia1d, sa0d, sa1d) for
+##                                                                     hw_id, descr, ia0d, ia1d, sa0d, sa1d in [("cpu"   , "CPU"         , "Speed in MHz"       , ""              , "Model Type" , ""),
+##                                                                                                              ("mem"   , "Memory"      , "Phyiskal Memory"    , "Virtual Memory", ""           , ""),
+##                                                                                                              ("disks" , "Harddisks"   , "Number of harddisks", "total Size"    , ""           , ""),
+##                                                                                                              ("cdroms", "CDRoms"      , "Number of CD-Roms"  , ""              , ""           , ""),
+##                                                                                                              ("gfx"   , "Graphicscard", ""                   , ""              , "Type of Gfx", "")]])))
+##    # SNMP classes
+##    req.dc.execute("INSERT INTO snmp_class SET name='default_class', snmp_version=2, descr='Standard Class for SNMP-devices (v2c)'")
+##    req.dc.execute("INSERT INTO snmp_class SET name='default_class', snmp_version=1, descr='Standard Class for SNMP-devices (v1)'")
+##    # device classes
+##    req.dc.execute("INSERT INTO device_class SET classname='normal'")
+##    # device location
+##    req.dc.execute("INSERT INTO device_location SET location='room00'")
     # user log source
-    req.dc.execute("INSERT INTO log_source SET identifier='user', name='Cluster user', description='Clusteruser'")
+##    req.dc.execute("INSERT INTO log_source SET identifier='user', name='Cluster user', description='Clusteruser'")
     # target states
-    req.dc.execute("INSERT INTO status VALUES%s" % (",".join(["(0, '%s', %d, null)" % (stat, p_link) for stat, p_link in [("memtest"           , 0),
-                                                                                                                          ("boot_local"        , 0),
-                                                                                                                          ("boot_clean"        , 1),
-                                                                                                                          ("installation_clean", 1),
-                                                                                                                          ("boot"              , 1),
-                                                                                                                          ("installation"      , 1)]])))
+##    req.dc.execute("INSERT INTO status VALUES%s" % (",".join(["(0, '%s', %d, null)" % (stat, p_link) for stat, p_link in [("memtest"           , 0),
+##                                                                                                                          ("boot_local"        , 0),
+##                                                                                                                          ("boot_clean"        , 1),
+##                                                                                                                          ("installation_clean", 1),
+##                                                                                                                          ("boot"              , 1),
+##                                                                                                                          ("installation"      , 1)]])))
     # generic stuff
-    req.dc.execute("INSERT INTO genstuff SET name='AUTO_RELOAD', description='default auto_reload time', value='60'")
+##    req.dc.execute("INSERT INTO genstuff SET name='AUTO_RELOAD', description='default auto_reload time', value='60'")
     
 def handle_direct_module_call(req, module_name):
     try:
@@ -592,9 +593,9 @@ def handle_normal_module_call(req, module_name):
         # set to one if we directly continue to the index-page
         pass_through = False
         if not req.session_data:
-            req.dc.execute("SELECT u.login FROM user u LIMIT 1")
-            if not req.dc.rowcount:
-                make_basic_entries(req, req.sys_args.get("username", "admin"), req.sys_args.get("password", "init4u"))
+            #req.dc.execute("SELECT u.login FROM user u LIMIT 1")
+            #if not req.dc.rowcount:
+            #    make_basic_entries(req, req.sys_args.get("username", "admin"), req.sys_args.get("password", "init4u"))
             # check for given username and password
             if not req.sys_args.get("username", "") or not req.sys_args.get("password", ""):
                 if req.sys_args.has_key("username") or req.sys_args.has_key("password"):
