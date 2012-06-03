@@ -22,7 +22,6 @@ DATABASES = {
         'PORT'     : '',
     }
 }
-
 # read from /etc/sysconfig/cluster/mysql.cf
 
 sql_dict = dict([(key[6:], value) for key, value in [
@@ -100,6 +99,11 @@ STATICFILES_FINDERS = (
 SECRET_KEY = 'av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic'
 
 # List of callables that know how to import templates from various sources.
+TEMPLATE_CONTEXT_PROCESSORS = (
+    "django.contrib.messages.context_processors.messages",
+    "django.contrib.auth.context_processors.auth",
+)
+
 TEMPLATE_LOADERS = (
     'django.template.loaders.filesystem.Loader',
     'django.template.loaders.app_directories.Loader',

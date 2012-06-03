@@ -53,22 +53,6 @@ class architecture(models.Model):
     class Meta:
         db_table = u'architecture'
 
-class capability(models.Model):
-    idx = models.IntegerField(db_column="capability_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=45)
-    mother_capability = models.IntegerField(null=True, blank=True)
-    mother_capability_name = models.CharField(max_length=45, blank=True, null=True)
-    priority = models.IntegerField(null=True, blank=True)
-    defvalue = models.IntegerField(null=True, blank=True)
-    enabled = models.IntegerField(null=True, blank=True)
-    description = models.CharField(max_length=765, blank=True)
-    modulename = models.CharField(max_length=384, blank=True, null=True)
-    left_string = models.CharField(max_length=192, blank=True)
-    right_string = models.CharField(max_length=384, blank=True)
-    date = models.DateTimeField()
-    class Meta:
-        db_table = u'capability'
-
 class ccl_dgroup_con(models.Model):
     idx = models.IntegerField(db_column="ccl_dgroup_con_idx", primary_key=True)
     ccl_event = models.ForeignKey("ccl_event")
@@ -445,32 +429,6 @@ class genstuff(models.Model):
     date = models.DateTimeField()
     class Meta:
         db_table = u'genstuff'
-
-class group(models.Model):
-    idx = models.IntegerField(db_column="ggroup_idx", primary_key=True)
-    active = models.IntegerField(null=True, blank=True)
-    ggroupname = models.CharField(unique=True, max_length=48)
-    gid = models.IntegerField(unique=True)
-    homestart = models.TextField(blank=True)
-    scratchstart = models.TextField(blank=True)
-    respvname = models.CharField(max_length=765, blank=True)
-    respnname = models.CharField(max_length=765, blank=True)
-    resptitan = models.CharField(max_length=765, blank=True)
-    respemail = models.CharField(max_length=765, blank=True)
-    resptel = models.CharField(max_length=765, blank=True)
-    respcom = models.CharField(max_length=765, blank=True)
-    groupcom = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField()
-    class Meta:
-        db_table = u'ggroup'
-
-class group_cap(models.Model):
-    idx = models.IntegerField(db_column="ggroupcap_idx", primary_key=True)
-    ggroup = models.ForeignKey("group")
-    capability = models.ForeignKey("capability")
-    date = models.DateTimeField()
-    class Meta:
-        db_table = u'ggroupcap'
 
 class hopcount(models.Model):
     idx = models.IntegerField(db_column="hopcount_idx", primary_key=True)
@@ -1405,13 +1363,28 @@ class sys_partition(models.Model):
     class Meta:
         db_table = u'sys_partition'
 
+class capability(models.Model):
+    idx = models.IntegerField(db_column="capability_idx", primary_key=True)
+    name = models.CharField(unique=True, max_length=45)
+    mother_capability = models.IntegerField(null=True, blank=True)
+    mother_capability_name = models.CharField(max_length=45, blank=True, null=True)
+    priority = models.IntegerField(null=True, blank=True)
+    defvalue = models.IntegerField(null=True, blank=True)
+    enabled = models.IntegerField(null=True, blank=True)
+    description = models.CharField(max_length=765, blank=True)
+    modulename = models.CharField(max_length=384, blank=True, null=True)
+    left_string = models.CharField(max_length=192, blank=True)
+    right_string = models.CharField(max_length=384, blank=True)
+    date = models.DateTimeField()
+    class Meta:
+        db_table = u'capability'
 
 class user(models.Model):
     idx = models.IntegerField(db_column="user_idx", primary_key=True)
-    active = models.IntegerField(null=True, blank=True)
+    active = models.BooleanField()
     login = models.CharField(unique=True, max_length=255)
     uid = models.IntegerField(unique=True)
-    ggroup = models.ForeignKey("group")
+    group = models.ForeignKey("group", db_column="ggroup_id")
     aliases = models.TextField(blank=True, null=True)
     export = models.ForeignKey("new_config", null=True, related_name="export")
     export_scr = models.ForeignKey("new_config", null=True, related_name="export_scr")
@@ -1432,6 +1405,85 @@ class user(models.Model):
     date = models.DateTimeField()
     class Meta:
         db_table = u'user'
+        permissions = {
+            ("wf_apc", "APC control"),
+            ("wf_bc", "Boot control"),
+            ("wf_cc", "Cluster configuration"),
+            ("wf_ccl", "Cluster location config"),
+            ("wf_ccn", "Cluster network"),
+            ("wf_ncd", "Generate new devices"),
+            ("wf_conf", "Configuration"),
+            ("wf_sc", "Clusterinfo"),
+            ("wf_clo", "Clusterlog"),
+            ("wf_info", "Information"),
+            ("wf_uhw", "Update hardware info"),
+            ("wf_hwi", "Hardware info"),
+            ("wf_ic", "Image control"),
+            ("wf_rms", "Resource managment system"),
+            ("wf_jsko", "Kill jobs from other users"),
+            ("wf_sacl", "Show all cells"),
+            ("wf_jsoi", "Show stdout / stderr and filewatch-info for all users"),
+            ("wf_jsyi", "Jobsystem information (SGE)"),
+            ("wf_kc", "Kernel control"),
+            ("wf_mu", "Modify Users"),
+            ("wf_bu", "Browse Users"),
+            ("wf_mg", "Modify Groups"),
+            ("wf_bg", "Browse Groups"),
+            ("wf_user", "User configuration"),
+            ("wf_sql", "Display SQL statistics"),
+            ("wf_prf", "Profile webfrontend"),
+            ("wf_li", "User config"),
+            ("wf_mp", "Modify personal userdata (pwd)"),
+            ("wf_mpsh", "Show hidden user vars"),
+            ("wf_na", "Monitoring daemon"),
+            ("wf_nap", "Nagios Problems"),
+            ("wf_nai", "Nagios Misc"),
+            ("wf_nbs", "Netbotz show"),
+            ("wf_pi", "Package install"),
+            ("wf_pu", "Partition configuration"),
+            ("wf_jsqm", "Queue information (SGE)"),
+            ("wf_ch", "Cluster history"),
+            ("wf_ri", "Rsync install"),
+            ("wf_csc", "Server configuration"),
+            ("wf_si", "Session info"),
+            ("wf_xeng", "Xen"),
+            ("wf_xeni", "Xen Information"),
+        }
+    def __unicode__(self):
+        return u"%s (%d; %s, %s)" % (
+            self.login,
+            self.pk,
+            self.uservname or "novname",
+            self.usernname or "nonname")
+
+class group(models.Model):
+    idx = models.IntegerField(db_column="ggroup_idx", primary_key=True)
+    active = models.BooleanField()
+    groupname = models.CharField(db_column="ggroupname", unique=True, max_length=48)
+    gid = models.IntegerField(unique=True)
+    homestart = models.TextField(blank=True)
+    scratchstart = models.TextField(blank=True)
+    respvname = models.CharField(max_length=765, blank=True)
+    respnname = models.CharField(max_length=765, blank=True)
+    resptitan = models.CharField(max_length=765, blank=True)
+    respemail = models.CharField(max_length=765, blank=True)
+    resptel = models.CharField(max_length=765, blank=True)
+    respcom = models.CharField(max_length=765, blank=True)
+    groupcom = models.CharField(max_length=765, blank=True)
+    date = models.DateTimeField()
+    class Meta:
+        db_table = u'ggroup'
+    def __unicode__(self):
+        return "%s (%d)" % (self.groupname,
+                            self.pk)
+
+class group_cap(models.Model):
+    idx = models.IntegerField(db_column="ggroupcap_idx", primary_key=True)
+    ggroup = models.ForeignKey("group")
+    capability = models.ForeignKey("capability")
+    date = models.DateTimeField()
+    class Meta:
+        db_table = u'ggroupcap'
 
 class user_device_login(models.Model):
     idx = models.IntegerField(db_column="user_device_login_idx", primary_key=True)
@@ -1441,9 +1493,9 @@ class user_device_login(models.Model):
     class Meta:
         db_table = u'user_device_login'
 
-class user_ggroup(models.Model):
+class user_group(models.Model):
     idx = models.IntegerField(db_column="user_ggroup_idx", primary_key=True)
-    ggroup = models.ForeignKey("group")
+    group = models.ForeignKey("group", db_column="ggroup_id")
     user = models.ForeignKey("user")
     date = models.DateTimeField()
     class Meta:
@@ -1462,7 +1514,7 @@ class user_var(models.Model):
     class Meta:
         db_table = u'user_var'
 
-class usercap(models.Model):
+class user_cap(models.Model):
     idx = models.IntegerField(db_column="usercap_idx", primary_key=True)
     user = models.ForeignKey("user")
     capability = models.ForeignKey("capability")
