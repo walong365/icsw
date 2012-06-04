@@ -23,6 +23,7 @@
 import sys
 import os
 import os.path
+import datetime
 if sys.platform in ["linux2", "linux3"]:
     import pwd
     import grp
@@ -1346,7 +1347,7 @@ def is_server(dc, server_type, long_mode=False, report_real_idx=False, short_hos
         return num_servers, server_idx
 
 def create_log_source_entry(dc, dev_idx, server_type, descr, ext_descr=""):
-    dc.execute("SELECT * FROM log_source WHERE identifier=%s AND device=%s", (server_type, dev_idx))
+    dc.execute("SELECT * FROM log_source WHERE identifier=%s AND device_id=%s", (server_type, dev_idx))
     sources = dc.fetchall()
     if len(sources) > 1:
         print "Too many log_sources with my id present, exiting..."
@@ -1354,14 +1355,20 @@ def create_log_source_entry(dc, dev_idx, server_type, descr, ext_descr=""):
     elif len(sources) == 0:
         if dev_idx:
             short_host_name = socket.getfqdn(socket.gethostname()).split(".")[0]
-            sql_str, sql_tuple = ("INSERT INTO log_source VALUES(0, %s, %s, %s, %s, null)", (server_type,
-                                                                                             descr,
-                                                                                             dev_idx,
-                                                                                             "%s on %s" % (descr, short_host_name)))
+            sql_str, sql_tuple = ("INSERT INTO log_source VALUES(0, %s, %s, %s, %s, %s)", (
+                server_type,
+                descr,
+                dev_idx,
+                "%s on %s" % (descr, short_host_name),
+                datetime.datetime.now()
+            ))
         else:
-            sql_str, sql_tuple = ("INSERT INTO log_source VALUES(0, %s, %s, 0, %s, null)", (server_type,
-                                                                                            descr,
-                                                                                            ext_descr))
+            sql_str, sql_tuple = ("INSERT INTO log_source VALUES(0, %s, %s, 0, %s, null)", (
+                server_type,
+                descr,
+                ext_descr,
+                datetime.datetime.now()))
+        print sql_str.replace("%s", "'%s'") % sql_tuple
         dc.execute(sql_str, sql_tuple)
         log_source_idx = dc.insert_id()
     else:

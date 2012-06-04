@@ -783,7 +783,7 @@ class device_variable(object):
         self.__dev_idx = dev_idx
         self.__var_name = var_name
         self.__var_type, self.__description = (None, "not set")
-        dc.execute("SELECT * FROM device_variable WHERE device=%s AND name=%s", (dev_idx, var_name))
+        dc.execute("SELECT * FROM device_variable WHERE device_id=%s AND name=%s", (dev_idx, var_name))
         if dc.rowcount:
             act_dv = dc.fetchone()
             self.__var_idx = act_dv["device_variable_idx"]
@@ -806,7 +806,7 @@ class device_variable(object):
                         self.__var_type,
                         self.__var_idx))
         else:
-            dc.execute("INSERT INTO device_variable SET val_%s=%%s, description=%%s, var_type=%%s, name=%%s, device=%%s" % (self.__var_type_name),
+            dc.execute("INSERT INTO device_variable SET val_%s=%%s, description=%%s, var_type=%%s, name=%%s, device_id=%%s" % (self.__var_type_name),
                        (self.__var_value,
                         self.__description,
                         self.__var_type,
