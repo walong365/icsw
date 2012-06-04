@@ -19,7 +19,6 @@
 #
 """ cluster-server """
 
-from __future__ import with_statement
 import os
 import os.path
 import sys
@@ -46,6 +45,10 @@ import config_tools
 import zmq
 import cluster_server
 from host_monitoring import hm_classes
+from twisted.internet import reactor
+from twisted.python import log
+from twisted.web import server, resource, wsgi
+from django.core.handlers.wsgi import WSGIHandler
 
 try:
     from cluster_server_version import VERSION_STRING
@@ -241,7 +244,36 @@ def process_request(glob_config, loc_config, logger, db_con, server_com, src_hos
     logger.info(type(ret_str) == type("") and ret_str or "%d: %s" % (ret_str.get_state(), ret_str.get_result()))
     return ret_str, commands_queued
 
-
+class http_wsgi(resource.Resource):
+    def __init__(self, wsgi_resource):
+        resource.Resource.__init__(self)
+        self.wsgi_resource = wsgi_resource
+    def getChild(self, path, request):
+        path0 = request.prepath.pop(0)
+        request.postpath.insert(0, path0)
+        print request
+        return self.wsgi_resource
+    
+class twisted_webserver(threading_tools.process_obj):
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        my_observer = logging_tools.twisted_log_observer(global_config["LOG_NAME"],
+                                                         global_config["LOG_DESTINATION"],
+                                                         zmq=True,
+                                                         context=self.zmq_context)
+        log.startLoggingWithObserver(my_observer, setStdout=False)
+        os.environ["DJANGO_SETTINGS_MODULE"] = "init.cluster.settings"
+        self.twisted_observer = my_observer
+        wsgi_resource = wsgi.WSGIResource(reactor, reactor.getThreadPool(), WSGIHandler())
+        resource = http_wsgi(wsgi_resource)
+        my_site = server.Site(resource)
+        reactor.listenTCP(8099, my_site)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def loop_post(self):
+        self.twisted_observer.close()
+        self.__log_template.close()
+    
 class bg_stuff(object):
     class Meta:
         min_time_between_runs = 30
@@ -1015,7 +1047,7 @@ class server_process(threading_tools.process_pool):
     def __init__(self, db_con):
         self.__log_cache, self.__log_template = ([], None)
         self.__db_con = db_con
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__run_command = True if global_config["COMMAND"].strip() else False
         if self.__run_command:
             # rewrite LOG_NAME and PID_NAME
@@ -1028,6 +1060,7 @@ class server_process(threading_tools.process_pool):
                 global_config["COMMAND"])
         self.__pid_name = global_config["PID_NAME"]
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.add_process(twisted_webserver("twisted", icmp=False), twisted=True, start=True)
         self.__msi_block = self._init_msi_block()
         self._re_insert_config()
         self.register_exception("int_error", self._int_error)
@@ -1142,9 +1175,11 @@ class server_process(threading_tools.process_pool):
         if self.com_socket:
             self.log("closing socket")
             self.com_socket.close()
+        self.vector_socket.close()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+        self.__log_template.close()
     def _init_network_sockets(self):
         self.__connection_dict = {}
         self.__discovery_dict = {}
@@ -1446,6 +1481,7 @@ def main():
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("FORCE"               , configfile.bool_c_var(False, help_string="kill running instances [%(default)s]", only_commandline=True)),
@@ -1470,11 +1506,16 @@ def main():
         sys.stderr.write(" Cannot connect to SQL-Server ")
         sys.exit(1)
     sql_info = config_tools.server_check(dc=dc, server_type="server")
-    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.server_device_idx, database=False))])
     ret_state = 256
+    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.server_device_idx, database=False))])
     if not global_config["SERVER_IDX"] and not global_config["FORCE"]:
         sys.stderr.write(" %s is no cluster-server, exiting..." % (long_host_name))
         sys.exit(5)
+    if not sql_info.server_device_idx and global_config["FORCE"]:
+        # set SERVER_IDX according to short hhostname
+        dc.execute("SELECT d.device_idx FROM device d WHERE d.name=%s", (mach_name))
+        if dc.rowcount:
+            global_config["SERVER_IDX"] = dc.fetchone()["device_idx"]
     if sql_info.num_servers > 1:
         print "Database error for host %s (nagios_config): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
         dc.release()
