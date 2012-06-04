@@ -39,7 +39,7 @@ else
     echo "create initial south information"
     
     ${C_DIR}/manage.py schemamigration backbone --initial
-    ${C_DIR}/manage.py migrate backbone 
+    ${C_DIR}/manage.py migrate backbone --no-initial-data
     
     echo "reinsert data"
     
