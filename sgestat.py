@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -31,9 +31,11 @@ import datetime
 import sge_tools
 import pprint
 # from NH
-import signal
-import tty, sys, termios
 import urwid
+try:
+    import mysql_tools
+except ImportError:
+    mysql_tools = None
 
 SQL_ACCESS = "cluster_full_access"
 
@@ -307,7 +309,6 @@ def scs(s_info, opt_dict):
     print out_list
 
 def sls(s_info, opt_dict):
-    import mysql_tools
     end_date = datetime.datetime.now()
     start_date = end_date - datetime.timedelta(0, 0, 0, 0, 0, abs(opt_dict.hours))
     db_con = mysql_tools.dbcon_container()
@@ -362,7 +363,6 @@ def sls(s_info, opt_dict):
                                                    end_date.ctime())
 
 def sla(opt_dict, add_args):
-    import mysql_tools
     db_con = mysql_tools.dbcon_container()
     dc = db_con.get_connection(SQL_ACCESS)
     host_record = None
@@ -406,11 +406,17 @@ def sla(opt_dict, add_args):
     
 class window(object):
     def __init__(self, **kwargs):
+        self.start_time = time.time()
         self.callback = kwargs.get("callback", None)
+        self.tree = kwargs.get("tree", None)
         self.cb_args = kwargs.get("args", [])
         self.top_text = urwid.Text(("banner", "Init cluster"), align="left")
         self.main_text = urwid.Text("Wait please...", align="left")
-        self.bottom_text = urwid.Text(["q/Q - exit ", ("bg", "")])
+        self.bottom_text = urwid.Text("", align="left")
+        if self.tree:
+            self.set_question_text(self.tree.get_cur_text())
+        else:
+            self.set_question_text("q/Q - exit")
         palette = [
             ('banner', 'black', 'light gray', 'standout,underline'),
             ('streak', 'black', 'dark red', 'standout'),
@@ -430,78 +436,93 @@ class window(object):
                         "streak")]),
                 "top"),
             "banner")
-        def exit_on_q(input):
-            if input in ('q', 'Q'):
-                raise urwid.ExitMainLoop()
         self.mainloop = urwid.MainLoop(urwid_map, palette, unhandled_input=self._handler_data)
-        self.mainloop.set_alarm_in(1, self._alarm_callback)
+        self._update_screen()
+        self.mainloop.set_alarm_in(10, self._alarm_callback)
     def loop(self):
         self.mainloop.run()
     def _alarm_callback(self, main_loop, user_data):
-        self._handler_data("X")
+        self._update_screen()
         self.mainloop.set_alarm_in(10, self._alarm_callback)
-    def _handler_alarm(self, signum, frame):
-        for handler in [self._handler_data]:
-            handler()
-    def _handler_data(self, input):
-        if input in ('q', 'Q'):
-            raise urwid.ExitMainLoop()
+    # can be called from dt_tree
+    def close(self):
+        raise urwid.ExitMainLoop()
+    def back_to_top(self):
+        self.tree.back_to_top()
+        self.set_question_text(self.tree.get_cur_text())
+    def _handler_data(self, in_char):
+        if self.tree:
+            handled = self.tree.handle_input(in_char, self)
         else:
-            self.top_text.set_text(("streak", "time: %s" % (time.ctime())))
-            self.main_text.set_text(("banner", str(self.get_data())))
+            if in_char.lower() == "q":
+                self.close()
+            else:
+                handled = False
+        if not handled:
+            self._update_screen()
+    def _update_screen(self):
+        self.top_text.set_text(("streak", "time: %s" % (time.ctime())))
+        self.main_text.set_text(("banner", str(self.get_data())))
+    def set_question_text(self, in_text):
+        self.bottom_text.set_text(("bg", in_text))
     def get_data(self):
         if self.callback:
             return unicode(self.callback(*self.cb_args))
         else:
-            return "nix"
-    def handle_graph(self, head_node):
-        cur_node = head_node
-        self.run_flag = True
-        while self.run_flag:
-            cur_triggers = cur_node.get_triggers()
-            print self.terminal.green + ("\n%s (%s)" % (cur_node.question, ", ".join(cur_triggers)))
-            while self.run_flag:
-                cur_c = raw_input()
-                if cur_c and cur_c not in ['\n',' ']:
-                    if (cur_c) in cur_triggers:
-                        next_node = cur_node.follow_edge(cur_c)
-                        if next_node.action is None:
-                            cur_node = next_node
-                            break
-                        elif type(next_node.action) in [unicode, str]:
-                            print self.terminal.green + (next_node.action)
-                            if next_node.question is None:
-                                self.handle_graph(self._parent_node(cur_node))
-                        else:
-                            target_node = next_node.action(next_node)
-                            if target_node is not None:
-                                cur_node = target_node
-                                break
-                    else:
-                        print self.terminal.green + "invalid keypress"
-        print self.terminal.normal
-    def _escape(self, cur_node):
-        self.run_flag = False
-    def _grandparent_node(self, cur_node):
-        return cur_node.prev_node.prev_node
-    def _parent_node(self, cur_node):
-        return cur_node.prev_node
-    def run(self):
-        print self.terminal.orange + "Current mode: typing mode\n"
-        head_node = dt_node("press p to print and escape to exit")
-        head_node.add_edge(dt_edge("p", dt_node("Are you sure", edges=[dt_edge("y", dt_node(None, action="print")),
-                                                                       dt_edge("n", dt_node(None, action=self._grandparent_node))])))
-        head_node.add_edge(dt_edge("e", dt_node(None, action=self._escape)))
-        self.handle_graph(head_node)
-    def getch(self):
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(sys.stdin.fileno())
-            ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
+            return "no data"
+##    def handle_graph(self, head_node):
+##        cur_node = head_node
+##        self.run_flag = True
+##        while self.run_flag:
+##            cur_triggers = cur_node.get_triggers()
+##            print self.terminal.green + ("\n%s (%s)" % (cur_node.question, ", ".join(cur_triggers)))
+##            while self.run_flag:
+##                cur_c = raw_input()
+##                if cur_c and cur_c not in ['\n',' ']:
+##                    if (cur_c) in cur_triggers:
+##                        next_node = cur_node.follow_edge(cur_c)
+##                        if next_node.action is None:
+##                            cur_node = next_node
+##                            break
+##                        elif type(next_node.action) in [unicode, str]:
+##                            print self.terminal.green + (next_node.action)
+##                            if next_node.question is None:
+##                                self.handle_graph(self._parent_node(cur_node))
+##                        else:
+##                            target_node = next_node.action(next_node)
+##                            if target_node is not None:
+##                                cur_node = target_node
+##                                break
+##                    else:
+##                        print self.terminal.green + "invalid keypress"
+##        print self.terminal.normal
+        
+class dt_tree(object):
+    def __init__(self, head_node):
+        self.head_node = head_node
+        self.head_node.set_tree(self)
+        self.cur_node = self.head_node
+    def back_to_top(self):
+        self.cur_node = self.head_node
+    def get_cur_text(self):
+        return "%s (%s)" % (
+            self.cur_node.question,
+            "/".join(sorted(self.cur_node.get_triggers())))
+    def handle_input(self, in_char, w_obj):
+        cur_node = self.cur_node
+        cur_triggers = cur_node.get_triggers()
+        if in_char.lower() in cur_triggers:
+            handled = True
+            next_node = cur_node.follow_edge(in_char.lower())
+            if next_node.action:
+                getattr(w_obj, next_node.action)()
+            else:
+                self.cur_node = next_node
+                w_obj.set_question_text(self.get_cur_text())
+        else:
+            handled = False
+        return handled
+        
 class dt_node(object):
     def __init__(self, question, action=None, edges=[]):
         self.question = question
@@ -513,17 +534,22 @@ class dt_node(object):
     def add_edge(self, edge):
         edge.target.prev_node = self
         self.edges.append(edge)
-        self.__edge_dict[edge.trigger] = edge
+        self.__edge_dict[edge.trigger.lower()] = edge
+    def set_tree(self, tree):
+        self.tree = tree
+        for edge in self.edges:
+            edge.target.set_tree(tree)
     def get_triggers(self):
-        return [edge.trigger for edge in self.edges]
+        return [edge.trigger.lower() for edge in self.edges]
     def follow_edge(self, trigger):
-        sub_edge = self.__edge_dict[trigger]
+        sub_edge = self.__edge_dict[trigger.lower()]
         return sub_edge.target
 
 class dt_edge(object):
     def __init__(self, trigger, target=None):
         self.trigger = trigger
         self.target = target
+
 class my_opt_parser(optparse.OptionParser):
     def __init__(self, run_mode):
         optparse.OptionParser.__init__(self)
@@ -624,12 +650,40 @@ def main():
                                     server=get_server())
     if run_mode == "sjs":
         if options.interactive:
-            window(callback=sjs, args=(act_si, options)).loop()
+            window(callback=sjs,
+                   args=(act_si, options),
+                   tree=dt_tree(
+                       dt_node(
+                           "press p to print and q to exit",
+                           edges=[
+                               dt_edge(
+                                   "p",
+                                   dt_node(
+                                       "Are you sure",
+                                       edges=[
+                                           dt_edge("y", dt_node(None, action="print")),
+                                           dt_edge("n", dt_node(None, action="back_to_top"))])),
+                               dt_edge(
+                                   "q",
+                                   dt_node(
+                                       None,
+                                       action="close"))])
+                       )).loop()
         else:
             sjs(act_si, options)
     elif run_mode == "sns":
         if options.interactive:
-            window(callback=sns, args=(act_si, options)).loop()
+            window(callback=sns, args=(act_si, options),
+                   tree=dt_tree(
+                       dt_node(
+                           "press q to exit",
+                           edges=[
+                               dt_edge(
+                                   "q",
+                                   dt_node(
+                                       None,
+                                       action="close"))])
+                       )).loop()
         else:
             sns(act_si, options)
     elif run_mode == "scs":
@@ -641,7 +695,8 @@ def main():
     else:
         print "Unknown runmode %s" % (run_mode)
     e_time = time.time()
-    print "took %s" % (logging_tools.get_diff_time_str(e_time - s_time))
+    if not options.interactive:
+        print "took %s" % (logging_tools.get_diff_time_str(e_time - s_time))
     
 if __name__ == "__main__":
     main()
