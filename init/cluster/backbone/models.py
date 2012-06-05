@@ -1385,7 +1385,7 @@ class user(models.Model):
     active = models.BooleanField()
     login = models.CharField(unique=True, max_length=255)
     uid = models.IntegerField(unique=True)
-    group = models.ForeignKey("group", db_column="ggroup_id")
+    group = models.ForeignKey("group")
     aliases = models.TextField(blank=True, null=True)
     export = models.ForeignKey("new_config", null=True, related_name="export")
     export_scr = models.ForeignKey("new_config", null=True, related_name="export_scr")
@@ -1496,7 +1496,7 @@ class user_device_login(models.Model):
 
 class user_group(models.Model):
     idx = models.AutoField(db_column="user_ggroup_idx", primary_key=True)
-    group = models.ForeignKey("group", db_column="ggroup_id")
+    group = models.ForeignKey("group")
     user = models.ForeignKey("user")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:

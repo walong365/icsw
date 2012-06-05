@@ -17,6 +17,11 @@ def main():
             idx_name = line.strip().split()[0]
             if idx_name != "idx":
                 line = "    idx = models.IntegerField(db_column=\"%s\", primary_key=True)" % (idx_name)
+        elif line.count("ForeignKey") and line.count("db_column"):
+            parts = line.strip().split()
+            parts.pop(-1)
+            line = "    %s)" % (" ".join(parts)[:-1])
+            print line
         new_lines.append(line)
     if lines != new_lines:
         print "writing to m2.py"
