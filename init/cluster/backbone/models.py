@@ -1,6 +1,7 @@
 #!/usr/bin/python-init
 
 from django.db import models
+from django.contrib.auth.models import User, Group, Permission
 import datetime
 
 class apc_device(models.Model):
@@ -1161,7 +1162,7 @@ class session_data(models.Model):
     login_time = models.DateTimeField(null=True, blank=True)
     logout_time = models.DateTimeField(null=True, blank=True)
     forced_logout = models.BooleanField()
-    rebuild_server_routes = models.IntegerField(null=True, blank=True)
+    rebuild_server_routes = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'session_data'
@@ -1404,6 +1405,16 @@ class user(models.Model):
     nt_password = models.CharField(max_length=255, blank=True)
     lm_password = models.CharField(max_length=255, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def __init__(self, *args, **kwargs):
+        models.Model.__init__(self, *args, **kwargs)
+        self.user_vars = {}
+        self.django_user = User.objects.get(username=self.login)
+    def add_user_var(self, u_var):
+        self.user_vars[u_var.pk] = u_var
+    def save_modified_user_vars(self):
+        print "save_modified_user_vars"
+    def capability_ok(self, cap_name):
+        return self.django_user.has_perm("wf_%s" % (cap_name))
     class Meta:
         db_table = u'user'
         permissions = {
