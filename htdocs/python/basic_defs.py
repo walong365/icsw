@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: iso-8859-1 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2009 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2009,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -29,4 +29,4 @@ if cluster_conf_dir not in sys.path:
     sys.path.append(cluster_conf_dir)
 
 from webfrontend import SHOW_INDEX_PRI, SESSION_ID_NAME, DEBUG, DEVELOPMENT, \
-     SESSION_TIMEOUT, USE_SHM_SESSIONS, IMMEDIATE_APC_OPERATIONS_ALLOWED, PHP_COMPAT
+     SESSION_TIMEOUT, IMMEDIATE_APC_OPERATIONS_ALLOWED

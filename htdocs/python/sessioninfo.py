@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: iso-8859-1 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -26,6 +26,8 @@ import logging_tools
 import html_tools
 import cPickle
 import session_handler
+from init.cluster.backbone.models import session_data, user
+from django.db.models import Q
     
 def module_info():
     return {"si" : {"description"           : "Session info",
@@ -36,129 +38,102 @@ def module_info():
                     "priority"              : -120,
                     "capability_group_name" : "user"}}
 
-class session(object):
-    def __init__(self, in_dict):
-        self.__session_idx = in_dict["session_data_idx"]
-        self.__login, self.__logout = (in_dict["login_time"],
-                                       in_dict["logout_time"])
-        self.__remote = in_dict["remote_addr"]
-        self.__id = in_dict["session_id"]
-        self.__shm_id = session_handler.generate_shm_id(self.__id)
-        if in_dict["forced_logout"]:
-            self.__forced = True
-        else:
-            self.__forced = False
-        self.set_user()
-        self.set_type()
-        self.__value, self.__shm_value = (None, None)
-    def set_value(self, val=None):
-        self.__value = val
-    def set_shm_value(self, val=None):
-        self.__shm_value = val
-    def get_value_source(self):
-        return self.__shm_value and "shm" or "db"
-    def get_value(self):
-        if self.__shm_value:
-            return self.__shm_value
-        else:
-            return self.__value
-    def get_page_views(self):
-        if self.get_value():
-            return self.get_value().get("page_views", 0)
-        else:
-            return 0
-    def set_type(self, with_php=0):
-        self.__with_php = with_php
-    def get_type(self):
-        if self.__with_php:
-            return "compat"
-        else:
-            return "pure"
-    def was_forced(self):
-        return self.__forced
-    def set_user(self, uname="unknown", alias=""):
-        self.__user = uname
-        self.__alias = alias
-    def get_user(self):
-        if self.__alias:
-            return "%s (alias %s)" % (self.__user, self.__alias)
-        else:
-            return self.__user
-    def __strftime(self, dt):
-        today = dt.today()
-        if today.year == dt.year and today.month == dt.month and today.day == dt.day:
-            return dt.strftime("today, %H:%M:%S")
-        else:
-            return dt.strftime("%d. %b. %Y, %H:%M:%S")
-    def get_login_tuple(self):
-        return (self.__login.year, self.__login.month, self.__login.day)
-    def get_login_date(self):
-        return self.__login.strftime("%d. %b. %Y")
-    def get_login_time(self):
-        return self.__login.strftime("%H:%M:%S")
-    def get_logout_time(self):
-        if self.__logout:
-            return self.__strftime(self.__logout)
-        else:
-            return "still active"
-    def get_session_length(self):
-        if self.__logout:
-            delta = self.__logout - self.__login
-            return str(delta)
-        else:
-            return "still active"
-    def get_remote_addr(self):
-        return self.__remote
-    def get_id(self):
-        return self.__id
-    def get_shm_id(self):
-        return self.__shm_id
+##class session(object):
+##    def __init__(self, in_dict):
+##        self.__session_idx = in_dict["session_data_idx"]
+##        self.__login, self.__logout = (in_dict["login_time"],
+##                                       in_dict["logout_time"])
+##        self.__remote = in_dict["remote_addr"]
+##        self.__id = in_dict["session_id"]
+##        self.__shm_id = session_handler.generate_shm_id(self.__id)
+##        if in_dict["forced_logout"]:
+##            self.__forced = True
+##        else:
+##            self.__forced = False
+##        self.set_user()
+##        self.set_type()
+##        self.__value, self.__shm_value = (None, None)
+##    def set_value(self, val=None):
+##        self.__value = val
+##    def set_shm_value(self, val=None):
+##        self.__shm_value = val
+##    def get_value_source(self):
+##        return self.__shm_value and "shm" or "db"
+##    def get_value(self):
+##        if self.__shm_value:
+##            return self.__shm_value
+##        else:
+##            return self.__value
+##    def get_page_views(self):
+##        if self.get_value():
+##            return self.get_value().get("page_views", 0)
+##        else:
+##            return 0
+##    def set_type(self, with_php=0):
+##        self.__with_php = with_php
+##    def get_type(self):
+##        if self.__with_php:
+##            return "compat"
+##        else:
+##            return "pure"
+##    def was_forced(self):
+##        return self.__forced
+##    def set_user(self, uname="unknown", alias=""):
+##        self.__user = uname
+##        self.__alias = alias
+##    def get_user(self):
+##        if self.__alias:
+##            return "%s (alias %s)" % (self.__user, self.__alias)
+##        else:
+##            return self.__user
+##    def __strftime(self, dt):
+##        today = dt.today()
+##        if today.year == dt.year and today.month == dt.month and today.day == dt.day:
+##            return dt.strftime("today, %H:%M:%S")
+##        else:
+##            return dt.strftime("%d. %b. %Y, %H:%M:%S")
+##    def get_login_tuple(self):
+##        return (self.__login.year, self.__login.month, self.__login.day)
+##    def get_login_date(self):
+##        return self.__login.strftime("%d. %b. %Y")
+##    def get_login_time(self):
+##        return self.__login.strftime("%H:%M:%S")
+##    def get_logout_time(self):
+##        if self.__logout:
+##            return self.__strftime(self.__logout)
+##        else:
+##            return "still active"
+##    def get_session_length(self):
+##        if self.__logout:
+##            delta = self.__logout - self.__login
+##            return str(delta)
+##        else:
+##            return "still active"
+##    def get_remote_addr(self):
+##        return self.__remote
+##    def get_id(self):
+##        return self.__id
+##    def get_shm_id(self):
+##        return self.__shm_id
     
 def fetch_session_tree(req, mode):
     # fetch user info
-    req.dc.execute("SELECT l.user_idx, l.login FROM user l")
-    user_dict = {0 : 0}
-    for db_rec in req.dc.fetchall():
-        user_dict[db_rec["user_idx"]] = {"name"  : db_rec["login"],
-                                         "count" : 0}
+    user_dict = dict([(cur_user.pk, cur_user) for cur_user in user.objects.all()])
+    for cur_user in user_dict.itervalues():
+        cur_user.count = 0
     if mode == 1:
         # only active
-        req.dc.execute("SELECT * FROM session_data WHERE NOT logout_time ORDER BY login_time")
+        all_sessions = session_data.objects.filter(Q(logout_time=None)).order_by("login_time")
     else:
         # all
-        req.dc.execute("SELECT * FROM session_data ORDER BY login_time")
-    php_ones, sess_list, shm_dict = ([], [], {})
-    for db_rec in req.dc.fetchall():
-        act_session = session(db_rec)
-        try:
-            s_value = cPickle.loads(db_rec["value"])
-        except:
-            php_ones.append(act_session.get_id())
-        else:
-            act_session.set_value(s_value)
-            if db_rec["user_idx"] and user_dict.has_key(db_rec["user_idx"]):
-                act_session.set_user(user_dict[db_rec["user_idx"]]["name"], db_rec["alias"])
-                user_dict[db_rec["user_idx"]]["count"] += 1
-            else:
-                user_dict[0] += 1
-            sess_list.append(act_session)
-            shm_dict[act_session.get_shm_id()] = act_session
-    for s_entry in sess_list:
-        av = s_entry.get_value()
-        if av.get("php_session_id", 0) in php_ones:
-            s_entry.set_type(1)
+        all_sessions = session_data.objects.all().order_by("login_time")
+    for act_session in all_sessions:
+        act_session.value = cPickle.loads(str(act_session.value))
+        if act_session.user_id and act_session.user_id in user_dict:
+            act_session.user = user_dict[act_session.user_id]
+            user_dict[act_session.user_id].count += 1
     # fetch shm-session info
-    act_shm_dict = session_handler.get_act_shm_dict()
-    for key, value in act_shm_dict.iteritems():
-        if key in shm_dict.keys():
-            try:
-                shm_db_dict = value.get_dict()
-            except:
-                #print "***"
-                pass
-            else:
-                shm_dict[key].set_shm_value(shm_db_dict)
-    return sess_list, user_dict
+    return all_sessions, user_dict
 
 def process_page(req):
     if req.conf["genstuff"].has_key("AUTO_RELOAD"):
@@ -181,7 +156,7 @@ def process_page(req):
         # build time_dict
         time_dict = {}
         for s_entry in session_tree:
-            act_login = s_entry.get_login_tuple()
+            act_login = (s_entry.login_time.year, s_entry.login_time.month, s_entry.login_time.day)
             time_dict.setdefault(act_login, []).append(s_entry)
         times = sorted(time_dict.keys())
         act_range, act_range_dict, act_range_idx = ([], {}, 0)
@@ -190,12 +165,12 @@ def process_page(req):
             act_range.extend(time_dict[t_entry])
             if len(act_range) > 10 or t_entry == times[-1]:
                 act_range_dict[act_range_idx] = act_range
-                if act_range[0].get_login_date() == act_range[-1].get_login_date():
-                    user_time_sel_dict[act_range_idx] = "%s, %s" % (act_range[0].get_login_date(),
+                if act_range[0].login_time.strftime("%d. %b. %Y") == act_range[-1].login_time.strftime("%d. %b. %Y"):
+                    user_time_sel_dict[act_range_idx] = "%s, %s" % (act_range[0].login_time.strftime("%d. %b. %Y"),
                                                                     logging_tools.get_plural("entry", len(act_range)))
                 else:
-                    user_time_sel_dict[act_range_idx] = "%s - %s, %s" % (act_range[0].get_login_date(),
-                                                                         act_range[-1].get_login_date(),
+                    user_time_sel_dict[act_range_idx] = "%s - %s, %s" % (act_range[0].login_time.strftime("%d. %b. %Y"),
+                                                                         act_range[-1].login_time.strftime("%d. %b. %Y"),
                                                                          logging_tools.get_plural("entry", len(act_range)))
                 act_range = []
                 act_range_idx += 1
@@ -265,26 +240,26 @@ def process_page(req):
                                                                          logging_tools.get_plural("session", len(user_dict[user]))), cls="center", type="th")
             for s_entry in act_session_dict:
                 if not user or s_entry.get_user() == user:
-                    act_login = s_entry.get_login_tuple()
+                    act_login = (s_entry.login_time.year, s_entry.login_time.month, s_entry.login_time.day)
                     if act_login != last_login:
                         last_login = act_login
                         s_table[0]["class"] = "line01"
-                        s_table[None][0:user and 9 or 10] = html_tools.content(s_entry.get_login_date(), cls="center", type="th")
+                        s_table[None][0:user and 9 or 10] = html_tools.content(s_entry.login_time.strftime("%d. %b. %Y"), cls="center", type="th")
                     line_idx = 1 - line_idx
                     s_table[0]["class"] = "line1%d" % (line_idx)
                     if not user:
-                        s_table[None][0] = html_tools.content(s_entry.get_user(), cls="left")
-                    is_my_session = s_entry.get_id() == req.session_data.get_session_id()
-                    s_table[None][0] = html_tools.content("%s%s" % (s_entry.get_id(),
+                        s_table[None][0] = html_tools.content(unicode(s_entry.user), cls="left")
+                    is_my_session = s_entry.session_id == req.session_data.get_session_id()
+                    s_table[None][0] = html_tools.content("%s%s" % (s_entry.session_id,
                                                                     is_my_session and " (*)" or ""), cls="centerfix")
-                    s_table[None][0] = html_tools.content(s_entry.get_value_source(), cls="center")
-                    s_table[None][0] = html_tools.content(s_entry.get_type(), cls="center")
-                    s_table[None][0] = html_tools.content(s_entry.get_remote_addr(), cls="center")
-                    s_table[None][0] = html_tools.content(s_entry.get_login_time(), cls="center")
-                    s_table[None][0] = html_tools.content(s_entry.get_logout_time(), cls="right")
-                    s_table[None][0] = html_tools.content(s_entry.get_session_length(), cls="right")
-                    s_table[None][0] = html_tools.content(s_entry.was_forced() and " (*)" or "", cls="center")
-                    s_table[None][0] = html_tools.content(s_entry.get_page_views() and "%d" % (s_entry.get_page_views()) or "---", cls="center")
+                    s_table[None][0] = html_tools.content("db", cls="center")
+                    s_table[None][0] = html_tools.content("pure", cls="center")
+                    s_table[None][0] = html_tools.content(s_entry.remote_addr, cls="center")
+                    s_table[None][0] = html_tools.content(s_entry.login_time.strftime("%H:%M:%S"), cls="center")
+                    s_table[None][0] = html_tools.content("still active" if not s_entry.logout_time else s_entry.logout_time.strftime("%d. %b. %Y, %H:%M:%S"), cls="right")
+                    s_table[None][0] = html_tools.content("still active" if not s_entry.logout_time else logging_tools.get_diff_time_str((s_entry.logout_time - s_entry.login_time).seconds), cls="right")
+                    s_table[None][0] = html_tools.content(" (*)" if s_entry.forced_logout else "", cls="center")
+                    s_table[None][0] = html_tools.content("%d" % (s_entry.value.get("page_views", 0)), cls="center")
         req.write(s_table(""))
     req.write("</form>")
     

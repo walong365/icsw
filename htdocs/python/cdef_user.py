@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: iso-8859-1 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2007,2009 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2007,2009,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -29,6 +29,8 @@ import os.path
 import html_tools
 import array
 import copy
+from django.db.models import Q
+from init.cluster.backbone.models import capability
 
 class user_var(object):
     def __init__(self, in_dict, source_is_db=False):

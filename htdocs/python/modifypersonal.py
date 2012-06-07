@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: iso-8859-1 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -29,6 +29,8 @@ import html_tools
 import cdef_user
 import random
 import crypt
+from init.cluster.backbone.models import user, session_data, user_var
+from django.db.models import Q
 
 def module_info():
     return {"mp" : {"description"           : "Modify personal userdata (pwd)",

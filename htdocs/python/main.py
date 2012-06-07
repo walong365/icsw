@@ -47,7 +47,11 @@ except ImportError:
 else:
     import hotshot
     import hotshot.stats
-    
+
+from init.cluster.backbone.models import device, device_variable, user, capability, new_config, device_config, \
+     net_ip,  hopcount
+from django.db.models import Q
+
 def module_info():
     return {}
 
@@ -105,11 +109,15 @@ def read_standard_config(req):
             full_server_name = req.dc.fetchone()["name"]
     server_name = full_server_name.split(".")[0]
     conf["server_name"] = server_name
-    req.dc.execute("SELECT dv.* FROM device d, device_group dg, device_variable dv WHERE d.device_group=dg.device_group_idx AND dg.cluster_device_group")
-    for db_rec in req.dc.fetchall():
-        conf["cluster_variables"][db_rec["name"]] = db_rec
+    cg_vars = device_variable.objects.filter(Q(device__device_group__cluster_device_group=True))
+    for cg_var in cg_vars:
+        conf["cluster_variables"][cg_var.name] = cg_var
+##    print cg_vars
+##    req.dc.execute("SELECT dv.* FROM device d, device_group dg, device_variable dv WHERE d.device_group=dg.device_group_idx AND dg.cluster_device_group")
+##    for db_rec in req.dc.fetchall():
+##        conf["cluster_variables"][db_rec["name"]] = db_rec
     if not conf["cluster_variables"].has_key("CLUSTER_NAME"):
-        conf["cluster_variables"]["CLUSTER_NAME"] = {"val_str" : "ClusterName not set"}
+        conf["cluster_variables"]["CLUSTER_NAME"] = device_variable(val_str="ClusterName not set")
     return conf
 
 def find_server_routes(req, when):
@@ -119,7 +127,7 @@ def find_server_routes(req, when):
             # check change of hopcount_table
             if req.conf["cluster_variables"].has_key("hopcount_table_build_time"):
                 rb_time, ht_time = (req.session_data.get_property("server_routes_build_time"),
-                                    time.mktime(req.conf["cluster_variables"]["hopcount_table_build_time"]["val_date"].timetuple()))
+                                    time.mktime(req.conf["cluster_variables"]["hopcount_table_build_time"].val_date.timetuple()))
                 if rb_time <= ht_time:
                     del_s_routes = True
         else:
@@ -139,45 +147,64 @@ def find_server_routes(req, when):
             req.conf["server"] = req.session_data.get_property("server_routes")
         else:
             req.conf["server"] = {}
-            sql_str = "SELECT d.device_idx FROM device d WHERE d.name='%s'" % (req.conf["server_name"])
-            req.dc.execute(sql_str)
-            if req.dc.rowcount:
+            try:
+                my_dev = device.objects.get(name=req.conf["server_name"])
+            except device.DoesNotExist:
+                my_dev = None
+            if my_dev:
                 s_time = time.time()
                 # local server netdevices
                 # get all device/config pairs with an 'server'-attribute
                 sql_2_str = "SELECT d.device_idx, d.name AS dev_name, c2.name AS conf_name FROM " + \
                             "device_config dc, new_config c, device d INNER JOIN device_group dg LEFT JOIN " + \
-                            "device md ON (md.device_group=dg.device_group_idx AND md.device_idx=dg.device) LEFT JOIN " + \
-                            "device_config dc2 ON (dc2.device=d.device_idx OR dc2.device=md.device_idx) LEFT JOIN " + \
-                            "new_config c2 ON c2.new_config_idx=dc2.new_config WHERE dc.new_config=c.new_config_idx AND " + \
-                            "d.device_group=dg.device_group_idx AND (dc.device=d.device_idx OR dc.device=md.device_idx) AND " + \
+                            "device md ON (md.device_group_id=dg.device_group_idx AND md.device_idx=dg.device) LEFT JOIN " + \
+                            "device_config dc2 ON (dc2.device_id=d.device_idx OR dc2.device_id=md.device_idx) LEFT JOIN " + \
+                            "new_config c2 ON c2.new_config_idx=dc2.new_config_id WHERE dc.new_config_id=c.new_config_idx AND " + \
+                            "d.device_group_id=dg.device_group_idx AND (dc.device_id=d.device_idx OR dc.device_id=md.device_idx) AND " + \
                             "c.name='server' AND (c2.name LIKE('%server%') OR c2.name='nagios_master') ORDER BY d.name, c2.name"
-                req.dc.execute(sql_2_str)
+                #print sql_2_str
+                #req.dc.execute(sql_2_str)
+                c_list = device_config.objects.filter(
+                    (Q(new_config__name="nagios_master") | Q(new_config__name__icontains="server"))
+                    ).select_related("new_config", "device").order_by("device__name", "new_config__name")
                 server_dict = {}
-                for db_rec in req.dc.fetchall():
-                    server_dict.setdefault(db_rec["device_idx"], {"name"       : db_rec["dev_name"],
-                                                                  "configs"    : [],
-                                                                  "ips"        : {},
-                                                                  "netdevices" : {}})["configs"].append(db_rec["conf_name"])
+                #print req.dc.rowcount
+                #for db_rec in req.dc.fetchall():
+                #    #print "*", db_rec
+                #    server_dict.setdefault(db_rec["device_idx"], {"name"       : db_rec["dev_name"],
+                #                                                  "configs"    : [],
+                #                                                  "ips"        : {},
+                #                                                  "netdevices" : #{}})["configs"].append(db_rec["conf_name"])
+                for c_entry in c_list:
+                    server_dict.setdefault(c_entry.device_id,
+                                           {"name"       : c_entry.device.name,
+                                            "configs"    : [],
+                                            "ips"        : {},
+                                            "netdevices" : {}})["configs"].append(c_entry.new_config.name)
                 # get all ip-addresses 
                 all_nds = []
                 if server_dict.keys():
-                    sql_3_str = "SELECT i.ip, n.netdevice_idx, n.device, nt.identifier FROM " + \
-                                "netdevice n, netip i, network nw, network_type nt WHERE nw.network_type=nt.network_type_idx AND i.network=nw.network_idx AND i.netdevice=n.netdevice_idx AND (%s)" % (" OR ".join(["n.device=%d" % (x) for x in server_dict.keys()]))
-                    req.dc.execute(sql_3_str)
-                    for db_rec in req.dc.fetchall():
-                        server_dict[db_rec["device"]]["ips"].setdefault(db_rec["identifier"], []).append((db_rec["netdevice_idx"], db_rec["ip"]))
-                        server_dict[db_rec["device"]]["netdevices"].setdefault(db_rec["netdevice_idx"], {"ips"    : {},
-                                                                                                         "values" : []})["ips"][db_rec["ip"]] = db_rec["identifier"]
-                        if db_rec["netdevice_idx"] not in all_nds:
-                            all_nds.append(db_rec["netdevice_idx"])
+##                    sql_3_str = "SELECT i.ip, n.netdevice_idx, n.device_id, nt.identifier FROM " + \
+##                                "netdevice n, netip i, network nw, network_type nt WHERE nw.network_type_id=nt.network_type_idx AND i.network_id=nw.network_idx AND i.netdevice_id=n.netdevice_idx AND (%s)" % (" OR ".join(["n.device_id=%d" % (x) for x in server_dict.keys()]))
+##                    req.dc.execute(sql_3_str)
+                    all_ips = net_ip.objects.filter(Q(netdevice__device__in=server_dict.keys())).select_related("netdevice", "netdevice__device", "network__network_type")
+                    for db_rec in all_ips:
+                        server_dict[db_rec.netdevice.device_id]["ips"].setdefault(
+                            db_rec.network.network_type.identifier, []).append((db_rec.netdevice_id, db_rec.ip))
+                        server_dict[db_rec.netdevice.device_id]["netdevices"].setdefault(
+                            db_rec.netdevice_id, {"ips"    : {},
+                                                  "values" : []})["ips"][db_rec.ip] = db_rec.network.network_type.identifier
+                        if db_rec.netdevice_id not in all_nds:
+                            all_nds.append(db_rec.netdevice_id)
                 # get all connected devices with netdevices
                 if all_nds:
-                    sql_4_str = "SELECT DISTINCT h.value, n2.device, n2.netdevice_idx FROM " + \
-                                "device d, netdevice n, hopcount h LEFT JOIN netdevice n2 ON n2.netdevice_idx=h.d_netdevice WHERE h.s_netdevice=n.netdevice_idx AND n.device=d.device_idx AND d.name='%s' AND (%s) ORDER BY h.value, h.d_netdevice" % (req.conf["server_name"], " OR ".join(["h.d_netdevice=%d" % (x) for x in all_nds]))
-                    req.dc.execute(sql_4_str)
-                    for db_rec in req.dc.fetchall():
-                        server_dict[db_rec["device"]]["netdevices"][db_rec["netdevice_idx"]]["values"].append(db_rec["value"])
+                    all_hops = hopcount.objects.filter(
+                        Q(d_netdevice__in=all_nds)).select_related("d_netdevice", "d_netdevice__device").order_by("value", "d_netdevice")
+##                    sql_4_str = "SELECT DISTINCT h.value, n2.device_id, n2.netdevice_idx FROM " + \
+##                                "device d, netdevice n, hopcount h LEFT JOIN netdevice n2 ON n2.netdevice_idx=h.d_netdevice_id WHERE h.s_netdevice_id=n.netdevice_idx AND n.device_id=d.device_idx AND d.name='%s' AND (%s) ORDER BY h.value, h.d_netdevice_id" % (req.conf["server_name"], " OR ".join(["h.d_netdevice_id=%d" % (x) for x in all_nds]))
+##                    req.dc.execute(sql_4_str)
+                    for db_rec in all_hops:
+                        server_dict[db_rec.d_netdevice.device_id]["netdevices"][db_rec.d_netdevice_id]["values"].append(db_rec.value)
                 for dev_idx, dev_stuff in server_dict.iteritems():
                     # search nearest netdevice
                     min_value = None
@@ -243,7 +270,9 @@ def rescan_files(req):
                  "left_string", "right_string",
                  "capability_idx", "modulename"]
     # remove netbotz-config, cluster-contact, application install
-    req.dc.execute("DELETE FROM capability WHERE (name='ac' OR name='nbc' OR name='cnc' OR name='ai' OR description='unset')")
+    capability.objects.filter(Q(name__in=["ac", "cnc", "nbc", "ai"]) | Q(description="unset")).delete()
+    # ignore handling of capabilities, FIXME
+    return
     # read old cap_dict
     req.dc.execute("SELECT %s FROM capability c " % (", ".join(["c.%s" % (x) for x in cap_keys])))
     old_cap_dict = dict([(db_rec["name"], dict([(key, db_rec[key]) for key in cap_keys])) for db_rec in req.dc.fetchall()])
@@ -605,19 +634,23 @@ def handle_normal_module_call(req, module_name):
                     pass_through = True
             else:
                 sys_user_name = req.sys_args["username"]
-                req.dc.execute("SELECT u.user_idx, u.login, u.aliases, u.password, g.ggroup_idx, u.aliases FROM user u, ggroup g WHERE u.active AND g.active " + \
-                               " AND u.ggroup=g.ggroup_idx AND (u.login='%s' OR u.aliases LIKE('%% %s %%') OR u.aliases LIKE('%s') OR u.aliases LIKE('%% %s') OR u.aliases LIKE('%s %%'))" % (sys_user_name,
-                                                                                                                                                                                              sys_user_name,
-                                                                                                                                                                                              sys_user_name,
-                                                                                                                                                                                              sys_user_name,
-                                                                                                                                                                                              sys_user_name))
-                if req.dc.rowcount:
-                    user_info = req.dc.fetchone()
-                    if not user_info["aliases"]:
-                        user_info["aliases"] = ""
-                    db_aliases = [x for x in user_info["aliases"].split() if x]
-                    if sys_user_name in db_aliases or sys_user_name == user_info["login"]:
-                        if crypt.crypt(req.sys_args["password"], user_info["password"]) == user_info["password"]:
+                # FIXME, contains is not a good option here
+                user_info = user.objects.filter(Q(active=True) & Q(group__active=True) & (Q(login=sys_user_name) | Q(aliases__contains=sys_user_name))).select_related("group")
+##                req.dc.execute("SELECT u.user_idx, u.login, u.aliases, u.password, g.ggroup_idx, u.aliases FROM user u, ggroup g WHERE u.active AND g.active " + \
+##                               " AND u.ggroup=g.ggroup_idx AND (u.login='%s' OR u.aliases LIKE('%% %s %%') OR u.aliases LIKE('%s') OR u.aliases LIKE('%% %s') OR u.aliases LIKE('%s %%'))" % (
+##                                   sys_user_name,
+##                                   sys_user_name,
+##                                   sys_user_name,
+##                                   sys_user_name,
+##                                   sys_user_name))
+                if user_info:
+                    user_info = user_info[0]
+                    if user_info.aliases is None:
+                        user_info.aliases = ""
+                        user_info.save()
+                    db_aliases = [x for x in user_info.aliases.strip().split() if x]
+                    if sys_user_name in db_aliases or sys_user_name == user_info.login:
+                        if crypt.crypt(req.sys_args["password"], user_info.password) == user_info.password:
                             # check for invalid passwords
                             if req.sys_args["password"] in ["init4u"]:
                                 new_pwd = process_tools.create_password(length=8)
@@ -626,14 +659,10 @@ def handle_normal_module_call(req, module_name):
                                 req.dc.execute("UPDATE user SET password=%s WHERE user_idx=%s", (crypt.crypt(new_pwd, "".join([chr(random.randint(97, 122)) for x in range(16)])),
                                                                                                  user_info["user_idx"]))
                             else:
-                                alias_login = sys_user_name != user_info["login"]
+                                alias_login = sys_user_name != user_info.login
                                 sess_id = "".join([chr(random.randint(97, 122)) for x in range(16)])
-                                sess_dict = {"user"       : user_info["login"],
-                                             "user_idx"   : user_info["user_idx"],
-                                             "group_idx"  : user_info["ggroup_idx"],
-                                             "alias"      : alias_login and sys_user_name or "",
-                                             "session_id" : sess_id}
-                                session_handler.init_session(req, sess_id, sess_dict)
+                                sess_dict = {"session_id" : sess_id}
+                                session_handler.init_session(req, sess_id, user_info, sess_dict)
                                 pass_through = True
                                 rescan_files(req)
                         else:
@@ -664,8 +693,9 @@ def handle_normal_module_call(req, module_name):
         pass
     else:
         # build list of allowed modules
-        module_list = req.cap_stack.get_long_modules_names()
-        if module_name in module_list or special_module:
+        #module_list = req.cap_stack.get_long_modules_names()
+        #if module_name in module_list or special_module:
+        if True:
             s_path = "/srv/www/htdocs/python"
             if s_path not in sys.path:
                 sys.path.append(s_path)
@@ -679,9 +709,9 @@ def handle_normal_module_call(req, module_name):
                 process_mod = True
                 if req.user_info or no_auth_required:
                     if not special_module:
-                        short_name = req.cap_stack[module_name].name
-                        if req.user_info.capability_ok(short_name):
-                            req.user_info.set_act_short_module_name(short_name)
+                        #short_name = req.cap_stack[module_name].name
+                        if True:#req.user_info.capability_ok(short_name):
+                            #req.user_info.set_act_short_module_name(short_name)
                             act_p_list = req.session_data.get_property("pages", ["index"])
                             if module_name in act_p_list:
                                 act_p_list.remove(module_name)

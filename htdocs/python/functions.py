@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: iso-8859-1 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -53,14 +53,14 @@ def write_header(req, style_file="formate.css", js_list=["jquery-1.2.3.min"]):
         out_f.append("%s\">" % (add_str))
     act_user = ""
     if req.user_info:
-        act_user = req.user_info["login"]
+        act_user = req.user_info.login
         if req.session_data:
             if req.session_data.is_alias_login:
                 act_user = "%s [via alias %s]" % (act_user, req.session_data.alias)
     out_f.extend(["<meta http-equiv=\"expires\" content=\"0\">",
                   "<meta http-equiv=\"pragma\" content=\"no-cache\">",
                   "<meta http-equiv=\"cache-control\" content=\"no-cache\">",
-                  "<title>%s - %s (module %s%s)</title>" % (cgi.escape(req.conf["cluster_variables"]["CLUSTER_NAME"]["val_str"]),
+                  "<title>%s - %s (module %s%s)</title>" % (cgi.escape(req.conf["cluster_variables"]["CLUSTER_NAME"].val_str),
                                                             cgi.escape(req.title),
                                                             cgi.escape(req.module_name),
                                                             act_user and ", user %s" % (cgi.escape(act_user)) or ""),
@@ -72,13 +72,15 @@ def write_header(req, style_file="formate.css", js_list=["jquery-1.2.3.min"]):
     req.write("\n".join(out_f))
 
 def write_link_line(req, vars_to_add):
+    #return
+    # not needed any more
     link_table = html_tools.html_table(cls = "linkline")
     link_table[0][0] = html_tools.content("<a href=\"logincheck.py\">Logout</a>", cls="left")
     for act_e in req.session_data.get_property("pages"):
         if act_e == "index":
             link_name = "Home"
         else:
-            link_name = req.cap_stack[act_e].left_string
+            link_name = act_e
         if not link_name:
             link_name = "link_name not set: %s" % (act_e)
         link_table[None][0] = html_tools.content("<a href=\"%s.py?%s\">%s</a>" % (act_e,
@@ -133,7 +135,7 @@ def write_error_footer(req):
     
 def write_footer(req):
     req.conf["end_time"] = time.time()
-    left_str = ["%s, page generated %s in %s" % (cgi.escape(req.conf["cluster_variables"]["CLUSTER_NAME"]["val_str"]),
+    left_str = ["%s, page generated %s in %s" % (cgi.escape(req.conf["cluster_variables"]["CLUSTER_NAME"].val_str),
                                                  time.ctime(req.conf["start_time"]),
                                                  logging_tools.get_diff_time_str(req.conf["end_time"] - req.conf["start_time"]))]
     if req.conf.get("genstuff", {}).has_key("AUTO_RELOAD"):

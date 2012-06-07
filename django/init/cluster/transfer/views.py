@@ -6,7 +6,14 @@ from django.http import HttpResponse, HttpResponseRedirect
 import os
 import django.core.urlresolvers
 
-OLD_DIR = "/srv/www/htdocs/python"
+if "cluster-backbone-sql" in __file__:
+    # local run
+    OLD_DIR = os.path.dirname(__file__).replace(
+        "/cluster-backbone-sql/init/cluster/transfer",
+        "/webfrontend/htdocs/python")
+else:
+    OLD_DIR = "/srv/www/htdocs/python"
+
 if not OLD_DIR in sys.path:
     sys.path.append(OLD_DIR)
 
