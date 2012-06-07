@@ -534,6 +534,11 @@ class user_group_tree(object):
             return self.__group_dict[self.__group_name_lut[g_id]]
         else:
             return self.__group_dict[g_id]
+    def group_exists(self, g_id):
+        if type(g_id) in [type(0), type(0L)]:
+            return g_id in self.__group_name_lut
+        else:
+            return g_id in self.__group_dict
     def del_group(self, g_id):
         if type(g_id) in [type(0), type(0L)]:
             new_g_id = self.__group_name_lut[g_id]

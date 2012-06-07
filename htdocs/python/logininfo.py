@@ -142,7 +142,7 @@ def generate_user_masks(req, act_ug_tree, action_log, op_mode):
                     u_table[None][0] = html_tools.content(act_user["useremail"] or "---", act_user.get_suffix(), cls="right")
                     user_pers = (" ".join([act_user["usertitan"], act_user["uservname"], act_user["usernname"]])).strip()
                     u_table[None][0] = html_tools.content(user_pers or "---", cls="left")
-                    u_table[None][0] = html_tools.content(act_user.get_secondary_group_idxs() and ",".join(["%d" % (act_ug_tree.get_group(x)["gid"]) for x in act_user.get_secondary_group_idxs()]) or "---", cls="center")
+                    u_table[None][0] = html_tools.content(act_user.get_secondary_group_idxs() and ",".join(["%d" % (act_ug_tree.get_group(x)["gid"]) for x in act_user.get_secondary_group_idxs() if act_ug_tree.group_exists(x)]) or "---", cls="center")
                     u_table[None][0] = html_tools.content(act_user.get_num_of_caps("user") and "%d" % (act_user.get_num_of_caps("user")) or "---", cls="center")
         req.write("<form action=\"%s.py?%s&opmode=bux\" method=post>%s%s" % (req.module_name,
                                                                              functions.get_sid(req),
@@ -1485,7 +1485,7 @@ def show_user_group_selection(req, act_ug_tree, group_options, user_options):
                     sec_groups = u_stuff.get_secondary_group_idxs()
                     if sec_groups:
                         sec_groups = [(act_ug_tree.get_group(u)["ggroupname"],
-                                       act_ug_tree.get_group(u)["gid"]) for u in sec_groups]
+                                       act_ug_tree.get_group(u)["gid"]) for u in sec_groups if act_ug_tree.group_exists(u)]
                     user_list[u_stuff.get_idx()] = "%s (%d), pgroup %s (%d)%s" % (u_name,
                                                                                   u_stuff["uid"],
                                                                                   g_stuff["ggroupname"],
