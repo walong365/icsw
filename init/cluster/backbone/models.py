@@ -3,6 +3,10 @@
 from django.db import models
 from django.contrib.auth.models import User, Group, Permission
 import datetime
+from django.db.models import Q
+
+def only_wf_perms(in_list):
+    return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
 
 class apc_device(models.Model):
     idx = models.AutoField(db_column="idx", primary_key=True)
@@ -1378,6 +1382,13 @@ class capability(models.Model):
     left_string = models.CharField(max_length=192, blank=True)
     right_string = models.CharField(max_length=384, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def __init__(self, *args, **kwargs):
+        models.Model.__init__(self, *args, **kwargs)
+        # just for compatibility reasons
+        self.authorized_by = "None"
+        self.enabled = False
+    def authorize(self, source):
+        self.authorized_by, self.enabled = (source, True)
     class Meta:
         db_table = u'capability'
 
@@ -1408,13 +1419,58 @@ class user(models.Model):
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
         self.user_vars = {}
-        self.django_user = User.objects.get(username=self.login)
+        self.capabilities = {}
+        try:
+            self.django_user = User.objects.get(username=self.login)
+        except User.DoesNotExist:
+            self.django_user = None
+        for cur_cap in self.user_cap_set.all().select_related("capability"):
+            self.add_capability(cur_cap.capability)
+        self.secondary_groups = []
+        self.sge_servers = {}
+        self.login_serers = {}
+    def create_django_user(self):
+        new_du = User(
+            username=self.login,
+            first_name=self.uservname,
+            last_name=self.usernname,
+            email=self.useremail,
+            is_staff=True,
+            is_superuser=False)
+        new_du.save()
+        self.django_user = new_du
+        return new_du
+    def add_capability(self, cap):
+        self.capabilities[cap.pk] = cap
+        self.capabilities[cap.name] = cap
+    def add_sge_server(self, srv_dev):
+        self.sge_servers[srv_dev.pk] = srv_dev
+    def get_sge_servers(self):
+        return self.sge_servers.keys()
     def add_user_var(self, u_var):
         self.user_vars[u_var.pk] = u_var
     def save_modified_user_vars(self):
         print "save_modified_user_vars"
-    def capability_ok(self, cap_name):
-        return self.django_user.has_perm("wf_%s" % (cap_name))
+    def capability_ok(self, cap_name, only_user=False):
+        # do not use, superuser has all rights
+        #return self.django_user.has_perm("wf_%s" % (cap_name))
+        #print cap_name, cap_name in self.capabilities, cap_name in self.group.capabilities
+        if only_user:
+            return cap_name in self.capabilities
+        else:
+            return cap_name in self.capabilities or cap_name in self.group.capabilities 
+    def get_num_capabilities(self):
+        return len(self.capabilities)
+    def get_all_permissions(self, *args):
+        return self.django_user.get_all_permissions(*args)
+    def get_group_permissions(self, *args):
+        return self.django_user.get_group_permissions(*args)
+    def add_secondary_groups(self):
+        self.secondary_groups = list(group.objects.filter(Q(user_group__user=self.pk)))
+    def get_secondary_groups(self):
+        return self.secondary_groups
+    def get_suffix(self):
+        return "userX%dX" % (self.pk)
     class Meta:
         db_table = u'user'
         permissions = {
@@ -1483,6 +1539,37 @@ class group(models.Model):
     respcom = models.CharField(max_length=765, blank=True)
     groupcom = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def __init__(self, *args, **kwargs):
+        models.Model.__init__(self, *args, **kwargs)
+        self.capabilities = {}
+        self.users = {}
+        try:
+            self.django_group = Group.objects.get(name=self.groupname)
+        except Group.DoesNotExist:
+            self.django_group = None
+        for sub_cap in self.group_cap_set.all().select_related("capability"):
+            self.add_capability(sub_cap.capability)
+    def create_django_group(self):
+        new_dg = Group(name=self.groupname)
+        new_dg.save()
+        self.django_group = new_dg
+        return self.django_group
+    def add_capability(self, cap):
+        self.capabilities[cap.pk] = cap
+        self.capabilities[cap.name] = cap
+    def get_num_capabilities(self):
+        return len(self.capabilities)
+    def has_capability(self, cap_name):
+        return cap_name in self.capabilities
+    def add_user(self, cur_user):
+        self.users[cur_user.pk] = cur_user
+        self.users[cur_user.login] = cur_user
+    def get_user(self, user_ref):
+        return self.users[user_ref]
+    def get_suffix(self):
+        return "groupX%dX" % (self.pk)
+    def get_num_users(self):
+        return len([key for key in self.users if type(key) == unicode])
     class Meta:
         db_table = u'ggroup'
     def __unicode__(self):
@@ -1491,7 +1578,7 @@ class group(models.Model):
 
 class group_cap(models.Model):
     idx = models.AutoField(db_column="ggroupcap_idx", primary_key=True)
-    ggroup = models.ForeignKey("group")
+    group = models.ForeignKey("group", db_column="ggroup_id")
     capability = models.ForeignKey("capability")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
@@ -1505,6 +1592,7 @@ class user_device_login(models.Model):
     class Meta:
         db_table = u'user_device_login'
 
+# for secondary groups
 class user_group(models.Model):
     idx = models.AutoField(db_column="user_ggroup_idx", primary_key=True)
     group = models.ForeignKey("group")
