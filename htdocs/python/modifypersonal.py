@@ -46,19 +46,19 @@ def module_info():
                       "mother_capability_name" : "mp"}}
 
 def show_login_info(req, act_ug_tree, action_log):
-    act_group = act_ug_tree.get_group(req.session_data.group_idx)
-    act_user = act_group.get_user(req.session_data.user_idx)
+    act_group = act_ug_tree.get_group(req.session_data.user_info.group_id)
+    act_user = act_group.get_user(req.session_data.user_info.pk)
     line_idx = 0
     req.write(html_tools.gen_hline("Information about your account", 2))
     info_table = html_tools.html_table(cls="user")
     info_table[0]["class"]    = "line10"
     info_table[None][0] = html_tools.content("Loginname:", cls="right", type="th")
-    info_table[None][0] = html_tools.content(act_user["login"], cls="left", type="th")
+    info_table[None][0] = html_tools.content(act_user.login, cls="left", type="th")
     info_table[None][0] = html_tools.content("Userid:", cls="right", type="th")
-    info_table[None][0] = html_tools.content("%d" % (act_user["uid"]), cls="left", type="th")
+    info_table[None][0] = html_tools.content("%d" % (act_user.uid), cls="left", type="th")
     info_table[0][0]    = html_tools.content("Primary group:", cls="right")
-    info_table[None][0] = html_tools.content("%s (%d)" % (act_group["ggroupname"], act_group["gid"]), cls="left")
-    sgroup_names = act_ug_tree.get_group_names(act_user.get_secondary_group_idxs())
+    info_table[None][0] = html_tools.content("%s (%d)" % (act_group.groupname, act_group.gid), cls="left")
+    sgroup_names = act_ug_tree.get_group_names([cur_g.pk for cur_g in act_user.get_secondary_groups()])
     #[k for k, v in group_dict.iteritems() if v.get_idx() in act_user.get_secondary_group_idxs()]
     info_table[None][0] = html_tools.content(sgroup_names and "%s:" % (logging_tools.get_plural("Secondary group", len(sgroup_names))) or "no secondary groups", cls="right")
     info_table[None][0] = html_tools.content(", ".join(sgroup_names) or "&nbsp;", cls="left")
@@ -71,7 +71,7 @@ def show_login_info(req, act_ug_tree, action_log):
         shell_list = html_tools.selection_list(req, "shells", {}, sort_new_keys=0, title="login shell")
         shell_idx, act_shell_idx = (0, 0)
         for shell in all_shells:
-            if shell == act_user["shell"]:
+            if shell == act_user.shell:
                 act_shell_idx = shell_idx
             shell_list[shell_idx] = shell
             shell_idx += 1
@@ -91,17 +91,17 @@ def show_login_info(req, act_ug_tree, action_log):
                 new_dict[info_f] = field_dict[info_f].check_selection("", "")
                 field_dict[info_f][""] = ""
             else:
-                act_v = act_user[db_name]
+                act_v = getattr(act_user, db_name)
                 new_dict[info_f] = field_dict[info_f].check_selection("", act_v)
                 if act_v != new_dict[info_f]:
-                    act_user[db_name] = new_dict[info_f]
+                    setattr(act_user, db_name, new_dict[info_f])
                     user_change = True
         if new_dict["pass1"] or new_dict["pass2"]:
             if new_dict["pass2"] == new_dict["pass1"]:
                 if len(new_dict["pass1"]) < 5:
                     action_log.add_warn("cannot change password", "password must have at least 5 chars")
                 else:
-                    act_user["password"] = crypt.crypt(new_dict["pass1"], "".join([chr(random.randint(97, 122)) for x in range(16)]))
+                    act_user.passwordf = crypt.crypt(new_dict["pass1"], "".join([chr(random.randint(97, 122)) for x in range(16)]))
                     user_change = True
             else:
                 action_log.add_warn("cannot change password", "the two passwords differ")
@@ -111,14 +111,15 @@ def show_login_info(req, act_ug_tree, action_log):
             act_user["shell"] = all_shells[new_shell]
             user_change = True
         if user_change:
-            act_user.commit_sql_changes(req.dc, 1, 0, 0)
-            err_list, warn_list, ok_list = act_user.build_change_lists("altered ", " for user %s" % (act_user["login"]), 1, 0, 1)
-            action_log.add_errors(err_list)
-            action_log.add_warns(warn_list)
-            action_log.add_oks(ok_list)
+            act_user.save()
+            #act_user.commit_sql_changes(req.dc, 1, 0, 0)
+##            err_list, warn_list, ok_list = act_user.build_change_lists("altered ", " for user %s" % (act_user["login"]), 1, 0, 1)
+##            action_log.add_errors(err_list)
+##            action_log.add_warns(warn_list)
+##            action_log.add_oks(ok_list)
             tools.signal_yp_ldap_server(req, action_log)
         info_table[0][0]    = html_tools.content("Responsible persion:", cls="right")
-        resp_pers = (" ".join([act_user["usertitan"], act_user["uservname"], act_user["usernname"]])).strip()
+        resp_pers = (" ".join([act_user.usertitan, act_user.uservname, act_user.usernname])).strip()
         info_table[None][0] = html_tools.content([field_dict["titan"], " ", field_dict["vname"], " ", field_dict["nname"]], cls="left")
         info_table[None][0] = html_tools.content("Telefon:", cls="right")
         info_table[None][0] = html_tools.content(field_dict["tel"], cls="left")
@@ -156,10 +157,11 @@ def show_login_info(req, act_ug_tree, action_log):
         req.write("<form action=\"%s.py?%s\" method=post>" % (req.module_name,
                                                               functions.get_sid(req)))
     req.write(info_table(""))
-    if req.user_info.capability_ok("mpsh"):
-        show_var_names = act_user.get_user_var_names(include_hidden=True)
-    else:
-        show_var_names = act_user.get_user_var_names()
+    show_var_names = []
+##    if req.user_info.capability_ok("mpsh"):
+##        show_var_names = act_user.get_user_var_names(include_hidden=True)
+##    else:
+##        show_var_names = act_user.get_user_var_names()
     if show_var_names:
         req.write(html_tools.gen_hline("%s found" % (logging_tools.get_plural("User variable", len(show_var_names))), 3))
         var_table = html_tools.html_table(cls="normal")
@@ -198,7 +200,7 @@ def process_page(req):
     show_login_info(req, act_ug_tree, action_log)
     req.write(action_log.generate_stack("Log"))
         
-    act_group = act_ug_tree.get_group(req.session_data.group_idx)
+    act_group = act_ug_tree.get_group(req)
     cap_headline, cap_table = cdef_user.show_capability_info(req, act_ug_tree, act_group, req.user_info, None)
     req.write("%s%s" % (html_tools.gen_hline(cap_headline, 2),
                         cap_table and cap_table("") or ""))

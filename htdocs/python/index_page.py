@@ -27,13 +27,13 @@ from basic_defs import SHOW_INDEX_PRI
 import html_tools
 import cdef_user
 import os
-from init.cluster.backbone.models import user, capability
+from init.cluster.backbone.models import user, capability, only_wf_perms
 from django.db.models import Q
 
 def build_cap_dict(req):
-##    req.cap_stack = cdef_user.capability_stack(req)
-##    if req.session_data:
-##        req.cap_stack.add_user_rights(req, req.session_data.group_idx, req.session_data.user_idx, req.user_info)
+    req.cap_stack = cdef_user.capability_stack(req)
+    if req.session_data:
+        req.cap_stack.add_user_rights(req, req.session_data.user_info)
     return
         
 def process_page(req):
@@ -67,7 +67,7 @@ def process_page(req):
         else:
             dlink_map = []
         # hack, just temporarly
-        my_caps = capability.objects.filter(Q(name__in=[cur_perm.split("_", 1)[1] for cur_perm in req.user_info.django_user.get_all_permissions() if cur_perm.startswith("backbone.wf_")]))
+        my_caps = capability.objects.filter(Q(name__in=only_wf_perms(ui.get_all_permissions())))
         for grp_stuff in my_caps:
             if grp_stuff.left_string:
                 mapped_str = ""

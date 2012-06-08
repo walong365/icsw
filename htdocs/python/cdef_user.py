@@ -30,7 +30,7 @@ import html_tools
 import array
 import copy
 from django.db.models import Q
-from init.cluster.backbone.models import capability
+from init.cluster.backbone.models import capability, only_wf_perms, user, group, new_config
 
 class user_var(object):
     def __init__(self, in_dict, source_is_db=False):
@@ -105,32 +105,32 @@ class user_var(object):
             self.__value = new_val
             self.changed = True
     
-class capability(object):
-    def __init__(self, db_rec):
-        self.name, self.idx = (db_rec["name"],
-                               db_rec["capability_idx"])
-        self.mother_capability, self.mother_capability_name = (db_rec["mother_capability"],
-                                                               db_rec["mother_capability_name"])
-        self.priority = db_rec["priority"]
-        self.default, self.db_enabled = (db_rec["defvalue"],
-                                         db_rec["enabled"])
-        self.description = db_rec["description"]
-        self.modulename = db_rec["modulename"]
-        self.left_string, self.right_string = (db_rec["left_string"],
-                                               db_rec["right_string"])
-        if self.mother_capability:
-            self.top_element = False
-        else:
-            self.top_element = True
-        self._init_authorization()
-    def _init_authorization(self):
-        # usage authoried by
-        self.authorized_by = "None"
-        self.enabled = False
-    def authorize(self, source):
-        if self.db_enabled:
-            self.authorized_by = source
-            self.enabled = True
+##class capability_old(object):
+##    def __init__(self, db_rec):
+##        self.name, self.idx = (db_rec["name"],
+##                               db_rec["capability_idx"])
+##        self.mother_capability, self.mother_capability_name = (db_rec["mother_capability"],
+##                                                               db_rec["mother_capability_name"])
+##        self.priority = db_rec["priority"]
+##        self.default, self.db_enabled = (db_rec["defvalue"],
+##                                         db_rec["enabled"])
+##        self.description = db_rec["description"]
+##        self.modulename = db_rec["modulename"]
+##        self.left_string, self.right_string = (db_rec["left_string"],
+##                                               db_rec["right_string"])
+##        if self.mother_capability:
+##            self.top_element = False
+##        else:
+##            self.top_element = True
+##        self._init_authorization()
+##    def _init_authorization(self):
+##        # usage authoried by
+##        self.authorized_by = "None"
+##        self.enabled = False
+##    def authorize(self, source):
+##        if self.db_enabled:
+##            self.authorized_by = source
+##            self.enabled = True
 
 class capability_stack(object):
     def __init__(self, req):
@@ -141,9 +141,8 @@ class capability_stack(object):
         # long and short module names
         self.__long_names, self.__short_names = ([], [])
         # fetch from database
-        req.dc.execute("SELECT DISTINCT c.* FROM capability c")# LEFT JOIN ggroupcap gc ON (gc.capability=c.capability_idx AND gc.ggroup=%d)" % (req.session_data.group_idx))
-        for db_rec in req.dc.fetchall():
-            self._add_capability(capability(db_rec))
+        for cur_cap in capability.objects.all():
+            self._add_capability(cur_cap)
             #print req.dc.fetchall()
         self.__cg_tree = {}
         for cap_idx, cap in self.__cap_dict.iteritems():
@@ -165,29 +164,32 @@ class capability_stack(object):
             for c_idx in mother_list:
                 act_tree = act_tree.setdefault(c_idx, {})
         #pprint.pprint(self.__cg_tree)
-    def add_user_rights(self, req, group_idx, user_idx, user_info):
+    def add_user_rights(self, req, user_info):
         # group caps
-        sql_str = "SELECT gc.capability AS gcap FROM ggroupcap gc WHERE gc.ggroup=%d" % (group_idx)
-        req.dc.execute(sql_str)
-        group_caps = [db_rec["gcap"] for db_rec in req.dc.fetchall() if db_rec["gcap"]]
+        group_caps = only_wf_perms(user_info.get_group_permissions())
+        #print group_caps
+        #sql_str = "SELECT gc.capability AS gcap FROM ggroupcap gc WHERE gc.ggroup=%d" % (group_idx)
+        #req.dc.execute(sql_str)
+        #group_caps = [db_rec["gcap"] for db_rec in req.dc.fetchall() if db_rec["gcap"]]
         # user caps
-        sql_str = "SELECT uc.capability AS ucap FROM usercap uc WHERE uc.user=%d" % (user_idx)
-        req.dc.execute(sql_str)
-        user_caps  = [db_rec["ucap"] for db_rec in req.dc.fetchall() if db_rec["ucap"] and db_rec["ucap"] not in group_caps]
+        user_caps = list(set(only_wf_perms(user_info.get_all_permissions())) - set(group_caps))
+        #sql_str = "SELECT uc.capability AS ucap FROM usercap uc WHERE uc.user=%d" % (user_idx)
+        #req.dc.execute(sql_str)
+        #user_caps  = [db_rec["ucap"] for db_rec in req.dc.fetchall() if db_rec["ucap"] and db_rec["ucap"] not in group_caps]
         dead_caps = {"group" : [],
                      "user"  : []}
         for group_cap in group_caps:
             if self.__cap_lut.has_key(group_cap):
                 self[group_cap].authorize("group")
-                if user_info:
-                    user_info.add_capability(self[group_cap], "group")
+                #if user_info:
+                #    user_info.add_capability(self[group_cap], "group")
             else:
                 dead_caps["group"].append(group_cap)
         for user_cap in user_caps:
             if self.__cap_lut.has_key(user_cap):
                 self[user_cap].authorize("user")
-                if user_info:
-                    user_info.add_capability(self[user_cap], "user")
+                #if user_info:
+                #    user_info.add_capability(self[user_cap], "user")
             else:
                 dead_caps["user"].append(user_cap)
         # remove dead group and user caps
@@ -201,8 +203,8 @@ class capability_stack(object):
                                                                               group_idx)
                 req.dc.execute(sql_str)
     def _add_capability(self, cap):
-        self.__cap_dict[cap.idx] = cap
-        self.__cap_lut[cap.idx] = cap.idx
+        self.__cap_dict[cap.pk] = cap
+        self.__cap_lut[cap.pk] = cap.idx
         self.__cap_lut[cap.name] = cap.idx
         if self.__cap_lut.has_key(cap.modulename):
             if cap.left_string:
@@ -223,29 +225,28 @@ class capability_stack(object):
         if with_top_level:
             return self.__cap_dict.keys()
         else:
-            return [idx for idx in self.__cap_dict.keys() if not self.__cap_dict[idx].top_element]
+            return [idx for idx in self.__cap_dict.keys() if self.__cap_dict[idx].mother_capability]
     def get_sorted_idxs(self, top_idx=0, **args):
         only_authorized = args.get("only_authorized", False)
         check_level = args.get("check_level", 0)
         # return indices sorted by priority, starting at top_idx
         pri_dict = {}
         for cap_idx, cap_stuff in self.__cap_dict.iteritems():
-            if cap_stuff.db_enabled:
-                if check_level:
-                    check_list = cap_stuff.mother_list[0 : check_level]
-                else:
-                    check_list = cap_stuff.mother_list
-                if only_authorized:
-                    add_it = (cap_stuff.top_element and not top_idx) or (top_idx in check_list and cap_idx in check_list and cap_stuff.enabled)
-                else:
-                    add_it = (cap_stuff.top_element and not top_idx) or (top_idx in check_list and cap_idx in check_list)
-                #print cap_idx, top_idx, cap_stuff.mother_list, check_list, add_it
-                if add_it:
-                    pri_dict.setdefault(cap_stuff.priority, []).append((cap_stuff.description, cap_idx))
-                    pri_dict[cap_stuff.priority].sort()
+            if check_level:
+                check_list = cap_stuff.mother_list[0 : check_level]
+            else:
+                check_list = cap_stuff.mother_list
+            if only_authorized:
+                add_it = (not cap_stuff.mother_capability and not top_idx) or (top_idx in check_list and cap_idx in check_list and cap_stuff.enabled)
+            else:
+                add_it = (not cap_stuff.mother_capability and not top_idx) or (top_idx in check_list and cap_idx in check_list)
+            #print cap_idx, top_idx, cap_stuff.mother_list, check_list, add_it
+            if add_it:
+                pri_dict.setdefault(cap_stuff.priority, []).append((cap_stuff.description, cap_idx))
+                pri_dict[cap_stuff.priority].sort()
         return sum([[idx for name, idx in pri_dict[pri]] for pri in sorted(pri_dict.keys())], [])
     
-class group(cdef_basics.db_obj):
+class group_old(cdef_basics.db_obj):
     def __init__(self, name, group_idx, init_dict={}):
         cdef_basics.db_obj.__init__(self, name, group_idx, "g")
         self.init_sql_changes({"table" : "ggroup",
@@ -293,7 +294,7 @@ class group(cdef_basics.db_obj):
     def has_capability(self, cap):
         return cap in self.caps.keys()
         
-class user(cdef_basics.db_obj):
+class user_old(cdef_basics.db_obj):
     def __init__(self, name, user_idx, init_dict={}):
         cdef_basics.db_obj.__init__(self, name, user_idx, "u")
         self.set_valid_keys({"uid"             : "i",
@@ -455,92 +456,104 @@ class user_group_tree(object):
     def _init_dicts(self):
         self.__group_dict, self.__user_dict = ({}, {})
         # fetch group capability trees
-        self.dc.execute("SELECT g.*, gc.capability FROM ggroup g LEFT JOIN ggroupcap gc ON gc.ggroup=g.ggroup_idx")
-        for db_rec in self.dc.fetchall():
-            group_name = db_rec["ggroupname"]
-            if group_name and not self.__group_dict.has_key(group_name):
-                self.__group_dict[group_name] = group(group_name, db_rec["ggroup_idx"], db_rec)
-            if db_rec["capability"] and self.cap_stack.has_key(db_rec["capability"]):
-                self.__group_dict[group_name].add_capability(self.cap_stack[db_rec["capability"]])
+        for cur_group in group.objects.all():
+            self.__group_dict[cur_group.groupname] = cur_group
+            self.__group_dict[cur_group.pk] = cur_group
+##        self.dc.execute("SELECT g.*, gc.capability FROM ggroup g LEFT JOIN ggroupcap gc ON gc.ggroup=g.ggroup_idx")
+##        for db_rec in self.dc.fetchall():
+##            group_name = db_rec["ggroupname"]
+##            if group_name and not self.__group_dict.has_key(group_name):
+##                self.__group_dict[group_name] = group(group_name, db_rec["ggroup_idx"], db_rec)
+##            if db_rec["capability"] and self.cap_stack.has_key(db_rec["capability"]):
+##                self.__group_dict[group_name].add_capability(self.cap_stack[db_rec["capability"]])
         # fetch user capability trees
-        self.dc.execute("SELECT g.ggroupname, u.*, uc.capability FROM ggroup g, user u LEFT JOIN usercap uc ON uc.user=u.user_idx WHERE u.ggroup=g.ggroup_idx")
-        for db_rec in self.dc.fetchall():
-            group_name, login_name = (db_rec["ggroupname"], db_rec["login"])
-            if login_name and not self.__group_dict[group_name].has_user(login_name):
-                new_user = user(login_name, db_rec["user_idx"], db_rec)
-                self.__group_dict[group_name].add_user(new_user)
-                self.__user_dict[login_name] = new_user
-            if db_rec["capability"] and self.cap_stack.has_key(db_rec["capability"]):
-                self.__user_dict[login_name].add_capability(self.cap_stack[db_rec["capability"]], "user")
-        # generate lookuptable idx->name (and reverse) for group
-        self.__group_name_lut = dict([(self.__group_dict[x].get_idx(), x) for x in self.__group_dict.keys()] +
-                                     [(x, self.__group_dict[x].get_idx()) for x in self.__group_dict.keys()])
-        # generate lookuptable idx->name (and reverse) for user
-        self.__user_name_lut = dict([(self.__user_dict[x].get_idx(), x) for x in self.__user_dict.keys()] +
-                                    [(x, self.__user_dict[x].get_idx()) for x in self.__user_dict.keys()])
-        # fetch user variable tree
-        self.dc.execute("SELECT * FROM user_var")
-        # list of variables to delete
-        del_vars = []
-        for db_rec in self.dc.fetchall():
-            user_idx = db_rec["user"]
-            if self.__user_name_lut.has_key(user_idx):
-                self.__user_dict[self.__user_name_lut[user_idx]].add_user_var(db_rec)
-            else:
-                del_vars.append(db_rec["user_var_idx"])
-        if del_vars:
-            self.dc.execute("DELETE FROM user_var WHERE %s" % (" OR ".join(["user_var_idx=%d" % (x) for x in del_vars])))
-        # user - sge-server connection
-        self.dc.execute("SELECT DISTINCT d.name, dc.device_config_idx, su.user FROM sge_user_con su, device d, device_config dc, new_config c WHERE c.name LIKE('sge_server%') AND c.new_config_idx=dc.new_config AND dc.device=d.device_idx AND su.sge_config=dc.device_config_idx ORDER BY d.name")
-        for db_rec in self.dc.fetchall():
-            if self.__user_name_lut.has_key(db_rec["user"]):
-                self.__user_dict[self.__user_name_lut[db_rec["user"]]].add_sge_server(db_rec["device_config_idx"])
-        # user - login-server connection
-        self.dc.execute("SELECT DISTINCT d.name, d.device_idx, udl.user FROM user_device_login udl, device d WHERE udl.device=d.device_idx ORDER BY d.name")
-        for db_rec in self.dc.fetchall():
-            if self.__user_name_lut.has_key(db_rec["user"]):
-                self.__user_dict[self.__user_name_lut[db_rec["user"]]].add_login_server(db_rec["device_idx"])
+        for cur_user in user.objects.all().select_related("group"):
+            self.__user_dict[cur_user.login] = cur_user
+            self.__user_dict[cur_user.pk] = cur_user
+            self.__group_dict[cur_user.group.groupname].add_user(cur_user)
+            cur_user.add_secondary_groups()
+##            
+##        self.dc.execute("SELECT g.ggroupname, u.*, uc.capability FROM ggroup g, user u LEFT JOIN usercap uc ON uc.user=u.user_idx WHERE u.ggroup=g.ggroup_idx")
+##        for db_rec in self.dc.fetchall():
+##            group_name, login_name = (db_rec["ggroupname"], db_rec["login"])
+##            if login_name and not self.__group_dict[group_name].has_user(login_name):
+##                new_user = user(login_name, db_rec["user_idx"], db_rec)
+##                self.__group_dict[group_name].add_user(new_user)
+##                self.__user_dict[login_name] = new_user
+##            if db_rec["capability"] and self.cap_stack.has_key(db_rec["capability"]):
+##                self.__user_dict[login_name].add_capability(self.cap_stack[db_rec["capability"]], "user")
+##        # generate lookuptable idx->name (and reverse) for group
+##        self.__group_name_lut = dict([(self.__group_dict[x].get_idx(), x) for x in self.__group_dict.keys()] +
+##                                     [(x, self.__group_dict[x].get_idx()) for x in self.__group_dict.keys()])
+##        # generate lookuptable idx->name (and reverse) for user
+##        self.__user_name_lut = dict([(self.__user_dict[x].get_idx(), x) for x in self.__user_dict.keys()] +
+##                                    [(x, self.__user_dict[x].get_idx()) for x in self.__user_dict.keys()])
+##        # fetch user variable tree
+##        self.dc.execute("SELECT * FROM user_var")
+##        # list of variables to delete
+##        del_vars = []
+##        for db_rec in self.dc.fetchall():
+##            user_idx = db_rec["user"]
+##            if self.__user_name_lut.has_key(user_idx):
+##                self.__user_dict[self.__user_name_lut[user_idx]].add_user_var(db_rec)
+##            else:
+##                del_vars.append(db_rec["user_var_idx"])
+##        if del_vars:
+##            self.dc.execute("DELETE FROM user_var WHERE %s" % (" OR ".join(["user_var_idx=%d" % (x) for x in del_vars])))
+        # user - sge-server connection, FIXME
+        if False:
+            self.dc.execute("SELECT DISTINCT d.name, dc.device_config_idx, su.user FROM sge_user_con su, device d, device_config dc, new_config c WHERE c.name LIKE('sge_server%') AND c.new_config_idx=dc.new_config AND dc.device=d.device_idx AND su.sge_config=dc.device_config_idx ORDER BY d.name")
+            for db_rec in self.dc.fetchall():
+                if self.__user_name_lut.has_key(db_rec["user"]):
+                    self.__user_dict[self.__user_name_lut[db_rec["user"]]].add_sge_server(db_rec["device_config_idx"])
+        # user - login-server connection, FIXME
+        if False:
+            self.dc.execute("SELECT DISTINCT d.name, d.device_idx, udl.user FROM user_device_login udl, device d WHERE udl.device=d.device_idx ORDER BY d.name")
+            for db_rec in self.dc.fetchall():
+                if self.__user_name_lut.has_key(db_rec["user"]):
+                    self.__user_dict[self.__user_name_lut[db_rec["user"]]].add_login_server(db_rec["device_idx"])
         # add secondary groups
-        self.dc.execute("SELECT * FROM user_ggroup")
-        for db_rec in self.dc.fetchall():
-            group_idx, user_idx = (db_rec["ggroup"], db_rec["user"])
-            if self.__user_name_lut.has_key(user_idx):
-                self.__user_dict[self.__user_name_lut[user_idx]].add_secondary_group_idx(group_idx)
+##        self.dc.execute("SELECT * FROM user_ggroup")
+##        for db_rec in self.dc.fetchall():
+##            group_idx, user_idx = (db_rec["ggroup"], db_rec["user"])
+##            if self.__user_name_lut.has_key(user_idx):
+##                self.__user_dict[self.__user_name_lut[user_idx]].add_secondary_group_idx(group_idx)
         # export and scratch dirs
-        self.dc.execute("SELECT d.name, d.device_idx, dc.device_config_idx, c.name AS cname, cs.name AS csname, cs.value, c.new_config_idx FROM " + \
-                        "device d, device_config dc, new_config c, config_str cs, device_type dt WHERE dt.device_type_idx=d.device_type AND " + \
-                        "dt.identifier='H' AND dc.device=d.device_idx AND dc.new_config=c.new_config_idx AND cs.new_config=c.new_config_idx AND (cs.name LIKE('%export%') OR c.name LIKE('%quota%'))")
+        new_confs = new_config.objects.filter(
+            (Q(name__icontains="quota") | Q(config_str__name__icontains="exports")) & 
+            (Q(device_config__device__device_type__identifier='H'))
+            ).prefetch_related("config_str")
+        # todo, FIXME
         self.__exp_dict, self.__quota_dict = ({}, {})
-        for db_rec in self.dc.fetchall():
-            if db_rec["csname"] in ["homeexport", "scratchexport"]:
-                self.__exp_dict.setdefault(db_rec["csname"], {}).setdefault(db_rec["name"], []).append((db_rec["device_config_idx"],
-                                                                                                        db_rec["value"].replace("%h", db_rec["name"]), ""))
-            elif db_rec["cname"] in ["quota"]:
-                self.__quota_dict[db_rec["name"]] = db_rec["csname"]
+        if False:
+            print new_confs
+            self.dc.execute("SELECT d.name, d.device_idx, dc.device_config_idx, c.name AS cname, cs.name AS csname, cs.value, c.new_config_idx FROM " + \
+                            "device d, device_config dc, new_config c, config_str cs, device_type dt WHERE dt.device_type_idx=d.device_type AND " + \
+                            "dt.identifier='H' AND dc.device=d.device_idx AND dc.new_config=c.new_config_idx AND cs.new_config=c.new_config_idx AND (cs.name LIKE('%export%') OR c.name LIKE('%quota%'))")
+            for db_rec in self.dc.fetchall():
+                if db_rec["csname"] in ["homeexport", "scratchexport"]:
+                    self.__exp_dict.setdefault(db_rec["csname"], {}).setdefault(db_rec["name"], []).append((db_rec["device_config_idx"],
+                                                                                                            db_rec["value"].replace("%h", db_rec["name"]), ""))
+                elif db_rec["cname"] in ["quota"]:
+                    self.__quota_dict[db_rec["name"]] = db_rec["csname"]
         # store quota_info in exp_dict
         for exp_name, exp_stuff in self.__exp_dict.iteritems():
             for d_name, e_list in exp_stuff.iteritems():
                 if d_name in self.__quota_dict.keys():
                     exp_stuff[d_name] = [(x, y, self.__quota_dict[d_name]) for x, y, z in e_list]
         # set default values
-        for g_name, g_stuff in self.__group_dict.iteritems():
-            g_stuff.act_values_are_default()
-        for u_name, u_stuff in self.__user_dict.iteritems():
-            u_stuff.act_values_are_default()
+##        for g_name, g_stuff in self.__group_dict.iteritems():
+##            g_stuff.act_values_are_default()
+##        for u_name, u_stuff in self.__user_dict.iteritems():
+##            u_stuff.act_values_are_default()
     def get_num_users(self):
-        return sum([value.get_num_users() for value in self.__group_dict.itervalues()])
+        return len([key for key in self.__user_dict.keys() if type(key) == unicode])
     def get_num_groups(self):
-        return len([key for key in self.__group_dict.keys()])
+        return len([key for key in self.__group_dict.keys() if type(key) == unicode])
     def get_group(self, g_id):
-        if type(g_id) in [type(0), type(0L)]:
-            return self.__group_dict[self.__group_name_lut[g_id]]
-        else:
-            return self.__group_dict[g_id]
+        return self.__group_dict[g_id]
     def group_exists(self, g_id):
-        if type(g_id) in [type(0), type(0L)]:
-            return g_id in self.__group_name_lut
-        else:
-            return g_id in self.__group_dict
+        return g_id in self.__group_dict
     def del_group(self, g_id):
         if type(g_id) in [type(0), type(0L)]:
             new_g_id = self.__group_name_lut[g_id]
@@ -548,21 +561,19 @@ class user_group_tree(object):
             g_id = new_g_id
         del self.__group_dict[g_id]
     def get_user(self, u_id):
-        if type(u_id) in [type(0), type(0L)]:
-            return self.__user_dict[self.__user_name_lut[u_id]]
-        else:
-            return self.__user_dict[u_id]
+        return self.__user_dict[u_id]
     def get_group_names(self, idx_list):
-        return [self.__group_name_lut[x] for x in idx_list]
+        return [self.__group_dict[cur_pk].groupname for cur_pk in idx_list]
     def get_all_group_names(self):
-        return sorted([x for x in self.__group_name_lut.keys() if type(x) == type("")])
+        return sorted([key for key in self.__group_dict.iterkeys() if type(key) == unicode])
     def get_all_user_names(self):
-        return sorted([x for x in self.__user_name_lut.keys() if type(x) == type("")])
+        return sorted([key for key in self.__user_dict.iterkeys() if type(key) == unicode])
     def get_all_users(self):
-        return self.__user_dict.values()
+        return [value for key, value in self.__user_dict.iteritems() if type(key) == unicode]
     def get_all_groups(self):
-        return self.__group_dict.values()
+        return [value for key, value in self.__group_dict.iteritems() if type(key) == unicode]
     def build_export_str(self, act_group, act_user, export_type, default="---"):
+        return "todo, FIXME"
         # export_type must be home or scratch
         if export_type == "home":
             exp_entry = act_user["export"]
@@ -614,10 +625,10 @@ def show_capability_info(req, act_ug_tree, act_group, act_user, cb_field):
     cap_stack = act_ug_tree.cap_stack
     # which display mode
     if act_user:
-        cap_headline = "Capabilities for user %s (actual primary group: %s):" % (act_user["login"],
-                                                                                 act_group["ggroupname"])
+        cap_headline = "Capabilities for user %s (actual primary group: %s):" % (act_user.login,
+                                                                                 act_group.groupname)
     else:
-        cap_headline = "Capabilities for group %s:" % (act_group["ggroupname"])
+        cap_headline = "Capabilities for group %s:" % (act_group.groupname)
     info_table = html_tools.html_table(cls="user")
     act_idx_str = "0"
     for cg_idx in cap_stack.get_sorted_idxs(0, only_authorized=False):
@@ -642,11 +653,13 @@ def show_capability_info(req, act_ug_tree, act_group, act_user, cb_field):
             act_idx_parts = [int(x) for x in act_idx_str.split(".")] + [0, 0, 0]
             act_idx_parts[level] += 1
             act_idx_str = ".".join(["%d" % (x) for x in act_idx_parts[:level + 1]])
-            group_auth, user_auth = (False, False)
-            if act_group:
-                group_auth = act_group.has_capability(act_cg.name)
-            if act_user:
-                user_auth = act_user.capability_ok(act_cg.name)
+            # ignore, FIXME
+            group_auth, user_auth = (True, False)
+##            group_auth, user_auth = (False, False)
+##            if act_group:
+##                group_auth = act_group.has_capability(act_cg.name)
+##            if act_user:
+##                user_auth = act_user.capability_ok(act_cg.name)
             pre_1_str = act_idx_str
             pre_2_str = act_cg.description
             post_element = None

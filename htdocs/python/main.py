@@ -49,7 +49,7 @@ else:
     import hotshot.stats
 
 from init.cluster.backbone.models import device, device_variable, user, capability, new_config, device_config, \
-     net_ip,  hopcount
+     net_ip,  hopcount, genstuff
 from django.db.models import Q
 
 def module_info():
@@ -93,10 +93,9 @@ def read_standard_config(req):
     conf = {"genstuff"          : {},
             "server"            : {},
             "cluster_variables" : {}}
-    req.dc.execute("SELECT g.name, g.value, g.date FROM genstuff g")
-    for db_rec in req.dc.fetchall():
-        conf["genstuff"][db_rec["name"].upper()] = db_rec["value"]
-        conf["genstuff"]["%s_DATE" % (db_rec["name"].upper())] = db_rec["date"]
+    for gen_var in genstuff.objects.all():
+        conf["genstuff"][gen_var.name.upper()] = gen_var.value
+        conf["genstuff"]["%s_DATE" % (gen_var.name.upper())] = gen_var.date
     full_server_name = req.environ["SERVER_NAME"]
     try:
         server_ipv4 = ipvx_tools.ipv4(full_server_name)
@@ -784,8 +783,7 @@ def handle_normal_module_call(req, module_name):
     if not special_module:
         find_server_routes(req, "after")
         # check for cluster-support
-        req.dc.execute("SELECT u.useremail, u.login FROM user u WHERE u.cluster_contact AND u.useremail != ''")
-        req.cluster_support = req.dc.fetchall()
+        req.cluster_support = user.objects.exclude(Q(useremail=""))
         session_handler.update_session(req)
         functions.write_footer(req)
         functions.write_error_footer(req)

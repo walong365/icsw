@@ -150,9 +150,9 @@ def write_footer(req):
     if flags_field:
         left_str.append("(%s)" % (", ".join(flags_field)))
     if req.cluster_support:
-        right_str = "<a href=\"mailto:%s?subject=Clusterrequest%%20from%%20%s\">&lt;contact support (%s)&gt;</a>\n" % ("%20".join([x["useremail"] for x in req.cluster_support]),
+        right_str = "<a href=\"mailto:%s?subject=Clusterrequest%%20from%%20%s\">&lt;contact support (%s)&gt;</a>\n" % ("%20".join([x.useremail for x in req.cluster_support]),
                                                                                                                        "Cluster",
-                                                                                                                       ", ".join([x["login"] for x in req.cluster_support]))
+                                                                                                                       ", ".join([x.login for x in req.cluster_support]))
     else:
         right_str = ""
     if req.user_info:

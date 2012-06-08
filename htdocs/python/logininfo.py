@@ -33,6 +33,10 @@ try:
 except:
     smbpasswd = None
 import process_tools
+from django.db.models import Q
+from django.contrib.auth.models import Permission, Group, User
+from init.cluster.backbone.models import capability, only_wf_perms, user, group, new_config, group_cap, user_cap, \
+     user_group
 
 def module_info():
     return {"user" : {"description" : "User configuration",
@@ -121,29 +125,29 @@ def generate_user_masks(req, act_ug_tree, action_log, op_mode):
             act_group = act_ug_tree.get_group(g_name)
             u_table[0]["class"] = "line01"
             u_table[None][0:10] = html_tools.content("Group %s (gid %d, %s, %s)" % (g_name,
-                                                                                   act_group["gid"],
+                                                                                   act_group.gid,
                                                                                    logging_tools.get_plural("user", act_group.get_num_users()),
                                                                                    logging_tools.get_plural("capability", act_group.get_num_capabilities())), type="th", cls="center")
             for u_name in u_names:
                 act_user = act_ug_tree.get_user(u_name)
-                if act_ug_tree.get_group(act_user["ggroup"])["ggroupname"] == g_name:
-                    u_idx = act_user.get_idx()
-                    active_field.check_selection(act_user.get_suffix(), act_user["active"])
+                if act_ug_tree.get_group(act_user.group_id).groupname == g_name:
+                    u_idx = act_user.pk
+                    active_field.check_selection(act_user.get_suffix(), act_user.active)
                     del_field[act_user.get_suffix()] = 0
                     line_idx = 1 - line_idx
                     u_table[0]["class"] = "line1%d" % (line_idx)
-                    da_active = (act_user.get_idx() != req.session_data.user_idx) and req.user_info.capability_ok("mu")
+                    da_active = (act_user.pk != req.session_data.user_info.pk) and req.user_info.django_user.has_perm("backbone.wf_mu")
                     u_table[None][0] = html_tools.content(da_active and del_field or "---", act_user.get_suffix(), cls="errormin")
                     u_table[None][0] = html_tools.content(u_name, act_user.get_suffix(), cls="left")
-                    u_table[None][0] = html_tools.content(str(act_user["uid"]), act_user.get_suffix(), cls="center")
-                    u_table[None][0] = html_tools.content(da_active and active_field or (act_user["active"] and "yes" or "no"), act_user.get_suffix(), cls="center")
-                    u_table[None][0] = html_tools.content(act_user["aliases"] or "---", act_user.get_suffix(), cls="center")
-                    u_table[None][0] = html_tools.content(act_user["usercom"] or "---", act_user.get_suffix(), cls="center")
-                    u_table[None][0] = html_tools.content(act_user["useremail"] or "---", act_user.get_suffix(), cls="right")
-                    user_pers = (" ".join([act_user["usertitan"], act_user["uservname"], act_user["usernname"]])).strip()
+                    u_table[None][0] = html_tools.content(str(act_user.uid), act_user.get_suffix(), cls="center")
+                    u_table[None][0] = html_tools.content(da_active and active_field or (act_user.active and "yes" or "no"), act_user.get_suffix(), cls="center")
+                    u_table[None][0] = html_tools.content(act_user.aliases or "---", act_user.get_suffix(), cls="center")
+                    u_table[None][0] = html_tools.content(act_user.usercom or "---", act_user.get_suffix(), cls="center")
+                    u_table[None][0] = html_tools.content(act_user.useremail or "---", act_user.get_suffix(), cls="right")
+                    user_pers = (" ".join([act_user.usertitan, act_user.uservname, act_user.usernname])).strip()
                     u_table[None][0] = html_tools.content(user_pers or "---", cls="left")
-                    u_table[None][0] = html_tools.content(act_user.get_secondary_group_idxs() and ",".join(["%d" % (act_ug_tree.get_group(x)["gid"]) for x in act_user.get_secondary_group_idxs() if act_ug_tree.group_exists(x)]) or "---", cls="center")
-                    u_table[None][0] = html_tools.content(act_user.get_num_of_caps("user") and "%d" % (act_user.get_num_of_caps("user")) or "---", cls="center")
+                    u_table[None][0] = html_tools.content(act_user.get_secondary_groups() and ",".join(["%d" % (act_ug_tree.get_group(sg.pk)["gid"]) for sg in act_user.get_secondary_groups() if act_ug_tree.group_exists(x)]) or "---", cls="center")
+                    u_table[None][0] = html_tools.content(act_user.get_num_capabilities() and "%d" % (act_user.get_num_capabilities()) or "---", cls="center")
         req.write("<form action=\"%s.py?%s&opmode=bux\" method=post>%s%s" % (req.module_name,
                                                                              functions.get_sid(req),
                                                                              "\n".join([x.create_hidden_var() for x in hidden_list]),
@@ -154,14 +158,14 @@ def generate_user_masks(req, act_ug_tree, action_log, op_mode):
         del_list, act_list, inact_list = ([], [], [])
         for u_name in u_names:
             act_user = act_ug_tree.get_user(u_name)
-            u_idx = act_user.get_idx()
+            u_idx = act_user.pk
             if del_field.check_selection(act_user.get_suffix(), 0):
                 del_list.append(u_idx)
             else:
-                if u_idx != req.session_data.user_idx:
-                    if active_field.check_selection(act_user.get_suffix(), 0) and not act_user["active"]:
+                if u_idx != req.session_data.user_info.pk:
+                    if active_field.check_selection(act_user.get_suffix(), 0) and not act_user.active:
                         act_list.append(u_idx)
-                    elif not active_field.check_selection(act_user.get_suffix(), 0) and act_user["active"]:
+                    elif not active_field.check_selection(act_user.get_suffix(), 0) and act_user.active:
                         inact_list.append(u_idx)
         if del_list or act_list or inact_list:
             del_field = html_tools.text_field(req, "de", size=1024, display_len=8)
@@ -193,13 +197,10 @@ def generate_user_masks(req, act_ug_tree, action_log, op_mode):
                 w_str = " OR ".join(["user_idx=%d" % (x) for x in act_list])
                 w2_str = " OR ".join(["user=%d" % (x) for x in act_list])
                 action_log.add_ok("%s %s: %s" % (what, logging_tools.get_plural("user", len(act_list)),
-                                                 ", ".join([act_ug_tree.get_user(x)["login"] for x in act_list])), "SQL")
+                                                 ", ".join([act_ug_tree.get_user(x).login for x in act_list])), "SQL")
                 if ft == "de":
-                    req.dc.execute("DELETE FROM user WHERE %s" % (w_str))
-                    req.dc.execute("DELETE FROM usercap WHERE %s" % (w2_str))
-                    req.dc.execute("DELETE FROM user_ggroup WHERE %s" % (w2_str))
-                    req.dc.execute("DELETE FROM sge_user_con WHERE %s" % (w2_str))
-                    req.dc.execute("DELETE FROM user_device_login WHERE %s" % (w2_str))
+                    User.objects.filter(Q(username__in=user.objects.filter(Q(pk__in=act_list)).values_list("login", flat=True))).delete()
+                    user.objects.filter(Q(pk__in=act_list)).delete()
                 elif ft == "sa":
                     req.dc.execute("UPDATE user SET active=1 WHERE %s" % (w_str))
                 elif ft == "sia":
@@ -234,20 +235,20 @@ def generate_group_masks(req, act_ug_tree, action_log, op_mode):
                                                                         "r" : "right"}[form])
         for g_name in g_names:
             act_group = act_ug_tree.get_group(g_name)
-            g_idx = act_group.get_idx()
-            active_field.check_selection(act_group.get_suffix(), act_group["active"])
+            g_idx = act_group.pk
+            active_field.check_selection(act_group.get_suffix(), act_group.active)
             del_field[act_group.get_suffix()] = 0
             line_idx = 1 - line_idx
             g_table[0]["class"] = "line1%d" % (line_idx)
             g_table[None][0] = html_tools.content(act_group.get_num_users() and "&nbsp;" or del_field, act_group.get_suffix(), cls="center")
             g_table[None][0] = html_tools.content(g_name, act_group.get_suffix(), cls="left")
-            g_table[None][0] = html_tools.content(str(act_group["gid"]), act_group.get_suffix(), cls="center")
-            g_table[None][0] = html_tools.content(act_group.get_idx() == req.session_data.group_idx and "yes" or active_field, act_group.get_suffix(), cls="center")
-            g_table[None][0] = html_tools.content(act_group["groupcom"] or "---", act_group.get_suffix(), cls="center")
-            g_table[None][0] = html_tools.content(act_group["respemail"] or "---", act_group.get_suffix(), cls="right")
+            g_table[None][0] = html_tools.content(str(act_group.gid), act_group.get_suffix(), cls="center")
+            g_table[None][0] = html_tools.content(act_group.pk == req.session_data.user_info.group_id and "yes" or active_field, act_group.get_suffix(), cls="center")
+            g_table[None][0] = html_tools.content(act_group.groupcom or "---", act_group.get_suffix(), cls="center")
+            g_table[None][0] = html_tools.content(act_group.respemail or "---", act_group.get_suffix(), cls="right")
             g_table[None][0] = html_tools.content(act_group.get_num_users() and str(act_group.get_num_users()) or "-", act_group.get_suffix(), cls="center")
             g_table[None][0] = html_tools.content(act_group.get_num_capabilities() and str(act_group.get_num_capabilities()) or "-", act_group.get_suffix(), cls="center")
-            resp_pers = (" ".join([act_group["resptitan"], act_group["respvname"], act_group["respnname"]])).strip()
+            resp_pers = (" ".join([act_group.resptitan, act_group.respvname, act_group.respnname])).strip()
             g_table[None][0] = html_tools.content(resp_pers or "---", cls="left")
         req.write("<form action=\"%s.py?%s&opmode=bgx\" method=post>%s%s" % (req.module_name,
                                                                             functions.get_sid(req),
@@ -265,10 +266,10 @@ def generate_group_masks(req, act_ug_tree, action_log, op_mode):
             if act_list:
                 log_list.append("%s %s" % (what, logging_tools.get_plural("group", len(act_list))))
                 w_str = " OR ".join(["ggroup_idx=%d" % (x) for x in act_list])
-                action_log.add_ok("%s %s: %s" % (what, logging_tools.get_plural("group", len(act_list)), ", ".join([act_ug_tree.get_group(x)["ggroupname"] for x in act_list])), "SQL")
+                action_log.add_ok("%s %s: %s" % (what, logging_tools.get_plural("group", len(act_list)), ", ".join([act_ug_tree.get_group(x).groupname for x in act_list])), "SQL")
                 if ft == "de":
-                    req.dc.execute("DELETE FROM ggroupcap WHERE %s" % (" OR ".join(["ggroup=%d" % (x) for x in act_list])))
-                    req.dc.execute("DELETE FROM ggroup WHERE %s" % (w_str))
+                    Group.objects.filter(Q(name__in=group.objects.filter(Q(pk__in=act_list)).values_list("groupname", flat=True))).delete()
+                    group.objects.filter(Q(pk__in=act_list)).delete()
                 elif ft == "sa":
                     req.dc.execute("UPDATE ggroup SET active=1 WHERE %s" % (w_str))
                 elif ft == "sia":
@@ -286,15 +287,15 @@ def generate_group_masks(req, act_ug_tree, action_log, op_mode):
         del_list, act_list, inact_list = ([], [], [])
         for g_name in g_names:
             act_group = act_ug_tree.get_group(g_name)
-            g_idx = act_group.get_idx()
+            g_idx = act_group.pk
             #print g_name, act_group.get_suffix(),active_field.check_selection(act_group.get_suffix())
             if del_field.check_selection(act_group.get_suffix(), 0):
                 del_list.append(g_idx)
             else:
-                if g_idx != req.session_data.group_idx:
-                    if active_field.check_selection(act_group.get_suffix(), 0) and not act_group["active"]:
+                if g_idx != req.session_data.user_info.group_id:
+                    if active_field.check_selection(act_group.get_suffix(), 0) and not act_group.active:
                         act_list.append(g_idx)
-                    elif not active_field.check_selection(act_group.get_suffix(), 0) and act_group["active"]:
+                    elif not active_field.check_selection(act_group.get_suffix(), 0) and act_group.active:
                         inact_list.append(g_idx)
         if del_list or act_list or inact_list:
             del_field = html_tools.text_field(req, "de", size=1024, display_len=8)
@@ -350,23 +351,24 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
     create_quota_field = html_tools.checkbox(req, "quota")
     # cluster-contact
     ccontact_field     = html_tools.checkbox(req, "ccontact")
-    # sge-user
-    req.dc.execute("SELECT d.name, dc.device_config_idx, c.name AS confname, cs.name AS csname, cs.value FROM " + \
-                   "device d, device_config dc, new_config c LEFT JOIN config_str cs ON cs.new_config=c.new_config_idx WHERE " + \
-                   "c.name LIKE('sge_server%') AND c.new_config_idx=dc.new_config AND dc.device=d.device_idx ORDER BY d.name")
     sge_list, sge_lut, dc_list = (html_tools.selection_list(req, "sge", {}, multiple=True, sort_new_keys=False),
                                   {},
                                   [])
-    for db_rec in req.dc.fetchall():
-        if not sge_lut.has_key(db_rec["device_config_idx"]):
-            dc_list.append(db_rec["device_config_idx"])
-            sge_lut[db_rec["device_config_idx"]] = {"device"     : db_rec["name"],
-                                                    "config"     : db_rec["confname"],
-                                                    "name"       : db_rec["name"],
-                                                    "cellname"   : "not set",
-                                                    "user_count" : 0}
-        if db_rec["csname"] == "cellname":
-            sge_lut[db_rec["device_config_idx"]]["cellname"] = db_rec["value"]
+    # sge-user, ignore right now, FIXME
+    if False:
+        req.dc.execute("SELECT d.name, dc.device_config_idx, c.name AS confname, cs.name AS csname, cs.value FROM " + \
+                       "device d, device_config dc, new_config c LEFT JOIN config_str cs ON cs.new_config=c.new_config_idx WHERE " + \
+                       "c.name LIKE('sge_server%') AND c.new_config_idx=dc.new_config AND dc.device=d.device_idx ORDER BY d.name")
+        for db_rec in req.dc.fetchall():
+            if not sge_lut.has_key(db_rec["device_config_idx"]):
+                dc_list.append(db_rec["device_config_idx"])
+                sge_lut[db_rec["device_config_idx"]] = {"device"     : db_rec["name"],
+                                                        "config"     : db_rec["confname"],
+                                                        "name"       : db_rec["name"],
+                                                        "cellname"   : "not set",
+                                                        "user_count" : 0}
+            if db_rec["csname"] == "cellname":
+                sge_lut[db_rec["device_config_idx"]]["cellname"] = db_rec["value"]
     for user_stuff in act_ug_tree.get_all_users():
         for sge_s_idx in user_stuff.get_sge_servers():
             sge_lut[sge_s_idx]["user_count"] += 1
@@ -390,23 +392,23 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
     sys_user_dict = get_system_user_ids()
     newuser_name, newuser_idx = ("newuser", 0)
     if act_user:
-        used_uids = [x["uid"] for x in act_ug_tree.get_all_users() if act_user and not x == act_user]
-        used_aliases = sum([x["aliases"] and x["aliases"].split() or [] for x in act_ug_tree.get_all_users() if act_user and not x == act_user], [])
-        act_uid = max(min_uid, act_user["uid"] - 10)
-        used_names = [x["login"] for x in act_ug_tree.get_all_users() if act_user and not x == act_user]
-        all_used_names = [x["login"] for x in act_ug_tree.get_all_users() if act_user]
+        used_uids = [x.uid for x in act_ug_tree.get_all_users() if act_user and not x.pk == act_user.pk]
+        used_aliases = sum([x.aliases and x.aliases.split() or [] for x in act_ug_tree.get_all_users() if act_user and not x == act_user], [])
+        act_uid = max(min_uid, act_user.uid - 10)
+        used_names = [x.login for x in act_ug_tree.get_all_users() if act_user and not x == act_user]
+        all_used_names = [x.login for x in act_ug_tree.get_all_users() if act_user]
         while newuser_name in used_names:
             newuser_idx += 1
             newuser_name = "newuser%d" % (newuser_idx)
     else:
-        used_uids = [x["uid"] for x in act_ug_tree.get_all_users()]
-        used_aliases = sum([x["aliases"] and x["aliases"].split() or [] for x in act_ug_tree.get_all_users()], [])
+        used_uids = [x.uid for x in act_ug_tree.get_all_users()]
+        used_aliases = sum([x.aliases and x.aliases.split() or [] for x in act_ug_tree.get_all_users()], [])
         if used_uids:
             act_uid = max(min_uid, min(used_uids) - 10)
         else:
             act_uid = min_uid
-        used_names = [x["login"] for x in act_ug_tree.get_all_users()]
-        all_used_names = [x["login"] for x in act_ug_tree.get_all_users()]
+        used_names = [x.login for x in act_ug_tree.get_all_users()]
+        all_used_names = [x.login for x in act_ug_tree.get_all_users()]
         while newuser_name in used_names:
             newuser_idx += 1
             newuser_name = "newuser%d" % (newuser_idx)
@@ -459,13 +461,13 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
                 any_quota_ok = True
             num_scratches += 1
     for user_stuff in act_ug_tree.get_all_users():
-        idx = user_stuff.get_idx()
-        if user_stuff["export"] and home_usecount.has_key(user_stuff["export"]):
-            home_usecount[user_stuff["export"]] += 1
-        if user_stuff["export_scr"] and scratch_usecount.has_key(user_stuff["export_scr"]):
-            scratch_usecount[user_stuff["export_scr"]] += 1
-        pgroup_usecount.setdefault(user_stuff["ggroup"], 0)
-        pgroup_usecount[user_stuff["ggroup"]] += 1
+        idx = user_stuff.pk
+        if user_stuff.export_id and home_usecount.has_key(user_stuff.export_id):
+            home_usecount[user_stuff.export_id] += 1
+        if user_stuff.export_scr_id and scratch_usecount.has_key(user_stuff.export_scr_id):
+            scratch_usecount[user_stuff.export_scr_id] += 1
+        pgroup_usecount.setdefault(user_stuff.group_id, 0)
+        pgroup_usecount[user_stuff.group_id] += 1
     if home_usecount:
         min_count = min(home_usecount.values())
         prefered_home = [k for k, v in home_usecount.iteritems() if v == min_count][0]
@@ -479,9 +481,9 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
     prefered_pgroup = [k for k, v in pgroup_usecount.iteritems() if v == max(pgroup_usecount.values())][0]
     g_names = act_ug_tree.get_all_group_names()
     for g_name in g_names:
-        group = act_ug_tree.get_group(g_name)
-        pgroup_field[group.get_idx()] = "%s [ gid = %d, homestart is '%s', scratchstart is '%s' ] " % (g_name, group["gid"], group["homestart"], group["scratchstart"])
-        sgroup_field[group.get_idx()] = "%s [ gid = %d ] " % (g_name, group["gid"])
+        g_group = act_ug_tree.get_group(g_name)
+        pgroup_field[g_group.pk] = "%s [ gid = %d, homestart is '%s', scratchstart is '%s' ] " % (g_name, g_group.gid, g_group.homestart, g_group.scratchstart)
+        sgroup_field[g_group.pk] = "%s [ gid = %d ] " % (g_name, g_group.gid)
     # shells
     all_shells = cdef_user.read_possible_shells()
     shell_list = html_tools.selection_list(req, "shells", {}, sort_new_keys=False)
@@ -490,7 +492,7 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
         if shell == "/bin/bash":
             preferd_shell_idx = shell_idx
         shell_list[shell_idx] = shell
-        if act_user and act_user["shell"] == shell:
+        if act_user and act_user.shell == shell:
             act_user_shell = shell_idx
         shell_idx += 1
     # hidden vars
@@ -503,8 +505,9 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
         name_field.check_selection("", newuser_name)
         rel_home_field.check_selection("", "")
         rel_scratch_field.check_selection("", "")
-        act_user = cdef_user.user(newuser_name, 0, {"login" : newuser_name})
-        act_user.act_values_are_default()
+        act_user = user(login=newuser_name,
+                        uid=0)
+        #act_user.act_values_are_default()
         titan_field.check_selection("", "title")
         vname_field.check_selection("", "first name")
         nname_field.check_selection("", "last name")
@@ -535,32 +538,33 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
             cap_dict[act_cap.name] = (act_val, act_cap.idx)
     elif op_mode == "mum":
         # modify user
-        name_field.check_selection("", act_user["login"])
-        titan_field.check_selection("", act_user["usertitan"])
-        vname_field.check_selection("", act_user["uservname"])
-        nname_field.check_selection("", act_user["usernname"])
-        tel_field.check_selection("", act_user["usertel"])
-        email_field.check_selection("", act_user["useremail"])
-        tel_field.check_selection("", act_user["usertel"])
-        pag_field.check_selection("", act_user["userpager"])
-        email_field.check_selection("", act_user["useremail"])
-        com_field.check_selection("", act_user["usercom"])
+        name_field.check_selection("", act_user.login)
+        titan_field.check_selection("", act_user.usertitan)
+        vname_field.check_selection("", act_user.uservname)
+        nname_field.check_selection("", act_user.usernname)
+        tel_field.check_selection("", act_user.usertel)
+        email_field.check_selection("", act_user.useremail)
+        tel_field.check_selection("", act_user.usertel)
+        pag_field.check_selection("", act_user.userpager)
+        email_field.check_selection("", act_user.useremail)
+        com_field.check_selection("", act_user.usercom)
         shell_list.check_selection("", act_user_shell)
-        uid_list.check_selection("", act_user["uid"])
-        uid_field.check_selection("", act_user["uid"])
-        pgroup_field.check_selection("", act_user["ggroup"])
-        sgroup_field.check_selection("", act_user.get_secondary_group_idxs())
+        uid_list.check_selection("", act_user.uid)
+        uid_field.check_selection("", act_user.uid)
+        pgroup_field.check_selection("", act_user.group_id)
+        sgroup_field.check_selection("", [cur_g.pk for cur_g in act_user.get_secondary_groups()])
         pass1_field.check_selection("", "")
         pass2_field.check_selection("", "")
-        alias_field.check_selection("", act_user["aliases"] or "")
-        act_field.check_selection("", act_user["active"])
-        ccontact_field.check_selection("", act_user["cluster_contact"])
-        rel_home_field.check_selection("", act_user["home"])
-        rel_scratch_field.check_selection("", act_user["scratch"])
+        alias_field.check_selection("", act_user.aliases or "")
+        act_field.check_selection("", act_user.active)
+        ccontact_field.check_selection("", act_user.cluster_contact)
+        rel_home_field.check_selection("", act_user.home)
+        rel_scratch_field.check_selection("", act_user.scratch)
         sge_list.check_selection("", act_user.get_sge_servers())
-        udl_list.check_selection("", act_user.get_login_servers())
+        # FIXME
+        udl_list.check_selection("", [])#act_user.get_login_servers())
         hidden_uid = html_tools.text_field(req, "ulist", size=8, display_len=8)
-        hidden_uid.check_selection("", str(act_user["uid"]))
+        hidden_uid.check_selection("", str(act_user.uid))
         hidden_list.append(hidden_uid)
         cap_dict = {}
         for cap_idx in act_ug_tree.cap_stack.get_all_cap_idxs():
@@ -570,7 +574,7 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
     elif op_mode == "muv":
         valid = True
         new_name = name_field.check_selection("")
-        if new_name in act_ug_tree.get_all_user_names() and new_name != act_user["login"]:
+        if new_name in act_ug_tree.get_all_user_names() and new_name != act_user.login:
             action_log.add_error("Username '%s' already used" % (new_name), "already used")
             valid = False
         titan, nname, vname, aliases = (titan_field.check_selection(""),
@@ -583,41 +587,43 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
                                       com_field.check_selection(""))
         rel_home_dir, rel_scratch_dir = (rel_home_field.check_selection("").strip() or new_name,
                                          rel_scratch_field.check_selection("").strip() or new_name)
-        # sge_servers
-        new_sge_servers, old_sge_servers = (sge_list.check_selection("", []), [x for x in act_user.get_sge_servers()])
-        sge_add_servers    = [x for x in new_sge_servers if x not in old_sge_servers]
-        sge_remove_servers = [x for x in old_sge_servers if x not in new_sge_servers]
-        sge_keep_servers   = [x for x in new_sge_servers if x     in old_sge_servers]
-        for new_s in sge_add_servers:
-            act_user.add_sge_server(new_s)
-        for old_s in sge_remove_servers:
-            act_user.delete_sge_server(old_s)
-        act_user["sge_servers"] = [x for x in act_user["sge_servers"]]
-        # user-device-login
-        new_udl_servers, old_udl_servers = (udl_list.check_selection("", []), [x for x in act_user.get_login_servers()])
-        udl_add_servers    = [x for x in new_udl_servers if x not in old_udl_servers]
-        udl_remove_servers = [x for x in old_udl_servers if x not in new_udl_servers]
-        udl_keep_servers   = [x for x in new_udl_servers if x     in old_udl_servers]
-        for new_s in udl_add_servers:
-            act_user.add_login_server(new_s)
-        for old_s in udl_remove_servers:
-            act_user.delete_login_server(old_s)
-        act_user["login_servers"] = [x for x in act_user["login_servers"]]
+        # sge_servers, FIXME
+        if False:
+            new_sge_servers, old_sge_servers = (sge_list.check_selection("", []), [x for x in act_user.get_sge_servers()])
+            sge_add_servers    = [x for x in new_sge_servers if x not in old_sge_servers]
+            sge_remove_servers = [x for x in old_sge_servers if x not in new_sge_servers]
+            sge_keep_servers   = [x for x in new_sge_servers if x     in old_sge_servers]
+            for new_s in sge_add_servers:
+                act_user.add_sge_server(new_s)
+            for old_s in sge_remove_servers:
+                act_user.delete_sge_server(old_s)
+            act_user["sge_servers"] = [x for x in act_user["sge_servers"]]
+        # user-device-login, FIXME
+        if False:
+            new_udl_servers, old_udl_servers = (udl_list.check_selection("", []), [x for x in act_user.get_login_servers()])
+            udl_add_servers    = [x for x in new_udl_servers if x not in old_udl_servers]
+            udl_remove_servers = [x for x in old_udl_servers if x not in new_udl_servers]
+            udl_keep_servers   = [x for x in new_udl_servers if x     in old_udl_servers]
+            for new_s in udl_add_servers:
+                act_user.add_login_server(new_s)
+            for old_s in udl_remove_servers:
+                act_user.delete_login_server(old_s)
+            act_user["login_servers"] = [x for x in act_user["login_servers"]]
         #print "*", act_user["sge_servers"]
         if rel_home_dir.count("/"):
             action_log.add_error("Homedir '%s' not valid" % (rel_home_dir), "dir separator found")
             valid = False
-        if [True for x in act_ug_tree.get_all_users() if rel_home_dir == x["home"] and rel_home_dir != act_user["home"]]:
+        if [True for x in act_ug_tree.get_all_users() if rel_home_dir == x.home and rel_home_dir != act_user.home]:
             action_log.add_error("Homedir '%s' not valid" % (rel_home_dir), "already used")
             valid = False
         if rel_scratch_dir.count("/"):
             action_log.add_error("Scratchdir '%s' not valid" % (rel_scratch_dir), "dir separator found")
             valid = False
-        if [True for x in act_ug_tree.get_all_users() if rel_scratch_dir == x["scratch"] and rel_scratch_dir != act_user["scratch"]]:
+        if [True for x in act_ug_tree.get_all_users() if rel_scratch_dir == x.scratch and rel_scratch_dir != act_user.scratch]:
             action_log.add_error("Scratchdir '%s' not valid" % (rel_scratch_dir), "already used")
             valid = False
         is_active = act_field.check_selection("")
-        if not is_active and act_user.get_idx() == req.session_data.user_idx:
+        if not is_active and act_user.pk == req.session_data.user_info.pk:
             action_log.add_warn("Cannot disable my own user", "error")
             valid = False
         new_uid, new_uid_f = (uid_list.check_selection(),
@@ -628,7 +634,7 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
                 valid = False
             else:
                 new_uid = int(new_uid_f)
-        elif new_uid_f.isdigit() and new_uid == act_user["uid"]:
+        elif new_uid_f.isdigit() and new_uid == act_user.uid:
             new_uid = int(new_uid_f)
         pass1, pass2 = (pass1_field.check_selection(""),
                         pass2_field.check_selection(""))
@@ -654,7 +660,7 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
                                                                    ", ".join(already_used_aliases)), "invalid aliases")
             valid = False
         if new_uid in used_uids:
-            action_log.add_warn("uid is already used by user '%s'" % ([x["login"] for x in act_ug_tree.get_all_users() if x["uid"] == new_uid][0]), "invalid uid")
+            action_log.add_warn("uid is already used by user '%s'" % ([x.login for x in act_ug_tree.get_all_users() if x.uid == new_uid][0]), "invalid uid")
             valid = False
         elif new_uid in sys_user_dict.keys():
             action_log.add_warn("uid is already used by system user '%s'" % (sys_user_dict[new_uid]), "invalid uid")
@@ -663,28 +669,28 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
         cluster_contact, sge_user = (ccontact_field.check_selection(),
                                      sge_list.check_selection("", []))
         new_pgroup = pgroup_field.check_selection("")
-        old_sgroups = act_user.get_secondary_group_idxs()
+        old_sgroups = [cur_g.pk for cur_g in act_user.get_secondary_groups()]
         new_sgroups = [x for x in sgroup_field.check_selection("", []) if x != new_pgroup]
-        if act_user["uid"] == req.user_info["uid"]:
-            if act_user["uid"] != new_uid:
+        if act_user.uid == req.user_info.uid:
+            if act_user.uid != new_uid:
                 action_log.add_warn("cannot change uid of actually logged-in user", "internal")
                 valid = False
-            if act_user["ggroup"] != new_pgroup:
+            if act_user.group_id != new_pgroup:
                 action_log.add_warn("cannot change primary group of actually logged-in user", "internal")
                 valid = False
         # change of pgroup / uid ?
-        pg_uid_change = (act_user["uid"] != new_uid or act_user["ggroup"] != new_pgroup)
+        pg_uid_change = (act_user.uid != new_uid or act_user.group_id != new_pgroup)
         # change of login ?
-        old_name = act_user["login"]
+        old_name = act_user.login
         login_change = (old_name != new_name)
         # change of homedir ?
-        homedir_change = (act_user["home"] != rel_home_dir)
+        homedir_change = (act_user.home != rel_home_dir)
         if homedir_change:
-            old_home_dir = act_user["home"]
+            old_home_dir = act_user.home
         # change of scratchdir ?
-        scratchdir_change = (act_user["scratch"] != rel_scratch_dir)
+        scratchdir_change = (act_user.scratch != rel_scratch_dir)
         if scratchdir_change:
-            old_scratch_dir = act_user["scratch"]
+            old_scratch_dir = act_user.scratch
         cap_dict = {}
         for cap_idx in act_ug_tree.cap_stack.get_all_cap_idxs():
             act_cap = act_ug_tree.cap_stack[cap_idx]
@@ -694,12 +700,12 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
             action_log.add_warn("Userdata is not valid", "please check")
             op_mode = "mum"
             hidden_uid = html_tools.text_field(req, "ulist", size=8, display_len=8)
-            hidden_uid.check_selection("", str(act_user["uid"]))
+            hidden_uid.check_selection("", str(act_user.uid))
             hidden_list.append(hidden_uid)
         else:
             mod_dict = {"uid"             : new_uid,
                         "active"          : is_active,
-                        "ggroup"          : new_pgroup,
+                        "group"           : group.objects.get(Q(pk=new_pgroup)),
                         "cluster_contact" : cluster_contact,
                         "login"           : new_name,
                         "uservname"       : vname,
@@ -715,60 +721,75 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
             if change_pass:
                 mod_dict["password"] = crypt.crypt(pass1, "".join([chr(random.randint(97, 122)) for x in range(16)]))
                 _set_samba_password(mod_dict, pass1)
-            act_user.update(mod_dict)
-            act_user.commit_sql_changes(req.dc, 1, 0, 0)
-            if sge_add_servers:
-                for sge_add in sge_add_servers:
-                    com_list.append(tools.s_command(req, sge_lut[sge_add]["config"]   , 8004, "create_sge_user", [], 20, None, {"username" : new_name}))
-            if sge_remove_servers:
-                for sge_remove in sge_remove_servers:
-                    com_list.append(tools.s_command(req, sge_lut[sge_remove]["config"], 8004, "delete_sge_user", [], 20, None, {"username" : old_name}))
-            if login_change and sge_keep_servers:
-                for sge_keep in sge_keep_servers:
-                    com_list.append(tools.s_command(req, sge_lut[sge_keep]["config"]  , 8004, "rename_sge_user", [], 20, None, {"old_username" : old_name,
-                                                                                                                                "username"     : new_name}))
+                act_user.django_user.set_password(pass1)
+                act_user.django_user.save()
+            for key, value in mod_dict.iteritems():
+                setattr(act_user, key, value)
+            act_user.save()
+##            if sge_add_servers:
+##                for sge_add in sge_add_servers:
+##                    com_list.append(tools.s_command(req, sge_lut[sge_add]["config"]   , 8004, "create_sge_user", [], 20, None, {"username" : new_name}))
+##            if sge_remove_servers:
+##                for sge_remove in sge_remove_servers:
+##                    com_list.append(tools.s_command(req, sge_lut[sge_remove]["config"], 8004, "delete_sge_user", [], 20, None, {"username" : old_name}))
+##            if login_change and sge_keep_servers:
+##                for sge_keep in sge_keep_servers:
+##                    com_list.append(tools.s_command(req, sge_lut[sge_keep]["config"]  , 8004, "rename_sge_user", [], 20, None, {"old_username" : old_name,
+##                                                                                                                                "username"     : new_name}))
             if homedir_change:
-                if act_user["export"]:
-                    com_list.append(tools.s_command(req, "server", 8004, "modify_user_dir", [], 20, home_lut[act_user["export"]], {"username"     : new_name,
+                if act_user.export:
+                    com_list.append(tools.s_command(req, "server", 8004, "modify_user_dir", [], 20, home_lut[act_user.export], {"username"     : new_name,
                                                                                                                                    "old_dir_name" : old_home_dir,
                                                                                                                                    "export_type"  : "home"}))
             if scratchdir_change:
-                if act_user["export_scr"]:
-                    com_list.append(tools.s_command(req, "server", 8004, "modify_user_dir", [], 20, scratch_lut[act_user["export_scr"]], {"username"     : new_name,
+                if act_user.export_scr:
+                    com_list.append(tools.s_command(req, "server", 8004, "modify_user_dir", [], 20, scratch_lut[act_user.export_scr], {"username"     : new_name,
                                                                                                                                           "old_dir_name" : old_scratch_dir,
                                                                                                                                           "export_type"  : "scratch"}))
             if pg_uid_change:
-                if act_user["export"]:
-                    com_list.append(tools.s_command(req, "server", 8004, "modify_user_uid_gid", [], 20, home_lut[act_user["export"]], {"username"    : new_name,
+                if act_user.export:
+                    com_list.append(tools.s_command(req, "server", 8004, "modify_user_uid_gid", [], 20, home_lut[act_user.export], {"username"    : new_name,
                                                                                                                                        "export_type" : "home"}))
-                if act_user["export_scr"]:
-                    com_list.append(tools.s_command(req, "server", 8004, "modify_user_uid_gid", [], 20, scratch_lut[act_user["export_scr"]], {"username"    : new_name,
+                if act_user.export_scr:
+                    com_list.append(tools.s_command(req, "server", 8004, "modify_user_uid_gid", [], 20, scratch_lut[act_user.export_scr], {"username"    : new_name,
                                                                                                                                               "export_type" : "scratch"}))
-            err_list, warn_list, ok_list = act_user.build_change_lists("altered ", " for user %s" % (act_user["login"]), 1, 0, 1)
-            add_list, del_list = ([], [])
+            #err_list, warn_list, ok_list = act_user.build_change_lists("altered ", " for user %s" % (act_user.login), 1, 0, 1)
+            warn_list, err_list = ([], [])
+            add_list, del_list, ok_list, del_names, add_names = ([], [], [], [], [])
             for cap_name, (set_cap, idx) in cap_dict.iteritems():
                 #print cap_name, set_cap, act_group.has_capability(cap_name)
                 if set_cap and not act_user.capability_ok(cap_name):
+                    add_names.append("wf_%s" % (cap_name))
                     add_list.append(idx)
                     ok_list.append(("Added capability %s" % (cap_name), "sql"))
-                elif not set_cap and act_user.capability_ok(cap_name):
+                elif not set_cap and act_user.capability_ok(cap_name, only_user=True):
+                    del_names.append("wf_%s" % (cap_name))
                     del_list.append(idx)
                     ok_list.append(("Deleted capability %s" % (cap_name), "sql"))
             if add_list:
-                req.dc.execute("INSERT INTO usercap VALUES%s" % (",".join(["(0, %d, %d, null)" % (act_user.get_idx(), x) for x in add_list])))
+                for cap_add in add_list:
+                    user_cap(capability=capability.objects.get(pk=cap_add),
+                              user=act_user).save()
+                act_user.django_user.user_permissions.add(*list(Permission.objects.filter(Q(codename__in=add_names))))
             if del_list:
-                req.dc.execute("DELETE FROM usercap WHERE user=%d AND (%s)" % (act_user.get_idx(), " OR ".join(["capability=%d" % (x) for x in del_list])))
+                act_user.user_cap_set.filter(Q(capability__in=del_list)).delete()
+                act_user.django_user.user_permissions.remove(*list(Permission.objects.filter(Q(codename__in=del_names))))
             # change secondary groups
             add_list, del_list = ([x for x in new_sgroups if x not in old_sgroups],
                                   [x for x in old_sgroups if x not in new_sgroups])
+            print add_list, del_list
             if add_list:
-                req.dc.execute("INSERT INTO user_ggroup VALUES%s" % (",".join(["(0, %d, %d, null)" % (x, act_user.get_idx()) for x in add_list])))
+                for sgroup in add_list:
+                    act_user.django_user.groups.add(group.objects.get(Q(pk=sgroup)).django_group)
+                    user_group(user=act_user,
+                               group=group.objects.get(pk=sgroup)).save()
                 ok_list.append(("Added %s: %s" % (logging_tools.get_plural("secondary group", len(add_list)),
-                                                  ", ".join([act_ug_tree.get_group(x)["ggroupname"] for x in add_list])), "sql"))
+                                                  ", ".join([act_ug_tree.get_group(x).groupname for x in add_list])), "sql"))
             if del_list:
-                req.dc.execute("DELETE FROM user_ggroup WHERE user=%d AND (%s)" % (act_user.get_idx(), " OR ".join(["ggroup=%d" % (x) for x in del_list])))
+                act_user.django_user.groups.remove(*[cur_group.django_group for cur_group in group.objects.filter(Q(pk__in=del_list))])
+                user_group.objects.filter(Q(user=act_user) & Q(group__in=del_list)).delete()
                 ok_list.append(("Deleted %s: %s" % (logging_tools.get_plural("secondary group", len(del_list)),
-                                                    ", ".join([act_ug_tree.get_group(x)["ggroupname"] for x in del_list])), "sql"))
+                                                    ", ".join([act_ug_tree.get_group(x).groupname for x in del_list])), "sql"))
             action_log.add_errors(err_list)
             action_log.add_warns(warn_list)
             action_log.add_oks(ok_list)
@@ -780,23 +801,23 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
     elif op_mode == "mux":
         # delete user
         show_table = False
-        req.write(html_tools.gen_hline("Really delete user '%s' ?" % (act_user["login"]), 2))
-        ok_target = "mud"
-        hidden_uid = html_tools.text_field(req, "ulist", size=8, display_len=8)
-        hidden_uid.check_selection("", str(act_user["uid"]))
-        hidden_list.append(hidden_uid)
+        if act_user.pk == req.session_data.user_info.pk:
+            req.write(html_tools.gen_hline("Cannot delete current user", 2))
+        else:
+            req.write(html_tools.gen_hline("Really delete user '%s' ?" % (act_user.login), 2))
+            ok_target = "mud"
+            hidden_uid = html_tools.text_field(req, "ulist", size=8, display_len=8)
+            hidden_uid.check_selection("", str(act_user.uid))
+            hidden_list.append(hidden_uid)
     elif op_mode == "mud":
         # delete user
         show_table = False
-        del_idx, del_name, del_group_idx = (act_user.get_idx(), act_user["login"], act_user["ggroup"])
-        del_group_name = [v.get_idx() for v in act_ug_tree.get_all_groups() if v.get_idx() == del_group_idx][0]
-        action_log.add_ok("deleted user %s" % (act_user["login"]), "SQL")
-        req.dc.execute("DELETE FROM user WHERE user_idx = %d" % (del_idx))
-        req.dc.execute("DELETE FROM usercap WHERE user = %d" % (del_idx))
-        req.dc.execute("DELETE FROM user_ggroup WHERE user = %d" % (del_idx))
-        req.dc.execute("DELETE FROM sge_user_con WHERE user = %d" % (del_idx))
-        req.dc.execute("DELETE FROM user_device_login WHERE user = %d" % (del_idx))
-        act_ug_tree.get_group(del_group_name).del_user(del_idx)
+        del_idx, del_name, del_group_idx = (act_user.pk, act_user.login, act_user.group_id)
+        #del_group_name = [v.get_idx() for v in act_ug_tree.get_all_groups() if v.get_idx() == del_group_idx][0]
+        action_log.add_ok("deleted user %s" % (act_user.login), "SQL")
+        User.objects.filter(Q(username=act_user.login)).delete()
+        act_user.delete()
+        #act_ug_tree.get_group(del_group_name).del_user(del_idx)
         rebuild_yp = True
     elif op_mode == "cvu":
         # validate creation of new user
@@ -852,7 +873,7 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
                                                                    ", ".join(already_used_aliases)), "invalid aliases")
             valid = False
         if new_uid in used_uids:
-            action_log.add_warn("uid is already used by user '%s'" % ([x["login"] for x in act_ug_tree.get_all_users() if x["uid"] == new_uid][0]), "invalid uid")
+            action_log.add_warn("uid is already used by user '%s'" % ([x.login for x in act_ug_tree.get_all_users() if x.uid == new_uid][0]), "invalid uid")
             valid = False
         elif new_uid in sys_user_dict.keys():
             action_log.add_warn("uid is already used by system user '%s'" % (sys_user_dict[new_uid]), "invalid uid")
@@ -865,12 +886,13 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
         if not valid:
             action_log.add_warn("Userdata is not valid", "please check")
             op_mode = "cu"
-            act_user = cdef_user.user(new_name, 0, {"login" : new_name})
-            act_user.act_values_are_default()
+            act_user = user(login=new_name,
+                            uid=0)
+            #act_user.act_values_are_default()
         else:
             new_dict = {"uid"             : new_uid,
                         "active"          : is_active,
-                        "ggroup"          : pgroup,
+                        "group"           : group.objects.get(Q(pk=pgroup)),
                         "login"           : new_name,
                         "uservname"       : vname,
                         "usernname"       : nname,
@@ -882,38 +904,51 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
                         "usercom"         : comment,
                         "shell"           : shell_list[new_shell]["name"],
                         "cluster_contact" : ccontact,
-                        "export"          : home_export or 0,
-                        "export_scr"      : scratch_export or 0,
+                        "export"          : home_export or None,
+                        "export_scr"      : scratch_export or None,
                         "home"            : rel_home_dir,
                         "scratch"         : rel_scratch_dir,
                         "password"        : crypt.crypt(pass1, "".join([chr(random.randint(97, 122)) for x in range(16)]))}
             _set_samba_password(new_dict, pass1)
-            act_user = cdef_user.user(new_name, 0)
-            act_user.update(new_dict)
+            act_user = user(uid=0)
+            for key, value in new_dict.iteritems():
+                setattr(act_user, key, value)
             if sge_user:
                 for sge_u in sge_user:
                     act_user.add_sge_server(sge_u)
-            act_user["sge_servers"] = [x for x in act_user["sge_servers"]]
-            act_user.act_values_are_default()
-            act_user.commit_sql_changes(req.dc, 1, 1, 0)
-            if sgroups:
-                req.dc.execute("INSERT INTO user_ggroup VALUES%s" % (", ".join(["(0, %d, %d, null)" % (x, act_user.get_idx()) for x in sgroups])))
-            err_list, warn_list, ok_list = act_user.build_change_lists("set ", " for new_user %s" % (new_name), 0, 0, 1)
-            add_list, del_list = ([], [])
+            # FIXME
+            #act_user["sge_servers"] = [x for x in act_user["sge_servers"]]
+            #act_user.act_values_are_default()
+            act_user.save()
+            new_du = act_user.create_django_user()
+            new_du.groups.add(group.objects.get(Q(pk=pgroup)).django_group)
+            new_du.set_password(pass1)
+            new_du.save()
+            #act_user.commit_sql_changes(req.dc, 1, 1, 0)
+            for sgroup in sgroups:
+                new_du.groups.add(group.objects.get(Q(pk=sgroup)).django_group)
+                user_group(user=act_user,
+                           group=group.objects.get(pk=sgroup)).save()
+            #err_list, warn_list, ok_list = act_user.build_change_lists("set ", " for new_user %s" % (new_name), 0, 0, 1)
+            add_list, del_list, ok_list, del_names, add_names = ([], [], [], [], [])
             for cap_name, (set_cap, idx) in cap_dict.iteritems():
                 #print cap_name, set_cap, act_group.has_capability(cap_name)
                 if set_cap and not act_user.capability_ok(cap_name):
+                    add_names.append("wf_%s" % (cap_name))
                     add_list.append(idx)
                     ok_list.append(("Added capability %s" % (cap_name), "sql"))
-                elif not set_cap and act_user.capability_ok(cap_name):
+                elif not set_cap and act_user.capability_ok(cap_name, only_user=True):
+                    del_names.append("wf_%s" % (cap_name))
                     del_list.append(idx)
                     ok_list.append(("Deleted capability %s" % (cap_name), "sql"))
             if add_list:
-                req.dc.execute("INSERT INTO usercap VALUES%s" % (",".join(["(0, %d, %d, null)" % (act_user.get_idx(), x) for x in add_list])))
+                for cap_add in add_list:
+                    user_cap(capability=capability.objects.get(pk=cap_add),
+                              user=act_user).save()
+                act_user.django_user.user_permissions.add(*list(Permission.objects.filter(Q(codename__in=add_names))))
             if del_list:
-                req.dc.execute("DELETE FROM usercap WHERE ggroup=%d AND (%s)" % (act_user.get_idx(), " OR ".join(["capability=%d" % (x) for x in del_list])))
-            action_log.add_errors(err_list)
-            action_log.add_warns(warn_list)
+                act_user.user_cap_set.filter(Q(capability__in=del_list)).delete()
+                act_user.django_user.user_permissions.remove(*list(Permission.objects.filter(Q(codename__in=del_names))))
             action_log.add_oks(ok_list)
             if home_export:
                 com_list.append(tools.s_command(req, "server", 8004, "create_user_home", [], 20, home_lut[home_export], {"username" : new_name}))
@@ -933,27 +968,27 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
         if op_mode == "mub":
             u_table[None][0:4] = html_tools.content("Basic user information", cls="center", type="th")
             u_table[0][0]    = html_tools.content("Loginname:", cls="right")
-            u_table[None][0] = html_tools.content(act_user["login"], cls="left")
+            u_table[None][0] = html_tools.content(act_user.login, cls="left")
             u_table[None][0] = html_tools.content("User ID:", cls="right")
-            u_table[None][0] = html_tools.content(act_user["uid"], cls="left")
-            pgroup_struct = [v for v in act_ug_tree.get_all_groups() if v.get_idx() == act_user["ggroup"]][0]
+            u_table[None][0] = html_tools.content(act_user.uid, cls="left")
+            pgroup_struct = [v for v in act_ug_tree.get_all_groups() if v.pk == act_user.group_id][0]
             sgroup_list   = [(v.get_idx(), v["gid"]) for v in act_ug_tree.get_all_groups() if v.get_idx() in act_user.get_secondary_group_idxs()]
             u_table[0][0]    = html_tools.content("Primary Group:", cls="right")
-            u_table[None][0] = html_tools.content("%s [gid=%s]" % (pgroup_struct["ggroupname"], pgroup_struct["gid"]), cls="left")
+            u_table[None][0] = html_tools.content("%s [gid=%s]" % (pgroup_struct.groupname, pgroup_struct["gid"]), cls="left")
             u_table[None][0] = html_tools.content("%s :" % (logging_tools.get_plural("Secondary group", len(sgroup_list))), cls="right")
             u_table[None][0] = html_tools.content(", ".join(["%s [gid=%d]" % (x, y) for x, y in sgroup_list]) or "---", cls="left")
             u_table[0][0]    = html_tools.content("Shell:", cls="right")
-            u_table[None][0] = html_tools.content(act_user["shell"], cls="left")
+            u_table[None][0] = html_tools.content(act_user.shell, cls="left")
             u_table[None][0] = html_tools.content("Active:", cls="right")
-            u_table[None][0] = html_tools.content(act_user["active"] and "yes" or "no", cls="left")
+            u_table[None][0] = html_tools.content(act_user.active and "yes" or "no", cls="left")
             u_table[0][0]    = html_tools.content("Cluster contact:", cls="right")
             u_table[None][0] = html_tools.content(act_user["cluster_contact"] and "yes" or "no", cls="left")
             u_table[None][0] = html_tools.content("SGE user:", cls="right")
             act_sge_servers = act_user.get_sge_servers()
             u_table[None][0] = html_tools.content(act_sge_servers and ", ".join(["on %s" % (sge_lut[x]["device"]) for x in act_sge_servers]) or "no", cls="left")
             u_table[0][0]    = html_tools.content("Aliases:", cls="right")
-            if act_user["aliases"]:
-                alias_str = act_user["aliases"]
+            if act_user.aliases:
+                alias_str = act_user.aliases
             else:
                 alias_str = "None set"
             u_table[None][0:3] = html_tools.content(alias_str, cls="left")
@@ -979,7 +1014,7 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
             u_table[0][0]      = html_tools.content("User ID:", cls="right")
             u_table[None][0]   = html_tools.content([uid_list, " %d <= " % (min_uid), uid_field, " <= %d" % (max_uid), ", free uids: %s" % (free_uids_str)], cls="left")
             if not op_mode.startswith("mu"):
-                pgroup_struct = [v for v in act_ug_tree.get_all_groups() if v.get_idx() == prefered_pgroup][0]
+                pgroup_struct = [v for v in act_ug_tree.get_all_groups() if v.pk == prefered_pgroup][0]
                 if num_homes:
                     u_table[0][0]    = html_tools.content("Create homedir in:", cls="right")
                     u_table[None][0] = html_tools.content(home_field, cls="left")
@@ -987,7 +1022,7 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
                     u_table[0][0]    = html_tools.content("Create scratchdir in:", cls="right")
                     u_table[None][0] = html_tools.content(scratch_field, cls="left")
             else:
-                pgroup_struct = [v for v in act_ug_tree.get_all_groups() if v.get_idx() == act_user["ggroup"]][0]
+                pgroup_struct = [v for v in act_ug_tree.get_all_groups() if v.pk == act_user.group_id][0]
             u_table[0][0]      = html_tools.content("Primary group:", cls="right")
             u_table[None][0]   = html_tools.content(pgroup_field, cls="left")
             u_table[0][0]      = html_tools.content("Secondary group(s):", cls="right")
@@ -1040,9 +1075,9 @@ def generate_user_mask(req, act_ug_tree, action_log, op_mode, act_user = None):
 
         req.write(html_tools.gen_hline({"cu"  : "Please set the general properties of the new user:",
                                         "cvu" : "Some values are incorrect for the new user",
-                                        "mub" : "Information about the user '%s'" % (act_user["login"]),
-                                        "mum" : "Edit the general properties of user '%s'" % (act_user["login"]),
-                                        "muv" : "Some values are incorrect for user '%s'" % (act_user["login"])}.get(op_mode, "Invalid operation_mode %s" % (op_mode)), 2))
+                                        "mub" : "Information about the user '%s'" % (act_user.login),
+                                        "mum" : "Edit the general properties of user '%s'" % (act_user.login),
+                                        "muv" : "Some values are incorrect for user '%s'" % (act_user.login)}.get(op_mode, "Invalid operation_mode %s" % (op_mode)), 2))
         submit_button = html_tools.submit_button(req, {"cu"  : "validate and create",
                                                        "mub" : "ok",
                                                        "mum" : "validate and change"}.get(op_mode, "unknown mode %s" % (op_mode)))
@@ -1090,10 +1125,10 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
     gid_field     = html_tools.text_field(req, "gidn", size=8, display_len=8)
     gids_written, min_gid, max_gid = (0, 100, 65000)
     if act_group:
-        used_gids = [x["gid"] for x in act_ug_tree.get_all_groups() if act_group and not x == act_group]
-        act_gid = max(min_gid, act_group["gid"] - 10)
+        used_gids = [x.gid for x in act_ug_tree.get_all_groups() if act_group and not x == act_group]
+        act_gid = max(min_gid, act_group.gid - 10)
     else:
-        used_gids = [act_ug_tree.get_group(g_name)["gid"] for g_name in act_ug_tree.get_all_group_names()]
+        used_gids = [act_ug_tree.get_group(g_name).gid for g_name in act_ug_tree.get_all_group_names()]
         if used_gids:
             act_gid = max(min_gid, min(used_gids) - 10)
         else:
@@ -1132,30 +1167,32 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
         com_field.check_selection("", "Responsible person for the new group")
         act_field.check_selection("", 1)
         gid_list.check_selection("", 0)
-        act_group = cdef_user.group("newgroup", 0, {"ggroupname" : "newgroup"})
-        act_group.act_values_are_default()
+        act_group = group(
+            gid=0,
+            groupname="newgroup")
+        #act_group.act_values_are_default()
         cap_dict = {}
         for cap_idx in act_ug_tree.cap_stack.get_all_cap_idxs():
             act_cap = act_ug_tree.cap_stack[cap_idx]
-            act_val = cap_field.check_selection(act_cap.name, act_cap.default)
+            act_val = cap_field.check_selection(act_cap.name, act_cap.defvalue)
             cap_dict[act_cap.name] = (act_val, act_cap.idx)
     elif op_mode == "mgm":
         # modify existing group
-        name_field.check_selection("", act_group["ggroupname"])
-        home_field.check_selection("", act_group["homestart"])
-        scratch_field.check_selection("", act_group["scratchstart"])
-        titan_field.check_selection("", act_group["resptitan"])
-        vname_field.check_selection("", act_group["respvname"])
-        nname_field.check_selection("", act_group["respnname"])
-        tel_field.check_selection("", act_group["resptel"])
-        email_field.check_selection("", act_group["respemail"])
-        gcom_field.check_selection("", act_group["groupcom"])
-        com_field.check_selection("", act_group["respcom"])
-        act_field.check_selection("", act_group["active"])
-        gid_list.check_selection("", act_group["gid"])
-        gid_field.check_selection("", str(act_group["gid"]))
+        name_field.check_selection("", act_group.groupname)
+        home_field.check_selection("", act_group.homestart)
+        scratch_field.check_selection("", act_group.scratchstart)
+        titan_field.check_selection("", act_group.resptitan)
+        vname_field.check_selection("", act_group.respvname)
+        nname_field.check_selection("", act_group.respnname)
+        tel_field.check_selection("", act_group.resptel)
+        email_field.check_selection("", act_group.respemail)
+        gcom_field.check_selection("", act_group.groupcom)
+        com_field.check_selection("", act_group.respcom)
+        act_field.check_selection("", act_group.active)
+        gid_list.check_selection("", act_group.gid)
+        gid_field.check_selection("", str(act_group.gid))
         hidden_gid = html_tools.text_field(req, "glist", size=8, display_len=8)
-        hidden_gid.check_selection("", str(act_group["gid"]))
+        hidden_gid.check_selection("", str(act_group.gid))
         hidden_list.append(hidden_gid)
         cap_dict = {}
         for cap_idx in act_ug_tree.cap_stack.get_all_cap_idxs():
@@ -1166,7 +1203,7 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
         # validate modification of existing group
         valid = True
         new_name = name_field.check_selection("")
-        if new_name in act_ug_tree.get_all_group_names() and new_name != act_group["ggroupname"]:
+        if new_name in act_ug_tree.get_all_group_names() and new_name != act_group.groupname:
             action_log.add_error("Groupname '%s' already used" % (new_name), "already used")
             valid = False
         home_start = home_field.check_selection("")
@@ -1183,7 +1220,7 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
                                com_field.check_selection(""))
         g_comment = gcom_field.check_selection("")
         is_active = act_field.check_selection("")
-        if not is_active and act_group.get_idx() == req.session_data.group_idx:
+        if not is_active and act_group.pk == req.session_data.user_info.group_id:
             action_log.add_warn("Cannot disable my own group", "error")
             valid = False
         new_gid, new_gid_f = (gid_list.check_selection(),
@@ -1203,7 +1240,7 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
             action_log.add_warn("Groupdata is not valid", "please check")
             op_mode = "mgm"
             hidden_gid = html_tools.text_field(req, "glist", size=8, display_len=8)
-            hidden_gid.check_selection("", str(act_group["gid"]))
+            hidden_gid.check_selection("", str(act_group.gid))
             hidden_list.append(hidden_gid)
         else:
             mod_dict = {"gid"          : new_gid,
@@ -1218,24 +1255,33 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
                         "respemail"    : email,
                         "respcom"      : comment,
                         "groupcom"     : g_comment}
-            act_group.update(mod_dict)
-            act_group.commit_sql_changes(req.dc, 1, 0, 0)
-            err_list, warn_list, ok_list = act_group.build_change_lists("altered ", " for group %s" % (act_group["ggroupname"]), 1, 0, 1)
-            add_list, del_list = ([], [])
-            for cap_name, (set, idx) in cap_dict.iteritems():
+            for key, value in mod_dict.iteritems():
+                setattr(act_group, key, value)
+            act_group.save()
+##            act_group.update(mod_dict)
+##            act_group.commit_sql_changes(req.dc, 1, 0, 0)
+##            err_list, warn_list, ok_list = act_group.build_change_lists("altered ", " for group %s" % (act_group.groupname), 1, 0, 1)
+            add_list, del_list, ok_list, del_names, add_names = ([], [], [], [], [])
+            for cap_name, (c_set, idx) in cap_dict.iteritems():
                 #print cap_name, set, act_group.has_capability(cap_name)
-                if set and not act_group.has_capability(cap_name):
+                if c_set and not act_group.has_capability(cap_name):
+                    add_names.append("wf_%s" % (cap_name))
                     add_list.append(idx)
                     ok_list.append(("Added capability %s" % (cap_name), "sql"))
-                elif not set and act_group.has_capability(cap_name):
+                elif not c_set and act_group.has_capability(cap_name):
+                    del_names.append("wf_%s" % (cap_name))
                     del_list.append(idx)
                     ok_list.append(("Deleted capability %s" % (cap_name), "sql"))
             if add_list:
-                req.dc.execute("INSERT INTO ggroupcap VALUES%s" % (",".join(["(0, %d, %d, null)" % (act_group.get_idx(), x) for x in add_list])))
+                for cap_add in add_list:
+                    group_cap(capability=capability.objects.get(pk=cap_add),
+                              group=act_group).save()
+                act_group.django_group.permissions.add(*list(Permission.objects.filter(Q(codename__in=add_names))))
             if del_list:
-                req.dc.execute("DELETE FROM ggroupcap WHERE ggroup=%d AND (%s)" % (act_group.get_idx(), " OR ".join(["capability=%d" % (x) for x in del_list])))
-            action_log.add_errors(err_list)
-            action_log.add_warns(warn_list)
+                act_group.group_cap_set.filter(Q(capability__in=del_list)).delete()
+                act_group.django_group.permissions.remove(*list(Permission.objects.filter(Q(codename__in=del_names))))
+##            action_log.add_errors(err_list)
+##            action_log.add_warns(warn_list)
             action_log.add_oks(ok_list)
             if not ok_list:
                 action_log.add_ok("Nothing to change", "-")
@@ -1250,20 +1296,20 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
         del_it = True
         show_table = False
         if act_group.get_num_users():
-            action_log.add_error("cannot delete group %s" % (act_group["ggroupname"]), "%s defined" % (logging_tools.get_plural("user", act_group.get_num_users())))
+            action_log.add_error("cannot delete group %s" % (act_group.groupname), "%s defined" % (logging_tools.get_plural("user", act_group.get_num_users())))
             del_it = False
         if del_it:
-            req.write(html_tools.gen_hline("Really delete group '%s' ?" % (act_group["ggroupname"]), 2))
+            req.write(html_tools.gen_hline("Really delete group '%s' ?" % (act_group.groupname), 2))
             ok_target = "mgd"
         hidden_gid = html_tools.text_field(req, "glist", size=8, display_len=8)
-        hidden_gid.check_selection("", str(act_group["gid"]))
+        hidden_gid.check_selection("", str(act_group.gid))
         hidden_list.append(hidden_gid)
     elif op_mode == "mgd":
         show_table = False
-        action_log.add_ok("deleted group %s" % (act_group["ggroupname"]), "SQL")
-        req.dc.execute("DELETE FROM ggroupcap WHERE ggroup = %d" % (act_group.get_idx()))
-        req.dc.execute("DELETE FROM ggroup WHERE ggroup_idx = %d" % (act_group.get_idx()))
-        act_ug_tree.del_group(act_group["ggroupname"])
+        action_log.add_ok("deleted group %s" % (act_group.groupname), "SQL")
+        act_group.django_group.delete()
+        act_group.delete()
+        #act_ug_tree.del_group(act_group.groupname)
     elif op_mode == "cvg":
         # validate creation of new group
         valid = True
@@ -1294,7 +1340,8 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
             else:
                 new_gid = int(new_gid_f)
         if new_gid in used_gids:
-            action_log.add_warn("gid is already used by group '%s'" % ([x["ggroupname"] for x in group_dict.values() if x["gid"] == new_gid][0]), "invalid gid")
+            action_log.add_warn("gid is already used by group '%s'" % (group.objects.get(Q(gid=new_gid)).groupname),
+                                "invalid gid")
             valid = False
         elif new_gid in sys_group_dict.keys():
             action_log.add_warn("gid is already used by system group '%s'" % (sys_group_dict[new_gid]), "invalid gid")
@@ -1302,14 +1349,15 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
         cap_dict = {}
         for cap_idx in act_ug_tree.cap_stack.get_all_cap_idxs():
             act_cap = act_ug_tree.cap_stack[cap_idx]
-            act_val = cap_field.check_selection(act_cap.name, act_cap.default)
+            act_val = cap_field.check_selection(act_cap.name, act_cap.defvalue)
             cap_dict[act_cap.name] = (act_val, act_cap.idx)
         #valid = False
         if not valid:
             action_log.add_warn("Groupdata is not valid", "please check")
             op_mode = "cg"
-            act_group = cdef_user.group(new_name, 0, {"ggroupname" : new_name})
-            act_group.act_values_are_default()
+            act_group = group(groupname=new_name,
+                              gid=0)
+            #act_group.act_values_are_default()
         else:
             new_dict = {"gid"          : new_gid,
                         "active"       : is_active,
@@ -1323,16 +1371,27 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
                         "respemail"    : email,
                         "respcom"      : comment,
                         "groupcom"     : g_comment}
-            act_group = cdef_user.group(new_name, 0)
-            act_group.update(new_dict)
-            act_group.act_values_are_default()
-            act_group.commit_sql_changes(req.dc, 1, 1, 0)
-            if [1 for x in cap_dict.values() if x[0]]:
-                req.dc.execute("INSERT INTO ggroupcap VALUES%s" % (",".join(["(0, %d, %d, null)" % (act_group.get_idx(), x[1]) for x in cap_dict.values() if x[0]])))
-            err_list, warn_list, ok_list = act_group.build_change_lists("set ", " for new_group %s" % (new_name), 0, 0, 1)
-            action_log.add_errors(err_list)
-            action_log.add_warns(warn_list)
-            action_log.add_oks(ok_list)
+            act_group = group(groupname=new_name,
+                              gid=0)
+            for key, value in new_dict.iteritems():
+                setattr(act_group, key, value)
+            #act_group.act_values_are_default()
+            act_group.save()
+            # new django group
+            new_dg = act_group.create_django_group()
+            # capabilities
+            if any([x for x in cap_dict.values() if x[0]]):
+                caps_to_set = capability.objects.filter(Q(pk__in=[cap_id for use_it, cap_id in cap_dict.values() if use_it]))
+                for cap_to_set in caps_to_set:
+                    group_cap(group=act_group,
+                              capability=cap_to_set).save()
+                new_dg.permissions.add(*list(Permission.objects.filter(Q(codename__in=["wf_%s" % (cur_cap.name) for cur_cap in caps_to_set]))))
+##                act_group.django_group.permissions
+##                req.dc.execute("INSERT INTO ggroupcap VALUES%s" % (",".join(["(0, %d, %d, null)" % (act_group.get_idx(), x[1]) for x in cap_dict.values() if x[0]])))
+##            err_list, warn_list, ok_list = act_group.build_change_lists("set ", " for new_group %s" % (new_name), 0, 0, 1)
+##            action_log.add_errors(err_list)
+##            action_log.add_warns(warn_list)
+##            action_log.add_oks(ok_list)
             show_table, rebuild_yp = (False, True)
     if rebuild_yp:
         tools.signal_yp_ldap_server(req, action_log)
@@ -1343,7 +1402,7 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
         if op_mode == "mgb":
             g_table[None][0:4] = html_tools.content("Basic group information", cls="center")
             g_table[0][0]    = html_tools.content("Groupname:", cls="right")
-            g_table[None][0] = html_tools.content(act_group["ggroupname"], cls="left")
+            g_table[None][0] = html_tools.content(act_group.groupname, cls="left")
             g_table[None][0] = html_tools.content("Group ID:", cls="right")
             g_table[None][0] = html_tools.content(act_group["gid"], cls="left")
             g_table[0][0]    = html_tools.content("Homestart:", cls="right")
@@ -1351,7 +1410,7 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
             g_table[None][0] = html_tools.content("Scratchstart:", cls="right")
             g_table[None][0] = html_tools.content(act_group["scratchstart"], cls="left")
             g_table[0][0]    = html_tools.content("Active:", cls="right")
-            g_table[None][0:3] = html_tools.content(act_group["active"] and "yes" or "no", cls="left")
+            g_table[None][0:3] = html_tools.content(act_group.active and "yes" or "no", cls="left")
             g_table[0][0]    = html_tools.content("Group comment:", cls="right")
             g_table[None][0:3] = html_tools.content(act_group["groupcom"] or "---", cls="left")
             g_table[0]["class"] = "line10"
@@ -1395,9 +1454,9 @@ def generate_group_mask(req, act_ug_tree, action_log, op_mode, act_group = None)
             cap_headline, c_table = cdef_user.show_capability_info(req, act_ug_tree, act_group, None, cap_field)
         req.write(html_tools.gen_hline({"cg"  : "Please set the general properties of the new group:",
                                         "cvg" : "Some values are incorrect for the new group",
-                                        "mgb" : "Information about the group '%s'" % (act_group["ggroupname"]),
-                                        "mgm" : "Edit the general properties of group '%s'" % (act_group["ggroupname"]),
-                                        "mgv" : "Some values are incorrect for group '%s'" % (act_group["ggroupname"])}.get(op_mode, "Invalid operation_mode %s" % (op_mode)), 2))
+                                        "mgb" : "Information about the group '%s'" % (act_group.groupname),
+                                        "mgm" : "Edit the general properties of group '%s'" % (act_group.groupname),
+                                        "mgv" : "Some values are incorrect for group '%s'" % (act_group.groupname)}.get(op_mode, "Invalid operation_mode %s" % (op_mode)), 2))
         submit_button = html_tools.submit_button(req, {"cg"  : "validate and create",
                                                        "mgb" : "ok",
                                                        "mgm" : "validate and change"}.get(op_mode, "unknown mode %s" % (op_mode)))
@@ -1450,12 +1509,12 @@ def show_user_group_selection(req, act_ug_tree, group_options, user_options):
                                              "disabled" : 1}
                         c_idx -= 1
                     g_stuff = act_ug_tree.get_group(g_name)
-                    group_list[g_stuff.get_idx()] = "%s%s (%d), %s defined" % (not g_stuff["active"] and "(*) " or "",
-                                                                               g_name,
-                                                                               g_stuff["gid"],
-                                                                               logging_tools.get_plural("user", g_stuff.get_num_users()))
+                    group_list[g_stuff.pk] = "%s%s (%d), %s defined" % ("" if g_stuff.active else "(*) ",
+                                                                        g_name,
+                                                                        g_stuff.gid,
+                                                                        logging_tools.get_plural("user", g_stuff.get_num_users()))
                     if not first_idx:
-                        first_idx = g_stuff.get_idx()
+                        first_idx = g_stuff.pk
                 group_list.check_selection("", first_idx)
                 group_table[0]["class"] = "line10"
                 group_table[None][0:2] = html_tools.content([group_options, group_list], cls="center")
@@ -1481,19 +1540,19 @@ def show_user_group_selection(req, act_ug_tree, group_options, user_options):
                                             "disabled" : 1}
                         c_idx -= 1
                     u_stuff = act_ug_tree.get_user(u_name)
-                    g_stuff = act_ug_tree.get_group(u_stuff["ggroup"])
-                    sec_groups = u_stuff.get_secondary_group_idxs()
+                    g_stuff = act_ug_tree.get_group(u_stuff.group_id)
+                    sec_groups = u_stuff.get_secondary_groups()
                     if sec_groups:
-                        sec_groups = [(act_ug_tree.get_group(u)["ggroupname"],
-                                       act_ug_tree.get_group(u)["gid"]) for u in sec_groups if act_ug_tree.group_exists(u)]
-                    user_list[u_stuff.get_idx()] = "%s (%d), pgroup %s (%d)%s" % (u_name,
-                                                                                  u_stuff["uid"],
-                                                                                  g_stuff["ggroupname"],
-                                                                                  g_stuff["gid"],
-                                                                                  sec_groups and ", %s : %s" % (logging_tools.get_plural("secondary group", len(sec_groups)),
+                        sec_groups = [(act_ug_tree.get_group(u.pk).groupname,
+                                       act_ug_tree.get_group(u.pk).gid) for u in sec_groups if act_ug_tree.group_exists(u.pk)]
+                    user_list[u_stuff.pk] = "%s (%d), pgroup %s (%d)%s" % (u_name,
+                                                                           u_stuff.uid,
+                                                                           g_stuff.groupname,
+                                                                           g_stuff.gid,
+                                                                           sec_groups and ", %s : %s" % (logging_tools.get_plural("secondary group", len(sec_groups)),
                                                                                                                 ", ".join(["%s (%d)" % (gn, num) for gn, num in sec_groups])) or "")
                     if not first_idx:
-                        first_idx = u_stuff.get_idx()
+                        first_idx = u_stuff.pk
                 user_list.check_selection("", first_idx)
                 user_table[0]["class"] = "line10"
                 user_table[None][0:2] = html_tools.content([user_options, user_list], cls="center")

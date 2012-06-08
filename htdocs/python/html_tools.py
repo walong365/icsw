@@ -828,7 +828,7 @@ class selection_list(selection_class):
     def add_setup_key(self, key, stuff):
         self.__add_key(key, stuff)
     def __add_key(self, key, stuff):
-        if type(stuff) == type(""):
+        if type(stuff) in [str, unicode]:
             stuff = {"name" : stuff}
         # store index type
         self.__set_index_type(key)
