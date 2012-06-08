@@ -47,7 +47,6 @@ class request_object(object):
     def write(self, what):
         self.output.append(what)
          
-        
 def transfer(request, *args):
     #print request, args
     # rewrite for main.py

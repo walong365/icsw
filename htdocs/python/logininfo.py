@@ -202,9 +202,11 @@ def generate_user_masks(req, act_ug_tree, action_log, op_mode):
                     User.objects.filter(Q(username__in=user.objects.filter(Q(pk__in=act_list)).values_list("login", flat=True))).delete()
                     user.objects.filter(Q(pk__in=act_list)).delete()
                 elif ft == "sa":
-                    req.dc.execute("UPDATE user SET active=1 WHERE %s" % (w_str))
+                    User.objects.filter(Q(username__in=user.objects.filter(Q(pk__in=act_list)).values_list("login", flat=True))).update(is_active=True)
+                    user.objects.filter(Q(pk__in=act_list)).update(active=True)
                 elif ft == "sia":
-                    req.dc.execute("UPDATE user SET active=0 WHERE %s" % (w_str))
+                    User.objects.filter(Q(username__in=user.objects.filter(Q(pk__in=act_list)).values_list("login", flat=True))).update(is_active=False)
+                    user.objects.filter(Q(pk__in=act_list)).update(active=False)
         if log_list:
             rebuild_yp = True
         else:
@@ -271,9 +273,9 @@ def generate_group_masks(req, act_ug_tree, action_log, op_mode):
                     Group.objects.filter(Q(name__in=group.objects.filter(Q(pk__in=act_list)).values_list("groupname", flat=True))).delete()
                     group.objects.filter(Q(pk__in=act_list)).delete()
                 elif ft == "sa":
-                    req.dc.execute("UPDATE ggroup SET active=1 WHERE %s" % (w_str))
+                    group.objects.filter(Q(pk__in=act_list)).update(active=True)
                 elif ft == "sia":
-                    req.dc.execute("UPDATE ggroup SET active=0 WHERE %s" % (w_str))
+                    group.objects.filter(Q(pk__in=act_list)).update(active=False)
         if log_list:
             rebuild_yp = True
         else:

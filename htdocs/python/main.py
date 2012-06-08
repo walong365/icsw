@@ -23,7 +23,6 @@
 """ main handler for accessing the webfrontend """
 
 import time
-#from mod_python import util, apache
 import os.path
 import sys
 import process_tools
@@ -32,7 +31,6 @@ import pprint
 import crypt
 import random
 import cgi
-import traceback
 import ipvx_tools
 try:
     import mysql_tools
@@ -48,9 +46,9 @@ else:
     import hotshot
     import hotshot.stats
 
+from django.db.models import Q
 from init.cluster.backbone.models import device, device_variable, user, capability, new_config, device_config, \
      net_ip,  hopcount, genstuff
-from django.db.models import Q
 
 def module_info():
     return {}
@@ -71,24 +69,6 @@ class dummy_ios(object):
 
 VARS_FOR_LINK_LINE = ["dev"]
     
-def parse_args(req):
-    fs = util.FieldStorage(req, keep_blank_values=1)
-    args, files = ({}, {})
-    for list_entry in fs.list:
-        if list_entry.filename:
-            # handle files
-            files[list_entry.name] = (list_entry.filename, list_entry.file.read())
-        else:
-            key, val = (list_entry.name, list_entry.value)
-            if key.endswith("[]"):
-                key = key[:-2]
-                # is a field
-                args.setdefault(key, []).append(val)
-            else:
-                # is a scalar
-                args[key] = val
-    return args, files
-
 def read_standard_config(req):
     conf = {"genstuff"          : {},
             "server"            : {},
@@ -235,18 +215,17 @@ def find_server_routes(req, when):
                                                                                                                  logging_tools.get_plural("server_type", len(req.conf["server"].keys())),
                                                                                                                  logging_tools.get_plural("server", len(server_dict.keys()))), "conf")
             else:
-                sql_str = "SELECT d.device_idx FROM device d"
-                req.dc.execute(sql_str)
                 if req.user_info:
-                    if req.dc.rowcount:
+                    if device.objects.all().count():
                         req.info_stack.add_error("Cannot rebuild server_routes (%s): failure: cannot determine webfrontend-host (check /etc/apache*/httpd.conf or /etc/sysconfig/apache2, name found there is '%s', used name is '%s')" % (
                             when,
                             req.environ["SERVER_NAME"],
                             req.conf["server_name"]),
                                                  "conf")
                     else:
-                        req.info_stack.add_error("Cannot rebuild server_routes (%s): no devices defined" % (when),
-                                                 "conf")
+                        req.info_stack.add_error(
+                            "Cannot rebuild server_routes (%s): no devices defined" % (when),
+                            "conf")
 
 def fill_dict(val_dict, key_list, old_val_dict=None):
     new_dict = {}
@@ -377,7 +356,8 @@ def rescan_files(req):
 ##                                                                                                                         ("h", "Hardware properites"),
 ##                                                                                                                         ("e", "Export entries"     )]])))
     # partition_fs
-##    req.dc.execute("INSERT INTO `partition_fs` VALUES (1,'reiserfs','f','ReiserFS Filesystem','83','2006-06-01 09:44:27'),(2,'ext2','f','Extended 2 Filesystem','83','2006-06-01 09:44:27'),(3,'ext3','f','Extended 3 Filesystem','83','2006-06-01 09:44:27'),(4,'swap','s','SwapSpace','82','2006-06-01 09:44:27'),(5,'ext','e','Extended Partition','f','2006-06-01 09:44:27'),(6,'empty','d','Empty Partition','0','2006-06-01 09:44:27'),(7,'lvm','l','LVM Partition','8e','2007-06-08 08:21:19')")
+##    req.dc.execute("INSERT INTO `partition_fs` VALUES (1,'reiserfs','f','ReiserFS Filesystem','83','2006-06-01 09:44:27'),(2,'ext2','f','Extended 2 Filesystem','83','2006-06-01 09:44:27')," \
+## "(3,'ext3','f','Extended 3 Filesystem','83','2006-06-01 09:44:27'),(4,'swap','s','SwapSpace','82','2006-06-01 09:44:27'),(5,'ext','e','Extended Partition','f','2006-06-01 09:44:27'),(6,'empty','d','Empty Partition','0','2006-06-01 09:44:27'),(7,'lvm','l','LVM Partition','8e','2007-06-08 08:21:19')")
     # log status
 ##    req.dc.execute("INSERT INTO log_status VALUES%s" % (",".join(["(0, '%s', %d, '%s', null)" % (st, sev, lt) for st, sev, lt in [("c", 200, "critical"),
 ##                                                                                                                                  ("e", 100, "error"   ),
@@ -410,153 +390,6 @@ def rescan_files(req):
     # generic stuff
 ##    req.dc.execute("INSERT INTO genstuff SET name='AUTO_RELOAD', description='default auto_reload time', value='60'")
     
-def handle_direct_module_call(req, module_name):
-    try:
-        if globals().has_key(module_name) and sys.modules.has_key(module_name):
-            mod = sys.modules[module_name]
-        else:
-            mod = __import__(module_name, globals(), locals(), [])
-    except:
-        # oops
-        pass
-    else:
-        mod.process_page(req)
-    return
-
-def apache_error(start_response, status, output):
-    response_headers = [("Content-type"  , "text/plain"),
-                        ("Content-Length", "%d" % (len(output)))]
-    start_response(status, response_headers)
-    return [output]
-
-class request_object(object):
-    def __init__(self, environ, start_response):
-        self.environ = environ
-        self.output = []
-        self.__start_response = start_response
-        self.status = "200 OK"
-        self.headers_out = {}
-        self.content_type = "text/html"
-        self.header_sent = False
-        self.filename = environ["SCRIPT_FILENAME"]
-    def parse_args(self):
-        fs = cgi.FieldStorage(fp=self.environ["wsgi.input"], environ=self.environ, keep_blank_values=1)
-        args, files = ({}, {})
-        for list_entry in fs.list:
-            if list_entry.filename:
-                # handle files
-                files[list_entry.name] = (list_entry.filename, list_entry.file.read())
-            else:
-                key, val = (list_entry.name, list_entry.value)
-                if key.endswith("[]"):
-                    key = key[:-2]
-                    # is a field
-                    args.setdefault(key, []).append(val)
-                else:
-                    # is a scalar
-                    args[key] = val
-        req_uri = self.environ.get("REQUEST_URI", "")
-        if req_uri.count("?"):
-            fields = req_uri.split("?")[1].split("&")
-            for part in fields:
-                if part.count("="):
-                    key, value = part.split("=")
-                else:
-                    key, value = (part, True)
-                args[key] = value
-        #print "Args:", args
-        #print "Files:", files
-        self.sys_args = args
-        self.my_files = files
-    def write(self, what):
-        self.output.append(what)
-    def send_http_header(self, output_len=None):
-        if not self.header_sent:
-            self.header_sent = True
-            response_headers = [('Content-type', self.content_type)]
-            if output_len is not None:
-                response_headers.append(('Content-Length', "%d" % (output_len)))
-            for key, value in self.headers_out.iteritems():
-                response_headers.append((key, value))
-            self.__start_response(self.status, response_headers)
-    def response(self):
-        output = "".join(self.output)
-        self.send_http_header(output_len=len(output))
-        return [output]
-
-def application(environ, start_response):
-    # direct modules, no session-id checking
-    direct_modules = ["netbotzdrop"]
-    # modify handles
-    sys.stdout = sys.stderr
-    if environ["REQUEST_METHOD"] not in ["GET", "POST", "HEAD"]:
-        return apache_error(start_response, "500 Oops", "Wrong request_method: %s" % (environ["REQUEST_METHOD"]))
-    # parse arguments
-    #for key in sorted(environ.keys()):
-    #    print "%s : %s" % (key, environ[key])
-    req = request_object(environ, start_response)
-    req.parse_args()
-    mod_path, module_name = os.path.split(environ["SCRIPT_NAME"])
-    if not module_name:
-        module_name = "index"
-    module_name = module_name.split(".")[0]
-    if module_name == "main":
-        module_name = "index"
-    req.module_name = module_name
-    req.title = req.module_name
-    req.content_type = "text/html"
-    if module_name in direct_modules:
-        handle_direct_module_call(req, module_name)
-    else:
-        handle_normal_module_call(req, module_name)
-    req.output = [cur_str.encode("utf-8") if type(cur_str) == unicode else cur_str for cur_str in req.output]
-    return req.response()
-
-def handler(req):
-    # direct modules, no session-id checking
-    direct_modules = ["netbotzdrop"]
-    # modify handles
-    sys.stdout = dummy_ios(req)
-    sys.stderr = dummy_ios(req)
-    req.allow_methods(["GET", "POST", "HEAD"])
-    # check for allowed methods
-    if req.method not in ["GET", "POST", "HEAD"]:
-        raise apache.SERVER_RETURN, apache.HTTP_METHOD_NOT_ALLOWED
-    # parse args and set conf
-    req.sys_args, req.my_files = parse_args(req)
-    mod_path, module_name = os.path.split(req.filename)
-    if not module_name:
-        module_name = "index"
-    module_name = module_name.split(".")[0]
-    if module_name == "main":
-        module_name = "index"
-    req.module_name = module_name
-    req.title = req.module_name
-    req.content_type = "text/html"
-    # check loaded modules
-    if DEBUG:
-        mod_list = []
-        root_dir = os.path.dirname(req.canonical_filename)
-        #print os.getcwd(), req.document_root(), , dir(req)
-        if os.path.isfile("%s/module_list" % (root_dir)):
-            mod_list.extend([line.strip() for line in file("%s/module_list" % (root_dir)).read().split("\n") if line.strip()])
-        if os.path.isdir("%s/module_list.d" % (root_dir)):
-            for entry in os.listdir("%s/module_list.d" % (root_dir)):
-                mod_list.extend([line.strip() for line in file("%s/module_list.d/%s" % (root_dir, entry)).read().split("\n") if line.strip()])
-        loaded_modules = [x for x in mod_list if x != __name__]
-        for lm in loaded_modules:
-            if globals().has_key(lm):
-                #print "unload %s from global" % (lm)
-                del globals()[lm]
-            if sys.modules.has_key(lm):
-                #print "unload %s from sys.modules" % (lm)
-                del sys.modules[lm]
-    if module_name in direct_modules:
-        ret = handle_direct_module_call(req, module_name)
-    else:
-        ret = handle_normal_module_call(req, module_name)
-    return ret
-
 def log_handler(log_stuff, req):
     max_len = 800
     src, what, diff_time = log_stuff
@@ -633,15 +466,8 @@ def handle_normal_module_call(req, module_name):
                     pass_through = True
             else:
                 sys_user_name = req.sys_args["username"]
-                # FIXME, contains is not a good option here
+                # FIXME, contains is not a good option here to deal with aliases (needed for LH / Nenzing)
                 user_info = user.objects.filter(Q(active=True) & Q(group__active=True) & (Q(login=sys_user_name) | Q(aliases__contains=sys_user_name))).select_related("group")
-##                req.dc.execute("SELECT u.user_idx, u.login, u.aliases, u.password, g.ggroup_idx, u.aliases FROM user u, ggroup g WHERE u.active AND g.active " + \
-##                               " AND u.ggroup=g.ggroup_idx AND (u.login='%s' OR u.aliases LIKE('%% %s %%') OR u.aliases LIKE('%s') OR u.aliases LIKE('%% %s') OR u.aliases LIKE('%s %%'))" % (
-##                                   sys_user_name,
-##                                   sys_user_name,
-##                                   sys_user_name,
-##                                   sys_user_name,
-##                                   sys_user_name))
                 if user_info:
                     user_info = user_info[0]
                     if user_info.aliases is None:
@@ -749,17 +575,12 @@ def handle_normal_module_call(req, module_name):
                                     mod.process_page(req)
                         except:
                             tb = sys.exc_info()[2]
-                            except_info = process_tools.get_except_info()
+                            except_info = process_tools.exception_info()
                             out_lines = ["Exception in module '%s':" % (module_name)]
                             req.info_stack.add_error(out_lines[-1], "internal")
-                            for file_name, line_no, name, line in traceback.extract_tb(tb):
-                                out_lines.append("File '%s', line %d, in %s" % (file_name, line_no, name))
-                                req.info_stack.add_error(out_lines[-1], "traceback")
-                                if line:
-                                    out_lines.append(" - %d : %s" % (line_no, line))
-                                    req.info_stack.add_warn(out_lines[-1], "line")
-                            out_lines.append(except_info)
-                            req.info_stack.add_error(out_lines[-1], "traceback")
+                            for line in except_info.log_lines:
+                                req.info_stack.add_warn(line, "traceback")
+                                out_lines.append(line)
                             # write to logging-server
                             err_h = process_tools.io_stream("/var/lib/logging-server/py_err")
                             err_h.write("\n".join(out_lines))

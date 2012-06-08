@@ -25,7 +25,6 @@ import functions
 import logging_tools
 import html_tools
 import cPickle
-import session_handler
 from init.cluster.backbone.models import session_data, user
 from django.db.models import Q
     
@@ -116,7 +115,7 @@ def module_info():
 ##    def get_shm_id(self):
 ##        return self.__shm_id
     
-def fetch_session_tree(req, mode):
+def fetch_session_tree(mode):
     # fetch user info
     user_dict = dict([(cur_user.pk, cur_user) for cur_user in user.objects.all()])
     for cur_user in user_dict.itervalues():
@@ -150,7 +149,7 @@ def process_page(req):
 
     act_sv_mode = sv_list.check_selection("", 1)
     act_sm_mode = sm_list.check_selection("", 1)
-    session_tree, user_dict = fetch_session_tree(req, act_sv_mode)
+    session_tree, user_dict = fetch_session_tree(act_sv_mode)
     user_time_sel_dict = html_tools.selection_list(req, "std", log_validation_errors=0)
     if act_sm_mode == 1:
         # build time_dict
