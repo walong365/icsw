@@ -3,6 +3,8 @@
 import os
 import sys
 
+ugettext = lambda s : s
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
@@ -33,6 +35,15 @@ for src_key ,dst_key in [("DATABASE", "NAME"),
                          ("HOST", "HOST")]:
     DATABASES["default"][dst_key] = sql_dict[src_key]
 
+FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
+
+# compress settings
+COMPRESS = not DEBUG
+COMPRESS_ENABLED = COMPRESS
+COMPRESS_OFFLINE = True
+# rebuild once a day
+COMPRESS_REBUILD_TIMEOUT = 60 * 60 * 24
+
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
@@ -49,7 +60,9 @@ LANGUAGE_CODE = 'en-us'
 SITE_ID = 1
 
 REL_SITE_ROOT = "cluster"
-
+SITE_ROOT = "/%s" % (REL_SITE_ROOT)
+LOGIN_URL = "%s/session/login/" % (SITE_ROOT)
+                                   
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.
 USE_I18N = True
@@ -63,37 +76,43 @@ USE_TZ = False
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
-MEDIA_ROOT = "/usr/local/share/home/local/development/clustersoftware/build-extern/webfrontend/htdocs/static/"
+#MEDIA_ROOT = "/usr/local/share/home/local/development/clustersoftware/build-extern/webfrontend/htdocs/static/"
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash.
 # Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
-MEDIA_URL = ''
+MEDIA_ROOT = os.path.join(FILE_ROOT, "frontend", "media")
+
+MEDIA_URL = "%s/frontend/media/" % (SITE_ROOT)
 
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/home/media/media.lawrence.com/static/"
-STATIC_ROOT = ''
+#STATIC_ROOT = ''
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
-STATIC_URL = '/static/'
+#STATIC_URL = '/static/'
+
+# Session settings
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+SESSION_COOKIE_HTTPONLY = True
 
 # Additional locations of static files
-STATICFILES_DIRS = (
-    # Put strings here, like "/home/html/static" or "C:/www/django/static".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-)
+##STATICFILES_DIRS = (
+##    # Put strings here, like "/home/html/static" or "C:/www/django/static".
+##    # Always use forward slashes, even on Windows.
+##    # Don't forget to use absolute paths, not relative paths.
+##)
 
 # List of finder classes that know how to find static files in
 # various locations.
-STATICFILES_FINDERS = (
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-#    'django.contrib.staticfiles.finders.DefaultStorageFinder',
-)
+##STATICFILES_FINDERS = (
+##    'django.contrib.staticfiles.finders.FileSystemFinder',
+##    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+##    "compressor.finders.CompressorFinder",
+##)
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = 'av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic'
@@ -102,6 +121,10 @@ SECRET_KEY = 'av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic'
 TEMPLATE_CONTEXT_PROCESSORS = (
     "django.contrib.messages.context_processors.messages",
     "django.contrib.auth.context_processors.auth",
+    "django.core.context_processors.i18n",
+    "django.core.context_processors.request",
+    "django.core.context_processors.media",
+    "django.core.context_processors.debug",
 )
 
 TEMPLATE_LOADERS = (
@@ -137,24 +160,27 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.sites',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
+    #'django.contrib.staticfiles',
     # Uncomment the next line to enable the admin:
     'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:
     'django.contrib.admindocs',
     "south",
     # cluster
-    "init.cluster.backbone"
+    "init.cluster.backbone",
+    "compressor",
 )
 
 INSTALLED_APPS = list(INSTALLED_APPS)
 # add everything below cluster
 dir_name = os.path.dirname(__file__)
 for sub_dir in os.listdir(dir_name):
-    if os.path.exists(os.path.join(dir_name, sub_dir, "views.py")) and sub_dir != "backbone":
-        add_app = "init.cluster.%s" % (sub_dir)
-        if add_app not in INSTALLED_APPS:
-            INSTALLED_APPS.append(add_app)
+    full_path = os.path.join(dir_name, sub_dir)
+    if os.path.isdir(full_path):
+        if any([entry.endswith("views.py") for entry in os.listdir(full_path)]) and sub_dir != "backbone":
+            add_app = "init.cluster.%s" % (sub_dir)
+            if add_app not in INSTALLED_APPS:
+                INSTALLED_APPS.append(add_app)
 for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
     add_app = os.environ[add_app_key]
     if add_app not in INSTALLED_APPS:
