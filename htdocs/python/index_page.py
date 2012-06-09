@@ -27,8 +27,9 @@ from basic_defs import SHOW_INDEX_PRI
 import html_tools
 import cdef_user
 import os
-from init.cluster.backbone.models import user, capability, only_wf_perms
+from init.cluster.backbone.models import capability, only_wf_perms
 from django.db.models import Q
+from django.core.urlresolvers import reverse
 
 def build_cap_dict(req):
     req.cap_stack = cdef_user.capability_stack(req)
@@ -51,7 +52,8 @@ def process_page(req):
         header_table[1:2][3] = html_tools.content("<a class=\"init\" href=\"http://www.init.at\" target=\"_top\"><img alt=\"Init.at logo\" src=\"/icons-init/kopflogo.png\" border=0></a>", cls="centersmall")
         req.write(header_table(""))
         req.write("<div>&nbsp;</div>")
-        req.write("<form action=\"logincheck.py?%s\" method=post>\n" % (functions.get_sid(req)))
+        #req.write("<form action=\"logincheck.py?%s\" method=post>\n" % (functions.get_sid(req)))
+        req.write("<form action=\"%s\" method=post>\n" % (reverse("session:logout")))
         out_table = html_tools.html_table(cls="text")
         # check for alternate link file
         alt_link_file_name = "/etc/sysconfig/cluster/webfrontend_alternate_links"
@@ -93,45 +95,6 @@ def process_page(req):
                 out_table[None][0] = html_tools.content("%s" % (right_string))
         sub_pre_str, submit_button = ("logged in as %s%s" % (ui.login,
                                                              req.session_data.is_alias_login and " (via alias %s)" % (req.session_data.alias) or ""), html_tools.submit_button(req, "logout"))
-    else:
-        header_table[1:2][1] = html_tools.content("<a class=\"init\" href=\"http://www.init.at\" target=\"_top\"><img alt=\"Init.at logo\" src=\"/icons-init/kopflogo.png\" border=0></a>", cls="centersmall")
-        header_table[1][2] = html_tools.content(cluster_name, cls="centerlarge")
-        header_table[2][2] = html_tools.content("Welcome to the webfrontend", cls="centerlarge")
-        header_table[1:2][3] = html_tools.content("<a class=\"init\" href=\"http://www.init.at\" target=\"_top\"><img alt=\"Init.at logo\" src=\"/icons-init/kopflogo.png\" border=0></a>", cls="centersmall")
-        req.write(header_table(""))
-        req.dc.execute("SELECT u.login FROM user u")
-        if req.dc.rowcount:
-            req.write(html_tools.gen_hline("Please enter your login information:", 3))
-            users_defined = True
-            # mmh, first shiny django-object usage :-)
-            last_logins = user.objects.filter(session_data__remote_addr=req.environ["REMOTE_ADDR"]).order_by("-date")
-            if last_logins:
-                last_user = last_logins[0].login
-            else:
-                last_user = ""
-        else:
-            req.write(html_tools.gen_hline("First login, please enter the data for the admin user", 3))
-            users_defined = False
-            last_user = "admin"
-        req.write("<form action=\"logincheck.py\" method=post>\n")
-        out_table = html_tools.html_table(cls="textsmall")
-        username_f = html_tools.text_field(req, "username", size=60, display_len=60)
-        password_f = html_tools.text_field(req, "password", size=60, display_len=60, is_password=1)
-        username_f[""] = last_user
-        password_f[""] = ""
-        out_table[0][0] = html_tools.content("Name:" if users_defined else "Admin user:"        , cls="right")
-        out_table[None][0] = html_tools.content(username_f                                      , cls="left" )
-        out_table[0][0] = html_tools.content("Password:" if users_defined else "Admin password:", cls="right")
-        out_table[None][0] = html_tools.content(password_f                                      , cls="left" )
-        sub_pre_str, submit_button = ("", html_tools.submit_button(req, "login"))
     req.write(out_table(""))
-#     req.write("<a href=\"#\" class=\"codeButtonB\">test</a>")
-#     req.write("<div class=\"test2\" style=\"display:none\"><a href=\"/\">home</a></div>")
-#     req.write("\n".join(["<script type=\"text/javascript\">",
-#                          "$(document).ready(function(){",
-#                          "// Your code here",
-#                          "});",
-#                          '$("a.codeButtonB").click(function(){$("div.test2").toggle(); return false;});',
-#                          "</script>"]))
     req.write("<div class=\"center\">%s%s</div>\n</form>\n" % (sub_pre_str,
                                                                submit_button()))

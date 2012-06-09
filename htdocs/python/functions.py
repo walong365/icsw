@@ -27,6 +27,7 @@ import html_tools
 import logging_tools
 import cgi
 from basic_defs import SESSION_ID_NAME, DEBUG
+from django.core.urlresolvers import reverse
     
 def get_sid(req):
     return "%s=%s" % (SESSION_ID_NAME, req.session_data.get_session_id())
@@ -75,7 +76,7 @@ def write_link_line(req, vars_to_add):
     #return
     # not needed any more
     link_table = html_tools.html_table(cls = "linkline")
-    link_table[0][0] = html_tools.content("<a href=\"logincheck.py\">Logout</a>", cls="left")
+    link_table[0][0] = html_tools.content("<a href=\"%s\">Logout</a>" % (reverse("session:logout")), cls="left")
     for act_e in req.session_data.get_property("pages"):
         if act_e == "index":
             link_name = "Home"

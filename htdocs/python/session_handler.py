@@ -122,14 +122,14 @@ class session_data_obj(object):
         my_session.save()
 
 def init_session(req, sess_id, user_info, sess_dict):
-    session_gc(req)
+    session_gc()
     s_data = session_data_obj(sess_id, user_info)
     s_data.init_session_from_dict(sess_dict, req.environ["REMOTE_ADDR"])
     s_data.add_user_info()
     s_data.init_persistence()
     s_data.update()
-    req.session_data = s_data
-    req.user_info = s_data.get_user_info()
+    #req.session_data = s_data
+    #req.user_info = s_data.get_user_info()
 
 def read_session(req, sess_id):
     s_data = session_data_obj(sess_id, None)
@@ -144,28 +144,29 @@ def read_session(req, sess_id):
         s_data.add_user_info()
         req.session_data = s_data
         req.user_info = s_data.get_user_info()
+    return s_data
 
 def update_session(req):
     if req.session_data:
         req.session_data.update()
 
-def delete_session(req):
-    if req.session_data:
-        req.session_data.close()
-        req.session_data = None
-    session_gc(req)
+def delete_session(sess_data):
+    if sess_data:
+        sess_data.close()
+    session_gc()
 
-def session_gc(req):
-    req.dc.execute("SELECT UNIX_TIMESTAMP(date) AS upd_ts, session_id, value FROM session_data WHERE NOT logout_time")
+def session_gc():
+    act_sessions = session_data.objects.filter(Q(logout_time=None))
     del_sessions = []
-    for db_rec in req.dc.fetchall():
+    for db_rec in act_sessions:
         #print x
         try:
             s_value = cPickle.loads(db_rec["value"])
         except:
             pass
         else:
+            print db_rec
             if time.time() - db_rec["upd_ts"] > SESSION_TIMEOUT:
-                del_sessions.append(db_rec["session_id"])
+                del_sessions.append(db_rec.pk)
     if del_sessions:
-        req.dc.execute("UPDATE session_data SET logout_time=NOW(), forced_logout=1 WHERE %s" % (" OR ".join(["session_id='%s'" % (x) for x in del_sessions])))
+        session_data.objects.filter(Q(pk__in=del_sessions)).delete()

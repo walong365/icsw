@@ -4,7 +4,7 @@ import sys
 from django.shortcuts import render_to_response
 from django.http import HttpResponse, HttpResponseRedirect
 import os
-import django.core.urlresolvers
+from django.core.urlresolvers import reverse
 
 if "cluster-backbone-sql" in __file__:
     # local run
@@ -21,6 +21,7 @@ from django.views.decorators.cache import never_cache
 import main
 import pprint
 import process_tools
+from django.contrib.auth.decorators import login_required
 
 class request_object(object):
     def __init__(self, request, module_name):
@@ -47,6 +48,7 @@ class request_object(object):
     def write(self, what):
         self.output.append(what)
          
+@login_required
 def transfer(request, *args):
     #print request, args
     # rewrite for main.py
@@ -62,4 +64,4 @@ def transfer(request, *args):
 
 @never_cache
 def redirect_to_main(request):
-    return HttpResponseRedirect(django.core.urlresolvers.reverse("transfer:main"))
+    return HttpResponseRedirect(reverse("transfer:main"))

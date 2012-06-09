@@ -1,0 +1,52 @@
+{% extends "main.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Init.at Clustersoftware Login" %}{% endblock %}
+
+{% block body %}
+
+{% if login_form.err %}{{ login_form.err }}{% endif %}
+<div style="background-color:#aac8ff;margin-top:-30px;padding:0px;border-bottom:2px solid #111111;height:60px;vertical-align:middle;text-align:center;width:100%;">
+    <center>
+        <h1 class="center" style="font-size:36px;vertical-align:bottom;color:#434343;margin-top:30px;">{% trans "Please enter your login credentials for the Clustersoftware" %}</h1> 
+    </center>
+</div>
+<form action="{{ app_path }}" method="post" id="id_login_form" name="login_form">
+    <center>
+        <div style="width:461px; height:301px; text-align:right; margin-top:130px;">
+            <table border="0" align="right" style="margin-right:27px; margin-top:115px; height:100px; width:200px;">
+                <tr>
+                    <td class="newformlabel">{% trans "Username" %}</td>
+                    <td align="right">{{login_form.username}}</td>
+                </tr>
+                <tr>
+                    <td class="newformlabel">{% trans "Password" %}</td>
+                    <td align="right">{{login_form.password}}</td>
+                </tr>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td align="right"><input type="submit" value="login"/></td>
+                </tr>
+            </table>
+            {% if from_logout %}
+                <div class="loginerrors">
+                    <h1 class="center" style="font-size:20px;">{% trans "Thank you for using the Clustersoftware" %}</h1>
+                </div>
+            {% endif %}
+            <div class="loginerrors">
+                {% if login_form.non_field_errors %}<p>{% trans "Please enter a valid username and password!" %}</p>{% endif %}		
+            </div>
+        </div>
+    </center>
+<!--    <input type="hidden" name="next" value="{{ next }}"/>-->
+</form>
+
+<script type="text/javascript">
+function addHandlers() {
+    $("#id_username").focus();
+}
+
+$(document).ready(addHandlers);
+</script>
+
+{% endblock %}

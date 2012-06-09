@@ -1,0 +1,231 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+{# IE8 render info #}
+<meta http-equiv="X-UA-Compatible" content="IE=9, IE=8" / >
+<!--< META HTTP-EQUIV="PRAGMA" CONTENT="NO-CACHE">-->
+<meta http-equiv="Cache-Control" content="max-age=28800, must-revalidate" />
+
+{% load i18n extra_tags compress %}
+{# {% include "main.css" %} #}
+{% compress css %}
+    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/main.css" />
+<!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}tablesorter.css" />-->
+<!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}jqGrid/css/ui.jqgrid.css" />-->
+<!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}jnotify/css/jquery.jnotify-alt.css" />-->
+<!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}jqzoom_ev1.0.1/jqzoom_ev1.0.1/css/jqzoom.css" />-->
+<!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}multiselect/css/ui.multiselect.css" />-->
+<!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}superfish/superfish.css" />-->
+<!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}superfish/superfish_ml.css" />-->
+<!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}CodeMirror-2.18/lib/codemirror.css" />-->
+<!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}CodeMirror-2.18/theme/default.css" />-->
+<!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}dynatree/src/skin/ui.dynatree.css" />-->
+{% endcompress %}
+{% compress js %}
+    <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery-1.7.2.min.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery-ui-1.8.21.custom.min.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.layout.latest.js"></script>
+{% endcompress %}
+<!--<script type="text/javascript" src="{{ MEDIA_URL }}jqGrid/js/i18n/grid.locale-{{ LANGUAGE_CODE|validate_language_code }}.js"></script>-->
+{% compress js %}
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}CodeMirror-2.18/lib/codemirror.js"></script> -->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}CodeMirror-2.18/mode/xml/xml.js"></script> -->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}init.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}init_oekotex.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jqgrid_user_functions.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jquery.sprintf.js_8.txt"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jquery.strftime.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jquery.tablesorter.min.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jquery-validation/jquery.validate.min.js"></script>-->
+    {# do not use jquery.form_2.49 (bug: value of submit button is not sent to server) #}
+    {# jquery.form_2.69 seem to work #}
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jquery.form_2.83.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jquery.tablehover.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jquery.timers-1.2.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jqzoom_ev1.0.1/jqzoom_ev1.0.1/js/jqzoom.pack.1.0.1.js"></script>-->
+{% endcompress %}
+{% if not LANGUAGE_CODE|validate_language_code == "en" %}
+    <script type="text/javascript" src="{{ MEDIA_URL }}jquery-validation/localization/messages_{{ LANGUAGE_CODE|validate_language_code }}.js"></script>
+{% endif %}
+{% compress js %}
+    {# not working, FIXME #}
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jquery.simplemodal.1.4.2.min.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jquery.base64.js_1.txt"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}urlEncode.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jquery.textarearesizer.compressed.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jnotify/lib/jquery.jnotify.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}hoverIntent.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}superfish/superfish.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}xmlDOM/jquery.xmldom.min.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}dynatree/src/jquery.dynatree.min.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jquery.tools.min.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}tinymce/jscripts/tiny_mce/jquery.tinymce.js"></script>-->
+<!--    <script type="text/javascript" src="{{ MEDIA_URL }}jqGrid/js/jquery.jqGrid.min.js"></script>-->
+{% endcompress %}
+<!--<link rel="shortcut icon" href="{{ MEDIA_URL }}favicon.ico" type="image/x-icon">-->
+<link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/redmond/jquery-ui-1.8.21.custom.css" />
+{% block tab_js %}{% endblock %}
+
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+{% block forms_media %}{% endblock %}
+{% block stylesheets %}{% endblock %}
+<title>OEKO-TEX Intranet: {% block title %}{% trans "Main Page" %}{% endblock %}</title>
+</head>
+
+<body bgcolor="#FFFFFF">
+{% block body %}
+{% if user.is_authenticated %}
+<div class="ui-layout-north">
+    <div class="fp_headline">
+        <a href='{% url main:search %}'><img border="0" class="leftfloat" src="{{ MEDIA_URL }}logo.png" alt="OEKO-TEX" /></a>
+        <h2 class="leftfloat" style="margin:1px;">&nbsp;{% trans "Intranet" %}</h2>
+    </div>
+    <div class="fp_headline">
+        <form action="{% url main:object_search %}" method="GET" >
+            {{ object_search_form.object_name.label }} {{ object_search_form.object_name }}
+        </form>
+    </div>
+    <div class="fp_headline">
+        <form action="{% url i18n:set_language %}" method="post" id="language_sel_form">
+            {% trans "Select language:" %}
+            <input name="next" type="hidden" value="" />
+            <select name="language" id="language_sel">
+            {% for lang in LANGUAGES %}
+                <option value="{{ lang.0 }}" {% ifequal LANGUAGE_CODE lang.0 %} selected="selected"{% endifequal %}>{% trans lang.1 %}</option>
+            {% endfor %}
+            </select>
+        </form>
+    </div>
+    {% if perms.backend.become_user %}
+        {% if all_users %}
+            <div class="fp_headline">
+                <form action="{% url sess:change_user %}" method="post" id="user_sel_form">
+                    {% trans "Switch to user:" %}
+                    <select name="user" id="user_sel">
+                        <option value="0">keep</option>
+                        {% for db_user, oeko_user in all_users %}
+                            {% ifchanged oeko_user.last_name|first_character|lower %}
+                                <option disabled="disabled">--- {{ oeko_user.last_name|first_character|default:"?"|lower }} ---------</option>
+                            {% endifchanged %}
+                            <option value="{{ db_user.pk }}" {% ifequal user.username db_user.username %}"selected"{% endifequal %}>{{ db_user }}{% if db_user.first_name %} ({{ db_user.first_name }} {{ db_user.last_name }}, [{{ oeko_user.institute.short_name }}]){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+        {% endif %}
+    {% endif %}
+    <div class="fp_headline" style="float:right;margin:0;padding:10px;">
+        {% now "l, j. F Y" %} <span id="cur_time">00:00:00</span>. {% trans "You are logged in as user" %} <span
+        {% with request.session.oeko_user as oeko_user %}
+            title="{{ oeko_user.first_name }} {{ oeko_user.last_name }}, {{ oeko_user.institute.short_name }}">
+        {% endwith %}
+        '{{ user.username }}'</span>. <a href="{% url sess:logout %}">{% trans "Logout" %}</a>
+    </div>
+    <div style="z-index:50 ; clear:both ; ">
+    {# {% include "superfish_navigation.html" %} #}
+    </div>
+</div>
+{% endif %}
+<noscript>
+    <p>JavaScript on your browser is <span class="red_color">disabled</span> so you will not be able
+    to use some of the functionality of the software.</p>
+</noscript>
+<div class="ui-layout-west " >
+    {# {% include 'sidebar.html' %} #}
+</div>
+<div class="ui-layout-center " id="pane-center">
+    {% block content %}
+    {% endblock %}
+</div>
+{% if debug %}
+    <div class="ui-layout-south" >
+    {% if sql_queries %}
+        {{ sql_queries|length }} SQL queries following:<br>
+        <ul>
+        {% for sql_entry in sql_queries %}
+            <li>{{ sql_entry.time }} : {{ sql_entry.sql }}
+        {% endfor %}
+        </ul>
+    {% else %}
+        no SQL queries issued
+    {% endif %}
+    </div>
+{% endif %}
+{% endblock %}
+
+<script type="text/javascript">
+
+jQuery.jgrid.no_legacy_api = true;
+
+var page_time="{% now "G:i:s" %}";
+
+function save_layout_state(p_name) {
+};
+
+function init_layout() {
+    if ($("div.ui-layout-center").length) {
+        my_layout = $("body").layout({
+            applyDefaultStyles  : true,
+            spacing_open        : 6,
+            north__spacing_open : 0,
+            south__size         : 200,
+            south__initClosed   : true,
+            west__initClosed    : {% if request.session.west_closed %}true{% else %}false{% endif %},
+            onopen : function(p_name) {
+                save_layout_state(p_name);
+            },
+            onclose : function(p_name) {
+                save_layout_state(p_name);
+            }
+        });
+        my_layout.allowOverflow("north");
+    };
+};
+
+function add_handlers_main() {
+    init_layout();
+    update_time();
+    try {
+        {% if user.is_authenticated %}
+        init_menu();
+        {% endif %}
+        sidebar_handler();
+    } catch(err) {
+        // in case no menu or sidebar is present
+    };
+    $("#language_sel").bind("change", function() { $("#language_sel_form").trigger("submit"); });
+    $("#user_sel").bind("change", function(event) {
+        var cur_sel = parseInt($(event.target).val());
+        if (isNaN(cur_sel) || cur_sel == "0") {
+            return false;
+        } else {
+            if (confirm("Really become user " + $("select#user_sel option[value='" + $(event.target).val() + "']").text() + " ?")) {
+                $("#user_sel_form").trigger("submit");
+            } else {
+                // reset selection
+                $("select#user_sel").val("0");
+                return false;
+            };
+        };
+    });
+    // init jnotify
+    $.jnotify.setup({
+        "fadeSpeed" : 50,
+        "delay"     : 10000
+    });
+    // show time
+    $(document).everyTime(1000, "show_time", function(i) {
+        update_time();
+    });
+}
+function update_time() {
+    var page_time = new Date();
+    $("span#cur_time").text($.sprintf("%02d:%02d:%02d", page_time.getHours(), page_time.getMinutes(), page_time.getSeconds()));
+}
+
+$(document).ready(add_handlers_main);
+
+</script>
+</body>
+</html>

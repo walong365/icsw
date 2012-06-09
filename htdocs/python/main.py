@@ -454,6 +454,7 @@ def handle_normal_module_call(req, module_name):
         # set to one if we directly continue to the index-page
         pass_through = False
         if not req.session_data:
+            print "X" * 300
             #req.dc.execute("SELECT u.login FROM user u LIMIT 1")
             #if not req.dc.rowcount:
             #    make_basic_entries(req, req.sys_args.get("username", "admin"), req.sys_args.get("password", "init4u"))

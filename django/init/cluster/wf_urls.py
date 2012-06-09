@@ -9,19 +9,27 @@ import sys
 transfer_patterns = patterns(
     "init.cluster.transfer",
     url(r"^$", "views.redirect_to_main"),
-    url(r"transfer/", "views.transfer", name="main"),
-    url(r"transfer/(.*)", "views.transfer", name="main")
+    url(r"transfer/"    , "transfer_views.transfer", name="main"),
+    url(r"transfer/(.*)", "transfer_views.transfer", name="main")
+)
+
+session_patterns = patterns(
+    "init.cluster.frontend",
+    url(r"logout", "session_views.sess_logout", name="logout"),
+    url(r"login" , "session_views.sess_login" , name="login" ),
 )
 
 my_url_patterns = patterns(
     "",
     url(r"static/(?P<path>.*)$", "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
-    url(r"^", include(transfer_patterns, namespace="transfer"))
+    url(r"^"        , include(transfer_patterns, namespace="transfer")),
+    url(r"^session/", include(session_patterns , namespace="session")),
 )
 
 url_patterns = patterns(
     "",
     # hack for icons
-    url(r"icons-init/(?P<path>.*)$", "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT[:-14] + "/icons"}),
+    url(r"^%s/frontend/media/(?P<path>.*)$" % (settings.REL_SITE_ROOT), "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
+    url(r"icons-init/(?P<path>.*)$"                          , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT[:-14] + "/icons"}),
     url(r"^%s/" % (settings.REL_SITE_ROOT), include(my_url_patterns)),
 )
