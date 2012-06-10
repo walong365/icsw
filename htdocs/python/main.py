@@ -46,9 +46,11 @@ else:
     import hotshot
     import hotshot.stats
 
+from django.core.urlresolvers import reverse
 from django.db.models import Q
 from init.cluster.backbone.models import device, device_variable, user, capability, new_config, device_config, \
      net_ip,  hopcount, genstuff
+from django.http import HttpResponse, HttpResponseRedirect
 
 def module_info():
     return {}
@@ -442,6 +444,7 @@ def handle_normal_module_call(req, module_name):
     if req.sys_args.has_key(SESSION_ID_NAME):
         session_handler.read_session(req, req.sys_args[SESSION_ID_NAME])
     else:
+        return HttpResponseRedirect(reverse("session:logout"))
         req.session_data = None
     special_module = module_name.startswith("fetch")
     no_auth_required = module_name in ["fetch_xml"]
@@ -616,3 +619,4 @@ def handle_normal_module_call(req, module_name):
     req.dbcon.close()
     del req.dbcon
     #return apache.OK
+    return None

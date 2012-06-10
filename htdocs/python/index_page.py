@@ -44,6 +44,7 @@ def process_page(req):
     functions.write_body(req)
     cluster_name = req.conf["cluster_variables"]["CLUSTER_NAME"].val_str
     header_table = html_tools.html_table(cls="head")
+    out_table = html_tools.html_table(cls="text")
     if req.session_data:
         ui = req.user_info
         header_table[1:2][1] = html_tools.content("<a class=\"init\" href=\"http://www.init.at\" target=\"_top\"><img alt=\"Init.at logo\" src=\"/icons-init/kopflogo.png\" border=0></a>", cls="centersmall")
@@ -54,7 +55,6 @@ def process_page(req):
         req.write("<div>&nbsp;</div>")
         #req.write("<form action=\"logincheck.py?%s\" method=post>\n" % (functions.get_sid(req)))
         req.write("<form action=\"%s\" method=post>\n" % (reverse("session:logout")))
-        out_table = html_tools.html_table(cls="text")
         # check for alternate link file
         alt_link_file_name = "/etc/sysconfig/cluster/webfrontend_alternate_links"
         if os.path.isfile(alt_link_file_name):

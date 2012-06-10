@@ -1,0 +1,45 @@
+<h1>Cluster networks</h1>
+
+{% load i18n extra_tags %}
+
+{# <form method="post" action="cluster/transfer/clusterconfig.py?SID=zejxsvvdrcuzkpbb"> #}
+{# {% url config:network_config %}">#}
+{{ network_formset.management_form }}
+<table>
+{% for cur_form in network_formset %}
+    {{ cur_form.idx }}
+    <tr>
+        <td rowspan="4">{{ cur_form.identifier }}{{ cur_form.identifier.errors }}</td>
+        <td>
+            {{ cur_form.network_type.label }}{{ cur_form.network_type }}{{ cur_form.network_type.errors }}
+            {{ cur_form.master_network.label }}{{ cur_form.master_network }}{{ cur_form.master_network.errors }}
+            {{ cur_form.penalty.label }}{{ cur_form.penalty }}{{ cur_form.penalty.errors }}
+            {{ cur_form.gw_pri.label }}{{ cur_form.gw_pri }}{{ cur_form.gw_pri.errors }}
+        </td>
+    </tr>
+    <tr>
+        <td>
+            {{ cur_form.postfix.label }}{{ cur_form.postfix }}{{ cur_form.postfix.errors }}
+            {{ cur_form.name.label }}{{ cur_form.name }}{{ cur_form.name.errors }}
+            {{ cur_form.info.label }}{{ cur_form.info }}{{ cur_form.info.errors }}
+            {{ cur_form.short_names.label }}{{ cur_form.short_names }}{{ cur_form.short_names.errors }}
+            {{ cur_form.write_bind_config.label }}{{ cur_form.write_bind_config }}
+            {{ cur_form.write_other_network_config.label }}{{ cur_form.write_other_network_config }}
+        </td>
+    </tr>
+    <tr>
+        <td>
+            {{ cur_form.network.label }}{{ cur_form.network }}{{ cur_form.network.errors }}
+            {{ cur_form.netmask.label }}{{ cur_form.netmask }}{{ cur_form.netmask.errors }}
+            {{ cur_form.broadcast.label }}{{ cur_form.broadcast }}{{ cur_form.broadcast.errors }}
+            {{ cur_form.gateway.label }}{{ cur_form.gateway }}{{ cur_form.gateway.errors }}
+        </td>
+    </tr>
+    <tr>
+        <td>
+            {{ cur_form.start_range }}{{ cur_form.start_range.errors }} - {{ cur_form.end_range }}{{ cur_form.end_range.errors }}
+        </td>
+    </tr>
+{% endfor %}
+</table>
+<input type="submit" action="submit"/>

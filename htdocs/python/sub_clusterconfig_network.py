@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -30,6 +30,13 @@ import cdef_device
 import ipvx_tools
 import random
 import pprint
+from init.cluster.frontend.render_tools import render_me
+from init.cluster.frontend.forms import network_form
+from init.cluster.backbone.models import device, device_selection, device_device_selection, network, net_ip
+from django.db.models import Q
+from django.http import HttpResponse, HttpResponseRedirect
+from django.template.loader import render_to_string
+from django.forms.models import modelformset_factory
 
 RANDOM_XEN_MAC_PREFIX = "00:16:3e:00"
 
@@ -139,7 +146,7 @@ class new_network_vs(html_tools.validate_struct):
                                                     "vf"  : self.validate_id,
                                                     "def" : ""},
                     "mnt"                        : (self.validate_master_type, {"network_type"   : {"he"  : network_type_field,
-                                                                                                    "def" : [k for k, v in ntt_dict.iteritems() if v["identifier"] == "p"][0]},
+                                                                                                    "def" : [k for k, v in ntt_dict.iteritems() if v.identifier == "p"][0]},
                                                                                 "master_network" : {"he"  : master_list,
                                                                                                     "def" : 0}}),
                     "name"                       : {"he"  : html_tools.text_field(req, "nn" ,  size=60, display_len=20),
@@ -172,11 +179,14 @@ class new_network_vs(html_tools.validate_struct):
                                                     "def" : False},
                     "del"                        : {"he"  : html_tools.checkbox(req, "del"),
                                                     "del" : 1},
-                    "ntc"                        : (self.validate_netdevice_type, dict([(k, {"he"   : html_tools.checkbox(req, "ndt%s" % (v["identifier"])),
-                                                                                             "ndb"  : True,
-                                                                                             "dbmr" : self.ndt_read_mapper}) for k, v in network_type_dict.iteritems()] + [("database_info", {"field_name" : "nw_types",
-                                                                                                                                                                                              "def_name"   : "network_device_types",
-                                                                                                                                                                                              "def"        : []})])),
+                    "ntc"                        : (self.validate_netdevice_type, dict([(
+                        k,
+                        {"he"   : html_tools.checkbox(req, "ndt%s" % (v.identifier)),
+                         "ndb"  : True,
+                         "dbmr" : self.ndt_read_mapper}) for k, v in network_type_dict.iteritems()] + [("database_info", 
+                                                                                                        {"field_name" : "nw_types",
+                                                                                                         "def_name"   : "network_device_types",
+                                                                                                         "def"        : []})])),
                     "range"                      : (self.validate_range, {"start_range" : {"he"  : html_tools.text_field(req, "rs", size=15, display_len=15),
                                                                                            "def" : "0.0.0.0",
                                                                                            "pri" : -20},
@@ -278,25 +288,25 @@ class new_network_vs(html_tools.validate_struct):
     
 def get_net_trees(req, change_log):
     net_t_tree = tools.get_network_type_dict(req.dc)
-    if not net_t_tree:
-        change_log.add_ok("Adding default network_types", "ok")
-        req.dc.execute("INSERT INTO network_type VALUES%s" % (",".join(["(0,'%s','%s',null)" % (x, y) for x, y in [("b", "boot network"      ),
-                                                                                                                   ("p", "production network"),
-                                                                                                                   ("s", "slave network"     ),
-                                                                                                                   ("o", "other network"     ),
-                                                                                                                   ("l", "local network"     )]])))
-        net_t_tree = tools.get_network_type_dict(req.dc)
+##    if not net_t_tree:
+##        change_log.add_ok("Adding default network_types", "ok")
+##        req.dc.execute("INSERT INTO network_type VALUES%s" % (",".join(["(0,'%s','%s',null)" % (x, y) for x, y in [("b", "boot network"      ),
+##                                                                                                                   ("p", "production network"),
+##                                                                                                                   ("s", "slave network"     ),
+##                                                                                                                   ("o", "other network"     ),
+##                                                                                                                   ("l", "local network"     )]])))
+##        net_t_tree = tools.get_network_type_dict(req.dc)
     net_dt_tree = tools.get_network_device_type_dict(req.dc)
-    if not net_dt_tree:
-        change_log.add_ok("Adding default network_device_types", "ok")
-        req.dc.execute("INSERT INTO network_device_type VALUES%s" % (",".join(["(0, '%s', '%s', %d, null)" % (x, y, z) for x, y, z in [("lo"   , "loopback devices"       ,  6),
-                                                                                                                                       ("eth"  , "ethernet devices"       ,  6),
-                                                                                                                                       ("myri" , "myrinet devices"        ,  6),
-                                                                                                                                       ("xenbr", "xen bridge devices"     ,  6),
-                                                                                                                                       ("tun"  , "ethernet tunnel devices",  6),
-                                                                                                                                       ("ib"   , "infiniband devices"     , 20)]
-                                                                               ])))
-        net_dt_tree = tools.get_network_device_type_dict(req.dc)
+##    if not net_dt_tree:
+##        change_log.add_ok("Adding default network_device_types", "ok")
+##        req.dc.execute("INSERT INTO network_device_type VALUES%s" % (",".join(["(0, '%s', '%s', %d, null)" % (x, y, z) for x, y, z in [("lo"   , "loopback devices"       ,  6),
+##                                                                                                                                       ("eth"  , "ethernet devices"       ,  6),
+##                                                                                                                                       ("myri" , "myrinet devices"        ,  6),
+##                                                                                                                                       ("xenbr", "xen bridge devices"     ,  6),
+##                                                                                                                                       ("tun"  , "ethernet tunnel devices",  6),
+##                                                                                                                                       ("ib"   , "infiniband devices"     , 20)]
+##                                                                               ])))
+##        net_dt_tree = tools.get_network_device_type_dict(req.dc)
     return net_t_tree, net_dt_tree
     
 class new_network_device_type_vs(html_tools.validate_struct):
@@ -419,6 +429,19 @@ def show_netdevice_classes(req):
     
 
 def show_cluster_networks(req):#, sub_sel):
+    request = req.request
+    print request.method
+    network_formset = modelformset_factory(network, form=network_form)
+    if request.method == "POST" and "ds" not in request.POST:
+        cur_fs = network_formset(request.POST, request.FILES)
+        for sub_form in cur_fs.forms:
+            if sub_form.is_valid():
+                sub_form.save()
+    else:
+        cur_fs = network_formset()
+    req.write(render_to_string("cluster_networks.html", {
+        "network_formset" : cur_fs}))
+    return
     change_log = html_tools.message_log()
     net_t_tree, net_dt_tree = get_net_trees(req, change_log)
     net_tree = tools.get_network_dict(req.dc)
@@ -427,24 +450,27 @@ def show_cluster_networks(req):#, sub_sel):
         add_default_networks(net_t_tree, net_dt_tree, req.dc)
         net_tree = tools.get_network_dict(req.dc)
     # add usecount
-    req.dc.execute("SELECT nw.network_idx, COUNT(nw.network_idx) AS usecount FROM device d, netdevice nd, netip ip, network nw, network_type nt WHERE " + \
-                       "nd.device=d.device_idx AND ip.netdevice=nd.netdevice_idx AND ip.network=nw.network_idx AND nw.network_type=nt.network_type_idx GROUP BY nw.network_idx")
-    for stuff in req.dc.fetchall():
-        net_tree[stuff["network_idx"]]["usecount"] = stuff["usecount"]
+    for nw_id in net_ip.objects.all().values_list("network", flat=True):
+        net_tree[nw_id].usecount += 1
+##        print nw_id
+##    req.dc.execute("SELECT nw.network_idx, COUNT(nw.network_idx) AS usecount FROM device d, netdevice nd, netip ip, network nw, network_type nt WHERE " + \
+##                       "nd.device=d.device_idx AND ip.netdevice=nd.netdevice_idx AND ip.network=nw.network_idx AND nw.network_type=nt.network_type_idx GROUP BY nw.network_idx")
+##    for stuff in req.dc.fetchall():
+##        net_tree[stuff["network_idx"]]["usecount"] = stuff["usecount"]
     type_field = html_tools.selection_list(req, "nt", {})
     low_submit = html_tools.checkbox(req, "sub")
     sub = low_submit.check_selection("")
     for nt_idx, nt_stuff in net_t_tree.iteritems():
-        type_field[nt_idx] = "%s (%s)" % (nt_stuff["identifier"], nt_stuff["description"])
+        type_field[nt_idx] = "%s (%s)" % (nt_stuff.identifier, nt_stuff.description)
     master_field = html_tools.selection_list(req, "mn", {})
     master_field[0] = "--- not set ---"
     nw_dict = tools.ordered_dict()
     for nw_idx, nw_stuff in net_tree.iteritems():
-        if net_t_tree[nw_stuff["network_type"]]["identifier"] == "p":
-            master_field[nw_idx] = "%s (%s, %s)" % (nw_stuff["identifier"], nw_stuff["name"], nw_stuff["network"])
-        nw_dict[nw_stuff["network_idx"]] = cdef_network.network(nw_stuff["name"], nw_stuff["network_idx"], nw_stuff)
-        nw_dict[nw_stuff["network_idx"]].act_values_are_default()
-        nw_dict[nw_stuff["network_idx"]].usecount = nw_stuff["usecount"]
+        if net_t_tree[nw_stuff.network_type_id].identifier == "p":
+            master_field[nw_idx] = "%s (%s, %s)" % (nw_stuff.identifier, nw_stuff.name, nw_stuff.network)
+        nw_dict[nw_stuff.pk] = nw_stuff#cdef_network.network(nw_stuff["name"], nw_stuff["network_idx"], nw_stuff)
+        #nw_dict[nw_stuff.pk].act_values_are_default()
+        #nw_dict[nw_stuff.pk].usecount = nw_stuff["usecount"]
     master_field.mode_is_normal()
     type_field.mode_is_normal()
     network_vs = new_network_vs(req, type_field, net_dt_tree, master_field, net_t_tree)
@@ -452,7 +478,7 @@ def show_cluster_networks(req):#, sub_sel):
     network_vs.set_submit_mode(sub)
     for nw_idx in nw_dict.keys():
         nw_stuff = nw_dict[nw_idx]
-        network_vs.names = [nw_dict[x]["identifier"] for x in nw_dict.keys() if x != nw_idx and x]
+        network_vs.names = [nw_dict[x].identifier for x in nw_dict.keys() if x != nw_idx and x]
         network_vs.link_object(nw_idx, nw_stuff)
         network_vs.check_for_changes()
         if not network_vs.check_delete():

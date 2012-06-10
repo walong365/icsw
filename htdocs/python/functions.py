@@ -65,7 +65,8 @@ def write_header(req, style_file="formate.css", js_list=["jquery-1.2.3.min"]):
                                                             cgi.escape(req.title),
                                                             cgi.escape(req.module_name),
                                                             act_user and ", user %s" % (cgi.escape(act_user)) or ""),
-                  "<link rel=stylesheet type=\"text/css\" href=\"../static/%s\">" % (style_file)])
+                  "<link rel=stylesheet type=\"text/css\" href=\"../static/%s\">" % (style_file),
+                  "<link rel=stylesheet type=\"text/css\" href=\"%s\">" % (reverse("media", args=["css/main.css"]))])
 ##    if js_list:
 ##        out_f.extend(["<script type=\"text/javascript\" src=\"../static/javascript/%s.js\">%s</script>" % (js_file,
 ##                                                                                                           {"MochiKit" : "MochiKit = {__export__: false}"}.get(js_file, "")) for js_file in js_list])

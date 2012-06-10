@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: iso-8859-1 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2007 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2007,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -101,7 +101,7 @@ def process_page(req):
     act_glob_sel = glob_sel.check_selection("", "cnet")
     dev_tree = tools.display_list(req, include_cluster_meta_device_group=(act_glob_sel == "dpar"))
     dev_tree.add_regexp_field()
-    dev_tree.add_devsel_fields(tools.get_device_selection_lists(req.dc, req.user_info.get_idx()))
+    dev_tree.add_devsel_fields(tools.get_device_selection_lists(req.dc, req.user_info))
     dev_tree.query([],
                    ["comment", "snmp_class", "bootnetdevice", "bootserver", "device_type", "comment", "dg.description AS dgdescr", "dg.cluster_device_group"],
                    [],
@@ -188,18 +188,18 @@ def process_page(req):
     devg_dict, dev_dict = ({}, {})
     for dg in dev_tree.get_sorted_devg_idx_list():
         new_dg = cdef_device.device_group(dev_tree.get_devg_name(dg), dg)
-        new_dg.set_descr(dev_tree.get_devg_struct(dg)["dgdescr"])
+        new_dg.set_descr(dev_tree.get_devg_struct(dg).description)
         if dev_tree.devg_has_md(dg):
             md_s = dev_tree.get_md_struct(dg)
-            new_dg.set_meta_device(md_s["name"], md_s["device_idx"])
+            new_dg.set_meta_device(md_s.name, md_s.pk)
         devg_dict[dg] = new_dg
         for d_idx in dev_tree.get_sorted_dev_idx_list(dg):
             dev_s = dev_tree.get_dev_struct(d_idx)
-            new_d = cdef_device.device(dev_tree.get_dev_name(d_idx), d_idx, dg, dev_s["device_type"])
-            new_d.set_comment(dev_s["comment"])
-            new_d.set_bootserver(dev_s["bootserver"])
-            new_d.set_show_in_bootcontrol(dev_s["show_in_bootcontrol"])
-            new_d.set_xen_guest(dev_s["xen_guest"])
+            new_d = cdef_device.device(dev_tree.get_dev_name(d_idx), d_idx, dg, dev_s.device_type_id)#["device_type"])
+            new_d.set_comment(dev_s.comment)#["comment"])
+            new_d.set_bootserver(dev_s.bootserver_id)#["bootserver"])
+            new_d.set_show_in_bootcontrol(dev_s.show_in_bootcontrol)
+            new_d.set_xen_guest(dev_s.xen_guest)
             dev_dict[d_idx] = new_d
     # check for changes befor we display the selection
     if act_glob_sel == "ddevg":

@@ -19,17 +19,22 @@ session_patterns = patterns(
     url(r"login" , "session_views.sess_login" , name="login" ),
 )
 
+config_patterns = patterns(
+    ""
+)
+
 my_url_patterns = patterns(
     "",
-    url(r"static/(?P<path>.*)$", "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
+    url(r"static/(?P<path>.*)$"        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
     url(r"^"        , include(transfer_patterns, namespace="transfer")),
-    url(r"^session/", include(session_patterns , namespace="session")),
+    url(r"^session/", include(session_patterns , namespace="session" )),
+    url(r"^config/" , include(config_patterns  , namespace="config"  )),
 )
 
 url_patterns = patterns(
     "",
     # hack for icons
-    url(r"^%s/frontend/media/(?P<path>.*)$" % (settings.REL_SITE_ROOT), "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
+    url(r"^%s/frontend/media/(?P<path>.*)$" % (settings.REL_SITE_ROOT), "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}, name="media"),
     url(r"icons-init/(?P<path>.*)$"                          , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT[:-14] + "/icons"}),
     url(r"^%s/" % (settings.REL_SITE_ROOT), include(my_url_patterns)),
 )

@@ -165,7 +165,7 @@ def session_gc():
         except:
             pass
         else:
-            print db_rec
+            print "session_gc", db_rec
             if time.time() - db_rec["upd_ts"] > SESSION_TIMEOUT:
                 del_sessions.append(db_rec.pk)
     if del_sessions:

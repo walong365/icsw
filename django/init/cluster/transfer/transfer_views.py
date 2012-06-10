@@ -59,8 +59,11 @@ def transfer(request, *args):
     module_name = module_name.split("/")[-1].split(".")[0]
     req = request_object(request, module_name)
     #print "module name: %s" % (module_name)
-    main.handle_normal_module_call(req, module_name)
-    return HttpResponse("".join(req.output), content_type="text/html")
+    result = main.handle_normal_module_call(req, module_name)
+    if result is None:
+        return HttpResponse("".join(req.output), content_type="text/html")
+    else:
+        return result
 
 @never_cache
 def redirect_to_main(request):

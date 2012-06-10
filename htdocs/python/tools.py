@@ -34,6 +34,9 @@ import time
 import sys
 import os
 import ipvx_tools
+from init.cluster.backbone.models import device, device_selection, device_device_selection, network, \
+     network_type, network_device_type
+from django.db.models import Q
 
 class ordered_iteritems_iterator(object):
     def __init__(self, od):
@@ -189,25 +192,32 @@ class display_list(object):
         self.__devsel_action = self.__devsel_action_field.check_selection("", "a")
         #self.__devsel_action_field[""] = "a"
     def query(self, device_types=[], device_fields=[], add_tables=[], add_queries=[], left_joins=[], var_dict={}):
+        django_devsel = device.objects
         if device_types:
-            pos_str = " OR ".join(["dt.identifier='%s'" % (x) for x in device_types if not x.startswith("!")]) or None
-            neg_str = " AND ".join(["dt.identifier!='%s'" % (x[1:]) for x in device_types if x.startswith("!")]) or None
-            if pos_str and neg_str:
-                dt_string = "((%s) AND (%s))" % (pos_str, neg_str)
-            elif pos_str:
-                dt_string = "(%s)" % (pos_str)
-            elif neg_str:
-                dt_string = "(%s)" % (neg_str)
-            else:
-                dt_string = None
+            # exclude
+            if any([sub_str.startswith("!") for sub_str in device_types]):
+                django_devsel = djang_devsel.exclude(Q(netdevice__net_ip__network__network_type__identifier__in=[sub_str[1:] for sub_str in device_types if sub_str.startswith("!")]))
+            # include
+            if any([not sub_str.startswith("!") for sub_str in device_types]):
+                django_devsel = djang_devsel.filter(Q(netdevice__net_ip__network__network_type__identifier__in=[sub_str for sub_str in device_types if not sub_str.startswith("!")]))
+##            pos_str = " OR ".join(["dt.identifier='%s'" % (x) for x in device_types if not x.startswith("!")]) or None
+##            neg_str = " AND ".join(["dt.identifier!='%s'" % (x[1:]) for x in device_types if x.startswith("!")]) or None
+##            if pos_str and neg_str:
+##                dt_string = "((%s) AND (%s))" % (pos_str, neg_str)
+##            elif pos_str:
+##                dt_string = "(%s)" % (pos_str)
+##            elif neg_str:
+##                dt_string = "(%s)" % (neg_str)
+##            else:
+##                dt_string = None
             #dt_string=" OR ".join(["dt.identifier='%s'" % (x) for x in self.__device_types])
-        else:
-            dt_string = None
+##        else:
+##            dt_string = None
         self.__dev_fields     = device_fields + ["name", "device_group", "bootserver", "device_idx", "show_in_bootcontrol", "xen_guest", "dg.device_group_idx",
                                                  "dg.cluster_device_group", "dg.name AS dgname", "dt.identifier"]
         self.__from_tables    = add_tables    + [("device_group", "dg")]
         self.__left_joins     = ["device d ON d.device_group=dg.device_group_idx"] + left_joins
-        self.__sql_restraints = add_queries   + (dt_string and [dt_string] or [])
+        self.__sql_restraints = add_queries   #+ (dt_string and [dt_string] or [])
         sql_str = "SELECT DISTINCT %s " % (", ".join(["d.%s" % (x) for x in self.__dev_fields if not x.count(".")] + [x for x in self.__dev_fields if x.count(".")])) + \
             "FROM %s " % (" INNER JOIN ".join(["%s %s" % (x, y) for x, y in self.__from_tables])) + \
             "LEFT JOIN %s " % (" LEFT JOIN ".join(self.__left_joins)) + \
@@ -220,7 +230,8 @@ class display_list(object):
         d_fields   = [x.split()[-1].split(".")[-1] for x in self.__dev_fields if x not in dg_fields]
         # fields to copy for meta-devices
         mdg_fields = ["device_idx", "name", "device_group"]
-        self.req.dc.execute(self.__sql_str)
+        #self.req.dc.execute(self.__sql_str)
+        django_tree = django_devsel.select_related("device_group", "device_type").order_by("device_group__name", "name")
         dev_tree, md_info, dg_info, d_info = ({}, {}, {}, {})
         dg_lut, d_lut = ({}, {})
         # list of (sorted) device/group names
@@ -228,32 +239,36 @@ class display_list(object):
         # for adding of cluster_meta_device_group
         cdg_idx, cdmd_idx, cdmd_found = (0, 0, False)
         vd_keys = var_dict.keys()
-        for sql_rec in self.req.dc.fetchall():
-            if sql_rec["device_group_idx"] not in dev_tree.keys():
-                dgn_list.append(sql_rec["dgname"])
-                dev_tree[sql_rec["device_group_idx"]] = []
-                dg_lut[sql_rec["device_group_idx"]] = sql_rec["dgname"]
-                dg_info[sql_rec["device_group_idx"]] = dict([(a, sql_rec[a]) for a in dg_fields])
-                if sql_rec["cluster_device_group"]:
-                    cdg_idx = sql_rec["device_group_idx"]
-            if sql_rec["identifier"] == "MD":
-                if not md_info.has_key(sql_rec["device_group_idx"]):
-                    md_info[sql_rec["device_group_idx"]] = dict([(a, sql_rec[a]) for a in mdg_fields])
-                    if sql_rec["device_group"] == cdg_idx:
-                        cdmd_idx = sql_rec["device_idx"]
+        for sql_rec in django_tree:#self.req.dc.fetchall():
+            if sql_rec.device_group_id not in dev_tree.keys():
+                dgn_list.append(sql_rec.device_group.name)
+                dev_tree[sql_rec.device_group_id] = []
+                dg_lut[sql_rec.device_group_id] = sql_rec.device_group.name
+                # copy device_group entry
+                dg_info[sql_rec.device_group_id] = sql_rec.device_group#dict([(a, sql_rec[a]) for a in dg_fields])
+                if sql_rec.device_group.cluster_device_group:
+                    cdg_idx = sql_rec.device_group_id
+            if sql_rec.device_type.identifier == "MD":
+                if not md_info.has_key(sql_rec.device_group_id):
+                    # copy device_group
+                    md_info[sql_rec.device_group_id] = sql_rec.device_group
+                    if sql_rec.device_group_id == cdg_idx:
+                        cdmd_idx = sql_rec.pk
                         if self.__include_mdg:
                             cdmd_found = True
-            if (sql_rec["device_idx"] and (sql_rec["identifier"] != "MD" or self.__query_meta_devices)) or cdmd_found:
-                if sql_rec["name"] not in dn_list:
+            if (sql_rec.pk and (sql_rec.device_type.identifier != "MD" or self.__query_meta_devices)) or cdmd_found:
+                if sql_rec.name not in dn_list:
                     cdmd_found = False
-                    dn_list.append(sql_rec["name"])
-                    dev_tree[sql_rec["device_group_idx"]].append(sql_rec["device_idx"])
-                    d_lut[sql_rec["device_idx"]] = sql_rec["name"]
-                    d_info[sql_rec["device_idx"]] = dict([(a, sql_rec[a]) for a in d_fields] + [(a, {}) for a in vd_keys])
-                d_struct = d_info[sql_rec["device_idx"]]
-                for v_key in vd_keys:
-                    if v_key in sql_rec.keys() and sql_rec[v_key] not in d_struct[v_key].keys():
-                        d_struct[v_key][sql_rec[v_key]] = dict([(k, sql_rec[k]) for k in var_dict[v_key]])
+                    dn_list.append(sql_rec.name)
+                    dev_tree[sql_rec.device_group_id].append(sql_rec.pk)
+                    d_lut[sql_rec.pk] = sql_rec.name
+                    # copy record
+                    d_info[sql_rec.pk] = sql_rec#dict([(a, sql_rec[a]) for a in d_fields] + [(a, {}) for a in vd_keys])
+                # not needed ? FIXME
+                #d_struct = d_info[sql_rec.pk]
+                #for v_key in vd_keys:
+                #    if v_key in sql_rec.keys() and sql_rec[v_key] not in d_struct[v_key].keys():
+                #        d_struct[v_key][sql_rec[v_key]] = dict([(k, sql_rec[k]) for k in var_dict[v_key]])
         # save it
         self.__dgn_list = dgn_list
         self.dn_list = dn_list
@@ -402,23 +417,23 @@ class display_list(object):
                     for dev in self.get_sorted_dev_idx_list(dg):
                         dev_struct = self.get_dev_struct(dev)
                         show_it = False
-                        if meta_show and dev_struct["identifier"] == "MD":
+                        if meta_show and dev_struct.device_type.identifier == "MD":
                             show_it = True
                             dev_show_name = dev_struct["name"]
                             if dev_show_name.startswith("METADEV_"):
                                 dev_show_name = dev_show_name[8:]
                             dev_show_name += " (md)"
-                        elif not meta_show and dev_struct["identifier"] != "MD":
+                        elif not meta_show and dev_struct.device_type.identifier != "MD":
                             show_it = True
-                            dev_show_name = dev_struct["name"]
+                            dev_show_name = dev_struct.name
                         if show_it:
                             out_f.append("<option value=\"%d\"%s%s>%s%s%s%s</option>" % (dev,
                                                                                          "selected" if (dev in self.__d_sel) else "",
-                                                                                         dev_struct.has_key("class") and " class=\"%s\"" % (dev_struct["class"]) or "",
-                                                                                         dev_struct.get("pre_str", ""),
+                                                                                         hasattr(dev_struct, "class") and " class=\"%s\"" % (getattr(dev_struct, "class")) or "",
+                                                                                         getattr(dev_struct, "pre_str", ""),
                                                                                          dev_show_name,
-                                                                                         (dev_struct["comment"] and " (%s)" % (dev_struct["comment"])) or "",
-                                                                                         dev_struct.get("post_str", "")
+                                                                                         (dev_struct.comment and " (%s)" % (dev_struct.comment)) or "",
+                                                                                         getattr(dev_struct, "post_str", "")
                                                                                          ))
         out_f.append("</select>")
         return "\n".join(out_f)
@@ -452,7 +467,7 @@ class display_list(object):
                 break
             ins_idx += 1
         self.__dgn_list.insert(ins_idx, new_name)
-        self.__dg_info[dg]["dgname"] = new_name
+        self.__dg_info[dg].name = new_name
         self.__dg_lut[dg] = new_name
         self.build_inverse_luts()
     def rename_device(self, dg, d_idx, new_name):
@@ -524,9 +539,9 @@ class display_list(object):
     def devices_found(self):
         return (self.__dev_tree and 1) or 0
     def get_devg_name(self, dg_idx):
-        return self.__dg_info[dg_idx]["dgname"]
+        return self.__dg_info[dg_idx].name
     def get_dev_name(self, d_idx):
-        return self.get_dev_struct(d_idx)["name"]
+        return self.get_dev_struct(d_idx).name
     def get_devg_idx(self, dg_name):
         return self.__dg_lut_inv[dg_name]
     def get_dev_idx(self, d_name):
@@ -878,20 +893,19 @@ def get_partition_dict(dc):
     return pt
 
 def get_network_dict(dc):
-    dc.execute("SELECT n.*, nt.identifier AS ntident, ndt.network_device_type FROM " + \
-               "network n INNER JOIN network_type nt LEFT JOIN network_network_device_type ndt ON ndt.network=n.network_idx WHERE " + \
-               "nt.network_type_idx=n.network_type ORDER BY n.identifier ASC")
-    act_dict = get_ordered_dict(dc, "network_idx", "network_device_types", "network_device_type")
-    generate_network_info_strings(act_dict)
-    return act_dict
+    all_nets = network.objects.all().select_related("network_type", "network_type__network_device_type").order_by("identifier")
+##    dc.execute("SELECT n.*, nt.identifier AS ntident, ndt.network_device_type FROM " + \
+##               "network n INNER JOIN network_type nt LEFT JOIN network_network_device_type ndt ON ndt.network=n.network_idx WHERE " + \
+##               "nt.network_type_idx=n.network_type ORDER BY n.identifier ASC")
+##    act_dict = get_ordered_dict(dc, "network_idx", "network_device_types", "network_device_type")
+##    return act_dict
+    return dict([(cur_net.pk, cur_net) for cur_net in generate_network_info_strings(all_nets)])
 
 def get_network_device_type_dict(dc):
-    dc.execute("SELECT nt.* FROM network_device_type nt ORDER BY nt.description")
-    return get_ordered_dict(dc, "network_device_type_idx")
+    return dict([(cur_ndt.pk, cur_ndt) for cur_ndt in network_device_type.objects.all().order_by("description")])
 
 def get_network_type_dict(dc):
-    dc.execute("SELECT nt.* FROM network_type nt ORDER BY nt.description")
-    return get_ordered_dict(dc, "network_type_idx")
+    return dict([(cur_nt.pk, cur_nt) for cur_nt in network_type.objects.all().order_by("description")])
     
 def get_image_dict(dc):
     dc.execute("SELECT i.*, DATE_FORMAT(i.date,'%e. %b %Y %H:%i:%s') AS odate FROM image i ORDER BY i.name")
@@ -905,19 +919,20 @@ def get_snmp_class_dict(dc):
     dc.execute("SELECT s.* FROM snmp_class s ORDER BY s.name")
     return get_ordered_dict(dc, "snmp_class_idx")
 
-def generate_network_info_strings(act_dict):
-    for idx, stuff in act_dict.iteritems():
+def generate_network_info_strings(in_list):
+    for cur_nw in in_list:
         nw_mask = {"255.255.255.0" : "C",
                    "255.255.0.0"   : "B",
-                   "255.0.0.0"     : "A"}.get(stuff["netmask"], None)
+                   "255.0.0.0"     : "A"}.get(cur_nw.netmask, None)
         if not nw_mask:
-            nw_mask = "%d" % (ipvx_tools.ipv4(stuff["netmask"]).netmask_bits())
-        stuff["nw_info"] = "%s (%s) %s / %s" % (stuff["identifier"],
-                                                stuff["ntident"],
-                                                stuff["network"],
-                                                nw_mask)
+            nw_mask = "%d" % (ipvx_tools.ipv4(cur_new.netmask).netmask_bits())
+        cur_nw.nw_info = "%s (%s) %s / %s" % (cur_nw.identifier,
+                                              cur_nw.network_type.identifier,
+                                              cur_nw.network,
+                                              nw_mask)
         # use counter
-        stuff["usecount"] = 0
+        cur_nw.usecount = 0
+    return in_list
         
 def get_device_location_dict(dc):
     dc.execute("SELECT l.* FROM device_location l ORDER BY l.location")
@@ -1028,13 +1043,14 @@ def get_new_configs(dc):
     dc.execute("SELECT nc.* FROM new_config nc ORDER BY nc.name")
     return get_ordered_dict(dc, "new_config_idx")
 
-def get_device_selection_lists(dc, user_idx):
-    dc.execute("SELECT ds.device_selection_idx, ds.name, ds.user, dds.device FROM " + \
-               "device_selection ds LEFT JOIN device_device_selection dds ON dds.device_selection=ds.device_selection_idx AND " + \
-               "(ds.user=%d OR ds.user=0) ORDER BY ds.name" % (user_idx))
-    act_dict = get_ordered_dict(dc, "device_selection_idx", "devices", "device")
-    generate_device_selection_info_strings(act_dict) 
-    return act_dict
+def get_device_selection_lists(dc, user_obj):
+    devsel_list = device_selection.objects.filter((Q(user=user_obj) | Q(user=None))).prefetch_related("device_selection").order_by("name")
+    print devsel_list
+##    dc.execute("SELECT ds.device_selection_idx, ds.name, ds.user, dds.device FROM " + \
+##               "device_selection ds LEFT JOIN device_device_selection dds ON dds.device_selection=ds.device_selection_idx AND " + \
+##               "(ds.user=%d OR ds.user=0) ORDER BY ds.name" % (user_idx))
+##    act_dict = get_ordered_dict(dc, "device_selection_idx", "devices", "device")
+    return generate_device_selection_info_strings(devsel_list)
 
 def get_nagios_periods(dc):
     dc.execute("SELECT np.* FROM ng_period np ORDER BY np.name")
@@ -1061,11 +1077,17 @@ def get_nagios_device_templates(dc):
     dc.execute("SELECT nd.* FROM ng_device_templ nd ORDER BY nd.name")
     return get_ordered_dict(dc, "ng_device_templ_idx")
 
-def generate_device_selection_info_strings(act_dict):
-    for idx, stuff in act_dict.iteritems():
-        stuff["info"] = "%s (%s, %s)" % (stuff["name"],
-                                         stuff["user"] and "private" or "public",
-                                         logging_tools.get_plural("device", len(stuff["devices"])))
+def generate_device_selection_info_strings(devsel_list):
+    for entry in devsel_list:
+        entry.info = u"%s (%s, %s)" % (
+            entry.name,
+            "private" if entry.user_id else "public",
+            logging_tools.get_plural(entry.devices))
+##    for idx, stuff in act_dict.iteritems():
+##        stuff["info"] = "%s (%s, %s)" % (stuff["name"],
+##                                         stuff["user"] and "private" or "public",
+##                                         logging_tools.get_plural("device", len(stuff["devices"])))
+    return devsel_list
 
 def get_netdevice_speed(dc):
     dc.execute("SELECT ns.* FROM netdevice_speed ns ORDER BY ns.speed_bps")

@@ -389,9 +389,9 @@ class validate_struct(object):
         self.__db_obj = db_obj
         self.__old_db_obj = None
         self.__valid_db_keys = []
-        self.__check_for_new_obj = (self.__db_obj.get_idx() <= 0)
+        self.__check_for_new_obj = not(self.__db_obj.pk)
         self.__ok_to_create = ok_to_create
-        self.__suffix = self.__db_obj.get_suffix()
+        self.__suffix = "%s_%s" % (self.__db_obj._meta.object_name, str(self.__db_obj.pk))
         # flag for delete
         self.__delete = False
         # flag for delte
