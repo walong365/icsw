@@ -21,6 +21,9 @@
 
 import os
 import os.path
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "init.cluster.settings")
+
 import sys
 import socket
 import re
@@ -49,6 +52,7 @@ from twisted.internet import reactor
 from twisted.python import log
 from twisted.web import server, resource, wsgi
 from django.core.handlers.wsgi import WSGIHandler
+from init.cluster.backbone.models import device
 
 try:
     from cluster_server_version import VERSION_STRING
@@ -1161,15 +1165,15 @@ class server_process(threading_tools.process_pool):
         self.log("uuid checking")
         dc = self.__db_con.get_connection(SQL_ACCESS)
         self.log(" - cluster_device_uuid is '%s'" % (uuid_tools.get_uuid().get_urn()))
-        uuid_var = configfile.device_variable(dc, global_config["SERVER_IDX"], "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
+        uuid_var = configfile.db_device_variable(dc, global_config["SERVER_IDX"], "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
         # recognize for which devices i am responsible
-        dev_r = process_tools.device_recognition(dc)
+        dev_r = configfile.device_recognition(dc)
         if dev_r.device_dict:
             self.log(" - i am also host for %s: %s" % (logging_tools.get_plural("virtual device", len(dev_r.device_dict.keys())),
                                                        ", ".join(dev_r.device_dict.values())))
             for dev_idx in dev_r.device_dict.keys():
-                configfile.device_variable(dc, dev_idx, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
-                configfile.device_variable(dc, dev_idx, "is_virtual", description="Flag set for Virtual Machines", value=1)
+                configfile.db_device_variable(dc, dev_idx, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
+                configfile.db_device_variable(dc, dev_idx, "is_virtual", description="Flag set for Virtual Machines", value=1)
         dc.release()
     def loop_end(self):
         if self.com_socket:
