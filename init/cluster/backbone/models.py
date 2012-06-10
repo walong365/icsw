@@ -279,6 +279,14 @@ class device_connection(models.Model):
     class Meta:
         db_table = u'device_connection'
 
+class device_selection(models.Model):
+    idx = models.AutoField(db_column="device_selection_idx", primary_key=True)
+    name = models.CharField(unique=True, max_length=192)
+    user = models.ForeignKey("user", null=True)
+    date = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        db_table = u'device_selection'
+
 class device_device_selection(models.Model):
     idx = models.AutoField(db_column="device_device_selection_idx", primary_key=True)
     device_selection = models.ForeignKey("device_selection")
@@ -293,7 +301,8 @@ class device_group(models.Model):
     description = models.CharField(max_length=384)
     #device = models.ForeignKey("device", null=True, blank=True, related_name="group_device")
     # must be an IntegerField, otherwise we have a cycle reference
-    device = models.IntegerField(null=True, blank=True)
+    #device = models.IntegerField(null=True, blank=True)
+    device = models.ForeignKey("device", db_column="device", null=True, blank=True, related_name="group_device")
     # flag
     cluster_device_group = models.BooleanField()
     date = models.DateTimeField(auto_now_add=True)
@@ -325,14 +334,6 @@ class device_rsync_config(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_rsync_config'
-
-class device_selection(models.Model):
-    idx = models.AutoField(db_column="device_selection_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    user = models.ForeignKey("user", null=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'device_selection'
 
 class device_shape(models.Model):
     idx = models.AutoField(db_column="device_shape_idx", primary_key=True)
@@ -766,7 +767,7 @@ class network(models.Model):
     idx = models.AutoField(db_column="network_idx", primary_key=True)
     identifier = models.CharField(unique=True, max_length=255)
     network_type = models.ForeignKey("network_type")
-    master_network = models.ForeignKey("network", null=True, related_name="rel_master_network")
+    master_network = models.ForeignKey("network", null=True, related_name="rel_master_network", blank=True)
     short_names = models.BooleanField()
     name = models.CharField(max_length=192, blank=True)
     penalty = models.IntegerField()
@@ -776,7 +777,7 @@ class network(models.Model):
     netmask = models.CharField(max_length=45, blank=True)
     broadcast = models.CharField(max_length=45, blank=True)
     gateway = models.CharField(max_length=45, blank=True)
-    gw_pri = models.IntegerField(null=True, blank=True)
+    gw_pri = models.IntegerField(null=True, blank=True, default=1)
     write_bind_config = models.BooleanField()
     write_other_network_config = models.BooleanField()
     start_range = models.CharField(max_length=45, blank=True)
@@ -784,6 +785,8 @@ class network(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'network'
+    def __unicode__(self):
+        return u"%s" % (self.name)
 
 class network_device_type(models.Model):
     idx = models.AutoField(db_column="network_device_type_idx", primary_key=True)
@@ -809,6 +812,9 @@ class network_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'network_type'
+    def __unicode__(self):
+        return u"%s (%s)" % (self.description,
+                             self.identifier)
 
 class new_config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)

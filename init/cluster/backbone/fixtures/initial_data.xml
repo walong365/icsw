@@ -257,5 +257,66 @@
         <field type="CharField" name="value">60</field>
         <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
     </object>
+  <object pk="1" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">lo</field>
+    <field type="CharField" name="description">loopback devices</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="2" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">eth</field>
+    <field type="CharField" name="description">ethernet devices</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="3" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">myri</field>
+    <field type="CharField" name="description">myrinet devices</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="4" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">xenbr</field>
+    <field type="CharField" name="description">xen bridge devices</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="5" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">tun</field>
+    <field type="CharField" name="description">ethernet tunnel devices</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="6" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">ib</field>
+    <field type="CharField" name="description">infiniband devices</field>
+    <field type="IntegerField" name="mac_bytes">20</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="1" model="backbone.network_type">
+    <field type="CharField" name="identifier">b</field>
+    <field type="CharField" name="description">boot network</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="2" model="backbone.network_type">
+    <field type="CharField" name="identifier">p</field>
+    <field type="CharField" name="description">production network</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="3" model="backbone.network_type">
+    <field type="CharField" name="identifier">s</field>
+    <field type="CharField" name="description">slave network</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="4" model="backbone.network_type">
+    <field type="CharField" name="identifier">o</field>
+    <field type="CharField" name="description">other network</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="5" model="backbone.network_type">
+    <field type="CharField" name="identifier">l</field>
+    <field type="CharField" name="description">local network</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
 </django-objects>
 
