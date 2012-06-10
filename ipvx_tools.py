@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -24,9 +24,9 @@ import sys
 class ipv4(object):
     def __init__(self, in_value):
         # cast tuple to list
-        if type(in_value) == type(()):
+        if type(in_value) in [long, int]:
             in_value = list(in_value)
-        if type(in_value) == type(""):
+        if type(in_value) in [str, unicode]:
             # value is a string
             if len([x for x in [int(y) for y in in_value.strip().split(".") if y.isdigit()] if x >=0 and x <= 255]) == 4:
                 self.parts = [int(y) for y in in_value.strip().split(".")]
@@ -146,4 +146,3 @@ def get_network_name_from_mask(mask):
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
-    

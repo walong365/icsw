@@ -1260,6 +1260,7 @@ def kill_running_processes(p_name=None, **kwargs):
 
 class device_recognition(object):
     def __init__(self, dc, **args):
+        print "deprecated, use from configfile"
         self.short_host_name = args.get("short_host_name", socket.getfqdn(socket.gethostname()).split(".")[0])
         dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (self.short_host_name))
         if dc.rowcount:
@@ -1284,6 +1285,7 @@ class device_recognition(object):
             self.device_dict = dict([(x["device_idx"], x["name"]) for x in dc.fetchall()])
 
 def is_server(dc, server_type, long_mode=False, report_real_idx=False, short_host_name=""):
+    print "deprecated, use version from configfile"
     server_idx, s_type, s_str, config_idx, real_server_name = (0, "unknown", "not configured", 0, server_type)
     if server_type.count("%"):
         match_str = " LIKE('%s')" % (server_type)
