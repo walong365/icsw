@@ -54,6 +54,7 @@ from twisted.python import log
 from twisted.web import server, resource, wsgi
 from django.core.handlers.wsgi import WSGIHandler
 from init.cluster.backbone.models import device
+from init.cluster.backbone.middleware import show_database_calls
 
 try:
     from cluster_server_version import VERSION_STRING
@@ -1562,6 +1563,8 @@ def main():
         if global_config["DEBUG"]:
             print "Debugging cluster-server on %s" % (long_host_name)
     ret_state = server_process(db_con).loop()
+    if global_config["DEBUG"]:
+        show_database_calls()
     sys.exit(ret_state)
     
 ##    try:
