@@ -765,12 +765,12 @@ class net_ip(models.Model):
 
 class network(models.Model):
     idx = models.AutoField(db_column="network_idx", primary_key=True)
-    identifier = models.CharField(unique=True, max_length=255)
+    identifier = models.CharField(unique=True, max_length=255, blank=False)
     network_type = models.ForeignKey("network_type")
     master_network = models.ForeignKey("network", null=True, related_name="rel_master_network", blank=True)
     short_names = models.BooleanField()
-    name = models.CharField(max_length=192, blank=True)
-    penalty = models.PositiveIntegerField()
+    name = models.CharField(max_length=192, blank=False)
+    penalty = models.PositiveIntegerField(default=1)
     postfix = models.CharField(max_length=12, blank=True)
     info = models.CharField(max_length=255, blank=True)
     network = models.IPAddressField()
@@ -780,8 +780,8 @@ class network(models.Model):
     gw_pri = models.IntegerField(null=True, blank=True, default=1)
     write_bind_config = models.BooleanField()
     write_other_network_config = models.BooleanField()
-    start_range = models.IPAddressField()
-    end_range = models.IPAddressField()
+    start_range = models.IPAddressField(default="0.0.0.0")
+    end_range = models.IPAddressField(default="0.0.0.0")
     date = models.DateTimeField(auto_now_add=True)
     network_device_type = models.ManyToManyField("network_device_type")
     class Meta:
@@ -791,13 +791,18 @@ class network(models.Model):
 
 class network_device_type(models.Model):
     idx = models.AutoField(db_column="network_device_type_idx", primary_key=True)
-    identifier = models.CharField(unique=True, max_length=48)
+    identifier = models.CharField(unique=True, max_length=48, blank=False)
     description = models.CharField(max_length=192)
-    mac_bytes = models.IntegerField(null=True, blank=True)
+    mac_bytes = models.PositiveIntegerField(default=6)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'network_device_type'
-
+    def __unicode__(self):
+        return u"%s (%s [%d])" % (
+            self.identifier,
+            self.description,
+            self.mac_bytes)
+    
 class network_network_device_type(models.Model):
     idx = models.AutoField(db_column="network_network_device_type_idx", primary_key=True)
     network = models.ForeignKey("network")
@@ -808,7 +813,12 @@ class network_network_device_type(models.Model):
 
 class network_type(models.Model):
     idx = models.AutoField(db_column="network_type_idx", primary_key=True)
-    identifier = models.CharField(unique=True, max_length=3)
+    identifier = models.CharField(unique=True, max_length=3,
+                                  choices=(("b", "boot"),
+                                           ("p", "prod"),
+                                           ("s", "slave"),
+                                           ("o", "other"),
+                                           ("l", "local")))
     description = models.CharField(max_length=192)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:

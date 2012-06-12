@@ -116,6 +116,7 @@ def show_database_calls(**kwargs):
                 out_str = sql_str
             else:
                 if sql_str.count("FROM") and sql_str.count("WHERE"):
+                    oper_str = sql_str.split()[0]
                     if sql_str.count("FROM") > 1 or sql_str.count("WHERE") > 1:
                         print "FROM / COUNT: %d / %d" % (sql_str.count("FROM"), sql_str.count("WHERE"))
                     # parse sql_str
@@ -127,8 +128,10 @@ def show_database_calls(**kwargs):
                         if cur_str.startswith("[") and cur_str.endswith("]"):
                             out_list.add(cur_str.split(".")[0])
                     #print sql_str
-                    sql_str = "SELECT FROM %s :: %s" % (", ".join(sorted(list(out_list))),
-                                                        sql_str)
+                    sql_str = "%s FROM %s :: %s" % (
+                        oper_str,
+                        ", ".join(sorted(list(out_list))),
+                        sql_str)
                 out_str = sql_str[0:cur_width - 8]
             print "%6.2f %s" % (float(act_sql["time"]), out_str)
     
