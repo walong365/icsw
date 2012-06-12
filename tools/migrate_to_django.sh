@@ -30,11 +30,9 @@ else
     
     echo "sync database via django"
 
-    # rewrite settings.py
-    sed -i s/\"init.cluster.backbone\"/#\"init.cluster.backbone\"/g ${C_DIR}/settings.py
+    export NO_AUTO_ADD_APPLICATIONS=1
     ${C_DIR}/manage.py syncdb --noinput
-    # reenable cluster.backbone settings.py
-    sed -i s/#\"init.cluster.backbone\"/\"init.cluster.backbone\"/g ${C_DIR}/settings.py
+    unset NO_AUTO_ADD_APPLICATIONS
     
     echo "create initial south information"
     
@@ -43,5 +41,5 @@ else
     
     echo "reinsert data"
     
-    cat ${dump_name}.data | mysql -u ${MYSQL_USER} -h ${MYSQL_HOST} -P ${MYSQL_PORT} -p${MYSQL_PASSWD} ${MYSQL_DATABASE}
+    cat ${dump_name}.data | /opt/cluster/sbin/db_magic.py | mysql -u ${MYSQL_USER} -h ${MYSQL_HOST} -P ${MYSQL_PORT} -p${MYSQL_PASSWD} ${MYSQL_DATABASE}
 fi

@@ -17,4 +17,3 @@ import init.cluster
 # reload magic
 reload(init)
 reload(init.cluster)
-    

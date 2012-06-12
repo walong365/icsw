@@ -15,13 +15,13 @@ ADMINS = (
 MANAGERS = ADMINS
 
 DATABASES = {
-    'default': {
-        'ENGINE'   : 'django.db.backends.mysql', 
-        'NAME'     : '',
-        'USER'     : '',
-        'PASSWORD' : '',
-        'HOST'     : '',
-        'PORT'     : '',
+    "default": {
+        "ENGINE"   : "django.db.backends.mysql", 
+        "NAME"     : "",
+        "USER"     : "",
+        "PASSWORD" : "",
+        "HOST"     : "",
+        "PORT"     : "",
     }
 }
 # read from /etc/sysconfig/cluster/mysql.cf
@@ -30,9 +30,9 @@ sql_dict = dict([(key[6:], value) for key, value in [
     line.strip().split("=", 1) for line in file("/etc/sysconfig/cluster/mysql.cf", "r").read().split("\n") if line.count("=") and line.startswith("MYSQL_")]])
 
 for src_key ,dst_key in [("DATABASE", "NAME"),
-                         ("USER", "USER"),
-                         ("PASSWD", "PASSWORD"),
-                         ("HOST", "HOST")]:
+                         ("USER"    , "USER"),
+                         ("PASSWD"  , "PASSWORD"),
+                         ("HOST"    , "HOST")]:
     DATABASES["default"][dst_key] = sql_dict[src_key]
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
@@ -55,7 +55,7 @@ TIME_ZONE = "Europe/Vienna"
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
 SITE_ID = 1
 
@@ -72,7 +72,7 @@ USE_I18N = True
 USE_L10N = True
 
 # If you set this to False, Django will not use timezone-aware datetimes.
-USE_TZ = False
+USE_TZ = True
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
@@ -115,7 +115,7 @@ SESSION_COOKIE_HTTPONLY = True
 ##)
 
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = 'av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic'
+SECRET_KEY = "av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic"
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_CONTEXT_PROCESSORS = (
@@ -125,28 +125,30 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     "django.core.context_processors.request",
     "django.core.context_processors.media",
     "django.core.context_processors.debug",
+    "backbone.context_processors.add_session",
 )
 
 TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader',
+    "django.template.loaders.filesystem.Loader",
+    "django.template.loaders.app_directories.Loader",
 #     'django.template.loaders.eggs.Loader',
 )
 
 MIDDLEWARE_CLASSES = (
-    'django.middleware.common.CommonMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    "django.middleware.common.CommonMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     #'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "backbone.middleware.database_debug",
 )
 
-ROOT_URLCONF = 'init.cluster.urls'
+ROOT_URLCONF = "init.cluster.urls"
 
 # Python dotted path to the WSGI application used by Django's runserver.
-WSGI_APPLICATION = 'init.cluster.wsgi.application'
+WSGI_APPLICATION = "init.cluster.wsgi.application"
 
 TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
@@ -155,36 +157,39 @@ TEMPLATE_DIRS = (
 )
 
 INSTALLED_APPS = (
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.sites',
-    'django.contrib.messages',
-    #'django.contrib.staticfiles',
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.sites",
+    "django.contrib.messages",
+    #"django.contrib.staticfiles",
     # Uncomment the next line to enable the admin:
-    'django.contrib.admin',
+    "django.contrib.admin",
     # Uncomment the next line to enable admin documentation:
-    'django.contrib.admindocs',
+    "django.contrib.admindocs",
+    "reversion",
     "south",
-    # cluster
-    "init.cluster.backbone",
     "compressor",
+    # cluster
 )
 
+# add all applications, including backbone
+
 INSTALLED_APPS = list(INSTALLED_APPS)
-# add everything below cluster
-dir_name = os.path.dirname(__file__)
-for sub_dir in os.listdir(dir_name):
-    full_path = os.path.join(dir_name, sub_dir)
-    if os.path.isdir(full_path):
-        if any([entry.endswith("views.py") for entry in os.listdir(full_path)]) and sub_dir != "backbone":
-            add_app = "init.cluster.%s" % (sub_dir)
-            if add_app not in INSTALLED_APPS:
-                INSTALLED_APPS.append(add_app)
-for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
-    add_app = os.environ[add_app_key]
-    if add_app not in INSTALLED_APPS:
-        INSTALLED_APPS.append(add_app)
+if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
+    # add everything below cluster
+    dir_name = os.path.dirname(__file__)
+    for sub_dir in os.listdir(dir_name):
+        full_path = os.path.join(dir_name, sub_dir)
+        if os.path.isdir(full_path):
+            if any([entry.endswith("views.py") for entry in os.listdir(full_path)]):
+                add_app = "init.cluster.%s" % (sub_dir)
+                if add_app not in INSTALLED_APPS:
+                    INSTALLED_APPS.append(add_app)
+    for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
+        add_app = os.environ[add_app_key]
+        if add_app not in INSTALLED_APPS:
+            INSTALLED_APPS.append(add_app)
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
 # A sample logging configuration. The only tangible logging
@@ -193,25 +198,25 @@ INSTALLED_APPS = tuple(INSTALLED_APPS)
 # See http://docs.djangoproject.com/en/dev/topics/logging for
 # more details on how to customize your logging configuration.
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'filters': {
-        'require_debug_false': {
-            '()': 'django.utils.log.RequireDebugFalse'
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse"
         }
     },
-    'handlers': {
-        'mail_admins': {
-            'level': 'ERROR',
-            'filters': ['require_debug_false'],
-            'class': 'django.utils.log.AdminEmailHandler'
+    "handlers": {
+        "mail_admins": {
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "class": "django.utils.log.AdminEmailHandler"
         }
     },
-    'loggers': {
-        'django.request': {
-            'handlers': ['mail_admins'],
-            'level': 'ERROR',
-            'propagate': True,
+    "loggers": {
+        "django.request": {
+            "handlers": ["mail_admins"],
+            "level": "ERROR",
+            "propagate": True,
         },
     }
 }
