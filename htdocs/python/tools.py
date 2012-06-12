@@ -894,19 +894,11 @@ def get_partition_dict(dc):
 
 def get_network_dict(dc):
     all_nets = network.objects.all().select_related("network_type", "network_type__network_device_type").order_by("identifier")
-##    dc.execute("SELECT n.*, nt.identifier AS ntident, ndt.network_device_type FROM " + \
-##               "network n INNER JOIN network_type nt LEFT JOIN network_network_device_type ndt ON ndt.network=n.network_idx WHERE " + \
-##               "nt.network_type_idx=n.network_type ORDER BY n.identifier ASC")
-##    act_dict = get_ordered_dict(dc, "network_idx", "network_device_types", "network_device_type")
-##    return act_dict
     return dict([(cur_net.pk, cur_net) for cur_net in generate_network_info_strings(all_nets)])
 
 def get_network_device_type_dict(dc):
     return dict([(cur_ndt.pk, cur_ndt) for cur_ndt in network_device_type.objects.all().order_by("description")])
 
-def get_network_type_dict(dc):
-    return dict([(cur_nt.pk, cur_nt) for cur_nt in network_type.objects.all().order_by("description")])
-    
 def get_image_dict(dc):
     dc.execute("SELECT i.*, DATE_FORMAT(i.date,'%e. %b %Y %H:%i:%s') AS odate FROM image i ORDER BY i.name")
     return get_ordered_dict(dc, "image_idx")

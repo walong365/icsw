@@ -25,14 +25,14 @@ import logging_tools
 import html_tools
 import tools
 import sys
-import cdef_network
 import cdef_device
 import ipvx_tools
 import random
 import pprint
 from init.cluster.frontend.render_tools import render_me
-from init.cluster.frontend.forms import network_form
-from init.cluster.backbone.models import device, device_selection, device_device_selection, network, net_ip
+from init.cluster.frontend.forms import network_form, network_type_form, network_device_type_form
+from init.cluster.backbone.models import device, device_selection, device_device_selection, network, net_ip, \
+     network_type, network_device_type
 from django.db.models import Q
 from django.db import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect
@@ -140,431 +140,39 @@ def add_default_networks(net_t_tree, net_dt_tree, dc):
     net_ins(dc, apc_net_dict)
     dc.execute("INSERT INTO network_network_device_type SET network=%d, network_device_type=%d" % (dc.insert_id(), net_dt_lut["eth"]))
 
-class new_network_vs(html_tools.validate_struct):
-    def __init__(self, req, network_type_field, network_type_dict, master_list, ntt_dict):
-        new_dict = {"identifier"                 : {"he"  : html_tools.text_field(req, "id" , size=120, display_len=20),
-                                                    "new" : 1,
-                                                    "vf"  : self.validate_id,
-                                                    "def" : ""},
-                    "mnt"                        : (self.validate_master_type, {"network_type"   : {"he"  : network_type_field,
-                                                                                                    "def" : [k for k, v in ntt_dict.iteritems() if v.identifier == "p"][0]},
-                                                                                "master_network" : {"he"  : master_list,
-                                                                                                    "def" : 0}}),
-                    "name"                       : {"he"  : html_tools.text_field(req, "nn" ,  size=60, display_len=20),
-                                                    "vf"  : self.validate_name,
-                                                    "def" : "test.net"},
-                    "postfix"                    : {"he"  : html_tools.text_field(req, "sf" ,   size=4,  display_len=4),
-                                                    "vf"  : self.validate_postfix,
-                                                    "def" : ""},
-                    "gw_pri"                     : {"he"  : html_tools.text_field(req, "gwp",   size=6,  display_len=6),
-                                                    "vf"  : self.validate_gw_pri,
-                                                    "def" : 0},
-                    "info"                       : {"he"  : html_tools.text_field(req, "ni" , size=120, display_len=20),
-                                                    "def" : "New network"},
-                    "penalty"                    : {"he"  : html_tools.text_field(req, "pe" ,   size=6,  display_len=6),
-                                                    "vf"  : self.validate_penalty,
-                                                    "def" : 0},
-                    "nwc"                        : (self.validate_network, {"network"   : {"he"  : html_tools.text_field(req, "nw", size=15, display_len=15),
-                                                                                           "def" : "192.168.1.0"},
-                                                                            "netmask"   : {"he"  : html_tools.text_field(req, "nm", size=15, display_len=15),
-                                                                                           "def" : "255.255.255.0"},
-                                                                            "broadcast" : {"he"  : html_tools.text_field(req, "bc", size=15, display_len=15),
-                                                                                           "def" : "192.168.1.255"},
-                                                                            "gateway"   : {"he"  : html_tools.text_field(req, "gw", size=15, display_len=15),
-                                                                                           "def" : "0.0.0.0"}}),
-                    "short_names"                : {"he"  : html_tools.checkbox(req, "sn"),
-                                                    "def" : True},
-                    "write_bind_config"          : {"he"  : html_tools.checkbox(req, "wb"),
-                                                    "def" : True},
-                    "write_other_network_config" : {"he"  : html_tools.checkbox(req, "wo"),
-                                                    "def" : False},
-                    "del"                        : {"he"  : html_tools.checkbox(req, "del"),
-                                                    "del" : 1},
-                    "ntc"                        : (self.validate_netdevice_type, dict([(
-                        k,
-                        {"he"   : html_tools.checkbox(req, "ndt%s" % (v.identifier)),
-                         "ndb"  : True,
-                         "dbmr" : self.ndt_read_mapper}) for k, v in network_type_dict.iteritems()] + [("database_info", 
-                                                                                                        {"field_name" : "nw_types",
-                                                                                                         "def_name"   : "network_device_types",
-                                                                                                         "def"        : []})])),
-                    "range"                      : (self.validate_range, {"start_range" : {"he"  : html_tools.text_field(req, "rs", size=15, display_len=15),
-                                                                                           "def" : "0.0.0.0",
-                                                                                           "pri" : -20},
-                                                                          "end_range"   : {"he"  : html_tools.text_field(req, "re", size=15, display_len=15),
-                                                                                           "def" : "0.0.0.0",
-                                                                                           "pri" : -20}})}
-        html_tools.validate_struct.__init__(self, req, "Network", new_dict)
-        self.__ntc = network_type_dict
-        self.__ntt = ntt_dict
-##    def validate_range(self):
-##        zero_ip = ipvx_tools.ipv4("0.0.0.0")
-##        ipv4_list = ["start_range", "end_range"]
-##        nw_ipv4, nm_ipv4 = (ipvx_tools.ipv4(self.new_val_dict["network"]),
-##                            ipvx_tools.ipv4(self.new_val_dict["netmask"]))
-##        ip_dict, err_list = ({}, [])
-##        for what in ipv4_list:
-##            try:
-##                ip_dict[what] = ipvx_tools.ipv4(self.new_val_dict[what])
-##            except ValueError:
-##                err_list.append(what)
-##        if err_list:
-##            raise ValueError, ("IPV4 error: %s" % (", ".join(err_list)), dict([(what, (self.old_val_dict[what], "IPV4", [(what, self.old_val_dict[what])])) for what in err_list]))
-##        if len([True for x in ipv4_list if not ip_dict[x]]) == 1:
-##            raise ValueError, ("need two valid IPV4 addresses for range", dict([(what, ("0.0.0.0", "IPV4", [(what, "0.0.0.0")])) for what in ipv4_list]))
-##        new_dict = {}
-##        for what in ipv4_list:
-##            if ip_dict[what] != zero_ip:
-##                if ip_dict[what] & nm_ipv4 != nw_ipv4:
-##                    new_dict[what] = (ip_dict[what] & ~nm_ipv4) | nw_ipv4
-##        if new_dict:
-##            raise ValueError, ("%s not in network range" % (", ".join(new_dict.keys())), dict([(k, (str(new_dict[k]), "IPV4", [(k, str(new_dict[k]))])) for k in new_dict.keys()]))
-##        if ip_dict["start_range"] > ip_dict["end_range"]:
-##            raise ValueError, ("swapping range parameters", {"end_range"   : (str(ip_dict["start_range"]), "range", [("end_range"  , str(ip_dict["start_range"]))]),
-##                                                             "start_range" : (str(ip_dict["end_range"])  , "range", [("start_range", str(ip_dict["end_range"]  ))])})
-##        for what in ipv4_list:
-##            self.new_val_dict[what] = str(ip_dict[what])
-##    def validate_master_type(self):
-##        self.old_b_val_dict["network_type"] = self.__ntt[self.old_val_dict["network_type"]]["description"]
-##        self.new_b_val_dict["network_type"] = self.__ntt[self.new_val_dict["network_type"]]["description"]
-    def ndt_read_mapper(self, k):
-        return k in self.old_val_dict["nw_types"]
-##    def validate_id(self):
-##        new_id = self.new_val_dict["identifier"]
-##        if new_id != new_id.strip():
-##            raise ValueError, "no spaces allowed"
-##        elif not new_id.strip() and self.get_db_obj().get_idx():
-##            raise ValueError, "must not be empty"
-##        elif new_id in self.names:
-##            raise ValueError, "already used"
-##    def validate_name(self):
-##        pass
-##    def validate_postfix(self):
-##        if not self.new_val_dict["postfix"] or self.new_val_dict["postfix"].isalnum():
-##            pass
-##        else:
-##            raise ValueError, "illegal postfix"
-##    def validate_gw_pri(self):
-##        if tools.is_number(self.new_val_dict["gw_pri"].strip()):
-##            self.new_val_dict["gw_pri"] = int(self.new_val_dict["gw_pri"].strip())
-##        else:
-##            raise ValueError, "not an integer"
-##    def validate_penalty(self):
-##        if tools.is_number(self.new_val_dict["penalty"].strip()):
-##            pen = int(self.new_val_dict["penalty"].strip())
-##            if pen >= 0:
-##                self.new_val_dict["penalty"] = pen
-##            else:
-##                raise ValueError, "must be >= 0"
-##        else:
-##            raise ValueError, "not an integer"
-##    def validate_network(self):
-##        ip_dict, err_list = ({}, [])
-##        ipv4_list = ["network", "netmask", "broadcast", "gateway"]
-##        for what in ipv4_list:
-##            try:
-##                ip_dict[what] = ipvx_tools.ipv4(self.new_val_dict[what])
-##            except ValueError:
-##                err_list.append(what)
-##        if err_list:
-##            raise ValueError, ("IPV4 error: %s" % (", ".join(err_list)), dict([(what, (self.old_val_dict[what], "IPV4", [(what, self.old_val_dict[what])])) for what in err_list]))
-##        elif ip_dict["network"] & ip_dict["netmask"] != ip_dict["network"]:
-##            raise ValueError, ("netmask / network mismatch", dict([(k, (self.old_val_dict[k], "IPV4", [(k, self.old_val_dict[k])])) for k in ["network"]]))
-##        elif ip_dict["network"] | (~ip_dict["netmask"]) != ip_dict["broadcast"]:
-##            raise ValueError, ("broadcast mismatch", dict([(k, (self.old_val_dict[k], "IPV4", [(k, self.old_val_dict[k])])) for k in ["broadcast"]]))
-##        elif (ip_dict["gateway"] & ip_dict["netmask"] != ip_dict["network"]) and ip_dict["gateway"] != ipvx_tools.ipv4("0.0.0.0"):
-##            raise ValueError, ("gateway mismatch", dict([(k, (self.old_val_dict[k], "IPV4", [(k, self.old_val_dict[k])])) for k in ["gateway"]]))
-    def validate_netdevice_type(self):
-        # rather large routine, could be a one-liner
-        nw_s = self.old_val_dict["nw_types"]
-        self.old_b_val_dict["nw_types"] = ", ".join([self.__ntc[k]["identifier"] for k in nw_s]) or "empty list"
-        for key in self.__ntc.keys():
-            value = self.new_val_dict[key]
-            if value and not key in nw_s:
-                nw_s.append(key)
-            elif not value and key in nw_s:
-                nw_s.remove(key)
-        self.new_val_dict["nw_types"] = nw_s
-        self.new_b_val_dict["nw_types"] = ", ".join([self.__ntc[k]["identifier"] for k in nw_s]) or "empty list"
-    
-def get_net_trees(req, change_log):
-    net_t_tree = tools.get_network_type_dict(req.dc)
-##    if not net_t_tree:
-##        change_log.add_ok("Adding default network_types", "ok")
-##        req.dc.execute("INSERT INTO network_type VALUES%s" % (",".join(["(0,'%s','%s',null)" % (x, y) for x, y in [("b", "boot network"      ),
-##                                                                                                                   ("p", "production network"),
-##                                                                                                                   ("s", "slave network"     ),
-##                                                                                                                   ("o", "other network"     ),
-##                                                                                                                   ("l", "local network"     )]])))
-##        net_t_tree = tools.get_network_type_dict(req.dc)
-    net_dt_tree = tools.get_network_device_type_dict(req.dc)
-##    if not net_dt_tree:
-##        change_log.add_ok("Adding default network_device_types", "ok")
-##        req.dc.execute("INSERT INTO network_device_type VALUES%s" % (",".join(["(0, '%s', '%s', %d, null)" % (x, y, z) for x, y, z in [("lo"   , "loopback devices"       ,  6),
-##                                                                                                                                       ("eth"  , "ethernet devices"       ,  6),
-##                                                                                                                                       ("myri" , "myrinet devices"        ,  6),
-##                                                                                                                                       ("xenbr", "xen bridge devices"     ,  6),
-##                                                                                                                                       ("tun"  , "ethernet tunnel devices",  6),
-##                                                                                                                                       ("ib"   , "infiniband devices"     , 20)]
-##                                                                               ])))
-##        net_dt_tree = tools.get_network_device_type_dict(req.dc)
-    return net_t_tree, net_dt_tree
-    
-class new_network_device_type_vs(html_tools.validate_struct):
-    def __init__(self, req):
-        new_dict = {"identifier"  : {"he"  : html_tools.text_field(req, "nci",  size=16, display_len=8),
-                                     "new" : 1,
-                                     "vf"  : self.validate_identifier,
-                                     "def" : ""},
-                    "description" : {"he"  : html_tools.text_field(req, "ncd", size=64, display_len=32),
-                                     "def" : "New device type"},
-                    "mac_bytes"   : {"he"  : html_tools.text_field(req, "ncm", size=6, display_len=6),
-                                     "vf"  : self.validate_mac,
-                                     "def" : 6},
-                    "del"         : {"he"  : html_tools.checkbox(req, "ntd", auto_reset=True),
-                                     "del" : 1}}
-        html_tools.validate_struct.__init__(self, req, "Network device type", new_dict)
-    def validate_identifier(self):
-        if self.new_val_dict["identifier"] in self.identifiers:
-            self.new_val_dict["identifier"] = self.old_val_dict["identifier"]
-            raise ValueError, "already used"
-    def validate_mac(self):
-        if self.new_val_dict["mac_bytes"].strip().isdigit():
-            self.new_val_dict["mac_bytes"] = int(self.new_val_dict["mac_bytes"].strip())
-        else:
-            raise ValueError, "not an integer"
-
 def show_netdevice_classes(req):
-    low_submit = html_tools.checkbox(req, "sub")
-    change_log = html_tools.message_log()
-    ndt_vs = new_network_device_type_vs(req)
-    net_t_tree, shadow_net_dt_tree = get_net_trees(req, change_log)
-    # generate editable tree
-    net_dt_tree = {}
-    for idx, stuff in shadow_net_dt_tree.iteritems():
-        net_dt_tree[idx] = cdef_network.network_device_type(stuff["identifier"], stuff["network_device_type_idx"], stuff)
-        net_dt_tree[idx].act_values_are_default()
-    net_dt_tree[0] = cdef_network.network_device_type(ndt_vs.get_default_value("identifier"), 0, ndt_vs.get_default_dict())
-    net_dt_tree[0].act_values_are_default()
-    net_tree = tools.get_network_dict(req.dc)
-    req.dc.execute("SELECT network_device_type, COUNT(network_device_type) AS c FROM netdevice GROUP BY network_device_type")
-    nw_dict = tools.ordered_dict()
-    for nw_idx, nw_stuff in net_tree.iteritems():
-        nw_dict[nw_stuff["network_idx"]] = cdef_network.network(nw_stuff["name"], nw_stuff["network_idx"], nw_stuff)
-        nw_dict[nw_stuff["network_idx"]].act_values_are_default()
-        nw_dict[nw_stuff["network_idx"]].usecount = nw_stuff["usecount"]
-    net_class_dict = dict([(x["network_device_type"], x["c"]) for x in req.dc.fetchall()])
-    nt_descr = html_tools.text_field(req, "ntd", size=64, display_len=32)
-    for ndc_idx in net_dt_tree.keys():
-        ndc_stuff = net_dt_tree[ndc_idx]
-        ndc_stuff.count_nd = net_class_dict.get(ndc_idx, 0)
-        ndc_stuff.count_nw = len([True for x in nw_dict.itervalues() if x.has_network_device_type(ndc_idx)])
-        ndt_vs.identifiers = [x["identifier"] for x in net_dt_tree.values() if x["identifier"] and x["identifier"] != ndc_stuff["identifier"]]
-        ndt_vs.link_object(ndc_idx, ndc_stuff)
-        ndt_vs.check_for_changes()
-        if not ndt_vs.check_delete():
-            ndt_vs.process_changes(change_log, net_dt_tree)
-        ndt_vs.unlink_object()
-    if ndt_vs.get_delete_list():
-        for del_idx in ndt_vs.get_delete_list():
-            change_log.add_ok("Deleted network device class '%s'" % (net_dt_tree[del_idx]["identifier"]), "SQL")
-            del net_dt_tree[del_idx]
-        req.dc.execute("DELETE FROM network_device_type WHERE %s" % (" OR ".join(["network_device_type_idx=%d" % (x) for x in ndt_vs.get_delete_list()])))
-    used_ids = [ndc_stuff["identifier"] for ndc_stuff in net_dt_tree.itervalues()]
-    # check for new network_device_class
-    for ndc_idx, ndc_stuff in net_t_tree.iteritems():
-        ndc_stuff["count"] = len([1 for x in nw_dict.itervalues() if x["network_type"] == ndc_idx and x.get_idx()])
-        new_descr = nt_descr.check_selection("%d" % (ndc_idx), ndc_stuff["description"])
-        if new_descr != ndc_stuff["description"]:
-            ndc_stuff["description"] = new_descr
-            req.dc.execute("UPDATE network_type SET description=%s WHERE network_type_idx=%s", (new_descr, ndc_idx))
-            change_log.add_ok("Changed description of network_type '%s' to '%s'" % (ndc_stuff["identifier"], ndc_stuff["description"]), "SQL")
-    req.write(change_log.generate_stack("Action log"))
-    # netdevice_class table
-    class_table = html_tools.html_table(cls="normalsmall")
-    class_table[0]["class"] = "line00"
-    for what in ["Prefix", "Description", "# of MAC-Bytes", "count (devs/nets)"]:
-        class_table[None][0] = html_tools.content(what, type="th")
-    row0_idx = 0
-    for ndc_idx in tools.get_ordered_idx_list(net_dt_tree, "identifier") + [0]:
-        ndc_stuff = net_dt_tree[ndc_idx]
-        line0_class = "line1%d" % (row0_idx)
-        row0_idx = 1 - row0_idx
-        class_table[0]["class"] = line0_class
-        class_table[None][0] = html_tools.content(ndt_vs.get_he("identifier"), ndc_stuff.get_suffix(), cls="left")
-        class_table[None][0] = html_tools.content(ndt_vs.get_he("description"), ndc_stuff.get_suffix(), cls="left")
-        class_table[None][0] = html_tools.content(ndt_vs.get_he("mac_bytes"), ndc_stuff.get_suffix(), cls="center")
-        if ndc_idx:
-            if ndc_stuff.count_nd or ndc_stuff.count_nw:
-                class_table[None][0] = html_tools.content("%d / %d" % (ndc_stuff.count_nd,
-                                                                       ndc_stuff.count_nw), cls="center")
-            else:
-                class_table[None][0] = html_tools.content(["del:", ndt_vs.get_he("del")], ndc_stuff.get_suffix(), cls="errorcenter")
-        else:
-            class_table[None][0] = html_tools.content("&nbsp;", cls="center")
-    # netdevice_type table
-    type_table = html_tools.html_table(cls="normalsmall")
-    for what in ["identifier", "Description", "count"]:
-        type_table[1][0] = html_tools.content(what, type="th")
-    type_table[1]["class"] = "line00"
-    row0_idx = 0
-    for ndc_idx, ndc_stuff in net_t_tree.iteritems():
-        line0_class = "line1%d" % (row0_idx)
-        row0_idx = 1 - row0_idx
-        type_table[0][0]    = html_tools.content(ndc_stuff["identifier"], cls="center")
-        type_table[None]["class"] = line0_class
-        type_table[None][0] = html_tools.content(nt_descr, "%d" % (ndc_idx), cls="left")
-        type_table[None][0] = html_tools.content(ndc_stuff["count"] and "%d" % (ndc_stuff["count"]) or "-", cls="center")
-    # meta table
-    meta_table = html_tools.html_table(cls="blindsmall")
-    meta_table[0][0]    = html_tools.content(class_table, cls="top")
-    meta_table[None][0] = html_tools.content(type_table , cls="top")
-    req.write("%s%s" % (html_tools.gen_hline("%s and %s defined" % ("%d netdevice classes" % (len(net_dt_tree.keys())),
-                                                                    "%d network types" % (len(net_t_tree.keys()))), 2),
-                        meta_table("")))
-    low_submit[""] = 1
-    submit_button = html_tools.submit_button(req, "submit")
-    submit_button.set_class("", "button")
-    req.write("%s<div class=\"center\">%s</div>\n" % (low_submit.create_hidden_var(),
-                                                      submit_button("")))
-    
-
-def show_cluster_networks(req):#, sub_sel):
     request = req.request
-    network_formset = modelformset_factory(network, form=network_form)
+    network_type_formset = modelformset_factory(network_type, form=network_type_form, can_delete=True, extra=1)
+    network_dt_formset   = modelformset_factory(network_device_type, form=network_device_type_form, can_delete=True, extra=1)
+    if request.method == "POST" and "ds" not in request.POST:
+        cur_type_fs = network_type_formset(request.POST, request.FILES, prefix="type")
+        if cur_type_fs.is_valid():
+            if cur_type_fs.save() or cur_type_fs.deleted_forms:
+                cur_type_fs = network_type_formset(prefix="type")
+        cur_dt_fs = network_dt_formset(request.POST, request.FILES, prefix="devtype")
+        if cur_dt_fs.is_valid():
+            if cur_dt_fs.save() or cur_dt_fs.deleted_forms:
+                cur_dt_fs = network_dt_formset(prefix="devtype")
+    else:
+        cur_type_fs = network_type_formset(prefix="type")
+        cur_dt_fs   = network_dt_formset(prefix="devtype")
+    req.write(render_to_string("cluster_network_types.html", {
+        "network_type_formset"    : cur_type_fs,
+        "network_devtype_formset" : cur_dt_fs}))
+
+def show_cluster_networks(req):
+    request = req.request
+    network_formset = modelformset_factory(network, form=network_form, can_delete=True, extra=1)
     if request.method == "POST" and "ds" not in request.POST:
         cur_fs = network_formset(request.POST, request.FILES)
-        for sub_form in cur_fs.forms:
-            if sub_form.is_valid():
-                try:
-                    sub_form.save()
-                except IntegrityError:
-                    pass
+        if cur_fs.is_valid():
+            if cur_fs.save() or cur_fs.deleted_forms:
+                # re-read formsets after successfull save or delete
+                cur_fs = network_formset()
     else:
         cur_fs = network_formset()
     req.write(render_to_string("cluster_networks.html", {
         "network_formset" : cur_fs}))
-    return
-    change_log = html_tools.message_log()
-    net_t_tree, net_dt_tree = get_net_trees(req, change_log)
-    net_tree = tools.get_network_dict(req.dc)
-    if not net_tree:
-        change_log.add_ok("Adding default networks", "ok")
-        add_default_networks(net_t_tree, net_dt_tree, req.dc)
-        net_tree = tools.get_network_dict(req.dc)
-    # add usecount
-    for nw_id in net_ip.objects.all().values_list("network", flat=True):
-        net_tree[nw_id].usecount += 1
-##        print nw_id
-##    req.dc.execute("SELECT nw.network_idx, COUNT(nw.network_idx) AS usecount FROM device d, netdevice nd, netip ip, network nw, network_type nt WHERE " + \
-##                       "nd.device=d.device_idx AND ip.netdevice=nd.netdevice_idx AND ip.network=nw.network_idx AND nw.network_type=nt.network_type_idx GROUP BY nw.network_idx")
-##    for stuff in req.dc.fetchall():
-##        net_tree[stuff["network_idx"]]["usecount"] = stuff["usecount"]
-    type_field = html_tools.selection_list(req, "nt", {})
-    low_submit = html_tools.checkbox(req, "sub")
-    sub = low_submit.check_selection("")
-    for nt_idx, nt_stuff in net_t_tree.iteritems():
-        type_field[nt_idx] = "%s (%s)" % (nt_stuff.identifier, nt_stuff.description)
-    master_field = html_tools.selection_list(req, "mn", {})
-    master_field[0] = "--- not set ---"
-    nw_dict = tools.ordered_dict()
-    for nw_idx, nw_stuff in net_tree.iteritems():
-        if net_t_tree[nw_stuff.network_type_id].identifier == "p":
-            master_field[nw_idx] = "%s (%s, %s)" % (nw_stuff.identifier, nw_stuff.name, nw_stuff.network)
-        nw_dict[nw_stuff.pk] = nw_stuff#cdef_network.network(nw_stuff["name"], nw_stuff["network_idx"], nw_stuff)
-        #nw_dict[nw_stuff.pk].act_values_are_default()
-        #nw_dict[nw_stuff.pk].usecount = nw_stuff["usecount"]
-    master_field.mode_is_normal()
-    type_field.mode_is_normal()
-    network_vs = new_network_vs(req, type_field, net_dt_tree, master_field, net_t_tree)
-    nw_dict[0] = cdef_network.network(network_vs.get_default_value("name"), 0, network_vs.get_default_dict())
-    network_vs.set_submit_mode(sub)
-    for nw_idx in nw_dict.keys():
-        nw_stuff = nw_dict[nw_idx]
-        network_vs.names = [nw_dict[x].identifier for x in nw_dict.keys() if x != nw_idx and x]
-        network_vs.link_object(nw_idx, nw_stuff)
-        network_vs.check_for_changes()
-        if not network_vs.check_delete():
-            network_vs.process_changes(change_log, nw_dict)
-        network_vs.unlink_object()
-    if network_vs.get_delete_list():
-        for del_idx in network_vs.get_delete_list():
-            change_log.add_ok("Deleted network '%s'" % (nw_dict[del_idx]["identifier"]), "SQL")
-            del nw_dict[del_idx]
-        sql_str = "DELETE FROM network WHERE %s" % (" OR ".join(["network_idx=%d" % (x) for x in network_vs.get_delete_list()]))
-        req.dc.execute(sql_str)
-        sql_str = "DELETE FROM network_network_device_type WHERE %s" % (" OR ".join(["network=%d" % (x) for x in network_vs.get_delete_list()]))
-        req.dc.execute(sql_str)
-    # generate list of nw_sf
-    nw_sf_olist = tools.get_ordered_idx_list(nw_dict, "identifier")
-    # check for slave networks without master
-    for nw_sf in [nw_dict[k] for k in nw_sf_olist]:
-        #print nw_sf["network_type"]
-        if net_t_tree[nw_sf["network_type"]]["identifier"] == "s" and not nw_sf["master_network"]:
-            change_log.add_warn("Slave Network '%s' has no associated master network" % (nw_sf["name"]), "config error")
-    req.write(change_log.generate_stack("Action log"))
-
-    req.write(html_tools.gen_hline("ClusterNetwork config, %s defined" % (logging_tools.get_plural("network", len(nw_dict.keys())-1)), 2))
-    out_table = html_tools.html_table(cls="normalsmall")
-    req.write(out_table.get_header())
-    row0_idx = 0
-    for nw_stuff in [nw_dict[n] for n in nw_sf_olist + [0]]:
-        line_len = 3
-        if not nw_stuff.get_idx():
-            out_table[1]["class"] = "lineh"
-            out_table[1][1:line_len] = html_tools.content("New Network", type="th", cls="center")
-            req.write(out_table.flush_lines())
-        line0_class = "line0%d" % (row0_idx)
-        line1_class = "line1%d" % (row0_idx)
-        row0_idx = 1-row0_idx
-        out_table[1:6]["class"] = line0_class
-        out_table[2:5]["class"] = line1_class
-        out_table[1:6][1]  = html_tools.content(network_vs.get_he("identifier"), cls="left")
-        node_name = "node001"
-        nw_bits = ipvx_tools.ipv4(nw_stuff["netmask"]).netmask_bits()
-        nw_class = "class %s" % ({8  : "A",
-                                  16 : "B",
-                                  24 : "C"}.get(nw_bits, "unknown"))
-        out_table[1][2:line_len] = html_tools.content("Info: %s, %s will result in %s%s, %s%s" % (nw_class,
-                                                                                                  node_name,
-                                                                                                  "%s%s.%s" % (node_name, nw_stuff["postfix"], nw_stuff["name"]),
-                                                                                                  nw_stuff["short_names"] and " and %s%s" % (node_name, nw_stuff["postfix"]) or "",
-                                                                                                  "%d possible IPs" % (2**(32 - nw_bits) - 2),
-                                                                                                  nw_stuff.usecount and ", used by %s" % (logging_tools.get_plural("IP address", nw_stuff.usecount)) or ""),
-                                                      cls="left")
-        if not nw_stuff.get_idx() or nw_stuff.usecount:
-            start_row = 2
-        else:
-            start_row = 3
-            out_table[2:5][2] = html_tools.content(network_vs.get_he("del"), cls="errormin")
-        #out_table[2][9:line_len] = html_tools.content([], cls="left")
-        out_table[2][start_row : 3] = html_tools.content(["Type: "                         , network_vs.get_he("network_type"),
-                                                          ", Master (for slave networks): ", network_vs.get_he("master_network"),
-                                                          ", penalty: "                    , network_vs.get_he("penalty"),
-                                                          ", gateway priority: "           , network_vs.get_he("gw_pri")], cls="left")
-        out_table[3][start_row : 3] = html_tools.content(["Postfix: "             , network_vs.get_he("postfix"),
-                                                          ", Name: "              , network_vs.get_he("name"),
-                                                          ", Info: "              , network_vs.get_he("info"),
-                                                          "; flags: Short Names: ", network_vs.get_he("short_names"),
-                                                          "write BIND: "          , network_vs.get_he("write_bind_config"),
-                                                          "force write config: "  , network_vs.get_he("write_other_network_config")], cls="left")
-        out_table[4][start_row : 3] = html_tools.content(["Network: "    , network_vs.get_he("network"),
-                                                          ", netmask: "  , network_vs.get_he("netmask"),
-                                                          ", broadcast: ", network_vs.get_he("broadcast"),
-                                                          ", gateway: "  , network_vs.get_he("gateway")], cls="left")
-        out_table[5][start_row : 3] = html_tools.content(["Free range for auto-IP: " , network_vs.get_he("start_range"),
-                                                          " - "                      , network_vs.get_he("end_range")], cls="left")
-        out_f = ["Network device classes:"]
-        for idx, stuff in net_dt_tree.iteritems():
-            out_f.extend([" %s" % (stuff["identifier"]), network_vs.get_he(idx), " (%s [%d]),\n" % (stuff["description"], stuff["mac_bytes"])])
-        out_table[6][2:line_len] = html_tools.content(out_f, cls="left")
-        req.write(out_table.flush_lines(nw_stuff.get_suffix()))
-    low_submit[""] = 1
-    submit_button = html_tools.submit_button(req, "submit")
-    submit_button.set_class("", "button")
-    req.write("%s%s<div class=\"center\">%s</div>\n" % (out_table.get_footer(),
-                                                        low_submit.create_hidden_var(),
-                                                        submit_button("")))
 
 def get_netspeed_str(in_bps):
     if in_bps >= 1000000000:

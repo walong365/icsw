@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: iso-8859-1 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -25,6 +25,15 @@ import logging_tools
 import html_tools
 import tools
 import cdef_locations
+from init.cluster.frontend.render_tools import render_me
+from init.cluster.frontend.forms import network_form, network_type_form, network_device_type_form
+from init.cluster.backbone.models import device, device_selection, device_device_selection, network, net_ip, \
+     network_type, network_device_type
+from django.db.models import Q
+from django.db import IntegrityError
+from django.http import HttpResponse, HttpResponseRedirect
+from django.template.loader import render_to_string
+from django.forms.models import modelformset_factory
 
 class new_device_location_vs(html_tools.validate_struct):
     def __init__(self, req):

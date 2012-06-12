@@ -1,0 +1,45 @@
+<h1>Cluster network types</h1>
+
+{% load i18n extra_tags %}
+
+{{ network_type_formset.management_form }}
+<table>
+    <tbody>
+    {% for cur_form in network_type_formset %}
+        {{ cur_form.idx }}
+        <tr><td colspan="3">{{ cur_form.non_field_errors }}</td></tr>
+        <tr>
+            <td>
+                {{ cur_form.identifier.label }}{{ cur_form.identifier }}{{ cur_form.identifier.errors }}
+            </td>
+            <td>
+                {{ cur_form.description.label }}{{ cur_form.description }}{{ cur_form.description.errors }}
+            </td>
+            <td>{% if cur_form.can_be_deleted %}del:{{ cur_form.DELETE }}{% endif %}</td>
+        </tr>
+    {% endfor %}
+    <tbody>
+</table>
+
+{{ network_devtype_formset.management_form }}
+<table>
+    <tbody>
+    {% for cur_form in network_devtype_formset %}
+        {{ cur_form.idx }}
+        <tr><td colspan="3">{{ cur_form.non_field_errors }}</td></tr>
+        <tr>
+            <td>
+                {{ cur_form.identifier.label }}{{ cur_form.identifier }}{{ cur_form.identifier.errors }}
+            </td>
+            <td>
+                {{ cur_form.description.label }}{{ cur_form.description }}{{ cur_form.description.errors }}
+            </td>
+            <td>
+                {{ cur_form.mac_bytes.label }}{{ cur_form.mac_bytes }}{{ cur_form.mac_bytes.errors }}
+            </td>
+            <td>{% if cur_form.can_be_deleted %}del:{{ cur_form.DELETE }}{% endif %}</td>
+        </tr>
+    {% endfor %}
+    <tbody>
+</table>
+<input type="submit" action="submit"/>

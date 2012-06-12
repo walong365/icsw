@@ -45,7 +45,7 @@ def html_head(req):
 def write_header(req, style_file="formate.css", js_list=["jquery-1.2.3.min"]):
     out_f = ["<head>",
              "<meta name=\"generator\" content=\"init.at webfrontend python scripts\">",
-             "<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">"]
+             "<meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">"]
     if req.conf.get("genstuff", {}).has_key("AUTO_RELOAD"):
         add_str = "<meta http-equiv=\"refresh\" content=\"%s" % (str(req.conf["genstuff"]["AUTO_RELOAD"]))
         if req.conf["genstuff"].has_key("RELOAD_TARGET"):
