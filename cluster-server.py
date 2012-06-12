@@ -45,6 +45,7 @@ import mail_tools
 import difflib
 #import cs_base_class
 import config_tools
+import cluster_location
 import zmq
 import cluster_server
 from host_monitoring import hm_classes
@@ -1142,10 +1143,13 @@ class server_process(threading_tools.process_pool):
         for conf in conf_info:
             self.log("Config : %s" % (conf))
     def _re_insert_config(self):
-        self.log("re-insert config")
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        configfile.write_config(dc, "server", global_config)
-        dc.release()
+        if self.__run_command:
+            self.log("running command, skipping re-insert of config", logging_tools.LOG_LEVEL_WARN)
+        else:
+            self.log("re-insert config")
+            dc = self.__db_con.get_connection(SQL_ACCESS)
+            cluster_location.write_config("server", global_config, dc=dc)
+            dc.release()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
@@ -1165,15 +1169,15 @@ class server_process(threading_tools.process_pool):
         self.log("uuid checking")
         dc = self.__db_con.get_connection(SQL_ACCESS)
         self.log(" - cluster_device_uuid is '%s'" % (uuid_tools.get_uuid().get_urn()))
-        uuid_var = configfile.db_device_variable(dc, global_config["SERVER_IDX"], "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
+        uuid_var = cluster_location.db_device_variable(global_config["SERVER_IDX"], "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
         # recognize for which devices i am responsible
-        dev_r = configfile.device_recognition(dc)
+        dev_r = cluster_location.device_recognition(dc=dc)
         if dev_r.device_dict:
             self.log(" - i am also host for %s: %s" % (logging_tools.get_plural("virtual device", len(dev_r.device_dict.keys())),
                                                        ", ".join(dev_r.device_dict.values())))
             for dev_idx in dev_r.device_dict.keys():
-                configfile.db_device_variable(dc, dev_idx, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
-                configfile.db_device_variable(dc, dev_idx, "is_virtual", description="Flag set for Virtual Machines", value=1)
+                cluster_location.db_device_variable(dev_idx, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
+                cluster_location.db_device_variable(dev_idx, "is_virtual", description="Flag set for Virtual Machines", value=1)
         dc.release()
     def loop_end(self):
         if self.com_socket:
@@ -1494,7 +1498,7 @@ def main():
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("CONTACT"             , configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
-        ("COMMAND"             , configfile.str_c_var("", short_options="c", choices=cluster_server.command_names, only_commandline=True, help_string="command to execute [%(default)s]")),
+        ("COMMAND"             , configfile.str_c_var("", short_options="c", choices=[""] + cluster_server.command_names, only_commandline=True, help_string="command to execute [%(default)s]")),
         ("OPTION_KEYS"         , configfile.array_c_var([], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)")),
     ])
     global_config.parse_file()
@@ -1521,7 +1525,7 @@ def main():
         if dc.rowcount:
             global_config["SERVER_IDX"] = dc.fetchone()["device_idx"]
     if sql_info.num_servers > 1:
-        print "Database error for host %s (nagios_config): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
+        print "Database error for host %s (server): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
         dc.release()
         sys.exit(5)
     if global_config["CHECK"]:
@@ -1533,10 +1537,8 @@ def main():
         sys.exit(5)
     if global_config["KILL_RUNNING"] and not global_config["COMMAND"]:
         log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
-    configfile.read_config_from_db(global_config, dc, "server", [
+    cluster_location.read_config_from_db(global_config, "server", [
         ("COM_PORT"              , configfile.int_c_var(SERVER_PORT)),
-        ("LOG_DESTINATION"       , configfile.str_c_var("uds:/var/lib/logging-server/py_log")),
-        ("LOG_NAME"              , configfile.str_c_var("cluster-server")),
         ("IMAGE_SOURCE_DIR"      , configfile.str_c_var("/usr/local/share/cluster/images")),
         ("UPDATE_SITE"           , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
         ("MAILSERVER"            , configfile.str_c_var("localhost")),
@@ -1550,7 +1552,7 @@ def main():
         ("USER_MAIL_SEND_TIME"   , configfile.int_c_var(3600, info="time in seconds between to mails")),
         ("SERVER_FULL_NAME"      , configfile.str_c_var(long_host_name, database=False)),
         ("SERVER_SHORT_NAME"     , configfile.str_c_var(mach_name, database=False)),
-    ])
+    ], dc=dc)
     dc.release()
     if not global_config["DEBUG"] and not global_config["COMMAND"]:
         process_tools.become_daemon()

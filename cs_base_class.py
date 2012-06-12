@@ -23,7 +23,8 @@ import config_tools
 import time
 import os
 import logging_tools
-        
+import cluster_location
+
 class server_com(object):
     class Meta:
         # callable via net

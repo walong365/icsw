@@ -26,6 +26,9 @@ import net_tools
 import pprint
 import partition_tools
 import process_tools
+from django.db.models import Q
+from init.cluster.backbone.models import device, partition, partition_disc, partition_table, partition_fs, \
+     lvm_lv, lvm_vg, sys_partition
 
 class fetch_partition_info(cs_base_class.server_com):
     class Meta:
@@ -89,69 +92,84 @@ class fetch_partition_info(cs_base_class.server_com):
                     partition_name, partition_info = ("%s_part" % (target_dev),
                                                       "generated partition_setup from device '%s'" % (target_dev))
                     # any old partitions?
-                    self.dc.execute("SELECT * FROM partition_table WHERE name=%s", partition_name)
-                    if self.dc.rowcount:
-                        old_parts = [x["partition_table_idx"] for x in self.dc.fetchall()]
-                        self.dc.execute("SELECT * FROM partition_disc WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
-                        if self.dc.rowcount:
-                            old_discs = [x["partition_disc_idx"] for x in self.dc.fetchall()]
-                            self.dc.execute("DELETE FROM partition WHERE %s" % (" OR ".join(["partition_disc=%d" % (x) for x in old_discs])))
-                            self.dc.execute("DELETE FROM partition_disc WHERE %s" % (" OR ".join(["partition_disc_idx=%d" % (x) for x in old_discs])))
-                            self.dc.execute("DELETE FROM sys_partition WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
-                        self.dc.execute("DELETE FROM partition_table WHERE %s" % (" OR ".join(["partition_table_idx=%d" % (x) for x in old_parts])))
-                        self.dc.execute("DELETE FROM lvm_lv WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
-                        self.dc.execute("DELETE FROM lvm_vg WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
+                    partition_table.objects.filter(Q(name=partition_name)).delete()
+##                    #self.dc.execute("SELECT * FROM partition_table WHERE name=%s", partition_name)
+##                    if len(old_parts):#self.dc.rowcount:
+##                        old_parts = [x["partition_table_idx"] for x in self.dc.fetchall()]
+##                        self.dc.execute("SELECT * FROM partition_disc WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
+##                        if self.dc.rowcount:
+##                            old_discs = [x["partition_disc_idx"] for x in self.dc.fetchall()]
+##                            self.dc.execute("DELETE FROM partition WHERE %s" % (" OR ".join(["partition_disc=%d" % (x) for x in old_discs])))
+##                            self.dc.execute("DELETE FROM partition_disc WHERE %s" % (" OR ".join(["partition_disc_idx=%d" % (x) for x in old_discs])))
+##                            self.dc.execute("DELETE FROM sys_partition WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
+##                        self.dc.execute("DELETE FROM partition_table WHERE %s" % (" OR ".join(["partition_table_idx=%d" % (x) for x in old_parts])))
+##                        self.dc.execute("DELETE FROM lvm_lv WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
+##                        self.dc.execute("DELETE FROM lvm_vg WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
                     # fetch partition_fs
-                    self.dc.execute("SELECT * FROM partition_fs")
                     fs_dict = {}
-                    for db_rec in self.dc.fetchall():
-                        fs_dict.setdefault(("%02x" % (int(db_rec["hexid"], 16))).lower(), []).append(db_rec)
-                    self.dc.execute("INSERT INTO partition_table SET name=%s, description=%s", (partition_name,
-                                                                                                       partition_info))
-                    partition_idx = self.dc.insert_id()
+                    for db_rec in partition_fs.objects.all():
+                        fs_dict.setdefault(("%02x" % (int(db_rec.hexid, 16))).lower(), {})[db_rec.name] = db_rec
+##                    self.dc.execute("SELECT * FROM partition_fs")
+##                    fs_dict = {}
+##                    for db_rec in self.dc.fetchall():
+##                        fs_dict.setdefault(("%02x" % (int(db_rec["hexid"], 16))).lower(), []).append(db_rec)
+                    new_part_table = partition_table(name=partition_name,
+                                                     description=partition_info)
+                    new_part_table.save()
+##                    self.dc.execute("INSERT INTO partition_table SET name=%s, description=%s", (partition_name,
+##                                                                                                       partition_info))
+##                    partition_idx = self.dc.insert_id()
                     for dev, dev_stuff in dev_dict.iteritems():
-                        self.dc.execute("INSERT INTO partition_disc SET partition_table=%s, disc=%s", (partition_idx,
-                                                                                                              dev))
-                        disc_idx = self.dc.insert_id()
+                        new_disc = partition_disc(partition_table=new_part_table,
+                                                  disc=dev)
+                        new_disc.save()
+##                        self.dc.execute("INSERT INTO partition_disc SET partition_table=%s, disc=%s", (partition_idx,
+##                                                                                                              dev))
+##                        disc_idx = self.dc.insert_id()
                         for part, part_stuff in dev_stuff.iteritems():
                             hextype = part_stuff["hextype"][2:].lower()
                             if part.startswith("p"):
                                 part = part[1:]
                             if part_stuff.has_key("mountpoint"):
-                                fs_idx = 0
-                                if hextype in fs_dict.keys():
-                                    for fs_stuff in fs_dict[hextype]:
-                                        if part_stuff["fstype"].lower() == fs_stuff["name"].lower():
-                                            fs_idx = fs_stuff["partition_fs_idx"]
-                                self.dc.execute("INSERT INTO partition SET partition_disc=%s, mountpoint=%s, partition_hex=%s, size=%s, pnum=%s, mount_options=%s, fs_freq=%s, fs_passno=%s, partition_fs=%s, lut_blob=%s", (
-                                    disc_idx,
-                                    part_stuff["mountpoint"],
-                                    hextype,
-                                    part_stuff["size"],
-                                    part,
-                                    part_stuff["options"] or "defaults",
-                                    part_stuff["dump"],
-                                    part_stuff["fsck"],
-                                    fs_idx,
-                                    server_command.sys_to_net(part_stuff.get("lut", None))
-                                ))
+                                fs_stuff = fs_dict.get(hex_type, {}).get(part_stuff["fstype"].lower(), None)
+##                                fs_idx = 0
+##                                if hextype in fs_dict.keys():
+##                                    for fs_stuff in fs_dict[hextype]:
+##                                        if part_stuff["fstype"].lower() == fs_stuff["name"].lower():
+##                                            fs_idx = fs_stuff["partition_fs_idx"]
+##                                if fs_idx:
+##                                    fs_stuff = fs_dict[fs_idx]
+##                                else:
+##                                    fs_stuff = None
+                                new_part = partition(
+                                    partition_disc=new_disc,
+                                    mountpoint=part_stuff["mountpoint"],
+                                    size=part_stuff["size"],
+                                    pnum=part,
+                                    mount_options=part_stuff["options"] or "defaults",
+                                    fs_freq=part_stuff["dump"],
+                                    fs_passno=part_stuff["fsck"],
+                                    partition_fs=fs_stuff,
+                                    lut_blob=server_command.sys_to_net(part_stuff.get("lut", None))
+                                )
                             else:
                                 if fs_dict.has_key(hextype):
-                                    self.dc.execute("INSERT INTO partition SET partition_disc=%s, partition_hex=%s, size=%s, pnum=%s, partition_fs=%s, mount_options=%s", (
-                                        disc_idx,
-                                        hextype,
-                                        part_stuff["size"],
-                                        part,
-                                        fs_dict[hextype][0]["partition_fs_idx"],
-                                        "defaults"
-                                    ))
+                                    new_part = partition(
+                                        partition_disc=new_disc,
+                                        partition_hex=hextype,
+                                        size=part_stuff["size"],
+                                        pnum=part,
+                                        partition=fs_dict[hex_type],
+                                        mount_options="defaults",
+                                    )
                                 else:
-                                    self.dc.execute("INSERT INTO partition SET partition_disc=%s, partition_hex=%s, size=%s, pnum=%s", (
-                                        disc_idx,
-                                        hextype,
-                                        part_stuff["size"],
-                                        part
-                                    ))
+                                    new_part = partition(
+                                        partition_disc=new_disc,
+                                        partition_hex=hextype,
+                                        size=part_stuff["size"],
+                                        pnum=part,
+                                    )
+                            new_part.save()
                             part_name = "%s%s" % (dev, part)
                     for part, part_stuff in sys_dict.iteritems():
                         if type(part_stuff) == type({}):
@@ -161,48 +179,78 @@ class fetch_partition_info(cs_base_class.server_com):
                             if p_stuff["fstype"] in ["tmpfs"]:
                                 pass
                             else:
-                                self.dc.execute("INSERT INTO sys_partition SET partition_table=%s, name=%s, mountpoint=%s, mount_options=%s", (
-                                    partition_idx,
-                                    part == "none" and p_stuff["fstype"] or part,
-                                    p_stuff["mountpoint"],
-                                    p_stuff["options"]))
+                                new_sys = sys_partition(
+                                    partition_table=new_part_table,
+                                    name=p_stuff["fstype"] if part == "none" else part,
+                                    mountpoint=part_stuff["mountpoint"],
+                                    mount_options=part_stuff["options"],
+                                )
+                                new_sys.save()
+##                                self.dc.execute("INSERT INTO sys_partition SET partition_table=%s, name=%s, mountpoint=%s, mount_options=%s", (
+##                                    partition_idx,
+##                                    part == "none" and p_stuff["fstype"] or part,
+##                                    p_stuff["mountpoint"],
+##                                    p_stuff["options"]))
                     if lvm_info.lvm_present:
                         # lvm save
                         for vg_name, v_group in lvm_info.lv_dict.get("vg", {}).iteritems():
-                            self.dc.execute("INSERT INTO lvm_vg SET partition_table=%s, name=%s", (partition_idx,
-                                                                                                          v_group["name"]))
-                            v_group["db_idx"] = self.dc.insert_id()
+                            new_vg = lvm_vg(
+                                partition_table=new_part_table,
+                                name=v_group["name"])
+                            new_vg.save()
+##                            self.dc.execute("INSERT INTO lvm_vg SET partition_table=%s, name=%s", (partition_idx,
+##                                                                                                          v_group["name"]))
+                            v_group["db"] = new_vg
                         for lv_name, lv_stuff in lvm_info.lv_dict.get("lv", {}).iteritems():
                             mount_options = lv_stuff.get("mount_options", {"dump"       : 0,
                                                                            "fsck"       : 0,
                                                                            "mountpoint" : "",
                                                                            "options"    : "",
                                                                            "fstype"     : ""})
-                            mount_options["fstype_idx"] = 0
+                            mount_options["fstype_idx"] = None
                             if mount_options["fstype"]:
-                                for fs_stuff in fs_dict["83"]:
-                                    if fs_stuff["name"].lower() == mount_options["fstype"].lower():
-                                        mount_options["fstype_idx"] = fs_stuff["partition_fs_idx"]
-                            self.dc.execute("INSERT INTO lvm_lv SET partition_table=%s, lvm_vg=%s, name=%s, size=%s, mountpoint=%s, mount_options=%s, fs_freq=%s, fs_passno=%s, partition_fs=%s", (
-                                partition_idx,
-                                lvm_info.lv_dict.get("vg", {})[lv_stuff["vg_name"]]["db_idx"],
-                                lv_stuff["name"],
-                                lv_stuff["size"],
-                                mount_options["mountpoint"],
-                                mount_options["options"],
-                                mount_options["dump"],
-                                mount_options["fsck"],
-                                mount_options["fstype_idx"]))
-                            lv_stuff["db_idx"] = self.dc.insert_id()
+                                mount_options["fstype_idx"] = fs_dict.get("83", {}).get(mount_options["fstype"].lower(), None)
+##                                for fs_stuff in fs_dict["83"]:
+##                                    if fs_stuff["name"].lower() == mount_options["fstype"].lower():
+##                                        mount_options["fstype_idx"] = fs_stuff["partition_fs_idx"]
+                            new_lv = lvm_lv(
+                                partition_table=new_part_table,
+                                lvm_vg=lvm_info.lv_dict.get("vg", {})[lv_stuff["vg_name"]]["db_idx"],
+                                name=lv_stuff["name"],
+                                size=lv_stuff["size"],
+                                mountpoint=mount_options["mountpoint"],
+                                mount_options=mount_options["options"],
+                                fs_freq=mount_options["dump"],
+                                fs_passno=mount_options["fsck"],
+                                partition_fs=mount_options["fstype_idx"],
+                            )
+##                            self.dc.execute("INSERT INTO lvm_lv SET partition_table=%s, lvm_vg=%s, name=%s, size=%s, mountpoint=%s, mount_options=%s, fs_freq=%s, fs_passno=%s, partition_fs=%s", (
+##                                partition_idx,
+##                                lvm_info.lv_dict.get("vg", {})[lv_stuff["vg_name"]]["db_idx"],
+##                                lv_stuff["name"],
+##                                lv_stuff["size"],
+##                                mount_options["mountpoint"],
+##                                mount_options["options"],
+##                                mount_options["dump"],
+##                                mount_options["fsck"],
+##                                mount_options["fstype_idx"]))
+                            new_lv.save()
+                            lv_stuff["db"] = new_lv
                     # set partition table
-                    self.dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (target_dev))
-                    if self.dc.rowcount:
-                        device_idx = self.dc.fetchone()["device_idx"]
-                        self.log("found device '%s' in device_table (idx %d), setting partition_table to %d" % (target_dev, device_idx, partition_idx))
-                        self.dc.execute("UPDATE device SET act_partition_table=%d, partdev='' WHERE device_idx=%d" % (partition_idx, device_idx))
-                    else:
+                    try:
+                        t_dev = device.objects.get(Q(name=target_dev))
+                    except device.DoesNotExist:
                         self.log("cannot find device '%s' in device_table" % (target_dev),
-                                        logging_tools.LOG_LEVEL_WARN)
+                                 logging_tools.LOG_LEVEL_WARN)
+                    else:
+                        self.log("found device '%s' in device_table (idx %d), setting partition_table to %d" % (target_dev, t_dev.pk, new_part_table.pk))
+                        t_dev.act_partition_table = new_part_table
+                        t_dev.partdev = ""
+                        t_dev.save()
+##                    self.dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (target_dev))
+##                    if self.dc.rowcount:
+##                        device_idx = self.dc.fetchone()["device_idx"]
+##                        self.dc.execute("UPDATE device SET act_partition_table=%d, partdev='' WHERE device_idx=%d" % (partition_idx, device_idx))
                 ret_f.append("%s: %s, %s, %s and %s" % (target_dev,
                                                         logging_tools.get_plural("disc", len(dev_dict.keys())),
                                                         logging_tools.get_plural("sys_partition", len(sys_dict.keys())),
