@@ -8,6 +8,7 @@
 <table>
 {% for cur_form in network_formset %}
     {{ cur_form.idx }}
+    <tr><td colspan="2">{{ cur_form.non_field_errors }}</td></tr>
     <tr>
         <td rowspan="4">{{ cur_form.identifier }}{{ cur_form.identifier.errors }}</td>
         <td>

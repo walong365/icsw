@@ -34,6 +34,7 @@ from init.cluster.frontend.render_tools import render_me
 from init.cluster.frontend.forms import network_form
 from init.cluster.backbone.models import device, device_selection, device_device_selection, network, net_ip
 from django.db.models import Q
+from django.db import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.forms.models import modelformset_factory
@@ -196,83 +197,83 @@ class new_network_vs(html_tools.validate_struct):
         html_tools.validate_struct.__init__(self, req, "Network", new_dict)
         self.__ntc = network_type_dict
         self.__ntt = ntt_dict
-    def validate_range(self):
-        zero_ip = ipvx_tools.ipv4("0.0.0.0")
-        ipv4_list = ["start_range", "end_range"]
-        nw_ipv4, nm_ipv4 = (ipvx_tools.ipv4(self.new_val_dict["network"]),
-                            ipvx_tools.ipv4(self.new_val_dict["netmask"]))
-        ip_dict, err_list = ({}, [])
-        for what in ipv4_list:
-            try:
-                ip_dict[what] = ipvx_tools.ipv4(self.new_val_dict[what])
-            except ValueError:
-                err_list.append(what)
-        if err_list:
-            raise ValueError, ("IPV4 error: %s" % (", ".join(err_list)), dict([(what, (self.old_val_dict[what], "IPV4", [(what, self.old_val_dict[what])])) for what in err_list]))
-        if len([True for x in ipv4_list if not ip_dict[x]]) == 1:
-            raise ValueError, ("need two valid IPV4 addresses for range", dict([(what, ("0.0.0.0", "IPV4", [(what, "0.0.0.0")])) for what in ipv4_list]))
-        new_dict = {}
-        for what in ipv4_list:
-            if ip_dict[what] != zero_ip:
-                if ip_dict[what] & nm_ipv4 != nw_ipv4:
-                    new_dict[what] = (ip_dict[what] & ~nm_ipv4) | nw_ipv4
-        if new_dict:
-            raise ValueError, ("%s not in network range" % (", ".join(new_dict.keys())), dict([(k, (str(new_dict[k]), "IPV4", [(k, str(new_dict[k]))])) for k in new_dict.keys()]))
-        if ip_dict["start_range"] > ip_dict["end_range"]:
-            raise ValueError, ("swapping range parameters", {"end_range"   : (str(ip_dict["start_range"]), "range", [("end_range"  , str(ip_dict["start_range"]))]),
-                                                             "start_range" : (str(ip_dict["end_range"])  , "range", [("start_range", str(ip_dict["end_range"]  ))])})
-        for what in ipv4_list:
-            self.new_val_dict[what] = str(ip_dict[what])
-    def validate_master_type(self):
-        self.old_b_val_dict["network_type"] = self.__ntt[self.old_val_dict["network_type"]]["description"]
-        self.new_b_val_dict["network_type"] = self.__ntt[self.new_val_dict["network_type"]]["description"]
+##    def validate_range(self):
+##        zero_ip = ipvx_tools.ipv4("0.0.0.0")
+##        ipv4_list = ["start_range", "end_range"]
+##        nw_ipv4, nm_ipv4 = (ipvx_tools.ipv4(self.new_val_dict["network"]),
+##                            ipvx_tools.ipv4(self.new_val_dict["netmask"]))
+##        ip_dict, err_list = ({}, [])
+##        for what in ipv4_list:
+##            try:
+##                ip_dict[what] = ipvx_tools.ipv4(self.new_val_dict[what])
+##            except ValueError:
+##                err_list.append(what)
+##        if err_list:
+##            raise ValueError, ("IPV4 error: %s" % (", ".join(err_list)), dict([(what, (self.old_val_dict[what], "IPV4", [(what, self.old_val_dict[what])])) for what in err_list]))
+##        if len([True for x in ipv4_list if not ip_dict[x]]) == 1:
+##            raise ValueError, ("need two valid IPV4 addresses for range", dict([(what, ("0.0.0.0", "IPV4", [(what, "0.0.0.0")])) for what in ipv4_list]))
+##        new_dict = {}
+##        for what in ipv4_list:
+##            if ip_dict[what] != zero_ip:
+##                if ip_dict[what] & nm_ipv4 != nw_ipv4:
+##                    new_dict[what] = (ip_dict[what] & ~nm_ipv4) | nw_ipv4
+##        if new_dict:
+##            raise ValueError, ("%s not in network range" % (", ".join(new_dict.keys())), dict([(k, (str(new_dict[k]), "IPV4", [(k, str(new_dict[k]))])) for k in new_dict.keys()]))
+##        if ip_dict["start_range"] > ip_dict["end_range"]:
+##            raise ValueError, ("swapping range parameters", {"end_range"   : (str(ip_dict["start_range"]), "range", [("end_range"  , str(ip_dict["start_range"]))]),
+##                                                             "start_range" : (str(ip_dict["end_range"])  , "range", [("start_range", str(ip_dict["end_range"]  ))])})
+##        for what in ipv4_list:
+##            self.new_val_dict[what] = str(ip_dict[what])
+##    def validate_master_type(self):
+##        self.old_b_val_dict["network_type"] = self.__ntt[self.old_val_dict["network_type"]]["description"]
+##        self.new_b_val_dict["network_type"] = self.__ntt[self.new_val_dict["network_type"]]["description"]
     def ndt_read_mapper(self, k):
         return k in self.old_val_dict["nw_types"]
-    def validate_id(self):
-        new_id = self.new_val_dict["identifier"]
-        if new_id != new_id.strip():
-            raise ValueError, "no spaces allowed"
-        elif not new_id.strip() and self.get_db_obj().get_idx():
-            raise ValueError, "must not be empty"
-        elif new_id in self.names:
-            raise ValueError, "already used"
-    def validate_name(self):
-        pass
-    def validate_postfix(self):
-        if not self.new_val_dict["postfix"] or self.new_val_dict["postfix"].isalnum():
-            pass
-        else:
-            raise ValueError, "illegal postfix"
-    def validate_gw_pri(self):
-        if tools.is_number(self.new_val_dict["gw_pri"].strip()):
-            self.new_val_dict["gw_pri"] = int(self.new_val_dict["gw_pri"].strip())
-        else:
-            raise ValueError, "not an integer"
-    def validate_penalty(self):
-        if tools.is_number(self.new_val_dict["penalty"].strip()):
-            pen = int(self.new_val_dict["penalty"].strip())
-            if pen >= 0:
-                self.new_val_dict["penalty"] = pen
-            else:
-                raise ValueError, "must be >= 0"
-        else:
-            raise ValueError, "not an integer"
-    def validate_network(self):
-        ip_dict, err_list = ({}, [])
-        ipv4_list = ["network", "netmask", "broadcast", "gateway"]
-        for what in ipv4_list:
-            try:
-                ip_dict[what] = ipvx_tools.ipv4(self.new_val_dict[what])
-            except ValueError:
-                err_list.append(what)
-        if err_list:
-            raise ValueError, ("IPV4 error: %s" % (", ".join(err_list)), dict([(what, (self.old_val_dict[what], "IPV4", [(what, self.old_val_dict[what])])) for what in err_list]))
-        elif ip_dict["network"] & ip_dict["netmask"] != ip_dict["network"]:
-            raise ValueError, ("netmask / network mismatch", dict([(k, (self.old_val_dict[k], "IPV4", [(k, self.old_val_dict[k])])) for k in ["network"]]))
-        elif ip_dict["network"] | (~ip_dict["netmask"]) != ip_dict["broadcast"]:
-            raise ValueError, ("broadcast mismatch", dict([(k, (self.old_val_dict[k], "IPV4", [(k, self.old_val_dict[k])])) for k in ["broadcast"]]))
-        elif (ip_dict["gateway"] & ip_dict["netmask"] != ip_dict["network"]) and ip_dict["gateway"] != ipvx_tools.ipv4("0.0.0.0"):
-            raise ValueError, ("gateway mismatch", dict([(k, (self.old_val_dict[k], "IPV4", [(k, self.old_val_dict[k])])) for k in ["gateway"]]))
+##    def validate_id(self):
+##        new_id = self.new_val_dict["identifier"]
+##        if new_id != new_id.strip():
+##            raise ValueError, "no spaces allowed"
+##        elif not new_id.strip() and self.get_db_obj().get_idx():
+##            raise ValueError, "must not be empty"
+##        elif new_id in self.names:
+##            raise ValueError, "already used"
+##    def validate_name(self):
+##        pass
+##    def validate_postfix(self):
+##        if not self.new_val_dict["postfix"] or self.new_val_dict["postfix"].isalnum():
+##            pass
+##        else:
+##            raise ValueError, "illegal postfix"
+##    def validate_gw_pri(self):
+##        if tools.is_number(self.new_val_dict["gw_pri"].strip()):
+##            self.new_val_dict["gw_pri"] = int(self.new_val_dict["gw_pri"].strip())
+##        else:
+##            raise ValueError, "not an integer"
+##    def validate_penalty(self):
+##        if tools.is_number(self.new_val_dict["penalty"].strip()):
+##            pen = int(self.new_val_dict["penalty"].strip())
+##            if pen >= 0:
+##                self.new_val_dict["penalty"] = pen
+##            else:
+##                raise ValueError, "must be >= 0"
+##        else:
+##            raise ValueError, "not an integer"
+##    def validate_network(self):
+##        ip_dict, err_list = ({}, [])
+##        ipv4_list = ["network", "netmask", "broadcast", "gateway"]
+##        for what in ipv4_list:
+##            try:
+##                ip_dict[what] = ipvx_tools.ipv4(self.new_val_dict[what])
+##            except ValueError:
+##                err_list.append(what)
+##        if err_list:
+##            raise ValueError, ("IPV4 error: %s" % (", ".join(err_list)), dict([(what, (self.old_val_dict[what], "IPV4", [(what, self.old_val_dict[what])])) for what in err_list]))
+##        elif ip_dict["network"] & ip_dict["netmask"] != ip_dict["network"]:
+##            raise ValueError, ("netmask / network mismatch", dict([(k, (self.old_val_dict[k], "IPV4", [(k, self.old_val_dict[k])])) for k in ["network"]]))
+##        elif ip_dict["network"] | (~ip_dict["netmask"]) != ip_dict["broadcast"]:
+##            raise ValueError, ("broadcast mismatch", dict([(k, (self.old_val_dict[k], "IPV4", [(k, self.old_val_dict[k])])) for k in ["broadcast"]]))
+##        elif (ip_dict["gateway"] & ip_dict["netmask"] != ip_dict["network"]) and ip_dict["gateway"] != ipvx_tools.ipv4("0.0.0.0"):
+##            raise ValueError, ("gateway mismatch", dict([(k, (self.old_val_dict[k], "IPV4", [(k, self.old_val_dict[k])])) for k in ["gateway"]]))
     def validate_netdevice_type(self):
         # rather large routine, could be a one-liner
         nw_s = self.old_val_dict["nw_types"]
@@ -430,13 +431,15 @@ def show_netdevice_classes(req):
 
 def show_cluster_networks(req):#, sub_sel):
     request = req.request
-    print request.method
     network_formset = modelformset_factory(network, form=network_form)
     if request.method == "POST" and "ds" not in request.POST:
         cur_fs = network_formset(request.POST, request.FILES)
         for sub_form in cur_fs.forms:
             if sub_form.is_valid():
-                sub_form.save()
+                try:
+                    sub_form.save()
+                except IntegrityError:
+                    pass
     else:
         cur_fs = network_formset()
     req.write(render_to_string("cluster_networks.html", {

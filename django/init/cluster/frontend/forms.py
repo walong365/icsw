@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import django.forms
 import django.forms.widgets
 from django.forms.formsets import formset_factory
@@ -55,24 +56,53 @@ class network_form(django.forms.ModelForm):
     network_type = ModelChoiceField(network_type.objects.all().order_by("identifier"),
                                     initial=network_type.objects.get(Q(identifier="o")),
                                     empty_label=None)
-    def _clean_ipv4_address(self, cur_addr):
-        try:
-            ipvx_tools.ipv4(cur_addr)
-        except:
-            raise ValidationError("not a valid IPV4 address")
-        return cur_addr
-    def clean_netmask(self):
-        return self._clean_ipv4_address(self.cleaned_data["netmask"])
-    def clean_network(self):
-        return self._clean_ipv4_address(self.cleaned_data["network"])
-    def clean_broadcast(self):
-        return self._clean_ipv4_address(self.cleaned_data["broadcast"])
-    def clean_gateway(self):
-        return self._clean_ipv4_address(self.cleaned_data["gateway"])
-    def clean_start_range(self):
-        return self._clean_ipv4_address(self.cleaned_data["start_range"])
-    def clean_end_range(self):
-        return self._clean_ipv4_address(self.cleaned_data["end_range"])
+    def clean_identifier(self):
+        id_str = self.cleaned_data["identifier"]
+        if id_str != id_str.strip() or len(id_str.split()) > 1:
+            raise ValidationError("no whitespace allowed")
+        return id_str
+    def clean_postfix(self):
+        postfix = self.cleaned_data["postfix"]
+        if not postfix and postfix.isalnum():
+            raise ValidationError("illegal character(s)")
+        return postfix
+    def clean_penalty(self):
+        cur_pen = self.cleaned_data["penalty"]
+        if cur_pen < 1:
+            raise ValidationError("must be greater than 0")
+        return cur_pen
+    def clean(self):
+        django.forms.ModelForm.clean(self)
+        in_data = self.cleaned_data
+        # check for present keys
+        if all([key in in_data for key in ["network", "netmask", "broadcast", "gateway"]]): 
+            network, netmask, broadcast, gateway = (
+                ipvx_tools.ipv4(in_data["network"]),
+                ipvx_tools.ipv4(in_data["netmask"]),
+                ipvx_tools.ipv4(in_data["broadcast"]),
+                ipvx_tools.ipv4(in_data["gateway"]))
+            if network & netmask != network:
+                raise ValidationError("netmask / network error")
+            if network | (~netmask) != broadcast:
+                raise ValidationError("broadcast error")
+            if in_data["gateway"] != "0.0.0.0" and gateway & netmask != network:
+                raise ValidationError("gateway error")
+        if all([key in in_data for key in ["start_range", "end_range", "network", "netmask"]]):
+            network, netmask, s_range, e_range = (
+                ipvx_tools.ipv4(in_data["network"]),
+                ipvx_tools.ipv4(in_data["netmask"]),
+                ipvx_tools.ipv4(in_data["start_range"]),
+                ipvx_tools.ipv4(in_data["end_range"]))
+            if in_data["start_range"] != "0.0.0.0":
+                if s_range & network != network:
+                    raise ValidationError("start_range not in network")
+                if e_range < s_range:
+                    raise ValidationError("start_range > end_range")
+            if in_data["end_range"] != "0.0.0.0":
+                if e_range & network != network:
+                    raise ValidationError("end_range not in network")
+                if e_range < s_range:
+                    raise ValidationError("start_range > end_range")
+        return in_data
     class Meta:
         model = network
-        
