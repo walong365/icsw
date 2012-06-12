@@ -30,7 +30,6 @@ import time
 import process_tools
 import logging_tools
 import extra_server_tools
-import config_tools
 try:
     import mysql_tools
 except ImportError:
@@ -212,6 +211,7 @@ def check_system(opt_dict, checks, db_cursor):
                 pid_dict[act_pid] += 1
             act_info_dict["pids"] = pid_dict
             if check_struct["type"] == "server":
+                import config_tools
                 if db_cursor:
                     srv_type = server_type_map.get(name, name.replace("-", "_"))
                     sql_info = config_tools.server_check(dc=db_cursor, server_type="%s%%" % (srv_type))

@@ -231,7 +231,9 @@ class server_check(object):
             Q(device_config__device__device_group__device_group=self.device_idx) &
             Q(**{self.__dmatch_str : self.__server_type})
             ).distinct().values_list(
-                "device_config__device", "pk", "name",
+                "device_config__device",
+                "pk",
+                "name",
                 "device_config__device__device_group__device_group__name",
                 "device_config__device__device_group__device_group__netdevice__net_ip__ip")
         my_confs = [entry for entry in my_confs if entry[-1]]
