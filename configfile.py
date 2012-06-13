@@ -102,6 +102,7 @@ class _conf_var(object):
         self._nargs = kwargs.get("nargs", None)
         self._database_set = "database" in kwargs
         self._database = kwargs.get("database", False)
+        self._writeback = kwargs.get("writeback", True)
         self._only_commandline = kwargs.get("only_commandline", False)
     def is_commandline_option(self):
         return True if self._help_string else False
@@ -127,7 +128,7 @@ class _conf_var(object):
         if self.argparse_type == None:
             if self.short_type == "b":
                 # bool
-                if self._only_commandline:
+                if self._only_commandline and not self._writeback:
                     arg_parser.add_argument(opts, action="store_%s" % ("false" if self.__default_val else "true"), default=self.__default_val, **kwargs)
                 else:
                     arg_parser.add_argument(opts, action="store_%s" % ("false" if self.value else "true"), default=self.value, **kwargs)
@@ -483,7 +484,7 @@ class configuration(object):
                     "# %s" % (self.__c_dict[key].get_commandline_info()),
                     "%s=%s" % (key, 
                                "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value),
-                    ""] for key in all_keys if self.get_cvar(key)._only_commandline == False],
+                    ""] for key in all_keys if (self.get_cvar(key)._only_commandline == False and slef.get_cvar(key)._writeback)],
                                                          [""])))
             except:
                 self.log("Error while writing file %s: %s" % (file_name, process_tools.get_except_info()))
