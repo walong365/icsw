@@ -181,6 +181,7 @@ class config_str(models.Model):
         db_table = u'config_str'
 
 class config_type(models.Model):
+    # deprecated, do not use
     idx = models.AutoField(db_column="config_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     identifier = models.CharField(unique=True, max_length=6)
@@ -257,7 +258,7 @@ class device(models.Model):
 
 class device_class(models.Model):
     idx = models.AutoField(db_column="device_class_idx", primary_key=True)
-    classname = models.CharField(max_length=192, blank=True)
+    classname = models.CharField(max_length=192, blank=False, unique=True)
     priority = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
@@ -311,7 +312,7 @@ class device_group(models.Model):
 
 class device_location(models.Model):
     idx = models.AutoField(db_column="device_location_idx", primary_key=True)
-    location = models.CharField(max_length=192, blank=True)
+    location = models.CharField(max_length=192, blank=False, unique=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_location'
@@ -840,7 +841,7 @@ class new_config(models.Model):
 class new_config_type(models.Model):
     idx = models.AutoField(db_column="new_config_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
-    description = models.CharField(max_length=765)
+    description = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'new_config_type'

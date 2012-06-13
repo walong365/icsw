@@ -39,12 +39,11 @@ from init.cluster.backbone.models import device_variable, new_config, device, co
 import netifaces
 
 def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwargs):
-    dc = kwargs.get("dc", None)
     if not host_name:
         # AL 20120401 **kwargs delete, FIXME ?
         host_name = process_tools.get_machine_name()
     g_config.add_config_entries(init_list, database=True)
-    if dc is not None:
+    if not kwargs.get("dummy_run", False):
         num_serv, serv_idx, s_type, s_str, config_idx, real_config_name=is_server(server_type.replace("%", ""), True, False, host_name.split(".")[0], dc=dc)
         #print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
         if num_serv:
@@ -95,8 +94,6 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
             for wo_var_name, wo_var in l_var_wo_host.iteritems():
                 if not wo_var_name in g_config or g_config.get_source(wo_var_name) == "default":
                     g_config.add_config_entries([(wo_var_name, wo_var)])
-    else:
-        print "dc is None in read_config_from_db", server_type, kwargs
     
 def read_global_config(dc, server_type, init_dict=None, host_name=""):
     if init_dict is None:
