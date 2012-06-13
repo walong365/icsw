@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -30,6 +30,8 @@ import time
 import datetime
 import sge_tools
 import pprint
+# from NH
+import urwid
 
 SQL_ACCESS = "cluster_full_access"
 
@@ -45,7 +47,7 @@ def check_environment():
                 sys.exit(1)
 
 def sjs(s_info, opt_dict):
-    print time.ctime()
+    ret_list = [time.ctime()]
     show_users     = set(map(lambda fnc: fnc.strip(), opt_dict.user.split(",")))
     show_complexes = set(map(lambda fnc: fnc.strip(), opt_dict.complexes.split(",")))
     # running jobs
@@ -92,11 +94,12 @@ def sjs(s_info, opt_dict):
                     act_line.append(logging_tools.form_entry(act_job.get_running_nodes(), header="nodes"))
                 r_out_list.append(act_line)
         if len(r_job_ids) == run_counted:
-            print "%s" % (logging_tools.get_plural("running job", len(r_job_ids)))
+            ret_list.append("%s" % (logging_tools.get_plural("running job", len(r_job_ids))))
         else:
-            print "%s, showing only %d (due to filter)" % (logging_tools.get_plural("running job", len(r_job_ids)),
-                                                           run_counted)
-        print r_out_list
+            ret_list.append("%s, showing only %d (due to filter)" % (logging_tools.get_plural("running job", len(r_job_ids)),
+                                                                     run_counted))
+        if r_out_list:
+            ret_list.append(str(r_out_list))
     if w_job_ids:
         w_out_list = logging_tools.new_form_list()
         show_ids = []
@@ -141,14 +144,19 @@ def sjs(s_info, opt_dict):
                                  logging_tools.form_entry(act_job.get_dependency_info(), header="depends")])
                 w_out_list.append(act_line)
         if len(show_ids) == wait_counted:
-            print "%s" % (logging_tools.get_plural("waiting job", len(show_ids)))
+            ret_list.append("%s" % (logging_tools.get_plural("waiting job", len(show_ids))))
         else:
-            print "%s, showing only %d (due to filter)" % (logging_tools.get_plural("waiting job", len(show_ids)),
-                                                           wait_counted)
-        print w_out_list
+            ret_list.append("%s, showing only %d (due to filter)" % (logging_tools.get_plural("waiting job", len(show_ids)),
+                                                                     wait_counted))
+        if w_out_list:
+            ret_list.append(str(w_out_list))
+    if opt_dict.interactive:
+        return "\n".join(ret_list)
+    else:
+        print "\n".join(ret_list)
 
 def sns(s_info, opt_dict):
-    print time.ctime()
+    #print time.ctime()
     show_users     = set(map(lambda fnc: fnc.strip(), opt_dict.user.split(",")))
     show_complexes = set(map(lambda fnc: fnc.strip(), opt_dict.complexes.split(",")))
     # builder helper dicts
@@ -243,152 +251,275 @@ def sns(s_info, opt_dict):
             act_line.append(logging_tools.form_entry(act_h.get_job_info(s_info["qstat"], q_job_list), header="jobs"))
             out_list.append(act_line)
     if out_list:
-        print out_list
-
-def scs(s_info, opt_dict):
-    print time.ctime()
-    # init.at complexes
-    init_complexes = sorted([key for key, value in s_info["complexes"].iteritems() if value.complex_type == "i"])
-    # builder helper dicts
-    all_queues = sorted(s_info["queueconf"].keys())
-    for q_name in all_queues:
-        # expand various entries
-        act_q = s_info["queueconf"][q_name]
-        s_info.expand_host_list(q_name)
-        #for exp_name, new_name in [("complex_values", "compl_values")]:
-        for exp_name, with_values in [("complex_values", True),
-                                      ("pe_list"       , False)]:
-            act_q[exp_name] = s_info._parse_sge_values(act_q[exp_name], with_values)
-        for h_name, c_dict in act_q["complex_values"].iteritems():
-            if h_name == "":
-                # add all hosts
-                h_name = [h_name.split(".")[0] for h_name in act_q["hostlist"]]
-            for ic_name, add_it in c_dict.iteritems():
-                if ic_name in init_complexes:
-                    s_info["complexes"][ic_name].add_queue_host(q_name, h_name)
-    out_list = logging_tools.new_form_list()
-    if opt_dict.show_queues:
-        d_list = sum([[(ic_name, q_name) for q_name in sorted(s_info["complexes"][ic_name]["queues"].keys())] for ic_name in init_complexes], [])
-        if opt_dict.sort_queues:
-            d_list = [(ic_name, q_name) for q_name, ic_name in sorted([(q_n, ic_n) for ic_n, q_n in d_list])]
-    else:
-        d_list = [(ic_name, "") for ic_name in init_complexes]
-    for ic_name, q_name in d_list:
-        act_ic = s_info["complexes"][ic_name]
-        act_line = [logging_tools.form_entry(ic_name, header="complex")]
-        if q_name:
-            act_line.append(logging_tools.form_entry_right(q_name, header="queue"))
-        act_line.extend([logging_tools.form_entry_right(act_ic["num_min"], header="minslots"),
-                         logging_tools.form_entry_right(act_ic["num_max"], header="maxslots"),
-                         logging_tools.form_entry_right(act_ic["mt_time"], header="time total"),
-                         logging_tools.form_entry_right(act_ic["m_time"], header="time/node"),
-                         logging_tools.form_entry_right(act_ic.get_waiting(s_info["qstat"], [q_name])),
-                         logging_tools.form_entry_right(act_ic.get_running(s_info["qstat"], [q_name]))])
-        hq_list = act_ic.get_hq_list(s_info["qhost"], [q_name])
-        act_line.extend([logging_tools.form_entry_right(len(hq_list), header="total"),
-                         logging_tools.form_entry_right(len([True for qs, su, st in hq_list if su < st and qs in ["a", "-"]]), header="avail"),
-                         logging_tools.form_entry_right(len([True for qs, su, st in hq_list if "a" in qs]), header="alarm"),
-                         logging_tools.form_entry_right(len([True for qs, su, st in hq_list if set("uAdDEsSC").intersection(set(qs))]), header="error"),
-                         logging_tools.form_entry(act_ic.get_queues(q_name), header="queues")])
-        out_list.append(act_line)
-    print out_list
-
-def sls(s_info, opt_dict):
-    import mysql_tools
-    end_date = datetime.datetime.now()
-    start_date = end_date - datetime.timedelta(0, 0, 0, 0, 0, abs(opt_dict.hours))
-    db_con = mysql_tools.dbcon_container()
-    dc = db_con.get_connection(SQL_ACCESS)
-    nodes = opt_dict.nodes
-    dc.execute("SELECT * FROM sge_host")
-    node_dict = dict([(db_rec["sge_host_idx"], db_rec["host_name"]) for db_rec in dc.fetchall()])
-    if "ALL" in nodes:
-        n_str = ""
-    else:
-        n_str = " AND (%s)" % (" OR ".join(["s.sge_host=%d" % (key) for key, value in node_dict.iteritems() if value in nodes]) or "0")
-    sql_str = "SELECT * FROM sge_log s WHERE s.sge_host AND TIMEDIFF(NOW(), s.date) < %d AND s.log_level >= %d%s ORDER BY date" % (abs(opt_dict.hours),
-                                                                                                                                   opt_dict.log_level,
-                                                                                                                                   n_str)
-    dc.execute(sql_str)
-    log_records = dc.fetchall()
-    dc.release()
-    del db_con
-    if log_records:
-        print "Showing %s between %s and %s" % (logging_tools.get_plural("log entry", len(log_records)),
-                                                start_date.ctime(),
-                                                end_date.ctime())
-        all_queues = set([db_rec["sge_queue"] for db_rec in log_records])
-        all_jobs = set([db_rec["sge_job"] for db_rec in log_records])
-        queue_dict = {0 : "---"}
-        job_dict = {0 : {"job_uid" : "---"}}
-        dc.execute("SELECT * FROM sge_queue WHERE %s" % (" OR ".join(["sge_queue_idx=%d" % (q_idx) for q_idx in all_queues])))
-        queue_dict.update(dict([(db_rec["sge_queue_idx"], db_rec["queue_name"]) for db_rec in dc.fetchall()]))
-        dc.execute("SELECT * FROM sge_job WHERE %s" % (" OR ".join(["sge_job_idx=%d" % (q_idx) for q_idx in all_jobs])))
-        job_dict.update(dict([(db_rec["sge_job_idx"], db_rec) for db_rec in dc.fetchall()]))
-        out_list = logging_tools.new_form_list()
-        num_entries = 0
-        if opt_dict.node_sort:
-            display_list = sorted(node_dict.values())
+        if opt_dict.interactive:
+            return "%s\n%s" % (time.ctime(), out_list)
         else:
-            display_list = [""]
-        for disp_host in display_list:
-            for db_rec in log_records:
-                if not disp_host or node_dict.get(db_rec["sge_host"], "---") == disp_host:
-                    num_entries += 1
-                    new_line = [logging_tools.form_entry(db_rec["date"].strftime("%a, %d. %b %Y %H:%M:%S"), header="date"),
-                                logging_tools.form_entry_right(queue_dict[db_rec["sge_queue"]], header="queue"),
-                                logging_tools.form_entry(node_dict[db_rec["sge_host"]], header="node"),
-                                logging_tools.form_entry(job_dict[db_rec["sge_job"]]["job_uid"], header="job"),
-                                logging_tools.form_entry(db_rec["log_level"] if opt_dict.log_numeric else logging_tools.get_log_level_str(db_rec["log_level"]), header="lev"),
-                                logging_tools.form_entry(db_rec["log_str"], header="entry")
-                                ]
-                    out_list.append(new_line)
-        print out_list
-    else:
-        print "No logs found between %s and %s" % (start_date.ctime(),
-                                                   end_date.ctime())
+            print out_list
 
-def sla(opt_dict, add_args):
-    import mysql_tools
-    db_con = mysql_tools.dbcon_container()
-    dc = db_con.get_connection(SQL_ACCESS)
-    host_record = None
-    if opt_dict.node:
-        dc.execute("SELECT * FROM sge_host WHERE host_name=%s", (opt_dict.node))
-        if dc.rowcount:
-            host_record = dc.fetchone()
-        else:
-            dc.execute("SELECT * FROM device WHERE name=%s", (opt_dict.node))
-            if dc.rowcount:
-                dc.execute("INSERT INTO sge_host SET host_name=%s, device=%s", (opt_dict.node,
-                                                                                dc.fetchone()["device_idx"]))
-                print "Created a new sge_host record for host '%s'" % (opt_dict.node)
-                dc.execute("SELECT * FROM sge_host WHERE sge_host_idx=%s", (dc.insert_id()))
-                host_record = dc.fetchone()
-            else:
-                print "Host '%s' not found" % (opt_dict.node)
-    else:
-        print "No Host given"
-    if host_record:
-        if opt_dict.queue_name:
-            dc.execute("SELECT * FROM sge_queue WHERE queue_name=%s", (opt_dict.queue_name))
-            if dc.rowcount:
-                queue_idx = dc.fetchone()["sge_queue_idx"]
-            else:
-                print "No Queue named '%s' found" % (opt_dict.queue_name)
-                queue_idx = 0
-        else:
-            queue_idx = 0
-        sql_str, sql_tuple = ("INSERT INTO sge_log SET sge_job=%s, sge_queue=%s, sge_host=%s, log_level=%s, log_str=%s",
-                              (0,
-                               queue_idx,
-                               host_record["sge_host_idx"],
-                               opt_dict.log_level,
-                               add_args))
-        dc.execute(sql_str, sql_tuple)
-        print "Created sge_log entry"
-    dc.release()
+##def scs(s_info, opt_dict):
+##    print time.ctime()
+##    # init.at complexes
+##    init_complexes = sorted([key for key, value in s_info["complexes"].iteritems() if value.complex_type == "i"])
+##    # builder helper dicts
+##    all_queues = sorted(s_info["queueconf"].keys())
+##    for q_name in all_queues:
+##        # expand various entries
+##        act_q = s_info["queueconf"][q_name]
+##        s_info.expand_host_list(q_name)
+##        #for exp_name, new_name in [("complex_values", "compl_values")]:
+##        for exp_name, with_values in [("complex_values", True),
+##                                      ("pe_list"       , False)]:
+##            act_q[exp_name] = s_info._parse_sge_values(act_q[exp_name], with_values)
+##        for h_name, c_dict in act_q["complex_values"].iteritems():
+##            if h_name == "":
+##                # add all hosts
+##                h_name = [h_name.split(".")[0] for h_name in act_q["hostlist"]]
+##            for ic_name, add_it in c_dict.iteritems():
+##                if ic_name in init_complexes:
+##                    s_info["complexes"][ic_name].add_queue_host(q_name, h_name)
+##    out_list = logging_tools.new_form_list()
+##    if opt_dict.show_queues:
+##        d_list = sum([[(ic_name, q_name) for q_name in sorted(s_info["complexes"][ic_name]["queues"].keys())] for ic_name in init_complexes], [])
+##        if opt_dict.sort_queues:
+##            d_list = [(ic_name, q_name) for q_name, ic_name in sorted([(q_n, ic_n) for ic_n, q_n in d_list])]
+##    else:
+##        d_list = [(ic_name, "") for ic_name in init_complexes]
+##    for ic_name, q_name in d_list:
+##        act_ic = s_info["complexes"][ic_name]
+##        act_line = [logging_tools.form_entry(ic_name, header="complex")]
+##        if q_name:
+##            act_line.append(logging_tools.form_entry_right(q_name, header="queue"))
+##        act_line.extend([logging_tools.form_entry_right(act_ic["num_min"], header="minslots"),
+##                         logging_tools.form_entry_right(act_ic["num_max"], header="maxslots"),
+##                         logging_tools.form_entry_right(act_ic["mt_time"], header="time total"),
+##                         logging_tools.form_entry_right(act_ic["m_time"], header="time/node"),
+##                         logging_tools.form_entry_right(act_ic.get_waiting(s_info["qstat"], [q_name])),
+##                         logging_tools.form_entry_right(act_ic.get_running(s_info["qstat"], [q_name]))])
+##        hq_list = act_ic.get_hq_list(s_info["qhost"], [q_name])
+##        act_line.extend([logging_tools.form_entry_right(len(hq_list), header="total"),
+##                         logging_tools.form_entry_right(len([True for qs, su, st in hq_list if su < st and qs in ["a", "-"]]), header="avail"),
+##                         logging_tools.form_entry_right(len([True for qs, su, st in hq_list if "a" in qs]), header="alarm"),
+##                         logging_tools.form_entry_right(len([True for qs, su, st in hq_list if set("uAdDEsSC").intersection(set(qs))]), header="error"),
+##                         logging_tools.form_entry(act_ic.get_queues(q_name), header="queues")])
+##        out_list.append(act_line)
+##    print out_list
+
+##def sls(s_info, opt_dict):
+##    end_date = datetime.datetime.now()
+##    start_date = end_date - datetime.timedelta(0, 0, 0, 0, 0, abs(opt_dict.hours))
+##    db_con = mysql_tools.dbcon_container()
+##    dc = db_con.get_connection(SQL_ACCESS)
+##    nodes = opt_dict.nodes
+##    dc.execute("SELECT * FROM sge_host")
+##    node_dict = dict([(db_rec["sge_host_idx"], db_rec["host_name"]) for db_rec in dc.fetchall()])
+##    if "ALL" in nodes:
+##        n_str = ""
+##    else:
+##        n_str = " AND (%s)" % (" OR ".join(["s.sge_host=%d" % (key) for key, value in node_dict.iteritems() if value in nodes]) or "0")
+##    sql_str = "SELECT * FROM sge_log s WHERE s.sge_host AND TIMEDIFF(NOW(), s.date) < %d AND s.log_level >= %d%s ORDER BY date" % (abs(opt_dict.hours),
+##                                                                                                                                   opt_dict.log_level,
+##                                                                                                                                   n_str)
+##    dc.execute(sql_str)
+##    log_records = dc.fetchall()
+##    dc.release()
+##    del db_con
+##    if log_records:
+##        print "Showing %s between %s and %s" % (logging_tools.get_plural("log entry", len(log_records)),
+##                                                start_date.ctime(),
+##                                                end_date.ctime())
+##        all_queues = set([db_rec["sge_queue"] for db_rec in log_records])
+##        all_jobs = set([db_rec["sge_job"] for db_rec in log_records])
+##        queue_dict = {0 : "---"}
+##        job_dict = {0 : {"job_uid" : "---"}}
+##        dc.execute("SELECT * FROM sge_queue WHERE %s" % (" OR ".join(["sge_queue_idx=%d" % (q_idx) for q_idx in all_queues])))
+##        queue_dict.update(dict([(db_rec["sge_queue_idx"], db_rec["queue_name"]) for db_rec in dc.fetchall()]))
+##        dc.execute("SELECT * FROM sge_job WHERE %s" % (" OR ".join(["sge_job_idx=%d" % (q_idx) for q_idx in all_jobs])))
+##        job_dict.update(dict([(db_rec["sge_job_idx"], db_rec) for db_rec in dc.fetchall()]))
+##        out_list = logging_tools.new_form_list()
+##        num_entries = 0
+##        if opt_dict.node_sort:
+##            display_list = sorted(node_dict.values())
+##        else:
+##            display_list = [""]
+##        for disp_host in display_list:
+##            for db_rec in log_records:
+##                if not disp_host or node_dict.get(db_rec["sge_host"], "---") == disp_host:
+##                    num_entries += 1
+##                    new_line = [logging_tools.form_entry(db_rec["date"].strftime("%a, %d. %b %Y %H:%M:%S"), header="date"),
+##                                logging_tools.form_entry_right(queue_dict[db_rec["sge_queue"]], header="queue"),
+##                                logging_tools.form_entry(node_dict[db_rec["sge_host"]], header="node"),
+##                                logging_tools.form_entry(job_dict[db_rec["sge_job"]]["job_uid"], header="job"),
+##                                logging_tools.form_entry(db_rec["log_level"] if opt_dict.log_numeric else logging_tools.get_log_level_str(db_rec["log_level"]), header="lev"),
+##                                logging_tools.form_entry(db_rec["log_str"], header="entry")
+##                                ]
+##                    out_list.append(new_line)
+##        print out_list
+##    else:
+##        print "No logs found between %s and %s" % (start_date.ctime(),
+##                                                   end_date.ctime())
+
+##def sla(opt_dict, add_args):
+##    db_con = mysql_tools.dbcon_container()
+##    dc = db_con.get_connection(SQL_ACCESS)
+##    host_record = None
+##    if opt_dict.node:
+##        dc.execute("SELECT * FROM sge_host WHERE host_name=%s", (opt_dict.node))
+##        if dc.rowcount:
+##            host_record = dc.fetchone()
+##        else:
+##            dc.execute("SELECT * FROM device WHERE name=%s", (opt_dict.node))
+##            if dc.rowcount:
+##                dc.execute("INSERT INTO sge_host SET host_name=%s, device=%s", (opt_dict.node,
+##                                                                                dc.fetchone()["device_idx"]))
+##                print "Created a new sge_host record for host '%s'" % (opt_dict.node)
+##                dc.execute("SELECT * FROM sge_host WHERE sge_host_idx=%s", (dc.insert_id()))
+##                host_record = dc.fetchone()
+##            else:
+##                print "Host '%s' not found" % (opt_dict.node)
+##    else:
+##        print "No Host given"
+##    if host_record:
+##        if opt_dict.queue_name:
+##            dc.execute("SELECT * FROM sge_queue WHERE queue_name=%s", (opt_dict.queue_name))
+##            if dc.rowcount:
+##                queue_idx = dc.fetchone()["sge_queue_idx"]
+##            else:
+##                print "No Queue named '%s' found" % (opt_dict.queue_name)
+##                queue_idx = 0
+##        else:
+##            queue_idx = 0
+##        sql_str, sql_tuple = ("INSERT INTO sge_log SET sge_job=%s, sge_queue=%s, sge_host=%s, log_level=%s, log_str=%s",
+##                              (0,
+##                               queue_idx,
+##                               host_record["sge_host_idx"],
+##                               opt_dict.log_level,
+##                               add_args))
+##        dc.execute(sql_str, sql_tuple)
+##        print "Created sge_log entry"
+##    dc.release()
+
+# following code from NH for interactive mode
     
+class window(object):
+    def __init__(self, **kwargs):
+        self.start_time = time.time()
+        self.callback = kwargs.get("callback", None)
+        self.tree = kwargs.get("tree", None)
+        self.cb_args = kwargs.get("args", [])
+        self.top_text = urwid.Text(("banner", "Init cluster"), align="left")
+        self.main_text = urwid.Text("Wait please...", align="left")
+        self.bottom_text = urwid.Text("", align="left")
+        if self.tree:
+            self.set_question_text(self.tree.get_cur_text())
+        else:
+            self.set_question_text("q/Q - exit")
+        palette = [
+            ('banner', 'black', 'light gray', 'standout,underline'),
+            ('streak', 'black', 'dark red', 'standout'),
+            ('bg', 'white', 'dark blue'),
+        ]
+        urwid_map = urwid.AttrMap(
+            urwid.Filler(
+                urwid.Pile([
+                    urwid.AttrMap(
+                        self.top_text,
+                        "streak"),
+                    urwid.AttrMap(
+                        self.main_text,
+                        "banner"),
+                    urwid.AttrMap(
+                        self.bottom_text,
+                        "streak")]),
+                "top"),
+            "banner")
+        self.mainloop = urwid.MainLoop(urwid_map, palette, unhandled_input=self._handler_data)
+        self._update_screen()
+        self.mainloop.set_alarm_in(10, self._alarm_callback)
+    def loop(self):
+        self.mainloop.run()
+    def _alarm_callback(self, main_loop, user_data):
+        self._update_screen()
+        self.mainloop.set_alarm_in(10, self._alarm_callback)
+    # can be called from dt_tree
+    def close(self):
+        raise urwid.ExitMainLoop()
+    def back_to_top(self):
+        self.tree.back_to_top()
+        self.set_question_text(self.tree.get_cur_text())
+    def _handler_data(self, in_char):
+        if self.tree:
+            handled = self.tree.handle_input(in_char, self)
+        else:
+            if in_char.lower() == "q":
+                self.close()
+            else:
+                handled = False
+        if not handled:
+            self._update_screen()
+    def _update_screen(self):
+        self.top_text.set_text(("streak", "time: %s" % (time.ctime())))
+        self.main_text.set_text(("banner", str(self.get_data())))
+    def set_question_text(self, in_text):
+        self.bottom_text.set_text(("bg", in_text))
+    def get_data(self):
+        if self.callback:
+            return unicode(self.callback(*self.cb_args))
+        else:
+            return "no data"
+        
+class dt_tree(object):
+    def __init__(self, head_node):
+        self.head_node = head_node
+        self.head_node.set_tree(self)
+        self.cur_node = self.head_node
+    def back_to_top(self):
+        self.cur_node = self.head_node
+    def get_cur_text(self):
+        return "%s (%s)" % (
+            self.cur_node.question,
+            "/".join(sorted(self.cur_node.get_triggers())))
+    def handle_input(self, in_char, w_obj):
+        cur_node = self.cur_node
+        cur_triggers = cur_node.get_triggers()
+        if in_char.lower() in cur_triggers:
+            handled = True
+            next_node = cur_node.follow_edge(in_char.lower())
+            if next_node.action:
+                getattr(w_obj, next_node.action)()
+            else:
+                self.cur_node = next_node
+                w_obj.set_question_text(self.get_cur_text())
+        else:
+            handled = False
+        return handled
+        
+class dt_node(object):
+    def __init__(self, question, action=None, edges=[]):
+        self.question = question
+        self.edges = []
+        self.__edge_dict = {}
+        self.action = action
+        for edge in edges:
+            self.add_edge(edge)
+    def add_edge(self, edge):
+        edge.target.prev_node = self
+        self.edges.append(edge)
+        self.__edge_dict[edge.trigger.lower()] = edge
+    def set_tree(self, tree):
+        self.tree = tree
+        for edge in self.edges:
+            edge.target.set_tree(tree)
+    def get_triggers(self):
+        return [edge.trigger.lower() for edge in self.edges]
+    def follow_edge(self, trigger):
+        sub_edge = self.__edge_dict[trigger.lower()]
+        return sub_edge.target
+
+class dt_edge(object):
+    def __init__(self, trigger, target=None):
+        self.trigger = trigger
+        self.target = target
+
 class my_opt_parser(optparse.OptionParser):
     def __init__(self, run_mode):
         optparse.OptionParser.__init__(self)
@@ -402,6 +533,7 @@ class my_opt_parser(optparse.OptionParser):
             self.add_option("-u", dest="user", type="str", help="show only jobs of user [%default]", default="ALL")
             self.add_option("-c", dest="complexes", type="str", help="show only jobs with the given complexes [%default]", default="ALL")
             self.add_option("-e", dest="show_nonstd", help="show nonstandard queues, specifiy twice to suppress alarm queues [%default]", action="count", default=0)
+            self.add_option("-i", dest="interactive", help="show info interactive", action="store_true", default=False)
         if run_mode == "sns":
             self.add_option("-t", dest="show_type", help="show queue type [%default]", action="store_true", default=False)
             self.add_option("-C", dest="show_complexes", help="show complexes [%default]", action="store_true", default=False)
@@ -451,16 +583,18 @@ def get_server():
 def main():
     s_time = time.time()
     check_environment()
-    run_mode = {"sgelogstat"     : "sls",
-                "sls"            : "sls",
-                "sgejobstat"     : "sjs",
-                "sgenodestat"    : "sns",
-                "sgecomplexstat" : "scs",
-                "sgelogadd"      : "sla",
-                "sla"            : "sla",
-                "sjs"            : "sjs",
-                "sns"            : "sns",
-                "scs"            : "scs"}.get(os.path.basename(sys.argv[0]), "sjs")
+    run_mode = {
+        #"sgelogstat"     : "sls",
+        #"sls"            : "sls",
+        "sgejobstat"     : "sjs",
+        "sgenodestat"    : "sns",
+        #"sgecomplexstat" : "scs",
+        #"sgelogadd"      : "sla",
+        #"sla"            : "sla",
+        "sjs"            : "sjs",
+        "sns"            : "sns",
+        #"scs"            : "scs",
+        }.get(os.path.basename(sys.argv[0]), "sjs")
     options, args = my_opt_parser(run_mode).parse_args()
     if run_mode in ["sla"]:
         if args:
@@ -473,10 +607,10 @@ def main():
             print "Additional arguments found (%s), exiting" % (" ".join(args))
             sys.exit(-1)
     # check for right user
-    if run_mode in ["sls", "sla"]:
-        if os.getuid():
-            print "Need to be root for %s" % (run_mode)
-            return
+##    if run_mode in ["sls", "sla"]:
+##        if os.getuid():
+##            print "Need to be root for %s" % (run_mode)
+##            return
     if run_mode not in ["sla"]:
         act_si = sge_tools.sge_info(update_pref={"qhost"     : [],
                                                  "complexes" : ["server"],
@@ -487,19 +621,54 @@ def main():
                                     log_command=log_com,
                                     server=get_server())
     if run_mode == "sjs":
-        sjs(act_si, options)
+        if options.interactive:
+            window(callback=sjs,
+                   args=(act_si, options),
+                   tree=dt_tree(
+                       dt_node(
+                           "press p to print and q to exit",
+                           edges=[
+                               dt_edge(
+                                   "p",
+                                   dt_node(
+                                       "Are you sure",
+                                       edges=[
+                                           dt_edge("y", dt_node(None, action="print")),
+                                           dt_edge("n", dt_node(None, action="back_to_top"))])),
+                               dt_edge(
+                                   "q",
+                                   dt_node(
+                                       None,
+                                       action="close"))])
+                       )).loop()
+        else:
+            sjs(act_si, options)
     elif run_mode == "sns":
-        sns(act_si, options)
-    elif run_mode == "scs":
-        scs(act_si, options)
-    elif run_mode == "sls":
-        sls(act_si, options)
-    elif run_mode == "sla":
-        sla(options, add_args)
+        if options.interactive:
+            window(callback=sns, args=(act_si, options),
+                   tree=dt_tree(
+                       dt_node(
+                           "press q to exit",
+                           edges=[
+                               dt_edge(
+                                   "q",
+                                   dt_node(
+                                       None,
+                                       action="close"))])
+                       )).loop()
+        else:
+            sns(act_si, options)
+##    elif run_mode == "scs":
+##        scs(act_si, options)
+##    elif run_mode == "sls":
+##        sls(act_si, options)
+##    elif run_mode == "sla":
+##        sla(options, add_args)
     else:
         print "Unknown runmode %s" % (run_mode)
     e_time = time.time()
-    print "took %s" % (logging_tools.get_diff_time_str(e_time - s_time))
-
+    if not options.interactive:
+        print "took %s" % (logging_tools.get_diff_time_str(e_time - s_time))
+    
 if __name__ == "__main__":
     main()

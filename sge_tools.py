@@ -22,456 +22,23 @@
 """ tools for the SGE """
 
 import commands
-try:
-    import subprocess
-except ImportError:
-    subprocess = None
 import sys
 import re
 import time
 import os.path
-import cPickle
 import datetime
 import pprint
-import threading
 import logging_tools
-import net_tools
 import server_command
 import process_tools
-import shelve
-import fcntl
 import zmq
+from lxml import etree
 
 SQL_ACCESS = "cluster_full_access"
 
-def execute_command(args):
-    if type(args) == type(""):
-        args = args.split()
-    if subprocess and False:
-        # not reliable, FIXME
-        sp_obj = subprocess.Popen(args, 0, None, None, subprocess.PIPE, subprocess.PIPE)
-        stat = sp_obj.wait()
-        out_lines = sp_obj.stdout.read().strip().split("\n")
-        err_lines = [line for line in sp_obj.stderr.read().strip().split("\n") if line]
-    else:
-        stat, out_lines = commands.getstatusoutput(" ".join(args))
-        err_lines = []
-        out_lines = out_lines.strip().split("\n")
-    return stat, (out_lines, err_lines)
-
-def expand_job_id(j_id):
-    if j_id.isdigit():
-        return [j_id]
-    else:
-        j_split = j_id.split(".")
-        if len(j_split) == 2:
-            return ["%s.%s" % (j_split[0], x) for x in expand_array_id(j_split[1])]
-        else:
-            raise ValueError, "Cannot parse job_id '%s', exiting..." % (j_id)
-    
-def expand_array_id(a_id):
-    r_id = []
-    parts = a_id.split(",")
-    for part in parts:
-        if part.isdigit():
-            r_id.append(int(part))
-        else:
-            am = re.match("(?P<s_idx>\d+)-(?P<e_idx>\d+):(?P<step>\d+)$", part)
-            bm = re.match("(?P<s_idx>\d+)-(?P<e_idx>\d+)$", part)
-            if am:
-                r_id += range(int(am.group("s_idx")), int(am.group("e_idx")) + 1, int(am.group("step")))
-            elif bm:
-                r_id += range(int(bm.group("s_idx")), int(bm.group("e_idx")) + 1)
-            else:
-                raise ValueError, "Cannot parse array_id '%s', exiting..." % (a_id)
-    return r_id
-
-def collapse_job_ids(j_ids):
-    if j_ids:
-        if j_ids[0].isdigit():
-            return j_ids
-        else:
-            return ["%s.%s" % (x.split(".")[0], y) for y in collapse_array_ids([x.split(".")[1] for x in j_ids])]
-    else:
-        return j_ids
-    
-def collapse_array_ids(a_ids):
-    s_ids = sorted([int(x) for x in a_ids])
-    s_idx, e_idx, step = (None, None, None)
-    r_array = []
-    for val in s_ids:
-        if not s_idx:
-            s_idx = val
-        elif e_idx:
-            if val == e_idx+step:
-                e_idx = val
-            else:
-                if s_idx+step == e_idx:
-                    r_array.extend(["%d" % (s_idx), "%d" % (e_idx)])
-                else:
-                    r_array.append("%d-%d:%d" % (s_idx, e_idx, step))
-                s_idx, e_idx, step = (val, None, None)
-        else:
-            e_idx = val
-            step = e_idx-s_idx
-    if s_idx:
-        if e_idx:
-            if s_idx+step == e_idx:
-                r_array.extend(["%d" % (s_idx), "%d" % (e_idx)])
-            else:
-                r_array.append("%d-%d:%d" % (s_idx, e_idx, step))
-        else:
-            r_array.append("%d" % (s_idx))
-    return [",".join(r_array)]
-
-def transform_sge_output(in_lines, post_process=False):
-    # process sge long_lines
-    out_lines, act_line = ([], "")
-    for line in in_lines:
-        if line.endswith("\\"):
-            act_line += "%s " % (line[:-1].lstrip())
-        else:
-            act_line += line.lstrip()
-            out_lines.append(act_line)
-            act_line = ""
-    if act_line:
-        out_lines.append(act_line)
-    if post_process:
-        out_lines = [x.strip().split(None, 1) for x in out_lines]
-    return out_lines
-
-def get_access_dict(sge_dict):
-    qconf_com = "/%s/bin/%s/qconf -sq $(/%s/bin/%s/qconf -sql)" % (sge_dict["SGE_ROOT"],
-                                                                   sge_dict["SGE_ARCH"],
-                                                                   sge_dict["SGE_ROOT"],
-                                                                   sge_dict["SGE_ARCH"])
-    queue_access_dict = {}
-    a_stat, (a_out, a_err) = execute_command(qconf_com)
-    if a_stat:
-        raise StandardError, "error calling %s (%d): %s" % (qconf_com, a_stat, "\n".join(a_out + a_err))
-    access_keys = ["qname", "user_lists", "xuser_lists", "projects", "xprojects"]
-    new_a_out = transform_sge_output(a_out, True)
-    valid_keys = ["user_lists",
-                  "xuser_lists",
-                  "projects",
-                  "xprojects"]
-    act_qname = None
-    for key, value in new_a_out:
-        if key == "qname":
-            act_qname = value
-            queue_access_dict[act_qname] = {"ALL" : dict([(x, None) for x in valid_keys])}
-        elif act_qname and key in valid_keys and value != "NONE":
-            if value.count(","):
-                # ","-separated list
-                v_parts = [x.strip() for x in value.split(",")]
-                for v_part in v_parts:
-                    if v_part == "NONE":
-                        # ignore default values
-                        pass
-                    elif v_part.startswith("["):
-                        node_name, access_list = v_part[1:-1].split("=", 1)
-                        node_name = node_name.split(".")[0]
-                        access_list = [x.strip() for x in access_list.strip().split()]
-                        if not queue_access_dict[act_qname].has_key(node_name):
-                            queue_access_dict[act_qname][node_name] = dict([(x, None) for x in valid_keys])
-                        queue_access_dict[act_qname][node_name][key] = access_list
-                    else:
-                        queue_access_dict[act_qname]["ALL"][key] = [v_part]
-            else:
-                # space separated
-                queue_access_dict[act_qname]["ALL"][key] = value.split()
-    return queue_access_dict
-
-class sc_values_iterator(object):
-    def __init__(self, sc, sk):
-        self.__sc, self.__kl = (sc, sk)
-    def __iter__(self):
-        self.__index = 0
-        return self
-    def next(self):
-        if self.__index == len(self.__kl):
-            raise StopIteration
-        act_key = self.__kl[self.__index]
-        self.__index += 1
-        return self.__sc[act_key]
-
-class sc_iterkeys_iterator(object):
-    def __init__(self, sc, sk):
-        self.__sc, self.__kl = (sc, sk)
-    def __iter__(self):
-        self.__index = 0
-        return self
-    def next(self):
-        if self.__index == len(self.__kl):
-            raise StopIteration
-        act_key = self.__kl[self.__index]
-        self.__index += 1
-        return act_key
-    def index(self, k):
-        return self.__kl.index(k)
-    def __getitem__(self, k):
-        return self.__kl[k]
-    def __len__(self):
-        return len(self.__kl)
-
-class sc_iteritems_iterator(object):
-    def __init__(self, sc, sk):
-        self.__sc, self.__kl = (sc, sk)
-    def __iter__(self):
-        self.__index = 0
-        return self
-    def next(self):
-        if self.__index == len(self.__kl):
-            raise StopIteration
-        act_key = self.__kl[self.__index]
-        self.__index += 1
-        return act_key, self.__sc[act_key]
-    def index(self, k):
-        return self.__kl.index(k)
-    def __len__(self):
-        return len(self.__kl)
-
-class co_complexes(object):
-    # checked-out version of sge_complexes
-    def __init__(self, sge_cs):
-        sge_cs.lock()
-        self.complexes = dict([(k, co_complex(v)) for k, v in sge_cs.iteritems()])
-        sge_cs.unlock()
-        # build lookup-tables
-        self.complex_names = sorted(self.complexes.keys())
-        self.complex_types = {}
-        for name, value in self.complexes.iteritems():
-            self.complex_types.setdefault(value.complex_type, []).append(name)
-    def __getitem__(self, key):
-        return self.complexes[key]
-    def has_key(self, key):
-        return self.complexes.has_key(key)
-    def get(self, key, def_value):
-        return self.complexes.get(key, def_value)
-    def keys(self):
-        return self.complexes.keys()
-        
-class sge_complexes(object):
-    def __init__(self, sge_arch, sge_root, sge_cell, opt_dict):
-        self.__access_lock = threading.RLock()
-        self.__sge_arch, self.__sge_root, self.__sge_cell = (sge_arch, sge_root, sge_cell)
-        self.__opt_dict = opt_dict
-        self.__complexes = {}
-        self.__sge60 = not os.path.isfile("/%s/%s/common/product_mode" % (self.__sge_root, self.__sge_cell))
-        self.set_update_timeout()
-        if self.__sge60:
-            self.update = self.update_60
-        else:
-            self.update = self.update_53
-        # check for db reachability
-        self.__db_reachable = False
-        try:
-            import mysql_tools
-        except:
-            pass
-        else:
-            try:
-                db_con = mysql_tools.dbcon_container()
-            except:
-                pass
-            else:
-                try:
-                    dc = db_con.get_connection(SQL_ACCESS)
-                except:
-                    db_con = None
-                else:
-                    self.__db_reachable = True
-                    self.__db_con, self.__dc = (db_con, dc)
-        self.update()
-    def __del__(self):
-        if self.__db_reachable:
-            self.__dc.release()
-            del self.__dc
-            del self.__db_con
-    def check_out_dict(self):
-        # check out dict of complexes
-        return co_complexes(self)
-    def set_update_timeout(self, to=30*60):
-        self.__update_timeout = to
-        self.__last_timeout = time.time() - 2 * self.__update_timeout
-    def lock(self):
-        self.__access_lock.acquire()
-    def unlock(self):
-        self.__access_lock.release()
-    def get_update_ok(self):
-        return self.__update_ok
-    def post_update(self):
-        if self.__update_ok:
-            self.__complex_keys = sorted(self.__complexes.keys())
-        else:
-            self.__complex_keys = []
-    # functions to emulate dict
-    def has_key(self, key):
-        return key in self.__complex_keys
-    def __getitem__(self, key):
-        return self.__complexes[key]
-    def iterkeys(self):
-        return sc_keys_iterator(self, self.__complex_keys)
-    def keys(self):
-        return self.__complex_keys
-    def values(self):
-        return sc_values_iterator(self, self.__complex_keys)
-    def iteritems(self):
-        return sc_iteritems_iterator(self, self.__complex_keys)
-    def get_log_lines(self):
-        return self.__log_lines
-    def update_60(self, force_update=False):
-        act_time = time.time()
-        self.__log_lines = []
-        if abs(act_time - self.__last_timeout) > self.__update_timeout or force_update:
-            self.__last_timeout = act_time
-            self.lock()
-            self.__update_ok = True
-            self.__complexes = {}
-            log_header = "Trying to get complexes in SGE 6.x mode..."
-            if self.__db_reachable:
-                self.__dc.execute("SELECT * FROM sge_complex")
-                for db_rec in self.__dc.fetchall():
-                    # init.at complexes, sge_queues need the complex defined in their config
-                    name = db_rec["name"]
-                    t_dict = {"%s_num_min" % (name) : db_rec.get("pe_slots_min", 1),
-                              "%s_num_max" % (name) : db_rec.get("pe_slots_max", 1),
-                              "%s_mt_time" % (name) : db_rec["total_time"],
-                              "%s_m_time" % (name)  : db_rec["slot_time"],
-                              "%s_queue" % (name)   : db_rec["default_queue"]
-                              }
-                    self.__complexes[name] = sge_complex("i", name, t_dict, self.__opt_dict)
-                stat, (out, err_lines) = execute_command("/%s/bin/%s/qconf -sc" % (self.__sge_root, self.__sge_arch))
-                if stat:
-                    self.__log_lines.append("Error retrieving list of complexes (%d): '%s'" % (stat, "\n".join(out + err_lines)))
-                else:
-                    head = out.pop(0).lower()[1:].split()
-                    c_lines = [x.strip().split() for x in out if not x.startswith("#")]
-                    for line in [x for x in c_lines if x]:
-                        for compl in [line[0], line[1]]:
-                            if compl not in self.__complexes.keys():
-                                t_dict = {compl : True}
-                                # check for init.at meta-complex
-                                if compl not in ["hostname", "qname", "q", "h"]:
-                                    self.__complexes[compl] = sge_complex("o", compl, t_dict, self.__opt_dict)
-                                else:
-                                    self.__complexes[compl] = sge_complex("s", compl, t_dict, self.__opt_dict)
-                # read queue config and add to complexes if necessary
-                stat, (queue_list, err_lines) = execute_command("/%s/bin/%s/qconf -sq $(/%s/bin/%s/qconf -sql)" % (self.__sge_root,
-                                                                                                                   self.__sge_arch,
-                                                                                                                   self.__sge_root,
-                                                                                                                   self.__sge_arch))
-                if stat:
-                    self.__log_lines.append("Error retrieving list of queues (%s): '%s'" % (stat, "\n".join(queue_list + err_lines)))
-                else:
-                    queue_list = transform_sge_output(queue_list, True)
-                    for in_key, in_value in queue_list:
-                        if in_key == "qname":
-                            act_qname = in_value
-                        elif in_key == "complex_values":
-                            # remove spaces
-                            while in_value.count(" "):
-                                in_value = in_value.replace(" ", "")
-                            # separate node part
-                            new_list, is_node, sub_val = ([], False, [])
-                            for act_val in [x.strip() for x in in_value.lower().split(",")]:
-                                if act_val.startswith("["):
-                                    is_node = True
-                                if is_node:
-                                    sub_val.append(act_val)
-                                else:
-                                    new_list.append(act_val)
-                                if act_val.endswith("]"):
-                                    new_list.append(",".join(sub_val))
-                                    is_node, sub_val = (False, [])
-                            for c_val in new_list:
-                                if c_val.startswith("["):
-                                    c_val = c_val[1:-1].split("=", 1)[1]
-                                    sub_vals = c_val.split(",")
-                                else:
-                                    sub_vals = [c_val]
-                                for act_c_val in sub_vals:
-                                    if act_c_val.count("="):
-                                        key, val = act_c_val.split("=", 1)
-                                    else:
-                                        key, val = (act_c_val, True)
-                                    if self.__complexes.has_key(key) and val:
-                                        self.__complexes[key].add_queue(act_qname)
-            else:
-                if os.environ.has_key("SGE_SERVER"):
-                    sge_server = os.environ["SGE_SERVER"]
-                else:
-                    if os.path.isfile("/etc/sge_server"):
-                        try:
-                            sge_server = file("/etc/sge_server", "r").read().split("\n")[0].strip()
-                        except:
-                            self.__update_ok = False
-                    else:
-                        self.__update_ok = False
-                if self.__update_ok:
-                    errnum, data = net_tools.single_connection(host=sge_server, port=8009, command=server_command.server_command(command="get_complexes")).iterate()
-                    if errnum:
-                        self.__update_ok = False
-                    else:
-                        try:
-                            srv_reply = server_command.server_reply(data)
-                        except:
-                            self.__update_ok = False
-                        else:
-                            if srv_reply.get_state() == server_command.SRV_REPLY_STATE_OK:
-                                co_compl = srv_reply.get_option_dict()["co_complexes"]
-                                self.__log_lines.append("recevied checked_out complexes (%s)" % (logging_tools.get_plural("byte", len(data[3:]))))
-                                # build complexes from checked_out version
-                                self.__complexes = dict([(k, sge_complex(co_compl[k].complex_type, k, co_compl[k].get_internal_dict(), self.__opt_dict)) for k in co_compl.complex_names])
-                            else:
-                                self.__update_ok = False
-            self.post_update()
-            self.unlock()
-            if self.__log_lines:
-                self.__log_lines.insert(0, log_header)
-    def update_53(self, force_update=False):
-        act_time = time.time()
-        self.__log_lines = []
-        if abs(act_time - self.__last_timeout) > self.__update_timeout or force_update:
-            self.__last_timeout = act_time
-            self.lock()
-            self.__complexes = {}
-            self.__update_ok = True
-            log_header = "Trying to get complexes in SGE 5.3 mode..."
-            stat, (out, err_lines) = execute_command("/%s/bin/%s/qconf -scl" % (self.__sge_root, self.__sge_arch))
-            if stat:
-                self.__log_lines.append("Error retrieving list of complexes (%d): '%s'" % (stat, "\n".join(out + err_lines)))
-            else:
-                c_list = [x for x in [y.strip() for y in out] if y not in ["xhost", "xqueue"]]
-                for compl in c_list:
-                    stat, (out, err_lines) = execute_command("/%s/bin/%s/qconf -sc %s" % (self.__sge_root, self.__sge_arch, compl))
-                    if not stat:
-                        head = out.pop(0).lower()[1:].split()
-                        c_lines = [x.strip().split() for x in out if not x.startswith("#")]
-                        #complexes[compl] = {}
-                        t_dict = {}
-                        c_type, c_name = ("s", None)
-                        for line in [x for x in c_lines if x]:
-                            new_dict = {}
-                            for head_p in head:
-                                new_dict[head_p] = line.pop(0)
-                            t_dict[new_dict["name"]] = new_dict
-                            if not re.match("^.*_.*$", new_dict["name"]):
-                                c_name = new_dict["name"]
-                        # check for init.at meta-complex
-                        if c_type == "i":
-                            self.__complexes[c_name] = sge_complex("i", c_name, t_dict, self.__opt_dict)
-                        elif compl not in ["host", "queue"]:
-                            self.__complexes[compl] = sge_complex("o", compl, t_dict, self.__opt_dict)
-                        else:
-                            self.__complexes[compl] = sge_complex(c_type, compl, t_dict, self.__opt_dict)
-            self.post_update()
-            self.unlock()
-            if self.__log_lines:
-                self.__log_lines.insert(0, log_header)
-
 def compress_list(ql, queues = None):
     # node prefix, postfix, start_string, end_string
+    # not exactly the same as the version in logging_tools
     def add_p(np, ap, s_str, e_str):
         if s_str == e_str:
             return "%s%s%s" % (np, s_str, ap)
@@ -555,25 +122,6 @@ def sec_to_str(in_sec):
             out_f = "????"
     return out_f
 
-class co_complex(object):
-    # checked-out version of sge_complex
-    def __init__(self, sge_c):
-        self.name = sge_c.name
-        self.complex_type = sge_c.get_complex_type()
-        self.__internal_dict = dict([(k, v) for k, v in sge_c.get_internal_dict().iteritems()])
-    def __getitem__(self, key):
-        return self.__internal_dict[key]
-    def get(self, key, def_val):
-        return self.__internal_dict.get(key, def_val)
-    def get_internal_dict(self):
-        return self.__internal_dict
-    def get_resources(self):
-        if self.complex_type == "i":
-            return [self.name]
-        else:
-            return [x for x in self.__internal_dict.keys()]
-    def get_complex_type(self):
-        return self.complex_type
 
 class sge_complex(object):
     def __init__(self, c_type, name, in_dict, opt_dict):
@@ -810,7 +358,7 @@ class job(object):
     def add_host(self, host, n_type):
         self.host_dict[host] = n_type
         #self.num = len(self.host_dict)
-    def add_queue(self, queue, n_type, slots = 1):
+    def add_queue(self, queue, n_type, slots=1):
         #print self.queue_dict, queue
         self.queue_dict.setdefault(queue, [])
         self.queue_dict[queue].extend([n_type] * slots)
@@ -1048,23 +596,7 @@ class job(object):
     def get_info(self, act_queue = None):
         ret_str = "%s %s (%d) %s" % (self.get_uid(), self.get_user(), self.num, self.get_type(act_queue))
         return ret_str
-    
-class cluster_queue(object):
-    def __init__(self, config, in_lines):
-        self.__sge_config = config
-        self.__value_dict = {}
-        for key, value in in_lines:
-            self[key] = value
-    def __setitem__(self, key, value):
-        if key == "hostlist":
-            self.__value_dict[key] = self._parse_hostlist(value)
-        else:
-            self.__value_dict[key] = value
-    def _parse_hostlist(self, in_list):
-        return in_list.split()
-    def __getitem__(self, key):
-        return self.__value_dict[key]
-    
+
 class queue(object):
     def __init__(self, name, opt_dict = {}):
         self.name = name
@@ -1238,9 +770,17 @@ class queue(object):
         return ret_str
     
 class sge_host(object):
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, top_el):
+        self.name = top_el.attrib["name"]
         self.__value_dict = {}
+        for sub_el in top_el.xpath("resourcevalue[@dominance='hl']"):
+            self[sub_el.attrib["name"]] = sub_el.text
+        for node_el in top_el.xpath("queue"):
+            self.__value_dict.setdefault("queues", {})[node_el.attrib["name"]] = dict([(
+                {"type_string" : "type",
+                 "state_string" : "status",
+                 "slots" : "total",
+                 "slots_used" : "used"}.get(q_el.attrib["name"], q_el.attrib["name"]), q_el.text) for q_el in node_el.xpath("queuevalue")])
     def _str_to_memory(self, in_str):
         return int(float(in_str[:-1]) * {"k" : 1024,
                                          "m" : 1024 * 1024,
@@ -1273,22 +813,6 @@ class sge_host(object):
             self.__value_dict[key] = float(value)
     def __getitem__(self, key):
         return self.__value_dict[key]
-    def add_queue(self, q_parts):
-        q_name = q_parts.pop(0)
-        q_type = q_parts.pop(0)
-        slotcount = [int(part) for part in q_parts.pop(0).split("/")]
-        if len(slotcount) == 3:
-            slots_reserved, slots_used, slots_total = slotcount
-        else:
-            slots_used, slots_total = slotcount
-        if q_parts:
-            q_status = q_parts[0]
-        else:
-            q_status = "-"
-        self.__value_dict.setdefault("queues", {})[q_name] = {"type"   : q_type,
-                                                              "used"   : slots_used,
-                                                              "total"  : slots_total,
-                                                              "status" : q_status}
     def get_complex_info(self, act_queue):
         cvs = act_queue["complex_values"]
         c_values = cvs.get("", {})
@@ -1400,7 +924,7 @@ class sge_host(object):
         pprint.pprint(self.__value_dict)
         
 class sge_job(object):
-    def __init__(self, prim_state):
+    def __init__(self, job_el):
         # mapping:
         # JB_name        : name
         # JB_owner       : user
@@ -1408,28 +932,32 @@ class sge_job(object):
         # JAT_start_time : job starttime
         # we store everything as string, conversion to int / float only on the frontend or for sorting
         # running or pending
+        prim_state = job_el.attrib["state"]
         self.running = {"running" : True,
                         "pending" : False}[prim_state]
         # store values
         self.__value_dict = {}
+        for sub_el in job_el:
+            self.add_tag(sub_el)
     def get_id(self):
         if self.has_key("tasks"):
             return "%s.%s" % (self["JB_job_number"], self["tasks"])
         else:
             return self["JB_job_number"]
-    def add_tag(self, tag_name, tag_dict, tag_value):
-        if tag_dict:
-            tag_dict["value"] = tag_value
-            self.__value_dict.setdefault(tag_name, []).append(tag_dict)
+    def add_tag(self, sub_el):
+        tag_name = sub_el.tag
+        if sub_el.attrib:
+            sub_el.attrib["value"] = sub_el.text
+            self.__value_dict.setdefault(tag_name, []).append(sub_el.attrib)
         else:
             if tag_name in ["queue_name", "master", "mem_usage"]:
-                self.__value_dict.setdefault(tag_name, []).append(tag_value)
+                self.__value_dict.setdefault(tag_name, []).append(sub_el.text)
             elif tag_name.endswith("time"):
-                self.__value_dict[tag_name] = self._sgetime_to_sec(tag_value)
+                self.__value_dict[tag_name] = self._sgetime_to_sec(sub_el.text)
             elif tag_name.startswith("predecessor_jobs"):
-                self.__value_dict.setdefault(tag_name, []).append(tag_value)
+                self.__value_dict.setdefault(tag_name, []).append(sub_el.text)
             else:
-                self.__value_dict[tag_name] = tag_value
+                self.__value_dict[tag_name] = sub_el.text
     def get(self, key, def_value):
         return self.__value_dict.get(key, def_value)
     def __getitem__(self, key):
@@ -1568,7 +1096,7 @@ class sge_info(object):
         thread_safe        : flag, if set locks update calls againts concurrent threads
         run_initial_update : flag, if set to false no initial update_call will be made
         init_dicts         : default values for the various dicts (for webfrontend)
-        update_pref        : dict where the update preferences are stored (direct, filecache, server)
+        update_pref        : dict where the update preferences are stored (direct, server)
         ignore_dicts       : dicts to ignore
         server             : name of server to connect, defaults to localhost
         """
@@ -1589,20 +1117,13 @@ class sge_info(object):
         self.__update_pref_dict = dict([(key, args.get("update_pref", {}).get(key, ["direct", "server"])) for key in self.__valid_dicts])
         self.__timeout_dicts = dict([(key, {"hostgroup" : 300,
                                             "qstat"     : 2}.get(key, 120)) for key in self.__valid_dicts])
-        if args.get("thread_safe", True):
-            self.__access_lock = threading.RLock()
-        else:
-            self.__access_lock = None
         if self.__is_active:
             self._sanitize_sge_dict()
-            self._check_db_link()
         self._init_update(args.get("init_dicts", {}))
         if args.get("run_initial_update", True) and self.__is_active:
             self.update()
     def __del__(self):
-        if self.__db_con:
-            self.__db_con.close()
-            del self.__db_con
+        pass
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
             self.__log_com("[si] %s" % (what), log_level)
@@ -1618,20 +1139,11 @@ class sge_info(object):
         for key, value in start_dict.iteritems():
             self.__act_dicts[key] = value
             self.__upd_dict[key] = time.time()
-    def _lock(self):
-        if self.__access_lock:
-            self.__access_lock.acquire()
-    def _unlock(self):
-        if self.__access_lock:
-            self.__access_lock.release()
     def get_updated_dict(self, dict_name, **args):
-        self._lock()
         if self._check_for_update(dict_name):
             self.__act_dicts[dict_name] = self.__update_call_dict[dict_name]()
-        self._unlock()
         return self.__act_dicts[dict_name]
     def update(self, **kwargs):
-        self._lock()
         upd_dicts = kwargs.get("update_list", self.__valid_dicts)
         # determine which dicts to update
         dicts_to_update = [dict_name for dict_name in upd_dicts if self._check_for_update(dict_name, kwargs.get("force_update", False))]
@@ -1641,14 +1153,6 @@ class sge_info(object):
             srv_name = self.__server
             s_time = time.time()
             # try server_update
-            # old TCP code
-##            errnum, data = net_tools.single_connection(mode="tcp",
-##                                                       host=srv_name,
-##                                                       port=8009,
-##                                                       command=server_command.server_command(command="get_config",
-##                                                                                             option_dict={"needed_dicts" : server_update}),
-##                                                       timeout=10.0,
-##                                                       protocoll=1).iterate()
             # new fancy 0MQ code
             zmq_context = zmq.Context(1)
             client = zmq_context.socket(zmq.DEALER)
@@ -1683,28 +1187,6 @@ class sge_info(object):
                 self.log("%s (server %s) took %s" % (", ".join(server_update),
                                                      srv_name,
                                                      logging_tools.get_diff_time_str(e_time - s_time)))
-        filecache_update = [dict_name for dict_name in dicts_to_update if (self.__update_pref_dict[dict_name] + ["not set"])[0] == "filecache"]
-        if dict_name in filecache_update:
-            db_file_name = "/tmp/jsi/jsi_db_%s" % (dict_name)
-            lock_file_name = "%s.LOCK" % (db_file_name)
-            # update is needed
-            s_time = time.time()
-            if os.path.isfile(db_file_name) and not kwargs.get("no_file_cache", False):
-                cached = True
-                lf = file(lock_file_name, "w")
-                fcntl.flock(lf, fcntl.LOCK_SH)
-                my_shelve = shelve.open(db_file_name)
-                self.__act_dicts[dict_name] = my_shelve["a"]
-                my_shelve.close()
-                fcntl.flock(lf, fcntl.LOCK_UN)
-                lf.close()
-            else:
-                cached = False
-                self.__act_dicts[dict_name] = self.__update_call_dict[dict_name]()
-            e_time = time.time()
-            if self.__verbose > 0:
-                self.log("%s (fc) took %s" % (dict_name,
-                                              logging_tools.get_diff_time_str(e_time - s_time)))
         for dict_name in dicts_to_update:
             s_time = time.time()
             self.__act_dicts[dict_name] = self.__update_call_dict[dict_name]()
@@ -1712,39 +1194,6 @@ class sge_info(object):
             if self.__verbose > 0:
                 self.log("%s (direct) took %s" % (dict_name,
                                                   logging_tools.get_diff_time_str(e_time - s_time)))
-#             # write db back, test
-#             if not cached:
-#                 old_mask = os.umask(0)
-#                 lf = file(lock_file_name, "w")
-#                 fcntl.flock(lf, fcntl.LOCK_EX)
-#                 test_db = shelve.open(db_file_name, "c")
-#                 test_db["a"] = self[dict_name]
-#                 test_db.sync()
-#                 # important, sync
-#                 test_db.close()
-#                 fcntl.flock(lf, fcntl.LOCK_UN)
-#                 lf.close()
-#                 os.umask(old_mask)
-        self._unlock()
-    def _check_db_link(self):
-        db_con = False
-        try:
-            import mysql_tools
-        except:
-            pass
-        else:
-            try:
-                db_con = mysql_tools.dbcon_container()
-            except:
-                pass
-            else:
-                try:
-                    dc = db_con.get_connection(SQL_ACCESS)
-                except:
-                    db_con = None
-                else:
-                    dc.release()
-        self.__db_con = db_con
     def _sanitize_sge_dict(self):
         if not self.__sge_dict.has_key("SGE_ROOT"):
             if os.environ.has_key("SGE_ROOT"):
@@ -1811,6 +1260,8 @@ class sge_info(object):
                                                                  " ".join([line[0] for line in c_out])),
                                                   simple_split=True)
             if not c_stat:
+                # sanitize act_q_dict
+                act_q_dict = None
                 # interpret queueconf
                 act_q_name = ""
                 for key, value in c_out:
@@ -1837,20 +1288,6 @@ class sge_info(object):
         return hgroup_dict
     def _check_complexes_dict(self):
         complex_dict = {}
-        if self.__db_con:
-            dc = self.__db_con.get_connection(SQL_ACCESS)
-            dc.execute("SELECT * FROM sge_complex")
-            for db_rec in dc.fetchall():
-                # init.at complexes, sge_queues need the complex defined in their config
-                name = db_rec["name"]
-                t_dict = {"%s_num_min" % (name) : db_rec.get("pe_slots_min", 1),
-                          "%s_num_max" % (name) : db_rec.get("pe_slots_max", 1),
-                          "%s_mt_time" % (name) : db_rec["total_time"],
-                          "%s_m_time" % (name)  : db_rec["slot_time"],
-                          "%s_queue" % (name)   : db_rec["default_queue"]
-                          }
-                complex_dict[name] = sge_complex("i", name, t_dict, {})# self.__opt_dict)
-            dc.release()
         qconf_com = self._get_com_name("qconf")
         c_stat, c_out = self._execute_command("%s -sc" % (qconf_com))
         if not c_stat:
@@ -1863,61 +1300,22 @@ class sge_info(object):
         return complex_dict
     def _check_qhost_dict(self):
         qstat_com = self._get_com_name("qhost")
-        c_stat, c_out = self._execute_command("%s -F -q" % (qstat_com))
+        c_stat, c_out = self._execute_command("%s -F -q -xml" % (qstat_com))
         qhost_dict = {}
-        if not c_stat:
-            lines = c_out.split("\n")
-            # remove header, separator and global
-            lines.pop(0)
-            lines.pop(0)
-            lines.pop(0)
-            # dummy act_host, sometimes we have global values (license stuff and so on) for the global host
-            act_host = None
-            for line in lines:
-                if line[0] != " ":
-                    act_host = sge_host(line.split()[0].split(".")[0])
-                    qhost_dict[act_host.name] = act_host
-                elif act_host:
-                    line = line.strip()
-                    if line.count(":"):
-                        key, value = line.split(":", 1)[1].split("=", 1)
-                        act_host[key] = value
-                    else:
-                        act_host.add_queue(line.split())
+        xml_tree = etree.fromstring(c_out)
+        for cur_queue in xml_tree.xpath(".//host[not(@name='global')]"):
+            act_host = sge_host(cur_queue)
+            qhost_dict[act_host.name] = act_host
         return qhost_dict
     def _check_qstat_dict(self):
         qstat_com = self._get_com_name("qstat")
-        # -u * is important
+        # -u * is important to get all jobs
         c_stat, c_out = self._execute_command("%s -u \* -r -t -ext -urg -pri -xml" % (qstat_com))
         job_dict = {}
-        if not c_stat:
-            # helper dicts for parsing
-            lines = c_out.split("\n")
-            # remove xml header
-            lines.pop(0)
-            for line in lines:
-                line = line.strip()
-                tag_head = line.split(">")[0][1:].split()
-                tag = tag_head.pop(0)
-                tag_dict = dict([(key, value[1:-1]) for key, value in [tag_list.split("=", 1) for tag_list in tag_head]])
-                tag_value = line[len(tag) + 2 : - (len(tag) + 3)]
-                if tag in ["job_info", "queue_info", "/job_info", "/queue_info"]:
-                    # ignore, just dummy parser
-                    pass
-                elif tag in ["job_list", "/job_list"]:
-                    if tag == "job_list":
-                        act_job = sge_job(tag_dict["state"])
-                    else:
-                        job_id = act_job.get_id()
-                        if job_dict.has_key(job_id):
-                            job_dict[job_id].merge_job(act_job)
-                        else:
-                            job_dict[job_id] = act_job
-                else:
-                    if tag_dict:
-                        # tag_value starts after tag_dict
-                        tag_value = tag_value.split(">")[1]
-                    act_job.add_tag(tag, tag_dict, tag_value)
+        xml_tree = etree.fromstring(c_out)
+        for cur_job in xml_tree.xpath(".//job_list"):
+            act_job = sge_job(cur_job)
+            job_dict[act_job.get_id()] = act_job
         self.__act_dicts["qstat"] = job_dict
         return job_dict
     def _parse_sge_values(self, old_dict, has_values):
@@ -1958,293 +1356,6 @@ class sge_info(object):
             if shorten_names:
                 act_q["hostlist"] = [entry.split(".")[0] for entry in act_q["hostlist"]]
 
-def get_all_dicts(sge_compls, user_list, job_list, sge_dict, opt_dict = {}, c_opts=""):
-    # (sge_arch, sge_root, sge_cell)
-    # improved version, only for sge6.x
-    queue_dict, job_r_dict, job_s_dict, job_w_dict, ticket_dict, pri_dict = ({}, {}, {}, {}, {}, {})
-    if opt_dict.get("include_access", 0):
-        queue_access_dict = get_access_dict(sge_dict)
-    else:
-        queue_access_dict = {}
-    # modify job_list
-    act_job_list = []
-    for j in job_list:
-        act_job_list += expand_job_id(j)
-    job_list = act_job_list
-    all_resources, init_resources, other_resources = ([], [], [])
-    other_res_rev_dict = {}
-    all_complexes = sge_compls.complex_names
-    sys_resources = ["queue", "host", "calendar"]
-    for c_type, compl_list in sge_compls.complex_types.iteritems():
-        for compl in compl_list:
-            act_compl = sge_compls[compl]
-            all_resources.extend(act_compl.get_resources())
-            if c_type == "i":
-                init_resources.extend(act_compl.get_resources())
-            elif c_type == "o":
-                other_resources.extend(act_compl.get_resources())
-                for res in act_compl.get_resources():
-                    other_res_rev_dict[res] = compl
-    time_stamps = []
-    time_stamps.append(("start", time.time()))
-    qstat_com = "/%s/bin/%s/qstat -F -r -ext -urg -pri %s" % (sge_dict["SGE_ROOT"],
-                                                              sge_dict["SGE_ARCH"],
-                                                              c_opts)
-
-    #print qstat_com
-    stat, (out, err_lines) = execute_command(qstat_com)
-    if stat:
-        raise StandardError, "error calling %s (%d): %s" % (qstat_com, stat, "\n".join(out + err_lines))
-    time_stamps.append(("process", time.time()))
-    # separator
-    sep_str = "-" * 20
-    # dirty hack
-    job_id_list = []
-    # drop first line
-    out.pop(0)
-    if out:
-        # append end-line
-        out.append("EXIT")
-        next_line = ""
-        while out:
-            if next_line:
-                act_line = next_line
-            else:
-                act_line = out.pop(0)
-            if act_line.startswith(sep_str):
-                # start new queue
-                queue_parts = out.pop(0).split()
-                if len(queue_parts) == 5:
-                    queue_name, queue_type, queue_slot_info, queue_load, queue_arch = queue_parts
-                    queue_status = "-"
-                elif len(queue_parts) == 6:
-                    queue_name, queue_type, queue_slot_info, queue_load, queue_arch, queue_status = queue_parts
-                else:
-                    print "Queue parts have len %d: %s" % (len(queue_parts), " ".join(queue_parts))
-                    sys.exit(-1)
-                act_queue = queue(queue_name, opt_dict)
-                queue_dict[queue_name] = act_queue
-                #print "q", queue_name
-                r_q_name = queue_name.split("@")[0]
-                host_name = queue_name.split("@")[1].split(".")[0]
-                if opt_dict.get("include_access", 0) and queue_access_dict.has_key(r_q_name):
-                    act_queue.set_queue_access(queue_access_dict[r_q_name].get(host_name, queue_access_dict[r_q_name]["ALL"]))
-                act_queue.set_type(queue_type)
-                act_queue.set_arch(queue_arch)
-                act_queue.set_status(queue_status)
-                if queue_load.lower() == "-na-":
-                    act_queue.set_load(0)
-                else:
-                    act_queue.set_load(float(queue_load))
-                s_used, s_total = queue_slot_info.split("/")
-                act_queue.set_slots(s_used, s_total)
-                next_line = out.pop(0).strip()
-                while next_line[0] in ["h", "q", "g"]:
-                    rav_stuff, val_stuff = next_line.split(":", 1)
-                    rav_src_dom, rav_src = rav_stuff
-                    val_name, val_value = val_stuff.split("=", 1)
-                    if rav_stuff == "qv":
-                        if val_name in other_resources:
-                            act_queue.add_init_complex(other_res_rev_dict[val_name])
-                        elif val_name in init_resources or (val_name in all_resources and val_name not in sys_resources):
-                            act_queue.add_init_complex(val_name)
-                        else:
-                            print "*", rav_src_dom, rav_src, val_name, val_value
-                    elif rav_stuff == "hl":
-                        if val_name in ["virtual_free", "virtual_total"]:
-                            act_queue.set_mem_dict_entry(val_name, val_value)
-                        else:
-                            # other host-related stuff can be feeded into the queue
-                            pass
-                    elif rav_stuff == "qf":
-                        if val_name == "hostname":
-                            act_queue.set_host(val_value)
-                        elif val_name in init_resources:
-                            act_queue.add_init_complex(val_name)
-                        elif val_name == "seq_no":
-                            act_queue.set_seq_no(int(float(val_value)))
-                    else:
-                        # other stuff like consumables can be processed here
-                        #print "+", rav_src_dom, rav_src, val_name, val_value
-                        pass
-                    next_line = out.pop(0).strip()
-                    if not next_line:
-                        break
-                if next_line.startswith(sep_str):
-                    pass
-            else:
-                act_job = None
-                line_parts = act_line.split()
-                lp_len = len(line_parts)
-                if lp_len in [24, 25, 27, 28]:
-                    # 25/28 for task_array jobs
-                    job_id = line_parts.pop(0)
-                    job_pri = float(line_parts.pop(0))
-                    line_parts.pop(0)
-                    job_npprio = line_parts.pop(0)
-                    job_ntckts = line_parts.pop(0)
-                    line_parts.pop(0)
-                    line_parts.pop(0)
-                    line_parts.pop(0)
-                    line_parts.pop(0)
-                    job_ppri = line_parts.pop(0)
-                    job_name = line_parts.pop(0)
-                    job_user = line_parts.pop(0)
-                    job_project = line_parts.pop(0)
-                    job_department = line_parts.pop(0)
-                    job_status = line_parts.pop(0)
-                    start_date = line_parts.pop(0)
-                    start_time = line_parts.pop(0)
-                    if lp_len in [25, 28]:
-                        array_id = line_parts.pop(-1)
-                    else:
-                        array_id = None
-                    if lp_len in [27, 28]:
-                        cpu_time_used = line_parts.pop(0)
-                        mem_used      = line_parts.pop(0)
-                        io_used       = line_parts.pop(0)
-                    tickets    = int(line_parts.pop(0))
-                    ov_tickets = line_parts.pop(0)
-                    op_tickets = line_parts.pop(0)
-                    fp_tickets = line_parts.pop(0)
-                    sp_tickets = line_parts.pop(0)
-                    act_share  = line_parts.pop(0)
-                    slots_used = int(line_parts.pop(0))
-                    if array_id:
-                        job_id_list = ["%s.%s" % (job_id, x) for x in expand_array_id(array_id)]
-                    else:
-                        job_id_list = [job_id]
-                    if not opt_dict.get("expand_array_jobs", 0):
-                        job_id_list = collapse_job_ids(job_id_list)
-                    for job_id in job_id_list:
-                        if job_user in (user_list or [job_user]):
-                            if lp_len in [27, 28]:
-                                if "s" in job_status or "S" in job_status:
-                                    if not job_s_dict.has_key(job_id):
-                                        job_s_dict[job_id] = job(job_id, opt_dict)
-                                    act_job = job_s_dict[job_id]
-                                else:
-                                    if not job_r_dict.has_key(job_id):
-                                        job_r_dict[job_id] = job(job_id, opt_dict)
-                                    act_job = job_r_dict[job_id]
-                            else:
-                                if not job_w_dict.has_key(job_id):
-                                    job_w_dict[job_id] = job(job_id, opt_dict)
-                                act_job = job_w_dict[job_id]
-                        else:
-                            # dummy job, should be improved to NONE
-                            act_job = job(job_id, opt_dict)
-                        act_job.set_user(job_user)
-                        act_job.set_name(job_name)
-                        act_job.set_pri(float(job_pri))
-                        act_job.set_status(job_status)
-                        act_job.set_sq_time()
-                        act_job.set_sq_time(start_date, start_time)
-                        if "r" in job_status or "s" in job_status or "S" in job_status:
-                            act_job_type = cpu_time_used.lower() == "na" and "SLAVE" or "MASTER"
-                            act_job.add_queue(act_queue.name, act_job_type, slots_used)
-                            act_job.add_host(act_queue.host, act_job_type)
-                            act_job.set_type(act_job_type)
-                            for sl in range(int(slots_used)):
-                                act_queue.add_job(job_id, act_job_type)
-                        if lp_len in [24, 25]:
-                            act_job.set_priority(job_pri)
-                            act_job.set_tickets(job_pri)
-                            ticket_dict.setdefault(tickets, []).append(job_id)
-                            pri_dict.setdefault(job_pri, []).append(job_id)
-                        # new job, running
-                        if line_parts:
-                            print line_parts
-                if act_job:
-                    next_line = out.pop(0)
-                    while next_line.startswith(" " * 7):
-                        if next_line.count(":"):
-                            res_name, res_stuff = [x.strip() for x in next_line.split(":", 1)]
-                            res_name = res_name.lower()
-                        else:
-                            res_stuff = next_line.strip()
-                        if res_stuff.strip():
-                            if res_name == "requested pe":
-                                act_job.set_pe(res_stuff)
-                            elif res_name in ["hard requested queues", "master task hard requested queues", "master queue"]:
-                                act_job.set_queue(res_stuff)
-                            elif res_name == "predecessor jobs":
-                                act_job.set_depend([x.strip() for x in res_stuff.split(",")])
-                            elif res_name == "full jobname":
-                                act_job.set_name(res_stuff)
-                            elif res_name == "hard resources":
-                                hr_name, hr_value = res_stuff.split("=", 1)
-                                hr_value = hr_value.split()[0].lower()
-                                if hr_value == "true":
-                                    act_job.set_complex(hr_name)
-                                elif hr_name == "h_rt":
-                                    act_job.set_h_rt(hr_value)
-                                elif hr_name == "qname":
-                                    act_job.set_queue(hr_value)
-                                else:
-                                    #print hr_name, hr_value
-                                    pass
-                            else:
-                                #print res_name, res_stuff
-                                pass
-                        next_line = out.pop(0)
-                else:
-                    if act_line.startswith("#") or act_line.count("PENDING JOBS"):
-                        pass
-                    else:
-                        print lp_len, act_line
-            if next_line == "EXIT":
-                break
-    # build dict queue->init.at complex
-    queue_ic_dict = {}
-    # old code, not working any more (need queues-property of init.at complex)
-    #for ic in [x for x in sge_compls.values() if x.get_complex_type() == "i"]:
-    #    if ic["queue"]:
-    #        queue_ic_dict[ic["queue"]] = ic
-    # delete invalid jobs if requested
-    if opt_dict.get("only_valid_jobs", 0):
-        del_j_ids = [k for k, v in job_w_dict.iteritems() if "E" in v.get_status() or "h" in v.get_status()]
-        for del_j_id in del_j_ids:
-            del job_w_dict[del_j_id]
-        # correct ticket dict
-        ticks_to_check = [k for k, v in ticket_dict.iteritems() if len([True for x in del_j_ids if x in v])]
-        for tick_del in ticks_to_check:
-            for del_j_id in [x for x in del_j_ids if x in ticket_dict[tick_del]]:
-                ticket_dict[tick_del].remove(del_j_id)
-    for j_dict in [job_r_dict, job_s_dict, job_w_dict]:
-        for j_id, act_job in j_dict.iteritems():
-            act_job.modify_status(queue_dict)
-            # set complex for jobs where only the queue is given
-            j_q, j_c = (act_job.get_queue(), act_job.get_complex())
-            if j_q != "-" and not j_c and queue_ic_dict.has_key(j_q):
-                act_job.set_complex(queue_ic_dict[j_q].get_name())
-                # FIXME, unsupported
-##             elif j_q == "-" and j_c and sge_compls.has_key(j_c) and sge_compls[j_c].get("queue", None):
-##                 act_job.set_queue(sge_compls[j_c]["queue"])
-            # append queue to all nodes
-            act_job.simplify_queue_name()
-    #print queue_ic_dict
-    time_stamps.append(("end", time.time()))
-    opt_dict["time_stamps"] = time_stamps
-    return queue_dict, job_r_dict, job_s_dict, job_w_dict, ticket_dict, pri_dict
-
-def cq_test():
-    act_si = sge_info(verbose=1,
-                      update_pref={"qhost"     : ["server", "direct"],
-                                   "complexes" : ["server", "direct"],
-                                   "hostgroup" : ["server", "direct"],
-                                   "qstat"     : ["direct"],
-                                   "queueconf" : ["server"]})
-    #sjs(act_si)
-    #sns(act_si)
-    #scs(act_si)
-#     print act_
-#     all_cq = sge_config(sge_dict)
-#     print len(cPickle.dumps(all_cq))
-#     print all_cq.expand_host_list(all_cq.get_cluster_queue("hell.q")["hostlist"])
-    sys.exit(0)
-
 if __name__ == "__main__":
-    cq_test()
     print "This is a loadable module, exiting..."
     sys.exit(0)
