@@ -1,0 +1,27 @@
+<h1>Config types</h1>
+
+{% load i18n extra_tags %}
+
+{{ config_type_formset.management_form }}
+<table>
+    <tbody>
+    {% for cur_form in config_type_formset %}
+        {{ cur_form.idx }}
+        <tr><td colspan="4">{{ cur_form.non_field_errors }}</td></tr>
+        <tr>
+            <td>
+                {{ cur_form.name.label }}{{ cur_form.name }}{{ cur_form.name.errors }}
+            </td>
+            <td>
+                {{ cur_form.identifier.label }}{{ cur_form.identifier }}{{ cur_form.identifier.errors }}
+            </td>
+            <td>
+                {{ cur_form.description.label }}{{ cur_form.description }}{{ cur_form.description.errors }}
+            </td>
+            <td>{% if cur_form.can_be_deleted %}del:{{ cur_form.DELETE }}{% endif %}</td>
+        </tr>
+    {% endfor %}
+    <tbody>
+</table>
+
+<input type="submit" action="submit"/>

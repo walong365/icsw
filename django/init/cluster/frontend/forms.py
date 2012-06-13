@@ -12,7 +12,8 @@ import django.core.urlresolvers
 from django.utils.translation import ugettext_lazy as _
 from django.forms.util import ErrorList
 import datetime
-from init.cluster.backbone.models import user, network, network_type, network_device_type
+from init.cluster.backbone.models import user, network, network_type, network_device_type, \
+     device_class, device_location, new_config_type
 from init.cluster.frontend.widgets import simple_select_multiple
 import ipvx_tools
 import process_tools
@@ -185,4 +186,44 @@ class network_device_type_form(django.forms.ModelForm):
             return False
     class Meta:
         model = network_device_type
+        
+class device_location_form(django.forms.ModelForm):
+    def can_be_deleted(self):
+        if self.instance.pk:
+            return False if (self.instance.device_set.all().count()) else True
+        else:
+            # new network, can never be deleted
+            return False
+    def device_list(self):
+        if self.instance.pk:
+            return ", ".join(sorted(self.instance.device_set.all().values_list("name", flat=True)))
+        else:
+            return ""
+    class Meta:
+        model = device_location
+
+class device_class_form(django.forms.ModelForm):
+    def device_list(self):
+        if self.instance.pk:
+            return ", ".join(sorted(self.instance.device_set.all().values_list("name", flat=True)))
+        else:
+            return ""
+    def can_be_deleted(self):
+        if self.instance.pk:
+            return False if (self.instance.device_set.all().count()) else True
+        else:
+            # new network, can never be deleted
+            return False
+    class Meta:
+        model = device_class
+
+class new_config_type_form(django.forms.ModelForm):
+    def can_be_deleted(self):
+        if self.instance.pk:
+            return False if (self.instance.new_config_set.all().count()) else True
+        else:
+            # new network, can never be deleted
+            return False
+    class Meta:
+        model = new_config_type
         
