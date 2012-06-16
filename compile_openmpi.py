@@ -33,7 +33,10 @@ import logging_tools
 import rpm_build_tools
 import subprocess
 import compile_tools
-import cluster_module_tools
+try:
+    import cluster_module_tools
+except ImportError:
+    cluster_module_tools = None
 
 OPENMPI_VERSION_FILE = "/opt/cluster/share/openmpi_versions"
 
@@ -259,8 +262,8 @@ class openmpi_builder(object):
                     '    export PATH',
                     'fi',
                     '# LD_LIBRARY_PATH',
-                    'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib`"; then' % (self.parser.openmpi_dir),
-                    '    LD_LIBRARY_PATH=%s/lib:${LD_LIBRARY_PATH}' % (self.parser.openmpi_dir),
+                    'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib64`"; then' % (self.parser.openmpi_dir),
+                    '    LD_LIBRARY_PATH=%s/lib64:${LD_LIBRARY_PATH}' % (self.parser.openmpi_dir),
                     '    export LD_LIBRARY_PATH',
                     'fi',
                     '',
@@ -310,19 +313,20 @@ class openmpi_builder(object):
                                                           self.parser.options.openmpi_version,
                                                           self.parser.options.release)
         # create cluster module file
-        cmod = cluster_module_tools.cluster_module(name=package_name,
-                                                   version=package_version,
-                                                   release=package_release,
-                                                   description="OpenMPI",
-                                                   #arch=self.parse
-                                                   )
-        cmod.add_env_variable(cluster_module_tools.cluster_module_env(name="PATH",
-                                                                      mode="append",
-                                                                      value="%s/bin" % (self.parser.openmpi_dir)))
-        cmod.add_env_variable(cluster_module_tools.cluster_module_env(name="LD_LIBRARY",
-                                                                      mode="append",
-                                                                      value="%s/lib" % (self.parser.openmpi_dir)))
-        open("%s/cmod" % (self.tempdir), "w").write(cmod.get_xml_representation())
+        if cluster_module_tools:
+            cmod = cluster_module_tools.cluster_module(name=package_name,
+                                                       version=package_version,
+                                                       release=package_release,
+                                                       description="OpenMPI",
+                                                       #arch=self.parse
+                                                       )
+            cmod.add_env_variable(cluster_module_tools.cluster_module_env(name="PATH",
+                                                                          mode="append",
+                                                                          value="%s/bin" % (self.parser.openmpi_dir)))
+            cmod.add_env_variable(cluster_module_tools.cluster_module_env(name="LD_LIBRARY",
+                                                                          mode="append",
+                                                                          value="%s/lib" % (self.parser.openmpi_dir)))
+            open("%s/cmod" % (self.tempdir), "w").write(cmod.get_xml_representation())
         if self.parser.mpi_selector:
             self._create_mpi_selector_file()
         new_p = rpm_build_tools.build_package()
@@ -351,8 +355,9 @@ class openmpi_builder(object):
         if os.path.isfile("%s/%s" % (self.parser.openmpi_dir, info_name)):
             os.unlink("%s/%s" % (self.parser.openmpi_dir, info_name))
         fc_list = [self.parser.openmpi_dir,
-                   "%s/%s:%s/%s" % (self.tempdir, info_name, self.parser.openmpi_dir, info_name),
-                   "*%s/cmod:/opt/cluster/modules/%s" % (self.tempdir, cmod.get_name())]
+                   "%s/%s:%s/%s" % (self.tempdir, info_name, self.parser.openmpi_dir, info_name)]
+        if cluster_module_tools:
+            fc_list.append("*%s/cmod:/opt/cluster/modules/%s" % (self.tempdir, cmod.get_name()))
         if self.parser.mpi_selector:
             fc_list.append("%s/%s/%s:/%s/%s" % (self.tempdir, self.mpi_selector_dir, self.mpi_selector_sh_name,
                                                 self.mpi_selector_dir, self.mpi_selector_sh_name))
@@ -382,5 +387,5 @@ def main():
     my_builder.build_it()
 
 if __name__ == "__main__":
-    #main()
-    print "update to use ***FLAGS=-O{1,2}!"
+    main()
+    #print "update to use ***FLAGS=-O{1,2}!"
