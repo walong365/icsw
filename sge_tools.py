@@ -32,9 +32,9 @@ import logging_tools
 import server_command
 import process_tools
 import zmq
+import copy
 from lxml import etree
-
-SQL_ACCESS = "cluster_full_access"
+from lxml.builder import E
 
 def compress_list(ql, queues = None):
     # node prefix, postfix, start_string, end_string
@@ -122,518 +122,6 @@ def sec_to_str(in_sec):
             out_f = "????"
     return out_f
 
-
-class sge_complex(object):
-    def __init__(self, c_type, name, in_dict, opt_dict):
-        # complex_type, can be
-        # i ..... init
-        # o ..... other (?)
-        # s ..... system
-        self.complex_type = c_type
-        self.name = name
-        self.__opt_dict = opt_dict
-        # in_dict for system (o/s) resources is simply {name: True}
-        if self.complex_type == "i":
-            self.__internal_dict = {}
-            for postfix, default in [("pe"     , "serial"),
-                                     ("num_min", 1       ),
-                                     ("num_max", 1       ),
-                                     ("mt_time", "0:10:0"),
-                                     ("m_time" , "0:10:0")]:
-                self.__internal_dict[postfix] = in_dict.get("%s_%s" % (self.name, postfix), default)
-        else:
-            self.__internal_dict = dict([(k, v) for k, v in in_dict.iteritems()])
-        self.__internal_dict["queues"] = {}
-    def get_complex_type(self):
-        return self.complex_type
-    def __getitem__(self, key):
-        return self.__internal_dict[key]
-    def add_queue_host(self, q_name, h_name):
-        if h_name:
-            self.__internal_dict["queues"].setdefault(q_name, set())
-            if type(h_name) != type(""):
-                self.__internal_dict["queues"][q_name].update(h_name)
-            else:
-                self.__internal_dict["queues"][q_name].add(h_name)
-    def get_queues(self, q_name=""):
-        if q_name:
-            return ", ".join([sub_list for sub_list in logging_tools.compress_list(self["queues"][q_name]).split(", ")])
-        else:
-            return ", ".join([", ".join(["%s@%s" % (q_name, sub_list) for sub_list in logging_tools.compress_list(self["queues"][q_name]).split(", ")]) for q_name in sorted(self["queues"].keys())])
-    def get_waiting(self, j_dict, q_list):
-        # return number of waiting jobs for this complex (wrt to the  queues in q_list)
-        num = 0
-        for job_id, job_stuff in j_dict.iteritems():
-            if not job_stuff.running:
-                if job_stuff.get("hard_req_queue", "") in q_list:
-                    if len([True for hreq in job_stuff.get("hard_request", []) if hreq["name"] == self.name]):
-                        num += 1
-        return num
-    def get_running(self, j_dict, q_list):
-        # return number of running jobs for this complex (wrt to the  queues in q_list)
-        num = 0
-        for job_id, job_stuff in j_dict.iteritems():
-            if job_stuff.running:
-                if job_stuff.get_running_queue() in q_list:
-                    if len([True for hreq in job_stuff.get("hard_request", []) if hreq["name"] == self.name]):
-                        num += 1
-        return num
-    def get_hq_list(self, h_dict, q_list):
-        if q_list == [""]:
-            q_list = sorted(self["queues"].keys())
-        ret_list = []
-        for q_name in q_list:
-            for h_name in self["queues"][q_name]:
-                act_h = h_dict[h_name]
-                ret_list.append((act_h.get_queue_state(q_name),
-                                 act_h.get_slots_used(q_name),
-                                 act_h.get_slots_total(q_name)))
-        return ret_list
-    def _OLD_add_queue(self, q_name):
-        if q_name not in self.__internal_dict["queues"]:
-            self.__internal_dict["queues"].append(q_name)
-    def get_internal_dict(self):
-        return self.__internal_dict
-    def get(self, key, default):
-        return self.__internal_dict.get(key, default)
-    def get_name(self):
-        return self.name
-    def get_resources(self):
-        if self.complex_type == "i":
-            return [self.name]
-        else:
-            return [x for x in self.__internal_dict.keys()]
-    def set_form_str(self, fl, opt_dict={}):
-        if opt_dict.get("show_per_queue_stat", 0):
-            headers = ["Complex", "Queue"]
-            fl.set_format_string(1, "s", "")
-            start_idx = 3
-        else:
-            headers = ["Complex"]
-            start_idx = 2
-        headers.extend(["pe-list", "#minslots", "#maxslots", "time", "time/node", "wait", "run", "#total", "#up", "#avail"])
-        fl.set_format_string(start_idx    , "d", "")
-        fl.set_format_string(start_idx + 1, "d", "")
-        fl.set_format_string(start_idx + 2, "s", "")
-        fl.set_format_string(start_idx + 3, "s", "")
-        num_dec = 5
-        if self.__opt_dict.get("check_serial_jobs", 0):
-            headers.extend(["#s", "#sa"])
-            num_dec += 2
-        #num_dec += 1
-        if opt_dict.get("detailed_error_stats", 0):
-            headers.extend(["#alarm", "#Err", "#unk", "#Sub",  "#sus", "#dis"])
-            num_dec += 6
-        else:
-            headers.extend(["#alarm", "#EuSsd"])
-            num_dec += 2
-        for i in range(num_dec):
-            fl.set_format_string(start_idx + 4 + i, "d", "")
-        if opt_dict.get("show_per_queue_stat", 0):
-            headers.extend(["Nodes"])
-        else:
-            headers.extend(["Queues"])
-        fl.set_header_string(0, headers)
-    def get_repr_parts(self, queue_dict, job_r_dict, job_w_dict, opt_dict={}):
-        # check_serial_jobs is no longer supported
-        all_q = sorted(queue_dict.keys())
-        ql_uc = [q for q in all_q if self.name in queue_dict[q].i_cs]
-        sge_queues = []
-        for sge_queue in [x.split("@")[0] for x in ql_uc if x.count("@")]:
-            if sge_queue not in sge_queues:
-                sge_queues.append(sge_queue)
-        sge_queues.sort()
-        if opt_dict.get("show_per_queue_stat", False):
-            search_queues = sge_queues + ["---"]
-        else:
-            search_queues = [""]
-        ret_fields = []
-        for search_queue in search_queues:
-            if search_queue:
-                act_ql_uc = [x for x in ql_uc if x.split("@")[0] == search_queue]
-                act_hosts = [x.split("@")[1] for x in ql_uc if x.split("@")[0] == search_queue]
-            else:
-                act_ql_uc = ql_uc
-                act_hosts = ql_uc
-            #ql_s          = [q for q in act_ql_uc if "serial"  in queue_dict[q].i_cs]
-            alarm_list    = [x for x in act_ql_uc if "a" in queue_dict[x].q_s]
-            ql_up      = [x for x in act_ql_uc if "u" not in queue_dict[x].q_s]
-            if opt_dict.get("detailed_error_stats", False):
-                err_list      = [x for x in act_ql_uc if "E" in queue_dict[x].q_s]
-                unk_list      = [x for x in act_ql_uc if "u" in queue_dict[x].q_s]
-                sub_list      = [x for x in act_ql_uc if "S" in queue_dict[x].q_s]
-                susp_list     = [x for x in act_ql_uc if "s" in queue_dict[x].q_s]
-                disabled_list = [x for x in act_ql_uc if "d" in queue_dict[x].q_s]
-                ql_avail      = [x for x in ql_up   if x not in sub_list and x not in disabled_list and x not in susp_list and x not in err_list]
-            else:
-                err_list   = [x for x in act_ql_uc if [1 for y in ["E", "u", "S", "s", "d"] if y in queue_dict[x].q_s]]
-                ql_avail   = [x for x in ql_up   if x not in err_list]
-            #ql_s_up       = [x for x in ql_s  if "u" not in queue_dict[x].q_s]
-            #ql_s_avail = [x for x in ql_s_up if x not in sub_list and x not in disabled_list and x not in susp_list]
-            if search_queue:
-                for ji, act_j in job_r_dict.iteritems():
-                    for dq in [x for x in act_j.queue_dict.keys() if self.name in queue_dict[x].i_cs and x in ql_avail and act_j.queue == search_queue]:
-                        ql_avail.remove(dq)
-                if search_queue == "---":
-                    num_r = len([True for j in job_r_dict.keys() if self.name in job_r_dict[j].get_complex().split(",") and job_r_dict[j].get_queue().split("@")[0] not in search_queues])
-                    num_w = len([True for j in job_w_dict.keys() if self.name in job_w_dict[j].get_complex().split(",") and job_w_dict[j].get_queue().split("@")[0] not in search_queues])
-                else:
-                    #print search_queue, [job_r_dict[j].get_queue().split("@")[0] for j in job_r_dict.keys()]
-                    num_r = len([True for j in job_r_dict.keys() if self.name in job_r_dict[j].get_complex().split(",") and job_r_dict[j].get_queue().split("@")[0] == search_queue])
-                    num_w = len([True for j in job_w_dict.keys() if self.name in job_w_dict[j].get_complex().split(",") and job_w_dict[j].get_queue().split("@")[0] == search_queue])
-            else:
-                for ji, act_j in job_r_dict.iteritems():
-                    for dq in [x for x in act_j.queue_dict.keys() if self.name in queue_dict[x].i_cs and x in ql_avail]:
-                        ql_avail.remove(dq)
-                #for dq in [x for x in act_j.queue_dict.keys() if self.name in queue_dict[x].i_cs and x in ql_s_avail]:
-                #    ql_s_avail.remove(dq)
-                num_r = len([True for j in job_r_dict.keys() if self.name in job_r_dict[j].get_complex().split(",")])
-                num_w = len([True for j in job_w_dict.keys() if self.name in job_w_dict[j].get_complex().split(",")])
-            if search_queue:
-                ret_f = [self.name, search_queue]
-            else:
-                ret_f = [self.name]
-            ret_f.extend([self.__internal_dict.get("pe", "---"),
-                          self.__internal_dict.get("num_min", "-"),
-                          self.__internal_dict.get("num_max", "-"),
-                          sec_to_str(str_to_sec(self.__internal_dict.get("mt_time", "---"))),
-                          sec_to_str(str_to_sec(self.__internal_dict.get("m_time", "---"))),
-                          num_w,
-                          num_r,
-                          len(act_ql_uc),
-                          len(ql_up),
-                          len(ql_avail)])
-            #if self.__opt_dict.get("check_serial_jobs", 0):
-            #    ret_f.extend([len(ql_s), len(ql_s_avail)])
-            if act_hosts or opt_dict.get("show_empty_complexes", False):
-                if opt_dict.get("detailed_error_stats", 0):
-                    ret_f.extend([len(alarm_list), len(err_list), len(unk_list), len(sub_list), len(susp_list), len(disabled_list), compress_list(act_hosts)])
-                else:
-                    ret_f.extend([len(alarm_list), len(err_list), compress_list(act_hosts)])
-                ret_fields.append(ret_f)
-        return ret_fields
-    def __repr__(self):
-        return "complex_type %s, complex_name %s, keys: %s" % (self.complex_type,
-                                                               self.name,
-                                                               ",".join(self.__internal_dict.keys()))
-    
-class sge_host(object):
-    def __init__(self, top_el):
-        self.name = top_el.attrib["name"]
-        self.__value_dict = {}
-        for sub_el in top_el.xpath("resourcevalue[@dominance='hl']"):
-            self[sub_el.attrib["name"]] = sub_el.text
-        for node_el in top_el.xpath("queue"):
-            self.__value_dict.setdefault("queues", {})[node_el.attrib["name"]] = dict([(
-                {"type_string"  : "type",
-                 "state_string" : "status",
-                 "slots"        : "total",
-                 "slots_used"   : "used"}.get(q_el.attrib["name"], q_el.attrib["name"]), q_el.text or "-") for q_el in node_el.xpath("queuevalue")])
-    def _str_to_memory(self, in_str):
-        return int(float(in_str[:-1]) * {"k" : 1024,
-                                         "m" : 1024 * 1024,
-                                         "g" : 1024 * 1024 * 1024,
-                                         "t" : 1024 * 1024 * 1024 * 0124}.get(in_str[-1].lower(), 1.))
-    def get_value_dict(self):
-        return self.__value_dict
-    def _memory_to_str(self, in_val):
-        pf_list = ["", "k", "M", "G", "T"]
-        act_pf = pf_list.pop(0)
-        while in_val > 1024:
-            act_pf = pf_list.pop(0)
-            in_val /= 1024.
-        return "%.2f %sB" % (in_val,
-                             act_pf)
-    def keys(self):
-        return self.__value_dict.keys()
-    def has_key(self, key):
-        return self.__value_dict.has_key(key)
-    def get(self, key, default_value):
-        return self.__value_dict.get(key, default_value)
-    def __setitem__(self, key, value):
-        if key.split("_")[-1] in ["total", "used", "free"]:
-            self.__value_dict[key] = self._str_to_memory(value)
-        elif key in ["num_proc"]:
-            self.__value_dict[key] = int(value.split(".")[0])
-        elif key in ["arch", "m_topology", "m_topology_inuse"]:
-            self.__value_dict[key] = value
-        else:
-            self.__value_dict[key] = float(value)
-    def __getitem__(self, key):
-        return self.__value_dict[key]
-    def get_complex_info(self, act_queue):
-        cvs = act_queue["complex_values"]
-        c_values = cvs.get("", {})
-        for key, value in cvs.get(self.name, {}).iteritems():
-            c_values[key] = value
-        return ",".join(sorted(c_values.keys())) or "-"
-    def get_memory_info(self, key):
-        if self.has_key(key):
-            return self._memory_to_str(self[key])
-        else:
-            return "???"
-    def get_queue_type(self, q_name, long=False):
-        if long:
-            return ",".join(["(%s)%s" % (act_st, {"B" : "Batch",
-                                                  "I" : "Interactive",
-                                                  "C" : "Checkpointing",
-                                                  "P" : "Parallel",
-                                                  "T" : "Transfer"}[act_st][1:]) for act_st in self["queues"][q_name]["type"]])
-        else:
-            return self["queues"][q_name]["type"]
-    def get_queue_state(self, q_name, long=False):
-        if long:
-            return ",".join(["(%s)%s" % (act_st, {"-" : "-",
-                                                  "u" : "unknown",
-                                                  "a" : "alarm",
-                                                  "A" : "alarm",
-                                                  "C" : "calendar suspended",
-                                                  "s" : "suspended",
-                                                  "S" : "subordinate",
-                                                  "d" : "disabled",
-                                                  "D" : "disabled",
-                                                  "E" : "error"}[act_st][1:]) for act_st in self["queues"][q_name]["status"]])
-        else:
-            return self["queues"][q_name]["status"]
-    def get_avg_load(self, q_name):
-        return "%.2f" % (self.get("load_avg", 0.))
-    def get_slots_used(self, q_name):
-        return self["queues"][q_name]["used"]
-    def get_slots_total(self, q_name):
-        return self["queues"][q_name]["total"]
-    def get_user_lists(self, act_q):
-        pos_list = " or ".join(act_q["user_lists"].get("", []) + act_q["user_lists"].get(self.name, []))
-        neg_list = " or ".join(act_q["xuser_lists"].get("", []) + act_q["xuser_lists"].get(self.name, []))
-        return self._get_pos_neg_result(pos_list, neg_list)
-    def get_project_lists(self, act_q):
-        pos_list = " or ".join(act_q["projects"].get("", []) + act_q["projects"].get(self.name, []))
-        neg_list = " or ".join(act_q["xprojects"].get("", []) + act_q["xprojects"].get(self.name, []))
-        return self._get_pos_neg_result(pos_list, neg_list)
-    def _get_pos_neg_result(self, p_list, n_list):
-        if not p_list and not n_list:
-            return "all"
-        elif not n_list:
-            return p_list
-        elif not p_list:
-            return "not (%s)" % (n_list)
-        else:
-            return "%s and not (%s)" % (p_list, n_list)
-    def get_seq_no(self, act_q):
-        return int((act_q["seq_no"].get(self.name, act_q["seq_no"][""]))[0])
-    def get_init_complexes(self, act_q, i_complexes):
-        c_list = act_q["complex_values"].get("", {}).keys() + act_q["complex_values"].get(self.name, {}).keys()
-        return ",".join(sorted(set([c_name for c_name in c_list if c_name in i_complexes])))
-    def get_pe_list(self, act_q):
-        return ",".join(sorted(set(act_q["pe_list"].get("", []) + act_q["pe_list"].get(self.name, []))))
-    def get_job_info(self, job_dict, j_list):
-        if j_list:
-            # output dict
-            loc_dict = {}
-            for j_id, j_type in sorted(j_list):
-                job = job_dict[j_id]
-                # old shitty code, in fact jobs where the pe has a controlling master defined have one slot too much
-                # jobs with a controlling master have 2 mem_usage fields, other only 1
-                #if job.has_key("mem_usage"):
-                #    num_mem_usage = len(job["mem_usage"])
-                #else:
-                #    num_mem_usage = 1
-                num_slots = len(job["master"])
-                loc_dict.setdefault(j_id, {"owner"   : job["JB_owner"],
-                                           "state"   : job["state"],
-                                           "slots"   : num_slots,
-                                           # buggy, FIXME, we have to use pe-info
-                                           #"cmaster" : True if num_mem_usage == 2 else False,
-                                           "list"    : []})
-                if num_slots > 1:
-                    loc_dict[j_id]["list"].append(j_type)
-                else:
-                    loc_dict[j_id]["list"].append("SINGLE")
-            j_ids = sorted(loc_dict.keys())
-            ret_list = []
-            for j_id in j_ids:
-                job = loc_dict[j_id]
-                # FIXME
-                #if job["cmaster"] and "SLAVE" in job["list"]:
-                #    # remove one slave for jobs with an controlling master
-                #    job["list"].remove("SLAVE")
-                type_list = ["%s%s" % ("%d x " % (s_count) if s_count > 1 else "", s_type) for s_count, s_type in [(job["list"].count(a_type), a_type) for a_type in ["MASTER", "SLAVE", "SINGLE"]] if s_count]
-                job_spec = "%s %s (%d) %s" % (j_id,
-                                              job["owner"],
-                                              job["slots"],
-                                              ", ".join(type_list))
-                
-                if "s" in job["state"].lower():
-                    job_spec = "[%s]" % (job_spec)
-                ret_list.append(job_spec)
-            return ",".join(ret_list)
-        else:
-            return "-"
-    def show(self):
-        pprint.pprint(self.__value_dict)
-        
-class sge_job(object):
-    def __init__(self, job_el):
-        # mapping:
-        # JB_name        : name
-        # JB_owner       : user
-        # tasks          : if set task id
-        # JAT_start_time : job starttime
-        # we store everything as string, conversion to int / float only on the frontend or for sorting
-        # running or pending
-        prim_state = job_el.attrib["state"]
-        self.running = {"running" : True,
-                        "pending" : False}[prim_state]
-        # store values
-        self.__value_dict = {}
-        for sub_el in job_el:
-            self.add_tag(sub_el)
-    def get_id(self):
-        if self.has_key("tasks"):
-            return "%s.%s" % (self["JB_job_number"], self["tasks"])
-        else:
-            return self["JB_job_number"]
-    def add_tag(self, sub_el):
-        tag_name = sub_el.tag
-        if sub_el.attrib:
-            sub_el.attrib["value"] = sub_el.text
-            self.__value_dict.setdefault(tag_name, []).append(sub_el.attrib)
-        else:
-            if tag_name in ["queue_name", "master", "mem_usage"]:
-                self.__value_dict.setdefault(tag_name, []).append(sub_el.text)
-            elif tag_name.endswith("time"):
-                self.__value_dict[tag_name] = self._sgetime_to_sec(sub_el.text)
-            elif tag_name.startswith("predecessor_jobs"):
-                self.__value_dict.setdefault(tag_name, []).append(sub_el.text)
-            else:
-                self.__value_dict[tag_name] = sub_el.text
-    def get(self, key, def_value):
-        return self.__value_dict.get(key, def_value)
-    def __getitem__(self, key):
-        return self.__value_dict[key]
-    def keys(self):
-        return self.__value_dict.keys()
-    def has_key(self, key):
-        return self.__value_dict.has_key(key)
-    def _sgetime_to_sec(self, in_str):
-        return datetime.datetime.strptime(in_str, "%Y-%m-%dT%H:%M:%S")
-    def merge_job(self, other_job):
-        for key in other_job.keys():
-            if not self.has_key(key):
-                self.__value_dict[key] = other_job[key]
-            elif key in ["queue_name", "master", "mem_usage"]:
-                # as of SGE 6.1u4 (?) we have only one mem_usage per node
-                self.__value_dict[key].extend(other_job[key])
-    def get_state(self, long=False):
-        if long:
-            return ",".join(["(%s)%s" % (act_st, {"q" : "queued",
-                                                  "d" : "deleted",
-                                                  "h" : "hold",
-                                                  "r" : "running",
-                                                  "R" : "Restarted",
-                                                  "s" : "suspended",
-                                                  "S" : "Subordinated",
-                                                  "t" : "transfering",
-                                                  "T" : "Threshold",
-                                                  "w" : "waiting",
-                                                  "o" : "orphaned"}[act_st][1:]) for act_st in self["state"]])
-        else:
-            return self["state"]
-    def get_pe_info(self, pe_type):
-        # can be grantet_PE or granted_pe
-        pe_info = self.get("%s_PE" % (pe_type), None) or self.get("%s_pe" % (pe_type), None)
-        if pe_info:
-            # simplify it
-            pe_info = pe_info[0]
-            return "%s(%s)" % (pe_info["name"],
-                               pe_info["value"])
-        else:
-            return "-"
-    def get_init_requests(self, compl_dict):
-        own_reqs = [stuff["name"] for stuff in self.get("hard_request", []) if stuff["value"].lower() == "true"]
-        init_compls = [key for key, value in compl_dict.iteritems() if value.complex_type == "i"]
-        return [i_name for i_name in init_compls if i_name in own_reqs]
-    def get_running_queue(self):
-        return [q_name.split("@")[0] for q_name, q_type in zip(self["queue_name"], self["master"]) if q_type == "MASTER"][0]
-    def get_master_node(self):
-        return [q_name.split("@")[1] for q_name, q_type in zip(self["queue_name"], self["master"]) if q_type == "MASTER"][0]
-    def get_requested_queue(self):
-        return self.get("hard_req_queue", "---")
-    def get_running_nodes(self):
-        # returns a beautified list of hosts, MASTER host is first
-        master_qs = [q_name.split("@")[1].split(".")[0] for q_name, q_type in zip(self["queue_name"], self["master"]) if q_type == "MASTER"]
-        slave_qs = [q_name.split("@")[1].split(".")[0] for q_name, q_type in zip(self["queue_name"], self["master"]) if q_type == "SLAVE"]
-        return ",".join([part for part in [logging_tools.compress_list(master_qs, separator=","),
-                                           logging_tools.compress_list(slave_qs, separator=",")] if part.strip()])
-    def get_load_info(self, qhost_dict):
-        node_names = set([q_name.split("@")[1].split(".")[0] for q_name in self["queue_name"]])
-        load_list = []
-        for n_name in node_names:
-            if qhost_dict.has_key(n_name):
-                if qhost_dict[n_name].has_key("load_avg"):
-                    load_list.append(qhost_dict[n_name]["load_avg"])
-        if load_list:
-            mean_load = sum(load_list) / len(load_list)
-            num_nodes = len(load_list)
-            if num_nodes == 1:
-                eff = 100
-            else:
-                max_load = max(load_list)
-                if max_load:
-                    eff = int((num_nodes / (max_load * float(num_nodes - 1)) * mean_load + 1./float(1 - num_nodes)) * 100)
-                else:
-                    eff = 0
-            return "%.2f (%3d %%)" % (mean_load, eff)
-        else:
-            return "???"
-        print load_list
-    def get_start_time(self):
-        s_time = self["JAT_start_time"]
-        return logging_tools.get_relative_dt(s_time)
-    def get_queue_time(self):
-        q_time = self["JB_submission_time"]
-        return logging_tools.get_relative_dt(q_time)
-    def get_run_time(self):
-        # returns time running
-        run_time = abs(datetime.datetime.now() - self["JAT_start_time"])
-        days = run_time.days
-        secs = run_time.seconds
-        return sec_to_str(24 * 3600 * days + secs)
-    def get_wait_time(self):
-        # returns time waiting in queue
-        run_time = abs(datetime.datetime.now() - self["JB_submission_time"])
-        days = run_time.days
-        secs = run_time.seconds
-        return sec_to_str(24 * 3600 * days + secs)
-    def get_left_time(self):
-        h_rt_req = [stuff for stuff in self.get("hard_request", []) if stuff["name"].lower() == "h_rt"]
-        if h_rt_req:
-            run_time = abs(datetime.datetime.now() - self["JAT_start_time"])
-            h_rt = datetime.timedelta(0, int(h_rt_req[0]["value"]))
-            left_time = abs(run_time - h_rt)
-            return sec_to_str(left_time.days * 24 * 3600 + left_time.seconds)
-        else:
-            return "???"
-    def get_h_rt_time(self):
-        h_rt_req = [stuff for stuff in self.get("hard_request", []) if stuff["name"].lower() == "h_rt"]
-        if h_rt_req:
-            try:
-                h_rt = datetime.timedelta(0, int(h_rt_req[0]["value"]))
-            except:
-                h_rt = datetime.timedelta(3600)
-            return sec_to_str(h_rt.days * 24 * 3600 + h_rt.seconds)
-        else:
-            return "???"
-    def get_priority(self):
-        return "%.4f" % (float(self["JAT_prio"]))
-    def get_dependency_info(self):
-        if self.has_key("predecessor_jobs"):
-            return "%d: %s" % (len(self["predecessor_jobs"]),
-                               ",".join(sorted(self["predecessor_jobs"])))
-        else:
-            return ""
-    def show(self):
-        pprint.pprint(self.__value_dict)
-
 class sge_info(object):
     def __init__(self, **kwargs):
         """ arguments :
@@ -678,15 +166,36 @@ class sge_info(object):
         else:
             logging_tools.my_syslog("[si] %s" % (what), log_level)
     def __getitem__(self, key):
-        return self.__act_dicts[key]
+        #return self.__act_dicts[key]
+        #print etree.tostring(self.__tree, pretty_print=True)
+        return self.__tree.find(key)
+    def get_tree(self):
+        return self.__tree
     def get(self, key, def_value):
         return self.__act_dicts.get(key, def_value)
+    def get_run_time(self, cur_time):
+        # returns time running
+        run_time = abs(datetime.datetime.now() - cur_time)
+        days = run_time.days
+        secs = run_time.seconds
+        return sec_to_str(24 * 3600 * days + secs)
+    def get_left_time(self, start_time, h_rt):
+        if h_rt:
+            run_time = abs(datetime.datetime.now() - start_time)
+            left_time = abs(run_time - datetime.timedelta(0, int(h_rt)))
+            return sec_to_str(left_time.days * 24 * 3600 + left_time.seconds)
+        else:
+            return "???"
+    def get_h_rt_time(self, h_rt):
+        if h_rt:
+            h_rt = datetime.timedelta(0, int(h_rt))
+            return sec_to_str(h_rt.days * 24 * 3600 + h_rt.seconds)
+        else:
+            return "???"
     def _init_update(self, start_dict):
-        self.__upd_dict = dict([(key, 0.) for key in self.__valid_dicts])
-        self.__act_dicts = dict([(key, {}) for key in self.__valid_dicts])
-        for key, value in start_dict.iteritems():
-            self.__act_dicts[key] = value
-            self.__upd_dict[key] = time.time()
+        self.__tree = E.rms_info()
+        for key in self.__valid_dicts:
+            self.__tree.append(getattr(E, key)())
     def get_updated_dict(self, dict_name, **kwargs):
         if self._check_for_update(dict_name):
             self.__act_dicts[dict_name] = self.__update_call_dict[dict_name]()
@@ -725,11 +234,9 @@ class sge_info(object):
             except:
                 pass
             else:
-                for key in server_update:
-                    full_key = "sge:%s" % (key)
-                    if full_key in srv_reply:
-                        self.__act_dicts[key] = srv_reply[full_key]
-                        dicts_to_update.remove(key)
+                if "sge" in srv_reply:
+                    self.__tree = srv_reply["sge"][0]
+                    dicts_to_update = []
             e_time = time.time()
             if self.__verbose > 0:
                 self.log("%s (server %s) took %s" % (", ".join(server_update),
@@ -737,7 +244,10 @@ class sge_info(object):
                                                      logging_tools.get_diff_time_str(e_time - s_time)))
         for dict_name in dicts_to_update:
             s_time = time.time()
-            self.__act_dicts[dict_name] = self.__update_call_dict[dict_name]()
+            new_el = getattr(E, dict_name)(last_update="%d" % (time.time()))
+            self.__tree.append(new_el)
+            new_el.append(self.__update_call_dict[dict_name]())
+            #self.__act_dicts[dict_name] = self.__update_call_dict[dict_name]()
             e_time = time.time()
             if self.__verbose > 0:
                 self.log("%s (direct) took %s" % (dict_name,
@@ -773,11 +283,12 @@ class sge_info(object):
                 self.__sge_dict["SGE_ARCH"] = c_out
     def _check_for_update(self, d_name, force=False):
         act_time = time.time()
-        if not self.__upd_dict[d_name] or abs(self.__upd_dict[d_name] - act_time) > self.__timeout_dicts[d_name] or force:
-            do_upd = True
-            self.__upd_dict[d_name] = act_time
-        else:
-            do_upd = False
+        cur_el = self.__tree.find(d_name)
+        last_time = int(cur_el.get("last_update", "0"))
+        do_upd = abs(last_time - act_time) > self.__timeout_dicts[d_name] or force
+        if do_upd:
+            # remove previous xml subtree
+            cur_el.getparent().remove(cur_el)
         return do_upd
     def _get_com_name(self, c_name):
         return "/%s/bin/%s/%s" % (self.__sge_dict["SGE_ROOT"],
@@ -796,113 +307,172 @@ class sge_info(object):
                                                            logging_tools.get_diff_time_str(e_time - s_time),
                                                            c_out))
         if kwargs.get("simple_split", False) and not c_stat:
-            c_out = [line.split(None, 1) for line in c_out.split("\n")]
+            c_out = [line.split(None, 1) for line in c_out.split("\n") if len(line.split(None, 1)) == 2]
         return c_stat, c_out
     def _check_queueconf_dict(self):
-        qconf_dict = {}
+        all_queues = E.queues()
         qconf_com = self._get_com_name("qconf")
-        c_stat, c_out = self._execute_command("%s -sql" % (qconf_com),
+        c_stat, c_out = self._execute_command("%s -sq \*" % (qconf_com),
                                               simple_split=True)
         if not c_stat:
-            c_stat, c_out = self._execute_command("%s -sq %s" % (qconf_com,
-                                                                 " ".join([line[0] for line in c_out])),
-                                                  simple_split=True)
-            if not c_stat:
-                # sanitize act_q_dict
-                act_q_dict = None
-                # interpret queueconf
-                act_q_name = ""
-                for key, value in c_out:
-                    if key == "qname":
-                        if act_q_name:
-                            qconf_dict[act_q_name] = act_q_dict
-                        act_q_name, act_q_dict = (value, {})
-                    act_q_dict[key] = value
-                if act_q_name:
-                    qconf_dict[act_q_name] = act_q_dict
-        return qconf_dict
+            cur_q = None
+            for key, value in c_out:
+                if key == "qname":
+                    if cur_q is not None:
+                        all_queues.append(cur_q)
+                    cur_q = E.queue(name=value)
+                else:
+                    cur_q.append(getattr(E, key)(value))
+            all_queues.append(cur_q)
+        return all_queues
     def _check_hostgroup_dict(self):
-        hgroup_dict = {}
         qconf_com = self._get_com_name("qconf")
         c_stat, c_out = self._execute_command("%s -shgrpl" % (qconf_com))
-        self.__act_dicts["hostgroup"] = {}
+        cur_hgroups = E.hostgroups()
         if not c_stat:
             for hgrp_name in c_out.split("\n"):
                 c_stat, c_out = self._execute_command("%s -shgrp %s" % (qconf_com,
                                                                         hgrp_name),
                                                       simple_split=True)
                 if not c_stat:
-                    hgroup_dict[hgrp_name] = dict([(key, value) for key, value in c_out])
-        return hgroup_dict
+                    new_hg = E.hostgroup(name=c_out.pop(0)[1])
+                    for host in c_out.pop(0)[1].split():
+                        new_hg.append(E.host(host))
+                    cur_hgroups.append(new_hg)
+        return cur_hgroups
     def _check_complexes_dict(self):
-        complex_dict = {}
         qconf_com = self._get_com_name("qconf")
         c_stat, c_out = self._execute_command("%s -sc" % (qconf_com))
+        all_complexes = E.complexes()
         if not c_stat:
-            for line in c_out.split("\n"):
-                line = line.strip()
-                if not line.startswith("#"):
-                    for compl_name in line.split()[:2]:
-                        if compl_name.strip() and not complex_dict.has_key(compl_name):
-                            complex_dict[compl_name] = sge_complex("o" if compl_name in ["hostname", "qname", "q", "h"] else "s", compl_name, {compl_name : True}, {})
-        return complex_dict
+            for line_parts in [s_line.strip().split() for s_line in c_out.split("\n") if not s_line.strip().startswith("#")]:
+                all_complexes.append(E.complex(line_parts[0], short=line_parts[1]))
+        return all_complexes
     def _check_qhost_dict(self):
         qstat_com = self._get_com_name("qhost")
-        c_stat, c_out = self._execute_command("%s -F -q -xml" % (qstat_com))
-        qhost_dict = {}
-        xml_tree = etree.fromstring(c_out)
-        for cur_queue in xml_tree.xpath(".//host[not(@name='global')]"):
-            act_host = sge_host(cur_queue)
-            qhost_dict[act_host.name] = act_host
-        return qhost_dict
+        c_stat, c_out = self._execute_command("%s -F -q -xml -j" % (qstat_com))
+        all_qhosts = etree.fromstring(c_out)
+        for cur_host in all_qhosts.xpath(".//host"):#[not(@name='global')]"):
+            cur_host.attrib["short_name"] = cur_host.attrib["name"].split(".")[0]
+        for cur_job in all_qhosts.xpath(".//job"):
+            task_node = cur_job.find("jobvalue[@name='taskid']")
+            if task_node is not None:
+                cur_job.attrib["full_id"] = "%s.%s" % (cur_job.attrib["name"], task_node.text)
+            else:
+                cur_job.attrib["full_id"] = cur_job.attrib["name"]
+        for state_el in all_qhosts.xpath(".//queue/queuevalue[@name='state_string']"):
+            state_el.addnext(E.queuevalue(",".join(["(%s)%s" % (
+                cur_state,
+                {"-" : "-",
+                 "u" : "unknown",
+                 "a" : "alarm",
+                 "A" : "alarm",
+                 "C" : "calendar suspended",
+                 "s" : "suspended",
+                 "S" : "subordinate",
+                 "d" : "disabled",
+                 "D" : "disabled",
+                 "E" : "error"}[cur_state][1:]) for cur_state in state_el.text or "-"]),
+                                          name="long_state_string"))
+        for qtype_el in all_qhosts.xpath(".//queue/queuevalue[@name='qtype_string']"):
+            qtype_el.addnext(E.queuevalue(",".join(["(%s)%s" % (
+                cur_qtype,
+                {"B" : "Batch",
+                 "I" : "Interactive",
+                 "C" : "Checkpointing",
+                 "P" : "Parallel",
+                 "T" : "Transfer"}[cur_qtype][1:]) for cur_qtype in qtype_el.text or "-"]),
+                                          name="long_qtype_string"))
+        return all_qhosts
     def _check_qstat_dict(self):
         qstat_com = self._get_com_name("qstat")
         # -u * is important to get all jobs
         c_stat, c_out = self._execute_command("%s -u \* -r -t -ext -urg -pri -xml" % (qstat_com))
-        job_dict = {}
-        xml_tree = etree.fromstring(c_out)
-        for cur_job in xml_tree.xpath(".//job_list"):
-            act_job = sge_job(cur_job)
-            job_dict[act_job.get_id()] = act_job
-        self.__act_dicts["qstat"] = job_dict
-        return job_dict
-    def _parse_sge_values(self, old_dict, has_values):
-        if type(old_dict) == type({}):
+        all_jobs = etree.fromstring(c_out)
+        # modify job_ids
+        for cur_job in all_jobs.findall(".//job_list"):
+            cur_job.attrib["full_id"] = "%s%s" % (
+                cur_job.findtext("JB_job_number"),
+                ".%s"  % (cur_job.findtext("tasks")) if cur_job.find("tasks") is not None else "")
+        for state_el in all_jobs.xpath(".//job_list/state"):
+            state_el.addnext(E.state_long(",".join(["(%s)%s" % (
+                cur_state,
+                {"q" : "queued",
+                 "d" : "deleted",
+                 "h" : "hold",
+                 "r" : "running",
+                 "R" : "Restarted",
+                 "s" : "suspended",
+                 "S" : "Subordinated",
+                 "t" : "transfering",
+                 "T" : "Threshold",
+                 "w" : "waiting",
+                 "o" : "orphaned"}[cur_state][1:]) for cur_state in state_el.text or "-"])))
+        for node_name, attr_name in [("JAT_start_time", "start_time"),
+                                     ("JB_submission_time", "submit_time")]:
+            for time_el in all_jobs.findall(".//%s" % (node_name)):
+                time_el.getparent().attrib[attr_name] = datetime.datetime.strptime(time_el.text, "%Y-%m-%dT%H:%M:%S").strftime("%s")
+        return all_jobs
+    def _parse_sge_values(self, q_el, key_name, has_values):
+        cur_el = q_el.find(key_name)
+        if "parsed" in cur_el.attrib:
             # already transformed
-            return old_dict
+            return
+        cur_el.attrib["parsed"] = "1"
+        #print "*", q_el, key_name, has_values, cur_el, "parsed" in cur_el.attrib
+        #old_dict = q_el[key_name]
         # parse values of form GLOBAL,[node_spec=LOCAL],...
-        act_vals = []
-        for part in old_dict.split("["):
-            if part.endswith(","):
-                part = part[:-1]
-            if part.endswith("]"):
-                part = part[:-1]
-            act_vals.append(part)
-        all_args = act_vals.pop(0)
-        sub_dict = {"" : all_args}
-        for act_val in act_vals:
-            node_name, args = act_val.split("=", 1)
-            if node_name.startswith("@"):
-                node_names = self["hostgroup"][node_name]["hostlist"].split()
-            else:
-                node_names = [node_name]
-            for node_name in node_names:
-                sub_dict[node_name.split(".")[0]] = args
+        c_split = cur_el.text.split(",[", 1)
+        global_part = c_split.pop(0)
         if has_values:
-            # parse arguments
-            for key, value in sub_dict.iteritems():
-                sub_dict[key] = dict([(s_key, s_value) for s_key, s_value in [entry.split("=", 1) for entry in value.split(",") if entry.count("=")]])
+            if global_part != "NONE":
+                cur_el.extend([E.conf_var(name=s_part.split("=", 1)[0], value=s_part.split("=", 1)[1]) for s_part in global_part.split(",")])
         else:
-            for key, value in sub_dict.iteritems():
-                sub_dict[key] = [entry for entry in value.split() if entry not in ["NONE"]]
-        return sub_dict
-    def expand_host_list(self, q_name, shorten_names=False):
+            if global_part != "NONE":
+                cur_el.extend([E.conf_var(name=s_part) for s_part in global_part.split()])
+        if c_split:
+            c_split = c_split[0][:-1].split("],[")
+            for node_spec in c_split:
+                node_part, local_part = node_spec.split("=", 1)
+                s_node = node_part.split(".")[0]
+                if has_values:
+                    cur_el.extend([E.conf_var(host=s_node, name=s_part.split("=", 1)[0], value=s_part.split("=", 1)[1]) for s_part in local_part.split(",")])
+                else:
+                    cur_el.extend([E.conf_var(host=s_node, name=s_part) for s_part in local_part.split(",")])
+        # remove text
+        cur_el.text = None
+    def get_queue(self, q_id, default=None):
+        return self.__queue_lut.get(q_id, default)
+    def get_host(self, h_id, default=None):
+        return self.__host_lut.get(h_id, default)
+    def get_job(self, j_id, default=None):
+        return self.__job_lut.get(j_id, default)
+    def build_luts(self):
+        self.__job_lut = dict([(cur_job.get("full_id"), cur_job) for cur_job in self["qstat"].findall(".//job_list")])
+        self.__queue_lut = {}
+        for queue in self["queueconf"].findall(".//queue"):
+            self.__queue_lut[queue.get("name")] = queue
+            for exp_name, with_values in [("complex_values", True ),
+                                          ("pe_list"       , False),
+                                          ("user_lists"    , False),
+                                          ("xuser_lists"   , False),
+                                          ("projects"      , False),
+                                          ("xprojects"     , False),
+                                          ("seq_no"        , False)]:
+                self._parse_sge_values(queue, exp_name, with_values)
+        self.__host_lut = {}
+        for cur_host in self["qhost"].findall("qhost/host"):
+            self.__host_lut[cur_host.get("short_name")] = cur_host
+            self.__host_lut[cur_host.get("name")] = cur_host
         # expand host_list of queue q_name if not already expanded
-        act_q = self["queueconf"][q_name]
-        if type(act_q["hostlist"]) == type(""):
-            act_q["hostlist"] = sorted(list(set(sum([self["hostgroup"][entry]["hostlist"].split() if entry.startswith("@") else [entry] for entry in act_q["hostlist"].split() if entry != "NONE"], []))))
-            if shorten_names:
-                act_q["hostlist"] = [entry.split(".")[0] for entry in act_q["hostlist"]]
+        hg_lut = dict([(cur_hg.get("name"), cur_hg) for cur_hg in self["hostgroup"].findall(".//hostgroup")])
+        for queue in self.__queue_lut.itervalues():
+            if not(queue.findall("hosts")):
+                hosts_el = E.hosts()
+                queue.append(hosts_el)
+                for cur_hlist in queue.findall("hostlist"):
+                    for hg_name in cur_hlist.text.split():
+                        hosts_el.extend([E.host(str(name)) for name in hg_lut[hg_name].xpath(".//host/text()")] if hg_name.startswith("@") else [E.host(hg_name)])
 
 if __name__ == "__main__":
     print "This is a loadable module, exiting..."
