@@ -33,7 +33,10 @@ import server_command
 import threading_tools
 import sge_tools
 import config_tools
-import cluster_location
+try:
+    import cluster_location
+except ImportError:
+    cluster_location = None
 try:
     from sge_server_version import VERSION_STRING
 except ImportError:
@@ -91,13 +94,15 @@ class rms_mon_process(threading_tools.process_obj):
         srv_com = server_command.srv_command(source=srv_com_str)
         #needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
         #update_list = opt_dict.get("update_list", [])
-        needed_dicts = ["hostgroup", "queueconf", "qhost"]#, "complexes"]
-        update_list = []
-        for key in needed_dicts:
-            if key == "qhost":
-                srv_com["sge:%s" % (key)] = dict([(sub_key, self.__sge_info[key][sub_key].get_value_dict()) for sub_key in self.__sge_info[key]])
-            else:
-                srv_com["sge:%s" % (key)] = self.__sge_info[key]
+        self.__sge_info.update(update_list=["qstat", "qhost"])
+        srv_com["sge"] = self.__sge_info.get_tree()
+        #needed_dicts = ["hostgroup", "queueconf", "qhost"]#, "complexes"]
+        #update_list = []
+        #for key in needed_dicts:
+        #    if key == "qhost":
+        #        srv_com["sge:%s" % (key)] = dict([(sub_key, self.__sge_info[key][sub_key].get_value_dict()) for sub_key in self.__sge_info[key]])
+        #    else:
+        #        srv_com["sge:%s" % (key)] = self.__sge_info[key]
         self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -286,22 +291,40 @@ def main():
         else:
             print "error Cannot evaluate SGE_ARCH"
             sys.exit(1)
-    cluster_location.read_config_from_db(global_config, "sge_server", [
-        ("CHECK_ITERATIONS"               , configfile.int_c_var(3)),
-        ("COM_PORT"                       , configfile.int_c_var(COM_PORT)),
-        ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
-        ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
-        ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
-        ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])),#, fixed=True)),
-        ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])),#, fixed=True)),
-        ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])),#, fixed=True)),
-        ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
-        ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
-        ("STRICT_MODE"                    , configfile.bool_c_var(False)),
-        ("APPEND_SERIAL_COMPLEX"          , configfile.bool_c_var(True)),
-        ("CLEAR_ITERATIONS"               , configfile.int_c_var(1)),
-        ("CHECK_ACCOUNTING_TIMEOUT"       , configfile.int_c_var(300))],
-                                   dummy_run=global_config["DUMMY_RUN"])
+    if cluster_location:
+        cluster_location.read_config_from_db(global_config, "sge_server", [
+            ("CHECK_ITERATIONS"               , configfile.int_c_var(3)),
+            ("COM_PORT"                       , configfile.int_c_var(COM_PORT)),
+            ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
+            ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
+            ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
+            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])),#, fixed=True)),
+            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])),#, fixed=True)),
+            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])),#, fixed=True)),
+            ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
+            ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
+            ("STRICT_MODE"                    , configfile.bool_c_var(False)),
+            ("APPEND_SERIAL_COMPLEX"          , configfile.bool_c_var(True)),
+            ("CLEAR_ITERATIONS"               , configfile.int_c_var(1)),
+            ("CHECK_ACCOUNTING_TIMEOUT"       , configfile.int_c_var(300))],
+                                             dummy_run=global_config["DUMMY_RUN"])
+    else:
+        configfile.read_config_from_db(global_config, None, "sge_server", [
+            ("CHECK_ITERATIONS"               , configfile.int_c_var(3)),
+            ("COM_PORT"                       , configfile.int_c_var(COM_PORT)),
+            ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
+            ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
+            ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
+            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])),#, fixed=True)),
+            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])),#, fixed=True)),
+            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])),#, fixed=True)),
+            ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
+            ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
+            ("STRICT_MODE"                    , configfile.bool_c_var(False)),
+            ("APPEND_SERIAL_COMPLEX"          , configfile.bool_c_var(True)),
+            ("CLEAR_ITERATIONS"               , configfile.int_c_var(1)),
+            ("CHECK_ACCOUNTING_TIMEOUT"       , configfile.int_c_var(300))],
+                                             dummy_run=global_config["DUMMY_RUN"])
 ##    if os.path.isfile("/%s/%s/common/product_mode" % (g_config["SGE_ROOT"], g_config["SGE_CELL"])):
 ##        g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(5),
 ##                                  "SGE_RELEASE"    : configfile.int_c_var(3),
