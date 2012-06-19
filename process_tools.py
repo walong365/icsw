@@ -51,6 +51,7 @@ import traceback
 import pprint
 import random
 import inspect
+import atexit
 
 try:
     ENCODING = locale.getpreferredencoding()
@@ -119,6 +120,18 @@ def zmq_identity_str(id_string):
                          id_string,
                          os.getpid())
 
+def remove_zmq_dirs(dir_name):
+    for cur_dir, dir_names, file_names in os.walk(dir_name, topdown=False):
+        for c_dir in dir_names:
+            try:
+                os.rmdir(os.path.join(cur_dir, c_dir))
+            except:
+                pass
+    try:
+        os.rmdir(dir_name)
+    except:
+        pass
+
 def get_zmq_ipc_name(name, **kwargs):
     if "s_name" in kwargs:
         s_name = kwargs["s_name"]
@@ -131,7 +144,14 @@ def get_zmq_ipc_name(name, **kwargs):
         if s_name.endswith("_zmq"):
             s_name = s_name[:-4]
     #print __name__, globals()
-    root_dir = "/var/log/cluster/sockets"
+    if os.getuid():
+        # non-root call
+        root_dir = "/tmp/.zmq_%d" % (os.getuid())
+        atexit.register(remove_zmq_dirs, root_dir)
+        if not os.path.isdir(root_dir):
+            os.mkdir(root_dir)
+    else:
+        root_dir = "/var/log/cluster/sockets"
     sub_dir = os.path.join(root_dir, s_name)
     if not os.path.isdir(sub_dir):
         os.mkdir(sub_dir)
