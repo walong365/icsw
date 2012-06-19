@@ -472,6 +472,9 @@ class install_thread(threading_tools.thread_obj):
                             if pack_name in post_package_dict.keys():
                                 for pack in post_package_dict[pack_name]:
                                     if self.__glob_config["DEBIAN"]:
+                                        # handle additional version prefix
+                                        if pack["version"].count(":") and pack["version"].split(":")[0].isdigit():
+                                            pack["version"] = pack["version"].split(":", 1)[1]
                                         # highly advanced comparison-routine for debian :-(
                                         if not pack_version:
                                             # needed for j2sdk1.6
