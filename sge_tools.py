@@ -36,13 +36,33 @@ from lxml import etree
 from lxml.builder import E
 import argparse
 
-def get_empty_options():
+def get_empty_job_options():
     options = argparse.Namespace()
     options.users = set()
     options.complexes = set()
     options.show_memory = False
     options.suppress_times = False
     options.suppress_nodelist = False
+    options.only_valid_waiting = False
+    options.long_status = False
+    return options
+
+def get_empty_node_options():
+    options = argparse.Namespace()
+    options.users = set()
+    options.complexes = set()
+    options.node_sort = False
+    options.suppress_empty = False
+    options.show_nonstd = True
+    options.show_seq = False
+    options.suppress_status = False
+    options.long_status = False
+    options.show_type = False
+    options.show_long_type = False
+    options.show_complexes = True
+    options.show_pe = True
+    options.show_memory = False
+    options.show_acl = False
     return options
 
 def compress_list(ql, queues=None):
