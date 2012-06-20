@@ -1,4 +1,4 @@
-# transfer views
+# session views
 
 import sys
 from django.shortcuts import render_to_response

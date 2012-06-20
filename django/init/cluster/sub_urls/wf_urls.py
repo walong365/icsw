@@ -19,6 +19,11 @@ session_patterns = patterns(
     url(r"login" , "session_views.sess_login" , name="login" ),
 )
 
+rms_patterns = patterns(
+    "init.cluster.rms",
+    url(r"overview", "rms_views.overview", name="overview"),
+)
+
 config_patterns = patterns(
     ""
 )
@@ -29,6 +34,7 @@ my_url_patterns = patterns(
     url(r"^"        , include(transfer_patterns, namespace="transfer")),
     url(r"^session/", include(session_patterns , namespace="session" )),
     url(r"^config/" , include(config_patterns  , namespace="config"  )),
+    url(r"^rms/"    , include(rms_patterns     , namespace="rms"     )),
 )
 
 url_patterns = patterns(

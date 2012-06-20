@@ -1,0 +1,59 @@
+{% extends "main.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "RMS Overview" %}{% endblock %}
+
+{% block body %}
+
+{% if run_job_list %}
+    <h1 class="center">RMS Overview</h1>
+    <h2 class="center">{{ run_job_list|length }} running jobs</h2>
+    <table id="job_table" class="tablesorter style2 center">
+        <thead>
+            {% for job in run_job_list %}
+                {% if forloop.first %}
+                    <tr class="ui-widget ui-widget-header">
+                        {% for entry in job %}
+                            <th>{{ entry.tag }}</th>
+                        {% endfor %}
+                    </tr>
+                {% endif %}
+            {% endfor %}
+        </thead>
+        <tbody>
+            {% for job in run_job_list %}
+                <tr class="ui-widget">
+                    {% for entry in job %}
+                        <td>{{ entry.text }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <h2 class="center">{{ wait_job_list|length }} waiting jobs</h2>
+{% else %}
+    <h1 class="center">Cannot get RMS information</h1>
+{% endif %}
+
+<input type="button" value="reload" onClick="location.href='{% url rms:overview %}'"/>
+
+<script type="text/javascript">
+function reload_page() {
+    window.location.reload();
+};
+
+function addHandlers() {
+    $("#id_username").focus();
+    $(document).everyTime(15000, "reload_page", function(i) {
+        reload_page();
+    });
+    $("#job_table td").addClass("list");
+    $("#job_table tbody tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
+    $("#job_table").tablesorter({widgets : ["zebra"]});
+    $("#job_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");
+}
+
+$(document).ready(addHandlers);
+</script>
+
+{% endblock %}
