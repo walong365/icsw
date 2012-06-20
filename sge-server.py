@@ -324,7 +324,7 @@ def main():
             ("APPEND_SERIAL_COMPLEX"          , configfile.bool_c_var(True)),
             ("CLEAR_ITERATIONS"               , configfile.int_c_var(1)),
             ("CHECK_ACCOUNTING_TIMEOUT"       , configfile.int_c_var(300))],
-                                             dummy_run=global_config["DUMMY_RUN"])
+                                       dummy_run=global_config["DUMMY_RUN"])
 ##    if os.path.isfile("/%s/%s/common/product_mode" % (g_config["SGE_ROOT"], g_config["SGE_CELL"])):
 ##        g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(5),
 ##                                  "SGE_RELEASE"    : configfile.int_c_var(3),
@@ -354,7 +354,9 @@ def main():
         #log_sources = process_tools.get_all_log_sources(dc)
         #log_status = process_tools.get_all_log_status(dc)
         #process_tools.create_log_source_entry(dc, 0, "sgeflat", "SGE Message (unparsed)", "Info from the SunGridEngine")
-    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/%s" % (os.path.dirname(global_config["PID_NAME"]))])
+    pid_dir = "/var/run/%s" % (os.path.dirname(global_config["PID_NAME"]))
+    if pid_dir not in ["/var/run", "/var/run/"]:
+        process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [pid_dir])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
         process_tools.become_daemon()
