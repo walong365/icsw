@@ -1,19 +1,69 @@
 {% extends "main.html" %}
-{% load i18n %}
+{% load i18n extra_tags %}
 
 {% block title %}{% trans "RMS Overview" %}{% endblock %}
 
 {% block body %}
 
-{% if run_job_list %}
+{% if node_list|length %}
     <h1 class="center">RMS Overview</h1>
     <h2 class="center">{{ run_job_list|length }} running jobs</h2>
-    <table id="job_table" class="tablesorter style2 center">
+    {% if run_job_list|length %}
+        <table id="run_job_table" class="tablesorter style2 center">
+            <thead>
+                {% for job in run_job_list %}
+                    {% if forloop.first %}
+                        <tr class="ui-widget ui-widget-header">
+                            {% for entry in job %}
+                                <th>{{ entry.tag }}</th>
+                            {% endfor %}
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </thead>
+            <tbody>
+                {% for job in run_job_list %}
+                    <tr class="ui-widget">
+                        {% for entry in job %}
+                            <td>{% render_rms_tag entry %}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+    <h2 class="center">{{ wait_job_list|length }} waiting jobs</h2>
+    {% if wait_job_list|length %}
+        <table id="run_job_table" class="tablesorter style2 center">
+            <thead>
+                {% for job in wait_job_list %}
+                    {% if forloop.first %}
+                        <tr class="ui-widget ui-widget-header">
+                            {% for entry in job %}
+                                <th>{{ entry.tag }}</th>
+                            {% endfor %}
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </thead>
+            <tbody>
+                {% for job in wait_job_list %}
+                    <tr class="ui-widget">
+                        {% for entry in job %}
+                            <td>{% render_rms_tag entry %}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+    <h2 class="center">Node list</h2>
+    <table id="node_table" class="tablesorter style2 center">
         <thead>
-            {% for job in run_job_list %}
+            {% for node in node_list %}
                 {% if forloop.first %}
                     <tr class="ui-widget ui-widget-header">
-                        {% for entry in job %}
+                        {% for entry in node %}
                             <th>{{ entry.tag }}</th>
                         {% endfor %}
                     </tr>
@@ -21,21 +71,20 @@
             {% endfor %}
         </thead>
         <tbody>
-            {% for job in run_job_list %}
+            {% for node in node_list %}
                 <tr class="ui-widget">
-                    {% for entry in job %}
-                        <td>{{ entry.text }}</td>
+                    {% for entry in node %}
+                        <td>{% render_rms_tag entry %}</td>
                     {% endfor %}
                 </tr>
             {% endfor %}
         </tbody>
     </table>
-    <h2 class="center">{{ wait_job_list|length }} waiting jobs</h2>
 {% else %}
     <h1 class="center">Cannot get RMS information</h1>
 {% endif %}
 
-<input type="button" value="reload" onClick="location.href='{% url rms:overview %}'"/>
+<input type="button" value="reload" onClick="location.href='{% url rms:overview %}'"/>, <a href="{% url session:login %}">Loginpage</a>
 
 <script type="text/javascript">
 function reload_page() {
@@ -47,10 +96,18 @@ function addHandlers() {
     $(document).everyTime(15000, "reload_page", function(i) {
         reload_page();
     });
-    $("#job_table td").addClass("list");
-    $("#job_table tbody tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
-    $("#job_table").tablesorter({widgets : ["zebra"]});
-    $("#job_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");
+    $("#run_job_table td").addClass("list");
+    $("#run_job_table tbody tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
+    $("#run_job_table").tablesorter({widgets : ["zebra"]});
+    $("#run_job_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");
+    $("#wait_job_table td").addClass("list");
+    $("#wait_job_table tbody tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
+    $("#wait_job_table").tablesorter({widgets : ["zebra"]});
+    $("#wait_job_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");
+    $("#node_table td").addClass("list");
+    $("#node_table tbody tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
+    $("#node_table").tablesorter({widgets : ["zebra"]});
+    $("#node_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");
 }
 
 $(document).ready(addHandlers);

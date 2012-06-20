@@ -27,12 +27,16 @@ def overview(request):
                                     default_pref=["server"],
                                     never_direct=True)
         act_si.build_luts()
-        options = sge_tools.get_empty_options()
-        run_job_list  = sge_tools.build_running_list(act_si, options)
-        wait_job_list = sge_tools.build_waiting_list(act_si, options)
+        job_options, node_options = (
+            sge_tools.get_empty_job_options(),
+            sge_tools.get_empty_node_options())
+        run_job_list  = sge_tools.build_running_list(act_si, job_options)
+        wait_job_list = sge_tools.build_waiting_list(act_si, job_options)
+        node_list     = sge_tools.build_node_list(act_si, node_options)
     else:
-        run_job_list, wait_job_list = (None, None)
+        run_job_list, wait_job_list, node_list = (None, None, None)
     return render_tools.render_me(request, "rms_overview.html", {
         "run_job_list"  : run_job_list,
         "wait_job_list" : wait_job_list,
+        "node_list"     : node_list
     })()
