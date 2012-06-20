@@ -167,7 +167,8 @@ class sge_info(object):
         self.__update_call_dict = dict([(key, s_call) for key, (rel, s_call) in setup_dict.iteritems()])
         self.__update_pref_dict = dict([(key, kwargs.get("update_pref", {}).get(key, kwargs.get("default_pref", ["direct", "server"]))) for key in self.__valid_dicts])
         self.__timeout_dicts = dict([(key, {"hostgroup" : 300,
-                                            "qstat"     : 2}.get(key, 120)) for key in self.__valid_dicts])
+                                            "qstat"     : 2,
+                                            "qhost"     : 2}.get(key, 120)) for key in self.__valid_dicts])
         if self.__is_active:
             self._sanitize_sge_dict()
         self._init_update(kwargs.get("init_dicts", {}))
@@ -211,11 +212,19 @@ class sge_info(object):
         for key in self.__valid_dicts:
             self.__tree.append(getattr(E, key)())
     def update(self, **kwargs):
-        upd_dicts = kwargs.get("update_list", self.__valid_dicts)
+        upd_list = kwargs.get("update_list", self.__valid_dicts)
         # determine which dicts to update
-        dicts_to_update = set([dict_name for dict_name in upd_dicts if self._check_for_update(dict_name, kwargs.get("force_update", False))])
+        if self.__verbose:
+            self.log("dicts to update (upd_list): %s" % (", ".join(upd_list) or "none"))
+        dicts_to_update = set([dict_name for dict_name in upd_list if self._check_for_update(dict_name, kwargs.get("force_update", False))])
+        if "qstat" in dicts_to_update:
+            dicts_to_update.add("qhost")
+        if self.__verbose:
+            self.log("dicts to update after check: %s" % (", ".join(dicts_to_update) or "none"))
         #print "to update: ", dicts_to_update
         server_update = set([dict_name for dict_name in dicts_to_update if (self.__update_pref_dict[dict_name] + ["not set"])[0] == "server"])
+        if self.__verbose:
+            self.log("dicts to update from server: %s" % (", ".join(server_update) or "none"))
         if server_update and not self.__always_direct:
             # get everything from server
             srv_name = self.__server
@@ -255,6 +264,8 @@ class sge_info(object):
                                                      srv_name,
                                                      logging_tools.get_diff_time_str(e_time - s_time)))
         if not self.__never_direct:
+            if self.__verbose:
+                self.log("dicts to update manually: %s" % (", ".join(dicts_to_update)))
             for dict_name in dicts_to_update:
                 s_time = time.time()
                 for prev_el in self.__tree.findall(dict_name):
@@ -301,6 +312,9 @@ class sge_info(object):
         if do_upd:
             # remove previous xml subtree
             cur_el.getparent().remove(cur_el)
+        if self.__verbose:
+            self.log("update for %s is %s" % (d_name,
+                                              "necessary" if do_upd else "not necessary"))
         return do_upd
     def _get_com_name(self, c_name):
         return "/%s/bin/%s/%s" % (self.__sge_dict["SGE_ROOT"],
