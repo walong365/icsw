@@ -8,7 +8,7 @@ import sys
 
 transfer_patterns = patterns(
     "init.cluster.transfer",
-    url(r"^$", "views.redirect_to_main"),
+    url(r"^$", "transfer_views.redirect_to_main"),
     url(r"transfer/"    , "transfer_views.transfer", name="main"),
     url(r"transfer/(.*)", "transfer_views.transfer", name="main")
 )
