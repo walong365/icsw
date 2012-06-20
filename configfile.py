@@ -484,7 +484,7 @@ class configuration(object):
                     "# %s" % (self.__c_dict[key].get_commandline_info()),
                     "%s=%s" % (key, 
                                "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value),
-                    ""] for key in all_keys if (self.get_cvar(key)._only_commandline == False and slef.get_cvar(key)._writeback)],
+                    ""] for key in all_keys if (self.get_cvar(key)._only_commandline == False and self.get_cvar(key)._writeback)],
                                                          [""])))
             except:
                 self.log("Error while writing file %s: %s" % (file_name, process_tools.get_except_info()))
