@@ -132,6 +132,9 @@ def remove_zmq_dirs(dir_name):
     except:
         pass
 
+LOCAL_ZMQ_DIR = "/tmp/.zmq_%d:%d" % (os.getuid(),
+                                     os.getpid())
+
 def get_zmq_ipc_name(name, **kwargs):
     if "s_name" in kwargs:
         s_name = kwargs["s_name"]
@@ -146,7 +149,7 @@ def get_zmq_ipc_name(name, **kwargs):
     #print __name__, globals()
     if os.getuid():
         # non-root call
-        root_dir = "/tmp/.zmq_%d" % (os.getuid())
+        root_dir = LOCAL_ZMQ_DIR
         atexit.register(remove_zmq_dirs, root_dir)
         if not os.path.isdir(root_dir):
             os.mkdir(root_dir)
