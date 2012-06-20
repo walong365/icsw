@@ -34,6 +34,16 @@ import process_tools
 import zmq
 from lxml import etree
 from lxml.builder import E
+import argparse
+
+def get_empty_options():
+    options = argparse.Namespace()
+    options.users = set()
+    options.complexes = set()
+    options.show_memory = False
+    options.suppress_times = False
+    options.suppress_nodelist = False
+    return options
 
 def compress_list(ql, queues=None):
     # node prefix, postfix, start_string, end_string
@@ -133,8 +143,10 @@ class sge_info(object):
         update_pref        : dict where the update preferences are stored (direct, server)
         ignore_dicts       : dicts to ignore
         server             : name of server to connect, defaults to localhost
+        server_port        : port of server to connect, defaults to 8009
         default_pref       : list of default update preference, defaults to ["direct", "server"]
         always_direct      : never contact server, defaults to False
+        never_direct       : never make a direct call, always call server, defaults to False
         """
         self.__verbose = kwargs.get("verbose", 0)
         self.__sge_dict = kwargs.get("sge_dict", {})
@@ -142,7 +154,9 @@ class sge_info(object):
         # active: has sge_dict and can make calls to the system
         self.__is_active = kwargs.get("is_active", True)
         self.__server = kwargs.get("server", "localhost")
+        self.__server_port = kwargs.get("server_port", 8009)
         self.__always_direct = kwargs.get("always_direct", False)
+        self.__never_direct = kwargs.get("never_direct", False)
         # key : (relevance, call)
         setup_dict = {"hostgroup" : (0, self._check_hostgroup_dict),
                       "queueconf" : (1, self._check_queueconf_dict),
@@ -189,6 +203,9 @@ class sge_info(object):
             return sec_to_str(h_rt.days * 24 * 3600 + h_rt.seconds)
         else:
             return "???"
+    @property
+    def tree(self):
+        return self.__tree
     def _init_update(self, start_dict):
         self.__tree = E.rms_info()
         for key in self.__valid_dicts:
@@ -209,7 +226,7 @@ class sge_info(object):
             client = zmq_context.socket(zmq.DEALER)
             client.setsockopt(zmq.IDENTITY, "sge_tools:%d" % (os.getpid()))
             client.setsockopt(zmq.LINGER, 100)
-            client.connect("tcp://%s:8009" % (srv_name))
+            client.connect("tcp://%s:%d" % (srv_name, self.__server_port))
             srv_com = server_command.srv_command(command="get_config")
             my_poller = zmq.Poller()
             my_poller.register(client, zmq.POLLIN)
@@ -237,17 +254,18 @@ class sge_info(object):
                 self.log("%s (server %s) took %s" % (", ".join(server_update),
                                                      srv_name,
                                                      logging_tools.get_diff_time_str(e_time - s_time)))
-        for dict_name in dicts_to_update:
-            s_time = time.time()
-            for prev_el in self.__tree.findall(dict_name):
-                prev_el.getparent().remove(prev_el)
-            new_el = self.__update_call_dict[dict_name]()
-            new_el.attrib["last_update"] = "%d" % (time.time())
-            self.__tree.append(new_el)
-            e_time = time.time()
-            if self.__verbose > 0:
-                self.log("%s (direct) took %s" % (dict_name,
-                                                  logging_tools.get_diff_time_str(e_time - s_time)))
+        if not self.__never_direct:
+            for dict_name in dicts_to_update:
+                s_time = time.time()
+                for prev_el in self.__tree.findall(dict_name):
+                    prev_el.getparent().remove(prev_el)
+                new_el = self.__update_call_dict[dict_name]()
+                new_el.attrib["last_update"] = "%d" % (time.time())
+                self.__tree.append(new_el)
+                e_time = time.time()
+                if self.__verbose > 0:
+                    self.log("%s (direct) took %s" % (dict_name,
+                                                      logging_tools.get_diff_time_str(e_time - s_time)))
     def _sanitize_sge_dict(self):
         if not self.__sge_dict.has_key("SGE_ROOT"):
             if os.environ.has_key("SGE_ROOT"):
