@@ -13,7 +13,7 @@ for root, dirs, files in os.walk("src/initcore/media"):
         media_files.append(os.path.join(stripped_root, i))
 
 setup(name="initcore",
-      version="1.0.3",
+      version="1.0.4",
       package_dir={"initcore": "src/initcore"},
       packages=["initcore", "initcore.templatetags"],
       package_data={"initcore": ["templates/*.html", "templates/initcore/*.html",
