@@ -90,7 +90,8 @@ class build_package(object):
         self.src_package_name = "%s/SRPMS/%s-%s-%s.src.rpm" % (self.rpm_base_dir, self["name"], self["version"], self["release"])
     def write_specfile(self, content):
         print "Generating specfile ..."
-        spec_contents = ["%%define VERSION %s" % (self["version"]),
+        spec_contents = ["%define debug_package %{nil}",
+                         "%%define VERSION %s" % (self["version"]),
                          "%%define RELEASE %s" % (self["release"]),
                          # no longer needed
                          #"%define SPACE \" \"",
