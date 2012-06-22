@@ -89,11 +89,20 @@ class my_opt_parser(optparse.OptionParser):
     def _check_compiler_settings(self):
         self.add_path_dict = {}
         if self.options.fcompiler == "GNU":
-            self.compiler_dict = {"CC"  : "gcc",
-                                  "CXX" : "g++",
-                                  "F77" : "gfortran",
-                                  "FC"  : "gfortran"}
-            stat, out = commands.getstatusoutput("gcc --version")
+            if os.path.isdir(self.options.fcompiler_path):
+                self.add_path_dict = {"LD_LIBRARY_PATH": ["%s/lib" % (self.options.fcompiler_path),
+                                                          "%s/lib64" % (self.options.fcompiler_path)],
+                                      "PATH"           : ["%s/bin" % (self.options.fcompiler_path)]}
+                self.compiler_dict = {"CC"  : "%s/bin/gcc" % (self.options.fcompiler_path),
+                                      "CXX" : "%s/bin/g++" % (self.options.fcompiler_path),
+                                      "F77" : "%s/bin/gfortran" % (self.options.fcompiler_path),
+                                      "FC"  : "%s/bin/gfortran" % (self.options.fcompiler_path)}
+            else:
+                self.compiler_dict = {"CC"  : "gcc",
+                                      "CXX" : "g++",
+                                      "F77" : "gfortran",
+                                      "FC"  : "gfortran"}
+            stat, out = commands.getstatusoutput("%s --version" % self.compiler_dict['CC'])
             if stat:
                 raise ValueError, "Cannot get Version from gcc (%d): %s" % (stat, out)
             self.small_version = out.split(")")[1].split()[0]
@@ -288,13 +297,6 @@ class openmpi_builder(object):
                      '    endif',
                      'else',
                      '    setenv LD_LIBRARY_PATH %s/lib64' % (self.parser.openmpi_dir),
-                     'endif',
-                     'if ("1" == "$?LD_LIBRARY_PATH") then',
-                     '    if ("$LD_LIBRARY_PATH" !~ *%s/lib*) then' % (self.parser.openmpi_dir),
-                     '        setenv LD_LIBRARY_PATH %s/lib:${LD_LIBRARY_PATH}' % (self.parser.openmpi_dir),
-                     '    endif',
-                     'else',
-                     '    setenv LD_LIBRARY_PATH %s/lib' % (self.parser.openmpi_dir),
                      'endif',
                      '',
                      '# MANPATH',
