@@ -21,7 +21,10 @@ session_patterns = patterns(
 
 rms_patterns = patterns(
     "init.cluster.rms",
-    url(r"overview", "rms_views.overview", name="overview"),
+    url(r"overview"     , "rms_views.overview"         , name="overview"         ),
+    url(r"get_node_xml" , "rms_views.get_node_xml"     , name="get_node_xml"     ),
+    url(r"get_run_xml"  , "rms_views.get_run_jobs_xml" , name="get_run_jobs_xml" ),
+    url(r"get_wait_xml" , "rms_views.get_wait_jobs_xml", name="get_wait_jobs_xml"),
 )
 
 config_patterns = patterns(

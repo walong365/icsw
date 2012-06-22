@@ -12,6 +12,7 @@
 {% compress css %}
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/main.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/tablesorter.css" />
+    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/jquery.dataTables.css" />
 <!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}jqGrid/css/ui.jqgrid.css" />-->
 <!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}jnotify/css/jquery.jnotify-alt.css" />-->
 <!--    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}jqzoom_ev1.0.1/jqzoom_ev1.0.1/css/jqzoom.css" />-->
@@ -26,6 +27,7 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery-1.7.2.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery-ui-1.8.21.custom.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.layout.latest.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.dataTables.min.js"></script>
 {% endcompress %}
 <!--<script type="text/javascript" src="{{ MEDIA_URL }}jqGrid/js/i18n/grid.locale-{{ LANGUAGE_CODE|validate_language_code }}.js"></script>-->
 {% compress js %}
@@ -210,10 +212,10 @@ function add_handlers_main() {
         };
     });
     // init jnotify
-    $.jnotify.setup({
-        "fadeSpeed" : 50,
-        "delay"     : 10000
-    });
+<!--    $.jnotify.setup({-->
+<!--        "fadeSpeed" : 50,-->
+<!--        "delay"     : 10000-->
+<!--    });-->
     // show time
     $(document).everyTime(1000, "show_time", function(i) {
         update_time();

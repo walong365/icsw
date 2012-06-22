@@ -5,109 +5,84 @@
 
 {% block body %}
 
-{% if node_list|length %}
-    <h1 class="center">RMS Overview</h1>
-    <h2 class="center">{{ run_job_list|length }} running jobs</h2>
-    {% if run_job_list|length %}
-        <table id="run_job_table" class="tablesorter style2 center">
-            <thead>
-                {% for job in run_job_list %}
-                    {% if forloop.first %}
-                        <tr class="ui-widget ui-widget-header">
-                            {% for entry in job %}
-                                <th>{{ entry.tag }}</th>
-                            {% endfor %}
-                        </tr>
-                    {% endif %}
-                {% endfor %}
-            </thead>
-            <tbody>
-                {% for job in run_job_list %}
-                    <tr class="ui-widget">
-                        {% for entry in job %}
-                            <td>{% render_rms_tag entry %}</td>
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% endif %}
-    <h2 class="center">{{ wait_job_list|length }} waiting jobs</h2>
-    {% if wait_job_list|length %}
-        <table id="run_job_table" class="tablesorter style2 center">
-            <thead>
-                {% for job in wait_job_list %}
-                    {% if forloop.first %}
-                        <tr class="ui-widget ui-widget-header">
-                            {% for entry in job %}
-                                <th>{{ entry.tag }}</th>
-                            {% endfor %}
-                        </tr>
-                    {% endif %}
-                {% endfor %}
-            </thead>
-            <tbody>
-                {% for job in wait_job_list %}
-                    <tr class="ui-widget">
-                        {% for entry in job %}
-                            <td>{% render_rms_tag entry %}</td>
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% endif %}
-    <h2 class="center">Node list</h2>
-    <table id="node_table" class="tablesorter style2 center">
-        <thead>
-            {% for node in node_list %}
-                {% if forloop.first %}
-                    <tr class="ui-widget ui-widget-header">
-                        {% for entry in node %}
-                            <th>{{ entry.tag }}</th>
-                        {% endfor %}
-                    </tr>
-                {% endif %}
+<h1 class="center">RMS Overview</h1>
+<h2 class="center">Running jobs</h2>
+<table id="run_job_table" class="dataTable">
+    <thead>
+        <tr>
+            {% for entry in run_job_headers %}
+                <th>{{ entry.tag }}</th>
             {% endfor %}
-        </thead>
-        <tbody>
-            {% for node in node_list %}
-                <tr class="ui-widget">
-                    {% for entry in node %}
-                        <td>{% render_rms_tag entry %}</td>
-                    {% endfor %}
-                </tr>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+<h2 class="center">Waiting jobs</h2>
+<table id="wait_job_table" class="dataTable">
+    <thead>
+        <tr>
+            {% for entry in wait_job_headers %}
+                <th>{{ entry.tag }}</th>
             {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <h1 class="center">Cannot get RMS information</h1>
-{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+<h2 class="center">Node list</h2>
+<table id="node_table" class="dataTable">
+    <thead>
+        <tr>
+            {% for entry in node_headers %}
+                <th>{{ entry.tag }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
 
-<input type="button" value="reload" onClick="location.href='{% url rms:overview %}'"/>, <a href="{% url session:login %}">Loginpage</a>
+<input type="button" value="reload" onClick="reload_page();"/>, <a href="{% url session:login %}">Loginpage</a>
 
 <script type="text/javascript">
 function reload_page() {
-    window.location.reload();
+    <!-- window.location.reload();-->
+    $("#node_table").dataTable().fnDraw();
+    $("#run_job_table").dataTable().fnDraw();
+    $("#wait_job_table").dataTable().fnDraw();
 };
 
 function addHandlers() {
     $("#id_username").focus();
-    $(document).everyTime(15000, "reload_page", function(i) {
+    $(document).everyTime(10000, "reload_page", function(i) {
         reload_page();
     });
-    $("#run_job_table td").addClass("list");
-    $("#run_job_table tbody tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
-    $("#run_job_table").tablesorter({widgets : ["zebra"]});
-    $("#run_job_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");
     $("#wait_job_table td").addClass("list");
     $("#wait_job_table tbody tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
     $("#wait_job_table").tablesorter({widgets : ["zebra"]});
     $("#wait_job_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");
-    $("#node_table td").addClass("list");
-    $("#node_table tbody tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
-    $("#node_table").tablesorter({widgets : ["zebra"]});
-    $("#node_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");
+<!--    $("#node_table tbody tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });-->
+<!--    $("#node_table").tablesorter({widgets : ["zebra"]});-->
+<!--    $("#node_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");-->
+    $("#node_table").dataTable({
+        "bProcessing"   : true,
+        "bServerSide"   : true,
+        "sAjaxSource"   : "{% url rms:get_node_xml %}",
+        "sServerMethod" : "POST"
+    });
+    $("#run_job_table").dataTable({
+        "bProcessing"   : true,
+        "bServerSide"   : true,
+        "sAjaxSource"   : "{% url rms:get_run_jobs_xml %}",
+        "sServerMethod" : "POST"
+    });
+    $("#wait_job_table").dataTable({
+        "bProcessing"   : true,
+        "bServerSide"   : true,
+        "sAjaxSource"   : "{% url rms:get_wait_jobs_xml %}",
+        "sServerMethod" : "POST"
+    });
 }
 
 $(document).ready(addHandlers);
