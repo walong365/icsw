@@ -79,6 +79,7 @@ class rms_mon_process(threading_tools.process_obj):
         self.__main_socket = self.connect_to_socket("internal")
         self._init_sge_info()
         self.register_func("get_config", self._get_config)
+        self.register_func("full_reload", self._full_reload)
     def _init_sge_info(self):
         self.log("init sge_info")
         self.__sge_info = sge_tools.sge_info(log_command=self.log,
@@ -89,6 +90,9 @@ class rms_mon_process(threading_tools.process_obj):
         self._update()
     def _update(self):
         self.__sge_info.update(no_file_cache=True, force_update=True)
+    def _full_reload(self, *args, **kwargs):
+        self.log("doing a full_reload")
+        self._update()
     def _get_config(self, *args, **kwargs):
         src_id, srv_com_str = args
         srv_com = server_command.srv_command(source=srv_com_str)
@@ -156,6 +160,7 @@ class server_process(threading_tools.process_pool):
             self["exit_requested"] = True
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
+        self.send_to_process("rms_mon", "full_reload")
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
