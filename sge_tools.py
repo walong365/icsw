@@ -65,14 +65,14 @@ def get_empty_node_options():
     options.show_acl = False
     return options
 
-def compress_list(ql, queues=None):
+def compress_list(ql, queues=None, postfix=""):
     # node prefix, postfix, start_string, end_string
     # not exactly the same as the version in logging_tools
     def add_p(np, ap, s_str, e_str):
         if s_str == e_str:
-            return "%s%s%s" % (np, s_str, ap)
+            return "%s%s%s%s" % (np, s_str, ap, postfix)
         elif int(s_str) + 1 == int(e_str):
-            return "%s%s%s/%s%s" % (np, s_str, ap, e_str, ap)
+            return "%s%s%s-%s%s" % (np, s_str, ap, e_str, ap)
         else:
             return "%s%s%s-%s%s" % (np, s_str, ap, e_str, ap)
     if not queues or queues == "-":
@@ -292,6 +292,7 @@ class sge_info(object):
                     prev_el.getparent().remove(prev_el)
                 new_el = self.__update_call_dict[dict_name]()
                 new_el.attrib["last_update"] = "%d" % (time.time())
+                new_el.attrib["valid_until"] = "%d" % (time.time() + self.__timeout_dicts[dict_name])
                 self.__tree.append(new_el)
                 e_time = time.time()
                 if self.__verbose > 0:
@@ -328,10 +329,13 @@ class sge_info(object):
                 self.__sge_dict["SGE_ARCH"] = c_out
     def _check_for_update(self, d_name, force=False):
         cur_el = self.__tree.find(d_name)
-        do_upd = abs(int(cur_el.get("last_update", "0")) - time.time()) > self.__timeout_dicts[d_name] or force
-        if do_upd:
-            # remove previous xml subtree
-            cur_el.getparent().remove(cur_el)
+        if cur_el is not None:
+            do_upd = abs(int(cur_el.get("valid_until", "0"))) < self.__timeout_dicts[d_name] or force
+            if do_upd:
+                # remove previous xml subtree
+                cur_el.getparent().remove(cur_el)
+        else:
+            do_upd = True
         if self.__verbose:
             self.log("update for %s is %s" % (d_name,
                                               "necessary" if do_upd else "not necessary"))
@@ -530,6 +534,31 @@ class sge_info(object):
                     for hg_name in cur_hlist.text.split():
                         hosts_el.extend([E.host(str(name)) for name in hg_lut[hg_name].xpath(".//host/text()")] if hg_name.startswith("@") else [E.host(hg_name)])
 
+def get_running_headers(options):
+    cur_job = E.job(
+        E.job_id(),
+        E.task_id(),
+        E.name(),
+        E.granted_pe(),
+        E.owner())
+    if options.show_memory:
+        cur_job.extend(
+            [E.virtual_total(),
+             E.virtual_free()])
+    cur_job.extend([
+        getattr(E, "complex")(),
+        E.queue_name()])
+    if not options.suppress_times:
+        cur_job.extend([
+            E.start_time(),
+            E.run_time(),
+            E.left_time()
+        ])
+    cur_job.append(E.load()),
+    if not options.suppress_nodelist:
+        cur_job.append(E.nodelist())
+    return cur_job
+
 def build_running_list(s_info, options):
     # build various local luts
     r_jobs = sorted(s_info.running_jobs, key=lambda x : x.get("full_id"))
@@ -586,9 +615,32 @@ def build_running_list(s_info, options):
         cur_job.append(E.load("%.2f (%3d %%)" % (mean_load, eff)))
         if not options.suppress_nodelist:
             jh_pe_lut = job_host_pe_lut[act_job.get("full_id")]
-            cur_job.append(E.nodelist(",".join([compress_list(sorted(jh_pe_lut[key])) for key in ["MASTER", "SLAVE"] if key in jh_pe_lut])))
+            cur_job.append(E.nodelist(",".join([compress_list(sorted(jh_pe_lut[key]), postfix="(M)" if key == "MASTER" else "") for key in ["MASTER", "SLAVE"] if key in jh_pe_lut])))
         job_list.append(cur_job)
     return job_list
+
+def get_waiting_headers(options):
+    cur_job = E.job(
+        E.job_id(),
+        E.task_id(),
+        E.name(),
+        E.requested_pe(),
+        E.owner(),
+        E.state(),
+        getattr(E, "complex")(),
+        E.queue()
+    )
+    if not options.suppress_times:
+        cur_job.extend([
+            E.queue_time(),
+            E.wait_time(),
+            E.left_time()
+        ])
+    cur_job.extend([
+        E.priority(),
+        E.depends()
+    ])
+    return cur_job
 
 def build_waiting_list(s_info, options):
     w_jobs = sorted(s_info.waiting_jobs, key=lambda x : x.get("full_id"))
@@ -635,6 +687,39 @@ def build_waiting_list(s_info, options):
         job_list.append(cur_job)
     return job_list
      
+def get_node_headers(options):
+    cur_node = E.node(
+        E.queue(),
+        E.shost())
+    if options.show_seq:
+        cur_node.append(E.seqno())
+    if not options.suppress_status:
+        cur_node.append(E.state())
+    if options.show_type or options.show_long_type:
+        cur_node.append(E.type())
+    if options.show_complexes:
+        cur_node.append(E.complex())
+    if options.show_pe:
+        cur_node.append(E.pe_list())
+    if options.show_memory:
+        cur_node.extend([
+            E.virtual_tot(),
+            E.virtual_free()
+        ])
+    cur_node.extend([
+        E.load(),
+        E.slots_used(),
+        E.slots_reserved(),
+        E.slots_total()
+    ])
+    if options.show_acl:
+        cur_node.extend([
+            E.userlists(),
+            E.projects()
+        ])
+    cur_node.append(E.jobs())
+    return cur_node
+        
 def build_node_list(s_info, options):
     job_host_lut, job_host_pe_lut = ({}, {})
     for cur_host in s_info.get_all_hosts():
