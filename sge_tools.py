@@ -261,7 +261,10 @@ class sge_info(object):
             my_poller.register(client, zmq.POLLIN)
             client.send_unicode(unicode(srv_com))
             timeout_secs = kwargs.get("timeout", 5)
-            poll_result = my_poller.poll(timeout=timeout_secs * 1000)
+            try:
+                poll_result = my_poller.poll(timeout=timeout_secs * 1000)
+            except:
+                poll_result = None
             if poll_result:
                 recv = client.recv_unicode()
             else:
@@ -329,16 +332,22 @@ class sge_info(object):
                 self.__sge_dict["SGE_ARCH"] = c_out
     def _check_for_update(self, d_name, force=False):
         cur_el = self.__tree.find(d_name)
+        upd_cause = "unknown"
+        cur_time = time.time()
         if cur_el is not None:
-            do_upd = abs(int(cur_el.get("valid_until", "0"))) < self.__timeout_dicts[d_name] or force
+            do_upd = abs(int(cur_el.get("valid_until", "0"))) < cur_time or force
             if do_upd:
                 # remove previous xml subtree
                 cur_el.getparent().remove(cur_el)
+                upd_cause = "timeout [%d < %d]" % (int(cur_el.get("valid_until", "0")),
+                                                   cur_time)
         else:
             do_upd = True
+            upd_cause = "missing"
         if self.__verbose:
-            self.log("update for %s is %s" % (d_name,
-                                              "necessary" if do_upd else "not necessary"))
+            self.log("update for %s is %s" % (
+                d_name,
+                "necessary (%s)" % (upd_cause) if do_upd else "not necessary"))
         return do_upd
     def _get_com_name(self, c_name):
         return "/%s/bin/%s/%s" % (self.__sge_dict["SGE_ROOT"],
