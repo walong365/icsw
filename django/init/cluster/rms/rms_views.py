@@ -11,25 +11,39 @@ from init.cluster.backbone.models import user
 from django.db.models import Q
 import random
 from init.cluster.frontend import render_tools
+from init.cluster.frontend.helper_functions import init_logging, logging_pool
 from django.conf import settings
 from lxml import etree
 import argparse
 import json
 import sge_tools
+import threading
 
-my_sge_info = None
+class tl_sge_info(sge_tools.sge_info):
+    # sge_info object with thread lock layer
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.__logger = logging_pool.get_logger("sge_info")
+        sge_tools.sge_info.__init__(
+            self,
+            server="127.0.0.1",
+            default_pref=["server"],
+            never_direct=True,
+            initial_update=False,
+            log_command=self.__logger.log,
+            verbose=settings.DEBUG
+        )
+    def update(self):
+        self.lock.acquire()
+        try:
+            sge_tools.sge_info.update(self)
+            sge_tools.sge_info.build_luts(self)
+        finally:
+            self.lock.release()
 
-def init_sge_info():
-    global my_sge_info
-    if not my_sge_info:
-        my_sge_info = sge_tools.sge_info(server="127.0.0.1",
-                                         default_pref=["server"],
-                                         never_direct=True)
+my_sge_info = tl_sge_info()
 
-def update_sge_info():
-    my_sge_info.update()
-    my_sge_info.build_luts()
-    
+@init_logging
 def overview(request):
     job_options, node_options = (
         sge_tools.get_empty_job_options(),
@@ -64,21 +78,10 @@ def _sort_list(in_list, _post):
             "iTotalDisplayRecords" : filter_data_len,
             "aaData" : show_list}
 
-def get_node_xml(request):
-    _post = request.POST
-    init_sge_info()
-    update_sge_info()
-    job_options, node_options = (
-        sge_tools.get_empty_job_options(),
-        sge_tools.get_empty_node_options())
-    node_list     = sge_tools.build_node_list(my_sge_info, node_options)
-    json_resp = _sort_list(node_list, _post)
-    return HttpResponse(json.dumps(json_resp), mimetype="application/json")
-
+@init_logging
 def get_run_jobs_xml(request):
     _post = request.POST
-    init_sge_info()
-    update_sge_info()
+    my_sge_info.update()
     job_options, node_options = (
         sge_tools.get_empty_job_options(),
         sge_tools.get_empty_node_options())
@@ -86,13 +89,25 @@ def get_run_jobs_xml(request):
     json_resp = _sort_list(run_job_list, _post)
     return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
+@init_logging
 def get_wait_jobs_xml(request):
     _post = request.POST
-    init_sge_info()
-    update_sge_info()
+    my_sge_info.update()
     job_options, node_options = (
         sge_tools.get_empty_job_options(),
         sge_tools.get_empty_node_options())
     wait_job_list  = sge_tools.build_waiting_list(my_sge_info, job_options)
     json_resp = _sort_list(wait_job_list, _post)
     return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+
+@init_logging
+def get_node_xml(request):
+    _post = request.POST
+    my_sge_info.update()
+    job_options, node_options = (
+        sge_tools.get_empty_job_options(),
+        sge_tools.get_empty_node_options())
+    node_list     = sge_tools.build_node_list(my_sge_info, node_options)
+    json_resp = _sort_list(node_list, _post)
+    return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+
