@@ -98,7 +98,7 @@ class rms_mon_process(threading_tools.process_obj):
         srv_com = server_command.srv_command(source=srv_com_str)
         #needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
         #update_list = opt_dict.get("update_list", [])
-        self.__sge_info.update(update_list=["qstat", "qhost"])
+        self.__sge_info.update()
         srv_com["sge"] = self.__sge_info.get_tree()
         #needed_dicts = ["hostgroup", "queueconf", "qhost"]#, "complexes"]
         #update_list = []
