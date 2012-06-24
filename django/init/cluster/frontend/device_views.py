@@ -3,13 +3,15 @@
 import json
 import pprint
 import logging_tools
+import process_tools
 from init.cluster.frontend.helper_functions import init_logging
 from init.cluster.frontend.render_tools import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from init.cluster.backbone.models import device_type, device_group, device
+from init.cluster.backbone.models import device_type, device_group, device, device_class
 from lxml import etree
 from lxml.builder import E
+from django.db.models import Q
 
 @login_required
 @init_logging
@@ -92,18 +94,67 @@ def change_xml_entry(request):
                 request.log("object %s with id %s does not exit" % (object_type,
                                                                     object_id), logging_tools.LOG_LEVEL_ERROR, xml=True)
             else:
-                new_value = _post["value"]
-                old_value = getattr(cur_obj, attr_name)
-                if attr_name == "device_type":
-                    new_value = device_type.objects.get(pk=new_value)
-                setattr(cur_obj, attr_name, new_value)
-                try:
-                    cur_obj.save()
-                except:
-                    request.xml_response["original_value"] = old_value
-                    request.log("cannot change from %s to %s" % (unicode(old_value), unicode(new_value)),
-                                logging_tools.LOG_LEVEL_ERROR,
-                                xml=True)
+                if (object_type, attr_name) == ("dg", "meta_device"):
+                    # special call: create new metadevice
+                    cur_obj.add_meta_device()
+                    request.log("created metadevice for %s" % (cur_obj.name), xml=True)
                 else:
-                    request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
+                    new_value = _post["value"]
+                    if attr_name == "device_type":
+                        new_value = device_type.objects.get(pk=new_value)
+                    old_value = getattr(cur_obj, attr_name)
+                    setattr(cur_obj, attr_name, new_value)
+                    try:
+                        cur_obj.save()
+                    except:
+                        request.xml_response["original_value"] = old_value
+                        request.log("cannot change from %s to %s" % (unicode(old_value), unicode(new_value)),
+                                    logging_tools.LOG_LEVEL_ERROR,
+                                    xml=True)
+                        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
     return request.xml_response.create_response()
+
+@init_logging
+def create_device_group(request):
+    name = request.POST["name"]
+    try:
+        new_dg = device_group(name=name)
+        new_dg.save()
+    except:
+        request.log("cannot create device_group %s" % (name),
+                    logging_tools.LOG_LEVEL_ERROR,
+                    xml=True)
+        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+    else:
+        print new_dg.add_meta_device()
+    return request.xml_response.create_response()
+
+@init_logging
+def create_device(request):
+    name = request.POST["name"]
+    try:
+        new_dg = device_group(name=name)
+        new_dg.save()
+    except:
+        request.log("cannot create device_group %s" % (name),
+                    logging_tools.LOG_LEVEL_ERROR,
+                    xml=True)
+        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+    else:
+        new_dg.add_meta_device()
+    return request.xml_response.create_response()
+
+@init_logging
+def delete_device_group(request):
+    pk = request.POST["idx"]
+    try:
+        device_group.objects.get(Q(pk=pk)).delete()
+    except:
+        request.log("cannot delete device_group",
+                    logging_tools.LOG_LEVEL_ERROR,
+                    xml=True)
+        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+    return request.xml_response.create_response()
+    
