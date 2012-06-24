@@ -253,6 +253,9 @@ class device(models.Model):
     show_in_bootcontrol = models.BooleanField()
     cpu_info = models.TextField(blank=True, null=True)
     date = models.DateTimeField(auto_now_add=True)
+    def __unicode__(self):
+        return u"%s%s" % (self.name,
+                          " (%s)" % (self.comment) if self.comment else "")
     class Meta:
         db_table = u'device'
 
@@ -309,6 +312,12 @@ class device_group(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_group'
+    def __unicode__(self):
+        return u"%s%s%s" % (
+            self.name,
+            " (%s)" % (self.description) if self.description else "",
+            "[*]" if self.cluster_device_group else ""
+        )
 
 class device_location(models.Model):
     idx = models.AutoField(db_column="device_location_idx", primary_key=True)
@@ -352,6 +361,8 @@ class device_type(models.Model):
     identifier = models.CharField(unique=True, max_length=24)
     description = models.CharField(unique=True, max_length=192)
     date = models.DateTimeField(auto_now_add=True)
+    def __unicode__(self):
+        return self.description
     class Meta:
         db_table = u'device_type'
 
