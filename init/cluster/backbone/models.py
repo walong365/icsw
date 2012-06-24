@@ -3,7 +3,9 @@
 from django.db import models
 from django.contrib.auth.models import User, Group, Permission
 import datetime
-from django.db.models import Q
+from django.db.models import Q, signals
+from django.dispatch import receiver
+from django.core.exceptions import ValidationError
 
 def only_wf_perms(in_list):
     return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
@@ -301,7 +303,7 @@ class device_device_selection(models.Model):
 
 class device_group(models.Model):
     idx = models.AutoField(db_column="device_group_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
+    name = models.CharField(unique=True, max_length=192, blank=False)
     description = models.CharField(max_length=384)
     #device = models.ForeignKey("device", null=True, blank=True, related_name="group_device")
     # must be an IntegerField, otherwise we have a cycle reference
@@ -310,6 +312,17 @@ class device_group(models.Model):
     # flag
     cluster_device_group = models.BooleanField()
     date = models.DateTimeField(auto_now_add=True)
+    def add_meta_device(self):
+        new_md = device(name=self.get_metadevice_name(),
+                        device_group=self,
+                        device_class=device_class.objects.get(Q(pk=1)),
+                        device_type=device_type.objects.get(Q(identifier="MD")))
+        new_md.save()
+        self.device = new_md
+        self.save()
+        return new_md
+    def get_metadevice_name(self):
+        return "METADEV_%s" % (self.name)
     class Meta:
         db_table = u'device_group'
     def __unicode__(self):
@@ -1702,3 +1715,20 @@ class xen_vbd(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'xen_vbd'
+
+# signals
+@receiver(signals.post_save, sender=device_group)
+def device_group_ps(sender, **kwargs):
+    if not kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if cur_inst.device_id:
+            if cur_inst.device.name != cur_inst.get_metadevice_name():
+                cur_inst.device.name = cur_inst.get_metadevice_name()
+                cur_inst.device.save()
+
+@receiver(signals.pre_save, sender=device_group)
+def device_group_ps(sender, **kwargs):
+    if "instance" in kwargs:
+        if not kwargs["instance"].name:
+            raise ValidationError, "name can not be zero"
+    
