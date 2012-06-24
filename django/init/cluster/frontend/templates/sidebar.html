@@ -1,0 +1,90 @@
+{% load i18n %}
+
+<table border="0" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td valign="top">
+            <div id="sidebar_tree">
+                    <ul>
+            <li id="key1" title="Look, a tool tip!">item1 with key and tooltip</li>
+            <li id="key2" class="selected">item2: selected on init</li>
+            <li id="key3" class="folder">Folder with some children</li>
+                <ul>
+                    <li id="key3.1">Sub-item 3.1</li>
+                    <li id="key3.2">Sub-item 3.2</li>
+                </ul>
+
+            <li id="key4" class="expanded">Document with some children (expanded on init)
+                <ul>
+                    <li id="key4.1">Sub-item 4.1</li>
+                    <li id="key4.2">Sub-item 4.2</li>
+                </ul>
+</li>
+            <li id="key5" class="lazy folder">Lazy folder</li>
+        </ul>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <div id="sidebar_info">
+                &nbsp;x
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <div id="sidebar_qlinks">
+                &nbsp;y
+            </div>
+        </td>
+    </tr>
+</table>
+
+<script type="text/javascript">
+
+function toggle_south(event) {
+    my_layout.toggle("south");
+}
+
+function toggle_west(event) {
+    my_layout.toggle("west");
+}
+
+function sidebar_handler() {
+    $("#sidebar_tree").dynatree({
+        onLazyRead : function(dtnode) {
+            toggle_expand(dtnode, true);
+            dtnode.appendAjax({
+                url  : dtnode.data.url,
+                data : {
+                    "sidebar" : "yes"
+                }
+            });
+        },
+        onActivate : function(dtnode) {
+            if (dtnode.data.name == "toggle_sql") {
+                toggle_south();
+                dtnode.deactivate();
+            } else if (dtnode.data.name == "toggle_sidebar") {
+                toggle_west();
+                dtnode.deactivate();
+            } else {;
+                if (dtnode.data.isLazy) {
+                } else {                
+                    if (dtnode.data.url) {
+                        window.location = dtnode.data.url;
+                    }
+                }
+            }
+        },
+        onExpand : function(flag, dtnode) {
+            toggle_expand(dtnode, flag);
+        },
+        debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
+    });
+    var my_tree = $("#sidebar_tree").dynatree("getTree");
+    $("div#sidebar_tree ul").css({"border" : "none", "margin" : "0px"});
+    $("div#sidebar_tree").css({"border" : "1px dotted gray", "background-color" : "#FFFFFF"});
+};
+
+</script>

@@ -46,6 +46,8 @@ else:
     import hotshot
     import hotshot.stats
 
+from init.cluster.frontend.render_tools import render_me
+from django.template.loader import render_to_string
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from init.cluster.backbone.models import device, device_variable, user, capability, new_config, device_config, \
@@ -519,7 +521,7 @@ def handle_normal_module_call(req, module_name):
     index_page.build_cap_dict(req)
     find_server_routes(req, "before")
     if module_name in ["logincheck", "index"]:
-        pass
+        return HttpResponseRedirect(reverse("main:index"))
     else:
         # build list of allowed modules
         #module_list = req.cap_stack.get_long_modules_names()
@@ -603,8 +605,8 @@ def handle_normal_module_call(req, module_name):
             req.info_stack.add_error("Module %s not known, using index" % (module_name), "internal")
             module_name = "index"
             req.module_name = module_name
-    if module_name == "index":
-        index_page.process_page(req)
+##    if module_name == "index":
+##        index_page.process_page(req)
     if not special_module:
         find_server_routes(req, "after")
         # check for cluster-support

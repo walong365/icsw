@@ -31,6 +31,19 @@ config_patterns = patterns(
     ""
 )
 
+device_patterns = patterns(
+    "init.cluster.frontend",
+    url("^device_tree$"     , "device_views.device_tree"     , name="tree"            ),
+    url("^get_json_tree$"   , "device_views.get_json_tree"   , name="get_json_tree"   ), 
+    url("^get_xml_tree$"    , "device_views.get_xml_tree"    , name="get_xml_tree"    ), 
+    url("^change_xml_entry$", "device_views.change_xml_entry", name="change_xml_entry"), 
+)
+
+main_patterns = patterns(
+    "init.cluster.frontend",
+    url(r"index$" , "main_views.index", name="index"),
+)
+
 my_url_patterns = patterns(
     "",
     url(r"static/(?P<path>.*)$"        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
@@ -38,6 +51,8 @@ my_url_patterns = patterns(
     url(r"^session/", include(session_patterns , namespace="session" )),
     url(r"^config/" , include(config_patterns  , namespace="config"  )),
     url(r"^rms/"    , include(rms_patterns     , namespace="rms"     )),
+    url(r"^main/"   , include(main_patterns    , namespace="main"    )),
+    url(r"^device/" , include(device_patterns  , namespace="device"  )),
 )
 
 url_patterns = patterns(

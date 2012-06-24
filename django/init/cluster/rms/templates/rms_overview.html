@@ -7,7 +7,7 @@
 
 <h1 class="center">RMS Overview</h1>
 <h2 class="center">Running jobs</h2>
-<table id="run_job_table" class="dataTable">
+<table id="run_job_table">
     <thead>
         <tr>
             {% for entry in run_job_headers %}
@@ -19,7 +19,7 @@
     </tbody>
 </table>
 <h2 class="center">Waiting jobs</h2>
-<table id="wait_job_table" class="dataTable">
+<table id="wait_job_table">
     <thead>
         <tr>
             {% for entry in wait_job_headers %}
@@ -31,7 +31,7 @@
     </tbody>
 </table>
 <h2 class="center">Node list</h2>
-<table id="node_table" class="dataTable">
+<table id="node_table">
     <thead>
         <tr>
             {% for entry in node_headers %}
@@ -66,23 +66,33 @@ function addHandlers() {
 <!--    $("#node_table").tablesorter({widgets : ["zebra"]});-->
 <!--    $("#node_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");-->
     $("#node_table").dataTable({
-        "bProcessing"   : true,
-        "bServerSide"   : true,
-        "sAjaxSource"   : "{% url rms:get_node_xml %}",
-        "sServerMethod" : "POST"
+        "bProcessing"    : true,
+        "bServerSide"    : true,
+        "sAjaxSource"    : "{% url rms:get_node_xml %}",
+        "sServerMethod"  : "POST",
+        "bJQueryUI"      : true,
+        "sPaginationType": "full_numbers",
+        "bAutoWidth"      : false
     });
     $("#run_job_table").dataTable({
-        "bProcessing"   : true,
-        "bServerSide"   : true,
-        "sAjaxSource"   : "{% url rms:get_run_jobs_xml %}",
-        "sServerMethod" : "POST"
+        "bProcessing"    : true,
+        "bServerSide"    : true,
+        "sAjaxSource"    : "{% url rms:get_run_jobs_xml %}",
+        "sServerMethod"  : "POST",
+        "bJQueryUI"      : true,
+        "sPaginationType": "full_numbers",
+        "bAutoWidth"      : false
     });
     $("#wait_job_table").dataTable({
-        "bProcessing"   : true,
-        "bServerSide"   : true,
-        "sAjaxSource"   : "{% url rms:get_wait_jobs_xml %}",
-        "sServerMethod" : "POST"
+        "bProcessing"     : true,
+        "bServerSide"     : true,
+        "sAjaxSource"     : "{% url rms:get_wait_jobs_xml %}",
+        "sServerMethod"   : "POST",
+        "bJQueryUI"       : true,
+        "sPaginationType" : "full_numbers",
+        "bAutoWidth"      : false
     });
+    $("#test").dataTable();
 }
 
 $(document).ready(addHandlers);

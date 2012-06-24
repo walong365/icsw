@@ -1,0 +1,30 @@
+{% load i18n %}
+
+<ul id="main_navigation" class="sf-menu">
+    <li>
+        <a href="{% url main:index %}">{% trans "Home" %}</a>
+    </li>
+    <li>
+        <a>{% trans "Setup" %}</a>
+        <ul>
+            <li><a href="{% url device:tree %}">{% trans "Devicetree" %}</a></li>
+        </ul>
+    </li>
+    <li>
+        <a>{% trans "Session" %}</a>
+        <ul>
+            <li><a href="{% url session:logout %}">{% trans "Logout" %}</a></li>
+        </ul>
+    </li>
+</ul>
+
+<script type="text/javascript">
+
+function init_menu() {
+    $("#main_navigation").superfish({
+        speed : 1,
+        delay : 500
+    });
+};
+
+</script>

@@ -22,6 +22,7 @@ import main
 import pprint
 import process_tools
 from django.contrib.auth.decorators import login_required
+from init.cluster.frontend.helper_functions import init_logging
 
 class request_object(object):
     def __init__(self, request, module_name):
@@ -49,6 +50,7 @@ class request_object(object):
         self.output.append(what)
          
 @login_required
+@init_logging
 def transfer(request, *args):
     #print request, args
     # rewrite for main.py

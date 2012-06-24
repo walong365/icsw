@@ -1,20 +1,9 @@
 # rms views
 
-import sys
-from django.shortcuts import render_to_response
-from django.http import HttpResponse, HttpResponseRedirect
-import os
-from django.core.urlresolvers import reverse
-from django.contrib.auth import authenticate, login, logout
-import pprint
-from init.cluster.backbone.models import user
-from django.db.models import Q
-import random
+from django.http import HttpResponse
 from init.cluster.frontend import render_tools
 from init.cluster.frontend.helper_functions import init_logging, logging_pool
 from django.conf import settings
-from lxml import etree
-import argparse
 import json
 import sge_tools
 import threading
