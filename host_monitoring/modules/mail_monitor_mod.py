@@ -382,7 +382,7 @@ class mailq_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["num_mails"] = self.module.get_num_mails()
     def interpret(self, srv_com, cur_ns):
-        num_mails = srv_com["num_mails"]
+        num_mails = int(srv_com["num_mails"].text)
         return self._interpret(num_mails, cur_ns)
     def interpret_old(self, result, cur_ns):
         num_mails = hm_classes.net_to_sys(result[3:])["mails"]
