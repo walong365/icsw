@@ -1718,7 +1718,7 @@ class xen_vbd(models.Model):
 
 # signals
 @receiver(signals.post_save, sender=device_group)
-def device_group_ps(sender, **kwargs):
+def device_group_post_save(sender, **kwargs):
     if not kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if cur_inst.device_id and cur_inst.device.name != cur_inst.get_metadevice_name():
@@ -1726,13 +1726,14 @@ def device_group_ps(sender, **kwargs):
             cur_inst.device.save()
 
 @receiver(signals.pre_save, sender=device_group)
-def device_group_ps(sender, **kwargs):
+def device_group_pre_save(sender, **kwargs):
     if "instance" in kwargs:
-        if not kwargs["instance"].name:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name:
             raise ValidationError, "name can not be zero"
 
 @receiver(signals.pre_save, sender=device)
-def device_group_ps(sender, **kwargs):
+def device_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         if not kwargs["instance"].name:
             raise ValidationError, "name can not be zero"
