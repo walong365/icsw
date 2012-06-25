@@ -98,6 +98,13 @@ def change_xml_entry(request):
                     # special call: create new metadevice
                     cur_obj.add_meta_device()
                     request.log("created metadevice for %s" % (cur_obj.name), xml=True)
+                elif (object_type, attr_name) == ("d", "device_group"):
+                    # special call: create new metadevice
+                    target_dg = device_group.objects.get(Q(pk=_post["value"]))
+                    cur_obj.device_group = target_dg
+                    cur_obj.save()
+                    request.log("moved device %s to %s" % (cur_obj.name,
+                                                           target_dg.name), xml=True)
                 else:
                     new_value = _post["value"]
                     if attr_name == "device_type":
@@ -118,9 +125,11 @@ def change_xml_entry(request):
 
 @init_logging
 def create_device_group(request):
-    name = request.POST["name"]
+    _post = request.POST
+    name = _post["name"]
     try:
-        new_dg = device_group(name=name)
+        new_dg = device_group(name=name,
+                              description=_post["description"])
         new_dg.save()
     except:
         request.log("cannot create device_group %s" % (name),
@@ -132,27 +141,45 @@ def create_device_group(request):
     return request.xml_response.create_response()
 
 @init_logging
-def create_device(request):
-    name = request.POST["name"]
-    try:
-        new_dg = device_group(name=name)
-        new_dg.save()
-    except:
-        request.log("cannot create device_group %s" % (name),
-                    logging_tools.LOG_LEVEL_ERROR,
-                    xml=True)
-        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-    else:
-        new_dg.add_meta_device()
-    return request.xml_response.create_response()
-
-@init_logging
 def delete_device_group(request):
     pk = request.POST["idx"]
     try:
         device_group.objects.get(Q(pk=pk)).delete()
     except:
         request.log("cannot delete device_group",
+                    logging_tools.LOG_LEVEL_ERROR,
+                    xml=True)
+        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+    return request.xml_response.create_response()
+
+@init_logging
+def create_device(request):
+    _post = request.POST
+    pprint.pprint(_post)
+    name = request.POST["name"]
+    try:
+        new_dev = device(name=_post["name"],
+                         device_group=device_group.objects.get(Q(pk=_post["group"])),
+                         comment=_post["comment"],
+                         device_type=device_type.objects.get(Q(pk=_post["type"])),
+                         device_class=device_class.objects.get(Q(pk=1)))
+        new_dev.save()
+    except:
+        request.log("cannot create device %s" % (name),
+                    logging_tools.LOG_LEVEL_ERROR,
+                    xml=True)
+        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+    else:
+        pass
+    return request.xml_response.create_response()
+
+@init_logging
+def delete_device(request):
+    pk = request.POST["idx"]
+    try:
+        device.objects.get(Q(pk=pk)).delete()
+    except:
+        request.log("cannot delete device",
                     logging_tools.LOG_LEVEL_ERROR,
                     xml=True)
         request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)

@@ -40,6 +40,7 @@ device_patterns = patterns(
     url("^create_devg$"     , "device_views.create_device_group", name="create_device_group"),
     url("^create_device$"   , "device_views.create_device"      , name="create_device"      ),
     url("^delete_devg$"     , "device_views.delete_device_group", name="delete_device_group"),
+    url("^delete_device$"   , "device_views.delete_device"      , name="delete_device"      ),
 )
 
 main_patterns = patterns(

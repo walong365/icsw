@@ -66,21 +66,21 @@ function addHandlers() {
 <!--    $("#node_table").tablesorter({widgets : ["zebra"]});-->
 <!--    $("#node_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");-->
     $("#node_table").dataTable({
-        "bProcessing"    : true,
-        "bServerSide"    : true,
-        "sAjaxSource"    : "{% url rms:get_node_xml %}",
-        "sServerMethod"  : "POST",
-        "bJQueryUI"      : true,
-        "sPaginationType": "full_numbers",
+        "bProcessing"     : true,
+        "bServerSide"     : true,
+        "sAjaxSource"     : "{% url rms:get_node_xml %}",
+        "sServerMethod"   : "POST",
+        "bJQueryUI"       : true,
+        "sPaginationType" : "full_numbers",
         "bAutoWidth"      : false
     });
     $("#run_job_table").dataTable({
-        "bProcessing"    : true,
-        "bServerSide"    : true,
-        "sAjaxSource"    : "{% url rms:get_run_jobs_xml %}",
-        "sServerMethod"  : "POST",
-        "bJQueryUI"      : true,
-        "sPaginationType": "full_numbers",
+        "bProcessing"     : true,
+        "bServerSide"     : true,
+        "sAjaxSource"     : "{% url rms:get_run_jobs_xml %}",
+        "sServerMethod"   : "POST",
+        "bJQueryUI"       : true,
+        "sPaginationType" : "full_numbers",
         "bAutoWidth"      : false
     });
     $("#wait_job_table").dataTable({
