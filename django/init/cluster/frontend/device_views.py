@@ -12,6 +12,7 @@ from init.cluster.backbone.models import device_type, device_group, device, devi
 from lxml import etree
 from lxml.builder import E
 from django.db.models import Q
+import re
 
 @login_required
 @init_logging
@@ -40,7 +41,7 @@ def get_json_tree(request):
 @init_logging
 def get_xml_tree(request):
     _post = request.POST
-    full_tree = device_group.objects.all().prefetch_related("device", "device_group").distinct().order_by("name")
+    full_tree = device_group.objects.all().prefetch_related("device", "device_group").distinct().order_by("-cluster_device_group", "name")
     xml_resp = E.response()
     for cur_dg in full_tree:
         dev_list = E.devices()
@@ -155,22 +156,42 @@ def delete_device_group(request):
 @init_logging
 def create_device(request):
     _post = request.POST
-    pprint.pprint(_post)
+    range_re = re.compile("^(?P<name>.+)\[(?P<start>\d+)-(?P<end>\d+)\]")
     name = request.POST["name"]
-    try:
-        new_dev = device(name=_post["name"],
-                         device_group=device_group.objects.get(Q(pk=_post["group"])),
-                         comment=_post["comment"],
-                         device_type=device_type.objects.get(Q(pk=_post["type"])),
-                         device_class=device_class.objects.get(Q(pk=1)))
-        new_dev.save()
-    except:
-        request.log("cannot create device %s" % (name),
-                    logging_tools.LOG_LEVEL_ERROR,
-                    xml=True)
-        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+    range_m = range_re.match(name)
+    if range_m is None:
+        create_list = [name]
     else:
-        pass
+        num_dig = max(len(range_m.group("start")),
+                      len(range_m.group("end")))
+        start_idx, end_idx = (int(range_m.group("start")),
+                              int(range_m.group("end")))
+        start_idx, end_idx = (min(start_idx, end_idx),
+                              max(start_idx, end_idx))
+        start_idx, end_idx = (min(max(start_idx, 1), 1000),
+                              min(max(end_idx, 1), 1000))
+        request.log("range has %s (%d -> %d)" % (logging_tools.get_plural("digit", num_dig),
+                                                 start_idx,
+                                                 end_idx))
+        form_str = "%s%%0%dd" % (range_m.group("name"),
+                                 num_dig)
+        create_list = [form_str % (cur_idx) for cur_idx in xrange(start_idx, end_idx + 1)]
+    for create_dev in sorted(create_list):
+        try:
+            new_dev = device(name=create_dev,
+                             device_group=device_group.objects.get(Q(pk=_post["group"])),
+                             comment=_post["comment"],
+                             device_type=device_type.objects.get(Q(pk=_post["type"])),
+                             device_class=device_class.objects.get(Q(pk=1)))
+            new_dev.save()
+        except:
+            request.log("cannot create device %s" % (name),
+                        logging_tools.LOG_LEVEL_ERROR,
+                        xml=True)
+            request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            break
+        else:
+            pass
     return request.xml_response.create_response()
 
 @init_logging
@@ -183,5 +204,7 @@ def delete_device(request):
                     logging_tools.LOG_LEVEL_ERROR,
                     xml=True)
         request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+    else:
+        request.log("deleted device", xml=True)
     return request.xml_response.create_response()
     

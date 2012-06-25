@@ -53,6 +53,42 @@ a.white, a.white:link, a.white:visited, a.white:focus, a.white:hover, a.white:ac
     color:#FFFFFF;  
 } 
 
+tr.even {
+    background-color: #EAEBFF;
+}
+tr.odd {
+    background-color: #D3D6FF;
+}
+
+/* RMS styles */
+tr.odd td.slots_info {
+    background-color: #cceedd;
+}
+
+tr.even td.slots_info {
+    background-color: #ddeedd;
+}
+
+tr.odd td.load {
+    background-color: #eeddcc;
+}
+
+tr.even td.load {
+    background-color: #ddeedd;
+}
+
+div.load_outer {
+    width  : 100px;
+    height : 10px;
+    border : 1px solid black;
+    float  : left;
+}
+
+div.load_inner {
+    height : 10px;
+    background-color:#ff4444;
+}
+
 #tooltip {
     position: absolute;
     z-index: 3000;
@@ -62,4 +98,11 @@ a.white, a.white:link, a.white:visited, a.white:focus, a.white:hover, a.white:ac
     opacity: 0.95;
 }
 
+div.leftfloat {
+    float : left;
+}
+
 #tooltip h3, #tooltip div { margin: 0; }
+
+tr.highlight, th.highlight, td.highlight { color: #000000 ; background-color: #ffe060 !important ; }
+

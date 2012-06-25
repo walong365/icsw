@@ -55,16 +55,13 @@ function reload_page() {
 
 function addHandlers() {
     $("#id_username").focus();
-    $(document).everyTime(10000, "reload_page", function(i) {
+    $(document).everyTime(1000000, "reload_page", function(i) {
         reload_page();
     });
     $("#wait_job_table td").addClass("list");
     $("#wait_job_table tbody tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
     $("#wait_job_table").tablesorter({widgets : ["zebra"]});
     $("#wait_job_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");
-<!--    $("#node_table tbody tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });-->
-<!--    $("#node_table").tablesorter({widgets : ["zebra"]});-->
-<!--    $("#node_table.tablesorter th").append("&nbsp;&nbsp;&nbsp;&nbsp;");-->
     $("#node_table").dataTable({
         "bProcessing"     : true,
         "bServerSide"     : true,
@@ -72,7 +69,33 @@ function addHandlers() {
         "sServerMethod"   : "POST",
         "bJQueryUI"       : true,
         "sPaginationType" : "full_numbers",
-        "bAutoWidth"      : false
+        "bStateSave"      : true,
+        "bAutoWidth"      : false,
+        "aoColumnDefs"    : [{
+            "fnRender" : function(o, val) {
+                return "<b>" + val + "</b>";
+            },
+            "aTargets" : [6, 7, 8],
+            "sClass" : "center slots_info"
+        }, {
+            "fnRender" : function(o, val) {
+                var cur_m = val.match(/(\d+\.\d+).*/);
+                if (cur_m) {
+                    var max_load = 16.;
+                    load = Math.min(cur_m[0], max_load);
+                    ret_el = $("<div>").addClass("leftfloat").append($("<b>").text($.sprintf("%3.2f", load))).after(
+                        $("<div>").addClass("load_outer").append(
+                        $("<div>").addClass("load_inner").css("width", parseInt(98 * load / max_load) + "px"))
+                    );
+                    console.log(ret_el);
+                    return $("<div>").append(ret_el).html();
+                } else {
+                    return "<b>" + val + "</b>";
+                };
+            },
+            "aTargets" : [5],
+            "sClass" : "load"
+        }]
     });
     $("#run_job_table").dataTable({
         "bProcessing"     : true,
@@ -81,6 +104,7 @@ function addHandlers() {
         "sServerMethod"   : "POST",
         "bJQueryUI"       : true,
         "sPaginationType" : "full_numbers",
+        "bStateSave"      : true,
         "bAutoWidth"      : false
     });
     $("#wait_job_table").dataTable({
@@ -90,7 +114,15 @@ function addHandlers() {
         "sServerMethod"   : "POST",
         "bJQueryUI"       : true,
         "sPaginationType" : "full_numbers",
-        "bAutoWidth"      : false
+        "bStateSave"      : true,
+        "bAutoWidth"      : false,
+        "aoColumnDefs"    : [{
+            "fnRender" : function(o, val) {
+                return "<b>" + val + "</b>";
+            },
+            "aTargets" : [5],
+            "sClass" : "center"
+        }]
     });
     $("#test").dataTable();
 }

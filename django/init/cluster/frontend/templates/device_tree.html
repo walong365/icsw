@@ -9,9 +9,8 @@
 <h1 class="center">Device tree</h1>
 
 <div id="device_table">
-<p>bla</p>
 </div>
-<input type="button" value="reload" onclick="reload_device_tree();"/>
+<input type="button" value="reload" onclick="reload_device_tree();" />
 
 <script type="text/javascript">
 
@@ -22,26 +21,38 @@ function build_device_table(xml) {
     var md_dt = $(xml).find("device_type[identifier='MD']").attr("idx");
     $(xml).find("device_group").each(function() {
         var cur_dg = $(this);
-        var new_tr = $("<tr>").attr({"id" : "dg_" + cur_dg.attr("idx")});
-        new_tr.append($("<th>").append(
-            $("<input>").attr({
-                "type"    : "checkbox",
-                "checked" : "checked",
-                "id"      : "expand_" + $(cur_dg).attr("idx")
-            }).bind("change", function(event) {
-                var check_state = $(event.target).attr("checked");
-                toggle_device(cur_dg.attr("idx"), check_state == "checked" ? true : false);
-            })
-        ));
+        var new_tr = $("<tr>").attr({
+            "id"    : "dg_" + cur_dg.attr("idx"),
+            "class" : "ui-widget ui-widget-header"
+        });
+        // expandbox / name
+        if (cur_dg.attr("is_cdg") == "1") {
+            new_tr.append($("<th>"));
+        } else {
+            new_tr.append($("<th>").append(
+                $("<span>").attr({
+                    "class"   : "ui-icon ui-icon-triangle-1-e",
+                    "id"      : "expand_" + $(cur_dg).attr("idx")
+                }).bind("click", function(event) {
+                    var cur_class = $(event.target).attr("class");
+                    var check_state = $(event.target).attr("checked");
+                    if (cur_class.match(/-1-e$/)) {
+                        toggle_device(cur_dg.attr("idx"), true);
+                    } else {
+                        toggle_device(cur_dg.attr("idx"), false);
+                    }
+                })
+            ));
+        };
         new_tr.append($("<th>").append(
             $("<input>").attr({
                 "type" : "text",
                 "value" : cur_dg.attr("name"),
-                "id"    : "dg__name__" + cur_dg.attr("idx")})
-            ).bind("change", function(event) {
-                submit_change($(event.target));
+                "id"    : "dg__name__" + cur_dg.attr("idx")
+            }).bind("change", function(event) {
+                submit_change($(event.target), propagate_dg_changes);
             })
-        );
+        ));
         new_tr.append($("<th>").append(
             $("<input>").attr({
                 "type" : "text",
@@ -55,12 +66,15 @@ function build_device_table(xml) {
             $("<input>").attr({
                 "type"   : "checkbox",
                 "id"     : "dg__meta_device__" + cur_dg.attr("idx")
-            })
-            ).bind("change", function(event) {
+            }).bind("change", function(event) {
                 submit_change($(event.target));
                 $(event.target).attr("disabled", "disabled");
             })
+        ).append($("<span>").attr({
+            "id" : "dg__info__" + cur_dg.attr("idx")
+        }).text("---"))
         );
+        // disable of meta_device is already used / set
         if ($(cur_dg).find("device[device_type='" + md_dt + "']").length) {
             $(new_tr).find("input").last().attr("checked", "checked").attr("disabled", "disabled");
         };
@@ -92,19 +106,28 @@ function build_device_table(xml) {
         new_table.append(new_tr);
         $(cur_dg).find("device[device_type!='" + md_dt + "']").each(function() {
             var cur_d = $(this);
-            var new_tr = $("<tr>").attr({"id" : "dev_" + cur_dg.attr("idx") + "_" + cur_d.attr("idx")});
+            var new_tr = $("<tr>").attr({
+                "id"    : "dev_" + cur_dg.attr("idx") + "_" + cur_d.attr("idx"),
+                "class" : "ui-widget"
+            });
             // name
-            new_tr.append($("<th>").append(
+            new_tr.append($("<td>").append(
+                $("<input>").attr({
+                    "type"  : "checkbox",
+                    "id"    : "dev__sel__" + cur_d.attr("idx")
+                })
+            ));
+            new_tr.append($("<td>").append(
                 $("<input>").attr({
                     "type" : "text",
                     "value" : cur_d.attr("name"),
-                    "id"    : "d__name__" + cur_d.attr("idx")})
-                ).bind("change", function(event) {
+                    "id"    : "d__name__" + cur_d.attr("idx")
+                }).bind("change", function(event) {
                     submit_change($(event.target));
                 })
-            );
+            ));
             // description / comment
-            new_tr.append($("<th>").append(
+            new_tr.append($("<td>").append(
                 $("<input>").attr({
                     "type" : "text",
                     "value" : cur_d.attr("comment"),
@@ -139,13 +162,13 @@ function build_device_table(xml) {
                     submit_change($(event.target));
                     // move row
                     var cur_tr = $(event.target).parents("tr:first");
-                    var cur_dg_tr = $("table#device_tree tr[id='dg_" + cur_tr.attr("id").split("_")[1] + "']");
+                    //var cur_dg_tr = $("table#device_tree tr[id='dg_" + cur_tr.attr("id").split("_")[1] + "']");
                     var new_dg_tr = $("table#device_tree tr[id='dg_" + $(event.target).attr("value") + "']");
-                    console.log(cur_tr);
-                    console.log(cur_dg_tr);
-                    console.log(new_dg_tr);
                     cur_tr.insertAfter(new_dg_tr);
                     cur_tr.attr({"id" : "dev_" + new_dg_tr.attr("id").split("_")[1] + "_" + cur_tr.attr("id").split("_")[2]});
+                    update_device_group_info();
+                    // force unroll of device_groups
+                    toggle_device(new_dg_tr.attr("id").split("_")[1], true);
                 })
             ));
             $(xml).find("response device_group[is_cdg='0']").each(function() {
@@ -156,13 +179,13 @@ function build_device_table(xml) {
                 };
                 new_tr.find("select").last().append(cur_opt);
             });
-            new_table.append(new_tr);
             new_tr.append($("<td>").append(
                 $("<input>").attr({
                     "type"  : "button",
-                    "value" : "delete"
-                }).bind("click", function(event) {
-                    if (confirm("really delete device " + cur_d.attr("name") + " ?")) {
+                    "value" : "delete",
+                    "id"    : "dev__del__" + cur_d.attr("idx")
+                }).bind("click", function(event, param) {
+                    if (param == "noask" || confirm("really delete device " + cur_d.attr("name") + " ?")) {
                         $.ajax({
                             url : "{% url device:delete_device %}",
                             data : {
@@ -171,16 +194,23 @@ function build_device_table(xml) {
                             success : function(xml) {
                                 if (parse_xml_response(xml)) {
                                     $(event.target).parents("tr:first").remove();
+                                    update_device_group_info();
                                 }
                             }
                         })
                     };
                 })
             ));
+            new_table.append(new_tr);
+            new_tr.hide();
         });
     });
     // new device group
-    var new_tr = $("<tr id='new_dg'>").append($("<th>").append("new DG").append(
+    var new_tr = $("<tr>").attr({
+        "id"    : "new_dg",
+        "class" : "ui-widget ui-widget-header"}).append(
+        $("<th>").append("new DevGroup")).append(
+        $("<th>").append(
         $("<input>").attr({
             "id"   : "new_device_group_name",
             "type" : "text"
@@ -192,6 +222,7 @@ function build_device_table(xml) {
             "type" : "text"
         })
     ));
+    new_tr.append($("<th>").attr({"colspan" : "2"}));
     new_tr.append($("<th>").append(
         $("<input>").attr({
             "type"  : "button",
@@ -213,7 +244,11 @@ function build_device_table(xml) {
     ));
     new_table.append(new_tr);
     // new device
-    var new_tr = $("<tr id='new_dev'>").append($("<th>").append("new D").append(
+    var new_tr = $("<tr>").attr({
+        "id"    : "new_dev",
+        "class" : "ui-widget ui-widget-header"}).append(
+        $("<th>").append("new Device")).append(
+        $("<th>").append(
         $("<input>").attr({
             "id"   : "new_device_name",
             "type" : "text"
@@ -272,19 +307,101 @@ function build_device_table(xml) {
         })
     ));
     new_table.append(new_tr);
+    // selected devices
+    var new_tr = $("<tr>").attr({
+        "id"    : "sel_dev",
+        "class" : "ui-widget ui-widget-header"}).append($("<th>").attr({"colspan" : "3"}).append("action on selected devices"));
+    new_tr.append($("<th>").append(
+        $("<select>").attr({
+            "id"    : "sel_device_type"
+        }).bind("change", function(event) {
+            var new_dt = $(event.target).attr("value");
+            $(event.target).attr("value", "0");
+            $("table#device_tree input[id^='dev__sel__']:checked").each(function() {
+                var dev_idx = $(this).attr("id").split("__")[2];
+                var targ_sel = $("table#device_tree select#d__device_type__" + dev_idx);
+                if (targ_sel.attr("value") != new_dt) targ_sel.attr("value", new_dt).trigger("change");
+            });
+        }).append($("<option>").attr({
+            "value"    : "0",
+            "selected" : "selected"}).text("-- keep --"))
+    ));
+    $(xml).find("device_types device_type[identifier!='MD']").each(function() {
+        var cur_dt = $(this);
+        var cur_opt = $("<option>").attr({"value" : cur_dt.attr("idx")}).text(cur_dt.attr("name"));
+        new_tr.find("select").last().append(cur_opt);
+    });
+    new_tr.append($("<th>").append(
+        $("<select>").attr({
+            "id"    : "sel_device_group"
+        }).bind("change", function(event) {
+            var new_dg = $(event.target).attr("value");
+            $(event.target).attr("value", "0");
+            $("table#device_tree input[id^='dev__sel__']:checked").each(function() {
+                var dev_idx = $(this).attr("id").split("__")[2];
+                var targ_sel = $("table#device_tree select#d__device_group__" + dev_idx);
+                if (targ_sel.attr("value") != new_dg) targ_sel.attr("value", new_dg).trigger("change");
+            });
+        }).append($("<option>").attr({
+            "value"    : "0",
+            "selected" : "selected"}).text("-- keep --"))
+    ));
+    $(xml).find("response device_group[is_cdg='0']").each(function() {
+        var cur_dt = $(this);
+        var cur_opt = $("<option>").attr({"value" : cur_dt.attr("idx")}).text(cur_dt.attr("name"));
+        new_tr.find("select").last().append(cur_opt);
+    });
+    new_tr.append($("<td>").append(
+        $("<input>").attr({
+            "type"  : "button",
+            "value" : "delete"
+        }).bind("click", function(event) {
+            var sel_list = $("table#device_tree input[id^='dev__sel__']:checked");
+            if (sel_list.length) {
+                if (confirm("really delete selected " + sel_list.length + " devices ?")) {
+                    $(sel_list).each(function() {
+                        var cur_sel = $(this);
+                        cur_sel.parents("tr:first").find("input[value='delete']").trigger("click", ["noask"]);
+                    })
+                };
+            };
+        })
+    ));
+    new_table.append(new_tr);
     $("div#device_table").append(new_table);
+    update_device_group_info();
+    new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
     new_table.find("input#new_device_name").focus();
 };
 
+function propagate_dg_changes(cur_el) {
+    // set new device_group names on all selects
+    $("table#device_tree select[id*='_device_group'] option[value='" + cur_el.parents("tr:first").attr("id").split("_")[1] + "']").each(function() {
+        $(this).text(cur_el.attr("value"));
+    });
+};
+
 function toggle_device(dg_idx, state) {
+    var cur_dg = $("table#device_tree tr[id='dg_" + dg_idx + "'] span[id='expand_" + dg_idx + "']");
     if (state) {
-        $("div#device_table tr[id^='dev_" + dg_idx + "_']").show(200);
+        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
+        cur_dg.addClass("ui-icon-triangle-1-s");
+        $("table#device_tree tr[id^='dev_" + dg_idx + "_']").show();
+        recolor_device_group(dg_idx);
     } else {
-        $("div#device_table tr[id^='dev_" + dg_idx + "_']").hide(200);
+        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
+        cur_dg.addClass("ui-icon-triangle-1-e");
+        $("table#device_tree tr[id^='dev_" + dg_idx + "_']").hide();
     };
 };
 
-function submit_change(cur_el) {
+function recolor_device_group(dg_idx) {
+    $("table#device_tree tr[id^='dev_" + dg_idx + "_']:even").removeClass("even odd");
+    $("table#device_tree tr[id^='dev_" + dg_idx + "_']:even").addClass("even");
+    $("table#device_tree tr[id^='dev_" + dg_idx + "_']:odd").addClass("odd");
+};
+
+function submit_change(cur_el, callback) {
     $.ajax({
         url  : "{% url device:change_xml_entry %}",
         data : {
@@ -293,13 +410,24 @@ function submit_change(cur_el) {
         },
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                true;
+                if (callback != undefined && typeof callback == "function") callback(cur_el);
             } else {
                 <!-- set back to previous value -->
                 $(cur_el).attr("value", get_xml_value(xml, "original_value"));
             };
         }
     })
+};
+
+function update_device_group_info() {
+    $("table#device_tree tr[id^='dg_']").each(function() {
+        var cur_tr = $(this);
+        var dg_idx = cur_tr.attr("id").split("_")[1];
+        recolor_device_group(dg_idx);
+        var info_th = cur_tr.find("span[id^='dg__info__']");
+        var num_devs = $("table#device_tree tr[id^='dev_" + dg_idx + "_']").length;
+        info_th.text(num_devs + " device" + (num_devs == 1 ? "" : "s"));
+    });
 };
 
 function reload_device_tree() {
