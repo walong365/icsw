@@ -1,6 +1,10 @@
-<h1>Cluster network types</h1>
+{% extends "main.html" %}
 
 {% load i18n extra_tags %}
+
+{% block title %}Cluster network types{% endblock %}
+
+{% block content %}
 
 {{ network_type_formset.management_form }}
 <table>
@@ -43,3 +47,5 @@
     <tbody>
 </table>
 <input type="submit" action="submit"/>
+
+{% endblock %}

@@ -29,15 +29,6 @@ import cdef_device
 import ipvx_tools
 import random
 import pprint
-from init.cluster.frontend.render_tools import render_me
-from init.cluster.frontend.forms import network_form, network_type_form, network_device_type_form
-from init.cluster.backbone.models import device, device_selection, device_device_selection, network, net_ip, \
-     network_type, network_device_type
-from django.db.models import Q
-from django.db import IntegrityError
-from django.http import HttpResponse, HttpResponseRedirect
-from django.template.loader import render_to_string
-from django.forms.models import modelformset_factory
 
 RANDOM_XEN_MAC_PREFIX = "00:16:3e:00"
 
@@ -139,40 +130,6 @@ def add_default_networks(net_t_tree, net_dt_tree, dc):
     dc.execute("INSERT INTO network_network_device_type SET network=%d, network_device_type=%d" % (dc.insert_id(), net_dt_lut["eth"]))
     net_ins(dc, apc_net_dict)
     dc.execute("INSERT INTO network_network_device_type SET network=%d, network_device_type=%d" % (dc.insert_id(), net_dt_lut["eth"]))
-
-def show_netdevice_classes(req):
-    request = req.request
-    network_type_formset = modelformset_factory(network_type, form=network_type_form, can_delete=True, extra=1)
-    network_dt_formset   = modelformset_factory(network_device_type, form=network_device_type_form, can_delete=True, extra=1)
-    if request.method == "POST" and "ds" not in request.POST:
-        cur_type_fs = network_type_formset(request.POST, request.FILES, prefix="type")
-        if cur_type_fs.is_valid():
-            if cur_type_fs.save() or cur_type_fs.deleted_forms:
-                cur_type_fs = network_type_formset(prefix="type")
-        cur_dt_fs = network_dt_formset(request.POST, request.FILES, prefix="devtype")
-        if cur_dt_fs.is_valid():
-            if cur_dt_fs.save() or cur_dt_fs.deleted_forms:
-                cur_dt_fs = network_dt_formset(prefix="devtype")
-    else:
-        cur_type_fs = network_type_formset(prefix="type")
-        cur_dt_fs   = network_dt_formset(prefix="devtype")
-    req.write(render_to_string("cluster_network_types.html", {
-        "network_type_formset"    : cur_type_fs,
-        "network_devtype_formset" : cur_dt_fs}))
-
-def show_cluster_networks(req):
-    request = req.request
-    network_formset = modelformset_factory(network, form=network_form, can_delete=True, extra=1)
-    if request.method == "POST" and "ds" not in request.POST:
-        cur_fs = network_formset(request.POST, request.FILES)
-        if cur_fs.is_valid():
-            if cur_fs.save() or cur_fs.deleted_forms:
-                # re-read formsets after successfull save or delete
-                cur_fs = network_formset()
-    else:
-        cur_fs = network_formset()
-    req.write(render_to_string("cluster_networks.html", {
-        "network_formset" : cur_fs}))
 
 def get_netspeed_str(in_bps):
     if in_bps >= 1000000000:

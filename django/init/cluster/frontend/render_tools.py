@@ -11,13 +11,12 @@ class render_me(object):
     def __init__(self, request, template, *args, **kwargs):
         self.request  = request
         self.template = template
-        self.my_dict  = {}
+        self.my_dict  = {"hide_sidebar" : False}
         for add_dict in args:
             self.my_dict.update(add_dict)
-##        # just for debug purposes
-##        self.my_dict["object_search_form"] = backend.forms.object_search_form()
-##        if request.user.is_authenticated():
-##            self.my_dict["sidebar_settings"] = request.session.get("sidebar_settings", [])
+        for key, value in kwargs.iteritems():
+            self.my_dict[key] = value
+        print self.my_dict
     def update(self, in_dict):
         self.my_dict.update(in_dict)
     def __call__(self, *args):

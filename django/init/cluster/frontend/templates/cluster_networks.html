@@ -1,7 +1,12 @@
-<h1>Cluster networks</h1>
+{% extends "main.html" %}
 
 {% load i18n extra_tags %}
 
+{% block title %}Cluster networks{% endblock %}
+
+{% block content %}
+
+<form action="{% url network:networks %}" method=post >
 {{ network_formset.management_form }}
 <table>
     <tbody>
@@ -53,3 +58,15 @@
     </tbody>
 </table>
 <input type="submit" action="submit"/>
+
+</form>
+
+<script type="text/javascript">
+
+function add_cn_handlers() {
+};
+
+$(document).ready(add_cn_handlers);
+
+</script>
+{% endblock %}

@@ -4,23 +4,6 @@
     <tr>
         <td valign="top">
             <div id="sidebar_tree">
-                    <ul>
-            <li id="key1" title="Look, a tool tip!">item1 with key and tooltip</li>
-            <li id="key2" class="selected">item2: selected on init</li>
-            <li id="key3" class="folder">Folder with some children</li>
-                <ul>
-                    <li id="key3.1">Sub-item 3.1</li>
-                    <li id="key3.2">Sub-item 3.2</li>
-                </ul>
-
-            <li id="key4" class="expanded">Document with some children (expanded on init)
-                <ul>
-                    <li id="key4.1">Sub-item 4.1</li>
-                    <li id="key4.2">Sub-item 4.2</li>
-                </ul>
-</li>
-            <li id="key5" class="lazy folder">Lazy folder</li>
-        </ul>
             </div>
         </td>
     </tr>
@@ -52,33 +35,44 @@ function toggle_west(event) {
 
 function sidebar_handler() {
     $("#sidebar_tree").dynatree({
+        checkbox : true,
+        initAjax : {
+            url  : "{% url device:get_json_tree %}",
+            data : {}
+        },
         onLazyRead : function(dtnode) {
-            toggle_expand(dtnode, true);
             dtnode.appendAjax({
                 url  : dtnode.data.url,
                 data : {
-                    "sidebar" : "yes"
+                    "dg_idx" : dtnode.data.data.dg_idx
                 }
             });
         },
-        onActivate : function(dtnode) {
-            if (dtnode.data.name == "toggle_sql") {
-                toggle_south();
-                dtnode.deactivate();
-            } else if (dtnode.data.name == "toggle_sidebar") {
-                toggle_west();
-                dtnode.deactivate();
-            } else {;
-                if (dtnode.data.isLazy) {
-                } else {                
-                    if (dtnode.data.url) {
-                        window.location = dtnode.data.url;
-                    }
-                }
-            }
-        },
-        onExpand : function(flag, dtnode) {
-            toggle_expand(dtnode, flag);
+<!--        onActivate : function(dtnode) {-->
+<!--            console.log("focus");-->
+<!--            if (dtnode.data.name == "toggle_sql") {-->
+<!--                toggle_south();-->
+<!--                dtnode.deactivate();-->
+<!--            } else if (dtnode.data.name == "toggle_sidebar") {-->
+<!--                toggle_west();-->
+<!--                dtnode.deactivate();-->
+<!--            } else {;-->
+<!--                if (dtnode.data.isLazy) {-->
+<!--                } else {                -->
+<!--                    if (dtnode.data.url) {-->
+<!--                        window.location = dtnode.data.url;-->
+<!--                    }-->
+<!--                }-->
+<!--            }-->
+<!--        },-->
+<!--        onExpand : function(flag, dtnode) {-->
+<!--            console.log("expand");-->
+<!--            toggle_expand(dtnode, flag);-->
+<!--        },-->
+        onSelect : function(flag, dtnode) {
+            dtnode.visit(function(cur_node) {
+                cur_node.toggleSelect();
+            }, false);
         },
         debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
     });

@@ -55,7 +55,7 @@ function reload_page() {
 
 function addHandlers() {
     $("#id_username").focus();
-    $(document).everyTime(1000000, "reload_page", function(i) {
+    $(document).everyTime(10000, "reload_page", function(i) {
         reload_page();
     });
     $("#wait_job_table td").addClass("list");

@@ -58,9 +58,11 @@
     <p>JavaScript on your browser is <span class="red_color">disabled</span> so you will not be able
     to use some of the functionality of the software.</p>
 </noscript>
-<div class="ui-layout-west " >
-    {% include 'sidebar.html' %}
-</div>
+{% if not hide_sidebar %}
+    <div class="ui-layout-west " >
+        {% include 'sidebar.html' %}
+    </div>
+{% endif %}
 <div class="ui-layout-center" id="pane-center">
     {% block content %}
     {% endblock %}

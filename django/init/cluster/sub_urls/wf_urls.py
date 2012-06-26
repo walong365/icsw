@@ -28,19 +28,27 @@ rms_patterns = patterns(
 )
 
 config_patterns = patterns(
-    ""
+    "init.cluster.frontend",
+    url("^config_types$", "config_views.show_config_type_options", name="config_types"),
 )
 
 device_patterns = patterns(
     "init.cluster.frontend",
     url("^device_tree$"     , "device_views.device_tree"        , name="tree"               ),
     url("^get_json_tree$"   , "device_views.get_json_tree"      , name="get_json_tree"      ), 
+    url("^get_json_devlist$", "device_views.get_json_devlist"   , name="get_json_devlist"),
     url("^get_xml_tree$"    , "device_views.get_xml_tree"       , name="get_xml_tree"       ), 
     url("^change_xml_entry$", "device_views.change_xml_entry"   , name="change_xml_entry"   ),
     url("^create_devg$"     , "device_views.create_device_group", name="create_device_group"),
     url("^create_device$"   , "device_views.create_device"      , name="create_device"      ),
     url("^delete_devg$"     , "device_views.delete_device_group", name="delete_device_group"),
     url("^delete_device$"   , "device_views.delete_device"      , name="delete_device"      ),
+)
+
+network_patterns = patterns(
+    "init.cluster.frontend",
+    url("^network$"          , "network_views.show_cluster_networks" , name="networks"),
+    url("^netdevice_classes$", "network_views.show_netdevice_classes", name="netdevice_classes"),
 )
 
 main_patterns = patterns(
@@ -57,6 +65,7 @@ my_url_patterns = patterns(
     url(r"^rms/"    , include(rms_patterns     , namespace="rms"     )),
     url(r"^main/"   , include(main_patterns    , namespace="main"    )),
     url(r"^device/" , include(device_patterns  , namespace="device"  )),
+    url(r"^network/", include(network_patterns , namespace="network" )),
 )
 
 url_patterns = patterns(

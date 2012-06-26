@@ -1,4 +1,7 @@
-# device views
+#!/usr/bin/python-init -Ot
+# -*- coding: utf-8 -*-
+
+""" device views """
 
 import json
 import pprint
@@ -13,30 +16,47 @@ from lxml import etree
 from lxml.builder import E
 from django.db.models import Q
 import re
+from django.core.urlresolvers import reverse
 
 @login_required
 @init_logging
 def device_tree(request):
-    return render_me(request ,"device_tree.html")()
+    return render_me(request ,"device_tree.html", hide_sidebar=True)()
 
 @login_required
 @init_logging
 def get_json_tree(request):
     _post = request.POST
     pprint.pprint(_post)
-    full_tree = device_group.objects.all().prefetch_related("device", "device_group").distinct().order_by("name")
+    full_tree = device_group.objects.order_by("-cluster_device_group", "name")
     json_struct = []
     for cur_dg in full_tree:
-        cur_devs = []
-        for sub_dev in cur_dg.device_group.all():
-            cur_devs.append({"title" : unicode(sub_dev)})
-        cur_jr = {"title" : unicode(cur_dg),
-                  "isFolder" : "1",
-                  "children" : cur_devs}
+        cur_jr = {
+            "title"    : unicode(cur_dg),
+            "isFolder" : "1",
+            "isLazy"   : "1",
+            "key"      : "dg_%d" % (cur_dg.pk),
+            "url"      : reverse("device:get_json_devlist"),
+            "data"     : {"dg_idx" : cur_dg.pk}}
         json_struct.append(cur_jr)
     return HttpResponse(json.dumps(json_struct),
                         mimetype="application/json")
 
+@login_required
+@init_logging
+def get_json_devlist(request):
+    _post = request.POST
+    cur_devs = device.objects.filter(Q(device_group=_post["dg_idx"])).select_related("device_group")
+    pprint.pprint(_post)
+    json_struct = []
+    for sub_dev in cur_devs:
+        if sub_dev.device_type.identifier not in ["MD"]:
+            json_struct.append({
+                "title"  : unicode(sub_dev),
+                "key"    : "dev_%d" % (sub_dev.pk)
+            })
+    return HttpResponse(json.dumps(json_struct),
+                        mimetype="application/json")
 
 @init_logging
 def get_xml_tree(request):
