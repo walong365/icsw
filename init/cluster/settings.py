@@ -44,6 +44,13 @@ COMPRESS_OFFLINE = True
 # rebuild once a day
 COMPRESS_REBUILD_TIMEOUT = 60 * 60 * 24
 
+CACHES = {
+    "default" : {
+        "BACKEND"  : "django.core.cache.backends.memcached.MemcachedCache",
+        "LOCATION" : "127.0.0.1:11211",
+    }
+}
+
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
@@ -96,7 +103,7 @@ MEDIA_URL = "%s/frontend/media/" % (SITE_ROOT)
 #STATIC_URL = '/static/'
 
 # Session settings
-SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_COOKIE_HTTPONLY = True
 
 # Additional locations of static files
