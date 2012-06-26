@@ -16,6 +16,7 @@ from lxml import etree
 from lxml.builder import E
 from django.db.models import Q
 import re
+import time
 from django.core.urlresolvers import reverse
 
 @login_required
@@ -25,39 +26,60 @@ def device_tree(request):
 
 @login_required
 @init_logging
+def network(request):
+    return render_me(
+        request, "device_network.html",
+    )()
+
+@login_required
+@init_logging
 def get_json_tree(request):
     _post = request.POST
-    pprint.pprint(_post)
+    # build list for device_selection -> group lookup
+    sel_list = request.session.get("sel_list", [])
+    dg_list = device_group.objects.filter(Q(device_group__in=[cur_sel.split("_")[-1] for cur_sel in sel_list if cur_sel.startswith("dev_")])).values_list("pk", flat=True)
     full_tree = device_group.objects.order_by("-cluster_device_group", "name")
     json_struct = []
     for cur_dg in full_tree:
+        key = "dg_%d" % (cur_dg.pk)
         cur_jr = {
             "title"    : unicode(cur_dg),
-            "isFolder" : "1",
-            "isLazy"   : "1",
-            "key"      : "dg_%d" % (cur_dg.pk),
+            "isFolder" : True,
+            "isLazy"   : True,
+            "select"   : key in sel_list,
+            "expand"   : cur_dg.pk in dg_list,
+            "key"      : key,
             "url"      : reverse("device:get_json_devlist"),
-            "data"     : {"dg_idx" : cur_dg.pk}}
+            "data"     : {"dg_idx" : cur_dg.pk},
+            "children" : _get_device_list(request, cur_dg.pk) if cur_dg.pk in dg_list else []
+        }
         json_struct.append(cur_jr)
+    pprint.pprint(json_struct)
     return HttpResponse(json.dumps(json_struct),
                         mimetype="application/json")
 
+def _get_device_list(request, dg_idx):
+    cur_devs = device.objects.filter(Q(device_group=dg_idx)).select_related("device_type")
+    sel_list = request.session.get("sel_list", [])
+    json_struct = []
+    for sub_dev in cur_devs:
+        if sub_dev.device_type.identifier not in ["MD"]:
+            key = "dev_%d" % (sub_dev.pk)
+            json_struct.append({
+                "title"  : unicode(sub_dev),
+                "select" : True if key in sel_list else False,
+                "key"    : key
+            })
+    return json_struct
+    
 @login_required
 @init_logging
 def get_json_devlist(request):
     _post = request.POST
-    cur_devs = device.objects.filter(Q(device_group=_post["dg_idx"])).select_related("device_group")
-    pprint.pprint(_post)
-    json_struct = []
-    for sub_dev in cur_devs:
-        if sub_dev.device_type.identifier not in ["MD"]:
-            json_struct.append({
-                "title"  : unicode(sub_dev),
-                "key"    : "dev_%d" % (sub_dev.pk)
-            })
-    return HttpResponse(json.dumps(json_struct),
+    return HttpResponse(json.dumps(_get_device_list(request, _post["dg_idx"])),
                         mimetype="application/json")
 
+@login_required
 @init_logging
 def get_xml_tree(request):
     _post = request.POST
@@ -93,6 +115,7 @@ def get_xml_tree(request):
     #request.log("catastrophic error", logging_tools.LOG_LEVEL_ERROR, xml=True)
     return request.xml_response.create_response()
 
+@login_required
 @init_logging
 def change_xml_entry(request):
     _post = request.POST
@@ -144,6 +167,7 @@ def change_xml_entry(request):
                         request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
     return request.xml_response.create_response()
 
+@login_required
 @init_logging
 def create_device_group(request):
     _post = request.POST
@@ -161,6 +185,7 @@ def create_device_group(request):
         print new_dg.add_meta_device()
     return request.xml_response.create_response()
 
+@login_required
 @init_logging
 def delete_device_group(request):
     pk = request.POST["idx"]
@@ -173,6 +198,7 @@ def delete_device_group(request):
         request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
     return request.xml_response.create_response()
 
+@login_required
 @init_logging
 def create_device(request):
     _post = request.POST
@@ -214,6 +240,7 @@ def create_device(request):
             pass
     return request.xml_response.create_response()
 
+@login_required
 @init_logging
 def delete_device(request):
     pk = request.POST["idx"]
@@ -226,5 +253,28 @@ def delete_device(request):
         request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
     else:
         request.log("deleted device", xml=True)
+    return request.xml_response.create_response()
+    
+@login_required
+@init_logging
+def clear_selection(request):
+    request.session["sel_list"] = []
+    request.session.save()
+    return request.xml_response.create_response()
+    
+@login_required
+@init_logging
+def add_selection(request):
+    if "sel_list" not in request.session:
+        request.session["sel_list"] = []
+    cur_list = request.session["sel_list"]
+    _post = request.POST
+    add_flag, add_sel = (int(_post["add"]), _post["key"])
+    if add_flag and add_sel not in cur_list:
+        cur_list.append(add_sel)
+    elif not add_flag and add_sel in cur_list:
+        cur_list.remove(add_sel)
+    request.session.save()
+    request.log("%s in list" % (logging_tools.get_plural("selection", len(cur_list))))
     return request.xml_response.create_response()
     

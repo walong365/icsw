@@ -1,0 +1,30 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Device tree" %}{% endblock %}
+
+{% block content %}
+
+<h1 class="center">Device tree</h1>
+
+<div id="device_table">
+</div>
+
+<script type="text/javascript">
+
+function use_devs(dt_div) {
+    $.each(dt_div.dynatree("getSelectedNodes"), function(index, value) {
+        console.log(value.data.key);
+    });
+}
+
+function add_dnet_handlers() {
+    install_devsel_link(use_devs);
+}
+
+$(document).ready(add_dnet_handlers);
+
+</script>
+
+{% endblock %}

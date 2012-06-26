@@ -16,7 +16,6 @@ class render_me(object):
             self.my_dict.update(add_dict)
         for key, value in kwargs.iteritems():
             self.my_dict[key] = value
-        print self.my_dict
     def update(self, in_dict):
         self.my_dict.update(in_dict)
     def __call__(self, *args):

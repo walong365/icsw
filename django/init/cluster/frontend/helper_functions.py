@@ -226,8 +226,8 @@ class init_logging(object):
     def __call__(self, *args, **kwargs):
         s_time = time.time()
         request = args[0]
-        if "oeko_user" in request.session:
-            self.log("calling user is '%s'" % (request.session["oeko_user"]))
+        if request.user.is_authenticated():
+            self.log("calling user is '%s'" % (unicode(request.user)))
         else:
             self.log("no user defined in session", logging_tools.LOG_LEVEL_WARN)
         # FIXME! sys.stdout is init_logging - looks like only django runserver problem, not on nginx

@@ -36,13 +36,17 @@ device_patterns = patterns(
     "init.cluster.frontend",
     url("^device_tree$"     , "device_views.device_tree"        , name="tree"               ),
     url("^get_json_tree$"   , "device_views.get_json_tree"      , name="get_json_tree"      ), 
-    url("^get_json_devlist$", "device_views.get_json_devlist"   , name="get_json_devlist"),
+    url("^get_json_devlist$", "device_views.get_json_devlist"   , name="get_json_devlist"   ),
     url("^get_xml_tree$"    , "device_views.get_xml_tree"       , name="get_xml_tree"       ), 
     url("^change_xml_entry$", "device_views.change_xml_entry"   , name="change_xml_entry"   ),
     url("^create_devg$"     , "device_views.create_device_group", name="create_device_group"),
     url("^create_device$"   , "device_views.create_device"      , name="create_device"      ),
     url("^delete_devg$"     , "device_views.delete_device_group", name="delete_device_group"),
     url("^delete_device$"   , "device_views.delete_device"      , name="delete_device"      ),
+    url("^add_selection$"   , "device_views.add_selection"      , name="add_selection"      ),
+    url("^clear_selection$" , "device_views.clear_selection"    , name="clear_selection"    ),
+    url("^network$"         , "device_views.network"            , name="network"            ),
+    
 )
 
 network_patterns = patterns(

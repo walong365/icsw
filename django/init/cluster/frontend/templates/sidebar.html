@@ -9,21 +9,22 @@
     </tr>
     <tr>
         <td>
-            <div id="sidebar_info">
-                &nbsp;x
+            <div id="devsel_div">
             </div>
         </td>
     </tr>
     <tr>
         <td>
-            <div id="sidebar_qlinks">
-                &nbsp;y
+            <div id="devselclear_div">
+                <input type="button" onClick="clear_selection();" value="clear selection" />
             </div>
         </td>
     </tr>
 </table>
 
 <script type="text/javascript">
+
+DYN_DTS_UPDATE = true;
 
 function toggle_south(event) {
     my_layout.toggle("south");
@@ -33,12 +34,38 @@ function toggle_west(event) {
     my_layout.toggle("west");
 }
 
+function clear_selection() {
+    $.ajax({
+        url : "{% url device:clear_selection %}",
+        success : function(xml) {
+            DYN_DTS_UPDATE = false;
+            $.each($("div#sidebar_tree").dynatree("getSelectedNodes"), function(index, value) {
+                value.select(false);
+            });
+            DYN_DTS_UPDATE = true;
+        }
+    });
+};
+
+function install_devsel_link(t_func) {
+    $("div#devsel_div").children().remove();
+    $("div#devsel_div").text("");
+    $("div#devsel_div").append($("<button>").text("take selection").bind("click", function(event) {
+        t_func($("div#sidebar_tree"));
+    }));
+};
+
 function sidebar_handler() {
-    $("#sidebar_tree").dynatree({
+    $("div#sidebar_tree").dynatree({
         checkbox : true,
         initAjax : {
             url  : "{% url device:get_json_tree %}",
             data : {}
+        },
+        onPostInit : function(is_reloading, is_error) {
+            $.each($("div#sidebar_tree").dynatree("getSelectedNodes"), function(index, value) {
+                value.expand(true);
+            })
         },
         onLazyRead : function(dtnode) {
             dtnode.appendAjax({
@@ -70,9 +97,20 @@ function sidebar_handler() {
 <!--            toggle_expand(dtnode, flag);-->
 <!--        },-->
         onSelect : function(flag, dtnode) {
+            if (! dtnode.isExpanded()) {
+                dtnode.expand(true);
+            };
             dtnode.visit(function(cur_node) {
                 cur_node.toggleSelect();
             }, false);
+            if (DYN_DTS_UPDATE) {
+                $.ajax({
+                    url : "{% url device:add_selection %}",
+                    data : {
+                        "key" : dtnode.data.key,
+                        "add" : dtnode.isSelected() ? 1 : 0}
+                });
+            };
         },
         debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
     });
