@@ -432,8 +432,8 @@ function update_device_group_info() {
 
 function reload_device_tree() {
     $.ajax({
-        url : "{% url device:get_xml_tree %}",
-        error : handle_ajax_error,
+        url     : "{% url device:get_xml_tree %}",
+        error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 build_device_table(xml);
@@ -444,7 +444,7 @@ function reload_device_tree() {
 
 function add_dt_handlers() {
     reload_device_tree();
-}
+};
 
 $(document).ready(add_dt_handlers);
 

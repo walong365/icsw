@@ -24,7 +24,8 @@
 
 <script type="text/javascript">
 
-DYN_DTS_UPDATE = true;
+DYN_DTS_LOCKCOUNT = 0;
+CALL_DEVSEL_LINK_WHEN_LOADED = false;
 
 function toggle_south(event) {
     my_layout.toggle("south");
@@ -38,21 +39,22 @@ function clear_selection() {
     $.ajax({
         url : "{% url device:clear_selection %}",
         success : function(xml) {
-            DYN_DTS_UPDATE = false;
+            DYN_DTS_LOCKCOUNT = 1;
             $.each($("div#sidebar_tree").dynatree("getSelectedNodes"), function(index, value) {
                 value.select(false);
             });
-            DYN_DTS_UPDATE = true;
+            DYN_DTS_LOCKCOUNT = 0;
         }
     });
 };
 
-function install_devsel_link(t_func) {
+function install_devsel_link(t_func, fire_when_loaded) {
     $("div#devsel_div").children().remove();
     $("div#devsel_div").text("");
-    $("div#devsel_div").append($("<button>").text("take selection").bind("click", function(event) {
+    $("div#devsel_div").append($("<button>").attr({"id" : "devsel_button"}).text("take selection").bind("click", function(event) {
         t_func($("div#sidebar_tree"));
     }));
+    CALL_DEVSEL_LINK_WHEN_LOADED = fire_when_loaded;
 };
 
 function sidebar_handler() {
@@ -66,6 +68,9 @@ function sidebar_handler() {
             $.each($("div#sidebar_tree").dynatree("getSelectedNodes"), function(index, value) {
                 value.expand(true);
             })
+            if (CALL_DEVSEL_LINK_WHEN_LOADED) {
+                $("div#devsel_div button#devsel_button").trigger("click");
+            };
         },
         onLazyRead : function(dtnode) {
             dtnode.appendAjax({
@@ -100,16 +105,18 @@ function sidebar_handler() {
             if (! dtnode.isExpanded()) {
                 dtnode.expand(true);
             };
-            dtnode.visit(function(cur_node) {
-                cur_node.toggleSelect();
-            }, false);
-            if (DYN_DTS_UPDATE) {
+            if (! DYN_DTS_LOCKCOUNT) {
                 $.ajax({
                     url : "{% url device:add_selection %}",
                     data : {
                         "key" : dtnode.data.key,
                         "add" : dtnode.isSelected() ? 1 : 0}
                 });
+                DYN_DTS_LOCKCOUNT ++;
+                dtnode.visit(function(cur_node) {
+                    cur_node.toggleSelect();
+                }, false);
+                DYN_DTS_LOCKCOUNT --;
             };
         },
         debuglevel : {% if DEBUG %}2{% else %}0{% endif %}

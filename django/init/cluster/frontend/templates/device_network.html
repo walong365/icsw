@@ -2,26 +2,141 @@
 
 {% load i18n %}
 
-{% block title %}{% trans "Device tree" %}{% endblock %}
+{% block title %}{% trans "Device network settings" %}{% endblock %}
 
 {% block content %}
 
-<h1 class="center">Device tree</h1>
+<h1 class="center">Device network settings</h1>
 
-<div id="device_table">
+<div id="network_table">
 </div>
 
 <script type="text/javascript">
 
-function use_devs(dt_div) {
-    $.each(dt_div.dynatree("getSelectedNodes"), function(index, value) {
-        console.log(value.data.key);
+DEVICE_NETWORKS = false;
+
+function lock_elements() {
+    var el_list = $("div#network_table input:enabled");
+    el_list.attr("disabled", "disabled");
+    return el_list;
+};
+
+function unlock_elements(el_list) {
+    el_list.removeAttr("disabled");
+};
+
+function fill_new_netdevice_name(event) {
+    var cur_el = $(event.target);
+    var cur_val = cur_el.attr("value");
+    if (! cur_val) {
+        cur_el.attr("value", "lo");
+    };
+};
+
+function create_dict(in_list) {
+    var out_dict = {};
+    in_list.each(function(idx, value) {
+        out_dict[$(this).attr("id")] = $(this).attr("value");
     });
-}
+    return out_dict;
+};
+
+function create_new_netdevice(event) {
+    var cur_el = $(event.target);
+    var lock_list = lock_elements();
+    var el_list = $("div#network_table").find("input[id^='" + cur_el.attr("id") + "'], select[id^='" + cur_el.attr("id") + "']");
+    $.ajax({
+        url  : "{% url device:create_netdevice %}",
+        data : create_dict(el_list),
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                console.log("ok");
+            };
+        }
+    });
+    console.log(cur_el);
+    unlock_elements(lock_list);
+};
+
+function create_netspeed_element(id_str) {
+    var cur_el = $("<select>").attr({
+        "id" : id_str
+    });
+    DEVICE_NETWORKS.find("netspeed_list netspeed").each(function() {
+        var cur_ns = $(this);
+        cur_el.append($("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text()));
+    });
+    return cur_el;
+};
+
+function add_netdevice_line(cur_dev) {
+    var dummy_div = $("<div>");
+    dummy_div.append(
+        $("<td>").append(
+        $("<input>").attr({
+            "type" : "text",
+            "id"   : "nd_" + cur_dev.attr("pk") + "_new_name"
+        }).bind("click", fill_new_netdevice_name))
+    );
+    dummy_div.append(
+        $("<td>").append(
+        $("<input>").attr({
+            "type"  : "button",
+            "value" : "create",
+            "id"    : "nd_" + cur_dev.attr("pk") + "_new"
+        }).bind("click", create_new_netdevice)
+    ));
+    dummy_div.append(
+        $("<td>").append(
+        create_netspeed_element("nd_" + cur_dev.attr("pk") + "_new_speed")));
+    return dummy_div;
+};
+
+function draw_device_networks(cur_dev) {
+    console.log(cur_dev);
+    var cur_tr = $("<tr>").attr({
+        "id" : cur_dev.attr("key")
+    });
+    cur_tr.append($("<td>").text(cur_dev.attr("name")));
+    cur_tr.append(add_netdevice_line(cur_dev).find("td"));
+    return cur_tr;
+};
+
+function draw_network_table() {
+    $("div#network_table").children().remove();
+    new_table = $("<table>").attr({"id" : "network_tree"});
+    DEVICE_NETWORKS.find("device").each(function() {
+        new_table.append(draw_device_networks($(this)));
+    });
+    $("div#network_table").append(new_table);
+    new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
+};
+
+function reload_network_tree(sel_list) {
+    $.ajax({
+        url     : "{% url device:get_network_tree %}",
+        error   : handle_ajax_error,
+        data    : {
+            "sel_list" : sel_list
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                DEVICE_NETWORKS = $(xml);
+                draw_network_table();
+            }
+        }
+    });
+};
+
+function use_devs(dt_div) {
+    reload_network_tree(_.map(dt_div.dynatree("getSelectedNodes"), function(value) {
+        return(value.data.key);
+    }));
+};
 
 function add_dnet_handlers() {
-    install_devsel_link(use_devs);
-}
+    install_devsel_link(use_devs, true);
+};
 
 $(document).ready(add_dnet_handlers);
 

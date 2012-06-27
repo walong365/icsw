@@ -11,7 +11,8 @@ from init.cluster.frontend.helper_functions import init_logging
 from init.cluster.frontend.render_tools import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from init.cluster.backbone.models import device_type, device_group, device, device_class
+from init.cluster.backbone.models import device_type, device_group, device, device_class, netdevice, \
+     netdevice_speed
 from lxml import etree
 from lxml.builder import E
 from django.db.models import Q
@@ -54,12 +55,11 @@ def get_json_tree(request):
             "children" : _get_device_list(request, cur_dg.pk) if cur_dg.pk in dg_list else []
         }
         json_struct.append(cur_jr)
-    pprint.pprint(json_struct)
     return HttpResponse(json.dumps(json_struct),
                         mimetype="application/json")
 
 def _get_device_list(request, dg_idx):
-    cur_devs = device.objects.filter(Q(device_group=dg_idx)).select_related("device_type")
+    cur_devs = device.objects.filter(Q(device_group=dg_idx)).select_related("device_type").order_by("name")
     sel_list = request.session.get("sel_list", [])
     json_struct = []
     for sub_dev in cur_devs:
@@ -78,6 +78,33 @@ def get_json_devlist(request):
     _post = request.POST
     return HttpResponse(json.dumps(_get_device_list(request, _post["dg_idx"])),
                         mimetype="application/json")
+
+@login_required
+@init_logging
+def get_network_tree(request):
+    _post = request.POST
+    pprint.pprint(_post)
+    sel_list = _post.getlist("sel_list[]", [])
+    dev_pk_list = [int(entry.split("_")[1]) for entry in sel_list if entry.startswith("dev_")]
+    xml_resp = E.response()
+    dev_list = E.devices()
+    for cur_dev in device.objects.filter(Q(pk__in=dev_pk_list)).select_related(
+        "device_group",
+        "device_type").prefetch_related("netdevice_set").order_by("device_group__name", "name"):
+        dev_list.append(
+            E.device(
+                E.netdevices(),
+                name=cur_dev.name,
+                pk="%d" % (cur_dev.pk),
+                key="dev_%d" % (cur_dev.pk),
+            )
+        )
+    netspeed_list = E.netspeed_list(
+        *[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()])
+    xml_resp.append(dev_list)
+    xml_resp.append(netspeed_list)
+    request.xml_response["response"] = xml_resp
+    return request.xml_response.create_response()
 
 @login_required
 @init_logging
@@ -202,7 +229,7 @@ def delete_device_group(request):
 @init_logging
 def create_device(request):
     _post = request.POST
-    range_re = re.compile("^(?P<name>.+)\[(?P<start>\d+)-(?P<end>\d+)\]")
+    range_re = re.compile("^(?P<name>.+)\[(?P<start>\d+)-(?P<end>\d+)\](?P<post>.*)$")
     name = request.POST["name"]
     range_m = range_re.match(name)
     if range_m is None:
@@ -219,8 +246,9 @@ def create_device(request):
         request.log("range has %s (%d -> %d)" % (logging_tools.get_plural("digit", num_dig),
                                                  start_idx,
                                                  end_idx))
-        form_str = "%s%%0%dd" % (range_m.group("name"),
-                                 num_dig)
+        form_str = "%s%%0%dd%s" % (range_m.group("name"),
+                                   num_dig,
+                                   range_m.group("post"))
         create_list = [form_str % (cur_idx) for cur_idx in xrange(start_idx, end_idx + 1)]
     for create_dev in sorted(create_list):
         try:
@@ -265,16 +293,46 @@ def clear_selection(request):
 @login_required
 @init_logging
 def add_selection(request):
-    if "sel_list" not in request.session:
-        request.session["sel_list"] = []
-    cur_list = request.session["sel_list"]
+    cur_list = request.session.get("sel_list", [])
     _post = request.POST
     add_flag, add_sel = (int(_post["add"]), _post["key"])
     if add_flag and add_sel not in cur_list:
         cur_list.append(add_sel)
     elif not add_flag and add_sel in cur_list:
         cur_list.remove(add_sel)
+    if add_sel.startswith("dg_"):
+        # emulate toggle of device_group
+        request.log("toggle selection of device_group %d" % (int(add_sel.split("_")[1])))
+        toggle_devs = ["dev_%d" % (cur_pk) for cur_pk in device.objects.filter(Q(device_group=add_sel.split("_")[1])).values_list("pk", flat=True)]
+        for toggle_dev in toggle_devs:
+            if toggle_dev in cur_list:
+                cur_list.remove(toggle_dev)
+            else:
+                cur_list.append(toggle_dev)
+    request.session["sel_list"] = cur_list
     request.session.save()
     request.log("%s in list" % (logging_tools.get_plural("selection", len(cur_list))))
+    return request.xml_response.create_response()
+    
+@login_required
+@init_logging
+def create_netdevice(request):
+    _post = request.POST
+    keys = _post.keys()
+    dev_pk = int([key for key in keys if key.startswith("nd_")][0].split("_")[1])
+    cur_dev = device.objects.get(Q(pk=dev_pk))
+    value_dict = dict([(key.split("_", 2)[2], value) for key, value in _post.iteritems()])
+    if "new" in value_dict:
+        pprint.pprint(value_dict)
+        request.log("create new netdevice for '%s'" % (unicode(cur_dev)))
+        present_devs = netdevice.objects.filter(Q(device=cur_dev))
+        if value_dict["new_name"] in [cur_nd.devname for cur_nd in present_devs]:
+            print "present"
+        else:
+            new_nd = netdevice(device=cur_dev,
+                               devname=value_dict["new_name"],
+                               netdevice_speed=netdevice_speed.objects.get(Q(pk=value_dict["new_speed"])))
+            new_nd.save()
+        pprint.pprint(value_dict)
     return request.xml_response.create_response()
     
