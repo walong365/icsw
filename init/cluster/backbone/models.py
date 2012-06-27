@@ -775,6 +775,8 @@ class netdevice_speed(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'netdevice_speed'
+    def __unicode__(self):
+        return u"%d" % (self.speed_bps)
 
 class net_ip(models.Model):
     idx = models.AutoField(db_column="netip_idx", primary_key=True)
