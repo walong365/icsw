@@ -1,6 +1,6 @@
 <style type="text/css">
 div.spinner {
-    background-image:url({{ MEDIA_URL }}spinner.gif);
+    background-image:url({{ STATIC_URL }}spinner.gif);
     background-repeat: no-repeat;
     float : left;
     width : 16px;
