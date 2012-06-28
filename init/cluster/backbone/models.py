@@ -6,6 +6,8 @@ import datetime
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
+from lxml import etree
+from lxml.builder import E
 
 def only_wf_perms(in_list):
     return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
@@ -255,6 +257,9 @@ class device(models.Model):
     show_in_bootcontrol = models.BooleanField()
     cpu_info = models.TextField(blank=True, null=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        # FIXME
+        return E.device()
     def __unicode__(self):
         return u"%s%s" % (self.name,
                           " (%s)" % (self.comment) if self.comment else "")
@@ -323,6 +328,9 @@ class device_group(models.Model):
         return new_md
     def get_metadevice_name(self):
         return "METADEV_%s" % (self.name)
+    def get_xml(self):
+        # FIXME
+        return E.device()
     class Meta:
         db_table = u'device_group'
     def __unicode__(self):
@@ -764,8 +772,30 @@ class netdevice(models.Model):
     bridge_name = models.CharField(max_length=765, blank=True)
     vlan_id = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def find_matching_network_device_type(self):
+        # remove digits
+        name = self.devname.strip("0123456789")
+        ndt_list = network_device_type.objects.filter(Q(identifier__startswith=name))
+        if len(ndt_list) == 0:
+            return None
+        elif len(ndt_list) == 1:
+            return ndt_list[0]
+        else:
+            # FIXME, enhance to full match
+            return ndt_list[0]
     class Meta:
         db_table = u'netdevice'
+    def __unicode__(self):
+        return self.devname
+    def get_xml(self):
+        return E.netdevice(
+            self.devname,
+            pk="%d" % (self.pk),
+            device="%d" % (self.device_id),
+            key="nd__%d" % (self.pk),
+            netdevice_speed="%d" % (self.netdevice_speed_id),
+            network_device_type="%d" % (self.network_device_type_id),
+            nd_type="%d" % (self.network_device_type_id))
 
 class netdevice_speed(models.Model):
     idx = models.AutoField(db_column="netdevice_speed_idx", primary_key=True)
@@ -776,7 +806,16 @@ class netdevice_speed(models.Model):
     class Meta:
         db_table = u'netdevice_speed'
     def __unicode__(self):
-        return u"%d" % (self.speed_bps)
+        s_str, lut_idx = ("", 0)
+        cur_s = self.speed_bps
+        while cur_s > 999:
+            cur_s = cur_s / 1000
+            lut_idx += 1
+        return u"%d%sBps, %s duplex, %s" % (
+            cur_s,
+            " kMGT"[lut_idx].strip(),
+            "full" if self.full_duplex else "half",
+            "check via ethtool" if self.check_via_ethtool else "no check")
 
 class net_ip(models.Model):
     idx = models.AutoField(db_column="netip_idx", primary_key=True)
@@ -1732,10 +1771,26 @@ def device_group_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if not cur_inst.name:
-            raise ValidationError, "name can not be zero"
+            raise ValidationError("name can not be zero")
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         if not kwargs["instance"].name:
-            raise ValidationError, "name can not be zero"
+            raise ValidationError("name can not be zero")
+
+@receiver(signals.pre_save, sender=netdevice)
+def netdevice_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.devname:
+            raise ValidationError("name can not be zero")
+        all_nd_names = netdevice.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device_id)).values_list("devname", flat=True)
+        if cur_inst.devname in all_nd_names:
+            raise ValidationError("devname '%s' already used" % (cur_inst.devname))
+        # change network_device_type
+        nd_type = cur_inst.find_matching_network_device_type()
+        if not nd_type:
+            raise ValidationError("no matching device_type found")
+        cur_inst.network_device_type = nd_type
+        
