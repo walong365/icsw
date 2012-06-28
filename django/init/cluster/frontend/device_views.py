@@ -12,7 +12,8 @@ from init.cluster.frontend.render_tools import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from init.cluster.backbone.models import device_type, device_group, device, device_class, netdevice, \
-     netdevice_speed
+     netdevice_speed, network_device_type
+from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
 from django.db.models import Q
@@ -42,7 +43,7 @@ def get_json_tree(request):
     full_tree = device_group.objects.order_by("-cluster_device_group", "name")
     json_struct = []
     for cur_dg in full_tree:
-        key = "dg_%d" % (cur_dg.pk)
+        key = "dg__%d" % (cur_dg.pk)
         cur_jr = {
             "title"    : unicode(cur_dg),
             "isFolder" : True,
@@ -64,7 +65,7 @@ def _get_device_list(request, dg_idx):
     json_struct = []
     for sub_dev in cur_devs:
         if sub_dev.device_type.identifier not in ["MD"]:
-            key = "dev_%d" % (sub_dev.pk)
+            key = "dev__%d" % (sub_dev.pk)
             json_struct.append({
                 "title"  : unicode(sub_dev),
                 "select" : True if key in sel_list else False,
@@ -79,13 +80,19 @@ def get_json_devlist(request):
     return HttpResponse(json.dumps(_get_device_list(request, _post["dg_idx"])),
                         mimetype="application/json")
 
+def _get_netdevice_list(cur_dev):
+    cur_list = E.netdevices()
+    for ndev in cur_dev.netdevice_set.all().order_by("devname"):
+        cur_list.append(ndev.get_xml())
+    return cur_list
+
 @login_required
 @init_logging
 def get_network_tree(request):
     _post = request.POST
     pprint.pprint(_post)
     sel_list = _post.getlist("sel_list[]", [])
-    dev_pk_list = [int(entry.split("_")[1]) for entry in sel_list if entry.startswith("dev_")]
+    dev_pk_list = [int(entry.split("__")[1]) for entry in sel_list if entry.startswith("dev__")]
     xml_resp = E.response()
     dev_list = E.devices()
     for cur_dev in device.objects.filter(Q(pk__in=dev_pk_list)).select_related(
@@ -93,16 +100,17 @@ def get_network_tree(request):
         "device_type").prefetch_related("netdevice_set").order_by("device_group__name", "name"):
         dev_list.append(
             E.device(
-                E.netdevices(),
+                _get_netdevice_list(cur_dev),
                 name=cur_dev.name,
                 pk="%d" % (cur_dev.pk),
-                key="dev_%d" % (cur_dev.pk),
+                key="dev__%d" % (cur_dev.pk),
             )
         )
-    netspeed_list = E.netspeed_list(
-        *[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()])
     xml_resp.append(dev_list)
-    xml_resp.append(netspeed_list)
+    xml_resp.append(E.netspeed_list(
+        *[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()]))
+    xml_resp.append(E.network_device_type_list(
+        *[E.network_device_type(unicode(cur_ndt), pk="%d" % (cur_ndt.pk)) for cur_ndt in network_device_type.objects.all()]))
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
 
@@ -121,7 +129,8 @@ def get_xml_tree(request):
                 comment=cur_d.comment,
                 device_type="%d" % (cur_d.device_type_id),
                 device_group="%d" % (cur_d.device_group_id),
-                idx="%d" % (cur_d.pk)
+                idx="%d" % (cur_d.pk),
+                key="dev__%d" % (cur_d.pk)
             )
             dev_list.append(d_el)
         dg_el = E.device_group(
@@ -129,12 +138,15 @@ def get_xml_tree(request):
             unicode(cur_dg),
             name=cur_dg.name,
             description=cur_dg.description,
-            idx="%d" % (cur_dg.pk), is_cdg="1" if cur_dg.cluster_device_group else "0")
+            key="dg__%d" % (cur_dg.pk),
+            idx="%d" % (cur_dg.pk),
+            is_cdg="1" if cur_dg.cluster_device_group else "0")
         xml_resp.append(dg_el)
     # add device type
     xml_resp.append(
         E.device_types(
-            *[E.device_type(name=cur_dt.description, identifier=cur_dt.identifier, idx="%d" % (cur_dt.pk))
+            *[E.device_type(name=cur_dt.description,
+                            identifier=cur_dt.identifier, idx="%d" % (cur_dt.pk))
               for cur_dt in device_type.objects.all()]
         )
     )
@@ -147,14 +159,21 @@ def get_xml_tree(request):
 def change_xml_entry(request):
     _post = request.POST
     try:
-        object_type, attr_name, object_id = _post["id"].split("__", 2)
+        if _post["id"].count("__") == 2:
+            # format object_type, attr_name, object_id, used in device_tree
+            object_type, attr_name, object_id = _post["id"].split("__", 2)
+        elif _post["id"].count("__") == 3:
+            # format object_type, mother_id, object_id, attr_name, used in device_network
+            object_type, mother_id, object_id, attr_name = _post["id"].split("__", 3)
     except:
         request.log("cannot parse", logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
         if object_type == "dg":
             mod_obj = device_group
-        elif object_type == "d":
+        elif object_type == "dev":
             mod_obj = device
+        elif object_type == "nd":
+            mod_obj = netdevice
         else:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
             mod_obj = None
@@ -169,7 +188,7 @@ def change_xml_entry(request):
                     # special call: create new metadevice
                     cur_obj.add_meta_device()
                     request.log("created metadevice for %s" % (cur_obj.name), xml=True)
-                elif (object_type, attr_name) == ("d", "device_group"):
+                elif (object_type, attr_name) == ("dev", "device_group"):
                     # special call: create new metadevice
                     target_dg = device_group.objects.get(Q(pk=_post["value"]))
                     cur_obj.device_group = target_dg
@@ -180,17 +199,19 @@ def change_xml_entry(request):
                     new_value = _post["value"]
                     if attr_name == "device_type":
                         new_value = device_type.objects.get(pk=new_value)
+                    elif attr_name == "netdevice_speed":
+                        new_value = netdevice_speed.objects.get(pk=new_value)
                     old_value = getattr(cur_obj, attr_name)
                     setattr(cur_obj, attr_name, new_value)
                     try:
                         cur_obj.save()
-                    except:
+                    except ValidationError, what:
+                        request.log("error modifying: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
                         request.xml_response["original_value"] = old_value
-                        request.log("cannot change from %s to %s" % (unicode(old_value), unicode(new_value)),
-                                    logging_tools.LOG_LEVEL_ERROR,
-                                    xml=True)
-                        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    except:
+                        raise
                     else:
+                        request.xml_response["object"] = cur_obj.get_xml()
                         request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
     return request.xml_response.create_response()
 
@@ -258,11 +279,8 @@ def create_device(request):
                              device_type=device_type.objects.get(Q(pk=_post["type"])),
                              device_class=device_class.objects.get(Q(pk=1)))
             new_dev.save()
-        except:
-            request.log("cannot create device %s" % (name),
-                        logging_tools.LOG_LEVEL_ERROR,
-                        xml=True)
-            request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+        except ValidationError, what:
+            request.log("error creating: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
             break
         else:
             pass
@@ -303,7 +321,7 @@ def add_selection(request):
     if add_sel.startswith("dg_"):
         # emulate toggle of device_group
         request.log("toggle selection of device_group %d" % (int(add_sel.split("_")[1])))
-        toggle_devs = ["dev_%d" % (cur_pk) for cur_pk in device.objects.filter(Q(device_group=add_sel.split("_")[1])).values_list("pk", flat=True)]
+        toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(Q(device_group=add_sel.split("_")[1])).values_list("pk", flat=True)]
         for toggle_dev in toggle_devs:
             if toggle_dev in cur_list:
                 cur_list.remove(toggle_dev)
@@ -313,26 +331,42 @@ def add_selection(request):
     request.session.save()
     request.log("%s in list" % (logging_tools.get_plural("selection", len(cur_list))))
     return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def delete_netdevice(request):
+    _post = request.POST
+    keys = _post.keys()
     
+    dev_pk_key = [key for key in keys if key.startswith("nd_")][0]
+    dev_pk, nd_pk = (int(dev_pk_key.split("__")[1]),
+                     int(dev_pk_key.split("__")[2]))
+    netdevice.objects.get(Q(pk=nd_pk) & Q(device=dev_pk)).delete()
+    return request.xml_response.create_response()
+
 @login_required
 @init_logging
 def create_netdevice(request):
     _post = request.POST
+    pprint.pprint(_post)
     keys = _post.keys()
-    dev_pk = int([key for key in keys if key.startswith("nd_")][0].split("_")[1])
+    dev_pk = int([key for key in keys if key.startswith("nd__")][0].split("__")[1])
     cur_dev = device.objects.get(Q(pk=dev_pk))
-    value_dict = dict([(key.split("_", 2)[2], value) for key, value in _post.iteritems()])
+    value_dict = dict([(key.split("__", 2)[2], value) for key, value in _post.iteritems()])
     if "new" in value_dict:
+        # new is here used as a prefix, so new__devname is correct and not new_devname (AL, 20120826)
         pprint.pprint(value_dict)
         request.log("create new netdevice for '%s'" % (unicode(cur_dev)))
-        present_devs = netdevice.objects.filter(Q(device=cur_dev))
-        if value_dict["new_name"] in [cur_nd.devname for cur_nd in present_devs]:
-            print "present"
-        else:
-            new_nd = netdevice(device=cur_dev,
-                               devname=value_dict["new_name"],
-                               netdevice_speed=netdevice_speed.objects.get(Q(pk=value_dict["new_speed"])))
+        new_nd = netdevice(device=cur_dev,
+                           devname=value_dict["new__devname"],
+                           netdevice_speed=netdevice_speed.objects.get(Q(pk=value_dict["new__netdevice_speed"])))
+        try:
             new_nd.save()
-        pprint.pprint(value_dict)
+        except ValidationError, what:
+            request.log("error creating: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
+        except:
+            raise
+        else:
+            request.xml_response["new_netdevice"] = new_nd.get_xml()
     return request.xml_response.create_response()
     

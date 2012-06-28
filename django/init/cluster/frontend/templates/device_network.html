@@ -15,6 +15,38 @@
 
 DEVICE_NETWORKS = false;
 
+function submit_change(cur_el, callback) {
+    $.ajax({
+        url  : "{% url device:change_xml_entry %}",
+        data : {
+            "id"  : $(cur_el).attr("id"),
+            "value" : $(cur_el).attr("value")
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                replace_xml_element($(xml));
+                if (callback != undefined && typeof callback == "function") callback(cur_el);
+            } else {
+                <!-- set back to previous value -->
+                $(cur_el).attr("value", get_xml_value(xml, "original_value"));
+            };
+        }
+    })
+};
+
+function replace_xml_element(xml) {
+    // replace element in DEVICE_NETWORKS
+    xml.find("value[name='object'] > *").each(function() {
+        var new_el = $(this);
+        DEVICE_NETWORKS.find("[key='" + new_el.attr("key") + "']").replaceWith(new_el);
+    });
+};
+
+function update_network_device_type_string(cur_el) {
+    cur_nd = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "'] netdevice[pk='" + cur_el.attr("id").split("__")[2] + "']");
+    cur_el.parents("tr:first").find("span[id$='__devinfo']").text(DEVICE_NETWORKS.find("network_device_type_list network_device_type[pk='" + cur_nd.attr("network_device_type") + "']").text());
+};
+
 function lock_elements() {
     var el_list = $("div#network_table input:enabled");
     el_list.attr("disabled", "disabled");
@@ -41,72 +73,149 @@ function create_dict(in_list) {
     return out_dict;
 };
 
-function create_new_netdevice(event) {
-    var cur_el = $(event.target);
-    var lock_list = lock_elements();
-    var el_list = $("div#network_table").find("input[id^='" + cur_el.attr("id") + "'], select[id^='" + cur_el.attr("id") + "']");
-    $.ajax({
-        url  : "{% url device:create_netdevice %}",
-        data : create_dict(el_list),
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                console.log("ok");
-            };
-        }
-    });
-    console.log(cur_el);
-    unlock_elements(lock_list);
+function inject_netdevice_line(cur_dev, new_nd) {
+    // add new_nd to DEVICE_NETWORKS
+    DEVICE_NETWORKS.find("device[pk='" + new_nd.attr("device") + "'] netdevices").append(new_nd);
+    FIRST_NETDEVICE_LINE = false;
+    var header_tr = $("div#network_table tr[id='nd__" + cur_dev.attr("pk") + "__new']");
+    header_tr.after(
+        add_netdevice_line(cur_dev, new_nd).children()
+    );
+    var name_td = header_tr.find("td[id$='_devname']");
+    name_td.attr({"rowspan" : parseInt(name_td.attr("rowspan")) + 1});
 };
 
-function create_netspeed_element(id_str) {
+function remove_netdevice_line(cur_dev, delete_button) {
+    var cur_tr = $("div#network_table tr[id='" + delete_button.attr("id") + "']");
+    var name_td = $("div#network_table td[id='nd__" + delete_button.attr("id").split("_")[1] + "__new__devname']");
+    name_td.attr({"rowspan" : parseInt(name_td.attr("rowspan")) - 1});
+    cur_tr.remove();
+};
+    
+function create_delete_new_netdevice(event) {
+    var cur_el = $(event.target);
+    var cur_dev = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "']");
+    var lock_list = lock_elements();
+    var el_list = $("div#network_table").find("input[id^='" + cur_el.attr("id") + "'], select[id^='" + cur_el.attr("id") + "']");
+    if (cur_el.attr("id").match(/new$/)) {
+        // create element
+        $.ajax({
+            url  : "{% url device:create_netdevice %}",
+            data : create_dict(el_list),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    inject_netdevice_line(cur_dev, $(xml).find("response values value netdevice"));
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    } else {
+        // delete
+        $.ajax({
+            url  : "{% url device:delete_netdevice %}",
+            data : create_dict(el_list),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    remove_netdevice_line(cur_dev, cur_el);
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    };
+};
+
+function create_netspeed_element(id_str, cur_nd) {
+    var dummy_val = DEVICE_NETWORKS.find("netspeed_list netspeed:first").attr("pk");
+    var sel_val = cur_nd === undefined ? dummy_val : cur_nd.attr("netdevice_speed");
     var cur_el = $("<select>").attr({
-        "id" : id_str
+        "id"    : id_str,
+        "value" : sel_val
     });
+    if (cur_nd !== undefined) {
+        cur_el.bind("change", function(event) {
+            submit_change($(event.target));
+        });
+    };
     DEVICE_NETWORKS.find("netspeed_list netspeed").each(function() {
         var cur_ns = $(this);
-        cur_el.append($("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text()));
+        var cur_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text());
+        if (cur_ns.attr("pk") == sel_val) cur_opt.attr("selected", "selected");
+        cur_el.append(cur_opt);
     });
     return cur_el;
 };
 
-function add_netdevice_line(cur_dev) {
-    var dummy_div = $("<div>");
-    dummy_div.append(
+function add_netdevice_line(cur_dev, cur_nd) {
+    if (cur_nd === undefined) {
+        var nd_pk = "new";
+    } else {
+        var nd_pk = cur_nd.attr("pk");
+    };
+    var line_prefix = "nd__" + cur_dev.attr("pk") + "__" + nd_pk;
+    if (FIRST_NETDEVICE_LINE) {
+        FIRST_NETDEVICE_LINE = false;
+        var cur_tr = $("<tr>").attr({
+            "id" : line_prefix
+        });
+        var num_nds = cur_dev.find("netdevices netdevice").length;
+        cur_tr.append($("<td>").attr({
+            "id"      : line_prefix + "__devname",
+            "rowspan" : num_nds + 1}).text(cur_dev.attr("name")));
+    } else {
+        var cur_tr = $("<tr>").attr({
+            "id" : line_prefix
+        });
+    };
+    cur_tr.append(
         $("<td>").append(
         $("<input>").attr({
-            "type" : "text",
-            "id"   : "nd_" + cur_dev.attr("pk") + "_new_name"
-        }).bind("click", fill_new_netdevice_name))
-    );
-    dummy_div.append(
+            "type"  : "text",
+            "id"    : line_prefix + "__devname",
+            "value" : nd_pk == "new" ? "" : cur_nd.text()
+        })).append($("<span>").attr({
+            "id"    : line_prefix + "__devinfo"
+        })
+    ));
+    if (nd_pk == "new") {
+        cur_tr.find("td:last").bind("click", fill_new_netdevice_name);
+    } else {
+        cur_tr.find("td:last").bind("change", function(event) {
+            submit_change($(event.target), update_network_device_type_string);
+        })
+    };
+    if (nd_pk != "new") {
+        update_network_device_type_string(cur_tr.find("td:last input"));
+    };
+    cur_tr.append(
         $("<td>").append(
         $("<input>").attr({
             "type"  : "button",
-            "value" : "create",
-            "id"    : "nd_" + cur_dev.attr("pk") + "_new"
-        }).bind("click", create_new_netdevice)
+            "value" : nd_pk == "new" ? "create" : "delete",
+            "id"    : line_prefix
+        }).bind("click", create_delete_new_netdevice)
     ));
-    dummy_div.append(
+    cur_tr.append(
         $("<td>").append(
-        create_netspeed_element("nd_" + cur_dev.attr("pk") + "_new_speed")));
-    return dummy_div;
+        create_netspeed_element(line_prefix + "__netdevice_speed", cur_nd)));
+    return $("<div>").append(cur_tr);
 };
 
 function draw_device_networks(cur_dev) {
-    console.log(cur_dev);
-    var cur_tr = $("<tr>").attr({
-        "id" : cur_dev.attr("key")
+    // init global flag
+    FIRST_NETDEVICE_LINE = true;
+    var dummy_div = $("<div>");
+    dummy_div.append(add_netdevice_line(cur_dev).children());
+    cur_dev.find("netdevices netdevice").each(function() {
+        dummy_div.append(add_netdevice_line(cur_dev, $(this)).children());
     });
-    cur_tr.append($("<td>").text(cur_dev.attr("name")));
-    cur_tr.append(add_netdevice_line(cur_dev).find("td"));
-    return cur_tr;
+    return dummy_div;
 };
 
 function draw_network_table() {
     $("div#network_table").children().remove();
     new_table = $("<table>").attr({"id" : "network_tree"});
     DEVICE_NETWORKS.find("device").each(function() {
-        new_table.append(draw_device_networks($(this)));
+        new_table.append(draw_device_networks($(this)).children());
     });
     $("div#network_table").append(new_table);
     new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
