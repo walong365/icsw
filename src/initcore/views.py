@@ -256,7 +256,7 @@ def set_css_values(request):
     font_scale = request.session.get("font_scale", "27")
     upd_dict = {"background_color_top": "#ffda88",
                 "background_color_west": "#ffeaa8"}
-    css_dir = os.path.join(settings.MEDIA_ROOT, "initcore/css", "%s%s" % (css_name, font_scale))
+    css_dir = os.path.join(settings.STATIC_ROOT, "initcore/css", "%s%s" % (css_name, font_scale))
     if os.path.isdir(css_dir):
         css_file = [f_name for f_name in os.listdir(css_dir) if f_name.endswith(".css")]
         #print css_dir, css_file
