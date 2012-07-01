@@ -12,7 +12,7 @@ from init.cluster.frontend.render_tools import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from init.cluster.backbone.models import device_type, device_group, device, device_class, netdevice, \
-     netdevice_speed, network_device_type, network
+     netdevice_speed, network_device_type, network, net_ip, network
 from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
@@ -176,6 +176,9 @@ def change_xml_entry(request):
         elif _post["id"].count("__") == 3:
             # format object_type, mother_id, object_id, attr_name, used in device_network
             object_type, mother_id, object_id, attr_name = _post["id"].split("__", 3)
+        elif _post["id"].count("__") == 5:
+            # format mother object_type, dev_id, mother_id, object_type, object_id, attr_name, used in device_network for IPs
+            m_object_type, dev_id, mother_id, object_type, object_id, attr_name = _post["id"].split("__", 5)
     except:
         request.log("cannot parse", logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
@@ -185,6 +188,8 @@ def change_xml_entry(request):
             mod_obj = device
         elif object_type == "nd":
             mod_obj = netdevice
+        elif object_type == "ip":
+            mod_obj = net_ip
         else:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
             mod_obj = None
@@ -227,6 +232,8 @@ def change_xml_entry(request):
                     except:
                         raise
                     else:
+                        # reread new_value (in case of pre/post-save corrections)
+                        new_value = getattr(cur_obj, attr_name)
                         request.xml_response["object"] = cur_obj.get_xml()
                         request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
     return request.xml_response.create_response()
@@ -388,3 +395,38 @@ def create_netdevice(request):
             request.xml_response["new_netdevice"] = new_nd.get_xml()
     return request.xml_response.create_response()
     
+@login_required
+@init_logging
+def delete_net_ip(request):
+    _post = request.POST
+    keys = _post.keys()
+    main_key = [key for key in keys if key.endswith("__ip")][0]
+    net_ip.objects.get(Q(pk=main_key.split("__")[4])).delete()
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def create_net_ip(request):
+    _post = request.POST
+    keys = _post.keys()
+    main_key = [key for key in keys if key.endswith("__new")][0]
+    cur_nd = netdevice.objects.get(Q(pk=main_key.split("__")[2]))
+    print cur_nd
+    value_dict = dict([(key.split("__", 4)[4], value) for key, value in _post.iteritems()])
+    pprint.pprint(value_dict)
+    if "new" in value_dict:
+        request.log("create new net_ip for '%s'" % (unicode(cur_nd)))
+        copy_dict = dict([(key, value_dict["new__%s" % (key)]) for key in [
+            "ip"] if "new__%s" % (key) in value_dict])
+        new_ip = net_ip(netdevice=cur_nd,
+                        network=network.objects.get(Q(pk=value_dict["new__network"])),
+                        **copy_dict)
+        try:
+            new_ip.save()
+        except ValidationError, what:
+            request.log("error creating: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
+        except:
+            raise
+        else:
+            request.xml_response["new_net_ip"] = new_ip.get_xml()
+    return request.xml_response.create_response()

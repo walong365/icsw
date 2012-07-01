@@ -45,8 +45,14 @@ function submit_change(cur_el, callback) {
     })
 };
 
+function set_network_after_change(cur_el) {
+    // get xml_el
+    var net_ip_xml = DEVICE_NETWORKS.find("net_ip[pk='" + cur_el.attr("id").split("__")[4] + "']");
+    $("div#network_table select[id$='__ip__" + net_ip_xml.attr("pk") + "__network']").attr("value", net_ip_xml.attr("network"));
+};
+
 function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
-    dummy_div = $("<div>");
+    var dummy_div = $("<div>");
     kwargs = kwargs || {};
     if (kwargs["label"]) {
         dummy_div.append($("<label>").attr({"for" : attr_name}).text(kwargs["label"]));
@@ -83,7 +89,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
     };
     if (xml_el !== undefined) {
         new_el.bind("change", function(event) {
-            submit_change($(event.target));
+            submit_change($(event.target), kwargs.callback);
         })
     };
     return (dummy_div.append(new_el)).children();
@@ -143,18 +149,40 @@ function inject_netdevice_line(cur_dev, new_nd) {
     header_tr.next().next().after(
         add_netdevice_line(cur_dev, new_nd).children()
     );
-    var name_td = header_tr.find("td[id$='__devname']");
-    modify_rowspan(name_td, 1);
+    modify_rowspan(header_tr.find("td[id$='__devname']"), 1);
+};
+
+function inject_net_ip_line(cur_dev, new_ip) {
+    // add new_nd to DEVICE_NETWORKS
+    var cur_nd = DEVICE_NETWORKS.find("netdevice[pk='" + new_ip.attr("netdevice") + "']");
+    var cur_dev = DEVICE_NETWORKS.find("device[pk='" + cur_nd.attr("device") + "']");
+    cur_nd.find("netips").append(new_ip);
+    var line_prefix = "nd__" + cur_dev.attr("pk") + "__" + cur_nd.attr("pk");
+    FIRST_NETDEVICE_LINE = false;
+    var header_tr = $("div#network_table tr[id='" + line_prefix + "__ip__new']");
+    var new_line = add_net_ip_line(cur_dev, cur_nd, line_prefix, new_ip);
+    header_tr.after(new_line);
+    new_line.show();
+    modify_rowspan($("div#network_table td[id='nd__" + cur_dev.attr("pk") + "__new__devname']"), 1);
 };
 
 function remove_netdevice_line(cur_dev, delete_button) {
     var cur_tr = $("div#network_table tr[id='" + delete_button.attr("id") + "']");
-    var name_td = $("div#network_table td[id='nd__" + delete_button.attr("id").split("_")[1] + "__new__devname']");
-    hw_tr = cur_tr.next();
-    if (hw_tr.is(":visible")) modify_rowspan(name_td, -1);
-    hw_tr.remove();
-    cur_tr.remove();
-    modify_rowspan(name_td, -1);
+    var name_td = $("div#network_table td[id='nd__" + delete_button.attr("id").split("__")[1] + "__new__devname']");
+    $("div#network_table tr[id^='nd__" + delete_button.attr("id").split("__")[1] + "__" + delete_button.attr("id").split("__")[2] + "']").each(function() {
+        var cur_tr = $(this);
+        if (cur_tr.is(":visible")) modify_rowspan(name_td, -1);
+        cur_tr.remove();
+    });
+};
+
+function remove_net_ip_line(cur_ip, delete_button) {
+    var name_td = $("div#network_table td[id='nd__" + delete_button.attr("id").split("__")[1] + "__new__devname']");
+    ip_tr = delete_button.parents("tr:first");
+    if (ip_tr.is(":visible")) {
+        modify_rowspan(name_td, -1);
+    };
+    ip_tr.remove();
 };
     
 function create_delete_new_netdevice(event) {
@@ -190,6 +218,41 @@ function create_delete_new_netdevice(event) {
     };
 };
 
+function create_delete_new_net_ip(event) {
+    var cur_el = $(event.target);
+    var cur_dev = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "']");
+    var cur_nd = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "__" + cur_el.attr("id").split("__")[2] + "']");
+    var cur_ip = DEVICE_NETWORKS.find("net_ip[pk='" + cur_el.attr("id").split("__")[4] + "']");
+    var lock_list = lock_elements();
+    var el_list = $("div#network_table").find("input[id^='" + cur_el.attr("id") + "'], select[id^='" + cur_el.attr("id") + "']");
+    if (cur_el.attr("id").match(/new$/)) {
+        // create element
+        $.ajax({
+            url  : "{% url device:create_net_ip %}",
+            data : create_dict(el_list),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    inject_net_ip_line(cur_dev, $(xml).find("response values value net_ip"));
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    } else {
+        true;
+        // delete
+        $.ajax({
+            url  : "{% url device:delete_net_ip %}",
+            data : create_dict(el_list),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    remove_net_ip_line(cur_ip, cur_el);
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    };
+};
+
 function create_netspeed_element(id_str, cur_nd) {
     var dummy_val = DEVICE_NETWORKS.find("netspeed_list netspeed:first").attr("pk");
     var sel_val = cur_nd === undefined ? dummy_val : cur_nd.attr("netdevice_speed");
@@ -211,64 +274,68 @@ function create_netspeed_element(id_str, cur_nd) {
     return cur_el;
 };
 
-function toggle_netdevice_hardware(line_prefix, state) {
-    var dev_line = $("table#network_tree tr[id^='nd__" + line_prefix.split("__")[1] + "__']");
-    var nd_line = $("table#network_tree tr[id='" + line_prefix + "']");
-    var hw_line = $("table#network_tree tr[id='" + line_prefix + "__hw']");
-    var cur_dg = nd_line.find("span[id$='__expand_hw']");
-    if (state) {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-s");
-        hw_line.show();
-        modify_rowspan(dev_line.find("td[id$='__devname']"), 1);
-        //$("table#device_tree tr[id^='dev__" + dg_idx + "__']").show();
-        //recolor_device_group(dg_idx);
-    } else {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-e");
-        hw_line.hide();
-        modify_rowspan(dev_line.find("td[id$='__devname']"), -1);
-        //$("table#device_tree tr[id^='dev__" + dg_idx + "__']").hide();
-    };
-};
-
-function toggle_netdevice_mac(line_prefix, state) {
-    var dev_line = $("table#network_tree tr[id^='nd__" + line_prefix.split("__")[1] + "__']");
-    var nd_line = $("table#network_tree tr[id='" + line_prefix + "']");
-    var mac_line = $("table#network_tree tr[id='" + line_prefix + "__mac']");
-    var cur_dg = nd_line.find("span[id$='__expand_mac']");
-    if (state) {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-s");
-        mac_line.show();
-        modify_rowspan(dev_line.find("td[id$='__devname']"), 1);
-        //$("table#device_tree tr[id^='dev__" + dg_idx + "__']").show();
-        //recolor_device_group(dg_idx);
-    } else {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-e");
-        mac_line.hide();
-        modify_rowspan(dev_line.find("td[id$='__devname']"), -1);
-        //$("table#device_tree tr[id^='dev__" + dg_idx + "__']").hide();
-    };
-};
-
 function toggle_netdevice_line(line_prefix, state, line_spec) {
     var dev_line = $("table#network_tree tr[id^='nd__" + line_prefix.split("__")[1] + "__']");
     var nd_line = $("table#network_tree tr[id='" + line_prefix + "']");
-    var exp_line = $("table#network_tree tr[id='" + line_prefix + "__" + line_spec + "']");
+    var exp_line = $("table#network_tree tr[id^='" + line_prefix + "__" + line_spec + "']");
     var cur_dg = nd_line.find("span[id$='__expand_" + line_spec + "']");
     if (state) {
         cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
         cur_dg.addClass("ui-icon-triangle-1-s");
         exp_line.show();
-        modify_rowspan(dev_line.find("td[id$='__devname']"), 1);
+        modify_rowspan(dev_line.find("td[id$='__devname']"), exp_line.length);
     } else {
         cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
         cur_dg.addClass("ui-icon-triangle-1-e");
         exp_line.hide();
-        modify_rowspan(dev_line.find("td[id$='__devname']"), -1);
+        modify_rowspan(dev_line.find("td[id$='__devname']"), -exp_line.length);
     };
+};
+
+function get_expand_td(line_prefix, name) {
+    return $("<td>").append(
+        $("<span>").attr({
+            "class"   : "ui-icon ui-icon-triangle-1-e",
+            "id"      : line_prefix + "__expand_" + name
+        }).bind("click", function(event) {
+            var cur_class = $(event.target).attr("class");
+            if (cur_class.match(/-1-e$/)) {
+                toggle_netdevice_line(line_prefix, true, name);
+            } else {
+                toggle_netdevice_line(line_prefix, false, name);
+            }
+        })
+    );
+};
+
+function add_net_ip_line(cur_dev, cur_nd, line_prefix, cur_ip) {
+    if (cur_ip === undefined) {
+        var ip_pk = "new";
+    } else {
+        var ip_pk = cur_ip.attr("pk");
+    };
+    var line_prefix = line_prefix + "__ip__" + ip_pk;
+    var ip_tr = $("<tr>").attr({
+        "id" : line_prefix
+    }).hide();
+    if (cur_nd !== undefined) {
+        ip_tr.append($("<td>").attr({"colspan" : "9"}).append(
+            create_input_el(cur_ip, "ip", line_prefix, {label : "IP", callback : set_network_after_change})
+        ).append(
+            create_input_el(cur_ip, "network", line_prefix, {label : "NW", select_source : DEVICE_NETWORKS.find("network_list network"), callback : set_network_after_change})
+        ).append(
+            create_input_el(cur_ip, "alias", line_prefix, {label : "Alias"})
+        ).append(
+            create_input_el(cur_ip, "alias_excl", line_prefix, {label : "Exclusive", boolean : true})
+        ).append(
+           $("<input>").attr({
+               "type"  : "button",
+               "value" : ip_pk == "new" ? "create" : "delete",
+               "id"    : line_prefix
+            }).bind("click", create_delete_new_net_ip)
+        ));
+    };
+    return ip_tr;
 };
 
 function add_netdevice_line(cur_dev, cur_nd) {
@@ -300,7 +367,7 @@ function add_netdevice_line(cur_dev, cur_nd) {
         "id" : line_prefix + "__hw"
     }).hide();
     hw_tr.append(
-        $("<td>").attr({"colspan" : "6"}).append(
+        $("<td>").attr({"colspan" : "9"}).append(
             create_input_el(cur_nd, "driver", line_prefix, {label : "driver"})
         ).append(
             create_input_el(cur_nd, "driver_options", line_prefix, {label : "driver_options"})
@@ -317,7 +384,7 @@ function add_netdevice_line(cur_dev, cur_nd) {
         "id" : line_prefix + "__mac"
     }).hide();
     mac_tr.append(
-        $("<td>").attr({"colspan" : "6"}).append(
+        $("<td>").attr({"colspan" : "9"}).append(
             create_input_el(cur_nd, "macaddr", line_prefix, {label : "MAC address", new_default : DUMMY_MAC})
         ).append(
             create_input_el(cur_nd, "fake_macaddr", line_prefix, {label : "fake MAC address", new_default : DUMMY_MAC})
@@ -326,22 +393,13 @@ function add_netdevice_line(cur_dev, cur_nd) {
         )
     );
     // IP line
-    ip_tr = $("<tr>").attr({
-        "id" : line_prefix + "__ip"
-    }).hide();
-    if (nd_pk != "new") {
-        ip_tr.append($("<td>").attr({"colspan" : "6"}).append(
-            create_input_el(undefined, "ip", line_prefix + "__new", {label : "IP"})
-        ).append(
-            create_input_el(undefined, "network", line_prefix + "__network", {label : "NW", select_source : DEVICE_NETWORKS.find("network_list network")})
-        ));
-    };
+    ip_tr = add_net_ip_line(cur_dev, cur_nd, line_prefix, undefined);
     cur_tr.append(
         $("<td>").append(
         $("<input>").attr({
             "type"  : "text",
             "id"    : line_prefix + "__devname",
-            "value" : nd_pk == "new" ? "" : cur_nd.text()
+            "value" : nd_pk == "new" ? "" : cur_nd.attr("devname")
         })).append($("<span>").attr({
             "id"    : line_prefix + "__devinfo"
         })
@@ -354,48 +412,15 @@ function add_netdevice_line(cur_dev, cur_nd) {
         })
     };
     // expand flags
-    cur_tr.append($("<td>").append(
-        $("<span>").attr({
-            "class"   : "ui-icon ui-icon-triangle-1-e",
-            "id"      : line_prefix + "__expand_hw"
-        }).bind("click", function(event) {
-            var cur_class = $(event.target).attr("class");
-            if (cur_class.match(/-1-e$/)) {
-                toggle_netdevice_line(line_prefix, true, "hw");
-            } else {
-                toggle_netdevice_line(line_prefix, false, "hw");
-            }
-        })
-    ));
-    cur_tr.append($("<td>").append(
-        $("<span>").attr({
-            "class"   : "ui-icon ui-icon-triangle-1-e",
-            "id"      : line_prefix + "__expand_mac"
-        }).bind("click", function(event) {
-            var cur_class = $(event.target).attr("class");
-            if (cur_class.match(/-1-e$/)) {
-                toggle_netdevice_line(line_prefix, true, "mac");
-            } else {
-                toggle_netdevice_line(line_prefix, false, "mac");
-            }
-        })
-    ));
+    cur_tr.append(get_expand_td(line_prefix, "hw"));
+    cur_tr.append(get_expand_td(line_prefix, "mac"));
     if (nd_pk == "new"){
         cur_tr.append($("<td>"));
+        cur_tr.append($("<td>"));
     } else {
-        cur_tr.append($("<td>").append(
-            $("<span>").attr({
-                "class"   : "ui-icon ui-icon-triangle-1-e",
-                "id"      : line_prefix + "__expand_ip"
-            }).bind("click", function(event) {
-                var cur_class = $(event.target).attr("class");
-                if (cur_class.match(/-1-e$/)) {
-                    toggle_netdevice_line(line_prefix, true, "ip");
-                } else {
-                    toggle_netdevice_line(line_prefix, false, "ip");
-                }
-            })
-        ));
+        // IP
+        cur_tr.append(get_expand_td(line_prefix, "ip"));
+        cur_tr.append(get_expand_td(line_prefix, "routing"));
     };
     // description
     cur_tr.append(
@@ -444,6 +469,13 @@ function add_netdevice_line(cur_dev, cur_nd) {
     dummy_div.append(hw_tr);
     dummy_div.append(mac_tr);
     dummy_div.append(ip_tr);
+    // add present net_ip lines
+    if (cur_nd !== undefined) {
+        cur_nd.find("net_ip").each(function() {
+            var cur_ip = $(this);
+            dummy_div.append(add_net_ip_line(cur_dev, cur_nd, line_prefix, cur_ip));
+        });
+    };
     return dummy_div;
 };
 
