@@ -126,17 +126,16 @@ class ipv4(object):
             elif self.parts[i] > other.parts[i]:
                 return True
         return True
-    def find_matching_network(self, nw_dict):
-        nw_match, nm_bits = (0, 0)
-        for nw_idx, nw_stuff in nw_dict.iteritems():
-            network, netmask = (ipv4(nw_stuff["network"]), ipv4(nw_stuff["netmask"]))
+    def find_matching_network(self, nw_list):
+        match_list = []
+        for nw_stuff in nw_list:
+            network, netmask = (ipv4(nw_stuff.network), ipv4(nw_stuff.netmask))
             if self & netmask == network:
-                if netmask.netmask_bits() > nm_bits or (nm_bits == 0 and netmask.netmask_bits() == 0):
-                    nw_match, nm_bits = (nw_idx, netmask.netmask_bits())
-        return nw_match
+                match_list.append((netmask.netmask_bits(), nw_stuff))
+        return sorted(match_list, reverse=True)
     def network_matches(self, nw_stuff):
-        nw, nm = (ipv4(nw_stuff["network"]), ipv4(nw_stuff["netmask"]))
-        return self & nm == nw
+        print self & ipv4(nw_stuff.netmask), ipv4(nw_stuff.network)
+        return self & ipv4(nw_stuff.netmask) == ipv4(nw_stuff.network)
 
 def get_network_name_from_mask(mask):
     return {"255.255.255.0" : "C",
