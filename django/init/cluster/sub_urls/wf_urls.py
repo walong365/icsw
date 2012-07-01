@@ -46,7 +46,7 @@ device_patterns = patterns(
     url("^delete_device$"   , "device_views.delete_device"      , name="delete_device"      ),
     url("^add_selection$"   , "device_views.add_selection"      , name="add_selection"      ),
     url("^clear_selection$" , "device_views.clear_selection"    , name="clear_selection"    ),
-    url("^network$"         , "device_views.network"            , name="network"            ),
+    url("^network$"         , "device_views.device_network"     , name="network"            ),
     url("^create_netdevice$", "device_views.create_netdevice"   , name="create_netdevice"   ),
     url("^delete_netdevice$", "device_views.delete_netdevice"   , name="delete_netdevice"   ),   
 )

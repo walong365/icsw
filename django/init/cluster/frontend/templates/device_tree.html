@@ -35,7 +35,6 @@ function build_device_table(xml) {
                     "id"      : "expand_" + $(cur_dg).attr("idx")
                 }).bind("click", function(event) {
                     var cur_class = $(event.target).attr("class");
-                    var check_state = $(event.target).attr("checked");
                     if (cur_class.match(/-1-e$/)) {
                         toggle_device(cur_dg.attr("idx"), true);
                     } else {

@@ -6,6 +6,7 @@
 
 {% block content %}
 
+<form action="{% url network:netdevice_classes %}" method=post >
 {{ network_type_formset.management_form }}
 <table>
     <tbody>
@@ -47,5 +48,6 @@
     <tbody>
 </table>
 <input type="submit" action="submit"/>
+</form>
 
 {% endblock %}

@@ -12,7 +12,7 @@ from init.cluster.frontend.render_tools import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from init.cluster.backbone.models import device_type, device_group, device, device_class, netdevice, \
-     netdevice_speed, network_device_type
+     netdevice_speed, network_device_type, network
 from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
@@ -28,7 +28,7 @@ def device_tree(request):
 
 @login_required
 @init_logging
-def network(request):
+def device_network(request):
     return render_me(
         request, "device_network.html",
     )()
@@ -90,7 +90,6 @@ def _get_netdevice_list(cur_dev):
 @init_logging
 def get_network_tree(request):
     _post = request.POST
-    pprint.pprint(_post)
     sel_list = _post.getlist("sel_list[]", [])
     dev_pk_list = [int(entry.split("__")[1]) for entry in sel_list if entry.startswith("dev__")]
     xml_resp = E.response()
@@ -111,6 +110,18 @@ def get_network_tree(request):
         *[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()]))
     xml_resp.append(E.network_device_type_list(
         *[E.network_device_type(unicode(cur_ndt), pk="%d" % (cur_ndt.pk)) for cur_ndt in network_device_type.objects.all()]))
+    # networks
+    xml_resp.append(E.network_list(
+        *[cur_nw.get_xml() for cur_nw in network.objects.all().order_by("name")]
+    ))
+    # ethtool options
+    xml_resp.append(E.ethtool_autoneg_list(
+        *[E.ethtool_autoneg(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]))
+    xml_resp.append(E.ethtool_duplex_list(
+        *[E.ethtool_duplex(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]))
+    xml_resp.append(E.ethtool_speed_list(
+        *[E.ethtool_speed(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "10 Mbit", "100 MBit", "1 GBit", "10 GBit"])]))
+    print etree.tostring(xml_resp, pretty_print=True)
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
 
@@ -197,11 +208,16 @@ def change_xml_entry(request):
                                                            target_dg.name), xml=True)
                 else:
                     new_value = _post["value"]
-                    if attr_name == "device_type":
-                        new_value = device_type.objects.get(pk=new_value)
-                    elif attr_name == "netdevice_speed":
-                        new_value = netdevice_speed.objects.get(pk=new_value)
+                    if _post["checkbox"] == "true":
+                        new_value = bool(int(new_value))
                     old_value = getattr(cur_obj, attr_name)
+                    try:
+                        if cur_obj._meta.get_field(attr_name).get_internal_type() == "ForeignKey":
+                            # follow foreign key the django way
+                            new_value = cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=new_value)
+                    except:
+                        # in case of meta-fields like ethtool_autoneg,speed,duplex
+                        pass
                     setattr(cur_obj, attr_name, new_value)
                     try:
                         cur_obj.save()
@@ -230,7 +246,7 @@ def create_device_group(request):
                     xml=True)
         request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
     else:
-        print new_dg.add_meta_device()
+        pass
     return request.xml_response.create_response()
 
 @login_required
@@ -320,8 +336,8 @@ def add_selection(request):
         cur_list.remove(add_sel)
     if add_sel.startswith("dg_"):
         # emulate toggle of device_group
-        request.log("toggle selection of device_group %d" % (int(add_sel.split("_")[1])))
-        toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(Q(device_group=add_sel.split("_")[1])).values_list("pk", flat=True)]
+        request.log("toggle selection of device_group %d" % (int(add_sel.split("__")[1])))
+        toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(Q(device_group=add_sel.split("__")[1])).values_list("pk", flat=True)]
         for toggle_dev in toggle_devs:
             if toggle_dev in cur_list:
                 cur_list.remove(toggle_dev)
@@ -348,18 +364,20 @@ def delete_netdevice(request):
 @init_logging
 def create_netdevice(request):
     _post = request.POST
-    pprint.pprint(_post)
     keys = _post.keys()
     dev_pk = int([key for key in keys if key.startswith("nd__")][0].split("__")[1])
     cur_dev = device.objects.get(Q(pk=dev_pk))
     value_dict = dict([(key.split("__", 2)[2], value) for key, value in _post.iteritems()])
+    pprint.pprint(value_dict)
     if "new" in value_dict:
         # new is here used as a prefix, so new__devname is correct and not new_devname (AL, 20120826)
-        pprint.pprint(value_dict)
         request.log("create new netdevice for '%s'" % (unicode(cur_dev)))
+        copy_dict = dict([(key, value_dict["new__%s" % (key)]) for key in [
+            "devname", "driver", "driver_options", "ethtool_autoneg", "macaddr", "fake_macaddr",
+            "ethtool_duplex", "ethtool_speed", "vlan_id", "description"] if "new__%s" % (key) in value_dict])
         new_nd = netdevice(device=cur_dev,
-                           devname=value_dict["new__devname"],
-                           netdevice_speed=netdevice_speed.objects.get(Q(pk=value_dict["new__netdevice_speed"])))
+                           netdevice_speed=netdevice_speed.objects.get(Q(pk=value_dict["new__netdevice_speed"])),
+                           **copy_dict)
         try:
             new_nd.save()
         except ValidationError, what:
