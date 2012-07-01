@@ -8,6 +8,7 @@ from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
+import re
 
 def only_wf_perms(in_list):
     return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
@@ -756,16 +757,16 @@ class netdevice(models.Model):
     idx = models.AutoField(db_column="netdevice_idx", primary_key=True)
     device = models.ForeignKey("device")
     devname = models.CharField(max_length=36)
-    macadr = models.CharField(max_length=177, blank=True)
+    macaddr = models.CharField(db_column="macadr", max_length=177, blank=True)
     driver_options = models.CharField(max_length=672, blank=True)
     speed = models.IntegerField(null=True, blank=True)
     netdevice_speed = models.ForeignKey("netdevice_speed")
     driver = models.CharField(max_length=384, blank=True)
-    routing = models.BooleanField()
-    penalty = models.IntegerField(null=True, blank=True)
-    dhcp_device = models.IntegerField(null=True, blank=True)
-    ethtool_options = models.IntegerField(null=True, blank=True)
-    fake_macadr = models.CharField(max_length=177, blank=True)
+    routing = models.BooleanField(default=False)
+    penalty = models.IntegerField(null=True, blank=True, default=0)
+    dhcp_device = models.NullBooleanField(null=True, blank=True, default=False)
+    ethtool_options = models.IntegerField(null=True, blank=True, default=0)
+    fake_macaddr = models.CharField(db_column="fake_macadr", max_length=177, blank=True)
     network_device_type = models.ForeignKey("network_device_type")
     description = models.CharField(max_length=765, blank=True)
     is_bridge = models.BooleanField()
@@ -785,13 +786,42 @@ class netdevice(models.Model):
             return ndt_list[0]
     class Meta:
         db_table = u'netdevice'
+    @property
+    def ethtool_autoneg(self):
+        return (self.ethtool_options or 0) & 3
+    @property
+    def ethtool_duplex(self):
+        return ((self.ethtool_options or 0) >> 2) & 3
+    @property
+    def ethtool_speed(self):
+        return ((self.ethtool_options or 0) >> 4) & 7
+    @ethtool_autoneg.setter
+    def ethtool_autoneg(self, in_val):
+        self.ethtool_options = ((self.ethtool_options or 0) & ~3) | int(in_val)
+    @ethtool_duplex.setter
+    def ethtool_duplex(self, in_val):
+        self.ethtool_options = ((self.ethtool_options or 0) & ~12) | (int(in_val) << 2)
+    @ethtool_speed.setter
+    def ethtool_speed(self, in_val):
+        self.ethtool_options = ((self.ethtool_options or 0) & 15) | (int(in_val) << 4)
     def __unicode__(self):
         return self.devname
     def get_xml(self):
+        self.vlan_id = self.vlan_id or 0
         return E.netdevice(
             self.devname,
+            description=self.description or "",
+            driver=self.driver or "",
+            driver_options=self.driver_options or "",
             pk="%d" % (self.pk),
+            ethtool_autoneg="%d" % (self.ethtool_autoneg),
+            ethtool_duplex="%d" % (self.ethtool_duplex),
+            ethtool_speed="%d" % (self.ethtool_speed),
+            macaddr=self.macaddr or ":".join(["00"] * 6),
+            fake_macaddr=self.fake_macaddr or ":".join(["00"] * 6),
+            dhcp_device="1" if self.dhcp_device else "0",
             device="%d" % (self.device_id),
+            vlan_id="%d" % (self.vlan_id),
             key="nd__%d" % (self.pk),
             netdevice_speed="%d" % (self.netdevice_speed_id),
             network_device_type="%d" % (self.network_device_type_id),
@@ -850,10 +880,18 @@ class network(models.Model):
     end_range = models.IPAddressField(default="0.0.0.0")
     date = models.DateTimeField(auto_now_add=True)
     network_device_type = models.ManyToManyField("network_device_type")
+    def get_xml(self):
+        return E.network(
+            unicode(self),
+            identifier=self.identifier,
+            name=self.name,
+            network=self.network,
+            netmask=self.netmask)
     class Meta:
         db_table = u'network'
     def __unicode__(self):
-        return u"%s" % (self.name)
+        return u"%s (%s)" % (self.name,
+                             self.network)
 
 class network_device_type(models.Model):
     idx = models.AutoField(db_column="network_device_type_idx", primary_key=True)
@@ -1793,4 +1831,22 @@ def netdevice_pre_save(sender, **kwargs):
         if not nd_type:
             raise ValidationError("no matching device_type found")
         cur_inst.network_device_type = nd_type
-        
+        # fix None as vlan_id
+        if cur_inst.vlan_id is None:
+            cur_inst.vlan_id = 0
+        try:
+            cur_inst.vlan_id = int(cur_inst.vlan_id)
+        except ValueError:
+            raise ValidationError("vlan_id must be integer")
+        else:
+            if cur_inst.vlan_id < 0:
+                raise ValidationError("vlan_id must be >= 0")
+        # check mac address
+        dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
+                             re.compile("^%s$" % (":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
+        cur_inst.macaddr = cur_inst.macaddr or dummy_mac
+        if not mac_re.match(cur_inst.macaddr):
+            raise ValidationError("MACaddress has illegal format")
+        cur_inst.fake_macaddr = cur_inst.fake_macaddr or dummy_mac
+        if not mac_re.match(cur_inst.fake_macaddr):
+            raise ValidationError("fake MACaddress has illegal format")
