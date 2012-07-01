@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
 import re
+import ipvx_tools
 
 def only_wf_perms(in_list):
     return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
@@ -810,6 +811,8 @@ class netdevice(models.Model):
         self.vlan_id = self.vlan_id or 0
         return E.netdevice(
             self.devname,
+            E.net_ips(*[cur_ip.get_xml() for cur_ip in self.net_ip_set.all()]),
+            devname=self.devname,
             description=self.description or "",
             driver=self.driver or "",
             driver_options=self.driver_options or "",
@@ -852,10 +855,24 @@ class net_ip(models.Model):
     ip = models.CharField(max_length=48)
     network = models.ForeignKey("network")
     netdevice = models.ForeignKey("netdevice")
-    penalty = models.IntegerField(null=True, blank=True)
-    alias = models.CharField(max_length=765, blank=True)
-    alias_excl = models.IntegerField(null=True, blank=True)
+    penalty = models.IntegerField(default=0)
+    alias = models.CharField(max_length=765, blank=True, default="")
+    alias_excl = models.NullBooleanField(null=True, blank=True, default=False)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.net_ip(
+            unicode(self),
+            pk="%d" % (self.pk),
+            ip=self.ip,
+            key="ni_%d" % (self.pk),
+            network="%d" % (self.network_id),
+            netdevice="%d" % (self.netdevice_id),
+            penalty="%d" % (self.penalty or 0),
+            alias=self.alias or "",
+            alias_excl="1" if self.alias_excl else "0"
+        )
+    def __unicode__(self):
+        return self.ip
     class Meta:
         db_table = u'netip'
 
@@ -883,6 +900,8 @@ class network(models.Model):
     def get_xml(self):
         return E.network(
             unicode(self),
+            pk="%d" % (self.pk),
+            key="nw_%d" % (self.pk),
             identifier=self.identifier,
             name=self.name,
             network=self.network,
@@ -1850,3 +1869,19 @@ def netdevice_pre_save(sender, **kwargs):
         cur_inst.fake_macaddr = cur_inst.fake_macaddr or dummy_mac
         if not mac_re.match(cur_inst.fake_macaddr):
             raise ValidationError("fake MACaddress has illegal format")
+
+@receiver(signals.pre_save, sender=net_ip)
+def net_ip_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        try:
+            ipv_addr = ipvx_tools.ipv4(cur_inst.ip)
+        except:
+            raise ValidationError("not a valid IPv4 address")
+        if not ipv_addr.network_matches(cur_inst.network):
+            match_list = ipv_addr.find_matching_network(network.objects.all())
+            if match_list:
+                cur_inst.network = match_list[0][1]
+            else:
+                raise ValidationError("no maching network found")
+        
