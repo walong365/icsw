@@ -68,7 +68,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
         } else {
             // text input style
             var new_el = $("<input>").attr({
-                "type"  : "text",
+                "type"  : kwargs.number ? "number" : "text",
                 "id"    : id_prefix + "__" + attr_name,
                 "value" : xml_el === undefined ? (kwargs.new_default || "") : xml_el.attr(attr_name)
             });
@@ -292,11 +292,12 @@ function toggle_netdevice_line(line_prefix, state, line_spec) {
     };
 };
 
-function get_expand_td(line_prefix, name) {
+function get_expand_td(line_prefix, name, title) {
     return $("<td>").append(
         $("<span>").attr({
             "class"   : "ui-icon ui-icon-triangle-1-e",
-            "id"      : line_prefix + "__expand_" + name
+            "id"      : line_prefix + "__expand_" + name,
+            "title"   : title === undefined ? "show " + name : title
         }).bind("click", function(event) {
             var cur_class = $(event.target).attr("class");
             if (cur_class.match(/-1-e$/)) {
@@ -392,8 +393,6 @@ function add_netdevice_line(cur_dev, cur_nd) {
             create_input_el(cur_nd, "dhcp_device", line_prefix, {label : "force write DHCP address", "boolean" : true})
         )
     );
-    // IP line
-    ip_tr = add_net_ip_line(cur_dev, cur_nd, line_prefix, undefined);
     cur_tr.append(
         $("<td>").append(
         $("<input>").attr({
@@ -468,13 +467,24 @@ function add_netdevice_line(cur_dev, cur_nd) {
     dummy_div.append(cur_tr);
     dummy_div.append(hw_tr);
     dummy_div.append(mac_tr);
-    dummy_div.append(ip_tr);
+    // IP tr
+    dummy_div.append(add_net_ip_line(cur_dev, cur_nd, line_prefix, undefined));
     // add present net_ip lines
     if (cur_nd !== undefined) {
         cur_nd.find("net_ip").each(function() {
             var cur_ip = $(this);
             dummy_div.append(add_net_ip_line(cur_dev, cur_nd, line_prefix, cur_ip));
         });
+        // routing tr
+        var route_tr = $("<tr>").attr({
+            "id" : line_prefix + "__routing"
+        }).hide();
+        route_tr.append($("<td>").attr({"colspan" : "9"}).append(
+            create_input_el(cur_nd, "routing", line_prefix, {label : "Routing", boolean : true})
+        ).append(
+            create_input_el(cur_nd, "penalty", line_prefix, {label : "Penalty", number: true})
+        ));
+        dummy_div.append(route_tr);
     };
     return dummy_div;
 };

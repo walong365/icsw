@@ -71,10 +71,16 @@ tr.even td.slots_info {
 
 tr.odd td.load {
     background-color: #eeddcc;
+    white-space: nowrap;
+}
+
+td.nowrap {
+    white-space: nowrap;
 }
 
 tr.even td.load {
     background-color: #ddeedd;
+    white-space: nowrap;
 }
 
 div.load_outer {

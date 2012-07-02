@@ -121,9 +121,16 @@ def get_network_tree(request):
         *[E.ethtool_duplex(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]))
     xml_resp.append(E.ethtool_speed_list(
         *[E.ethtool_speed(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "10 Mbit", "100 MBit", "1 GBit", "10 GBit"])]))
+    # peers
+    xml_resp.append(_get_valid_peers())
     print etree.tostring(xml_resp, pretty_print=True)
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
+
+def _get_valid_peers():
+    return E.valid_peers(
+        *[E.valid_peer("%s on %s (%s)" % (cur_p.devname, cur_p.device.name, ", ".join([cur_ip.ip for cur_ip in cur_p.net_ip_set.all()])), pk="%d" % (cur_p.pk)) for cur_p in netdevice.objects.filter(Q(routing=True)).order_by("device__name", "devname").prefetch_related("net_ip_set").select_related("device")]
+    )
 
 @login_required
 @init_logging
