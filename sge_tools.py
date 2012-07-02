@@ -568,6 +568,13 @@ def get_running_headers(options):
         cur_job.append(E.nodelist())
     return cur_job
 
+def _load_to_float(in_value):
+    try:
+        cur_load = float(in_value)
+    except:
+        cur_load = 0.0
+    return cur_load
+
 def build_running_list(s_info, options):
     # build various local luts
     r_jobs = sorted(s_info.running_jobs, key=lambda x : x.get("full_id"))
@@ -577,7 +584,7 @@ def build_running_list(s_info, options):
         for cur_job in cur_host.xpath("job"):
             job_host_lut.setdefault(cur_job.attrib["full_id"], []).append(cur_host.attrib["short_name"])
             job_host_pe_lut.setdefault(cur_job.attrib["full_id"], {}).setdefault(cur_job.findtext("jobvalue[@name='pe_master']"), []).append(cur_host.attrib["short_name"])
-    host_loads = dict([(cur_host.attrib["short_name"], float(cur_host.findtext("hostvalue[@name='load_avg']"))) for cur_host in s_info.get_all_hosts() if cur_host.attrib["short_name"] != "global"])
+    host_loads = dict([(cur_host.attrib["short_name"], _load_to_float(cur_host.findtext("hostvalue[@name='load_avg']"))) for cur_host in s_info.get_all_hosts() if cur_host.attrib["short_name"] != "global"])
     job_list = E.job_list(total="%d" % (len(r_jobs)))
     for act_job in r_jobs:
         if options.users:
@@ -781,7 +788,7 @@ def build_node_list(s_info, options):
                 E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']"))
             ])
         cur_node.extend([
-            E.load("%.2f" % (float(act_h.findtext("resourcevalue[@name='load_avg']")))),
+            E.load("%.2f" % (_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
             E.slots_used(m_queue.findtext("queuevalue[@name='slots_used']")),
             E.slots_reserved(m_queue.findtext("queuevalue[@name='slots_resv']")),
             E.slots_total(m_queue.findtext("queuevalue[@name='slots']")),
