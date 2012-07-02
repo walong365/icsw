@@ -812,7 +812,8 @@ class netdevice(models.Model):
         return E.netdevice(
             self.devname,
             E.net_ips(*[cur_ip.get_xml() for cur_ip in self.net_ip_set.all()]),
-            E.peers(*[cur_peer.get_xml() for cur_nd in list(self.peer_s_netdevice.all()) + list(self.peer_d_netdevice.all())]),
+            E.peers(*[cur_peer.get_xml() for cur_peer in
+                      peer_information.objects.filter(Q(s_netdevice=self) | Q(d_netdevice=self)).distinct().select_related("s_netdevice", "s_netdevice__device", "d_netdevice", "d_netdevice__device")]),
             devname=self.devname,
             description=self.description or "",
             driver=self.driver or "",
@@ -823,7 +824,7 @@ class netdevice(models.Model):
             ethtool_speed="%d" % (self.ethtool_speed),
             macaddr=self.macaddr or ":".join(["00"] * 6),
             fake_macaddr=self.fake_macaddr or ":".join(["00"] * 6),
-            penalty="%d" % (self.penalty or 0),
+            penalty="%d" % (self.penalty or 1),
             dhcp_device="1" if self.dhcp_device else "0",
             routing="1" if self.routing else "0",
             device="%d" % (self.device_id),
@@ -870,7 +871,7 @@ class net_ip(models.Model):
             key="ni_%d" % (self.pk),
             network="%d" % (self.network_id),
             netdevice="%d" % (self.netdevice_id),
-            penalty="%d" % (self.penalty or 0),
+            penalty="%d" % (self.penalty or 1),
             alias=self.alias or "",
             alias_excl="1" if self.alias_excl else "0"
         )
@@ -1234,9 +1235,16 @@ class peer_information(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.peer_information(
+            pk="%d" % (self.pk),
+            from_devname=self.s_netdevice.devname,
+            to_devname=self.d_netdevice.devname,
+            from_device=self.s_netdevice.device.name,
+            to_device=self.d_netdevice.device.name,
             s_netdevice="%d" % (self.s_netdevice_id),
             d_netdevice="%d" % (self.d_netdevice_id),
-            penalty="%d" % (self.penalty or 0)
+            from_penalty="%d" % (self.s_netdevice.penalty),
+            to_penalty="%d" % (self.d_netdevice.penalty),
+            penalty="%d" % (self.penalty or 1)
         )
     class Meta:
         db_table = u'peer_information'
@@ -1871,12 +1879,12 @@ def netdevice_pre_save(sender, **kwargs):
                 raise ValidationError("vlan_id must be >= 0")
         # penalty
         try:
-            cur_inst.penalty = int(cur_inst.penalty or "0")
+            cur_inst.penalty = int(cur_inst.penalty or "1")
         except ValueError:
             raise ValidationError("penalty must be integer")
         else:
-            if cur_inst.penalty < 0:
-                raise ValidationError("penalty must be >= 0")
+            if cur_inst.penalty < 1:
+                raise ValidationError("penalty must be >= 1")
         # check mac address
         dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
                              re.compile("^%s$" % (":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
@@ -1901,4 +1909,15 @@ def net_ip_pre_save(sender, **kwargs):
                 cur_inst.network = match_list[0][1]
             else:
                 raise ValidationError("no maching network found")
-        
+
+@receiver(signals.pre_save, sender=peer_information)
+def peer_information_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        try:
+            cur_inst.penalty = int(cur_inst.penalty or "1")
+        except ValueError:
+            raise ValidationError("penalty must be integer")
+        else:
+            if cur_inst.penalty < 1:
+                raise ValidationError("penalty must be >= 1")
