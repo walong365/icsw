@@ -812,6 +812,7 @@ class netdevice(models.Model):
         return E.netdevice(
             self.devname,
             E.net_ips(*[cur_ip.get_xml() for cur_ip in self.net_ip_set.all()]),
+            E.peers(*[cur_peer.get_xml() for cur_nd in list(self.peer_s_netdevice.all()) + list(self.peer_d_netdevice.all())]),
             devname=self.devname,
             description=self.description or "",
             driver=self.driver or "",
@@ -822,7 +823,9 @@ class netdevice(models.Model):
             ethtool_speed="%d" % (self.ethtool_speed),
             macaddr=self.macaddr or ":".join(["00"] * 6),
             fake_macaddr=self.fake_macaddr or ":".join(["00"] * 6),
+            penalty="%d" % (self.penalty or 0),
             dhcp_device="1" if self.dhcp_device else "0",
+            routing="1" if self.routing else "0",
             device="%d" % (self.device_id),
             vlan_id="%d" % (self.vlan_id),
             key="nd__%d" % (self.pk),
@@ -1227,8 +1230,14 @@ class peer_information(models.Model):
     idx = models.AutoField(db_column="peer_information_idx", primary_key=True)
     s_netdevice = models.ForeignKey("netdevice", related_name="peer_s_netdevice")
     d_netdevice = models.ForeignKey("netdevice", related_name="peer_d_netdevice")
-    penalty = models.IntegerField()
+    penalty = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.peer_information(
+            s_netdevice="%d" % (self.s_netdevice_id),
+            d_netdevice="%d" % (self.d_netdevice_id),
+            penalty="%d" % (self.penalty or 0)
+        )
     class Meta:
         db_table = u'peer_information'
 
@@ -1860,6 +1869,14 @@ def netdevice_pre_save(sender, **kwargs):
         else:
             if cur_inst.vlan_id < 0:
                 raise ValidationError("vlan_id must be >= 0")
+        # penalty
+        try:
+            cur_inst.penalty = int(cur_inst.penalty or "0")
+        except ValueError:
+            raise ValidationError("penalty must be integer")
+        else:
+            if cur_inst.penalty < 0:
+                raise ValidationError("penalty must be >= 0")
         # check mac address
         dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
                              re.compile("^%s$" % (":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
