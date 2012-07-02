@@ -12,7 +12,7 @@ from init.cluster.frontend.render_tools import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from init.cluster.backbone.models import device_type, device_group, device, device_class, netdevice, \
-     netdevice_speed, network_device_type, network, net_ip, network
+     netdevice_speed, network_device_type, network, net_ip, network, peer_information
 from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
@@ -129,7 +129,12 @@ def get_network_tree(request):
 
 def _get_valid_peers():
     return E.valid_peers(
-        *[E.valid_peer("%s on %s (%s)" % (cur_p.devname, cur_p.device.name, ", ".join([cur_ip.ip for cur_ip in cur_p.net_ip_set.all()])), pk="%d" % (cur_p.pk)) for cur_p in netdevice.objects.filter(Q(routing=True)).order_by("device__name", "devname").prefetch_related("net_ip_set").select_related("device")]
+*[E.valid_peer("%s [%d] on %s (%s)" % (
+    cur_p.devname,
+    cur_p.penalty or 1,
+    cur_p.device.name,
+    ", ".join([cur_ip.ip for cur_ip in cur_p.net_ip_set.all()]) or "no IPs"), pk="%d" % (cur_p.pk))
+  for cur_p in netdevice.objects.filter(Q(routing=True)).order_by("device__name", "devname").prefetch_related("net_ip_set").select_related("device")]
     )
 
 @login_required
@@ -436,4 +441,37 @@ def create_net_ip(request):
             raise
         else:
             request.xml_response["new_net_ip"] = new_ip.get_xml()
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def create_new_peer(request):
+    _post = request.POST
+    s_netdevice=netdevice.objects.get(Q(pk=_post["id"].split("__")[2]))
+    d_netdevice=netdevice.objects.get(Q(pk=_post["new_peer"]))
+    try:
+        cur_peer = peer_information.objects.get(Q(s_netdevice=s_netdevice.pk) & Q(d_netdevice=d_netdevice.pk))
+    except peer_information.DoesNotExist:
+        new_peer = peer_information(
+            s_netdevice=s_netdevice,
+            d_netdevice=d_netdevice,
+            penalty=_post["penalty"])
+        try:
+            new_peer.save()
+        except:
+            request.log("error creating new peer: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
+        else:
+            request.log("created new peer", xml=True)
+            request.xml_response["new_peer_information"] = new_peer.get_xml()
+    except peer_information.MultipleObjectsReturned:
+        request.log("peer already exists", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        request.log("peer already exists", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def delete_peer(request):
+    _post = request.POST
+    peer_information.objects.get(Q(pk=_post["id"].split("__")[-1])).delete()
     return request.xml_response.create_response()

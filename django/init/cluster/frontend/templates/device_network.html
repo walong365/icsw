@@ -45,6 +45,100 @@ function submit_change(cur_el, callback) {
     })
 };
 
+function delete_peer(event) {
+    var cur_sel = $(event.target);
+    var cur_line = $("div#network_table tr[id='" + cur_sel.attr("id")  +"']");
+    $.ajax({
+        url     : "{% url device:delete_peer %}",
+        error   : handle_ajax_error,
+        data    : {
+            "id" : cur_sel.attr("id")
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                var header_tr = $("div#network_table tr[id='nd__" + cur_sel.attr("id").split("__")[1] + "__new']");
+                cur_line.remove();
+                modify_rowspan(header_tr.find("td[id$='__devname']"), -1);
+            }
+        }
+    });
+    
+    console.log(cur_line);
+};
+
+function create_peer_line(cur_nd, cur_peer, line_prefix) {
+    var line_prefix = line_prefix + "__" + cur_peer.attr("pk");
+    new_tr = $("<tr>").attr({
+        "id" : line_prefix
+    }).hide();
+    new_tr.append($("<td>").attr({
+        "colspan" : "9"
+    }).append(
+        $("<span>").text("from " + cur_peer.attr("from_devname") + " [" + cur_peer.attr("from_penalty") + "] on " + cur_peer.attr("from_device"))
+    ).append(
+        $("<input>").attr({
+            "id"    : "x",
+            "type"  : "number",
+            "value" : cur_peer.attr("penalty")
+        })
+    ).append(
+        $("<span>").text("to " + cur_peer.attr("to_devname") + " [" + cur_peer.attr("to_penalty") + "] on " + cur_peer.attr("to_device"))
+    ).append(
+        $("<input>").attr({
+            "id"    : line_prefix,
+            "type"  : "button",
+            "value" : "delete"
+        }).bind("click", delete_peer)
+    ));
+    return new_tr;
+};
+
+function create_new_peer(event) {
+    var cur_sel = $(event.target);
+    var new_p = parseInt(cur_sel.attr("value"));
+    if (new_p) {
+        $.ajax({
+            url     : "{% url device:create_new_peer %}",
+            error   : handle_ajax_error,
+            data    : {
+                "id"       : cur_sel.attr("id"),
+                "new_peer" : new_p,
+                "penalty"  : cur_sel.parents("tr:first").find("input[id^='" + cur_sel.attr("id") + "']").attr("value")
+            },
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    true;
+                }
+            }
+        });
+    };
+    cur_sel.attr("value", "0");
+};
+
+function add_valid_peers(line_prefix, start_el) {
+    if (start_el !== undefined) {
+        var target_div = start_el.find("span[id='" + line_prefix + "__routing__new_peer']");
+    } else {
+        var target_div = $("div#network-table span[id='" + line_prefix + "__routing__new_peer']");
+    };
+    console.log(target_div);
+    if (DEVICE_NETWORKS.find("valid_peers valid_peer").length) {
+        var peer_sel = $("<select>").attr({
+            "id"  : line_prefix + "__routing__new_peer"
+        }).bind("change", create_new_peer);
+        peer_sel.append($("<option>").attr({"value" : "0", "selected" : "selected"}).text("---"));
+        DEVICE_NETWORKS.find("valid_peers valid_peer").each(function() {
+            var new_peer = $(this);
+            peer_sel.append($("<option>").attr({
+                "value" : new_peer.attr("pk")
+            }).text(new_peer.text()));
+        });
+        target_div.html(peer_sel);
+    } else {
+        target_div.html($("<b>").text("no valid peers"));
+    };
+};
+
 function set_network_after_change(cur_el) {
     // get xml_el
     var net_ip_xml = DEVICE_NETWORKS.find("net_ip[pk='" + cur_el.attr("id").split("__")[4] + "']");
@@ -476,15 +570,36 @@ function add_netdevice_line(cur_dev, cur_nd) {
             dummy_div.append(add_net_ip_line(cur_dev, cur_nd, line_prefix, cur_ip));
         });
         // routing tr
-        var route_tr = $("<tr>").attr({
-            "id" : line_prefix + "__routing"
+        var route_tr_base = $("<tr>").attr({
+            "id" : line_prefix + "__routing__base"
         }).hide();
-        route_tr.append($("<td>").attr({"colspan" : "9"}).append(
+        route_tr_base.append($("<td>").attr({"colspan" : "9"}).append(
             create_input_el(cur_nd, "routing", line_prefix, {label : "Routing", boolean : true})
         ).append(
             create_input_el(cur_nd, "penalty", line_prefix, {label : "Penalty", number: true})
         ));
-        dummy_div.append(route_tr);
+        var route_tr_add = $("<tr>").attr({
+            "id" : line_prefix + "__routing__add"
+        }).hide();
+        var route_td = $("<td>").attr({"colspan" : "9"});
+        route_tr_add.append(route_td);
+        route_td.append(
+            $("<span>").text("add new peer: ")
+        ).append($("<span>").attr({"id" : line_prefix + "__routing__new_peer"})
+        ).append($("<span>").text(" with penalty ")
+        ).append(
+            $("<input>").attr({
+                "id"    : line_prefix + "__routing__new_peer__penalty",
+                "type"  : "number",
+                "value" : "1"})
+        );
+        add_valid_peers(line_prefix, route_td);
+        dummy_div.append(route_tr_base);
+        dummy_div.append(route_tr_add);
+        cur_nd.find("peer_information").each(function() {
+            var cur_peer = $(this);
+            dummy_div.append(create_peer_line(cur_nd, cur_peer, line_prefix + "__routing"));
+        });
     };
     return dummy_div;
 };

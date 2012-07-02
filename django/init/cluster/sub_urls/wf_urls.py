@@ -48,9 +48,11 @@ device_patterns = patterns(
     url("^clear_selection$" , "device_views.clear_selection"    , name="clear_selection"    ),
     url("^network$"         , "device_views.device_network"     , name="network"            ),
     url("^create_netdevice$", "device_views.create_netdevice"   , name="create_netdevice"   ),
-    url("^delete_netdevice$", "device_views.delete_netdevice"   , name="delete_netdevice"   ),   
+    url("^delete_netdevice$", "device_views.delete_netdevice"   , name="delete_netdevice"   ),
     url("^create_net_ip$"   , "device_views.create_net_ip"      , name="create_net_ip"      ),
-    url("^delete_net_ip$"   , "device_views.delete_net_ip"      , name="delete_net_ip"      ),   
+    url("^delete_net_ip$"   , "device_views.delete_net_ip"      , name="delete_net_ip"      ),
+    url("^create_new_peer$" , "device_views.create_new_peer"    , name="create_new_peer"    ),
+    url("^delete_peer$"     , "device_views.delete_peer"        , name="delete_peer"        ),
 )
 
 network_patterns = patterns(
