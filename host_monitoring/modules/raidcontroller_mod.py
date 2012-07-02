@@ -174,7 +174,7 @@ class ctrl_check_struct(hm_classes.subprocess_struct):
         verbose = True
     def __init__(self, log_com, srv_com, ct_struct, ctrl_list=[]):
         self.__log_com = log_com
-        hm_classes.subprocess_struct.__init__(self, srv_com, ct_struct.get_exec_list(), ct_struct.process)
+        hm_classes.subprocess_struct.__init__(self, srv_com, ct_struct.get_exec_list(ctrl_list), ct_struct.process)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[ccs] %s" % (what), level)
         
@@ -955,11 +955,11 @@ class ctrl_type_ibmraid(ctrl_type):
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return ["%s info %s" % (self._check_exec, ctr_id) for ctrl_id in ctrl_list]
+        return ["%s %s" % (self._check_exec, ctrl_id) for ctrl_id in ctrl_list]
     def scan_ctrl(self):
         cur_stat, cur_lines = self.exec_command(" info", post="strip")
     def update_ctrl(self, ctrl_ids):
-        print ctrl_ids
+        pass
     def update_ok(self, srv_com):
         if self._dict:
             return ctrl_type.update_ok(self, srv_com)
@@ -968,8 +968,14 @@ class ctrl_type_ibmraid(ctrl_type):
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
     def process(self, ccs):
-        ccs.srv_com["result"] = "OK"
+        ctrl_id = ccs.run_info["command"].strip().split()[-1]
+        s_file = "/tmp/.ctrl_%s" % (ctrl_id)
+        if os.path.isfile(s_file):
+            # content of s_file is already marshalled
+            ccs.srv_com["result:ctrl_%s" % (ctrl_id)] = base64.b64encode(file(s_file, "r").read())
     def _interpret(self, ctrl_dict, cur_ns):
+        ctrl_dict = dict([(key.split("_")[1], marshal.loads(base64.b64decode(value))) for key, value in ctrl_dict.iteritems()])
+        ctrl_dict = ctrl_dict.values()[0]
         ret_state = limits.nag_STATE_OK
         ret_f = []
         for ctrl_info in ctrl_dict["ctrl_list"]:
@@ -1192,9 +1198,15 @@ class hpacu_status_command(hm_classes.hm_command):
 class ibmraid_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
-    def interpret_old(self, result, cur_ns):
-        ctrl_dict = hm_classes.net_to_sys(result[3:])
-        return self._interpret(ctrl_dict, cur_ns)
+    def __call__(self, srv_com, cur_ns):
+        ctrl_type.update("ibmraid")
+        if "arguments:arg0" in srv_com:
+            ctrl_list = [srv_com["arguments:arg0"].text]
+        else:
+            ctrl_list = []
+        return ctrl_check_struct(self.log, srv_com, ctrl_type.ctrl("ibmraid"), ctrl_list)
+    def interpret(self, srv_com, cur_ns):
+        return self._interpret(dict([(srv_com._interpret_tag(cur_el, cur_el.tag), srv_com._interpret_el(cur_el)) for cur_el in srv_com["result"]]), cur_ns)
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("ibmraid")._interpret(ctrl_dict, cur_ns)
 
