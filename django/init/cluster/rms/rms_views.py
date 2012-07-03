@@ -95,7 +95,7 @@ def get_node_xml(request):
     my_sge_info.update()
     job_options, node_options = (
         sge_tools.get_empty_job_options(),
-        sge_tools.get_empty_node_options())
+        sge_tools.get_empty_node_options(merge_node_queue=True))
     node_list     = sge_tools.build_node_list(my_sge_info, node_options)
     json_resp = _sort_list(node_list, _post)
     return HttpResponse(json.dumps(json_resp), mimetype="application/json")
