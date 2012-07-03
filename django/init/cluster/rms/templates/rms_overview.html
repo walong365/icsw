@@ -10,7 +10,7 @@
 <h2 class="center">Running jobs</h2>
 
 <div id="run_job_table">
-    <table id="run_job_table" style="width:50;">
+    <table id="run_job_table" style="width:50%;">
         <thead>
             <tr>
                 {% for entry in run_job_headers %}
@@ -66,10 +66,10 @@ function reload_page() {
     $("table#wait_job_table").dataTable().fnDraw();
 };
 
-function resize_grids() {
-    $("table#run_job_table, table#wait_job_table, table#node_table").each(function() {
-        $("div#" + $(this).attr("id")).width($(this).width());
-    });
+function resize_grid(event) {
+    var table = $(event.target);
+    table_name = table.attr("id");
+    $("div#" + table_name).width(table.width());
 };
 
 function addHandlers() {
@@ -147,12 +147,7 @@ function addHandlers() {
             "sClass"   : "nowrap"
         }]
     });
-    var resizeTimer = null;
-    $(window).resize(function() {
-        if (resizeTimer) { clearTimeout(resizeTimer); }
-        resizeTimer = setTimeout(resize_grids, 300);
-    });
-    resizeTimer = setTimeout(resize_grids, 300);
+    $("table").bind("draw", resize_grid);
 }
 
 $(document).ready(addHandlers);
