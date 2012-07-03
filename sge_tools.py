@@ -36,7 +36,7 @@ from lxml import etree
 from lxml.builder import E
 import argparse
 
-def get_empty_job_options():
+def get_empty_job_options(**kwargs):
     options = argparse.Namespace()
     options.users = set()
     options.complexes = set()
@@ -45,9 +45,11 @@ def get_empty_job_options():
     options.suppress_nodelist = False
     options.only_valid_waiting = False
     options.long_status = False
+    for key, value in kwargs.iteritems():
+        setattr(options, key, value)
     return options
 
-def get_empty_node_options():
+def get_empty_node_options(**kwargs):
     options = argparse.Namespace()
     options.users = set()
     options.complexes = set()
@@ -63,6 +65,9 @@ def get_empty_node_options():
     options.show_pe = True
     options.show_memory = False
     options.show_acl = False
+    options.merge_node_queue = False
+    for key, value in kwargs.iteritems():
+        setattr(options, key, value)
     return options
 
 def compress_list(ql, queues=None, postfix=""):
@@ -704,9 +709,17 @@ def build_waiting_list(s_info, options):
     return job_list
      
 def get_node_headers(options):
-    cur_node = E.node(
-        E.queue(),
-        E.shost())
+    cur_node = E.node()
+    if options.merge_node_queue:
+        cur_node.extend([
+            E.host(),
+            E.queues()
+        ])
+    else:
+        cur_node.extend([
+            E.queue(),
+            E.host()
+        ])
     if options.show_seq:
         cur_node.append(E.seqno())
     if not options.suppress_status:
@@ -736,97 +749,200 @@ def get_node_headers(options):
     cur_node.append(E.jobs())
     return cur_node
         
+def shorten_list(in_list, **kwargs):
+    if "empty_str" in kwargs:
+        in_list = [value if value else kwargs["empty_str"] for value in in_list]
+    if kwargs.get("reduce", True):
+        if len(set(in_list)) == 1:
+            return in_list[0]
+    return kwargs.get("sep", "/").join(in_list)
+
 def build_node_list(s_info, options):
     job_host_lut, job_host_pe_lut = ({}, {})
     for cur_host in s_info.get_all_hosts():
         for cur_job in cur_host.xpath("job"):
             job_host_lut.setdefault(cur_job.attrib["full_id"], []).append(cur_host.attrib["short_name"])
             job_host_pe_lut.setdefault(cur_host.attrib["short_name"], {}).setdefault(cur_job.findtext("jobvalue[@name='qinstance_name']").split("@")[0], {}).setdefault(cur_job.get("full_id"), []).append(cur_job.findtext("jobvalue[@name='pe_master']"))
-    d_list = []
-    for act_q in s_info.get_all_queues():
-        d_list.extend([(act_q.attrib["name"], h_name.text) for h_name in act_q.findall(".//host")])
-    d_list = sorted(d_list, key=lambda node: node[1 if options.node_sort else 0])
+    if options.merge_node_queue:
+        d_list = sorted([(act_h.attrib["name"], sorted([cur_q.attrib["name"] for cur_q in act_h.findall("queue")])) for act_h in s_info.get_all_hosts() if act_h.attrib["short_name"] != "global"])
+    else:
+        d_list = []
+        for act_q in s_info.get_all_queues():
+            d_list.extend([(act_q.attrib["name"], h_name.text) for h_name in act_q.findall(".//host")])
+        d_list = sorted(d_list, key=lambda node: node[1 if options.node_sort else 0])
     node_list = E.node_list()
-    for q_name, h_name in d_list:
-        act_q, act_h = (s_info.get_queue(q_name), s_info.get_host(h_name))
-        s_name = act_h.get("short_name")
-        m_queue = act_h.find("queue[@name='%s']" % (act_q.attrib["name"]))
-        if options.suppress_empty and int(m_queue.findtext("queuevalue[@name='slots_used']")) == 0:
-            continue
-        if options.show_nonstd:
-            if m_queue.findtext("queuevalue[@name='state_string']") not in [""]:
-                if m_queue.findtext("queuevalue[@name='state_string']") == "a" and options.show_nonstd > 1:
+    if options.merge_node_queue:
+        for h_name, q_list in d_list:
+            act_q_list, act_h = ([s_info.get_queue(q_name) for q_name in q_list], s_info.get_host(h_name))
+            s_name = act_h.get("short_name")
+            m_queue_list = [act_h.find("queue[@name='%s']" % (act_q.attrib["name"])) for act_q in act_q_list]
+            if options.suppress_empty and all([int(m_queue.findtext("queuevalue[@name='slots_used']")) == 0 for m_queue in m_queue_list]):
+                continue
+            if options.show_nonstd:
+                if all([m_queue.findtext("queuevalue[@name='state_string']") not in [""] for m_queue in m_queue_list]):
+                    if all([m_queue.findtext("queuevalue[@name='state_string']") == "a" for m_queue in m_queue_list]) and options.show_nonstd > 1:
+                        continue
+            # check for user filters
+            if options.users:
+                h_users = set(act_h.xpath("job[jobvalue[@name='qinstance_name' and text() = '%s@%s']]/jobvalue[@name='job_owner']/text()" % (q_name, h_name)))
+                if not set(options.users) & h_users:
                     continue
-        # check for user filters
-        if options.users:
-            h_users = set(act_h.xpath("job[jobvalue[@name='qinstance_name' and text() = '%s@%s']]/jobvalue[@name='job_owner']/text()" % (q_name, h_name)))
-            if not set(options.users) & h_users:
-                continue
-        # check for complex filters
-        if options.complexes:
-            q_job_complexes = set(act_q.xpath("complex_values/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))))
-            if not q_job_complexes & set(options.complexes):
-                continue
-        cur_node = E.node(
-            E.queue(q_name),
-            E.host(s_name))
-        if options.show_seq:
-            cur_node.append(E.seqno(str(act_q.xpath("seq_no/conf_var[not(@node_name) or @node_name='%s']/@name")[0])))
-        if not options.suppress_status:
-            cur_node.append(E.state(m_queue.findtext("queuevalue[@name='%sstate_string']" % (
-                "long_" if options.long_status else "")) or "-"))
-        if options.show_type or options.show_long_type:
-            cur_node.append(E.type(m_queue.findtext("queuevalue[@name='%sqtype_string']" % (
-                "long_" if options.show_long_type else ""))))
-        if options.show_complexes:
-            cur_node.append(E.complex(",".join(sorted(set(act_q.xpath("complex_values/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))))))))
-        if options.show_pe:
-            cur_node.append(E.pe_list(",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))))))))
-        if options.show_memory:
+            # check for complex filters
+            if options.complexes:
+                q_job_complexes = set(sum([act_q.xpath("complex_values/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))) for act_q in act_q_list], []))
+                if not q_job_complexes & set(options.complexes):
+                    continue
+            cur_node = E.node(
+                E.host(act_h.get("short_name")),
+                E.queues(shorten_list(q_list))
+            )
+            if options.show_seq:
+                seq_list = [str(act_q.xpath("seq_no/conf_var[not(@node_name) or @node_name='%s']/@name")[0]) for act_q in act_q_list]
+                cur_node.append(E.seqno(shorten_list(seq_list)))
+            if not options.suppress_status:
+                cur_node.append(E.state(shorten_list([m_queue.findtext("queuevalue[@name='%sstate_string']" % (
+                    "long_" if options.long_status else "")) or "-" for m_queue in m_queue_list])))
+            if options.show_type or options.show_long_type:
+                cur_node.append(E.type(shorten_list([m_queue.findtext("queuevalue[@name='%sqtype_string']" % (
+                    "long_" if options.show_long_type else "")) for m_queue in m_queue_list])))
+            if options.show_complexes:
+                cur_node.append(E.complex(shorten_list([",".join(sorted(set(act_q.xpath("complex_values/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name")))))) for act_q in act_q_list], empty_str="-")))
+            if options.show_pe:
+                cur_node.append(E.pe_list(shorten_list([",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name")))))) for act_q in act_q_list], empty_str="-")))
+            if options.show_memory:
+                cur_node.extend([
+                    E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']")),
+                    E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']"))
+                ])
             cur_node.extend([
-                E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']")),
-                E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']"))
+                E.load("%.2f" % (_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
+                E.slots_used(shorten_list([m_queue.findtext("queuevalue[@name='slots_used']") for m_queue in m_queue_list])),
+                E.slots_reserved(shorten_list([m_queue.findtext("queuevalue[@name='slots_resv']") for m_queue in m_queue_list])),
+                E.slots_total(shorten_list([m_queue.findtext("queuevalue[@name='slots']") for m_queue in m_queue_list])),
             ])
-        cur_node.extend([
-            E.load("%.2f" % (_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
-            E.slots_used(m_queue.findtext("queuevalue[@name='slots_used']")),
-            E.slots_reserved(m_queue.findtext("queuevalue[@name='slots_resv']")),
-            E.slots_total(m_queue.findtext("queuevalue[@name='slots']")),
-        ])
-        if options.show_acl:
-            for ref_name, header_name in [("user_list", "userlists"),
-                                          ("project"  , "projects")]:
-                pos_list = " or ".join(act_q.xpath(".//%ss/conf_var[not(@node_name) or @node_name='%s']/@name" % (
-                    ref_name,
-                    act_h.get("short_name"))))
-                neg_list = " or ".join(act_q.xpath(".//x%ss/conf_var[not(@node_name) or @node_name='%s']/@name" % (
-                    ref_name,
-                    act_h.get("short_name"))))
-                if not pos_list and not neg_list:
-                    acl_str = "all"
-                elif not neg_list:
-                    acl_str = pos_list
-                elif not pos_list:
-                    acl_str = "not (%s)" % (neg_list)
-                else:
-                    acl_str = "%s and not (%s)" % (pos_list, neg_list)
-                cur_node.append(getattr(E, header_name)(acl_str))
-        type_dict = job_host_pe_lut.get(s_name, {}).get(q_name, {})
-        cur_dict = dict([(job_id, s_info.get_job(job_id)) for job_id in sorted(type_dict.keys())])
-        qstat_info = ", ".join(["%s%s %s (%d) %s%s" % (
-            "[" if "s" in cur_dict[key].findtext("state").lower() else "",
-            key,
-            cur_dict[key].findtext("JB_owner"),
-            int(cur_dict[key].findtext("granted_pe") or "1"),
-            (", ".join([
-                "%s%s" % (
-                    ("%d x " % (type_dict[key].count(s_key)) if type_dict[key].count(s_key) > 1 else ""),
-                    s_key) for
-                s_key in ["MASTER", "SLAVE"] if s_key in type_dict[key]]) + ".").replace("MASTER.", "SINGLE.")[:-1],
-            "]" if "s" in cur_dict[key].findtext("state").lower() else "",
-        ) for key in sorted(type_dict.keys())])
-        cur_node.append(E.jobs(qstat_info))
-        node_list.append(cur_node)
+            if options.show_acl:
+                acl_str_dict = {}
+                for act_q in act_q_list:
+                    for ref_name, header_name in [("user_list", "userlists"),
+                                                  ("project"  , "projects")]:
+                        pos_list = " or ".join(act_q.xpath(".//%ss/conf_var[not(@node_name) or @node_name='%s']/@name" % (
+                            ref_name,
+                            act_h.get("short_name"))))
+                        neg_list = " or ".join(act_q.xpath(".//x%ss/conf_var[not(@node_name) or @node_name='%s']/@name" % (
+                            ref_name,
+                            act_h.get("short_name"))))
+                        if not pos_list and not neg_list:
+                            acl_str = "all"
+                        elif not neg_list:
+                            acl_str = pos_list
+                        elif not pos_list:
+                            acl_str = "not (%s)" % (neg_list)
+                        else:
+                            acl_str = "%s and not (%s)" % (pos_list, neg_list)
+                        acl_str_dict.setdefault(header_name, []).append(acl_str)
+                for header_name in ["userlists", "projects"]:
+                    cur_node.append(getattr(E, header_name)(shorten_list(acl_str_dict[header_name])))
+            job_list = []
+            for q_name in q_list:
+                type_dict = job_host_pe_lut.get(s_name, {}).get(q_name, {})
+                cur_dict = dict([(job_id, s_info.get_job(job_id)) for job_id in sorted(type_dict.keys())])
+                qstat_info = ", ".join(["%s%s %s (%d) %s%s" % (
+                    "[" if "s" in cur_dict[key].findtext("state").lower() else "",
+                    key,
+                    cur_dict[key].findtext("JB_owner"),
+                    int(cur_dict[key].findtext("granted_pe") or "1"),
+                    (", ".join([
+                        "%s%s" % (
+                            ("%d x " % (type_dict[key].count(s_key)) if type_dict[key].count(s_key) > 1 else ""),
+                            s_key) for
+                        s_key in ["MASTER", "SLAVE"] if s_key in type_dict[key]]) + ".").replace("MASTER.", "SINGLE.")[:-1],
+                    "]" if "s" in cur_dict[key].findtext("state").lower() else "",
+                ) for key in sorted(type_dict.keys())])
+                if qstat_info.strip():
+                    job_list.append("%s::%s" % (q_name, qstat_info))
+            cur_node.append(E.jobs("/".join(job_list)))
+            node_list.append(cur_node)
+    else:
+        for q_name, h_name in d_list:
+            act_q, act_h = (s_info.get_queue(q_name), s_info.get_host(h_name))
+            s_name = act_h.get("short_name")
+            m_queue = act_h.find("queue[@name='%s']" % (act_q.attrib["name"]))
+            if options.suppress_empty and int(m_queue.findtext("queuevalue[@name='slots_used']")) == 0:
+                continue
+            if options.show_nonstd:
+                if m_queue.findtext("queuevalue[@name='state_string']") not in [""]:
+                    if m_queue.findtext("queuevalue[@name='state_string']") == "a" and options.show_nonstd > 1:
+                        continue
+            # check for user filters
+            if options.users:
+                h_users = set(act_h.xpath("job[jobvalue[@name='qinstance_name' and text() = '%s@%s']]/jobvalue[@name='job_owner']/text()" % (q_name, h_name)))
+                if not set(options.users) & h_users:
+                    continue
+            # check for complex filters
+            if options.complexes:
+                q_job_complexes = set(act_q.xpath("complex_values/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))))
+                if not q_job_complexes & set(options.complexes):
+                    continue
+            cur_node = E.node(
+                E.queue(q_name),
+                E.host(s_name))
+            if options.show_seq:
+                cur_node.append(E.seqno(str(act_q.xpath("seq_no/conf_var[not(@node_name) or @node_name='%s']/@name")[0])))
+            if not options.suppress_status:
+                cur_node.append(E.state(m_queue.findtext("queuevalue[@name='%sstate_string']" % (
+                    "long_" if options.long_status else "")) or "-"))
+            if options.show_type or options.show_long_type:
+                cur_node.append(E.type(m_queue.findtext("queuevalue[@name='%sqtype_string']" % (
+                    "long_" if options.show_long_type else ""))))
+            if options.show_complexes:
+                cur_node.append(E.complex(",".join(sorted(set(act_q.xpath("complex_values/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))))))))
+            if options.show_pe:
+                cur_node.append(E.pe_list(",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))))))))
+            if options.show_memory:
+                cur_node.extend([
+                    E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']")),
+                    E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']"))
+                ])
+            cur_node.extend([
+                E.load("%.2f" % (_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
+                E.slots_used(m_queue.findtext("queuevalue[@name='slots_used']")),
+                E.slots_reserved(m_queue.findtext("queuevalue[@name='slots_resv']")),
+                E.slots_total(m_queue.findtext("queuevalue[@name='slots']")),
+            ])
+            if options.show_acl:
+                for ref_name, header_name in [("user_list", "userlists"),
+                                              ("project"  , "projects")]:
+                    pos_list = " or ".join(act_q.xpath(".//%ss/conf_var[not(@node_name) or @node_name='%s']/@name" % (
+                        ref_name,
+                        act_h.get("short_name"))))
+                    neg_list = " or ".join(act_q.xpath(".//x%ss/conf_var[not(@node_name) or @node_name='%s']/@name" % (
+                        ref_name,
+                        act_h.get("short_name"))))
+                    if not pos_list and not neg_list:
+                        acl_str = "all"
+                    elif not neg_list:
+                        acl_str = pos_list
+                    elif not pos_list:
+                        acl_str = "not (%s)" % (neg_list)
+                    else:
+                        acl_str = "%s and not (%s)" % (pos_list, neg_list)
+                    cur_node.append(getattr(E, header_name)(acl_str))
+            type_dict = job_host_pe_lut.get(s_name, {}).get(q_name, {})
+            cur_dict = dict([(job_id, s_info.get_job(job_id)) for job_id in sorted(type_dict.keys())])
+            qstat_info = ", ".join(["%s%s %s (%d) %s%s" % (
+                "[" if "s" in cur_dict[key].findtext("state").lower() else "",
+                key,
+                cur_dict[key].findtext("JB_owner"),
+                int(cur_dict[key].findtext("granted_pe") or "1"),
+                (", ".join([
+                    "%s%s" % (
+                        ("%d x " % (type_dict[key].count(s_key)) if type_dict[key].count(s_key) > 1 else ""),
+                        s_key) for
+                    s_key in ["MASTER", "SLAVE"] if s_key in type_dict[key]]) + ".").replace("MASTER.", "SINGLE.")[:-1],
+                "]" if "s" in cur_dict[key].findtext("state").lower() else "",
+            ) for key in sorted(type_dict.keys())])
+            cur_node.append(E.jobs(qstat_info))
+            node_list.append(cur_node)
     return node_list
 
 if __name__ == "__main__":

@@ -84,7 +84,7 @@ def sns(s_info, opt_dict):
     ret_list = [time.ctime()]
     s_info.build_luts()
     node_list = sge_tools.build_node_list(s_info, opt_dict)
-    left_justified = set(["queue", "node", "seqno", "state", "type", "complex", "pe_list", "userlists", "projects", "jobs"])
+    left_justified = set(["queue", "queues", "node", "seqno", "state", "type", "complex", "pe_list", "userlists", "projects", "jobs"])
     short_dict = {"slots_used"     : "su",
                   "slots_reserved" : "sr",
                   "slots_total"    : "st"}
@@ -235,12 +235,14 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("-c", dest="complexes", type=str, help="show only jobs with the given complexes [%(default)s]", action="append", default=[])
             self.add_argument("-e", dest="show_nonstd", help="show nonstandard queues, specifiy twice to suppress alarm queues [%(default)s]", action="count", default=0)
             self.add_argument("-i", dest="interactive", help="show info interactive", action="store_true", default=False)
+            self.add_argument("--never-direct", dest="never_direct", default=False, action="store_true", help="always connect sge-server [%(default)s]")
         if run_mode == "sns":
             self.add_argument("-t", dest="show_type", help="show queue type [%(default)s]", action="store_true", default=False)
             self.add_argument("-C", dest="show_complexes", help="show complexes [%(default)s]", action="store_true", default=False)
             self.add_argument("-n", dest="suppress_empty", help="show only nonempty queues [%(default)s]", action="store_true", default=False)
             self.add_argument("-N", dest="node_sort", help="sort according to the nodename [%(default)s]", action="store_true", default=False)
             self.add_argument("--pe", dest="show_pe", help="show pe information [%(default)s]", action="store_true", default=False)
+            self.add_argument("-J", dest="merge_node_queue", help="merge node with queues in output [%(default)s]", action="store_true", default=False)
         elif run_mode == "sjs":
             #self.add_argument("-s", dest="no_status", help="suppress status [%(default)s]", action="store_true", default=False)
             self.add_argument("--valid", dest="only_valid_waiting", help="show only valid waiting jobs [%(default)s]", action="store_true", default=False)
@@ -282,7 +284,8 @@ def main():
                                 verbose=options.verbose,
                                 log_command=log_com,
                                 server=get_server(),
-                                always_direct=options.direct)
+                                always_direct=options.direct,
+                                never_direct=options.never_direct)
     s_time = time.time()
     if run_mode == "sjs":
         if options.interactive:
