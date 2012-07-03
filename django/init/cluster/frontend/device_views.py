@@ -139,6 +139,12 @@ def _get_valid_peers():
 
 @login_required
 @init_logging
+def get_valid_peers(request):
+    request.xml_response["valid_peers"] = _get_valid_peers()
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
 def get_xml_tree(request):
     _post = request.POST
     full_tree = device_group.objects.all().prefetch_related("device", "device_group").distinct().order_by("-cluster_device_group", "name")
@@ -450,7 +456,9 @@ def create_new_peer(request):
     s_netdevice=netdevice.objects.get(Q(pk=_post["id"].split("__")[2]))
     d_netdevice=netdevice.objects.get(Q(pk=_post["new_peer"]))
     try:
-        cur_peer = peer_information.objects.get(Q(s_netdevice=s_netdevice.pk) & Q(d_netdevice=d_netdevice.pk))
+        cur_peer = peer_information.objects.get(
+            (Q(s_netdevice=s_netdevice.pk) & Q(d_netdevice=d_netdevice.pk)) |
+            (Q(s_netdevice=d_netdevice.pk) & Q(d_netdevice=s_netdevice.pk)))
     except peer_information.DoesNotExist:
         new_peer = peer_information(
             s_netdevice=s_netdevice,

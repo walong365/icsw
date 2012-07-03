@@ -46,24 +46,25 @@ function submit_change(cur_el, callback) {
 };
 
 function delete_peer(event) {
-    var cur_sel = $(event.target);
-    var cur_line = $("div#network_table tr[id='" + cur_sel.attr("id")  +"']");
+    var peer_id = $(event.target).attr("id");
     $.ajax({
         url     : "{% url device:delete_peer %}",
         error   : handle_ajax_error,
         data    : {
-            "id" : cur_sel.attr("id")
+            "id" : peer_id
         },
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                var header_tr = $("div#network_table tr[id='nd__" + cur_sel.attr("id").split("__")[1] + "__new']");
-                cur_line.remove();
-                modify_rowspan(header_tr.find("td[id$='__devname']"), -1);
+                // remove all peer lines
+                $("div#network_table tr[id$='__routing__" + peer_id.split("__")[4] + "']").each(function() {
+                    var peer_line = $(this);
+                    var header_tr = $("div#network_table tr[id='nd__" + peer_line.attr("id").split("__")[1] + "__new']");
+                    if (peer_line.is(":visible")) modify_rowspan(header_tr.find("td[id$='__devname']"), -1);
+                    peer_line.remove();
+                });
             }
         }
     });
-    
-    console.log(cur_line);
 };
 
 function create_peer_line(cur_nd, cur_peer, line_prefix) {
@@ -93,6 +94,36 @@ function create_peer_line(cur_nd, cur_peer, line_prefix) {
     return new_tr;
 };
 
+function inject_peer(new_peer, attr_name) {
+    var cur_nd = DEVICE_NETWORKS.find("netdevice[pk='" + new_peer.attr(attr_name) + "']");
+    cur_nd.find("peers").append(new_peer.clone());
+    var line_prefix = "nd__" + cur_nd.attr("device") + "__" + cur_nd.attr("pk") + "__routing";
+    var header_peer_line = $("div#network_table tr[id='" + line_prefix + "__add']");
+    var peer_line = create_peer_line(cur_nd, new_peer, line_prefix);
+    header_peer_line.after(peer_line);
+    if (header_peer_line.is(":visible")) {
+        peer_line.show();
+        modify_rowspan($("div#network_table tr[id='nd__" + cur_nd.attr("device") + "__new'] td[id$='__devname']"), 1);
+    };
+};
+
+function redraw_possible_peers() {
+    $.ajax({
+        url     : "{% url device:get_valid_peers %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                DEVICE_NETWORKS.find("valid_peers").replaceWith($(xml).find("valid_peers"));
+                $("div#network_table tr[id$='__routing__add']").each(function() {
+                    var cur_tr = $(this);
+                    var line_prefix = "nd__" + cur_tr.attr("id").split("__")[1] + "__" + cur_tr.attr("id").split("__")[2];
+                    add_valid_peers(line_prefix, cur_tr);
+                });
+            }
+        }
+    });
+};
+
 function create_new_peer(event) {
     var cur_sel = $(event.target);
     var new_p = parseInt(cur_sel.attr("value"));
@@ -107,8 +138,14 @@ function create_new_peer(event) {
             },
             success : function(xml) {
                 if (parse_xml_response(xml)) {
-                    true;
-                }
+                    $(xml).find("value[name='new_peer_information'] peer_information").each(function() {
+                        var new_peer = $(this);
+                        inject_peer(new_peer, "s_netdevice");
+                        if (new_peer.attr("s_netdevice") != new_peer.attr("d_netdevice")) {
+                            inject_peer(new_peer, "d_netdevice");
+                        };
+                    });
+                };
             }
         });
     };
@@ -121,7 +158,6 @@ function add_valid_peers(line_prefix, start_el) {
     } else {
         var target_div = $("div#network-table span[id='" + line_prefix + "__routing__new_peer']");
     };
-    console.log(target_div);
     if (DEVICE_NETWORKS.find("valid_peers valid_peer").length) {
         var peer_sel = $("<select>").attr({
             "id"  : line_prefix + "__routing__new_peer"
@@ -574,7 +610,7 @@ function add_netdevice_line(cur_dev, cur_nd) {
             "id" : line_prefix + "__routing__base"
         }).hide();
         route_tr_base.append($("<td>").attr({"colspan" : "9"}).append(
-            create_input_el(cur_nd, "routing", line_prefix, {label : "Routing", boolean : true})
+            create_input_el(cur_nd, "routing", line_prefix, {label : "Routing", boolean : true, callback : redraw_possible_peers})
         ).append(
             create_input_el(cur_nd, "penalty", line_prefix, {label : "Penalty", number: true})
         ));
