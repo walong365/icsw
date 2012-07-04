@@ -5,7 +5,7 @@ import sys
 
 ugettext = lambda s : s
 
-DEBUG = True
+DEBUG = os.uname()[1] in ["slayer"]
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (

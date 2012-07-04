@@ -260,8 +260,12 @@ class device(models.Model):
     cpu_info = models.TextField(blank=True, null=True)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
-        # FIXME
-        return E.device()
+        return E.device(
+            E.netdevices(*[ndev.get_xml() for ndev in self.netdevice_set.all()]),
+            name=self.name,
+            pk="%d" % (self.pk),
+            key="dev__%d" % (self.pk),
+        )
     def __unicode__(self):
         return u"%s%s" % (self.name,
                           " (%s)" % (self.comment) if self.comment else "")
@@ -391,7 +395,7 @@ class device_type(models.Model):
 
 class device_variable(models.Model):
     idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
-    device = models.ForeignKey("device")
+    device = models.ForeignKey("device", null=True)
     is_public = models.BooleanField()
     name = models.CharField(max_length=765)
     description = models.CharField(max_length=765, blank=True)
@@ -787,6 +791,7 @@ class netdevice(models.Model):
             return ndt_list[0]
     class Meta:
         db_table = u'netdevice'
+        ordering = ("devname",)
     @property
     def ethtool_autoneg(self):
         return (self.ethtool_options or 0) & 3
@@ -812,8 +817,7 @@ class netdevice(models.Model):
         return E.netdevice(
             self.devname,
             E.net_ips(*[cur_ip.get_xml() for cur_ip in self.net_ip_set.all()]),
-            E.peers(*[cur_peer.get_xml() for cur_peer in
-                      peer_information.objects.filter(Q(s_netdevice=self) | Q(d_netdevice=self)).distinct().select_related("s_netdevice", "s_netdevice__device", "d_netdevice", "d_netdevice__device")]),
+            E.peers(*[cur_peer.get_xml() for cur_peer in peer_information.objects.filter(Q(s_netdevice=self) | Q(d_netdevice=self)).distinct().select_related("s_netdevice", "s_netdevice__device", "d_netdevice", "d_netdevice__device")]),
             devname=self.devname,
             description=self.description or "",
             driver=self.driver or "",

@@ -44,7 +44,7 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
         host_name = process_tools.get_machine_name()
     g_config.add_config_entries(init_list, database=True)
     if not kwargs.get("dummy_run", False):
-        num_serv, serv_idx, s_type, s_str, config_idx, real_config_name=is_server(server_type.replace("%", ""), True, False, host_name.split(".")[0], dc=dc)
+        num_serv, serv_idx, s_type, s_str, config_idx, real_config_name=is_server(server_type.replace("%", ""), True, False, host_name.split(".")[0], dc=kwargs.get("dc", None))
         #print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
         if num_serv:
             # dict of local vars without specified host
@@ -128,7 +128,6 @@ class db_device_variable(object):
             self.__act_dv.description = self.__description
             self.__act_dv.var_type = self.__var_type
             setattr(self.__act_dv, "val_%s" % (self.__var_type_name), self.__var_value)
-            self.__act_dv.save()
 ##            dc.execute("UPDATE device_variable SET val_%s=%%s, description=%%s, var_type=%%s WHERE device_variable_idx=%%s" % (self.__var_type_name),
 ##                       (self.__var_value,
 ##                        self.__description,
@@ -138,9 +137,10 @@ class db_device_variable(object):
             self.__act_dv = device_variable(
                 description=self.__description,
                 var_type=self.__var_type,
-                name=self.__var_name)
-            setattr(self.__act_dv, "val_%s" % (self.__var_type_name), self.__var_type)
-            self.__act_dv.save()
+                name=self.__var_name,
+                device=device.objects.get(Q(pk=self.__dev_idx)))
+            setattr(self.__act_dv, "val_%s" % (self.__var_type_name), self.__var_value)
+        self.__act_dv.save()
 ##            dc.execute("INSERT INTO device_variable SET val_%s=%%s, description=%%s, var_type=%%s, name=%%s, device=%%s" % (self.__var_type_name),
 ##                       (self.__var_value,
 ##                        self.__description,
