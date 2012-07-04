@@ -7,6 +7,7 @@ from django.conf import settings
 import json
 import sge_tools
 import threading
+from lxml import etree
 
 class tl_sge_info(sge_tools.sge_info):
     # sge_info object with thread lock layer
@@ -43,13 +44,26 @@ def overview(request):
         "node_headers"     : sge_tools.get_node_headers(node_options)
     })()
 
+def _node_to_value(in_node):
+    if in_node.get("type", "string") == "float":
+        return float(in_node.text)
+    else:
+        return in_node.text
+    
+def _value_to_str(in_value):
+    if type(in_value) == float:
+        return "%.2f" % (in_value)
+    else:
+        return in_value
+    
 def _sort_list(in_list, _post):
-##    for key in sorted(_post):
-##        print key, _post[key]
+    #for key in sorted(_post):
+    #    print key, _post[key]
     start_idx = int(_post["iDisplayStart"])
     num_disp  = int(_post["iDisplayLength"])
     total_data_len = len(in_list)
-    in_list = [[sub_node.text for sub_node in row] for row in in_list]
+    # interpet nodes according to optional type attribute, TODO: use format from attrib to reformat later
+    in_list = [[_node_to_value(sub_node) for sub_node in row] for row in in_list]
     s_str = _post.get("sSearch", "").strip()
     if s_str:
         in_list = [row for row in in_list if any([cur_text.count(s_str) for cur_text in row])]
@@ -61,11 +75,12 @@ def _sort_list(in_list, _post):
             in_list = sorted(in_list, cmp=lambda x,y: cmp(x[sort_idx], y[sort_idx]))
         else:
             in_list = sorted(in_list, cmp=lambda x,y: cmp(y[sort_idx], x[sort_idx]))
-    show_list = in_list[start_idx : start_idx + num_disp]
-    return {"sEcho" : int(_post["sEcho"]),
+    # reformat
+    show_list = [[_value_to_str(value) for value in line] for line in in_list[start_idx : start_idx + num_disp]]
+    return {"sEcho"                : int(_post["sEcho"]),
             "iTotalRecords"        : total_data_len,
             "iTotalDisplayRecords" : filter_data_len,
-            "aaData" : show_list}
+            "aaData"               : show_list}
 
 @init_logging
 def get_run_jobs_xml(request):

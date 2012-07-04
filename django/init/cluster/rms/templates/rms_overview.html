@@ -97,7 +97,7 @@ function addHandlers() {
                 if (cur_m) {
                     var max_load = 16.;
                     load = Math.min(cur_m[0], max_load);
-                    ret_el = $("<div>").addClass("leftfloat").append($("<b>").text($.sprintf("%3.2f", load))).after(
+                    ret_el = $("<div>").addClass("leftfloat load_value").append($("<b>").text($.sprintf("%3.2f", load))).after(
                         $("<div>").addClass("load_outer").append(
                         $("<div>").addClass("load_inner").css("width", parseInt(98 * load / max_load) + "px"))
                     );
@@ -106,11 +106,10 @@ function addHandlers() {
                     return "<b>" + val + "</b>";
                 };
             },
-            "sType"    : "numeric",
             "aTargets" : [5],
             "sClass"   : "load"
         }, {
-            "aTargets" : [9],
+            "aTargets" : [9, 4],
             "sClass"   : "nowrap"
         }]
     });
