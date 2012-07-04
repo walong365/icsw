@@ -80,12 +80,6 @@ def get_json_devlist(request):
     return HttpResponse(json.dumps(_get_device_list(request, _post["dg_idx"])),
                         mimetype="application/json")
 
-def _get_netdevice_list(cur_dev):
-    cur_list = E.netdevices()
-    for ndev in cur_dev.netdevice_set.all().order_by("devname"):
-        cur_list.append(ndev.get_xml())
-    return cur_list
-
 @login_required
 @init_logging
 def get_network_tree(request):
@@ -96,15 +90,8 @@ def get_network_tree(request):
     dev_list = E.devices()
     for cur_dev in device.objects.filter(Q(pk__in=dev_pk_list)).select_related(
         "device_group",
-        "device_type").prefetch_related("netdevice_set").order_by("device_group__name", "name"):
-        dev_list.append(
-            E.device(
-                _get_netdevice_list(cur_dev),
-                name=cur_dev.name,
-                pk="%d" % (cur_dev.pk),
-                key="dev__%d" % (cur_dev.pk),
-            )
-        )
+        "device_type").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").order_by("device_group__name", "name"):
+        dev_list.append(cur_dev.get_xml())
     xml_resp.append(dev_list)
     xml_resp.append(E.netspeed_list(
         *[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()]))
@@ -378,10 +365,11 @@ def add_selection(request):
 def delete_netdevice(request):
     _post = request.POST
     keys = _post.keys()
-    
     dev_pk_key = [key for key in keys if key.startswith("nd_")][0]
     dev_pk, nd_pk = (int(dev_pk_key.split("__")[1]),
                      int(dev_pk_key.split("__")[2]))
+    removed_peers = peer_information.objects.filter(Q(s_netdevice=nd_pk) | Q(d_netdevice=nd_pk))
+    request.xml_response["removed_peers"] = E.peers(*[rem_peer.get_xml() for rem_peer in removed_peers])
     netdevice.objects.get(Q(pk=nd_pk) & Q(device=dev_pk)).delete()
     return request.xml_response.create_response()
 
@@ -393,7 +381,6 @@ def create_netdevice(request):
     dev_pk = int([key for key in keys if key.startswith("nd__")][0].split("__")[1])
     cur_dev = device.objects.get(Q(pk=dev_pk))
     value_dict = dict([(key.split("__", 2)[2], value) for key, value in _post.iteritems()])
-    pprint.pprint(value_dict)
     if "new" in value_dict:
         # new is here used as a prefix, so new__devname is correct and not new_devname (AL, 20120826)
         request.log("create new netdevice for '%s'" % (unicode(cur_dev)))
@@ -429,9 +416,7 @@ def create_net_ip(request):
     keys = _post.keys()
     main_key = [key for key in keys if key.endswith("__new")][0]
     cur_nd = netdevice.objects.get(Q(pk=main_key.split("__")[2]))
-    print cur_nd
     value_dict = dict([(key.split("__", 4)[4], value) for key, value in _post.iteritems()])
-    pprint.pprint(value_dict)
     if "new" in value_dict:
         request.log("create new net_ip for '%s'" % (unicode(cur_nd)))
         copy_dict = dict([(key, value_dict["new__%s" % (key)]) for key in [

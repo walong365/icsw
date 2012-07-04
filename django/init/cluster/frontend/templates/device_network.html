@@ -45,6 +45,15 @@ function submit_change(cur_el, callback) {
     })
 };
 
+function remove_peer_lines(peer_pk) {
+    $("div#network_table tr[id$='__routing__" + peer_pk + "']").each(function() {
+        var peer_line = $(this);
+        var header_tr = $("div#network_table tr[id='nd__" + peer_line.attr("id").split("__")[1] + "__new']");
+        if (peer_line.is(":visible")) modify_rowspan(header_tr.find("td[id$='__devname']"), -1);
+        peer_line.remove();
+    });
+};
+
 function delete_peer(event) {
     var peer_id = $(event.target).attr("id");
     $.ajax({
@@ -56,12 +65,7 @@ function delete_peer(event) {
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 // remove all peer lines
-                $("div#network_table tr[id$='__routing__" + peer_id.split("__")[4] + "']").each(function() {
-                    var peer_line = $(this);
-                    var header_tr = $("div#network_table tr[id='nd__" + peer_line.attr("id").split("__")[1] + "__new']");
-                    if (peer_line.is(":visible")) modify_rowspan(header_tr.find("td[id$='__devname']"), -1);
-                    peer_line.remove();
-                });
+                remove_peer_lines(peer_id.split("__")[4]);
             }
         }
     });
@@ -340,6 +344,10 @@ function create_delete_new_netdevice(event) {
             data : create_dict(el_list),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
+                    // remove all peers
+                    $(xml).find("response peers peer_information").each(function() {
+                        remove_peer_lines($(this).attr("pk"));
+                    });
                     remove_netdevice_line(cur_dev, cur_el);
                 };
                 unlock_elements(lock_list);
