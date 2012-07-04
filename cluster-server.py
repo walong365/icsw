@@ -43,7 +43,6 @@ import pprint
 import uuid_tools
 import mail_tools
 import difflib
-#import cs_base_class
 import config_tools
 import cluster_location
 import zmq
@@ -53,7 +52,7 @@ from twisted.internet import reactor
 from twisted.python import log
 from twisted.web import server, resource, wsgi
 from django.core.handlers.wsgi import WSGIHandler
-from init.cluster.backbone.models import device
+from init.cluster.backbone.models import device, device_variable
 from init.cluster.backbone.middleware import show_database_calls
 
 try:

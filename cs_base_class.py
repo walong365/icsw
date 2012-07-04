@@ -24,6 +24,9 @@ import time
 import os
 import logging_tools
 import cluster_location
+import pprint
+from django.db import connection
+from django.conf import settings
 
 class server_com(object):
     class Meta:
@@ -123,6 +126,8 @@ class server_com(object):
             srv_origin = "yes"
         return (doit, srv_origin, err_str)
     def __call__(self):
+        if settings.DEBUG:
+            pre_queries = len(connection.queries)
         self.start_time = time.time()
         result = self._call()
         self.end_time = time.time()
@@ -135,6 +140,8 @@ class server_com(object):
             self.srv_com["result"].attrib["reply"] = "%s in %s" % (
                 self.srv_com["result"].attrib["reply"],
                 logging_tools.get_diff_time_str(self.end_time - self.start_time))
+        if settings.DEBUG:
+            self.log("queries executed : %d" % (len(connection.queries) - pre_queries))
         return result
     def write_start_log(self):
         if self.Meta.write_log:

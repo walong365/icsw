@@ -1,4 +1,4 @@
-#!/usr/bin/python -Ot
+#!usr/bin/python -Ot
 #
 # Copyright (C) 2007,2012 Andreas Lang-Nevyjel
 #
@@ -24,8 +24,10 @@ import cs_base_class
 import logging_tools
 import time
 import datetime
+import pytz
 import server_command
 from django.db.models import Q
+from django.conf import settings
 from init.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group, \
      peer_information
 
@@ -84,12 +86,12 @@ def find_path(source_ndev, dest_ndev, devs, peers, nd_dict):
                     final_cons.append((act_peer + [new_p], act_con + [nd]))
                 elif d_route:
                     #print [(x["name"], x["netdevice_idx"] in netdevs_touched) for x in devs[act_ndev["name"]]["nds"]]
-                    for next_ndev in [x for x in devs[act_ndev["name"]]["nds"] if x["netdevice_idx"] not in netdevs_touched]:
-                        next_nd = next_ndev["netdevice_idx"]
+                    for next_ndev in [x for x in devs[act_ndev.device.name].nds if x.pk not in netdevs_touched]:
+                        next_nd = next_ndev.pk
                         netdevs_touched.append(next_nd)
-                        if act_ndev["netdevice_idx"] not in act_con and next_nd != source_ndev and next_ndev["routing"]:
+                        if act_ndev.pk not in act_con and next_nd != source_ndev and next_ndev.routing:
                             # routing device found
-                            act_cons.append((act_peer + [new_p, act_ndev["penalty"], next_ndev["penalty"]],
+                            act_cons.append((act_peer + [new_p, act_ndev.penalty, next_ndev.penalty],
                                              act_con  + [nd, next_nd],
                                              netdevs_touched + [nd, next_nd]))
         if not act_cons:
@@ -234,14 +236,8 @@ class rebuild_hopcount(cs_base_class.server_com):
             cdg_dev = device.objects.get(Q(device_group__cluster_device_group=True))
         except device.DoesNotExist:
             return "error no cluster_device_group defined"
-        dev_list = []
-        # FIXE, not yet implemented
-##        if False and opt_dict.has_key("device") and call_params.get_direct_call():
-##            dev_list = [x.strip() for x in opt_dict["device"].split(",")]
-##            print "Checking paths between the following %s: %s" % (logging_tools.get_plural("device", len(dev_list)),
-##                                                                   ", ".join(dev_list))
         # show flag
-        show = True#False#call_params.get_direct_call()
+        show = settings.DEBUG
         # get device-structs
         all_ips = net_ip.objects.exclude(Q(netdevice__device__device_type__identifier="MD")).select_related("netdevice__device__device_type")
         #print all_ips
@@ -278,7 +274,7 @@ class rebuild_hopcount(cs_base_class.server_com):
                         devices_2[nd_lut[src]].add_ext_route(src, dst, act_peer.penalty)
                     devices_2[nd_lut[src]].add_peer_information(src, dst, act_peer.penalty)
                     peers.setdefault(src, {})[dst] = (act_peer.penalty, nd_dict[dst].routing)
-        dev_names = dev_list or sorted(devices.keys())
+        dev_names = sorted(devices.keys())
 ##        if show and False:
 ##            # new code, still in development phase, FIXME
 ##            print "Found %s: %s" % (logging_tools.get_plural("device", len(dev_names)),
@@ -380,11 +376,7 @@ class rebuild_hopcount(cs_base_class.server_com):
 ####                 source_visit.append(s_name)
 ##            return
         # delete hopcounts
-        if not dev_list:
-            # FIXME
-            #my_dc.execute("DELETE FROM hopcount")
-            #my_dc.execute("INSERT INTO device_variable SET val_int=1, description='rebuild in progress', name='hopcount_rebuild_in_progress', device=%d, var_type='i'" % (cdg_idx))
-            pass
+        hopcount.objects.all().delete()
         source_visit = []
         num_routes, num_dups = (0, 0)
         # restarted ?
@@ -427,23 +419,20 @@ class rebuild_hopcount(cs_base_class.server_com):
                         else:
                             short_trace = nd_dict[min_idx].device_id
                         if min_idx == max_idx:
-                            if not dev_list:
-                                hopcount(s_netdevice=nd_dict[min_idx],
-                                         d_netdevice=nd_dict[max_idx],
-                                         value=min_pen,
-                                         trace=short_trace).save()
-                                #my_dc.execute("INSERT INTO hopcount VALUES(0,%d,%d,%d,'%s', null)" % (min_idx, max_idx, min_pen, short_trace))
+                            hopcount(s_netdevice=nd_dict[min_idx],
+                                     d_netdevice=nd_dict[max_idx],
+                                     value=min_pen,
+                                     trace=short_trace).save()
                         else:
                             num_dups += 1
-                            if not dev_list:
-                                hopcount(s_netdevice=nd_dict[min_idx],
-                                         d_netdevice=nd_dict[max_idx],
-                                         value=min_pen,
-                                         trace=short_trace).save()
-                                hopcount(s_netdevice=nd_dict[max_idx],
-                                         d_netdevice=nd_dict[min_idx],
-                                         value=min_pen,
-                                         trace=short_trace).save()
+                            hopcount(s_netdevice=nd_dict[min_idx],
+                                     d_netdevice=nd_dict[max_idx],
+                                     value=min_pen,
+                                     trace=short_trace).save()
+                            hopcount(s_netdevice=nd_dict[max_idx],
+                                     d_netdevice=nd_dict[min_idx],
+                                     value=min_pen,
+                                     trace=short_trace).save()
 ##                                my_dc.execute("INSERT INTO hopcount VALUES(0,%d,%d,%d,'%s', null),(0,%d,%d,%d,'%s', null)" % (min_idx, max_idx, min_pen, short_trace, max_idx, min_idx, min_pen, short_trace))
                         num_routes += 1
                         if show:
@@ -469,31 +458,18 @@ class rebuild_hopcount(cs_base_class.server_com):
         if restarted:
             ret_str = "error, command was restarted"
         else:
-            if dev_list:
-                ret_str = "ok found %d routing entries (%d dups)" % (num_routes, num_dups)
-            else:
-                ret_str = "ok wrote %d routing entries (%d dups)" % (num_routes, num_dups)
-                try:
-                    reb_var = device_variable.objects.get(Q(device=cdg_dev) & Q(name="hopcount_table_build_time"))
-                except device_variable.DoesNotExist:
-                    reb_var = device_variable(device=cdg_dev,
-                                              name="hopcount_table_build_time")
-                reb_var.val_type = "d"
-                reb_var.description = "rebuilt at %s" % (self.global_config["SERVER_SHORT_NAME"])
-                reb_var.val_date = datetime.datetime(*time.localtime()[0:6])
-                reb_var.save()
-##                my_dc.execute("SELECT dv.device_variable_idx FROM device_variable dv WHERE dv.device=%d AND dv.name='hopcount_table_build_time'" % (cdg_idx))
-##                if my_dc.rowcount:
-##                    sql_str, sql_tuple = ("UPDATE device_variable SET val_date=%s, description=%s WHERE device_variable_idx=%s", (datetime.datetime(*time.localtime()[0:6]),
-##                                                                                                                                  ,
-##                                                                                                                                  my_dc.fetchone()["device_variable_idx"]))
-##                else:
-##                    sql_str, sql_tuple = ("INSERT INTO device_variable SET val_date=%s, description=%s, name='hopcount_table_build_time', device=%s, var_type='d'", (datetime.datetime(*time.localtime()[0:6]),
-##                                                                                                                                                                     "rebuilt at %s" % (self.global_config["SERVER_SHORT_NAME"]),
-##                                                                                                                                                                     cdg_idx))
-##                my_dc.execute(sql_str, sql_tuple)
-                device_variable.objects.filter(Q(name='hopcount_rebuild_in_progress')).delete()
-                #my_dc.execute("DELETE FROM device_variable WHERE name='hopcount_rebuild_in_progress'")
+            ret_str = "ok wrote %d routing entries (%d dups)" % (num_routes, num_dups)
+            try:
+                reb_var = device_variable.objects.get(Q(device=cdg_dev) & Q(name="hopcount_table_build_time"))
+            except device_variable.DoesNotExist:
+                reb_var = device_variable(device=cdg_dev,
+                                          name="hopcount_table_build_time")
+            reb_var.val_type = "d"
+            reb_var.description = "rebuilt at %s" % (self.global_config["SERVER_SHORT_NAME"])
+            reb_var.val_date = pytz.utc.localize(datetime.datetime(*time.localtime()[0:6]))
+            reb_var.save()
+            device_variable.objects.filter(Q(name='hopcount_rebuild_in_progress')).delete()
+            #my_dc.execute("DELETE FROM device_variable WHERE name='hopcount_rebuild_in_progress'")
             if not self.global_config["COMMAND"]:
                 self.log("broadcasting write_etc_hosts to other cluster-servers")
                 self.process_pool.send_broadcast("write_etc_hosts")
