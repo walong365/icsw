@@ -815,7 +815,7 @@ def build_node_list(s_info, options):
                     E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']"))
                 ])
             cur_node.extend([
-                E.load("%.2f" % (_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
+                E.load("%.2f" % (_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']"))), **{"type" : "float", "format" : "%.2f"}),
                 E.slots_used(shorten_list([m_queue.findtext("queuevalue[@name='slots_used']") for m_queue in m_queue_list])),
                 E.slots_reserved(shorten_list([m_queue.findtext("queuevalue[@name='slots_resv']") for m_queue in m_queue_list])),
                 E.slots_total(shorten_list([m_queue.findtext("queuevalue[@name='slots']") for m_queue in m_queue_list])),
