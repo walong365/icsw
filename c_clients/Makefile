@@ -21,11 +21,11 @@ clean:
 all:	$(progs)
 
 ccollclientzmq: ccollclientzmq.o
-	$(comp) -L/opt/cluster/$(LIB_DIR)/ -lzmq ccollclientzmq.o -o ccollclientzmq
+	$(comp) -L/opt/cluster/$(LIB_DIR)/ ccollclientzmq.o -o ccollclientzmq -lzmq
 	strip ccollclientzmq
 
 csnmpclientzmq: csnmpclientzmq.o
-	$(comp) -L/opt/cluster/$(LIB_DIR)/ -lzmq csnmpclientzmq.o -o csnmpclientzmq
+	$(comp) -L/opt/cluster/$(LIB_DIR)/ csnmpclientzmq.o -o csnmpclientzmq -lzmq
 	strip csnmpclientzmq
 
 %.o: %.c
