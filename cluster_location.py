@@ -35,7 +35,7 @@ import config_tools
 import types
 import pprint
 from django.db.models import Q
-from init.cluster.backbone.models import device_variable, new_config, device, config_blob, config_bool, config_int, config_str, net_ip
+from init.cluster.backbone.models import device_variable, config, device, config_blob, config_bool, config_int, config_str, net_ip
 import netifaces
 
 def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwargs):
@@ -61,8 +61,8 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                     src_sql_obj = src_sql_obj.filter(Q(name__in=[var_name for var_name, var_value in init_list]))
                 for db_rec in src_sql_obj.filter(
                     (Q(device=0) | Q(device=None) | Q(device=serv_idx)) &
-                    (Q(new_config__name=real_config_name)) &
-                    (Q(new_config__device_config__device=serv_idx))):
+                    (Q(config__name=real_config_name)) &
+                    (Q(config__device_config__device=serv_idx))):
                     if db_rec.name.count(":"):
                         var_global = False
                         local_host_name, var_name = db_rec.name.split(":", 1)
@@ -204,7 +204,7 @@ def write_config(server_type, config, **kwargs):
                     cur_var = var_obj.objects.get(
                         Q(name=real_k_name) &
                         (Q(device=0) | Q(device=None) | Q(device=srv_info.server_device_idx)) &
-                        Q(new_config__device_config__device__device_group__device_group=srv_info.server_device_idx)
+                        Q(config__device_config__device__device_group__device_group=srv_info.server_device_idx)
                     )
                 except var_obj.DoesNotExist:
                     var_obj(name=real_k_name,
@@ -212,7 +212,7 @@ def write_config(server_type, config, **kwargs):
                                 var_range_name,
                                 srv_info.config_name,
                                 full_host_name),
-                            new_config=new_config.objects.get(Q(pk=srv_info.config_idx)),
+                            config=config.objects.get(Q(pk=srv_info.config_idx)),
                             value=config[key]).save()
                 else:
                     if config[key] != cur_var.value:
@@ -263,7 +263,7 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
             dev_pk = device.objects.get(Q(name=short_host_name)).pk
         except device.DoesNotExist:
             dev_pk = 0
-        my_confs = new_config.objects.filter(
+        my_confs = config.objects.filter(
             Q(device_config__device__device_group__device_group__name=short_host_name) &
             Q(**{dmatch_str : server_type})
             ).distinct().values_list(
@@ -292,7 +292,7 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
             # get local devices
             local_ips = net_ip.objects.filter(Q(netdevice__device__name=short_host_name)).values_list("ip", flat=True)
             # get all ips for the given config
-            my_confs = new_config.objects.filter(
+            my_confs = config.objects.filter(
                 Q(**{dmatch_str : server_type})
                 ).values_list(
                     "device_config__device",

@@ -29,7 +29,7 @@ class apc_device(models.Model):
 class app_config_con(models.Model):
     idx = models.AutoField(db_column="app_config_con_idx", primary_key=True)
     application = models.ForeignKey("application")
-    config = models.ForeignKey("new_config")
+    config = models.ForeignKey("config")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'app_config_con'
@@ -128,8 +128,9 @@ class config_blob(models.Model):
     idx = models.AutoField(db_column="config_blob_idx", primary_key=True)
     name = models.CharField(max_length=192)
     descr = models.CharField(max_length=765)
-    config = models.IntegerField(null=True, blank=True)
-    new_config = models.ForeignKey("new_config")
+    # deprecated
+    config_old = models.IntegerField(null=True, blank=True)
+    config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -140,8 +141,9 @@ class config_bool(models.Model):
     idx = models.AutoField(db_column="config_bool_idx", primary_key=True)
     name = models.CharField(max_length=192)
     descr = models.CharField(max_length=765)
-    config = models.IntegerField(null=True, blank=True)
-    new_config = models.ForeignKey("new_config")
+    # deprecated
+    config_old = models.IntegerField(null=True, blank=True)
+    config = models.ForeignKey("config", db_column="new_config_id")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -152,8 +154,9 @@ class config_int(models.Model):
     idx = models.AutoField(db_column="config_int_idx", primary_key=True)
     name = models.CharField(max_length=192)
     descr = models.CharField(max_length=765)
-    config = models.IntegerField(null=True, blank=True)
-    new_config = models.ForeignKey("new_config")
+    # deprecated
+    config_old = models.IntegerField(null=True, blank=True)
+    config = models.ForeignKey("config", db_column="new_config_id")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -166,7 +169,7 @@ class config_script(models.Model):
     descr = models.CharField(max_length=765)
     enabled = models.IntegerField(null=True, blank=True)
     priority = models.IntegerField(null=True, blank=True)
-    new_config = models.ForeignKey("new_config")
+    config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     error_text = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
@@ -179,7 +182,7 @@ class config_str(models.Model):
     name = models.CharField(max_length=192)
     descr = models.CharField(max_length=765)
     config = models.IntegerField(null=True, blank=True)
-    new_config = models.ForeignKey("new_config")
+    config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -191,7 +194,7 @@ class config_type(models.Model):
     idx = models.AutoField(db_column="config_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     identifier = models.CharField(unique=True, max_length=6)
-    description = models.CharField(max_length=384)
+    description = models.CharField(max_length=384, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'config_type'
@@ -283,7 +286,7 @@ class device_class(models.Model):
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)
     device = models.ForeignKey("device")
-    new_config = models.ForeignKey("new_config")
+    config = models.ForeignKey("config", db_column="new_config_id")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'device_config'
@@ -364,7 +367,7 @@ class device_relationship(models.Model):
 
 class device_rsync_config(models.Model):
     idx = models.AutoField(db_column="device_rsync_config_idx", primary_key=True)
-    new_config = models.ForeignKey("new_config")
+    config = models.ForeignKey("config", db_column="new_config_id")
     device = models.ForeignKey("device")
     last_rsync_time = models.DateTimeField(null=True, blank=True)
     status = models.TextField()
@@ -958,17 +961,26 @@ class network_type(models.Model):
         return u"%s (%s)" % (self.description,
                              self.identifier)
 
-class new_config(models.Model):
+class config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     description = models.CharField(max_length=765)
-    priority = models.IntegerField(null=True, blank=True)
-    new_config_type = models.ForeignKey("new_config_type")
+    priority = models.IntegerField(null=True, default=0)
+    config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.config(
+            pk="%d" % (self.pk),
+            key="conf_%d" % (self.pk),
+            name=unicode(self.name),
+            description=unicode(self.description or ""),
+            priority="%d" % (self.priority or 0),
+            config_type="%d" % (self.config_type_id)
+        )
     class Meta:
         db_table = u'new_config'
 
-class new_config_type(models.Model):
+class config_type(models.Model):
     idx = models.AutoField(db_column="new_config_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     description = models.CharField(max_length=765, blank=True)
@@ -1012,8 +1024,8 @@ class ng_cgservicet(models.Model):
 
 class ng_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
-    config = models.IntegerField(null=True, blank=True)
-    new_config = models.ForeignKey("new_config")
+    config_old = models.IntegerField(null=True, blank=True)
+    config = models.ForeignKey("config", db_column="new_config_id")
     ng_check_command_type = models.ForeignKey("ng_check_command_type")
     ng_service_templ = models.ForeignKey("ng_service_templ", null=True)
     name = models.CharField(max_length=192)
@@ -1489,8 +1501,8 @@ class snmp_class(models.Model):
 
 class snmp_config(models.Model):
     idx = models.AutoField(db_column="snmp_config_idx", primary_key=True)
-    config = models.IntegerField(null=True, blank=True)
-    new_config = models.ForeignKey("new_config")
+    config_old = models.IntegerField(null=True, blank=True)
+    config = models.ForeignKey("config", db_column="new_config_id")
     snmp_mib = models.ForeignKey("snmp_mib")
     device = models.ForeignKey("device")
     date = models.DateTimeField(auto_now_add=True)
@@ -1560,8 +1572,8 @@ class user(models.Model):
     uid = models.IntegerField(unique=True)
     group = models.ForeignKey("group")
     aliases = models.TextField(blank=True, null=True)
-    export = models.ForeignKey("new_config", null=True, related_name="export")
-    export_scr = models.ForeignKey("new_config", null=True, related_name="export_scr")
+    export = models.ForeignKey("config", null=True, related_name="export")
+    export_scr = models.ForeignKey("config", null=True, related_name="export_scr")
     home = models.TextField(blank=True, null=True)
     scratch = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=765, blank=True)
