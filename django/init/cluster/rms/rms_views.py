@@ -21,7 +21,8 @@ class tl_sge_info(sge_tools.sge_info):
             never_direct=True,
             initial_update=False,
             log_command=self.__logger.log,
-            verbose=settings.DEBUG
+            verbose=settings.DEBUG,
+            persistent_socket=True
         )
     def update(self):
         self.lock.acquire()

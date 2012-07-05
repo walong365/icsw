@@ -1,4 +1,5 @@
 {% extends "main.html" %}
+
 {% load i18n extra_tags %}
 
 {% block title %}{% trans "RMS Overview" %}{% endblock %}
@@ -14,7 +15,7 @@
         <thead>
             <tr>
                 {% for entry in run_job_headers %}
-                    <th>{{ entry.tag }}</th>
+                    <td>{{ entry.tag }}</td>
                 {% endfor %}
             </tr>
         </thead>
@@ -30,7 +31,7 @@
         <thead>
             <tr>
                 {% for entry in wait_job_headers %}
-                    <th>{{ entry.tag }}</th>
+                    <td>{{ entry.tag }}</td>
                 {% endfor %}
             </tr>
         </thead>
@@ -46,7 +47,7 @@
         <thead>
             <tr>
                 {% for entry in node_headers %}
-                    <th>{{ entry.tag }}</th>
+                    <td>{{ entry.tag }}</td>
                 {% endfor %}
             </tr>
         </thead>
@@ -84,7 +85,7 @@ function addHandlers() {
         "bJQueryUI"       : true,
         "sPaginationType" : "full_numbers",
         "bStateSave"      : true,
-        "bAutoWidth"      : false,
+        "bAutoWidth"      : true,
         "aoColumnDefs"    : [{
             "fnRender" : function(o, val) {
                 return "<b>" + val + "</b>";
