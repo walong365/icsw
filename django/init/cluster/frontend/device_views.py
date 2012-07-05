@@ -12,7 +12,7 @@ from init.cluster.frontend.render_tools import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from init.cluster.backbone.models import device_type, device_group, device, device_class, netdevice, \
-     netdevice_speed, network_device_type, network, net_ip, network, peer_information
+     net_ip, network, peer_information
 from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
@@ -25,13 +25,6 @@ from django.core.urlresolvers import reverse
 @init_logging
 def device_tree(request):
     return render_me(request ,"device_tree.html", hide_sidebar=True)()
-
-@login_required
-@init_logging
-def device_network(request):
-    return render_me(
-        request, "device_network.html",
-    )()
 
 @login_required
 @init_logging
@@ -79,56 +72,6 @@ def get_json_devlist(request):
     _post = request.POST
     return HttpResponse(json.dumps(_get_device_list(request, _post["dg_idx"])),
                         mimetype="application/json")
-
-@login_required
-@init_logging
-def get_network_tree(request):
-    _post = request.POST
-    sel_list = _post.getlist("sel_list[]", [])
-    dev_pk_list = [int(entry.split("__")[1]) for entry in sel_list if entry.startswith("dev__")]
-    xml_resp = E.response()
-    dev_list = E.devices()
-    for cur_dev in device.objects.filter(Q(pk__in=dev_pk_list)).select_related(
-        "device_group",
-        "device_type").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").order_by("device_group__name", "name"):
-        dev_list.append(cur_dev.get_xml())
-    xml_resp.append(dev_list)
-    xml_resp.append(E.netspeed_list(
-        *[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()]))
-    xml_resp.append(E.network_device_type_list(
-        *[E.network_device_type(unicode(cur_ndt), pk="%d" % (cur_ndt.pk)) for cur_ndt in network_device_type.objects.all()]))
-    # networks
-    xml_resp.append(E.network_list(
-        *[cur_nw.get_xml() for cur_nw in network.objects.all().order_by("name")]
-    ))
-    # ethtool options
-    xml_resp.append(E.ethtool_autoneg_list(
-        *[E.ethtool_autoneg(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]))
-    xml_resp.append(E.ethtool_duplex_list(
-        *[E.ethtool_duplex(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]))
-    xml_resp.append(E.ethtool_speed_list(
-        *[E.ethtool_speed(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "10 Mbit", "100 MBit", "1 GBit", "10 GBit"])]))
-    # peers
-    xml_resp.append(_get_valid_peers())
-    print etree.tostring(xml_resp, pretty_print=True)
-    request.xml_response["response"] = xml_resp
-    return request.xml_response.create_response()
-
-def _get_valid_peers():
-    return E.valid_peers(
-*[E.valid_peer("%s [%d] on %s (%s)" % (
-    cur_p.devname,
-    cur_p.penalty or 1,
-    cur_p.device.name,
-    ", ".join([cur_ip.ip for cur_ip in cur_p.net_ip_set.all()]) or "no IPs"), pk="%d" % (cur_p.pk))
-  for cur_p in netdevice.objects.filter(Q(routing=True)).order_by("device__name", "devname").prefetch_related("net_ip_set").select_related("device")]
-    )
-
-@login_required
-@init_logging
-def get_valid_peers(request):
-    request.xml_response["valid_peers"] = _get_valid_peers()
-    return request.xml_response.create_response()
 
 @login_required
 @init_logging
@@ -195,6 +138,8 @@ def change_xml_entry(request):
             mod_obj = netdevice
         elif object_type == "ip":
             mod_obj = net_ip
+        elif object_type == "routing":
+            mod_obj = peer_information
         else:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
             mod_obj = None
@@ -360,111 +305,3 @@ def add_selection(request):
     request.log("%s in list" % (logging_tools.get_plural("selection", len(cur_list))))
     return request.xml_response.create_response()
 
-@login_required
-@init_logging
-def delete_netdevice(request):
-    _post = request.POST
-    keys = _post.keys()
-    dev_pk_key = [key for key in keys if key.startswith("nd_")][0]
-    dev_pk, nd_pk = (int(dev_pk_key.split("__")[1]),
-                     int(dev_pk_key.split("__")[2]))
-    removed_peers = peer_information.objects.filter(Q(s_netdevice=nd_pk) | Q(d_netdevice=nd_pk))
-    request.xml_response["removed_peers"] = E.peers(*[rem_peer.get_xml() for rem_peer in removed_peers])
-    netdevice.objects.get(Q(pk=nd_pk) & Q(device=dev_pk)).delete()
-    return request.xml_response.create_response()
-
-@login_required
-@init_logging
-def create_netdevice(request):
-    _post = request.POST
-    keys = _post.keys()
-    dev_pk = int([key for key in keys if key.startswith("nd__")][0].split("__")[1])
-    cur_dev = device.objects.get(Q(pk=dev_pk))
-    value_dict = dict([(key.split("__", 2)[2], value) for key, value in _post.iteritems()])
-    if "new" in value_dict:
-        # new is here used as a prefix, so new__devname is correct and not new_devname (AL, 20120826)
-        request.log("create new netdevice for '%s'" % (unicode(cur_dev)))
-        copy_dict = dict([(key, value_dict["new__%s" % (key)]) for key in [
-            "devname", "driver", "driver_options", "ethtool_autoneg", "macaddr", "fake_macaddr",
-            "ethtool_duplex", "ethtool_speed", "vlan_id", "description"] if "new__%s" % (key) in value_dict])
-        new_nd = netdevice(device=cur_dev,
-                           netdevice_speed=netdevice_speed.objects.get(Q(pk=value_dict["new__netdevice_speed"])),
-                           **copy_dict)
-        try:
-            new_nd.save()
-        except ValidationError, what:
-            request.log("error creating: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
-        except:
-            raise
-        else:
-            request.xml_response["new_netdevice"] = new_nd.get_xml()
-    return request.xml_response.create_response()
-    
-@login_required
-@init_logging
-def delete_net_ip(request):
-    _post = request.POST
-    keys = _post.keys()
-    main_key = [key for key in keys if key.endswith("__ip")][0]
-    net_ip.objects.get(Q(pk=main_key.split("__")[4])).delete()
-    return request.xml_response.create_response()
-
-@login_required
-@init_logging
-def create_net_ip(request):
-    _post = request.POST
-    keys = _post.keys()
-    main_key = [key for key in keys if key.endswith("__new")][0]
-    cur_nd = netdevice.objects.get(Q(pk=main_key.split("__")[2]))
-    value_dict = dict([(key.split("__", 4)[4], value) for key, value in _post.iteritems()])
-    if "new" in value_dict:
-        request.log("create new net_ip for '%s'" % (unicode(cur_nd)))
-        copy_dict = dict([(key, value_dict["new__%s" % (key)]) for key in [
-            "ip"] if "new__%s" % (key) in value_dict])
-        new_ip = net_ip(netdevice=cur_nd,
-                        network=network.objects.get(Q(pk=value_dict["new__network"])),
-                        **copy_dict)
-        try:
-            new_ip.save()
-        except ValidationError, what:
-            request.log("error creating: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
-        except:
-            raise
-        else:
-            request.xml_response["new_net_ip"] = new_ip.get_xml()
-    return request.xml_response.create_response()
-
-@login_required
-@init_logging
-def create_new_peer(request):
-    _post = request.POST
-    s_netdevice=netdevice.objects.get(Q(pk=_post["id"].split("__")[2]))
-    d_netdevice=netdevice.objects.get(Q(pk=_post["new_peer"]))
-    try:
-        cur_peer = peer_information.objects.get(
-            (Q(s_netdevice=s_netdevice.pk) & Q(d_netdevice=d_netdevice.pk)) |
-            (Q(s_netdevice=d_netdevice.pk) & Q(d_netdevice=s_netdevice.pk)))
-    except peer_information.DoesNotExist:
-        new_peer = peer_information(
-            s_netdevice=s_netdevice,
-            d_netdevice=d_netdevice,
-            penalty=_post["penalty"])
-        try:
-            new_peer.save()
-        except:
-            request.log("error creating new peer: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
-        else:
-            request.log("created new peer", xml=True)
-            request.xml_response["new_peer_information"] = new_peer.get_xml()
-    except peer_information.MultipleObjectsReturned:
-        request.log("peer already exists", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
-        request.log("peer already exists", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    return request.xml_response.create_response()
-
-@login_required
-@init_logging
-def delete_peer(request):
-    _post = request.POST
-    peer_information.objects.get(Q(pk=_post["id"].split("__")[-1])).delete()
-    return request.xml_response.create_response()

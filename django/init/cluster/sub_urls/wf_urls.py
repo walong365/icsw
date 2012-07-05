@@ -38,7 +38,6 @@ device_patterns = patterns(
     url("^get_json_tree$"     , "device_views.get_json_tree"      , name="get_json_tree"      ), 
     url("^get_json_devlist$"  , "device_views.get_json_devlist"   , name="get_json_devlist"   ),
     url("^get_xml_tree$"      , "device_views.get_xml_tree"       , name="get_xml_tree"       ), 
-    url("^get_network_tree$"  , "device_views.get_network_tree"   , name="get_network_tree"   ), 
     url("^change_xml_entry$"  , "device_views.change_xml_entry"   , name="change_xml_entry"   ),
     url("^create_devg$"       , "device_views.create_device_group", name="create_device_group"),
     url("^create_device$"     , "device_views.create_device"      , name="create_device"      ),
@@ -46,20 +45,23 @@ device_patterns = patterns(
     url("^delete_device$"     , "device_views.delete_device"      , name="delete_device"      ),
     url("^add_selection$"     , "device_views.add_selection"      , name="add_selection"      ),
     url("^clear_selection$"   , "device_views.clear_selection"    , name="clear_selection"    ),
-    url("^network$"           , "device_views.device_network"     , name="network"            ),
-    url("^create_netdevice$"  , "device_views.create_netdevice"   , name="create_netdevice"   ),
-    url("^delete_netdevice$"  , "device_views.delete_netdevice"   , name="delete_netdevice"   ),
-    url("^create_net_ip$"     , "device_views.create_net_ip"      , name="create_net_ip"      ),
-    url("^delete_net_ip$"     , "device_views.delete_net_ip"      , name="delete_net_ip"      ),
-    url("^create_new_peer$"   , "device_views.create_new_peer"    , name="create_new_peer"    ),
-    url("^delete_peer$"       , "device_views.delete_peer"        , name="delete_peer"        ),
-    url("^get_valid_peers$"   , "device_views.get_valid_peers"    , name="get_valid_peers"    ),
 )
 
 network_patterns = patterns(
     "init.cluster.frontend",
-    url("^network$"          , "network_views.show_cluster_networks" , name="networks"),
-    url("^netdevice_classes$", "network_views.show_netdevice_classes", name="netdevice_classes"),
+    url("^network$"           , "network_views.show_cluster_networks" , name="networks"           ),
+    url("^netdevice_classes$" , "network_views.show_netdevice_classes", name="netdevice_classes"  ),
+    url("^dev_network$"       , "network_views.device_network"        , name="network"            ),
+    url("^get_network_tree$"  , "network_views.get_network_tree"      , name="get_network_tree"   ), 
+    url("^create_netdevice$"  , "network_views.create_netdevice"      , name="create_netdevice"   ),
+    url("^delete_netdevice$"  , "network_views.delete_netdevice"      , name="delete_netdevice"   ),
+    url("^create_net_ip$"     , "network_views.create_net_ip"         , name="create_net_ip"      ),
+    url("^delete_net_ip$"     , "network_views.delete_net_ip"         , name="delete_net_ip"      ),
+    url("^create_new_peer$"   , "network_views.create_new_peer"       , name="create_new_peer"    ),
+    url("^delete_peer$"       , "network_views.delete_peer"           , name="delete_peer"        ),
+    url("^get_valid_peers$"   , "network_views.get_valid_peers"       , name="get_valid_peers"    ),
+    url("^get_hopcount_state$", "network_views.get_hopcount_state"    , name="get_hopcount_state" ),
+    url("^trigger_hc_rebuild$", "network_views.rebuild_hopcount"      , name="rebuild_hopcount"   ),
 )
 
 main_patterns = patterns(

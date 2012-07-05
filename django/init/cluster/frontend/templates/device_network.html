@@ -6,7 +6,7 @@
 
 {% block content %}
 
-<h1 class="center">Device network settings</h1>
+<h1 class="center">Device network settings, hopcount info: <span id="hopcount_rebuild_info">unknown</span>, <input type="button" value="rebuild hopcount" onClick="trigger_hopcount_rebuild(); "/></h1>
 
 <div id="network_table">
 </div>
@@ -57,7 +57,7 @@ function remove_peer_lines(peer_pk) {
 function delete_peer(event) {
     var peer_id = $(event.target).attr("id");
     $.ajax({
-        url     : "{% url device:delete_peer %}",
+        url     : "{% url network:delete_peer %}",
         error   : handle_ajax_error,
         data    : {
             "id" : peer_id
@@ -82,11 +82,13 @@ function create_peer_line(cur_nd, cur_peer, line_prefix) {
         $("<span>").text("from " + cur_peer.attr("from_devname") + " [" + cur_peer.attr("from_penalty") + "] on " + cur_peer.attr("from_device"))
     ).append(
         $("<input>").attr({
-            "id"    : "x",
+            "id"    : line_prefix + "__penalty",
             "type"  : "number",
             "value" : cur_peer.attr("penalty")
         })
-    ).append(
+    ).bind("change", function(event) {
+        submit_change($(event.target));
+    }).append(
         $("<span>").text("to " + cur_peer.attr("to_devname") + " [" + cur_peer.attr("to_penalty") + "] on " + cur_peer.attr("to_device"))
     ).append(
         $("<input>").attr({
@@ -113,7 +115,7 @@ function inject_peer(new_peer, attr_name) {
 
 function redraw_possible_peers() {
     $.ajax({
-        url     : "{% url device:get_valid_peers %}",
+        url     : "{% url network:get_valid_peers %}",
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
@@ -133,7 +135,7 @@ function create_new_peer(event) {
     var new_p = parseInt(cur_sel.attr("value"));
     if (new_p) {
         $.ajax({
-            url     : "{% url device:create_new_peer %}",
+            url     : "{% url network:create_new_peer %}",
             error   : handle_ajax_error,
             data    : {
                 "id"       : cur_sel.attr("id"),
@@ -327,7 +329,7 @@ function create_delete_new_netdevice(event) {
     if (cur_el.attr("id").match(/new$/)) {
         // create element
         $.ajax({
-            url  : "{% url device:create_netdevice %}",
+            url  : "{% url network:create_netdevice %}",
             data : create_dict(el_list),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
@@ -340,7 +342,7 @@ function create_delete_new_netdevice(event) {
     } else {
         // delete
         $.ajax({
-            url  : "{% url device:delete_netdevice %}",
+            url  : "{% url network:delete_netdevice %}",
             data : create_dict(el_list),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
@@ -366,7 +368,7 @@ function create_delete_new_net_ip(event) {
     if (cur_el.attr("id").match(/new$/)) {
         // create element
         $.ajax({
-            url  : "{% url device:create_net_ip %}",
+            url  : "{% url network:create_net_ip %}",
             data : create_dict(el_list),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
@@ -379,7 +381,7 @@ function create_delete_new_net_ip(event) {
         true;
         // delete
         $.ajax({
-            url  : "{% url device:delete_net_ip %}",
+            url  : "{% url network:delete_net_ip %}",
             data : create_dict(el_list),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
@@ -671,7 +673,7 @@ function draw_network_table() {
 
 function reload_network_tree(sel_list) {
     $.ajax({
-        url     : "{% url device:get_network_tree %}",
+        url     : "{% url network:get_network_tree %}",
         error   : handle_ajax_error,
         data    : {
             "sel_list" : sel_list
@@ -680,6 +682,31 @@ function reload_network_tree(sel_list) {
             if (parse_xml_response(xml)) {
                 DEVICE_NETWORKS = $(xml);
                 draw_network_table();
+                reload_hopcount_info();
+            }
+        }
+    });
+};
+
+function trigger_hopcount_rebuild() {
+    $.ajax({
+        url     : "{% url network:rebuild_hopcount %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                reload_hopcount_info();
+            }
+        }
+    });
+};
+
+function reload_hopcount_info() {
+    $.ajax({
+        url     : "{% url network:get_hopcount_state %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                $("span#hopcount_rebuild_info").text($(xml).find("value[name='response'] hopcount_state").attr("rebuild_info"));
             }
         }
     });
@@ -693,6 +720,7 @@ function use_devs(dt_div) {
 
 function add_dnet_handlers() {
     install_devsel_link(use_devs, true);
+    $(document).everyTime(10000, function(i) { reload_hopcount_info(); });
 };
 
 $(document).ready(add_dnet_handlers);
