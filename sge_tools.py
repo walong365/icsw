@@ -172,6 +172,7 @@ class sge_info(object):
         default_pref       : list of default update preference, defaults to ["direct", "server"]
         always_direct      : never contact server, defaults to False
         never_direct       : never make a direct call, always call server, defaults to False
+        persistent_socket  : use a persistent 0MQ socket
         """
         self.__verbose = kwargs.get("verbose", 0)
         self.__sge_dict = kwargs.get("sge_dict", {})
@@ -182,6 +183,8 @@ class sge_info(object):
         self.__server_port = kwargs.get("server_port", 8009)
         self.__always_direct = kwargs.get("always_direct", False)
         self.__never_direct = kwargs.get("never_direct", False)
+        self.__persistent_socket = kwargs.get("persistent_socket", True)
+        self.__0mq_context, self.__0mq_socket = (None, None)
         # key : (relevance, call)
         setup_dict = {"hostgroup" : (0, self._check_hostgroup_dict),
                       "queueconf" : (1, self._check_queueconf_dict),
@@ -200,7 +203,10 @@ class sge_info(object):
         if kwargs.get("run_initial_update", True) and self.__is_active:
             self.update()
     def __del__(self):
-        pass
+        if self.__0mq_socket:
+            self.__0mq_socket.close()
+        if self.__0mq_context:
+            self.__0mq_context.term()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
             self.__log_com("[si] %s" % (what), log_level)
@@ -256,11 +262,21 @@ class sge_info(object):
             s_time = time.time()
             # try server_update
             # new fancy 0MQ code
-            zmq_context = zmq.Context(1)
-            client = zmq_context.socket(zmq.DEALER)
-            client.setsockopt(zmq.IDENTITY, "sge_tools:%d" % (os.getpid()))
-            client.setsockopt(zmq.LINGER, 100)
-            client.connect("tcp://%s:%d" % (srv_name, self.__server_port))
+            if self.__persistent_socket:
+                if not self.__0mq_context:
+                    self.__0mq_context = zmq.Context(1)
+                    client = self.__0mq_context.socket(zmq.DEALER)
+                    client.setsockopt(zmq.IDENTITY, "sge_tools:%d:%d" % (os.getpid(), int(time.time())))
+                    client.setsockopt(zmq.LINGER, 100)
+                    client.connect("tcp://%s:%d" % (srv_name, self.__server_port))
+                    self.__0mq_socket = client
+                client = self.__0mq_socket
+            else:
+                zmq_context = zmq.Context(1)
+                client = zmq_context.socket(zmq.DEALER)
+                client.setsockopt(zmq.IDENTITY, "sge_tools:%d:%d" % (os.getpid(), int(time.time())))
+                client.setsockopt(zmq.LINGER, 100)
+                client.connect("tcp://%s:%d" % (srv_name, self.__server_port))
             srv_com = server_command.srv_command(command="get_config")
             my_poller = zmq.Poller()
             my_poller.register(client, zmq.POLLIN)
@@ -275,8 +291,11 @@ class sge_info(object):
             else:
                 print "timeout after %d seconds" % (timeout_secs)
                 recv = None
-            client.close()
-            zmq_context.term()
+            my_poller.unregister(client)
+            del my_poller
+            if not self.__persistent_socket:
+                client.close()
+                zmq_context.term()
             try:
                 srv_reply = server_command.srv_command(source=recv)
             except:
