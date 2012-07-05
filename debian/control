@@ -1,0 +1,12 @@
+Source: host-monitoring
+Section: admin
+Priority: extra
+Maintainer: Christoph Sieghart <sieghart@init.at>
+Build-Depends: debhelper (>= 8.0.0), python-init
+Standards-Version: 3.9.2
+Homepage: http://www.init.at
+
+Package: host-monitoring
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, python-init (>= 2.7.2), python-modules-base (>= 1.10-53), logging-server, ethtool-init, python-modules-inotify (>= 0.7.0-15), meta-server, twisted-init, python-modules-lxml
+Description: The host-monitoring part of the INIT(c) cluster software
