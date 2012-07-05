@@ -72,7 +72,7 @@ def client_code():
     com_name = arg_list.pop(0)
     if com_name in modules.command_dict:
         srv_com = server_command.srv_command(command=com_name)#" ".join(arg_list))
-        for src_key, dst_key in [("HOST", "host"),
+        for src_key, dst_key in [("HOST"    , "host"),
                                  ("COM_PORT", "port")]:
             srv_com[dst_key] = global_config[src_key]
         com_struct = modules.command_dict[com_name]
