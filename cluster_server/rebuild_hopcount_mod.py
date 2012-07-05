@@ -31,6 +31,9 @@ from django.conf import settings
 from init.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group, \
      peer_information
 
+HOPCOUNT_REBUILT_VAR_NAME = "hopcount_table_build_time"
+HOPCOUNT_STATE_VAR_NAME = "hopcount_state_var"
+
 def generate_minhop_dict(in_hops):
     mh_d = {}
     for pen, pens, hop in in_hops:
@@ -240,6 +243,22 @@ class rebuild_hopcount(cs_base_class.server_com):
         show = settings.DEBUG
         # get device-structs
         all_ips = net_ip.objects.exclude(Q(netdevice__device__device_type__identifier="MD")).select_related("netdevice__device__device_type")
+        try:
+            device_variable.objects.get(Q(device=cdg_dev) & Q(name=HOPCOUNT_REBUILT_VAR_NAME)).delete()
+        except device_variable.DoesNotExist:
+            pass
+        try:
+            # remove old state_var
+            device_variable.objects.get(Q(device=cdg_dev) & Q(name=HOPCOUNT_STATE_VAR_NAME)).delete()
+        except device_variable.DoesNotExist:
+            pass
+        state_var = device_variable(
+            device=cdg_dev,
+            name=HOPCOUNT_STATE_VAR_NAME,
+            description="rebuild info",
+            var_type="i",
+            val_int=0)
+        state_var.save()
         #print all_ips
 ##        my_dc.execute("SELECT d.name, dt.identifier, d.device_idx, n.netdevice_idx, n.device, n.devname, n.routing, n.penalty, i.ip FROM device d INNER JOIN device_type dt LEFT JOIN " + \
 ##                      "netdevice n ON n.device=d.device_idx LEFT JOIN netip i ON i.netdevice=n.netdevice_idx WHERE d.device_type=dt.device_type_idx AND dt.identifier != 'MD'")
@@ -390,6 +409,8 @@ class rebuild_hopcount(cs_base_class.server_com):
             if abs(old_perc - perc_done) >= 10 or abs(time.time() - old_time) >= 5.:
                 old_perc, old_time = (perc_done, time.time())
                 self.log("%6.2f %% done" % perc_done)
+                state_var.val_int = int(perc_done)
+                state_var.save()
             checks_left -= 2 * num_devs - 1
             num_devs -= 1
             s_nets = devices[s_name].nds
@@ -460,7 +481,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         else:
             ret_str = "ok wrote %d routing entries (%d dups)" % (num_routes, num_dups)
             try:
-                reb_var = device_variable.objects.get(Q(device=cdg_dev) & Q(name="hopcount_table_build_time"))
+                reb_var = device_variable.objects.get(Q(device=cdg_dev) & Q(name=HOPCOUNT_REBUILT_VAR_NAME))
             except device_variable.DoesNotExist:
                 reb_var = device_variable(device=cdg_dev,
                                           name="hopcount_table_build_time")
@@ -468,9 +489,9 @@ class rebuild_hopcount(cs_base_class.server_com):
             reb_var.description = "rebuilt at %s" % (self.global_config["SERVER_SHORT_NAME"])
             reb_var.val_date = pytz.utc.localize(datetime.datetime(*time.localtime()[0:6]))
             reb_var.save()
-            device_variable.objects.filter(Q(name='hopcount_rebuild_in_progress')).delete()
-            #my_dc.execute("DELETE FROM device_variable WHERE name='hopcount_rebuild_in_progress'")
+            state_var.delete()
             if not self.global_config["COMMAND"]:
+                print "broadcast"
                 self.log("broadcasting write_etc_hosts to other cluster-servers")
                 self.process_pool.send_broadcast("write_etc_hosts")
                 my_dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE n.device=%d" % (self.server_idx))

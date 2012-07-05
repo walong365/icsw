@@ -1183,7 +1183,8 @@ class server_process(threading_tools.process_pool):
         if self.com_socket:
             self.log("closing socket")
             self.com_socket.close()
-        self.vector_socket.close()
+        if self.vector_socket:
+            self.vector_socket.close()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
@@ -1210,6 +1211,7 @@ class server_process(threading_tools.process_pool):
         # connection to local collserver socket
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver")
         vector_socket = self.zmq_context.socket(zmq.PUSH)
+        vector_socket.setsockopt(zmq.LINGER, 0)
         vector_socket.connect(conn_str)
         self.vector_socket = vector_socket
         self.log("connected vector_socket to %s" % (conn_str))
