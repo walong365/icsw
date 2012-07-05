@@ -29,7 +29,9 @@ rms_patterns = patterns(
 
 config_patterns = patterns(
     "init.cluster.frontend",
-    url("^config_types$", "config_views.show_config_type_options", name="config_types"),
+    url("^config_types$"   , "config_views.show_config_type_options", name="config_types"),
+    url("^show_config$"    , "config_views.show_configs"            , name="show_configs"),
+    url("^get_configs_xml$", "config_views.get_configs"             , name="get_configs" ),
 )
 
 device_patterns = patterns(

@@ -1,0 +1,86 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Configurations" %}{% endblock %}
+
+{% block content %}
+
+<h1 class="center">Configurations, <span id="config_info">none defined</span></h1>
+
+<input type="text" id="filter" value="" onKeyUp="apply_filter();"/>
+
+<div id="configs">
+</div>
+
+<script type="text/javascript">
+
+CONFIGS = undefined;
+CUR_FILTER = undefined;
+
+function apply_filter() {
+    var cur_text = $("input#filter").attr("value");
+    if (cur_text != CUR_FILTER) {
+        CUR_FILTER = cur_text;
+        console.log(CUR_FILTER);
+    };
+};
+
+function update_config_info() {
+    $("span##config_info").text("configs defined: " + CONFIGS.find("config").length);
+};
+
+function draw_config(c_el) {
+    var dummy_div = $("<div>");
+    var line_prefix = c_el.attr("key");
+    var c_line = $("<tr>").attr({
+        "id" : line_prefix
+    });
+    c_line.append($("<td>").text(c_el.attr("name")));
+    dummy_div.append(c_line);
+    return dummy_div.children();
+};
+
+function init_config_table() {
+    update_config_info();
+    $("div#configs").children().remove();
+    c_table = $("<table>").attr({"id" : "configs"});
+    CONFIGS.find("config").each(function() {
+        c_table.append(draw_config($(this)));
+    });
+    $("div#configs").append(c_table);
+};
+
+function load_configs(sel_list) {
+    $.ajax({
+        url     : "{% url config:get_configs %}",
+        error   : handle_ajax_error,
+        data    : {
+            "sel_list" : sel_list
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                CONFIGS = $(xml).find("value[name='response'] config_list");
+                init_config_table();
+            }
+        }
+    });
+};
+
+function use_devs(dt_div) {
+<!--    reload_network_tree(_.map(dt_div.dynatree("getSelectedNodes"), function(value) {-->
+<!--        return(value.data.key);-->
+<!--    }));-->
+};
+
+function add_dnet_handlers() {
+<!--    install_devsel_link(use_devs, true);-->
+<!--    $(document).everyTime(10000, function(i) { reload_hopcount_info(); });-->
+    load_configs();
+};
+
+$(document).ready(add_dnet_handlers);
+
+</script>
+
+{% endblock %}
