@@ -31,7 +31,6 @@ import os.path
 import logging_tools
 import process_tools
 import configfile
-import bz2
 import pprint
 import server_command
 import net_tools
@@ -1458,7 +1457,10 @@ class job_object(object):
                                                                        logging_tools.get_plural("SGE related line", num_sge),
                                                                        logging_tools.get_plural("init.at related line", num_init)))
                 if s_list:
-                    self.write_file("jobscript", str(s_list).split("\n"), linenumbers=False)
+                    try:
+                        self.write_file("jobscript", str(s_list).split("\n"), linenumbers=False)
+                    except:
+                        self.log("error writing jobscript: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
         else:
             self.log("environ has no JOB_SCRIPT key", logging_tools.LOG_LEVEL_WARN)
     def _parse_sge_env(self):
