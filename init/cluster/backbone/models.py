@@ -396,7 +396,7 @@ class device_type(models.Model):
 class device_variable(models.Model):
     idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
     device = models.ForeignKey("device", null=True)
-    is_public = models.BooleanField()
+    is_public = models.BooleanField(default=True)
     name = models.CharField(max_length=765)
     description = models.CharField(max_length=765, blank=True)
     var_type = models.CharField(max_length=3)
