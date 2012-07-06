@@ -491,7 +491,8 @@ class sge_info(object):
                  "t" : "transfering",
                  "T" : "Threshold",
                  "w" : "waiting",
-                 "o" : "orphaned"}[cur_state][1:]) for cur_state in state_el.text or "-"])))
+                 "o" : "orphaned",
+		 "E" : "Error"}[cur_state][1:]) for cur_state in state_el.text or "-"])))
         for node_name, attr_name in [("JAT_start_time", "start_time"),
                                      ("JB_submission_time", "submit_time")]:
             for time_el in all_jobs.findall(".//%s" % (node_name)):
