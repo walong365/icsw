@@ -29,9 +29,12 @@ rms_patterns = patterns(
 
 config_patterns = patterns(
     "init.cluster.frontend",
-    url("^config_types$"   , "config_views.show_config_type_options", name="config_types"),
-    url("^show_config$"    , "config_views.show_configs"            , name="show_configs"),
-    url("^get_configs_xml$", "config_views.get_configs"             , name="get_configs" ),
+    url("^config_types$"    , "config_views.show_config_type_options", name="config_types"    ),
+    url("^show_config$"     , "config_views.show_configs"            , name="show_configs"    ),
+    url("^get_configs_xml$" , "config_views.get_configs"             , name="get_configs"     ),
+    url("^change_xml_entry$", "config_views.change_xml_entry"        , name="change_xml_entry"),
+    url("^create_config$"   , "config_views.create_config"           , name="create_config"   ),
+    url("^delete_config$"   , "config_views.delete_config"           , name="delete_config"   ),
 )
 
 device_patterns = patterns(
@@ -40,7 +43,6 @@ device_patterns = patterns(
     url("^get_json_tree$"     , "device_views.get_json_tree"      , name="get_json_tree"      ), 
     url("^get_json_devlist$"  , "device_views.get_json_devlist"   , name="get_json_devlist"   ),
     url("^get_xml_tree$"      , "device_views.get_xml_tree"       , name="get_xml_tree"       ), 
-    url("^change_xml_entry$"  , "device_views.change_xml_entry"   , name="change_xml_entry"   ),
     url("^create_devg$"       , "device_views.create_device_group", name="create_device_group"),
     url("^create_device$"     , "device_views.create_device"      , name="create_device"      ),
     url("^delete_devg$"       , "device_views.delete_device_group", name="delete_device_group"),

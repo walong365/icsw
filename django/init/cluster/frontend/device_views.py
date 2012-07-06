@@ -11,8 +11,7 @@ from init.cluster.frontend.helper_functions import init_logging
 from init.cluster.frontend.render_tools import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from init.cluster.backbone.models import device_type, device_group, device, device_class, netdevice, \
-     net_ip, network, peer_information
+from init.cluster.backbone.models import device_type, device_group, device, device_class
 from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
@@ -115,81 +114,6 @@ def get_xml_tree(request):
 
 @login_required
 @init_logging
-def change_xml_entry(request):
-    _post = request.POST
-    try:
-        if _post["id"].count("__") == 2:
-            # format object_type, attr_name, object_id, used in device_tree
-            object_type, attr_name, object_id = _post["id"].split("__", 2)
-        elif _post["id"].count("__") == 3:
-            # format object_type, mother_id, object_id, attr_name, used in device_network
-            object_type, mother_id, object_id, attr_name = _post["id"].split("__", 3)
-        elif _post["id"].count("__") == 5:
-            # format mother object_type, dev_id, mother_id, object_type, object_id, attr_name, used in device_network for IPs
-            m_object_type, dev_id, mother_id, object_type, object_id, attr_name = _post["id"].split("__", 5)
-    except:
-        request.log("cannot parse", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
-        if object_type == "dg":
-            mod_obj = device_group
-        elif object_type == "dev":
-            mod_obj = device
-        elif object_type == "nd":
-            mod_obj = netdevice
-        elif object_type == "ip":
-            mod_obj = net_ip
-        elif object_type == "routing":
-            mod_obj = peer_information
-        else:
-            request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
-            mod_obj = None
-        if mod_obj:
-            try:
-                cur_obj = mod_obj.objects.get(pk=object_id)
-            except mod_obj.DoesNotExist:
-                request.log("object %s with id %s does not exit" % (object_type,
-                                                                    object_id), logging_tools.LOG_LEVEL_ERROR, xml=True)
-            else:
-                if (object_type, attr_name) == ("dg", "meta_device"):
-                    # special call: create new metadevice
-                    cur_obj.add_meta_device()
-                    request.log("created metadevice for %s" % (cur_obj.name), xml=True)
-                elif (object_type, attr_name) == ("dev", "device_group"):
-                    # special call: create new metadevice
-                    target_dg = device_group.objects.get(Q(pk=_post["value"]))
-                    cur_obj.device_group = target_dg
-                    cur_obj.save()
-                    request.log("moved device %s to %s" % (cur_obj.name,
-                                                           target_dg.name), xml=True)
-                else:
-                    new_value = _post["value"]
-                    if _post["checkbox"] == "true":
-                        new_value = bool(int(new_value))
-                    old_value = getattr(cur_obj, attr_name)
-                    try:
-                        if cur_obj._meta.get_field(attr_name).get_internal_type() == "ForeignKey":
-                            # follow foreign key the django way
-                            new_value = cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=new_value)
-                    except:
-                        # in case of meta-fields like ethtool_autoneg,speed,duplex
-                        pass
-                    setattr(cur_obj, attr_name, new_value)
-                    try:
-                        cur_obj.save()
-                    except ValidationError, what:
-                        request.log("error modifying: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
-                        request.xml_response["original_value"] = old_value
-                    except:
-                        raise
-                    else:
-                        # reread new_value (in case of pre/post-save corrections)
-                        new_value = getattr(cur_obj, attr_name)
-                        request.xml_response["object"] = cur_obj.get_xml()
-                        request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
-    return request.xml_response.create_response()
-
-@login_required
-@init_logging
 def create_device_group(request):
     _post = request.POST
     name = _post["name"]
@@ -203,7 +127,7 @@ def create_device_group(request):
                     xml=True)
         request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
     else:
-        pass
+        new_dg.add_meta_device()
     return request.xml_response.create_response()
 
 @login_required

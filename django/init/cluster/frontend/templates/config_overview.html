@@ -10,7 +10,7 @@
 
 <input type="text" id="filter" value="" onKeyUp="apply_filter();"/>
 
-<div id="configs">
+<div id="config">
 </div>
 
 <script type="text/javascript">
@@ -18,37 +18,126 @@
 CONFIGS = undefined;
 CUR_FILTER = undefined;
 
+function create_delete_config(event) {
+    var cur_el = $(event.target);
+    var el_id = cur_el.attr("id");
+    var lock_list = lock_elements($("table#config"));
+    if (el_id.match(/new$/)) {
+        // create element
+        $.ajax({
+            url  : "{%url config:create_config %}",
+            data : create_dict($("table#config"), el_id),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    var new_config = $(xml).find("config");
+                    CONFIGS.find("config_list").append(new_config);
+                    inject_config_line(new_config);
+                    cur_el.parents("tr:first").find("td input[id$='__name']").attr("value", "");
+                    update_config_info();
+                };
+                unlock_elements(lock_list);
+        }
+        });
+    } else {
+        $.ajax({
+            url  : "{% url config:delete_config %}",
+            data : create_dict($("table#config"), el_id),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    CONFIGS.find("config[pk='" + el_id.split("__")[1] + "']").remove();
+                    $("table#config tr[id^='" + el_id + "']").remove();
+                    update_config_info();
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    };
+};
+
 function apply_filter() {
     var cur_text = $("input#filter").attr("value");
     if (cur_text != CUR_FILTER) {
         CUR_FILTER = cur_text;
-        console.log(CUR_FILTER);
+        var cur_re = new RegExp("^.*" + CUR_FILTER + ".*$");
+        var disp_list = new Array();
+        // get keys/pks for current filter
+        CONFIGS.find("config").each(function() {
+            var c_config = $(this);
+            if (c_config.attr("name").match(cur_re)) {
+                disp_list.push(c_config.attr("key"));
+            };
+        });
+        var num_shown = 0;
+        $("table#config").find("tr").each(function() {
+            var cur_tr = $(this);
+            var show = cur_tr.attr("id").match(/^conf__new/) || ($.inArray(cur_tr.attr("id").split("__")[0] + "__" + cur_tr.attr("id").split("__")[1], disp_list) >= 0);
+            if (show && cur_tr.attr("id").split("__")[0] + "__" + cur_tr.attr("id").split("__")[1] == cur_tr.attr("id")) num_shown++;
+            if (show && ! cur_tr.is(":visible")) {
+                cur_tr.show();
+            } else if (! show && cur_tr.is(":visible")) {
+                cur_tr.hide();
+            };
+        });
+        update_config_info(num_shown);
     };
 };
 
-function update_config_info() {
-    $("span##config_info").text("configs defined: " + CONFIGS.find("config").length);
+function update_config_info(num_shown) {
+    var info_str = "configs defined: " + CONFIGS.find("config").length;
+    if (num_shown === undefined) {
+        info_str += ", all shown";
+    } else {
+        info_str += ", " + num_shown + " shown";
+    };
+    $("span#config_info").text(info_str);
+};
+
+function inject_config_line(new_el) {
+    var header_tr = $("table#config tr[id$='_new']");
+    header_tr.after(draw_config(new_el));
 };
 
 function draw_config(c_el) {
     var dummy_div = $("<div>");
-    var line_prefix = c_el.attr("key");
+    if (c_el === undefined) {
+        var conf_pk = "new";
+    } else {
+        var conf_pk = c_el.attr("pk");
+    };
+    var line_prefix = "conf__" + conf_pk;
     var c_line = $("<tr>").attr({
         "id" : line_prefix
     });
-    c_line.append($("<td>").text(c_el.attr("name")));
+    c_line.append($("<td>").append(
+        create_input_el(c_el, "name", line_prefix, {label : "Name"})
+    ).append(
+        create_input_el(c_el, "priority", line_prefix, {label : "Priority", number : true})
+    ).append(
+        create_input_el(c_el, "description", line_prefix, {label : "Description"})
+    ).append(
+        create_input_el(c_el, "config_type", line_prefix, {label : "Type" , select_source : CONFIGS.find("config_types config_type")})
+    ));
+    c_line.append(
+        $("<td>").append(
+        $("<input>").attr({
+            "type"  : "button",
+            "value" : conf_pk == "new" ? "create" : "delete",
+            "id"    : line_prefix
+        }).bind("click", create_delete_config)
+    ));
     dummy_div.append(c_line);
     return dummy_div.children();
 };
 
 function init_config_table() {
     update_config_info();
-    $("div#configs").children().remove();
-    c_table = $("<table>").attr({"id" : "configs"});
+    $("div#config").children().remove();
+    c_table = $("<table>").attr({"id" : "config"});
+    c_table.append(draw_config());
     CONFIGS.find("config").each(function() {
         c_table.append(draw_config($(this)));
     });
-    $("div#configs").append(c_table);
+    $("div#config").append(c_table);
 };
 
 function load_configs(sel_list) {
@@ -60,7 +149,8 @@ function load_configs(sel_list) {
         },
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                CONFIGS = $(xml).find("value[name='response'] config_list");
+                CONFIGS = $(xml).find("value[name='response']");
+                init_xml_change(CONFIGS);
                 init_config_table();
             }
         }

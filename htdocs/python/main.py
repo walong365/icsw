@@ -50,7 +50,7 @@ from init.cluster.frontend.render_tools import render_me
 from django.template.loader import render_to_string
 from django.core.urlresolvers import reverse
 from django.db.models import Q
-from init.cluster.backbone.models import device, device_variable, user, capability, new_config, device_config, \
+from init.cluster.backbone.models import device, device_variable, user, capability, config, device_config, \
      net_ip,  hopcount, genstuff
 from django.http import HttpResponse, HttpResponseRedirect
 
@@ -148,8 +148,8 @@ def find_server_routes(req, when):
                 #print sql_2_str
                 #req.dc.execute(sql_2_str)
                 c_list = device_config.objects.filter(
-                    (Q(new_config__name="nagios_master") | Q(new_config__name__icontains="server"))
-                    ).select_related("new_config", "device").order_by("device__name", "new_config__name")
+                    (Q(config__name="nagios_master") | Q(config__name__icontains="server"))
+                    ).select_related("config", "device").order_by("device__name", "config__name")
                 server_dict = {}
                 #print req.dc.rowcount
                 #for db_rec in req.dc.fetchall():
@@ -163,7 +163,7 @@ def find_server_routes(req, when):
                                            {"name"       : c_entry.device.name,
                                             "configs"    : [],
                                             "ips"        : {},
-                                            "netdevices" : {}})["configs"].append(c_entry.new_config.name)
+                                            "netdevices" : {}})["configs"].append(c_entry.config.name)
                 # get all ip-addresses 
                 all_nds = []
                 if server_dict.keys():

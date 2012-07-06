@@ -30,7 +30,7 @@ import html_tools
 import array
 import copy
 from django.db.models import Q
-from init.cluster.backbone.models import capability, only_wf_perms, user, group, new_config
+from init.cluster.backbone.models import capability, only_wf_perms, user, group, config
 
 class user_var(object):
     def __init__(self, in_dict, source_is_db=False):
@@ -502,7 +502,7 @@ class user_group_tree(object):
 ##            self.dc.execute("DELETE FROM user_var WHERE %s" % (" OR ".join(["user_var_idx=%d" % (x) for x in del_vars])))
         # user - sge-server connection, FIXME
         if False:
-            self.dc.execute("SELECT DISTINCT d.name, dc.device_config_idx, su.user FROM sge_user_con su, device d, device_config dc, new_config c WHERE c.name LIKE('sge_server%') AND c.new_config_idx=dc.new_config AND dc.device=d.device_idx AND su.sge_config=dc.device_config_idx ORDER BY d.name")
+            self.dc.execute("SELECT DISTINCT d.name, dc.device_config_idx, su.user FROM sge_user_con su, device d, device_config dc, config c WHERE c.name LIKE('sge_server%') AND c.new_config_idx=dc.new_config AND dc.device=d.device_idx AND su.sge_config=dc.device_config_idx ORDER BY d.name")
             for db_rec in self.dc.fetchall():
                 if self.__user_name_lut.has_key(db_rec["user"]):
                     self.__user_dict[self.__user_name_lut[db_rec["user"]]].add_sge_server(db_rec["device_config_idx"])
@@ -519,7 +519,7 @@ class user_group_tree(object):
 ##            if self.__user_name_lut.has_key(user_idx):
 ##                self.__user_dict[self.__user_name_lut[user_idx]].add_secondary_group_idx(group_idx)
         # export and scratch dirs
-        new_confs = new_config.objects.filter(
+        new_confs = config.objects.filter(
             (Q(name__icontains="quota") | Q(config_str__name__icontains="exports")) & 
             (Q(device_config__device__device_type__identifier='H'))
             ).prefetch_related("config_str")

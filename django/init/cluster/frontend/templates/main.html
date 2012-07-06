@@ -38,9 +38,10 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}js/superfish.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.dynatree.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.jnotify.min.js"></script>
-    <script type="text/javascript" src="{{ MEDIA_URL }}js/init.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/underscore-min.js"></script>
 {% endcompress %}
+
+{% include "init.js" %}
 
 {% block tab_js %}{% endblock %}
 {% block forms_media %}{% endblock %}

@@ -13,36 +13,11 @@
 
 <script type="text/javascript">
 
-DEVICE_NETWORKS = false;
+DEVICE_NETWORKS = undefined;
 DUMMY_MAC ="00:00:00:00:00:00";
 
 function modify_rowspan(cur_el, diff) {
     cur_el.attr({"rowspan" : parseInt(cur_el.attr("rowspan")) + diff});
-};
-
-function submit_change(cur_el, callback) {
-    if (cur_el.is(":checkbox")) {
-        var el_value = cur_el.is(":checked") ? "1" : "0";
-    } else {
-        var el_value = cur_el.attr("value");
-    };
-    $.ajax({
-        url  : "{% url device:change_xml_entry %}",
-        data : {
-            "id"       : cur_el.attr("id"),
-            "checkbox" : cur_el.is(":checkbox"),
-            "value"    : el_value
-        },
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                replace_xml_element($(xml));
-                if (callback != undefined && typeof callback == "function") callback(cur_el);
-            } else {
-                <!-- set back to previous value -->
-                $(cur_el).attr("value", get_xml_value(xml, "original_value"));
-            };
-        }
-    })
 };
 
 function remove_peer_lines(peer_pk) {
@@ -187,71 +162,9 @@ function set_network_after_change(cur_el) {
     $("div#network_table select[id$='__ip__" + net_ip_xml.attr("pk") + "__network']").attr("value", net_ip_xml.attr("network"));
 };
 
-function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
-    var dummy_div = $("<div>");
-    kwargs = kwargs || {};
-    if (kwargs["label"]) {
-        dummy_div.append($("<label>").attr({"for" : attr_name}).text(kwargs["label"]));
-    };
-    if (kwargs["select_source"] === undefined) {
-        if (kwargs.boolean) {
-            // checkbox input style
-            var new_el = $("<input>").attr({
-                "type"  : "checkbox",
-                "id"    : id_prefix + "__" + attr_name
-            });
-            if (xml_el && xml_el.attr(attr_name) == "1") new_el.attr("checked", "checked");
-        } else {
-            // text input style
-            var new_el = $("<input>").attr({
-                "type"  : kwargs.number ? "number" : "text",
-                "id"    : id_prefix + "__" + attr_name,
-                "value" : xml_el === undefined ? (kwargs.new_default || "") : xml_el.attr(attr_name)
-            });
-        }
-    } else {
-        // select input
-        var sel_val = xml_el === undefined ? "0" : xml_el.attr(attr_name);
-        var new_el = $("<select>").attr({
-            "id"    : id_prefix + "__" + attr_name,
-            "value" : sel_val
-        });
-        kwargs["select_source"].each(function() {
-            var cur_ns = $(this);
-            var new_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text());
-            if (cur_ns.attr("pk") == sel_val) new_opt.attr("selected", "selected");
-            new_el.append(new_opt);
-        });
-    };
-    if (xml_el !== undefined) {
-        new_el.bind("change", function(event) {
-            submit_change($(event.target), kwargs.callback);
-        })
-    };
-    return (dummy_div.append(new_el)).children();
-};
-
-function replace_xml_element(xml) {
-    // replace element in DEVICE_NETWORKS
-    xml.find("value[name='object'] > *").each(function() {
-        var new_el = $(this);
-        DEVICE_NETWORKS.find("[key='" + new_el.attr("key") + "']").replaceWith(new_el);
-    });
-};
-
 function update_network_device_type_string(cur_el) {
     cur_nd = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "'] netdevice[pk='" + cur_el.attr("id").split("__")[2] + "']");
     cur_el.parents("tr:first").find("span[id$='__devinfo']").text(DEVICE_NETWORKS.find("network_device_type_list network_device_type[pk='" + cur_nd.attr("network_device_type") + "']").text());
-};
-
-function lock_elements() {
-    var el_list = $("div#network_table input:enabled");
-    el_list.attr("disabled", "disabled");
-    return el_list;
-};
-
-function unlock_elements(el_list) {
-    el_list.removeAttr("disabled");
 };
 
 function fill_new_netdevice_name(event) {
@@ -267,14 +180,6 @@ function fill_new_netdevice_name(event) {
             cur_el.attr("value", "ib0");
         };
     };
-};
-
-function create_dict(in_list) {
-    var out_dict = {};
-    in_list.each(function(idx, value) {
-        out_dict[$(this).attr("id")] = $(this).attr("value");
-    });
-    return out_dict;
 };
 
 function inject_netdevice_line(cur_dev, new_nd) {
@@ -324,13 +229,12 @@ function remove_net_ip_line(cur_ip, delete_button) {
 function create_delete_new_netdevice(event) {
     var cur_el = $(event.target);
     var cur_dev = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "']");
-    var lock_list = lock_elements();
-    var el_list = $("div#network_table").find("input[id^='" + cur_el.attr("id") + "'], select[id^='" + cur_el.attr("id") + "']");
+    var lock_list = lock_elements($("div#network_table"));
     if (cur_el.attr("id").match(/new$/)) {
         // create element
         $.ajax({
             url  : "{% url network:create_netdevice %}",
-            data : create_dict(el_list),
+            data : create_dict($("div#network_table"), cur_el.attr("id")),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
                     inject_netdevice_line(cur_dev, $(xml).find("response values value netdevice"));
@@ -343,7 +247,7 @@ function create_delete_new_netdevice(event) {
         // delete
         $.ajax({
             url  : "{% url network:delete_netdevice %}",
-            data : create_dict(el_list),
+            data : create_dict($("div#network_table"), cur_el.attr("id")),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
                     // remove all peers
@@ -363,13 +267,12 @@ function create_delete_new_net_ip(event) {
     var cur_dev = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "']");
     var cur_nd = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "__" + cur_el.attr("id").split("__")[2] + "']");
     var cur_ip = DEVICE_NETWORKS.find("net_ip[pk='" + cur_el.attr("id").split("__")[4] + "']");
-    var lock_list = lock_elements();
-    var el_list = $("div#network_table").find("input[id^='" + cur_el.attr("id") + "'], select[id^='" + cur_el.attr("id") + "']");
+    var lock_list = lock_elements($("div#network_table"));
     if (cur_el.attr("id").match(/new$/)) {
         // create element
         $.ajax({
             url  : "{% url network:create_net_ip %}",
-            data : create_dict(el_list),
+            data : create_dict($("div#network_table"), cur_el.attr("id")),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
                     inject_net_ip_line(cur_dev, $(xml).find("response values value net_ip"));
@@ -382,7 +285,7 @@ function create_delete_new_net_ip(event) {
         // delete
         $.ajax({
             url  : "{% url network:delete_net_ip %}",
-            data : create_dict(el_list),
+            data : create_dict($("div#network_table"), cur_el.attr("id")),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
                     remove_net_ip_line(cur_ip, cur_el);
@@ -681,6 +584,7 @@ function reload_network_tree(sel_list) {
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 DEVICE_NETWORKS = $(xml);
+                init_xml_change(DEVICE_NETWORKS);
                 draw_network_table();
                 reload_hopcount_info();
             }
