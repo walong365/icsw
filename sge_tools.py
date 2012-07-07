@@ -455,7 +455,7 @@ class sge_info(object):
                  "S" : "subordinate",
                  "d" : "disabled",
                  "D" : "disabled",
-                 "E" : "error"}[cur_state][1:]) for cur_state in state_el.text or "-"]),
+                 "E" : "error"}.get(cur_state, cur_state)[1:]) for cur_state in state_el.text or "-"]),
                                           name="long_state_string"))
         for qtype_el in all_qhosts.xpath(".//queue/queuevalue[@name='qtype_string']"):
             qtype_el.addnext(E.queuevalue(",".join(["(%s)%s" % (
@@ -492,7 +492,7 @@ class sge_info(object):
                  "T" : "Threshold",
                  "w" : "waiting",
                  "o" : "orphaned",
-		 "E" : "Error"}[cur_state][1:]) for cur_state in state_el.text or "-"])))
+                 "E" : "Error"}.get(cur_state, cur_state)[1:]) for cur_state in state_el.text or "-"])))
         for node_name, attr_name in [("JAT_start_time", "start_time"),
                                      ("JB_submission_time", "submit_time")]:
             for time_el in all_jobs.findall(".//%s" % (node_name)):
