@@ -164,16 +164,20 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
     } else {
         // select input
         var sel_val = xml_el === undefined ? "0" : xml_el.attr(attr_name);
-        var new_el = $("<select>").attr({
-            "id"    : id_prefix + "__" + attr_name,
-            "value" : sel_val
-        });
-        kwargs["select_source"].each(function() {
-            var cur_ns = $(this);
-            var new_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text());
-            if (cur_ns.attr("pk") == sel_val) new_opt.attr("selected", "selected");
-            new_el.append(new_opt);
-        });
+        if (kwargs.select_source.length) {
+            var new_el = $("<select>").attr({
+                "id"    : id_prefix + "__" + attr_name,
+                "value" : sel_val
+            });
+            kwargs.select_source.each(function() {
+                var cur_ns = $(this);
+                var new_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text());
+                if (cur_ns.attr("pk") == sel_val) new_opt.attr("selected", "selected");
+                new_el.append(new_opt);
+            });
+        } else {
+            var new_el = $("<span>").addClass("error").text("no " + attr_name + " defined");
+        };
     };
     if (xml_el !== undefined) {
         new_el.bind("change", function(event) {

@@ -18,6 +18,38 @@
 CONFIGS = undefined;
 CUR_FILTER = undefined;
 
+function get_expand_td(line_prefix, name, title) {
+    return $("<td>").append(
+        $("<span>").attr({
+            "class"   : "ui-icon ui-icon-triangle-1-e",
+            "id"      : line_prefix + "__expand_" + name,
+            "title"   : title === undefined ? "show " + name : title
+        }).bind("click", function(event) {
+            var cur_class = $(event.target).attr("class");
+            if (cur_class.match(/-1-e$/)) {
+                toggle_config_line(line_prefix, true, name);
+            } else {
+                toggle_config_line(line_prefix, false, name);
+            }
+        })
+    );
+};
+
+function toggle_config_line(line_prefix, state, line_spec) {
+    var conf_line = $("table#config tr[id='" + line_prefix + "']");
+    var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
+    var cur_dg = conf_line.find("span[id$='__expand_" + line_spec + "']");
+    if (state) {
+        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
+        cur_dg.addClass("ui-icon-triangle-1-s");
+        exp_line.show();
+    } else {
+        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
+        cur_dg.addClass("ui-icon-triangle-1-e");
+        exp_line.hide();
+    };
+};
+
 function create_delete_config(event) {
     var cur_el = $(event.target);
     var el_id = cur_el.attr("id");
@@ -36,21 +68,25 @@ function create_delete_config(event) {
                     update_config_info();
                 };
                 unlock_elements(lock_list);
-        }
-        });
-    } else {
-        $.ajax({
-            url  : "{% url config:delete_config %}",
-            data : create_dict($("table#config"), el_id),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    CONFIGS.find("config[pk='" + el_id.split("__")[1] + "']").remove();
-                    $("table#config tr[id^='" + el_id + "']").remove();
-                    update_config_info();
-                };
-                unlock_elements(lock_list);
             }
         });
+    } else {
+        if (confirm("really delete configuration ?")) {
+            $.ajax({
+                url  : "{% url config:delete_config %}",
+                data : create_dict($("table#config"), el_id),
+                success : function(xml) {
+                    if (parse_xml_response(xml)) {
+                        CONFIGS.find("config[pk='" + el_id.split("__")[1] + "']").remove();
+                        $("table#config tr[id^='" + el_id + "']").remove();
+                        update_config_info();
+                    };
+                    unlock_elements(lock_list);
+                }
+            });
+        } else {
+            unlock_elements(lock_list);
+        };
     };
 };
 
@@ -70,12 +106,18 @@ function apply_filter() {
         var num_shown = 0;
         $("table#config").find("tr").each(function() {
             var cur_tr = $(this);
-            var show = cur_tr.attr("id").match(/^conf__new/) || ($.inArray(cur_tr.attr("id").split("__")[0] + "__" + cur_tr.attr("id").split("__")[1], disp_list) >= 0);
-            if (show && cur_tr.attr("id").split("__")[0] + "__" + cur_tr.attr("id").split("__")[1] == cur_tr.attr("id")) num_shown++;
-            if (show && ! cur_tr.is(":visible")) {
-                cur_tr.show();
-            } else if (! show && cur_tr.is(":visible")) {
-                cur_tr.hide();
+            if (cur_tr.attr("id").split("__").length == 2) {
+                toggle_config_line(cur_tr.attr("id"), false, "var");
+                toggle_config_line(cur_tr.attr("id"), false, "ngcc");
+                toggle_config_line(cur_tr.attr("id"), false, "cscript");
+    <!--            var show = cur_tr.attr("id").match(/^conf__new/) || ($.inArray(cur_tr.attr("id").split("__")[0] + "__" + cur_tr.attr("id").split("__")[1], disp_list) >= 0);-->
+                var show = cur_tr.attr("id").match(/^conf__new/) || ($.inArray(cur_tr.attr("id"), disp_list) >= 0);
+                if (show && cur_tr.attr("id").split("__")[0] + "__" + cur_tr.attr("id").split("__")[1] == cur_tr.attr("id")) num_shown++;
+                if (show && ! cur_tr.is(":visible")) {
+                    cur_tr.show();
+                } else if (! show && cur_tr.is(":visible")) {
+                    cur_tr.hide();
+                };
             };
         });
         update_config_info(num_shown);
@@ -97,6 +139,254 @@ function inject_config_line(new_el) {
     header_tr.after(draw_config(new_el));
 };
 
+function inject_config_var_line(new_var) {
+    var header_tr = $("table#config tr[id$='conf__" + new_var.attr("config") + "__var_new']");
+    var cur_config = CONFIGS.find("config[pk='" + new_var.attr("config") + "']");
+    header_tr.find("input[id$='__name']").attr("value", "")
+    header_tr.after(add_config_var_line(cur_config, "conf__" + new_var.attr("config"), new_var).show());
+};
+
+function remove_config_var_line(cur_el) {
+    var var_line = $("table#config tr[id^='" + cur_el.attr("id") + "']");
+    var_line.remove();
+};
+
+function inject_nagios_command_line(new_nc) {
+    var header_tr = $("table#config tr[id$='conf__" + new_nc.attr("config") + "__ngcc_new']");
+    var cur_config = CONFIGS.find("config[pk='" + new_nc.attr("config") + "']");
+    header_tr.find("input[id$='__name']").attr("value", "")
+    header_tr.after(add_nagios_line(cur_config, "conf__" + new_nc.attr("config"), new_nc).show());
+};
+
+function remove_nagios_command_line(cur_el) {
+    var nc_line = $("table#config tr[id^='" + cur_el.attr("id") + "']");
+    nc_line.remove();
+};
+
+function create_delete_config_script(event) {
+    var cur_el = $(event.target);
+    var lock_list = lock_elements($("table#config"));
+    if (cur_el.attr("id").match(/new$/)) {
+        // create element
+        $.ajax({
+            url  : "{% url config:create_script %}",
+            data : create_dict($("table#config"), cur_el.attr("id")),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    var new_cs = $(xml).find("value[name='new_config_script']").children();
+<!--                    inject_nagios_command_line(new_nc);-->
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    } else {
+        // delete
+        $.ajax({
+            url  : "{% url config:delete_script %}",
+            data : create_dict($("table#config"), cur_el.attr("id")),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    true;
+                    //remove_nagios_command_line(cur_el);
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    };
+};
+
+function create_delete_nagios_command(event) {
+    var cur_el = $(event.target);
+<!--    var cur_conf = CONFIGS.find("config[pk='" + cur_el.attr("id").split("__")[1] + "']");-->
+<!--    console.log(cur_conf);-->
+    var lock_list = lock_elements($("table#config"));
+    if (cur_el.attr("id").match(/new$/)) {
+        // create element
+        $.ajax({
+            url  : "{% url nagios:create_command %}",
+            data : create_dict($("table#config"), cur_el.attr("id")),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    var new_nc = $(xml).find("value[name='new_nagios_command']").children();
+                    inject_nagios_command_line(new_nc);
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    } else {
+        // delete
+        $.ajax({
+            url  : "{% url nagios:delete_command %}",
+            data : create_dict($("table#config"), cur_el.attr("id")),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    remove_nagios_command_line(cur_el);
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    };
+};
+
+function create_delete_config_var(event) {
+    var cur_el = $(event.target);
+    var cur_conf = CONFIGS.find("config[pk='" + cur_el.attr("id").split("__")[1] + "']");
+    console.log(cur_conf);
+    var lock_list = lock_elements($("table#config"));
+    if (cur_el.attr("id").match(/new$/)) {
+        // create element
+        $.ajax({
+            url  : "{% url config:create_var %}",
+            data : create_dict($("table#config"), cur_el.attr("id")),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    var new_var = $(xml).find("value[name='new_var']").children();
+                    console.log(new_var);
+                    inject_config_var_line(new_var);
+                    //inject_net_ip_line(cur_dev, $(xml).find("response values value net_ip"));
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    } else {
+        // delete
+        $.ajax({
+            url  : "{% url config:delete_var %}",
+            data : create_dict($("table#config"), cur_el.attr("id")),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    remove_config_var_line(cur_el);
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    };
+};
+
+function add_config_var_line(c_el, line_prefix, c_var) {
+    if (c_var === undefined) {
+        var cv_key = "var_new";
+    } else {
+        var cv_key = c_var.attr("key");
+    };
+    var line_prefix = line_prefix + "__" + cv_key;
+    var cv_tr = $("<tr>").attr({
+        "id" : line_prefix
+    }).hide();
+    var cur_td = $("<td>");
+    cv_tr.append(cur_td);
+    cur_td.append(
+        create_input_el(c_var, "name", line_prefix)
+    ).append(
+        create_input_el(c_var, "description", line_prefix)
+    );
+    if (c_var) {
+        if (c_var.attr("type") == "bool") {
+            cur_td.append(
+                create_input_el(c_var, "value", line_prefix, {boolean : true})
+            );
+        } else if (c_var.attr("type") == "int") {
+            cur_td.append(
+                create_input_el(c_var, "value", line_prefix, {number : true})
+            );
+        } else {
+            cur_td.append(
+                create_input_el(c_var, "value", line_prefix)
+            );
+        };
+    } else {
+        cur_td.append(
+            create_input_el(c_var, "value", line_prefix)
+        );
+    };
+    
+    if (c_var) {
+        cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<span>").text(c_var.attr("type"))));
+    } else {
+        cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<select>").attr({"id" : line_prefix + "__type"}).
+            append($("<option>").attr("value", "str").text("string")).
+            append($("<option>").attr("value", "int").text("integer")).
+            append($("<option>").attr("value", "bool").text("boolean")).
+            append($("<option>").attr("value", "blob").text("blob"))
+        ))
+    };
+    cv_tr.append($("<td>").append(
+        $("<input>").attr({
+            "type"  : "button",
+            "value" : c_var ? "delete" : "create",
+            "id"    : line_prefix
+        }).bind("click", create_delete_config_var)
+        )
+    );
+    return cv_tr;
+};
+
+function add_nagios_line(c_el, line_prefix, n_com) {
+    if (n_com === undefined) {
+        var nc_key = "ngcc_new";
+    } else {
+        var nc_key = n_com.attr("key");
+    };
+    var line_prefix = line_prefix + "__" + nc_key;
+    var nc_tr = $("<tr>").attr({
+        "id"  : line_prefix
+    }).hide();
+    var cur_td = $("<td>");
+    nc_tr.append(cur_td),
+    cur_td.append(
+        create_input_el(n_com, "name", line_prefix)
+    ).append(
+        create_input_el(n_com, "command_line", line_prefix)
+    ).append(
+        create_input_el(n_com, "description", line_prefix)
+    ).append(
+        create_input_el(n_com, "ng_check_command_type", line_prefix, {select_source : CONFIGS.find("ng_check_command_types ng_check_command_type")})
+    ).append(
+        create_input_el(n_com, "ng_service_templ", line_prefix, {select_source : CONFIGS.find("ng_service_templates ng_service_templ")})
+    );
+    nc_tr.append($("<td>").append(
+        $("<input>").attr({
+            "type"  : "button",
+            "value" : n_com ? "delete" : "create",
+            "id"    : line_prefix
+        }).bind("click", create_delete_nagios_command)
+        )
+    );
+    return nc_tr;
+};
+
+function add_config_script_line(c_el, line_prefix, cs_com) {
+    if (cs_com === undefined) {
+        var cs_key = "cscript_new";
+    } else {
+        var cs_key = cs_com.attr("key");
+    };
+    var line_prefix = line_prefix + "__" + cs_key;
+    var cs_tr = $("<tr>").attr({
+        "id"  : line_prefix
+    }).hide();
+    var cur_td = $("<td>");
+    cs_tr.append(cur_td),
+    cur_td.append(
+        create_input_el(cs_com, "name", line_prefix)
+    ).append(
+        create_input_el(cs_com, "description", line_prefix)
+    ).append(
+        create_input_el(cs_com, "value", line_prefix)
+    ).append(
+        create_input_el(cs_com, "priority", line_prefix, {number : true})
+    );
+    cs_tr.append($("<td>").append(
+        $("<input>").attr({
+            "type"  : "button",
+            "value" : cs_com ? "delete" : "create",
+            "id"    : line_prefix
+        }).bind("click", create_delete_config_script)
+        )
+    );
+    return cs_tr;
+};
+
 function draw_config(c_el) {
     var dummy_div = $("<div>");
     if (c_el === undefined) {
@@ -106,7 +396,8 @@ function draw_config(c_el) {
     };
     var line_prefix = "conf__" + conf_pk;
     var c_line = $("<tr>").attr({
-        "id" : line_prefix
+        "id"    : line_prefix,
+        "class" : "ui-widget ui-widget-header"
     });
     c_line.append($("<td>").append(
         create_input_el(c_el, "name", line_prefix, {label : "Name"})
@@ -117,6 +408,13 @@ function draw_config(c_el) {
     ).append(
         create_input_el(c_el, "config_type", line_prefix, {label : "Type" , select_source : CONFIGS.find("config_types config_type")})
     ));
+    if (c_el) {
+        c_line.append(get_expand_td(line_prefix, "var"));
+        c_line.append(get_expand_td(line_prefix, "ngcc"));
+        c_line.append(get_expand_td(line_prefix, "cscript"));
+    } else {
+        c_line.append($("<td>").attr({"colspan" : "3"}));
+    };
     c_line.append(
         $("<td>").append(
         $("<input>").attr({
@@ -126,6 +424,23 @@ function draw_config(c_el) {
         }).bind("click", create_delete_config)
     ));
     dummy_div.append(c_line);
+    if (c_el) {
+        // add config vars
+        dummy_div.append(add_config_var_line(c_el, line_prefix));
+        c_el.find("config_vars").children().each(function() {
+            dummy_div.append(add_config_var_line(c_el, line_prefix, $(this)));
+        });
+        // add nagios commands
+        dummy_div.append(add_nagios_line(c_el, line_prefix));
+        c_el.find("ng_check_commands").children().each(function() {
+            dummy_div.append(add_nagios_line(c_el, line_prefix, $(this)));
+        });
+        // add config scripts
+        dummy_div.append(add_config_script_line(c_el, line_prefix));
+        c_el.find("config_scripts").children().each(function() {
+            dummy_div.append(add_config_script_line(c_el, line_prefix, $(this)));
+        });
+    };
     return dummy_div.children();
 };
 

@@ -281,7 +281,6 @@ function create_delete_new_net_ip(event) {
             }
         });
     } else {
-        true;
         // delete
         $.ajax({
             url  : "{% url network:delete_net_ip %}",
@@ -362,7 +361,7 @@ function add_net_ip_line(cur_dev, cur_nd, line_prefix, cur_ip) {
     var ip_tr = $("<tr>").attr({
         "id" : line_prefix
     }).hide();
-    if (cur_nd !== undefined) {
+    if (cur_nd) {
         ip_tr.append($("<td>").attr({"colspan" : "9"}).append(
             create_input_el(cur_ip, "ip", line_prefix, {label : "IP", callback : set_network_after_change})
         ).append(

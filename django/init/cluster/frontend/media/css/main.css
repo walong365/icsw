@@ -32,6 +32,11 @@ input, textarea, select {
     /* border: 1px solid #AAAAAA; */
 }
 
+span.error {
+    color       : #ff0000;
+    font-weight : bold;
+}
+
 .ui-layout-north {
     padding: 0px !important;
 }
@@ -76,6 +81,10 @@ tr.odd td.load {
 
 td.nowrap {
     white-space: nowrap;
+}
+
+td.center {
+    text-align : center;
 }
 
 tr.even td.load {

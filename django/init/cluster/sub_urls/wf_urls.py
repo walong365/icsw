@@ -35,6 +35,10 @@ config_patterns = patterns(
     url("^change_xml_entry$", "config_views.change_xml_entry"        , name="change_xml_entry"),
     url("^create_config$"   , "config_views.create_config"           , name="create_config"   ),
     url("^delete_config$"   , "config_views.delete_config"           , name="delete_config"   ),
+    url("^create_var$"      , "config_views.create_var"              , name="create_var"      ),
+    url("^delete_var$"      , "config_views.delete_var"              , name="delete_var"      ),
+    url("^create_script$"   , "config_views.create_script"           , name="create_script"   ),
+    url("^delete_script$"   , "config_views.delete_script"           , name="delete_script"   ),
 )
 
 device_patterns = patterns(
@@ -68,6 +72,12 @@ network_patterns = patterns(
     url("^trigger_hc_rebuild$", "network_views.rebuild_hopcount"      , name="rebuild_hopcount"   ),
 )
 
+nagios_patterns = patterns(
+    "init.cluster.frontend",
+    url("^create_command$"   , "nagios_views.create_command"   , name="create_command"),
+    url("^delete_command$"   , "nagios_views.delete_command"   , name="delete_command"),
+)
+
 main_patterns = patterns(
     "init.cluster.frontend",
     url(r"index$" , "main_views.index", name="index"),
@@ -83,6 +93,7 @@ my_url_patterns = patterns(
     url(r"^main/"   , include(main_patterns    , namespace="main"    )),
     url(r"^device/" , include(device_patterns  , namespace="device"  )),
     url(r"^network/", include(network_patterns , namespace="network" )),
+    url(r"^nagios/" , include(nagios_patterns  , namespace="nagios"  )),
 )
 
 url_patterns = patterns(
