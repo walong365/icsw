@@ -123,71 +123,122 @@ class cluster_event(models.Model):
     class Meta:
         db_table = u'cluster_event'
 
-
 class config_blob(models.Model):
     idx = models.AutoField(db_column="config_blob_idx", primary_key=True)
     name = models.CharField(max_length=192)
-    descr = models.CharField(max_length=765)
+    description = models.CharField(max_length=765, db_column="descr")
     # deprecated
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.config_str(
+            pk="%d" % (self.pk),
+            key="varblob__%d" % (self.pk),
+            type="blob",
+            name=self.name,
+            description=self.description,
+            config="%d" % (self.config_id),
+            value=self.value or ""
+        )
     class Meta:
         db_table = u'config_blob'
 
 class config_bool(models.Model):
     idx = models.AutoField(db_column="config_bool_idx", primary_key=True)
     name = models.CharField(max_length=192)
-    descr = models.CharField(max_length=765)
+    description = models.CharField(max_length=765, db_column="descr")
     # deprecated
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.config_str(
+            pk="%d" % (self.pk),
+            key="varbool__%d" % (self.pk),
+            type="bool",
+            name=self.name,
+            description=self.description,
+            config="%d" % (self.config_id),
+            value="1" if self.value else "0"
+        )
     class Meta:
         db_table = u'config_bool'
 
 class config_int(models.Model):
     idx = models.AutoField(db_column="config_int_idx", primary_key=True)
     name = models.CharField(max_length=192)
-    descr = models.CharField(max_length=765)
+    description = models.CharField(max_length=765, db_column="descr")
     # deprecated
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.config_str(
+            pk="%d" % (self.pk),
+            key="varint__%d" % (self.pk),
+            type="int",
+            name=self.name,
+            description=self.description,
+            config="%d" % (self.config_id),
+            value="%d" % (self.value or 0)
+        )
     class Meta:
         db_table = u'config_int'
 
 class config_script(models.Model):
     idx = models.AutoField(db_column="config_script_idx", primary_key=True)
-    name = models.CharField(max_length=192)
-    descr = models.CharField(max_length=765)
-    enabled = models.IntegerField(null=True, blank=True)
+    name = models.CharField(max_length=192, unique=True)
+    description = models.CharField(max_length=765, db_column="descr")
+    enabled = models.BooleanField(default=True),
     priority = models.IntegerField(null=True, blank=True)
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
+    # to be removed
     error_text = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.config_script(
+            pk="%d" % (self.pk),
+            key="cscript__%d" % (self.pk),
+            name=self.name,
+            enabled="1" if self.enabled else "0",
+            priority="%d" % (self.priority or 0),
+            config="%d" % (self.config_id),
+            value=self.value or ""
+        )
     class Meta:
         db_table = u'config_script'
 
 class config_str(models.Model):
     idx = models.AutoField(db_column="config_str_idx", primary_key=True)
     name = models.CharField(max_length=192)
-    descr = models.CharField(max_length=765)
-    config = models.IntegerField(null=True, blank=True)
+    description = models.CharField(db_column="descr", max_length=765)
+    config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.config_str(
+            pk="%d" % (self.pk),
+            key="varstr__%d" % (self.pk),
+            type="str",
+            name=self.name,
+            description=self.description,
+            config="%d" % (self.config_id),
+            value=self.value or ""
+        )
     class Meta:
         db_table = u'config_str'
+        ordering = ("name",)
 
 # no longer needed, AL 20120706
 ##class c.onfig_type(models.Model):
@@ -971,6 +1022,10 @@ class config(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.config(
+            E.config_vars(*[cur_var.get_xml() for cur_var in list(self.config_str_set.all()) + \
+                            list(self.config_int_set.all()) + list(self.config_bool_set.all()) + list(self.config_blob_set.all())]),
+            E.ng_check_commands(*[cur_ngc.get_xml() for cur_ngc in list(self.ng_check_command_set.all())]),
+            E.config_scripts(*[cur_cs.get_xml() for cur_cs in list(self.config_script_set.all())]),
             pk="%d" % (self.pk),
             key="conf__%d" % (self.pk),
             name=unicode(self.name),
@@ -1038,12 +1093,24 @@ class ng_check_command(models.Model):
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     ng_check_command_type = models.ForeignKey("ng_check_command_type")
-    ng_service_templ = models.ForeignKey("ng_service_templ", null=True)
-    name = models.CharField(max_length=192)
+    ng_service_templ = models.ForeignKey("ng_service_templ")
+    name = models.CharField(max_length=192, unique=True)
     command_line = models.CharField(max_length=765)
     description = models.CharField(max_length=192, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.ng_check_command(
+            self.name,
+            pk="%d" % (self.pk),
+            key="ngcc__%d" % (self.pk),
+            config="%d" % (self.config_id),
+            ng_check_command_type="%d" % (self.ng_check_command_type_id),
+            ng_service_templ="%d" % (self.ng_service_templ_id),
+            name=self.name or "",
+            command_line=self.command_line or "",
+            description=self.description or ""
+        )
     class Meta:
         db_table = u'ng_check_command'
 
@@ -1051,6 +1118,13 @@ class ng_check_command_type(models.Model):
     idx = models.AutoField(db_column="ng_check_command_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.ng_check_command_type(
+            self.name,
+            pk="%d" % (self.pk),
+            key="ngcct__%d" % (self.pk),
+            name=self.name or ""
+        )
     class Meta:
         db_table = u'ng_check_command_type'
 
@@ -1145,19 +1219,26 @@ class ng_service(models.Model):
 
 class ng_service_templ(models.Model):
     idx = models.AutoField(db_column="ng_service_templ_idx", primary_key=True)
-    name = models.CharField(max_length=192, blank=True)
-    volatile = models.BooleanField()
-    nsc_period = models.IntegerField(null=True, blank=True)
-    max_attempts = models.IntegerField(null=True, blank=True)
-    check_interval = models.IntegerField(null=True, blank=True)
-    retry_interval = models.IntegerField(null=True, blank=True)
-    ninterval = models.IntegerField(null=True, blank=True)
-    nsn_period = models.IntegerField(null=True, blank=True)
-    nrecovery = models.BooleanField()
-    ncritical = models.BooleanField()
-    nwarning = models.BooleanField()
-    nunknown = models.BooleanField()
+    name = models.CharField(max_length=192, unique=True)
+    volatile = models.BooleanField(default=False)
+    nsc_period = models.IntegerField(default=1)
+    max_attempts = models.IntegerField(default=1)
+    check_interval = models.IntegerField(default=5)
+    retry_interval = models.IntegerField(default=10)
+    ninterval = models.IntegerField(default=5)
+    nsn_period = models.IntegerField(default=1)
+    nrecovery = models.BooleanField(default=False)
+    ncritical = models.BooleanField(default=False)
+    nwarning = models.BooleanField(default=False)
+    nunknown = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.ng_service_templ(
+            self.name,
+            pk="%d" % (self.pk),
+            key="ngst__%d" % (self.pk),
+            name=self.name
+        )
     class Meta:
         db_table = u'ng_service_templ'
 
@@ -1960,3 +2041,94 @@ def config_pre_save(sender, **kwargs):
             cur_inst.priority = int(cur_inst.priority or "1")
         except ValueError:
             raise ValidationError("priority must be integer")
+
+def config_str_general_check(cur_inst):
+    if not cur_inst.name:
+        raise ValidationError("name must not be zero")
+    
+@receiver(signals.pre_save, sender=config_str)
+def config_str_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        config_str_general_check(cur_inst)
+        all_var_names = list(cur_inst.config.config_str_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
+            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
+        if cur_inst.name in all_var_names:
+            raise ValidationError("name already used")
+
+@receiver(signals.pre_save, sender=config_int)
+def config_int_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        config_str_general_check(cur_inst)
+        all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_int_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
+            list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
+        if cur_inst.name in all_var_names:
+            raise ValidationError("name already used")
+        try:
+            cur_inst.value = int(cur_inst.value)
+        except ValueError:
+            raise ValidationError("value must be integer")
+
+@receiver(signals.pre_save, sender=config_bool)
+def config_bool_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        config_str_general_check(cur_inst)
+        all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_bool_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
+            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
+        if cur_inst.name in all_var_names:
+            raise ValidationError("name already used")
+        try:
+            if type(cur_inst.value) == bool:
+                pass
+            else:
+                cur_inst.value = True if (cur_inst.value or "").lower() in ["1", "true", "yes"] else False
+        except ValueError:
+            raise ValidationError("value cannot be interpret as bool")
+        
+
+@receiver(signals.pre_save, sender=config_blob)
+def config_blob_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        config_str_general_check(cur_inst)
+        all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_blob_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True))
+        if cur_inst.name in all_var_names:
+            raise ValidationError("name already used")
+
+@receiver(signals.pre_save, sender=ng_check_command)
+def ng_check_command_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name:
+            raise ValidationError("name is empty")
+        if not cur_inst.command_line:
+            raise ValidationError("command_line is empty")
+        if cur_inst.name in ng_check_command.objects.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
+            raise ValidationError("name already used")
+
+@receiver(signals.pre_save, sender=config_script)
+def config_script_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name:
+            raise ValidationError("name is empty")
+        if not cur_inst.value:
+            raise ValidationError("value is empty")
+        if cur_inst.name in config_script.objects.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
+            raise ValidationError("name already used")
+        try:
+            cur_inst.priority = int(cur_inst.priority)
+        except:
+            raise ValidationError("priority must be an integer")
+            
