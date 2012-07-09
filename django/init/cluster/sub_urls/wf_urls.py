@@ -53,6 +53,8 @@ device_patterns = patterns(
     url("^delete_device$"     , "device_views.delete_device"      , name="delete_device"      ),
     url("^add_selection$"     , "device_views.add_selection"      , name="add_selection"      ),
     url("^clear_selection$"   , "device_views.clear_selection"    , name="clear_selection"    ),
+    url("^config$"            , "device_views.show_configs"       , name="show_configs"       ),
+    url("^get_config$"        , "device_views.get_configs"        , name="get_configs"        ),
 )
 
 network_patterns = patterns(

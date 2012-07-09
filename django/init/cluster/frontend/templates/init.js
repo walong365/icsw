@@ -91,10 +91,14 @@ function unlock_elements(el_list) {
 
 // create a dictionary from a list of elements
 function create_dict(top_el, id_prefix) {
-    var in_list = top_el.find("input[id^='" + id_prefix + "'], select[id^='" + id_prefix + "']");
+    var in_list = top_el.find("input[id^='" + id_prefix + "'], select[id^='" + id_prefix + "'], textarea[id^='" + id_prefix + "']");
     var out_dict = {};
     in_list.each(function(idx, value) {
-        out_dict[$(this).attr("id")] = $(this).attr("value");
+        if ($(this).prop("tagName") == "TEXTAREA") {
+            out_dict[$(this).attr("id")] = $(this).text();
+        } else {
+            out_dict[$(this).attr("id")] = $(this).attr("value");
+        };
     });
     return out_dict;
 };
@@ -115,8 +119,12 @@ function replace_xml_element(xml) {
 };
 
 function submit_change(cur_el, callback) {
+    var is_textarea = false;
     if (cur_el.is(":checkbox")) {
         var el_value = cur_el.is(":checked") ? "1" : "0";
+    } else if (cur_el.prop("tagName") == "TEXTAREA") {
+        var is_textarea = true;
+        var el_value = cur_el.text();
     } else {
         var el_value = cur_el.attr("value");
     };
@@ -133,7 +141,11 @@ function submit_change(cur_el, callback) {
                 if (callback != undefined && typeof callback == "function") callback(cur_el);
             } else {
                 <!-- set back to previous value -->
-                $(cur_el).attr("value", get_xml_value(xml, "original_value"));
+                if (is_textarea) {
+                    $(cur_el).text(get_xml_value(xml, "original_value"));
+                } else {
+                    $(cur_el).attr("value", get_xml_value(xml, "original_value"));
+                };
             };
         }
     })
@@ -153,6 +165,11 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
                 "id"    : id_prefix + "__" + attr_name
             });
             if (xml_el && xml_el.attr(attr_name) == "1") new_el.attr("checked", "checked");
+        } else if (kwargs.textarea) {
+            // textarea input style
+            var new_el = $("<textarea>").attr({
+                "id"    : id_prefix + "__" + attr_name
+            }).text(xml_el === undefined ? (kwargs.new_default || "") : xml_el.attr(attr_name));
         } else {
             // text input style
             var new_el = $("<input>").attr({

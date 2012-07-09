@@ -1,0 +1,74 @@
+{% extends "main.html" %}
+
+{% load i18n compress %}
+
+{% block title %}{% trans "Device Configuration" %}{% endblock %}
+
+{% block content %}
+
+<h1 class="center">Device configuration, <span id="config_info">none defined</span></h1>
+
+<input type="text" id="filter" value="" onKeyUp="apply_filter();"/>
+
+<div id="config">
+</div>
+
+<script type="text/javascript">
+
+DEVICE_CONFIGS = undefined;
+CONFIGS = undefined;
+CUR_FILTER = undefined;
+CODEMIRROR_DICT = new Object();
+
+function draw_tables() {
+    console.log("draw");
+};
+
+function use_devs(dt_div) {
+    load_device_configs(_.map(dt_div.dynatree("getSelectedNodes"), function(value) {
+        return(value.data.key);
+    }));
+};
+
+function load_device_configs(sel_list) {
+    console.log(sel_list);
+    $.ajax({
+        url     : "{% url device:get_configs %}",
+        error   : handle_ajax_error,
+        data    : {
+            "sel_list" : sel_list
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                DEVICE_CONFIGS = $(xml).find("value[name='response']");
+                load_configs();
+            }
+        }
+    });
+};
+
+function load_configs() {
+    $.ajax({
+        url     : "{% url config:get_configs %}",
+        error   : handle_ajax_error,
+        data    : {
+            "mode" : "simple"
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                CONFIGS_CONFIGS = $(xml).find("value[name='response']");
+                draw_tables();
+            }
+        }
+    });
+};
+
+function add_dcon_handlers() {
+    install_devsel_link(use_devs, true);
+};
+
+$(document).ready(add_dcon_handlers);
+
+</script>
+
+{% endblock %}

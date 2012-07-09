@@ -35,7 +35,7 @@ def get_json_tree(request):
     full_tree = device_group.objects.order_by("-cluster_device_group", "name")
     json_struct = []
     for cur_dg in full_tree:
-        key = "dg__%d" % (cur_dg.pk)
+        key = "devg__%d" % (cur_dg.pk)
         cur_jr = {
             "title"    : unicode(cur_dg),
             "isFolder" : True,
@@ -44,15 +44,15 @@ def get_json_tree(request):
             "expand"   : cur_dg.pk in dg_list,
             "key"      : key,
             "url"      : reverse("device:get_json_devlist"),
-            "data"     : {"dg_idx" : cur_dg.pk},
+            "data"     : {"devg_pk" : cur_dg.pk},
             "children" : _get_device_list(request, cur_dg.pk) if cur_dg.pk in dg_list else []
         }
         json_struct.append(cur_jr)
     return HttpResponse(json.dumps(json_struct),
                         mimetype="application/json")
 
-def _get_device_list(request, dg_idx):
-    cur_devs = device.objects.filter(Q(device_group=dg_idx)).select_related("device_type").order_by("name")
+def _get_device_list(request, devg_pk):
+    cur_devs = device.objects.filter(Q(device_group=devg_pk)).select_related("device_type").order_by("name")
     sel_list = request.session.get("sel_list", [])
     json_struct = []
     for sub_dev in cur_devs:
@@ -69,7 +69,7 @@ def _get_device_list(request, dg_idx):
 @init_logging
 def get_json_devlist(request):
     _post = request.POST
-    return HttpResponse(json.dumps(_get_device_list(request, _post["dg_idx"])),
+    return HttpResponse(json.dumps(_get_device_list(request, _post["devg_pk"])),
                         mimetype="application/json")
 
 @login_required
@@ -87,7 +87,7 @@ def get_xml_tree(request):
                 comment=cur_d.comment,
                 device_type="%d" % (cur_d.device_type_id),
                 device_group="%d" % (cur_d.device_group_id),
-                idx="%d" % (cur_d.pk),
+                pk="%d" % (cur_d.pk),
                 key="dev__%d" % (cur_d.pk)
             )
             dev_list.append(d_el)
@@ -96,15 +96,15 @@ def get_xml_tree(request):
             unicode(cur_dg),
             name=cur_dg.name,
             description=cur_dg.description,
-            key="dg__%d" % (cur_dg.pk),
-            idx="%d" % (cur_dg.pk),
+            key="devg__%d" % (cur_dg.pk),
+            pk="%d" % (cur_dg.pk),
             is_cdg="1" if cur_dg.cluster_device_group else "0")
         xml_resp.append(dg_el)
     # add device type
     xml_resp.append(
         E.device_types(
             *[E.device_type(name=cur_dt.description,
-                            identifier=cur_dt.identifier, idx="%d" % (cur_dt.pk))
+                            identifier=cur_dt.identifier, pk="%d" % (cur_dt.pk))
               for cur_dt in device_type.objects.all()]
         )
     )
@@ -133,7 +133,7 @@ def create_device_group(request):
 @login_required
 @init_logging
 def delete_device_group(request):
-    pk = request.POST["idx"]
+    pk = request.POST["pk"]
     try:
         device_group.objects.get(Q(pk=pk)).delete()
     except:
@@ -186,7 +186,7 @@ def create_device(request):
 @login_required
 @init_logging
 def delete_device(request):
-    pk = request.POST["idx"]
+    pk = request.POST["pk"]
     try:
         device.objects.get(Q(pk=pk)).delete()
     except:
@@ -215,7 +215,7 @@ def add_selection(request):
         cur_list.append(add_sel)
     elif not add_flag and add_sel in cur_list:
         cur_list.remove(add_sel)
-    if add_sel.startswith("dg_"):
+    if add_sel.startswith("devg_"):
         # emulate toggle of device_group
         request.log("toggle selection of device_group %d" % (int(add_sel.split("__")[1])))
         toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(Q(device_group=add_sel.split("__")[1])).values_list("pk", flat=True)]
@@ -229,3 +229,28 @@ def add_selection(request):
     request.log("%s in list" % (logging_tools.get_plural("selection", len(cur_list))))
     return request.xml_response.create_response()
 
+@login_required
+@init_logging
+def show_configs(request):
+    return render_me(
+        request, "device_configs.html",
+    )()
+
+@login_required
+@init_logging
+def get_configs(request):
+    _post = request.POST
+    sel_list = request.session.get("sel_list", [])
+    print "***", sel_list
+    xml_resp = E.device_groups()
+    all_dgs = device_group.objects.exclude(Q(cluster_device_group=True)).prefetch_related("device_group").order_by("name")
+    for cur_dg in all_dgs:
+        cur_xml = cur_dg.get_xml(full=False)
+        if cur_xml.attrib["key"] in sel_list:
+            cur_xml.attrib["selected"] = "selected"
+        for cur_dev in cur_xml.find("devices"):
+            if cur_dev.attrib["key"] in sel_list:
+                cur_dev.attrib["selected"] = "selected"
+        xml_resp.append(cur_xml)
+    print etree.tostring(xml_resp, pretty_print=True)
+    return request.xml_response.create_response()

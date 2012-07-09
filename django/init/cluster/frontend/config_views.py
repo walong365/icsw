@@ -45,22 +45,30 @@ def show_configs(request):
 @login_required
 @init_logging
 def get_configs(request):
-    all_configs = config.objects.all().select_related("config_type").prefetch_related("config_int_set", "config_str_set", "config_bool_set", "config_blob_set", "ng_check_command_set", "config_script_set").order_by("name")
+    _post = request.POST
+    mode = _post.get("mode", "full")
+    full_mode = mode == "full"
+    request.log("get configs, mode is %s" % (mode))
+    if full_mode:
+        all_configs = config.objects.all().select_related("config_type").prefetch_related("config_int_set", "config_str_set", "config_bool_set", "config_blob_set", "ng_check_command_set", "config_script_set").order_by("name")
+    else:
+        all_configs = config.objects.all().select_related("config_type").order_by("name")
     xml_resp = E.response(
         E.config_list(
-            *[cur_c.get_xml() for cur_c in all_configs]
+            *[cur_c.get_xml(full=full_mode) for cur_c in all_configs]
         )
     )
-    xml_resp.append(E.config_types(
-        *[cur_ct.get_xml() for cur_ct in config_type.objects.all().order_by("name")]
-    ))
-    xml_resp.append(E.ng_check_command_types(
-        *[cur_ct.get_xml() for cur_ct in ng_check_command_type.objects.all().order_by("name")]
-    ))
-    xml_resp.append(E.ng_service_templates(
-        *[cur_st.get_xml() for cur_st in ng_service_templ.objects.all().order_by("name")]
-    ))
-    print etree.tostring(xml_resp, pretty_print=True)
+    if full_mode:
+        xml_resp.append(E.config_types(
+            *[cur_ct.get_xml() for cur_ct in config_type.objects.all().order_by("name")]
+        ))
+        xml_resp.append(E.ng_check_command_types(
+            *[cur_ct.get_xml() for cur_ct in ng_check_command_type.objects.all().order_by("name")]
+        ))
+        xml_resp.append(E.ng_service_templates(
+            *[cur_st.get_xml() for cur_st in ng_service_templ.objects.all().order_by("name")]
+        ))
+    #print etree.tostring(xml_resp, pretty_print=True)
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
 
@@ -99,6 +107,7 @@ def change_xml_entry(request):
                    "varint"  : config_int,
                    "varbool" : config_bool,
                    "varblob" : config_blob,
+                   "cscript" : config_script,
                    "ngcc"    : ng_check_command,
                    }.get(object_type, None)
         if not mod_obj:
@@ -230,8 +239,6 @@ def create_script(request):
     conf_pk = int(keys[0].split("__")[1])
     val_dict = dict([(key.split("__", 3)[3], value) for key, value in _post.iteritems() if key.count("__") > 2])
     copy_dict = dict([(key, value) for key, value in val_dict.iteritems() if key in ["name", "description", "priority", "value"]])
-    print val_dict
-    print copy_dict
     new_script = config_script(config=config.objects.get(Q(pk=conf_pk)),
                                **copy_dict)
     try:
@@ -247,8 +254,8 @@ def create_script(request):
 def delete_script(request):
     _post = request.POST
     val_dict = dict([(key.split("__", 1)[1], value) for key, value in _post.iteritems() if key.count("__") > 0])
-    del_cs = int(val_dict.keys()[0].split("__")[0])
-    request.log("deleting config_scrript %d" % (del_cs))
+    del_cs = int(val_dict.keys()[0].split("__")[2])
+    request.log("deleting config_script %d" % (del_cs))
     config_script.objects.get(Q(pk=del_cs)).delete()
     return request.xml_response.create_response()
     

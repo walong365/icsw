@@ -1,8 +1,31 @@
 {% extends "main.html" %}
 
-{% load i18n %}
+{% load i18n compress %}
 
 {% block title %}{% trans "Configurations" %}{% endblock %}
+
+{% block tab_js %}
+
+{% compress js %}
+    <script type="text/javascript" src="{{ MEDIA_URL }}js/codemirror.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}js/python.js"></script>
+{% endcompress %}
+{% endblock %}
+
+{% block stylesheets %}
+{% compress css %}
+    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/codemirror.css" />
+{% endcompress %}
+<style type="text/css">
+.CodeMirror {border-top: 1px solid black; border-bottom: 1px solid black;}
+.activeline {background: #e8f2ff !important;}
+.CodeMirror-scroll {
+    height     : auto;
+    overflow-y : hidden;
+    overflow-x : auto;
+}
+</style>
+{% endblock %}
 
 {% block content %}
 
@@ -17,6 +40,7 @@
 
 CONFIGS = undefined;
 CUR_FILTER = undefined;
+CODEMIRROR_DICT = new Object();
 
 function get_expand_td(line_prefix, name, title) {
     return $("<td>").append(
@@ -32,7 +56,22 @@ function get_expand_td(line_prefix, name, title) {
                 toggle_config_line(line_prefix, false, name);
             }
         })
+    ).append(
+        $("<span>").attr({
+            "id" : line_prefix + "__expand_" + name + "__info"
+        }).text("???")
     );
+};
+
+function update_expand_info() {
+    $("table#config tr td span[id*='__expand_']").each(function() {
+        var cur_span = $(this);
+        var span_id = cur_span.attr("id");
+        if (!span_id.match(/__info$/)) {
+            var num_tr = $("table#config tr[id^='" + span_id.replace(/^(conf__\d+__)[a-z]+_(.*)$/, "$1$2") + "']").length - 1;
+            cur_span.next().text(num_tr);
+        };
+    });
 };
 
 function toggle_config_line(line_prefix, state, line_spec) {
@@ -43,6 +82,12 @@ function toggle_config_line(line_prefix, state, line_spec) {
         cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
         cur_dg.addClass("ui-icon-triangle-1-s");
         exp_line.show();
+        exp_line.find("textarea").each(function() {
+            var cur_id = $(this).attr("id");
+            if (cur_id) {
+                CODEMIRROR_DICT[cur_id].editor.refresh();
+            };
+        });
     } else {
         cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
         cur_dg.addClass("ui-icon-triangle-1-e");
@@ -78,7 +123,7 @@ function create_delete_config(event) {
                 success : function(xml) {
                     if (parse_xml_response(xml)) {
                         CONFIGS.find("config[pk='" + el_id.split("__")[1] + "']").remove();
-                        $("table#config tr[id^='" + el_id + "']").remove();
+                        remove_config_line(el_id);
                         update_config_info();
                     };
                     unlock_elements(lock_list);
@@ -135,8 +180,16 @@ function update_config_info(num_shown) {
 };
 
 function inject_config_line(new_el) {
-    var header_tr = $("table#config tr[id$='_new']");
-    header_tr.after(draw_config(new_el));
+    var header_tr = $("table#config tr[id='conf__new']");
+    var new_config_lines = draw_config(new_el);
+    header_tr.after(new_config_lines);
+    init_textarea(new_config_lines.find("textarea"));
+    update_expand_info();
+};
+
+function remove_config_line(del_id) {
+    $("table#config tr[id^='" + del_id + "']").remove();
+    update_expand_info();
 };
 
 function inject_config_var_line(new_var) {
@@ -144,11 +197,13 @@ function inject_config_var_line(new_var) {
     var cur_config = CONFIGS.find("config[pk='" + new_var.attr("config") + "']");
     header_tr.find("input[id$='__name']").attr("value", "")
     header_tr.after(add_config_var_line(cur_config, "conf__" + new_var.attr("config"), new_var).show());
+    update_expand_info();
 };
 
 function remove_config_var_line(cur_el) {
     var var_line = $("table#config tr[id^='" + cur_el.attr("id") + "']");
     var_line.remove();
+    update_expand_info();
 };
 
 function inject_nagios_command_line(new_nc) {
@@ -156,17 +211,39 @@ function inject_nagios_command_line(new_nc) {
     var cur_config = CONFIGS.find("config[pk='" + new_nc.attr("config") + "']");
     header_tr.find("input[id$='__name']").attr("value", "")
     header_tr.after(add_nagios_line(cur_config, "conf__" + new_nc.attr("config"), new_nc).show());
+    update_expand_info();
 };
 
 function remove_nagios_command_line(cur_el) {
     var nc_line = $("table#config tr[id^='" + cur_el.attr("id") + "']");
     nc_line.remove();
+    update_expand_info();
+};
+
+function inject_config_script_line(new_cs) {
+    var header_tr = $("table#config tr[id$='conf__" + new_cs.attr("config") + "__cscript_new']");
+    var cur_config = CONFIGS.find("config[pk='" + new_cs.attr("config") + "']");
+    header_tr.find("input[id$='__name']").attr("value", "")
+    var new_lines = add_config_script_line(cur_config, "conf__" + new_cs.attr("config"), new_cs).show();
+    header_tr.after(new_lines);
+    init_textarea(new_lines.find("textarea"));
+    update_expand_info();
+};
+
+function remove_config_script_line(cur_el) {
+    var cs_line = $("table#config tr[id^='" + cur_el.attr("id") + "']");
+    cs_line.remove();
+    update_expand_info();
 };
 
 function create_delete_config_script(event) {
     var cur_el = $(event.target);
     var lock_list = lock_elements($("table#config"));
     if (cur_el.attr("id").match(/new$/)) {
+        // copy textarea
+        var cur_ta = cur_el.parents("tr:first").find("textarea");
+        cur_ta.text(CODEMIRROR_DICT[cur_ta.attr("id")].editor.getValue());
+        console.log(cur_ta.text());
         // create element
         $.ajax({
             url  : "{% url config:create_script %}",
@@ -174,7 +251,7 @@ function create_delete_config_script(event) {
             success : function(xml) {
                 if (parse_xml_response(xml)) {
                     var new_cs = $(xml).find("value[name='new_config_script']").children();
-<!--                    inject_nagios_command_line(new_nc);-->
+                    inject_config_script_line(new_cs);
                 };
                 unlock_elements(lock_list);
             }
@@ -186,8 +263,7 @@ function create_delete_config_script(event) {
             data : create_dict($("table#config"), cur_el.attr("id")),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
-                    true;
-                    //remove_nagios_command_line(cur_el);
+                    remove_config_script_line(cur_el);
                 };
                 unlock_elements(lock_list);
             }
@@ -372,10 +448,17 @@ function add_config_script_line(c_el, line_prefix, cs_com) {
     ).append(
         create_input_el(cs_com, "description", line_prefix)
     ).append(
-        create_input_el(cs_com, "value", line_prefix)
-    ).append(
         create_input_el(cs_com, "priority", line_prefix, {number : true})
+    ).append(
+        create_input_el(cs_com, "enabled", line_prefix, {boolean : true})
+    ).append(
+        create_input_el(cs_com, "value", line_prefix, {textarea : true})
     );
+    if (cs_com) {
+        cur_td.append($("<input>").attr({
+            "type"  : "button",
+            "value" : "save"}).bind("click", save_textarea));
+    };
     cs_tr.append($("<td>").append(
         $("<input>").attr({
             "type"  : "button",
@@ -385,6 +468,12 @@ function add_config_script_line(c_el, line_prefix, cs_com) {
         )
     );
     return cs_tr;
+};
+
+function save_textarea(event) {
+    var cur_ta = $(event.target).parents("tr:first").find("textarea");
+    cur_ta.text(CODEMIRROR_DICT[cur_ta.attr("id")].editor.getValue());
+    cur_ta.trigger("change");
 };
 
 function draw_config(c_el) {
@@ -453,6 +542,33 @@ function init_config_table() {
         c_table.append(draw_config($(this)));
     });
     $("div#config").append(c_table);
+    // activate codemirrors
+    $("div#config textarea").each(function() {
+        init_textarea($(this));
+    });
+    update_expand_info();
+};
+
+function init_textarea(cur_ta) {
+    var cur_id = cur_ta.attr("id");
+    var cur_ed = CodeMirror.fromTextArea(document.getElementById(cur_id), {
+        "mode"         : {
+            "name"    : "python",
+            "version" : "2"
+        },
+        "lineNumbers"  : true,
+        "lineWrapping" : true,
+        "indentUnit"   : 4,
+        "onCursorActivity" : function(cur_ed) {
+            var cur_struct = CODEMIRROR_DICT[cur_id];
+            cur_struct.editor.setLineClass(cur_struct.line, null, null);
+            cur_struct.line = cur_struct.editor.setLineClass(cur_struct.editor.getCursor().line, null, "activeline");
+        }
+    });
+    CODEMIRROR_DICT[cur_id] = {
+        "editor" : cur_ed,
+        "line"   : cur_ed.setLineClass(0, "activeline")
+    };
 };
 
 function load_configs(sel_list) {
@@ -472,19 +588,11 @@ function load_configs(sel_list) {
     });
 };
 
-function use_devs(dt_div) {
-<!--    reload_network_tree(_.map(dt_div.dynatree("getSelectedNodes"), function(value) {-->
-<!--        return(value.data.key);-->
-<!--    }));-->
-};
-
-function add_dnet_handlers() {
-<!--    install_devsel_link(use_devs, true);-->
-<!--    $(document).everyTime(10000, function(i) { reload_hopcount_info(); });-->
+function add_config_handlers() {
     load_configs();
 };
 
-$(document).ready(add_dnet_handlers);
+$(document).ready(add_config_handlers);
 
 </script>
 
