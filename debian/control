@@ -8,5 +8,5 @@ Homepage: http://www.init.at
 
 Package: host-monitoring
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}, python-init (>= 2.7.2), python-modules-base (>= 1.10-53), logging-server, ethtool-init, python-modules-inotify (>= 0.7.0-15), meta-server, twisted-init, python-modules-lxml
+Depends: ${shlibs:Depends}, ${misc:Depends}, python-init (>= 2.7.2), python-modules-base (>= 1.10), logging-server, ethtool-init, python-modules-inotify (>= 0.7.0-15), meta-server, twisted-init, python-modules-lxml
 Description: The host-monitoring part of the INIT(c) cluster software
