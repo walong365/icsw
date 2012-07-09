@@ -44,6 +44,7 @@ import server_command
 import config_tools
 import threading_tools
 import net_tools
+import zmq
 
 SERVER_COM_PORT   = 8005
 SERVER_NODE_PORT  = 8006
