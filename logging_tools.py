@@ -1,4 +1,5 @@
 #!/usr/bin/python-init -Ot
+# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012 Andreas Lang-Nevyjel
 #
@@ -679,7 +680,18 @@ class new_form_list(object):
         for line in self.__content:
             line_rows = len(line)
             # hack because part has to be casted to a string
-            line_lens = [len(unicode(part)) for part in line]
+            line_lens = []
+            for part in line:
+                try:
+                    if type(part) in [unicode, str]:
+                        line_lens.append(len(part))
+                    elif type(part) in [int, long]:
+                        line_lens.append(len(str(part)))
+                    else:
+                        line_lens.append(0)
+                except:
+                    # in case of unicode problems
+                    line_lens.append(0)
             if line_rows < max_rows:
                 if line_rows > 1:
                     # only count the first (line_rows - 1) rows
@@ -1269,9 +1281,14 @@ class syslog_ng_config(syslog_helper_obj):
         #pprint.pprint(s_dict)
 
 def main():
-    a = syslog_ng_config()
+    a = new_form_list()
+    a.append([form_entry("xxx", header="a"),
+              form_entry(u"öäöü", header="test"),
+              form_entry_right(89, header="num")])
+    print unicode(a)
+    #a = syslog_ng_config()
     #print a.get_dict_sort(a.get_multi_object("source"))
-    print "\n".join(a.get_config_lines())
+    #print "\n".join(a.get_config_lines())
     sys.exit(0)
 ##     a = form_list()
 ##     a.add_line([2,3,4])
