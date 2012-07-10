@@ -7,10 +7,10 @@ include ../Makefile.config
 comp=gcc
 progs=csnmpclientzmq ccollclientzmq
 
-ifeq ($(shell uname -m), x86_64)
-        LIB_DIR=lib64
+ifeq ($(shell getconf LONG_BIT), 64)
+LIB_DIR=lib64
 else
-        LIB_DIR=lib
+LIB_DIR=lib
 endif
 
 default: all
