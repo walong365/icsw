@@ -238,19 +238,23 @@ def show_configs(request):
 
 @login_required
 @init_logging
-def get_configs(request):
+def get_group_tree(request):
     _post = request.POST
+    # also possible via _post.getlist("sel_list", []) ?
     sel_list = request.session.get("sel_list", [])
-    print "***", sel_list
     xml_resp = E.device_groups()
     all_dgs = device_group.objects.exclude(Q(cluster_device_group=True)).prefetch_related("device_group").order_by("name")
     for cur_dg in all_dgs:
         cur_xml = cur_dg.get_xml(full=False)
+        any_sel = False
         if cur_xml.attrib["key"] in sel_list:
             cur_xml.attrib["selected"] = "selected"
+            any_sel = True
         for cur_dev in cur_xml.find("devices"):
             if cur_dev.attrib["key"] in sel_list:
                 cur_dev.attrib["selected"] = "selected"
-        xml_resp.append(cur_xml)
-    print etree.tostring(xml_resp, pretty_print=True)
+                any_sel = True
+        if any_sel:
+            xml_resp.append(cur_xml)
+    request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()

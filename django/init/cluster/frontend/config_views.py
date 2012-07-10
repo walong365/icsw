@@ -8,7 +8,7 @@ import process_tools
 from init.cluster.frontend.forms import config_type_form
 from init.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
-     ng_check_command, ng_check_command_type, ng_service_templ, config_script
+     ng_check_command, ng_check_command_type, ng_service_templ, config_script, device_config
 from django.db.models import Q
 from init.cluster.frontend.helper_functions import init_logging
 from init.cluster.frontend.render_tools import render_me
@@ -257,5 +257,21 @@ def delete_script(request):
     del_cs = int(val_dict.keys()[0].split("__")[2])
     request.log("deleting config_script %d" % (del_cs))
     config_script.objects.get(Q(pk=del_cs)).delete()
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def get_device_configs(request):
+    # also possible via _post.getlist("sel_list", []) ?
+    sel_list = request.POST.getlist("sel_list[]", [])
+    dev_list = [key.split("__")[1] for key in sel_list if key.startswith("dev__")]
+    devg_list = [key.split("__")[1] for key in sel_list if key.startswith("devg__")]
+    all_confs = device_config.objects.filter(Q(device__in=dev_list) | Q(device__device_group__in=devg_list))
+    xml_resp = E.device_configs()
+    for cur_conf in all_confs:
+        xml_resp.append(
+            cur_conf.get_xml()
+        )
+    request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
     

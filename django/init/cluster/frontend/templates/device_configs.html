@@ -1,5 +1,5 @@
 {% extends "main.html" %}
-
+o
 {% load i18n compress %}
 
 {% block title %}{% trans "Device Configuration" %}{% endblock %}
@@ -15,25 +15,90 @@
 
 <script type="text/javascript">
 
-DEVICE_CONFIGS = undefined;
+DEVICES = undefined;
 CONFIGS = undefined;
+DEVICE_CONFIGS = undefined;
 CUR_FILTER = undefined;
 CODEMIRROR_DICT = new Object();
 
+function apply_filter() {
+    var cur_text = $("input#filter").attr("value");
+    if (cur_text != CUR_FILTER) {
+        CUR_FILTER = cur_text;
+        var cur_re = new RegExp("^.*" + CUR_FILTER + ".*$");
+        var disp_list = new Array();
+        // get keys/pks for current filter
+        CONFIGS.find("config").each(function() {
+            var c_config = $(this);
+            if (c_config.attr("name").match(cur_re)) {
+                disp_list.push(c_config.attr("key"));
+            };
+        });
+        console.log(disp_list);
+        var num_shown = 0;
+<!--        $("table#config").find("tr").each(function() {-->
+<!--            var cur_tr = $(this);-->
+<!--            if (cur_tr.attr("id").split("__").length == 2) {-->
+<!--                toggle_config_line(cur_tr.attr("id"), false, "var");-->
+<!--                toggle_config_line(cur_tr.attr("id"), false, "ngcc");-->
+<!--                toggle_config_line(cur_tr.attr("id"), false, "cscript");-->
+<!--    <!--            var show = cur_tr.attr("id").match(/^conf__new/) || ($.inArray(cur_tr.attr("id").split("__")[0] + "__" + cur_tr.attr("id").split("__")[1], disp_list) >= 0);-->-->
+<!--                var show = cur_tr.attr("id").match(/^conf__new/) || ($.inArray(cur_tr.attr("id"), disp_list) >= 0);-->
+<!--                if (show && cur_tr.attr("id").split("__")[0] + "__" + cur_tr.attr("id").split("__")[1] == cur_tr.attr("id")) num_shown++;-->
+<!--                if (show && ! cur_tr.is(":visible")) {-->
+<!--                    cur_tr.show();-->
+<!--                } else if (! show && cur_tr.is(":visible")) {-->
+<!--                    cur_tr.hide();-->
+<!--                };-->
+<!--            };-->
+<!--        });-->
+        update_config_info(num_shown);
+    };
+};
+
+function update_config_info(num_shown) {
+    var info_str = "configs defined: " + CONFIGS.find("config").length;
+    if (num_shown === undefined) {
+        info_str += ", all shown";
+    } else {
+        info_str += ", " + num_shown + " shown";
+    };
+    $("span#config_info").text(info_str);
+};
+
 function draw_tables() {
     console.log("draw");
+    console.log(DEVICES);
+    console.log(CONFIGS);
+    console.log(DEVICE_CONFIGS);
+    update_config_info();
 };
 
 function use_devs(dt_div) {
-    load_device_configs(_.map(dt_div.dynatree("getSelectedNodes"), function(value) {
+    load_devices(_.map(dt_div.dynatree("getSelectedNodes"), function(value) {
         return(value.data.key);
     }));
 };
 
-function load_device_configs(sel_list) {
-    console.log(sel_list);
+function load_devices(sel_list) {
     $.ajax({
-        url     : "{% url device:get_configs %}",
+        url     : "{% url device:get_group_tree %}",
+        error   : handle_ajax_error,
+        data    : {
+            "sel_list" : sel_list
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                DEVICES = $(xml).find("value[name='response']");
+                load_device_configs(sel_list);
+            }
+        }
+    });
+};
+
+function load_device_configs(sel_list) {
+    $.ajax({
+        url     : "{% url config:get_device_configs %}",
         error   : handle_ajax_error,
         data    : {
             "sel_list" : sel_list
@@ -56,7 +121,7 @@ function load_configs() {
         },
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                CONFIGS_CONFIGS = $(xml).find("value[name='response']");
+                CONFIGS = $(xml).find("value[name='response']");
                 draw_tables();
             }
         }

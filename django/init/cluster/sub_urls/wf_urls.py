@@ -29,16 +29,17 @@ rms_patterns = patterns(
 
 config_patterns = patterns(
     "init.cluster.frontend",
-    url("^config_types$"    , "config_views.show_config_type_options", name="config_types"    ),
-    url("^show_config$"     , "config_views.show_configs"            , name="show_configs"    ),
-    url("^get_configs_xml$" , "config_views.get_configs"             , name="get_configs"     ),
-    url("^change_xml_entry$", "config_views.change_xml_entry"        , name="change_xml_entry"),
-    url("^create_config$"   , "config_views.create_config"           , name="create_config"   ),
-    url("^delete_config$"   , "config_views.delete_config"           , name="delete_config"   ),
-    url("^create_var$"      , "config_views.create_var"              , name="create_var"      ),
-    url("^delete_var$"      , "config_views.delete_var"              , name="delete_var"      ),
-    url("^create_script$"   , "config_views.create_script"           , name="create_script"   ),
-    url("^delete_script$"   , "config_views.delete_script"           , name="delete_script"   ),
+    url("^config_types$"     , "config_views.show_config_type_options", name="config_types"      ),
+    url("^show_config$"      , "config_views.show_configs"            , name="show_configs"      ),
+    url("^get_configs_xml$"  , "config_views.get_configs"             , name="get_configs"       ),
+    url("^get_dev_confs_xml$", "config_views.get_device_configs"      , name="get_device_configs"),
+    url("^change_xml_entry$" , "config_views.change_xml_entry"        , name="change_xml_entry"  ),
+    url("^create_config$"    , "config_views.create_config"           , name="create_config"     ),
+    url("^delete_config$"    , "config_views.delete_config"           , name="delete_config"     ),
+    url("^create_var$"       , "config_views.create_var"              , name="create_var"        ),
+    url("^delete_var$"       , "config_views.delete_var"              , name="delete_var"        ),
+    url("^create_script$"    , "config_views.create_script"           , name="create_script"     ),
+    url("^delete_script$"    , "config_views.delete_script"           , name="delete_script"     ),
 )
 
 device_patterns = patterns(
@@ -54,7 +55,7 @@ device_patterns = patterns(
     url("^add_selection$"     , "device_views.add_selection"      , name="add_selection"      ),
     url("^clear_selection$"   , "device_views.clear_selection"    , name="clear_selection"    ),
     url("^config$"            , "device_views.show_configs"       , name="show_configs"       ),
-    url("^get_config$"        , "device_views.get_configs"        , name="get_configs"        ),
+    url("^get_group_tree$"    , "device_views.get_group_tree"     , name="get_group_tree"     ),
 )
 
 network_patterns = patterns(
