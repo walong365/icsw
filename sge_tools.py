@@ -574,7 +574,8 @@ def get_running_headers(options):
         E.task_id(),
         E.name(),
         E.granted_pe(),
-        E.owner())
+        E.owner(),
+        E.state())
     if options.show_memory:
         cur_job.extend(
             [E.virtual_total(),
@@ -626,6 +627,7 @@ def build_running_list(s_info, options):
             E.name(act_job.findtext("JB_name")),
             E.granted_pe("%s(%s)" % (act_job.find("granted_pe").attrib["name"], act_job.findtext("granted_pe")) if len(act_job.findall("granted_pe")) else "-"),
             E.owner(act_job.findtext("JB_owner")),
+            E.state(act_job.findtext("state")),
         )
         if options.show_memory:
             master_h = s_info.get_host(act_job.findtext("queue_name").split("@")[-1])
