@@ -1,0 +1,29 @@
+#!/bin/bash
+
+PID_HM=/var/run/collserver/collserver.pid
+PID_HR=/var/run/collrelay/collrelay.pid
+PID_SR=/var/run/snmp-relay/snmp-relay.pid
+
+RESTART_HM=/tmp/.restart_host_monitoring
+RESTART_HR=/tmp/.restart_host_relay
+RESTART_SR=/tmp/.restart_snmp_relay
+
+for file in $RESTART_HM $RESTART_HR $RESTART_SR; do
+    rm -rf $file
+done
+
+if [ -f $PID_HM ]; then
+    touch $RESTART_HM;
+    rchost-monitoring stop;
+fi
+
+if [ -f $PID_HR ]; then
+    touch $RESTART_HR;
+    rchost-relay stop;
+fi
+
+if [ -f $PID_SR ]; then
+    touch $RESTART_SR;
+    rcsnmp-relay stop;
+fi
+

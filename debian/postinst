@@ -1,0 +1,16 @@
+#!/bin/bash
+
+SERVICES="host-monitoring host-relay snmp-relay"
+RESTART_HM=/tmp/.restart_host_monitoring
+RESTART_HR=/tmp/.restart_host_relay
+RESTART_SR=/tmp/.restart_snmp_relay
+
+for service in $SERVICES; do
+    update-rc.d $service defaults
+done
+
+[ -f $RESTART_HM ] && /etc/init.d/host-monitoring start
+[ -f $RESTART_HR ] && /etc/init.d/host-relay start
+[ -f $RESTART_SR ] && /etc/init.d/snmp-relay start
+
+exit 0

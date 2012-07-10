@@ -1,3 +1,21 @@
+host-monitoring (4.4ubuntu3) quantal; urgency=low
+
+  * Fixed again
+
+ -- Christoph Sieghart <sieghart@init.at>  Tue, 10 Jul 2012 11:11:05 +0200
+
+host-monitoring (4.4ubuntu2) quantal; urgency=low
+
+  * Fixed post and pre scripts
+
+ -- Christoph Sieghart <sieghart@init.at>  Tue, 10 Jul 2012 10:59:46 +0200
+
+host-monitoring (4.4ubuntu1) quantal; urgency=low
+
+  *  Added post* and pre* scripts
+
+ -- Christoph Sieghart <sieghart@init.at>  Tue, 10 Jul 2012 10:49:33 +0200
+
 host-monitoring (4.4) unstable; urgency=low
 
   * Initial Release.
