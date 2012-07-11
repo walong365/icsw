@@ -262,16 +262,128 @@ def delete_script(request):
 @login_required
 @init_logging
 def get_device_configs(request):
-    # also possible via _post.getlist("sel_list", []) ?
-    sel_list = request.POST.getlist("sel_list[]", [])
-    dev_list = [key.split("__")[1] for key in sel_list if key.startswith("dev__")]
+    request.xml_response["response"] = _get_device_configs(request.POST.getlist("sel_list[]", []))
+    #print etree.tostring(xml_resp, pretty_print=True)
+    return request.xml_response.create_response()
+
+def _get_device_configs(sel_list, **kwargs):
+    dev_list  = [key.split("__")[1] for key in sel_list if key.startswith("dev__")]
     devg_list = [key.split("__")[1] for key in sel_list if key.startswith("devg__")]
-    all_confs = device_config.objects.filter(Q(device__in=dev_list) | Q(device__device_group__in=devg_list))
+    all_devs = device.objects.exclude(Q(device_type__identifier="MD")).filter(Q(pk__in=dev_list) | Q(device_group__in=devg_list))
+    # all meta devices
+    meta_devs = device.objects.filter(Q(device_type__identifier="MD") & Q(device_group__device_group__in=dev_list)).distinct()
+    meta_confs = device_config.objects.filter(Q(device__in=meta_devs)).select_related("device")
+    if "conf" in kwargs:
+        all_confs = device_config.objects.filter(Q(config=kwargs["conf"]) & (Q(device__in=dev_list) | Q(device__device_group__in=devg_list)))
+        meta_confs = meta_confs.filter(config=kwargs["conf"])
+    else:
+        all_confs = device_config.objects.filter(Q(device__in=dev_list) | Q(device__device_group__in=devg_list))
     xml_resp = E.device_configs()
+    # build dict device_group -> conf_list
+    dg_dict = {}
+    for meta_conf in meta_confs:
+        dg_dict.setdefault(meta_conf.device.device_group_id, []).append(meta_conf.config_id)
     for cur_conf in all_confs:
-        xml_resp.append(
-            cur_conf.get_xml()
-        )
+        xml_resp.append(cur_conf.get_xml())
+    # add meta device configs
+    for sbm_dev in all_devs:
+        for conf_id in dg_dict.get(sbm_dev.device_group_id, []):
+            xml_resp.append(E.device_config(
+                device="%d" % (sbm_dev.pk),
+                config="%d" % (conf_id),
+                meta="1"))
+    return xml_resp
+    
+@login_required
+@init_logging
+def alter_config_cb(request):
+    _post = request.POST
+    checked = bool(int(_post["value"]))
+    dev_id, conf_id = (int(_post["id"].split("__")[1]),
+                       int(_post["id"].split("__")[3]))
+    cur_dev, cur_conf = (device.objects.select_related("device_type").get(Q(pk=dev_id)),
+                         config.objects.get(Q(pk=conf_id)))
+    # is metadevice ?
+    is_meta = cur_dev.device_type.identifier == "MD"
+    # all devices of device_group
+    all_devs = cur_dev.device_group.device_group.all()
+    request.log("device %s [%s]/ config %s: %s (%s in device_group)" % (
+        unicode(cur_dev),
+        "MD" if is_meta else "-",
+        unicode(cur_conf),
+        "set" if checked else "unset",
+        logging_tools.get_plural("device", len(all_devs))))
+    if is_meta:
+        # handling of actions for meta devices
+        if checked:
+            # remove all configs from devices in group
+            to_remove = device_config.objects.exclude(Q(device=cur_dev)).filter(Q(config=cur_conf) & Q(device__in=all_devs))
+            if len(to_remove):
+                to_remove.delete()
+                request.log("removed %s from devices" % (logging_tools.get_plural("config", len(to_remove))))
+            # unset all devices except meta_device
+            try:
+                device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf))
+            except device_config.DoesNotExist:
+                device_config(device=cur_dev,
+                              config=cur_conf).save()
+                request.log("set meta config")
+            else:
+                request.log("meta config already set")
+        else:
+            try:
+                device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf)).delete()
+            except device_config.DoesNotExist:
+                request.log("meta config already unset")
+            else:
+                request.log("removed meta config")
+    else:
+        # get meta device
+        try:
+            meta_dev = cur_dev.device_group.device_group.get(Q(device_type__identifier="MD"))
+        except device.DoesNotExist:
+            meta_dev = None
+        # handling of actions for non-meta devices
+        if checked:
+            try:
+                device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf))
+            except device_config.DoesNotExist:
+                device_config(device=cur_dev,
+                              config=cur_conf).save()
+                request.log("set config")
+            else:
+                request.log("config already set")
+        else:
+            try:
+                device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf)).delete()
+            except device_config.DoesNotExist:
+                if meta_dev:
+                    # check if meta_device has config_set
+                    try:
+                        meta_conf = device_config.objects.get(Q(device=meta_dev) & Q(config=cur_conf))
+                    except device_config.DoesNotExist:
+                        request.log("config already unset and meta config also not set", logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        # set config for all devices exclude the meta device and this device
+                        meta_conf.delete()
+                        for set_dev in all_devs.exclude(Q(pk=meta_dev.pk)).exclude(Q(pk=cur_dev.pk)):
+                            device_config(device=set_dev,
+                                          config=cur_conf).save()
+                else:
+                    request.log("config already unset")
+            else:
+                request.log("removed config")
+    xml_resp = _get_device_configs(["dev__%d" % (sel_dev.pk) for sel_dev in all_devs], conf=cur_conf)
+    xml_resp.extend([
+        E.config(pk="%d" % (cur_conf.pk)),
+        E.devices(
+            *[
+                E.device(
+                    pk="%d" % (sel_dev.pk),
+                    key="dev__%d" % (sel_dev.pk)
+                ) for sel_dev in all_devs])
+    ])
     request.xml_response["response"] = xml_resp
+    #print etree.tostring(xml_resp, pretty_print=True)
     return request.xml_response.create_response()
     

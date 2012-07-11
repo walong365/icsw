@@ -241,7 +241,7 @@ def show_configs(request):
 def get_group_tree(request):
     _post = request.POST
     # also possible via _post.getlist("sel_list", []) ?
-    sel_list = request.session.get("sel_list", [])
+    sel_list = _post.getlist("sel_list[]", [])#request.session.get("sel_list", [])
     xml_resp = E.device_groups()
     all_dgs = device_group.objects.exclude(Q(cluster_device_group=True)).prefetch_related("device_group").order_by("name")
     meta_dev_type_id = device_type.objects.get(Q(identifier="MD")).pk
@@ -260,5 +260,5 @@ def get_group_tree(request):
         if any_sel:
             xml_resp.append(cur_xml)
     request.xml_response["response"] = xml_resp
-    print etree.tostring(xml_resp, pretty_print=True)
+    #print etree.tostring(xml_resp, pretty_print=True)
     return request.xml_response.create_response()

@@ -8,7 +8,7 @@ o
 
 <h1 class="center">Device configuration, <span id="config_info">none defined</span></h1>
 
-<input type="text" id="filter" value="" onKeyUp="apply_filter();"/>
+<input type="text" id="filter" value="" onKeyUp="apply_filter(false);"/>
 
 <div id="config">
 </div>
@@ -23,9 +23,9 @@ SHOW_LIST = undefined;
 // which conigs to display
 DISPLAY_LIST = undefined;
 
-function apply_filter() {
+function apply_filter(force_reload) {
     var cur_text = $("input#filter").attr("value");
-    if (cur_text != CUR_FILTER) {
+    if (cur_text != CUR_FILTER || force_reload) {
         CUR_FILTER = cur_text;
         var cur_re = new RegExp("^.*" + CUR_FILTER + ".*$");
         var disp_list = new Array();
@@ -37,7 +37,7 @@ function apply_filter() {
             };
         });
         // not working, FIXME
-        if (SHOW_LIST != disp_list) {
+        if (SHOW_LIST != disp_list || force_reload) {
             DISPLAY_LIST = _.map(disp_list, function(name) { return CONFIGS.find("config[key='" + name + "']")[0]; });
             update_config_info(disp_list.length);
             draw_tables();
@@ -111,13 +111,26 @@ function draw_device(d_el) {
             }).hide();
         };
         var cur_conf = $(this);
+        var cur_cb = $("<input>").attr({
+            "type" : "checkbox",
+            "id"   : line_prefix + "__config__" + cur_conf.attr("pk")
+        }).bind("click", change_config);
         cur_tr.append($("<td>").append(
             $("<span>").text(cur_conf.attr("name"))
         ).append(
-            $("<input>").attr({
-                "type" : "checkbox"
-            })
+            $("<span>").text("")
+        ).append(
+            cur_cb
+        ).append(
+            $("<span>").text("")
         ));
+        if (DEVICE_CONFIGS.find("device_config[device='" + d_el.attr("pk") + "'][config='" + cur_conf.attr("pk") + "'][meta='1']").length) {
+            cur_cb.attr({"checked" : "checked"});
+            cur_cb.prev().text("(");
+            cur_cb.next().text(")");
+        } else if (DEVICE_CONFIGS.find("device_config[device='" + d_el.attr("pk") + "'][config='" + cur_conf.attr("pk") + "']").length) {
+            cur_cb.attr({"checked" : "checked"});
+        };
         cur_entries++;
         if (cur_entries == 4) {
             dummy_div.append(c_tr);
@@ -129,6 +142,43 @@ function draw_device(d_el) {
         dummy_div.append(cur_tr);
     };
     return dummy_div.children();
+};
+
+function change_config(event) {
+    var cur_cb = $(event.target);
+    var lock_list = lock_elements($("table#config"));
+    $.ajax({
+        url : "{% url config:alter_config_cb %}",
+        data : {
+            "id"    : cur_cb.attr("id"),
+            "value" : cur_cb.is(":checked") ? "1" : "0"
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                var res_xml = $(xml);
+                //console.log(res_xml);
+                var conf_pk = res_xml.find("device_configs config").attr("pk");
+                res_xml.find("devices device").each(function() {
+                    // deselect all checkboxes
+                    var cur_dev = $(this);
+                    var cur_cb = $("table#config input[id='dev__" + cur_dev.attr("pk") + "__config__" + conf_pk + "']");
+                    cur_cb.removeAttr("checked");
+                    cur_cb.prev().text("");
+                    cur_cb.next().text("");
+                });
+                res_xml.find("device_configs device_config").each(function() {
+                    var cur_dc = $(this);
+                    var cur_cb = $("table#config input[id='dev__" + cur_dc.attr("device") + "__config__" + conf_pk + "']");
+                    cur_cb.attr("checked", "checked");
+                    if (cur_dc.attr("meta") == "1") {
+                        cur_cb.prev().text("(");
+                        cur_cb.next().text(")");
+                    };
+                });
+                unlock_elements(lock_list);
+            };
+        }
+    });
 };
 
 function draw_tables() {
@@ -157,13 +207,13 @@ function draw_tables() {
 };
 
 function use_devs(dt_div) {
-    console.log("use_devs");
     load_devices(_.map(dt_div.dynatree("getSelectedNodes"), function(value) {
         return(value.data.key);
     }));
 };
 
 function load_devices(sel_list) {
+    //console.log(sel_list);
     $.ajax({
         url     : "{% url device:get_group_tree %}",
         error   : handle_ajax_error,
@@ -205,7 +255,7 @@ function load_configs() {
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 CONFIGS = $(xml).find("value[name='response']");
-                apply_filter();
+                apply_filter(true);
             }
         }
     });
