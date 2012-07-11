@@ -33,15 +33,18 @@ class tl_sge_info(sge_tools.sge_info):
 
 my_sge_info = tl_sge_info()
 
+def get_job_options(request):
+    return sge_tools.get_empty_job_options()
+
+def get_node_options(request):
+    return sge_tools.get_empty_node_options(merge_node_queue=True)
+
 @init_logging
 def overview(request):
-    job_options, node_options = (
-        sge_tools.get_empty_job_options(),
-        sge_tools.get_empty_node_options())
     return render_tools.render_me(request, "rms_overview.html", {
-        "run_job_headers"  : sge_tools.get_running_headers(job_options),
-        "wait_job_headers" : sge_tools.get_waiting_headers(job_options),
-        "node_headers"     : sge_tools.get_node_headers(node_options)
+        "run_job_headers"  : sge_tools.get_running_headers(get_job_options(request)),
+        "wait_job_headers" : sge_tools.get_waiting_headers(get_job_options(request)),
+        "node_headers"     : sge_tools.get_node_headers(get_node_options(request))
     })()
 
 def _node_to_value(in_node):
@@ -86,10 +89,7 @@ def _sort_list(in_list, _post):
 def get_run_jobs_xml(request):
     _post = request.POST
     my_sge_info.update()
-    job_options, node_options = (
-        sge_tools.get_empty_job_options(),
-        sge_tools.get_empty_node_options())
-    run_job_list  = sge_tools.build_running_list(my_sge_info, job_options)
+    run_job_list  = sge_tools.build_running_list(my_sge_info, get_job_options(request))
     json_resp = _sort_list(run_job_list, _post)
     return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
@@ -97,10 +97,7 @@ def get_run_jobs_xml(request):
 def get_wait_jobs_xml(request):
     _post = request.POST
     my_sge_info.update()
-    job_options, node_options = (
-        sge_tools.get_empty_job_options(),
-        sge_tools.get_empty_node_options())
-    wait_job_list  = sge_tools.build_waiting_list(my_sge_info, job_options)
+    wait_job_list  = sge_tools.build_waiting_list(my_sge_info, get_job_options(request))
     json_resp = _sort_list(wait_job_list, _post)
     return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
@@ -108,10 +105,6 @@ def get_wait_jobs_xml(request):
 def get_node_xml(request):
     _post = request.POST
     my_sge_info.update()
-    job_options, node_options = (
-        sge_tools.get_empty_job_options(),
-        sge_tools.get_empty_node_options(merge_node_queue=True))
-    node_list     = sge_tools.build_node_list(my_sge_info, node_options)
+    node_list     = sge_tools.build_node_list(my_sge_info, get_node_options(request))
     json_resp = _sort_list(node_list, _post)
     return HttpResponse(json.dumps(json_resp), mimetype="application/json")
-

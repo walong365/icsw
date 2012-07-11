@@ -244,17 +244,21 @@ def get_group_tree(request):
     sel_list = request.session.get("sel_list", [])
     xml_resp = E.device_groups()
     all_dgs = device_group.objects.exclude(Q(cluster_device_group=True)).prefetch_related("device_group").order_by("name")
+    meta_dev_type_id = device_type.objects.get(Q(identifier="MD")).pk
+    # only devices are transfered with the selected attribute
     for cur_dg in all_dgs:
         cur_xml = cur_dg.get_xml(full=False)
         any_sel = False
-        if cur_xml.attrib["key"] in sel_list:
-            cur_xml.attrib["selected"] = "selected"
-            any_sel = True
+##        if cur_xml.attrib["key"] in sel_list:
+##            cur_xml.attrib["selected"] = "selected"
+##            any_sel = True
         for cur_dev in cur_xml.find("devices"):
-            if cur_dev.attrib["key"] in sel_list:
+            cur_dev.attrib["meta_device"] = "1" if int(cur_dev.attrib["device_type"]) == meta_dev_type_id else "0"
+            if cur_dev.attrib["key"] in sel_list or cur_xml.attrib["key"] in sel_list:
                 cur_dev.attrib["selected"] = "selected"
                 any_sel = True
         if any_sel:
             xml_resp.append(cur_xml)
     request.xml_response["response"] = xml_resp
+    print etree.tostring(xml_resp, pretty_print=True)
     return request.xml_response.create_response()
