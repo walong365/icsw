@@ -1066,6 +1066,8 @@ class config(models.Model):
                 E.config_scripts(*[cur_cs.get_xml() for cur_cs in list(self.config_script_set.all())])
             ])
         return r_xml
+    def __unicode__(self):
+        return self.name
     class Meta:
         db_table = u'new_config'
 
