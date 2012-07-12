@@ -31,7 +31,7 @@ csnmpclientzmq: csnmpclientzmq.o
 %.o: %.c
 	$(comp) $< -O1 -c -I. -I/opt/cluster/include -o $@
 
-install:
+install: ccollclientzmq csnmpclientzmq
 	${INSTALL} ${INSTALLOPTS} -d ${DESTDIR}/${CLUSTERBIN}
 	for prog in ${progs}; do \
 		${INSTALL} ${INSTALLOPTS} $$prog ${DESTDIR}/${CLUSTERBIN}; \
