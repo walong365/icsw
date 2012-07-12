@@ -89,7 +89,7 @@ function clear_selection() {
 function install_devsel_link(t_func, fire_when_loaded) {
     $("div#devsel_div").children().remove();
     $("div#devsel_div").text("");
-    $("div#devsel_div").append($("<button>").attr({"id" : "devsel_button"}).text("take selection").bind("click", function(event) {
+    $("div#devsel_div").append($("<button>").attr({"id" : "devsel_button"}).text("use selection").bind("click", function(event) {
         t_func($("div#sidebar_tree"));
     }));
     CALL_DEVSEL_LINK_WHEN_LOADED = fire_when_loaded;

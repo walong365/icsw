@@ -201,7 +201,6 @@ def clear_selection(request):
 @init_logging
 def add_selection(request):
     _post = request.POST
-    print _post.keys()
     if "key" in _post:
         # single set / delete
         add_flag, add_sel_list, cur_list = (
