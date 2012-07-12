@@ -33,7 +33,7 @@ import configfile
 import configfile_old
 import array
 import netifaces
-from init.cluster.backbone.models import new_config, device, net_ip, device_config
+from init.cluster.backbone.models import config, device, net_ip, device_config
 from django.db.models import Q
 
 class server_check(object):
@@ -81,8 +81,8 @@ class server_check(object):
         self.config_name = self.__server_type
         # config variable dict
         self.__config_vars = {}
-        if dc:
-            self._db_check(dc)
+        #if dc:
+        self._db_check(dc)
     def _db_check(self, dc):
         if self.__server_type.count("%"):
             self.__match_str = " LIKE('%s')" % (self.__server_type)
@@ -107,7 +107,7 @@ class server_check(object):
         #   name of config
         #   name of device set for device_config
         # (device_idx, group_dev_idx, config_name, config_pk)
-        my_confs = new_config.objects.filter(
+        my_confs = config.objects.filter(
             Q(device_config__device__device_group__device_group=self.device_idx) &
             Q(**{self.__dmatch_str : self.__server_type})
             ).distinct().values_list(
@@ -227,7 +227,7 @@ class server_check(object):
             #print self.netdevice_ip_lut, self.ip_netdevice_lut
     def _db_check_ip(self, dc):
         # check for virtual-device
-        my_confs = new_config.objects.filter(
+        my_confs = config.objects.filter(
             Q(device_config__device__device_group__device_group=self.device_idx) &
             Q(**{self.__dmatch_str : self.__server_type})
             ).distinct().values_list(
