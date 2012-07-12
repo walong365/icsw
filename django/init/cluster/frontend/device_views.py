@@ -39,13 +39,12 @@ def get_json_tree(request):
         cur_jr = {
             "title"    : unicode(cur_dg),
             "isFolder" : True,
-            "isLazy"   : True,
+            "isLazy"   : False,
             "select"   : key in sel_list,
             "expand"   : cur_dg.pk in dg_list,
             "key"      : key,
-            "url"      : reverse("device:get_json_devlist"),
             "data"     : {"devg_pk" : cur_dg.pk},
-            "children" : _get_device_list(request, cur_dg.pk) if cur_dg.pk in dg_list else []
+            "children" : _get_device_list(request, cur_dg.pk)
         }
         json_struct.append(cur_jr)
     return HttpResponse(json.dumps(json_struct),
@@ -64,13 +63,6 @@ def _get_device_list(request, devg_pk):
                 "key"    : key
             })
     return json_struct
-    
-@login_required
-@init_logging
-def get_json_devlist(request):
-    _post = request.POST
-    return HttpResponse(json.dumps(_get_device_list(request, _post["devg_pk"])),
-                        mimetype="application/json")
 
 @login_required
 @init_logging
@@ -208,22 +200,35 @@ def clear_selection(request):
 @login_required
 @init_logging
 def add_selection(request):
-    cur_list = request.session.get("sel_list", [])
     _post = request.POST
-    add_flag, add_sel = (int(_post["add"]), _post["key"])
-    if add_flag and add_sel not in cur_list:
-        cur_list.append(add_sel)
-    elif not add_flag and add_sel in cur_list:
-        cur_list.remove(add_sel)
-    if add_sel.startswith("devg_"):
-        # emulate toggle of device_group
-        request.log("toggle selection of device_group %d" % (int(add_sel.split("__")[1])))
-        toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(Q(device_group=add_sel.split("__")[1])).values_list("pk", flat=True)]
-        for toggle_dev in toggle_devs:
-            if toggle_dev in cur_list:
-                cur_list.remove(toggle_dev)
-            else:
-                cur_list.append(toggle_dev)
+    print _post.keys()
+    if "key" in _post:
+        # single set / delete
+        add_flag, add_sel_list, cur_list = (
+            int(_post["add"]),
+            [_post["key"]],
+            request.session.get("sel_list", []))
+    else:
+        # total set / delete
+        add_flag, add_sel_list, cur_list = (
+            1,
+            _post.getlist("key[]"),
+            []
+        )
+    for add_sel in add_sel_list:
+        if add_flag and add_sel not in cur_list:
+            cur_list.append(add_sel)
+        elif not add_flag and add_sel in cur_list:
+            cur_list.remove(add_sel)
+        if add_sel.startswith("devg_"):
+            # emulate toggle of device_group
+            request.log("toggle selection of device_group %d" % (int(add_sel.split("__")[1])))
+            toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(Q(device_group=add_sel.split("__")[1])).values_list("pk", flat=True)]
+            for toggle_dev in toggle_devs:
+                if toggle_dev in cur_list:
+                    cur_list.remove(toggle_dev)
+                else:
+                    cur_list.append(toggle_dev)
     request.session["sel_list"] = cur_list
     request.session.save()
     request.log("%s in list" % (logging_tools.get_plural("selection", len(cur_list))))

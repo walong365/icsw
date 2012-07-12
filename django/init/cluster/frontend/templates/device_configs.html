@@ -114,7 +114,7 @@ function draw_device(d_el) {
     });
     var is_meta = d_el.attr("meta_device") == "1";
     new_tr.append($("<th>").attr({
-        "colspan" : "3"
+        "colspan" : "7"
     }).text((is_meta ? "Meta device" : "device") + " " + d_el.text()));
     new_tr.append(get_expand_td(line_prefix, "config", "config"));
     dummy_div.append(new_tr);
@@ -134,6 +134,11 @@ function draw_device(d_el) {
         }).bind("click", change_config);
         cur_tr.append($("<td>").append(
             $("<span>").text(cur_conf.attr("name"))
+        ));
+        cur_tr.append(
+           $("<td>").attr({
+               "class" : "center"
+            }
         ).append(
             $("<span>").text("")
         ).append(
@@ -150,7 +155,7 @@ function draw_device(d_el) {
         };
         cur_entries++;
         if (cur_entries == 4) {
-            dummy_div.append(c_tr);
+            dummy_div.append(cur_tr);
             cur_entries = 0;
             run_idx += 1;
         };
@@ -207,7 +212,7 @@ function draw_tables() {
             "class"   : "ui-widget ui-widget-header"
         });
         new_tr.append($("<th>").attr({
-            "colspan" : "4"
+            "colspan" : "8"
         }).text("device group " + cur_dg.attr("name")));
         c_table.append(new_tr);
         // at first append metadevice

@@ -8,6 +8,11 @@
         </td>
     </tr>
     <tr>
+        <td id="device_selection">
+            <input type="text" id="device_selection" onKeyUp="apply_device_selection();"/>
+        </td>
+    </tr>
+    <tr>
         <td>
             <div id="devsel_div">
             </div>
@@ -26,6 +31,8 @@
 
 DYN_DTS_LOCKCOUNT = 0;
 CALL_DEVSEL_LINK_WHEN_LOADED = false;
+CUR_DEVICE_SELECTION = undefined;
+ADS_RUNNING = false;
 
 function toggle_south(event) {
     my_layout.toggle("south");
@@ -35,7 +42,38 @@ function toggle_west(event) {
     my_layout.toggle("west");
 }
 
+function apply_device_selection() {
+    var cur_text = $("input#device_selection").attr("value");
+    if (cur_text != CUR_DEVICE_SELECTION) {
+        CUR_DEVICE_SELECTION = cur_text;
+        if (CUR_DEVICE_SELECTION) {
+           ADS_RUNNING = true;
+            var cur_re = new RegExp(CUR_DEVICE_SELECTION);
+            var key_list = new Array();
+            // traverse tree
+            $("div#sidebar_tree").dynatree("getRoot").visit(function(node) {
+                if (node.data.title.match(cur_re)) {
+                    node.makeVisible(true);
+                    node.select(true);
+                    key_list.push(node.data.key);
+                } else {
+                    node.select(false);
+                };
+            });
+           console.log(key_list);
+            $.ajax({
+                url : "{% url device:add_selection %}",
+                data : {
+                    "key" : key_list
+                }
+            });
+           ADS_RUNNING = false;
+        };
+    };
+};
+
 function clear_selection() {
+    $("input#device_selection").val("");
     $.ajax({
         url : "{% url device:clear_selection %}",
         success : function(xml) {
@@ -59,8 +97,9 @@ function install_devsel_link(t_func, fire_when_loaded) {
 
 function sidebar_handler() {
     $("div#sidebar_tree").dynatree({
-        checkbox : true,
-        initAjax : {
+        autoFocus  : false,
+        checkbox   : true,
+        initAjax   : {
             url  : "{% url device:get_json_tree %}",
             data : {}
         },
@@ -72,51 +111,24 @@ function sidebar_handler() {
                 $("div#devsel_div button#devsel_button").trigger("click");
             };
         },
-        onLazyRead : function(dtnode) {
-            dtnode.appendAjax({
-                url  : dtnode.data.url,
-                data : {
-                    "devg_pk" : dtnode.data.data.devg_pk
-                }
-            });
-        },
-<!--        onActivate : function(dtnode) {-->
-<!--            console.log("focus");-->
-<!--            if (dtnode.data.name == "toggle_sql") {-->
-<!--                toggle_south();-->
-<!--                dtnode.deactivate();-->
-<!--            } else if (dtnode.data.name == "toggle_sidebar") {-->
-<!--                toggle_west();-->
-<!--                dtnode.deactivate();-->
-<!--            } else {;-->
-<!--                if (dtnode.data.isLazy) {-->
-<!--                } else {                -->
-<!--                    if (dtnode.data.url) {-->
-<!--                        window.location = dtnode.data.url;-->
-<!--                    }-->
-<!--                }-->
-<!--            }-->
-<!--        },-->
-<!--        onExpand : function(flag, dtnode) {-->
-<!--            console.log("expand");-->
-<!--            toggle_expand(dtnode, flag);-->
-<!--        },-->
         onSelect : function(flag, dtnode) {
-            if (! dtnode.isExpanded()) {
-                dtnode.expand(true);
-            };
-            if (! DYN_DTS_LOCKCOUNT) {
-                $.ajax({
-                    url : "{% url device:add_selection %}",
-                    data : {
-                        "key" : dtnode.data.key,
-                        "add" : dtnode.isSelected() ? 1 : 0}
-                });
-                DYN_DTS_LOCKCOUNT ++;
-                dtnode.visit(function(cur_node) {
-                    cur_node.toggleSelect();
-                }, false);
-                DYN_DTS_LOCKCOUNT --;
+            if (!ADS_RUNNING) {
+                if (! dtnode.isExpanded()) {
+                    dtnode.expand(true);
+                };
+                if (! DYN_DTS_LOCKCOUNT) {
+                    $.ajax({
+                        url : "{% url device:add_selection %}",
+                        data : {
+                            "key" : dtnode.data.key,
+                            "add" : dtnode.isSelected() ? 1 : 0}
+                    });
+                    DYN_DTS_LOCKCOUNT ++;
+                    dtnode.visit(function(cur_node) {
+                        cur_node.toggleSelect();
+                    }, false);
+                    DYN_DTS_LOCKCOUNT --;
+                };
             };
         },
         debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
@@ -124,6 +136,7 @@ function sidebar_handler() {
     var my_tree = $("#sidebar_tree").dynatree("getTree");
     $("div#sidebar_tree ul").css({"border" : "none", "margin" : "0px"});
     $("div#sidebar_tree").css({"border" : "1px dotted gray", "background-color" : "#FFFFFF"});
+    $("input#device_selection").focus();
 };
 
 </script>

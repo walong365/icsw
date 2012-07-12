@@ -47,7 +47,6 @@ device_patterns = patterns(
     "init.cluster.frontend",
     url("^device_tree$"       , "device_views.device_tree"        , name="tree"               ),
     url("^get_json_tree$"     , "device_views.get_json_tree"      , name="get_json_tree"      ), 
-    url("^get_json_devlist$"  , "device_views.get_json_devlist"   , name="get_json_devlist"   ),
     url("^get_xml_tree$"      , "device_views.get_xml_tree"       , name="get_xml_tree"       ), 
     url("^create_devg$"       , "device_views.create_device_group", name="create_device_group"),
     url("^create_device$"     , "device_views.create_device"      , name="create_device"      ),
