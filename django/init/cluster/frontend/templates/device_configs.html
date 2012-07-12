@@ -6,9 +6,9 @@ o
 
 {% block content %}
 
-<h1 class="center">Device configuration, <span id="config_info">none defined</span></h1>
-
+<h1 class="center">Device configuration, <span id="config_info">none defined</span>, filter:
 <input type="text" id="filter" value="" onKeyUp="apply_filter(false);"/>
+<input type="button" value="clear" onClick="clear_filter();"/></h1>
 
 <div id="config">
 </div>
@@ -22,6 +22,11 @@ CUR_FILTER = undefined;
 SHOW_LIST = undefined;
 // which conigs to display
 DISPLAY_LIST = undefined;
+
+function clear_filter() {
+    $("input#filter").val("");
+    apply_filter(false);
+};
 
 function apply_filter(force_reload) {
     var cur_text = $("input#filter").attr("value");
@@ -40,7 +45,9 @@ function apply_filter(force_reload) {
         if (SHOW_LIST != disp_list || force_reload) {
             DISPLAY_LIST = _.map(disp_list, function(name) { return CONFIGS.find("config[key='" + name + "']")[0]; });
             update_config_info(disp_list.length);
+            var cur_exp_list = get_expand_list();
             draw_tables();
+            restore_expansion(cur_exp_list);
         };
         SHOW_LIST = disp_list;
     };
@@ -54,6 +61,16 @@ function update_config_info(num_shown) {
         info_str += ", " + num_shown + " shown";
     };
     $("span#config_info").text(info_str);
+};
+
+function get_expand_list() {
+    return _.map($("table#config tr span[id*='__expand_'][class*='-1-s']"), function(cur_el) { return $(cur_el).attr("id"); });
+};
+
+function restore_expansion(exp_list) {
+    $.each(exp_list, function(idx, cur_val) {
+        toggle_config_line(cur_val.split("__")[0] + "__" + cur_val.split("__")[1], true, "config");
+    });
 };
 
 function get_expand_td(line_prefix, name, title) {

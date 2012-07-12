@@ -14,6 +14,9 @@ class tl_sge_info(sge_tools.sge_info):
     def __init__(self):
         self.lock = threading.Lock()
         self.__logger = logging_pool.get_logger("sge_info")
+        self.__setup = False
+    def _do_setup(self):
+        self.__setup = True
         sge_tools.sge_info.__init__(
             self,
             server="127.0.0.1",
@@ -24,6 +27,8 @@ class tl_sge_info(sge_tools.sge_info):
             verbose=settings.DEBUG
         )
     def update(self):
+        if not self.__setup:
+            self._setup()
         self.lock.acquire()
         try:
             sge_tools.sge_info.update(self)
