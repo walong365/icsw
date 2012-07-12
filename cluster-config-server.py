@@ -27,7 +27,8 @@ import getopt
 import re
 import shutil
 import tempfile
-import configfile_old as configfile
+import configfile
+import cluster_location
 import types
 import os.path
 import socket
@@ -45,6 +46,11 @@ import config_tools
 import threading_tools
 import net_tools
 import zmq
+
+try:
+    from cluster_config_server_version import VERSION_STRING
+except ImportError:
+    VERSION_STRING = "?.?"
 
 SERVER_COM_PORT   = 8005
 SERVER_NODE_PORT  = 8006
@@ -2577,80 +2583,58 @@ class config_error(error):
     def __init__(self, what = "UNKNOWN"):
         error.__init__(self, what)
     
-class logging_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config):
-        self.__glob_config = glob_config
-        self.__handles, self.__log_buffer, self.__global_log = ({}, [], None)
-        self.__sep_str = "-" * 50
-        threading_tools.thread_obj.__init__(self, "log", queue_size=100, priority=10)
-        self.register_func("log", self._log)
-        self.register_func("write_file", self._write_file)
-    def thread_running(self):
-        self.send_pool_message(("new_pid", self.pid))
-        self.__root = self.__glob_config["LOG_DIR"]
-        if not os.path.isdir(self.__root):
-            try:
-                os.makedirs(self.__root)
-            except OSError:
-                # we have to write to syslog
-                self.log("Unable to create '%s' directory" % (self.__root), logging_tools.LOG_LEVEL_ERROR)
-                self.__root = "/tmp"
-            else:
-                pass
-        glog_name = "%s/log" % (self.__root)
-        self.__global_log = logging_tools.logfile(glog_name)
-        self.__global_log.write(self.__sep_str, header = 0)
-        self.__global_log.write("(%s) Opening log" % (self.name))
-    def _get_handle(self, dev_name, file_name="log", register=True):
-        full_name = "%s/%s" % (dev_name, file_name)
-        if self.__handles.has_key(full_name):
-            handle = self.__handles[full_name]
-        else:
-            machdir = "%s/%s" % (self.__root, dev_name)
-            if not os.path.isdir(machdir):
-                self.__global_log.write("Creating dir %s for %s" % (machdir, dev_name))
-                os.makedirs(machdir)
-            if register:
-                handle = logging_tools.logfile("%s/%s" % (machdir, file_name))
-                self.__handles[full_name] = handle
-                handle.write(self.__sep_str)
-                handle.write("Opening log")
-            else:
-                handle = file("%s/%s" % (machdir, file_name), "w")
-        return handle
+class server_process(threading_tools.process_pool):
+    def __init__(self):
+        self.__log_cache, self.__log_template = ([], None)
+        self.__pid_name = global_config["PID_NAME"]
+        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        self.register_exception("int_error", self._int_error)
+        self.register_exception("term_error", self._int_error)
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self._log_config()
+        self.__msi_block = self._init_msi_block()
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__global_log:
-            if self.__log_buffer:
-                for b_what, b_line in self.__log_buffer:
-                    self._log((b_what, b_line))
-                self.__log_buffer = []
-            self._log((what, lev))
+        if self.__log_template:
+            while self.__log_cache:
+                self.__log_template.log(*self.__log_cache.pop(0))
+            self.__log_template.log(lev, what)
         else:
-            self.__log_buffer.append((what, lev))
-    def _log(self, l_stuff):
-        if len(l_stuff) == 2:
-            what, lev = l_stuff
-            thread_name, node_name = (self.name, "")
-        elif len(l_stuff) == 3:
-            what, lev, thread_name = l_stuff
-            node_name = ""
+            self.__log_cache.append((lev, what))
+    def _int_error(self, err_cause):
+        if self["exit_requested"]:
+            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
-            what, lev, thread_name, node_name = l_stuff
-        if node_name:
-            handle = self._get_handle(node_name)
+            self["exit_requested"] = True
+            # signal via file-creating
+    def _log_config(self):
+        self.log("Config info:")
+        for line, log_level in global_config.get_log(clear=True):
+            self.log(" - clf: [%d] %s" % (log_level, line))
+        conf_info = global_config.get_config_info()
+        self.log("Found %d valid config-lines:" % (len(conf_info)))
+        for conf in conf_info:
+            self.log("Config : %s" % (conf))
+    def _init_msi_block(self):
+        process_tools.save_pid(self.__pid_name, mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        if not global_config["DEBUG"] or True:
+            self.log("Initialising meta-server-info block")
+            msi_block = process_tools.meta_server_info("cluster-config-server")
+            msi_block.add_actual_pid(mult=3)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+            msi_block.start_command = "/etc/init.d/cluster-config-server start"
+            msi_block.stop_command = "/etc/init.d/cluster-config-server force-stop"
+            msi_block.kill_pids = True
+            msi_block.save_block()
         else:
-            handle = self.__global_log
-        thread_pfix = "(%s)" % (thread_name.endswith("_thread") and thread_name[:-7] or thread_name)
-        handle.write("%-6s%s %s" % (logging_tools.get_log_level_str(lev), thread_pfix, what))
-    def _write_file(self, (dev_name, file_name, what)):
-        self._get_handle(dev_name, file_name, False).write(what)
+            msi_block = None
+        return msi_block
     def loop_end(self):
-        for mach in self.__handles.keys():
-            self.__handles[mach].write("Closing log")
-            self.__handles[mach].close()
-        self.__global_log.write("Closed %s" % (logging_tools.get_plural("machine log", len(self.__handles.keys()))))
-        self.__global_log.write("Closing log")
-        self.__global_log.close()
+        process_tools.delete_pid(self.__pid_name)
+        if self.__msi_block:
+            self.__msi_block.remove_meta_block()
+    def loop_post(self):
+        self.__log_template.close()
         
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, db_con, glob_config, loc_config, log_lines):
@@ -2713,19 +2697,6 @@ class server_thread_pool(threading_tools.thread_pool):
         if self.__msi_block:
             self.__msi_block.add_actual_pid(new_pid)
             self.__msi_block.save_block()
-    def _init_msi_block(self, daemon):
-        process_tools.save_pid(self.__loc_config["PID_NAME"])
-        if self.__loc_config["DAEMON"]:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("cluster-config-server")
-            msi_block.add_actual_pid()
-            msi_block.start_command = "/etc/init.d/cluster-config-server start"
-            msi_block.stop_command = "/etc/init.d/cluster-config-server force-stop"
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
-        return msi_block
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
@@ -2763,147 +2734,80 @@ class server_thread_pool(threading_tools.thread_pool):
     def _new_command_con(self, sock, src):
         return connection_for_command(src, self.__command_queue)
 
+global_config = configfile.get_global_config(process_tools.get_programm_name())
+
 def main():
-    #global short_host_name, server_idx, log_source_idx, g_config, log_sources, log_status
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "dVvr:hCu:g:fk", ["help"])
-    except getopt.GetoptError, bla:
-        print "Commandline error : %s" % (process_tools.get_except_info())
-        sys.exit(2)
-    try:
-        from cluster_config_server_version import VERSION_STRING
-    except ImportError:
-        VERSION_STRING = "unknown.unknown"
-    server_full_name = socket.getfqdn(socket.gethostname())
-    server_short_name = server_full_name.split(".")[0]
-    loc_config = configfile.configuration("local_config", {"PID_NAME"          : configfile.str_c_var("cluster-config-server/cluster-config-server"),
-                                                           "SERVER_IDX"        : configfile.int_c_var(0),
-                                                           "VERBOSE"           : configfile.bool_c_var(False),
-                                                           "N_RETRY"           : configfile.int_c_var(5),
-                                                           "DAEMON"            : configfile.bool_c_var(True),
-                                                           "VERSION_STRING"    : configfile.str_c_var(VERSION_STRING),
-                                                           "SERVER_SHORT_NAME" : configfile.str_c_var(server_short_name),
-                                                           "SERVER_FULL_NAME"  : configfile.str_c_var(server_full_name),
-                                                           "LOG_STATUS"        : configfile.dict_c_var({}),
-                                                           "LOG_SOURCE_IDX"    : configfile.int_c_var(0),
-                                                           "KILL_RUNNING"      : configfile.bool_c_var(True),
-                                                           "FIXIT"             : configfile.bool_c_var(False),
-                                                           "USER_NAME"         : configfile.str_c_var("root"),
-                                                           "GROUP_NAME"        : configfile.str_c_var("root"),
-                                                           "NAGIOS_IP"         : configfile.str_c_var("")})
-    check = False
-    pname = os.path.basename(sys.argv[0])
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print "Usage: %s [OPTIONS]" % (pname)
-            print "where OPTIONS are:"
-            print " -h,--help        this help"
-            print " -C               check if this is a cluster-config-server"
-            print " -d               run in debug mode (no forking)"
-            print " -v               be verbose"
-            print " -V               show version"
-            print " -f               create and fix needed files and directories"
-            print " -u user          run as user USER"
-            print " -g group         run as group GROUP"
-            print " -k               do not kill running %s" % (pname)
-            sys.exit(0)
-        if opt == "-k":
-            loc_config["KILL_RUNNING"] = False
-        if opt == "-C":
-            check = True
-        if opt == "-d":
-            loc_config["DAEMON"] = False
-        if opt == "-V":
-            print "Version %s" % (loc_config["VERSION_STRING"])
-            sys.exit(0)
-        if opt == "-v":
-            loc_config["VERBOSE"] = True
-        if opt == "-r":
-            try:
-                loc_config["N_RETRY"] = int(arg)
-            except:
-                print "Error parsing n_retry"
-                sys.exit(2)
-        if opt == "-f":
-            loc_config["FIXIT"] = True
-        if opt == "-u":
-            loc_config["USER_NAME"] = arg
-        if opt == "-g":
-            loc_config["GROUP_NAME"] = arg
-    ret_code = 1
-    db_con = mysql_tools.dbcon_container(with_logging=not loc_config["DAEMON"])
-    try:
-        dc = db_con.get_connection(SQL_ACCESS)
-    except MySQLdb.OperationalError:
-        sys.stderr.write(" Cannot connect to SQL-Server ")
-        sys.exit(1)
-    glob_config = configfile.read_global_config(dc, "config_server", {"LOG_DIR"                   : configfile.str_c_var("/var/log/cluster/cluster-config-server"),
-                                                                      # TFTP_DIR and CONFIG/IMAGE/KERNEL_DIR should come from mother, FIXME
-                                                                      "TFTP_DIR"                  : configfile.str_c_var("/tftpboot"),
-                                                                      "COMMAND_PORT"              : configfile.int_c_var(SERVER_COM_PORT),
-                                                                      "NODE_PORT"                 : configfile.int_c_var(SERVER_NODE_PORT),
-                                                                      "NAGIOS_PORT"               : configfile.int_c_var(NCS_PORT),
-                                                                      "PREFER_KERNEL_NAME"        : configfile.int_c_var(0),
-                                                                      "LOCALHOST_IS_EXCLUSIVE"    : configfile.int_c_var(1),
-                                                                      "HOST_CACHE_TIME"           : configfile.int_c_var(10 * 60),
-                                                                      "WRITE_REDHAT_HWADDR_ENTRY" : configfile.int_c_var(1),
-                                                                      "ADD_NETDEVICE_LINKS"       : configfile.bool_c_var(False),
-                                                                      "CORRECT_WRONG_LO_SETUP"    : configfile.int_c_var(1)})
-    glob_config.add_config_dict({"CONFIG_DIR" : configfile.str_c_var("%s/%s" % (glob_config["TFTP_DIR"], "config")),
-                                 "IMAGE_DIR"  : configfile.str_c_var("%s/%s" % (glob_config["TFTP_DIR"], "images")),
-                                 "KERNEL_DIR" : configfile.str_c_var("%s/%s" % (glob_config["TFTP_DIR"], "kernels"))})
-    sql_info = config_tools.server_check(dc=dc, server_type="config_server")
-    if sql_info.num_servers == 0:
-        sys.stderr.write(" Host %s is no cluster-config-server" % (server_full_name))
-        dc.release()
-        sys.exit(5)
-    if check:
-        dc.release()
-        sys.exit(0)
+    long_host_name, mach_name = process_tools.get_fqdn()
+    prog_name = global_config.name()
+    global_config.add_config_entries([
+        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+        ("PID_NAME"            , configfile.str_c_var(os.path.join(prog_name, prog_name))),
+        ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
+        ("FORCE"               , configfile.bool_c_var(False, help_string="force running [%(default)s]", action="store_true", only_commandline=True)),
+        ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True, short_options="C")),
+        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
+        ("USER"                , configfile.str_c_var("idccss", help_string="user to run as [%(default)s]")),
+        ("GROUP"               , configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
+        ("GROUPS"              , configfile.array_c_var(["idg"])),
+        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
+        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+    ])
+    global_config.parse_file()
+    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
+                                                                                  VERSION_STRING),
+                                               add_writeback_option=True,
+                                               positional_arguments=False)
+    global_config.write_file()
+    sql_info = config_tools.server_check(server_type="config_server")
     if sql_info.num_servers > 1:
-        print "Database error for host %s (cluster_config_server): too many entries found (%d)" % (server_full_name, sql_info.num_servers)
-        dc.release()
+        print "Database error for host %s (server): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
+        sys.exit(5)
+    if global_config["CHECK"]:
+        sys.exit(0)
+    if global_config["KILL_RUNNING"]:
+        log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
+    cluster_location.read_config_from_db(global_config, "config_server", [
+        ("TFTP_DIR"                  , configfile.str_c_var("/tftpboot")),
+        ("COMMAND_PORT"              , configfile.int_c_var(SERVER_COM_PORT)),
+        ("MONITORING_PORT"           , configfile.int_c_var(NCS_PORT)),
+        ("LOCALHOST_IS_EXCLUSIVE"    , configfile.bool_c_var(True)),
+        ("HOST_CACHE_TIME"           , configfile.int_c_var(10 * 60)),
+        ("WRITE_REDHAT_HWADDR_ENTRY" , configfile.bool_c_var(True)),
+        ("ADD_NETDEVICE_LINKS"       , configfile.bool_c_var(False)),
+        ("CORRECT_WRONG_LO_SETUP"    , configfile.bool_c_var(True))])
+    global_config.add_config_entries([
+        ("CONFIG_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
+        ("IMAGE_DIR"  , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "images"))),
+        ("KERNEL_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
+    
+##    loc_config["SERVER_IDX"] = sql_info.server_device_idx
+##    log_lines = []
+##    loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, sql_info.server_device_idx, "config_server", "Cluster config Server")
+##    nagios_master_list = config_tools.device_with_config("nagios_master", dc)
+##    if nagios_master_list.keys():
+##        nagios_master_name = nagios_master_list.keys()[0]
+##        nagios_master = nagios_master_list[nagios_master_name]
+##        # good stuff :-)
+##        for routing_info in sql_info.get_route_to_other_device(dc, nagios_master):
+##            if routing_info[1] in ["l", "p", "o"]:
+##                loc_config["NAGIOS_IP"] = routing_info[3][1][0]
+##                break
+##    if loc_config["FIXIT"]:
+##        process_tools.fix_directories(loc_config["USER_NAME"], loc_config["GROUP_NAME"], [glob_config["LOG_DIR"], "/var/run/cluster-config-server", glob_config["CONFIG_DIR"]])
+##        process_tools.fix_files(loc_config["USER_NAME"], loc_config["GROUP_NAME"], ["/var/log/cluster-config-server.out", "/tmp/cluster-config-server.out"])
+##    dc.release()
+    process_tools.renice()
+    process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
+    if not global_config["DEBUG"]:
+        process_tools.become_daemon()
+        process_tools.set_handles({"out" : (1, "cluster-config-server.out"),
+                                   "err" : (0, "/var/lib/logging-server/py_err")})
     else:
-        loc_config["SERVER_IDX"] = sql_info.server_device_idx
-        log_lines = []
-        if loc_config["KILL_RUNNING"]:
-            kill_dict = process_tools.build_kill_dict(pname)
-            for key, value in kill_dict.iteritems():
-                log_str = "Trying to kill pid %d (%s) with signal 9 ..." % (key, value)
-                try:
-                    os.kill(key, 9)
-                except:
-                    log_str = "%s error (%s)" % (log_str, process_tools.get_except_info())
-                else:
-                    log_str = "%s ok" % (log_str)
-                logging_tools.my_syslog(log_str)
-        loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, sql_info.server_device_idx, "config_server", "Cluster config Server")
-        nagios_master_list = config_tools.device_with_config("nagios_master", dc)
-        if nagios_master_list.keys():
-            nagios_master_name = nagios_master_list.keys()[0]
-            nagios_master = nagios_master_list[nagios_master_name]
-            # good stuff :-)
-            for routing_info in sql_info.get_route_to_other_device(dc, nagios_master):
-                if routing_info[1] in ["l", "p", "o"]:
-                    loc_config["NAGIOS_IP"] = routing_info[3][1][0]
-                    break
-        if loc_config["FIXIT"]:
-            process_tools.fix_directories(loc_config["USER_NAME"], loc_config["GROUP_NAME"], [glob_config["LOG_DIR"], "/var/run/cluster-config-server", glob_config["CONFIG_DIR"]])
-            process_tools.fix_files(loc_config["USER_NAME"], loc_config["GROUP_NAME"], ["/var/log/cluster-config-server.out", "/tmp/cluster-config-server.out"])
-        dc.release()
-        process_tools.renice()
-        process_tools.change_user_group(loc_config["USER_NAME"], loc_config["GROUP_NAME"])
-        if loc_config["DAEMON"]:
-            process_tools.become_daemon()
-            process_tools.set_handles({"out" : (1, "cluster-config-server.out"),
-                                       "err" : (0, "/var/lib/logging-server/py_err")})
-        else:
-            print "Debugging cluster-config-server on %s" % (loc_config["SERVER_FULL_NAME"])
-        thread_pool = server_thread_pool(db_con, glob_config, loc_config, log_lines)
-        thread_pool.thread_loop()
-        ret_code = 0
-    db_con.close()
-    del db_con
+        print "Debugging cluster-config-server on %s" % (long_host_name)
+    ret_code = server_process().loop()
     sys.exit(ret_code)
 
 if __name__ == "__main__":
