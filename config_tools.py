@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Ot
+#!/usr/bin/python-init -OtW error
 #
 # Copyright (C) 2007,2008,2012 Andreas Lang-Nevyjel, init.at
 #
