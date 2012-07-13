@@ -45,136 +45,143 @@ import server_command
 import config_tools
 import threading_tools
 import net_tools
+import uuid_tools
 import zmq
+from lxml import etree
+from lxml.builder import E
+from init.cluster.backbone.models import device
+from django.db.models import Q
 
 try:
     from cluster_config_server_version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
 
-SERVER_COM_PORT   = 8005
-SERVER_NODE_PORT  = 8006
+SERVER_PUB_PORT   = 8005
+SERVER_PULL_PORT  = 8006
 NCS_PORT          = 8010
 GATEWAY_THRESHOLD = 1000
 
 SQL_ACCESS = "cluster_full_access"
 
-# --------------------------------------------------------------------------------
-class connection_from_node(net_tools.buffer_object):
-    # receiving connection object for node connection
-    def __init__(self, src, dest_queue):
-        self.__dest_queue = dest_queue
-        self.__src = src
-        net_tools.buffer_object.__init__(self)
-    def __del__(self):
-        #print "- del new_relay_con"
-        pass
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        is_p1, what = net_tools.check_for_proto_1_header(self.in_buffer)
-        if is_p1:
-            self.__dest_queue.put(("node_connection", (self, self.__src, what)))
-    def send_return(self, what):
-        self.lock()
-        if self.socket:
-            self.add_to_out_buffer(net_tools.add_proto_1_header(what))
-        else:
-            pass
-        self.unlock()
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-            self.close()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def report_problem(self, flag, what):
-        self.__dest_queue.put(("node_error", "%s : %s, src is %s" % (net_tools.net_flag_to_str(flag),
-                                                                     what,
-                                                                     str(self.__src))))
-        self.close()
+CONFIG_NAME = "/etc/sysconfig/cluster/cluster_config_server_clients.xml"
 
-class connection_for_command(net_tools.buffer_object):
-    # receiving connection object for command connection
-    def __init__(self, src, dest_queue):
-        self.__dest_queue = dest_queue
-        self.__src = src
-        net_tools.buffer_object.__init__(self)
-    def __del__(self):
-        #print "- del new_relay_con"
-        pass
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        is_p1, what = net_tools.check_for_proto_1_header(self.in_buffer)
-        if is_p1:
-            self.__dest_queue.put(("new_command", (self, self.__src, what)))
-    def send_return(self, what):
-        self.lock()
-        if self.socket:
-            self.add_to_out_buffer(net_tools.add_proto_1_header(what))
-        else:
-            pass
-        self.unlock()
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-            self.close()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def report_problem(self, flag, what):
-        self.__dest_queue.put(("command_error", (self, self.__src, "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
-        self.close()
+### --------------------------------------------------------------------------------
+##class connection_from_node(net_tools.buffer_object):
+##    # receiving connection object for node connection
+##    def __init__(self, src, dest_queue):
+##        self.__dest_queue = dest_queue
+##        self.__src = src
+##        net_tools.buffer_object.__init__(self)
+##    def __del__(self):
+##        #print "- del new_relay_con"
+##        pass
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        is_p1, what = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if is_p1:
+##            self.__dest_queue.put(("node_connection", (self, self.__src, what)))
+##    def send_return(self, what):
+##        self.lock()
+##        if self.socket:
+##            self.add_to_out_buffer(net_tools.add_proto_1_header(what))
+##        else:
+##            pass
+##        self.unlock()
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##            self.close()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def report_problem(self, flag, what):
+##        self.__dest_queue.put(("node_error", "%s : %s, src is %s" % (net_tools.net_flag_to_str(flag),
+##                                                                     what,
+##                                                                     str(self.__src))))
+##        self.close()
 
-class connection_to_node(net_tools.buffer_object):
-    # connects to a foreign package-client
-    def __init__(self, (act_dict, mach), ret_queue):
-        self.__act_dict = act_dict
-        self.__mach = mach
-        self.__ret_queue = ret_queue
-        net_tools.buffer_object.__init__(self)
-    def setup_done(self):
-        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__act_dict["command"].get_command(), True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
-        if p1_ok:
-            self.__ret_queue.put(("send_ok", ((self.__act_dict, self.__mach), p1_data)))
-            self.delete()
-    def report_problem(self, flag, what):
-        self.__ret_queue.put(("send_error", ((self.__act_dict, self.__mach), "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
-        self.delete()
+##class connection_for_command(net_tools.buffer_object):
+##    # receiving connection object for command connection
+##    def __init__(self, src, dest_queue):
+##        self.__dest_queue = dest_queue
+##        self.__src = src
+##        net_tools.buffer_object.__init__(self)
+##    def __del__(self):
+##        #print "- del new_relay_con"
+##        pass
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        is_p1, what = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if is_p1:
+##            self.__dest_queue.put(("new_command", (self, self.__src, what)))
+##    def send_return(self, what):
+##        self.lock()
+##        if self.socket:
+##            self.add_to_out_buffer(net_tools.add_proto_1_header(what))
+##        else:
+##            pass
+##        self.unlock()
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##            self.close()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def report_problem(self, flag, what):
+##        self.__dest_queue.put(("command_error", (self, self.__src, "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
+##        self.close()
 
-class connection_to_nagios_server(net_tools.buffer_object):
-    # connects to a foreign package-client
-    def __init__(self, (srv_com, srv_name), ret_queue):
-        self.__srv_com = srv_com
-        self.__srv_name = srv_name
-        self.__ret_queue = ret_queue
-        net_tools.buffer_object.__init__(self)
-    def setup_done(self):
-        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__srv_com, True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
-        if p1_ok:
-            self.__ret_queue.put(("srv_send_ok", ((self.__srv_com, self.__srv_name), p1_data)))
-            self.delete()
-    def report_problem(self, flag, what):
-        self.__ret_queue.put(("srv_send_error", ((self.__srv_com, self.__srv_name), "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
-        self.delete()
+##class connection_to_node(net_tools.buffer_object):
+##    # connects to a foreign package-client
+##    def __init__(self, (act_dict, mach), ret_queue):
+##        self.__act_dict = act_dict
+##        self.__mach = mach
+##        self.__ret_queue = ret_queue
+##        net_tools.buffer_object.__init__(self)
+##    def setup_done(self):
+##        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__act_dict["command"].get_command(), True))
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if p1_ok:
+##            self.__ret_queue.put(("send_ok", ((self.__act_dict, self.__mach), p1_data)))
+##            self.delete()
+##    def report_problem(self, flag, what):
+##        self.__ret_queue.put(("send_error", ((self.__act_dict, self.__mach), "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
+##        self.delete()
+
+##class connection_to_nagios_server(net_tools.buffer_object):
+##    # connects to a foreign package-client
+##    def __init__(self, (srv_com, srv_name), ret_queue):
+##        self.__srv_com = srv_com
+##        self.__srv_name = srv_name
+##        self.__ret_queue = ret_queue
+##        net_tools.buffer_object.__init__(self)
+##    def setup_done(self):
+##        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__srv_com, True))
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if p1_ok:
+##            self.__ret_queue.put(("srv_send_ok", ((self.__srv_com, self.__srv_name), p1_data)))
+##            self.delete()
+##    def report_problem(self, flag, what):
+##        self.__ret_queue.put(("srv_send_error", ((self.__srv_com, self.__srv_name), "%s : %s" % (net_tools.net_flag_to_str(flag), what))))
+##        self.delete()
 # --------------------------------------------------------------------------------
 
 def pretty_print(name, obj, offset):
@@ -2583,6 +2590,26 @@ class config_error(error):
     def __init__(self, what = "UNKNOWN"):
         error.__init__(self, what)
     
+class build_process(threading_tools.process_obj):
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+            init_logger=True)
+        self.register_func("generate_config", self._generate_config)
+        build_client.init(self)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def loop_post(self):
+        build_client.close_clients()
+        self.__log_template.close()
+    def _generate_config(self, attr_dict, **kwargs):
+        cur_c = build_client.get_client(**attr_dict)
+        cur_c.internal_state = "done"
+        self.send_pool_message("client_update", cur_c.get_send_dict())
+
 class server_process(threading_tools.process_pool):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
@@ -2593,6 +2620,12 @@ class server_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._log_config()
         self.__msi_block = self._init_msi_block()
+        self._init_subsys()
+        self._init_network_sockets()
+        self.add_process(build_process("build"), start=True)
+        self.register_func("client_update", self._client_update)
+        self.__run_idx = 0
+        self.__pending_commands = {}
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -2600,6 +2633,9 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+    def _init_subsys(self):
+        self.log("init subsystems")
+        config_control.init(self)
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
@@ -2630,12 +2666,213 @@ class server_process(threading_tools.process_pool):
             msi_block = None
         return msi_block
     def loop_end(self):
+        config_control.close_clients()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
     def loop_post(self):
+        for open_sock in self.socket_dict.itervalues():
+            open_sock.close()
         self.__log_template.close()
-        
+    def _init_network_sockets(self):
+        my_0mq_id = uuid_tools.get_uuid().get_urn()
+        self.socket_dict = {}
+        # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
+        for key, sock_type, bind_port, target_func in [
+            ("router", zmq.ROUTER, global_config["SERVER_PUB_PORT"] , self._new_com),
+            ("pull"  , zmq.PULL  , global_config["SERVER_PULL_PORT"], self._new_com),
+            ]:
+            client = self.zmq_context.socket(sock_type)
+            client.setsockopt(zmq.IDENTITY, my_0mq_id)
+            client.setsockopt(zmq.LINGER, 100)
+            client.setsockopt(zmq.HWM, 256)
+            client.setsockopt(zmq.BACKLOG, 1)
+            conn_str = "tcp://*:%d" % (bind_port)
+            try:
+                client.bind(conn_str)
+            except zmq.core.error.ZMQError:
+                self.log("error binding to %s{%d}: %s" % (
+                    conn_str,
+                    sock_type, 
+                    process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_CRITICAL)
+                client.close()
+            else:
+                self.log("bind to port %s{%d}" % (conn_str,
+                                                  sock_type))
+                self.register_poller(client, zmq.POLLIN, target_func)
+                self.socket_dict[key] = client
+    def _new_com(self, zmq_sock):
+        data = [zmq_sock.recv_unicode()]
+        while zmq_sock.getsockopt(zmq.RCVMORE):
+            data.append(zmq_sock.recv_unicode())
+        if len(data) == 2:
+            c_uid, srv_com = (data[0], server_command.srv_command(source=data[1]))
+            srv_com.update_source()
+            cur_com = srv_com["command"].text
+            if cur_com == "register":
+                self._register_client(c_uid, srv_com)
+            else:
+                if c_uid.endswith("webfrontend"):
+                    # special command from webfrontend, FIXME
+                    self._handle_wfe_command(zmq_sock, c_uid, srv_com)
+                else:
+                    try:
+                        cur_client = client.get(c_uid)
+                    except KeyError:
+                        self.log("unknown uid %s, not known" % (c_uid),
+                                 logging_tools.LOG_LEVEL_CRITICAL)
+                    else:
+                        cur_client.new_command(srv_com)
+        else:
+            self.log("wrong number of data chunks (%d != 2)" % (len(data)),
+                     logging_tools.LOG_LEVEL_ERROR)
+    def _handle_wfe_command(self, zmq_sock, c_uid, srv_com):
+        cur_com = srv_com["command"].text
+        self.__run_idx += 1
+        srv_com["command"].attrib["run_idx"] = "%d" % (self.__run_idx)
+        srv_com["command"].attrib["uuid"] = c_uid
+        self.__pending_commands[self.__run_idx] = srv_com
+        # get device names
+        device_list = device.objects.filter(Q(pk__in=[cur_dev.attrib["pk"] for cur_dev in srv_com["devices:devices"]]))
+        self.log("got command %s for %s: %s" % (
+            cur_com,
+            logging_tools.get_plural("device", len(device_list)),
+            ", ".join([unicode(cur_dev) for cur_dev in device_list])))
+        dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device_list])
+        # set device state
+        for cur_dev in srv_com["devices:devices"]:
+            cur_dev.attrib["internal_state"] = "pre_init"
+            cur_dev.attrib["run_idx"] = "%d" % (self.__run_idx)
+            cur_dev.text = unicode(dev_dict[int(cur_dev.attrib["pk"])])
+            cur_dev.attrib["name"] = dev_dict[int(cur_dev.attrib["pk"])].name
+        self._handle_command(self.__run_idx)
+    def _handle_command(self, run_idx):
+        cur_com = self.__pending_commands[run_idx]
+        for cur_dev in cur_com["devices:devices"]:
+            if cur_dev.attrib["internal_state"] == "pre_init":
+                cur_dev.attrib["internal_state"] = "generate_config"
+                self.send_to_process(
+                    "build",
+                    cur_dev.attrib["internal_state"],
+                    dict(cur_dev.attrib),
+                    )
+        num_pending = len(cur_com.xpath(None, ".//ns:device[not(@internal_state='done')]"))
+        if not num_pending:
+            self.log("nothing pending, sending return")
+            self._send_return(cur_com)
+            del self.__pending_commands[run_idx]
+    def _send_return(self, cur_com):
+        send_sock = self.socket_dict["router"]
+        send_sock.send_unicode(cur_com["command"].attrib["uuid"], zmq.SNDMORE)
+        send_sock.send_unicode(unicode(cur_com))
+    def _client_update(self, *args, **kwargs):
+        src_proc, src_id, upd_dict = args
+        run_idx = upd_dict.get("run_idx", -1)
+        if run_idx in self.__pending_commands:
+            cur_com = self.__pending_commands[run_idx]
+            cur_dev = cur_com.xpath(None, ".//ns:device[@name='%s']" % (upd_dict["name"]))[0]
+            for key, value in upd_dict.iteritems():
+                if type(value) in [int, long]:
+                    cur_dev.attrib[key] = "%d" % (value)
+                else:
+                    cur_dev.attrib[key] = value
+            self._handle_command(run_idx)
+        else:
+            self.log("got client_update with unknown run_idx %d" % (upd_dict["run_idx"]),
+                     logging_tools.LOG_LEVEL_ERROR)
+
+class config_control(object):
+    def __init__(self, name):
+        self.__log_template = None
+        self.create_logger()
+    def create_logger(self):
+        if self.__log_template is None:
+            self.__log_template = logging_tools.get_logger(
+                "%s.%s" % (global_config["LOG_NAME"],
+                           self.name.replace(".", r"\.")),
+                global_config["LOG_DESTINATION"],
+                zmq=True,
+                context=config_control.srv_process.zmq_context,
+                init_logger=True)
+            self.log("added client")
+    def close(self):
+        if self.__log_template is not None:
+            self.__log_template.close()
+    @staticmethod
+    def close_clients():
+        for cur_c in config_control.__cc_dict.itervalues():
+            cur_c.close()
+    @staticmethod
+    def init(srv_process):
+        config_control.srv_process = srv_process
+        config_control.cc_log("init config_control")
+        config_control.__cc_dict = {}
+    @staticmethod
+    def cc_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+        config_control.srv_process.log("[cc] %s" % (what), log_level)
+    @staticmethod
+    def add_client(name):
+        if name not in config_control.__cc_dict:
+            new_c = config_control(name)
+            config_control.__cc_dict[name] = new_c
+            config_control.cc_log("added client %s" % (name))
+        return config_control.__cc_dict[name]
+    
+class build_client(object):
+    def __init__(self, **kwargs):
+        self.name = kwargs["name"]
+        self.pk = int(kwargs.get("pk", device.objects.get(Q(name=self.name)).pk))
+        self.create_logger()
+    def set_kwargs(self, **kwargs):
+        self.set_keys = sorted([key for key in kwargs.keys() if key not in ["name", "pk"]])
+        for key in self.set_keys:
+            setattr(self, key, kwargs[key])
+        for force_int in ["pk", "run_idx"]:
+            if hasattr(self, force_int):
+                setattr(self, force_int, int(getattr(self, force_int)))
+        for key in sorted(self.set_keys):
+            self.log(" %-24s : %s" % (key, getattr(self, key)))
+    def get_send_dict(self):
+        return dict([(key, getattr(self, key)) for key in self.set_keys + ["name", "pk"]])
+    def create_logger(self):
+        self.__log_template = logging_tools.get_logger(
+            "%s.%s" % (global_config["LOG_NAME"],
+                       self.name.replace(".", r"\.")),
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=build_client.srv_process.zmq_context,
+            init_logger=True)
+        self.log("added client (%s/%d)" % (self.name, self.pk))
+    def close(self):
+        if self.__log_template is not None:
+            self.__log_template.close()
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(level, what)
+    @staticmethod
+    def bc_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+        build_client.srv_process.log("[bc] %s" % (what), log_level)
+    @staticmethod
+    def init(srv_process):
+        build_client.__bc_dict = {}
+        build_client.srv_process = srv_process
+        build_client.bc_log("init build_client")
+    @staticmethod
+    def close_clients():
+        for cur_c in build_client.__bc_dict.itervalues():
+            cur_c.close()
+    @staticmethod
+    def get_client(**kwargs):
+        name = kwargs["name"]
+        if name not in build_client.__bc_dict:
+            new_c = build_client(**kwargs)
+            build_client.__bc_dict[name] = new_c
+            build_client.bc_log("added client %s" % (name))
+        else:
+            new_c = build_client.__bc_dict[name]
+        new_c.set_kwargs(**kwargs)
+        return new_c
+
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, db_con, glob_config, loc_config, log_lines):
         self.__log_buffer = []
@@ -2671,14 +2908,6 @@ class server_thread_pool(threading_tools.thread_pool):
         self.__command_queue.put(("set_net_server", self.__ns))
         self.__build_queue.put(("set_net_server", self.__ns))
         self._log_nagios_status()
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_queue:
-            if self.__log_buffer:
-                self.__log_queue.put([("log", x) for x in self.__log_buffer])
-                self.__log_buffer = []
-            self.__log_queue.put(("log", (what, lev, threading.currentThread().getName())))
-        else:
-            self.__log_buffer.append((what, lev, threading.currentThread().getName()))
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in self.__glob_config.get_log(clear=True):
@@ -2697,38 +2926,12 @@ class server_thread_pool(threading_tools.thread_pool):
         if self.__msi_block:
             self.__msi_block.add_actual_pid(new_pid)
             self.__msi_block.save_block()
-    def _int_error(self, err_cause):
-        if self["exit_requested"]:
-            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
-        else:
-            self["exit_requested"] = True
-            self.__ns.set_timeout(0.1)
     def _log_nagios_status(self):
         if self.__loc_config["NAGIOS_IP"]:
             # queue for comsend_ thread
             self.log("Nagios_master-host found at ip %s, enabling sending of hc_done requests" % (self.__loc_config["NAGIOS_IP"]))
         else:
             self.log("No Nagios_master-host found, disabling sending of hc_done requests", logging_tools.LOG_LEVEL_WARN)
-    def loop_function(self):
-        #if not self["exit_requested"]:
-            #self.__command_queue.put("update")
-            #if self.__watcher_queue:
-            #    self.__watcher_queue.put("update")
-        self.__ns.step()
-        if self.__loc_config["VERBOSE"]:
-            self.log("tqi: %s" % (", ".join(["%s: %d of %d used" % (name, act_used, max_size) for name, (max_size, act_used) in self.get_thread_queue_info().iteritems()])))
-    def thread_loop_post(self):
-        process_tools.delete_pid(self.__loc_config["PID_NAME"])
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
-    def _bind_state_call(self, **args):
-        if args["state"] == "error":
-            self.log("unable to bind to all ports, exiting", logging_tools.LOG_LEVEL_ERROR)
-            self._int_error("bind problem")
-        elif args["state"] == "ok":
-            self.__bind_states[args["port"]] = "ok"
-            if len(self.__bind_states.keys()) == 2:
-                self.__ns.set_timeout(self.__loc_config["DAEMON"] and 60 or 2)
     def _new_node_con(self, sock, src):
         return connection_from_node(src, self.__command_queue)
     def _new_command_con(self, sock, src):
@@ -2754,6 +2957,8 @@ def main():
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("SERVER_PUB_PORT"     , configfile.int_c_var(SERVER_PUB_PORT, help_string="server publish port [%(default)d]")),
+        ("SERVER_PULL_PORT"    , configfile.int_c_var(SERVER_PULL_PORT, help_string="server pull port [%(default)d]")),
     ])
     global_config.parse_file()
     options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
@@ -2771,7 +2976,6 @@ def main():
         log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
     cluster_location.read_config_from_db(global_config, "config_server", [
         ("TFTP_DIR"                  , configfile.str_c_var("/tftpboot")),
-        ("COMMAND_PORT"              , configfile.int_c_var(SERVER_COM_PORT)),
         ("MONITORING_PORT"           , configfile.int_c_var(NCS_PORT)),
         ("LOCALHOST_IS_EXCLUSIVE"    , configfile.bool_c_var(True)),
         ("HOST_CACHE_TIME"           , configfile.int_c_var(10 * 60)),
@@ -2782,7 +2986,6 @@ def main():
         ("CONFIG_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
         ("IMAGE_DIR"  , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "images"))),
         ("KERNEL_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
-    
 ##    loc_config["SERVER_IDX"] = sql_info.server_device_idx
 ##    log_lines = []
 ##    loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, sql_info.server_device_idx, "config_server", "Cluster config Server")
