@@ -13,6 +13,11 @@ o
 <div id="config">
 </div>
 
+<input type="button" id="generate_button" value="generate" onClick="generate_configs();"/>
+<div id="generated_config">
+gc
+</div>
+
 <script type="text/javascript">
 
 DEVICES = undefined;
@@ -22,6 +27,24 @@ CUR_FILTER = undefined;
 SHOW_LIST = undefined;
 // which conigs to display
 DISPLAY_LIST = undefined;
+// current device selection
+CUR_DEVICES = undefined;
+
+function generate_configs() {
+    $("input#generate_button").attr("disabled", "disabled");
+    $.ajax({
+        url : "{% url config:generate_config %}",
+        data : {
+            "sel_list" : CUR_DEVICES
+        },
+        success : function(xml) {
+            $("input#generate_button").removeAttr("disabled");
+            if (parse_xml_response(xml)) {
+                console.log($(xml));
+            };
+        }
+    });
+};
 
 function clear_filter() {
     $("input#filter").val("");
@@ -229,9 +252,10 @@ function draw_tables() {
 };
 
 function use_devs(dt_div) {
-    load_devices(_.map(dt_div.dynatree("getSelectedNodes"), function(value) {
+    CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
         return(value.data.key);
-    }));
+    });
+    load_devices(CUR_DEVICES);
 };
 
 function load_devices(sel_list) {

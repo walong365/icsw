@@ -41,6 +41,7 @@ config_patterns = patterns(
     url("^create_script$"    , "config_views.create_script"           , name="create_script"     ),
     url("^delete_script$"    , "config_views.delete_script"           , name="delete_script"     ),
     url("^set_config_cb$"    , "config_views.alter_config_cb"         , name="alter_config_cb"   ),
+    url("^generate_config$"  , "config_views.generate_config"         , name="generate_config"   ),
 )
 
 device_patterns = patterns(

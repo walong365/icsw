@@ -19,6 +19,8 @@ from lxml.builder import E
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
 import pprint
+import net_tools
+import server_command
 
 @init_logging
 @login_required
@@ -387,3 +389,20 @@ def alter_config_cb(request):
     #print etree.tostring(xml_resp, pretty_print=True)
     return request.xml_response.create_response()
     
+@login_required
+@init_logging
+def generate_config(request):
+    _post = request.POST
+    sel_list = [key.split("__")[1] for key in _post.getlist("sel_list[]", []) if key.startswith("dev__")]
+    dev_list = device.objects.filter(Q(pk__in=sel_list)).order_by("name")
+    request.log("generating config for %s: %s" % (logging_tools.get_plural("device", len(dev_list)),
+                                                  ", ".join([unicode(dev) for dev in dev_list])))
+    srv_com = server_command.srv_command(command="build_config")
+    srv_com["devices"] = srv_com.builder("devices",
+        *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
+    result = net_tools.zmq_connection("config_webfrontend", timeout=2).add_connection("tcp://localhost:8005", srv_com)
+    if not result:
+        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        request.log("build done", xml=True)
+    return request.xml_response.create_response()
