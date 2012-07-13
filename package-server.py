@@ -1429,7 +1429,7 @@ def main():
         ("VERBOSE"                  , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("SERVER_PUB_PORT"          , configfile.int_c_var(P_SERVER_PUB_PORT, help_string="server publish port [%(default)d]")),
         ("SERVER_PULL_PORT"         , configfile.int_c_var(P_SERVER_PULL_PORT, help_string="server pull port [%(default)d]")),
-        ("NODE_PORT"                , configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port where the package-clients are listengin [%(default)d]")),
+        ("NODE_PORT"                , configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port where the package-clients are listening [%(default)d]")),
         ("ROOT_EXPORT_DIR"          , configfile.str_c_var("/usr/local/share/cluster/packages/RPMs")),
         ("ROOT_IMPORT_DIR"          , configfile.str_c_var("/packages/RPMs")),
         ("CACHE_TIMEOUT"            , configfile.int_c_var(15 * 60)),
