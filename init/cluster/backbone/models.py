@@ -10,6 +10,8 @@ from lxml import etree
 from lxml.builder import E
 import re
 import ipvx_tools
+import logging_tools
+import pprint
 
 def only_wf_perms(in_list):
     return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
@@ -166,6 +168,8 @@ class config_bool(models.Model):
             config="%d" % (self.config_id),
             value="1" if self.value else "0"
         )
+    def __unicode__(self):
+        return "True" if self.value else "False"
     class Meta:
         db_table = u'config_bool'
 
@@ -189,6 +193,8 @@ class config_int(models.Model):
             config="%d" % (self.config_id),
             value="%d" % (self.value or 0)
         )
+    def __unicode__(self):
+        return "%d" % (self.value or 0)
     class Meta:
         db_table = u'config_int'
 
@@ -217,6 +223,7 @@ class config_script(models.Model):
         )
     class Meta:
         db_table = u'config_script'
+        ordering = ("priority", "name",)
 
 class config_str(models.Model):
     idx = models.AutoField(db_column="config_str_idx", primary_key=True)
@@ -237,6 +244,8 @@ class config_str(models.Model):
             config="%d" % (self.config_id),
             value=self.value or ""
         )
+    def __unicode__(self):
+        return self.value or u""
     class Meta:
         db_table = u'config_str'
         ordering = ("name",)
@@ -294,10 +303,10 @@ class device(models.Model):
     newstate = models.ForeignKey("status", null=True)
     rsync = models.BooleanField()
     rsync_compressed = models.BooleanField()
-    prod_link = models.IntegerField(null=True, blank=True)
+    prod_link = models.ForeignKey("network", db_column="prod_link", null=True)
     recvstate = models.TextField(blank=True, null=True)
     reqstate = models.TextField(blank=True, null=True)
-    bootnetdevice = models.ForeignKey("device", null=True, related_name="boot_net_device")
+    bootnetdevice = models.ForeignKey("netdevice", null=True, related_name="boot_net_device")
     bootserver = models.ForeignKey("device", null=True, related_name="boot_server")
     reachable_via_bootserver = models.IntegerField(null=True, blank=True)
     dhcp_mac = models.IntegerField(null=True, blank=True)
@@ -1000,9 +1009,24 @@ class network(models.Model):
             netmask=self.netmask)
     class Meta:
         db_table = u'network'
+    def get_full_postfix(self):
+        return "%s.%s" % (self.postfix, self.name)
+    def get_info(self):
+        all_slaves = self.rel_master_network.all()
+        # return extended info
+        log_str = "%s network '%s' has %s%s" % (
+            self.network_type.get_identifier_display(),
+            self.identifier,
+            logging_tools.get_plural("slave network", len(all_slaves)),
+            ": %s" % ([cur_slave.identifier for cur_slave in all_slaves]) if all_slaves else "",
+        )
+        return log_str
     def __unicode__(self):
-        return u"%s (%s)" % (self.name,
-                             self.network)
+        return u"%s (%s, %s)" % (
+            self.name,
+            self.network,
+            self.network_type.identifier
+        )
 
 class network_device_type(models.Model):
     idx = models.AutoField(db_column="network_device_type_idx", primary_key=True)
@@ -1068,6 +1092,13 @@ class config(models.Model):
         return r_xml
     def __unicode__(self):
         return self.name
+    def show_variables(self, log_com, detail=False):
+        log_com(" - config %s (pri %d)" % (self.name,
+                                           self.priority))
+        if detail:
+            for var_type in ["str", "int", "bool"]:
+                for cur_var in getattr(self, "config_%s_set" % (var_type)).all():
+                    log_com("    %-20s : %s" % (cur_var.name, unicode(cur_var)))
     class Meta:
         db_table = u'new_config'
 
@@ -2052,6 +2083,9 @@ def net_ip_pre_save(sender, **kwargs):
                 cur_inst.network = match_list[0][1]
             else:
                 raise ValidationError("no maching network found")
+        all_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
+        if cur_inst.ip in all_ips:
+            raise ValidationError("Adress already used")
 
 @receiver(signals.pre_save, sender=peer_information)
 def peer_information_pre_save(sender, **kwargs):

@@ -21,7 +21,7 @@ DATABASES = {
         "USER"     : "",
         "PASSWORD" : "",
         "HOST"     : "",
-        "PORT"     : "",
+        "PORT"     : ""
     }
 }
 # read from /etc/sysconfig/cluster/mysql.cf
@@ -142,9 +142,10 @@ TEMPLATE_LOADERS = (
 )
 
 MIDDLEWARE_CLASSES = (
-    "django.middleware.common.CommonMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
     #'django.middleware.csrf.CsrfViewMiddleware',
+    "django.middleware.transaction.TransactionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     # Uncomment the next line for simple clickjacking protection:

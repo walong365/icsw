@@ -179,26 +179,26 @@ class db_device_variable(object):
     def get_value(self):
         return self.__var_value
         
-def write_config(server_type, config, **kwargs):
+def write_config(server_type, g_config, **kwargs):
     dc = kwargs.get("dc", None)
     log_lines = []
     full_host_name = socket.gethostname()
     host_name = full_host_name.split(".")[0]
     srv_info = config_tools.server_check(dc=dc, server_type=server_type, short_host_name=host_name)
     if srv_info.num_servers and srv_info.config_idx:
-        for key in config.keys():
+        for key in g_config.keys():
             #print k,config.get_source(k)
             #print "write", k, config.get_source(k)
             #if config.get_source(k) == "default":
             # only deal with int and str-variables
             tab_type = {"i" : "int",
                         "s" : "str",
-                        "b" : "bool"}.get(config.get_type(key), None)
-            if tab_type and config.database(key):
+                        "b" : "bool"}.get(g_config.get_type(key), None)
+            if tab_type and g_config.database(key):
                 # var global / local
-                var_range_name = config.is_global(key) and "global" or "local"
+                var_range_name = g_config.is_global(key) and "global" or "local"
                 # build real var name
-                real_k_name = config.is_global(key) and key or "%s:%s" % (host_name, key)
+                real_k_name = g_config.is_global(key) and key or "%s:%s" % (host_name, key)
                 var_obj = globals()["config_%s" % (tab_type)]
                 try:
                     cur_var = var_obj.objects.get(
@@ -208,15 +208,15 @@ def write_config(server_type, config, **kwargs):
                     )
                 except var_obj.DoesNotExist:
                     var_obj(name=real_k_name,
-                            descr="%s default value from %s on %s" % (
+                            description="%s default value from %s on %s" % (
                                 var_range_name,
                                 srv_info.config_name,
                                 full_host_name),
                             config=config.objects.get(Q(pk=srv_info.config_idx)),
-                            value=config[key]).save()
+                            value=g_config[key]).save()
                 else:
-                    if config[key] != cur_var.value:
-                        cur_var.value = config[key]
+                    if g_config[key] != cur_var.value:
+                        cur_var.value = g_config[key]
                         cur_var.save()
             else:
                 #print "X", key
