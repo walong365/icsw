@@ -27,8 +27,8 @@ case "$1" in
     start)
         echo "Starting webfrontend"
 
+        /opt/python-init/lib/python/site-packages/init/cluster/backbone/check_isolation_level.py
         cd /opt/python-init/lib/python/site-packages/init/cluster/
-        export OEKOTEX_INI=olim.ini
         python-init manage.py runfcgi host=127.0.0.1 port=9002 method=prefork maxrequests=64 daemonize=true maxspare=16 pidfile=${PID_FILE} outlog=${LOG_FILE}
     
         /etc/init.d/nginx restart

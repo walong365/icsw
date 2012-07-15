@@ -194,7 +194,7 @@ def get_network_tree(request):
         *[E.network_device_type(unicode(cur_ndt), pk="%d" % (cur_ndt.pk)) for cur_ndt in network_device_type.objects.all()]))
     # networks
     xml_resp.append(E.network_list(
-        *[cur_nw.get_xml() for cur_nw in network.objects.all().order_by("name")]
+        *[cur_nw.get_xml() for cur_nw in network.objects.all().select_related("network_type").order_by("name")]
     ))
     # ethtool options
     xml_resp.append(E.ethtool_autoneg_list(
