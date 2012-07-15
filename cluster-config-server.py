@@ -23,13 +23,15 @@
 
 import sys
 import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "init.cluster.settings")
+
 import getopt
 import re
 import shutil
 import tempfile
 import configfile
 import cluster_location
-import types
 import os.path
 import socket
 import time
@@ -39,7 +41,6 @@ import threading
 import logging_tools
 import process_tools
 import mysql_tools
-import MySQLdb
 import array
 import server_command
 import config_tools
@@ -49,8 +50,9 @@ import uuid_tools
 import zmq
 from lxml import etree
 from lxml.builder import E
-from init.cluster.backbone.models import device
+from init.cluster.backbone.models import device, network, config
 from django.db.models import Q
+from django.db import transaction
 
 try:
     from cluster_config_server_version import VERSION_STRING
@@ -187,24 +189,25 @@ CONFIG_NAME = "/etc/sysconfig/cluster/cluster_config_server_clients.xml"
 def pretty_print(name, obj, offset):
     lines = []
     off_str = " " * offset
-    if type(obj) == type({}):
+    if type(obj) == dict:
         if name:
             head_str = "%s%s(D):" % (off_str, name)
             lines.append(head_str)
         else:
             head_str = ""
         keys = sorted(obj.keys())
-        max_len = max([len(x) for x in keys])
+        max_len = max([len(key) for key in keys])
         for key in keys:
-            lines += pretty_print(("%s%s" % (key, " " * max_len))[0:max_len],
-                                  obj[key],
-                                  len(head_str))
-    elif type(obj) in [type([]), type(())]:
+            lines.extend(pretty_print(
+                ("%s%s" % (key, " " * max_len))[0:max_len],
+                obj[key],
+                len(head_str)))
+    elif type(obj) in [list, tuple]:
         head_str = "%s%s(L %d):" % (off_str, name, len(obj))
         lines.append(head_str)
         idx = 0
         for value in obj:
-            lines += pretty_print("%d" % (idx), value, len(head_str))
+            lines.extend(pretty_print("%d" % (idx), value, len(head_str)))
             idx += 1
     elif type(obj) == type(""):
         if obj:
@@ -219,52 +222,36 @@ def pretty_print(name, obj, offset):
         
 class new_config_object(object):
     # path and type [(f)ile, (l)ink, (d)ir, (c)opy]
-    def __init__(self, destination, o_type):
+    def __init__(self, destination, c_type, **kwargs):
         self.dest = destination
-        self.type = o_type
+        self.c_type = c_type
         self.content = []
-        self.source_configs = []
+        self.source_configs = set()
         self.show_error = True
         self.uid, self.gid = (0, 0)
-        self.set_error_flag()
-    def set_error_flag(self, et = 0):
-        self.error_flag = et
-    def get_error_flag(self):
-        return self.error_flag
-    def get_dest(self):
-        return self.dest
-    def get_type(self):
-        return self.type
+        self.error_flag = False
+        for key, value in kwargs.iteritems():
+            setattr(self, key, value)
     def set_source(self, sp):
         self.source = sp
-    def set_show_error(self, so):
-        self.show_error = so
     def set_config(self, conf):
         self.add_config(conf.get_name())
     def add_config(self, conf):
-        if conf not in self.source_configs:
-            self.source_configs.append(conf)
-    def set_uid(self, uid):
-        self.uid = uid
-    def set_gid(self, gid):
-        self.gid = gid
-    def get_uid(self):
-        return self.uid
-    def get_gid(self):
-        return self.gid
-    def set_mode(self, mode):
+        self.source_configs.add(conf)
+    def _set_mode(self, mode):
         if type(mode) == type(""):
-            self.mode = int(mode)
+            self.__mode = int(mode)
         else:
-            self.mode = mode
-    def get_mode(self):
-        return self.mode
+            self.__mode = mode
+    def _get_mode(self):
+        return self.__mode
+    mode = property(_get_mode, _set_mode)
     def __iadd__(self, line):
-        if type(line) == types.StringType:
+        if type(line) in [str, unicode]:
             self.content.append("%s\n" % (line))
         elif type(line) == type([]):
             self.content.extend(["%s\n" % (x) for x in line])
-        elif type(line) == types.DictType:
+        elif type(line) == dict:
             for key, value in line.iteritems():
                 self.content.append("%s='%s'\n" % (key, value))
         elif type(line) == type(array.array("b")):
@@ -275,6 +262,28 @@ class new_config_object(object):
             self.content.append(bytes.tostring())
         else:
             self.content.append(bytes)
+
+class internal_object(new_config_object):
+    def __init__(self, destination):
+        new_config_object.__init__(self, destination, "i", mode="0755")
+    def set_config(self, ref_config):
+        new_config_object.set_config(self, ref_config)
+        self.mode = ref_config.mode
+        self.uid = ref_config.uid
+        self.gid = ref_config.gid
+    def write_object(self, dest, disk_int):
+        ret_state, ret_str = (0, "")
+        sql_tuples = (0,
+                      ", ".join(self.source_configs),
+                      self.get_uid(),
+                      self.get_gid(),
+                      int(self.get_mode()),
+                      self.get_type(),
+                      "",
+                      self.dest,
+                      self.get_error_flag(),
+                      "")
+        return ret_state, ret_str, sql_tuples
             
 class file_object(new_config_object):
     def __init__(self, destination, **args):
@@ -425,29 +434,6 @@ class copy_object(new_config_object):
                       "")
         return ret_state, ret_str, sql_tuples
         
-class internal_object(new_config_object):
-    def __init__(self, destination):
-        new_config_object.__init__(self, destination, "i")
-        self.set_mode("0755")
-    def set_config(self, ref_config):
-        new_config_object.set_config(self, ref_config)
-        self.set_mode(ref_config.get_file_mode())
-        self.set_uid(ref_config.get_uid())
-        self.set_gid(ref_config.get_gid())
-    def write_object(self, dest, disk_int):
-        ret_state, ret_str = (0, "")
-        sql_tuples = (0,
-                      ", ".join(self.source_configs),
-                      self.get_uid(),
-                      self.get_gid(),
-                      int(self.get_mode()),
-                      self.get_type(),
-                      "",
-                      self.dest,
-                      self.get_error_flag(),
-                      "")
-        return ret_state, ret_str, sql_tuples
-
 # dummy container for stdout / stderr
 class dummy_container(object):
     def __init__(self):
@@ -458,63 +444,195 @@ class dummy_container(object):
     def get_content(self):
         return self.__content
 
-class pseudo_config(object):
-    # used for fetching variables
-    def __init__(self, db_rec, c_req):#name, idx, pri, descr, identifier, node_name, log_queue, conf_dict):
-        self.is_pseudo = True
-        self.__db_rec = db_rec
-        self.__c_req = c_req
-        #self.name = name
-        #self.pri = pri
-        #self.idx = idx
-        #self.descr = descr
-        #self.identifier = identifier
-        #self.log_queue = log_queue
-        #self.set_node_name(node_name)
-        self.__allowed_var_types = ["int", "str", "blob"]
-        self.var_dict, self.var_types, self.script_dict = ({},
-                                                           dict([(x, []) for x in self.__allowed_var_types]),
-                                                           {})
-        self.all_scripts = []
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__c_req.log(what, level)
-    def add_variable(self, var_type, var):
-        if var_type in self.__allowed_var_types:
-            self.var_dict[var["name"].lower()] = var
-            self.var_types[var_type].append(var["name"].lower())
-            added = True
-        else:
-            added = False
-        return added
-    def show_variables(self):
-        self.var_dict["IDENTIFIER".lower()] = {"name"   : "identifier",
-                                               "descr"  : "internal_variable",
-                                               "config" : self.__db_rec["new_config_idx"],
-                                               "value"  : self.get_name()}
-        self.var_types["str"].append("IDENTIFIER".lower())
-        self.log(" - pseudo config %-20s (priority %4d): %s" % (self.get_name(),
-                                                                self.get_pri(),
-                                                                ", ".join([logging_tools.get_plural(var_type, len(self.var_types[var_type])) for var_type in self.__allowed_var_types])))
-        if self.__c_req.get_loc_config()["VERBOSE"]:
-            for var_type in self.__allowed_var_types:
-                for name in self.var_types[var_type]:
-                    if var_type == "str":
-                        val_str = "'%s'" % (str(self.var_dict[name]["value"]))
-                    elif var_type == "int":
-                        val_str = "%d" % (self.var_dict[name]["value"])
-                    elif var_type == "blob":
-                        val_str = "len %s" % (logging_tools.get_plural("byte", len(self.var_dict[name]["value"])))
+##class pseudo_config(object):
+##    # used for fetching variables
+##    def __init__(self, db_rec, c_req):#name, idx, pri, descr, identifier, node_name, log_queue, conf_dict):
+##        self.is_pseudo = True
+##        self.__db_rec = db_rec
+##        self.__c_req = c_req
+##        #self.name = name
+##        #self.pri = pri
+##        #self.idx = idx
+##        #self.descr = descr
+##        #self.identifier = identifier
+##        #self.log_queue = log_queue
+##        #self.set_node_name(node_name)
+##        self.__allowed_var_types = ["int", "str", "blob"]
+##        self.var_dict, self.var_types, self.script_dict = ({},
+##                                                           dict([(x, []) for x in self.__allowed_var_types]),
+##                                                           {})
+##        self.all_scripts = []
+##    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+##        self.__c_req.log(what, level)
+##    def add_variable(self, var_type, var):
+##        if var_type in self.__allowed_var_types:
+##            self.var_dict[var["name"].lower()] = var
+##            self.var_types[var_type].append(var["name"].lower())
+##            added = True
+##        else:
+##            added = False
+##        return added
+##    def show_variables(self):
+##        self.var_dict["IDENTIFIER".lower()] = {"name"   : "identifier",
+##                                               "descr"  : "internal_variable",
+##                                               "config" : self.__db_rec["new_config_idx"],
+##                                               "value"  : self.get_name()}
+##        self.var_types["str"].append("IDENTIFIER".lower())
+##        self.log(" - pseudo config %-20s (priority %4d): %s" % (self.get_name(),
+##                                                                self.get_pri(),
+##                                                                ", ".join([logging_tools.get_plural(var_type, len(self.var_types[var_type])) for var_type in self.__allowed_var_types])))
+##        if self.__c_req.get_loc_config()["VERBOSE"]:
+##            for var_type in self.__allowed_var_types:
+##                for name in self.var_types[var_type]:
+##                    if var_type == "str":
+##                        val_str = "'%s'" % (str(self.var_dict[name]["value"]))
+##                    elif var_type == "int":
+##                        val_str = "%d" % (self.var_dict[name]["value"])
+##                    elif var_type == "blob":
+##                        val_str = "len %s" % (logging_tools.get_plural("byte", len(self.var_dict[name]["value"])))
+##                    else:
+##                        val_str = "pri %d with %s" % (self.var_dict[name]["priority"], logging_tools.get_plural("line", len(self.var_dict[name]["value"].split("\n"))))
+##                    self.log("    %8s %-24s: %s" % (var_type, name, val_str))
+##    def get_pri(self):
+##        return self.__db_rec["priority"]
+##    def get_identifier(self):
+##        return self.__db_rec["identifier"]
+##    def get_name(self):
+##        return self.__db_rec["name"]
+##    def get_node_name(self):
+##        return self.__c_req["name"]
+
+class generated_tree(object):
+    def __init__(self):
+        pass
+    
+class build_container(object):
+    def __init__(self, b_client, config_dict, g_tree):
+        self.b_client = b_client
+        self.config_dict = config_dict
+        self.g_tree = g_tree
+        self.__s_time = time.time()
+        self.log("init build continer")
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK, **kwargs):
+        self.b_client.log("[bc] %s" % (what), level, **kwargs)
+    def close(self):
+        self.log("done in %s" % (logging_tools.get_diff_time_str(time.time() - self.__s_time)))
+        del self.b_client
+        del self.config_dict
+        del self.g_tree
+    def process_scripts(self, conf_dict, conf_pk):
+        cur_conf = self.config_dict[conf_pk]
+        # build local variables
+        local_vars = dict(sum(
+            [[(cur_var.name, cur_var.value) for cur_var in getattr(cur_conf, "config_%s_set" % (var_type)).all()] for var_type in ["str", "int", "bool", "blob"]], []))
+        # copy local vars
+        for key, value in local_vars.iteritems():
+            conf_dict[key] = value
+        self.log("config %s: %s defined, %s enabled, %s" % (
+            cur_conf.name,
+            logging_tools.get_plural("script", len(cur_conf.config_script_set.all())),
+            logging_tools.get_plural("script", len([cur_scr for cur_scr in cur_conf.config_script_set.all() if cur_scr.enabled])),
+            logging_tools.get_plural("local variable", len(local_vars.keys()))))
+        for cur_script in [cur_scr for cur_scr in cur_conf.config_script_set.all() if cur_scr.enabled]:
+            lines = cur_script.value.split("\n")
+            self.log(" - scriptname '%s' (pri %d) has %s" % (
+                cur_script.name,
+                cur_script.priority,
+                logging_tools.get_plural("line", len(lines))))
+            start_c_time = time.time()
+            try:
+                code_obj = compile(
+                    cur_script.value.replace("\r\n", "\n") + "\n",
+                    "<script %s>" % (cur_script.name),
+                    "exec")
+            except:
+                exc_info = process_tools.get_except_info()
+                self.log("error during compile of %s (%s)" % (
+                    cur_script.name,
+                    logging_tools.get_diff_time_str(time.time() - start_c_time)),
+                         logging_tools.LOG_LEVEL_ERROR,
+                         register=True)
+                for line in exc_info.log_lines:
+                    self.log("   *** %s" % (line), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                compile_time = time.time() - start_c_time
+                # prepare stdout / stderr
+                start_time = time.time()
+                stdout_c, stderr_c = (dummy_container(), dummy_container())
+                old_stdout, old_stderr = (sys.stdout, sys.stderr)
+                sys.stdout, sys.stderr = (stdout_c  , stderr_c  )
+                self.__touched_objects, self.__touched_links, self.__deleted_files = ([], [], [])
+                try:
+                    ret_code = eval(code_obj, {}, {
+                        # old version
+                        "dev_dict"        : conf_dict,
+                        # new version
+                        "conf_dict"       : conf_dict,
+                        "config"          : self,
+                        "dir_object"      : dir_object,
+                        "delete_object"   : delete_object,
+                        "copy_object"     : copy_object,
+                        "link_object"     : link_object,
+                        "file_object"     : file_object,
+                        "do_ssh"          : do_ssh,
+                        "do_etc_hosts"    : do_etc_hosts,
+                        "do_hosts_equiv"  : do_hosts_equiv,
+                        "do_nets"         : do_nets,
+                        "do_routes"       : do_routes,
+                        "do_fstab"        : do_fstab,
+                        "partition_setup" : partition_setup})
+                except:
+                    conf_dict["called"][cur_conf.name] = False
+                    exc_info = process_tools.exception_info()
+                    self.log("An Error occured during eval() after %s:" % (logging_tools.get_diff_time_str(time.time() - start_time)),
+                             logging_tools.LOG_LEVEL_ERROR,
+                             register=True)
+                    for line in exc_info.log_lines:
+                        self.log(" *** %s" % (line), logging_tools.LOG_LEVEL_ERROR)
+                    # create error-entry, preferable not direct in config :-)
+                    # FIXME
+                    # remove objects
+                    if self.__touched_objects:
+                        self.log("%s touched : %s" % (
+                            logging_tools.get_plural("object", len(self.__touched_objects)),
+                            ", ".join(self.__touched_objects)))
+                        for to in self.__touched_objects:
+                            self.g_tree.conf_dict[to].set_error_flag(1)
+                    if self.__touched_links:
+                        self.log("%s touched : %s" % (
+                            logging_tools.get_plural("link", len(self.__touched_links)),
+                            ", ".join(self.__touched_links)))
+                        for tl in self.__touched_links:
+                            self.g_tree.link_dict[tl].set_error_flag(1)
                     else:
-                        val_str = "pri %d with %s" % (self.var_dict[name]["priority"], logging_tools.get_plural("line", len(self.var_dict[name]["value"].split("\n"))))
-                    self.log("    %8s %-24s: %s" % (var_type, name, val_str))
-    def get_pri(self):
-        return self.__db_rec["priority"]
-    def get_identifier(self):
-        return self.__db_rec["identifier"]
-    def get_name(self):
-        return self.__db_rec["name"]
-    def get_node_name(self):
-        return self.__c_req["name"]
+                        self.log("no objects touched")
+                    if self.__deleted_files:
+                        self.log("%s deleted : %s" % (
+                            logging_tools.get_plural("delete", len(self.__deleted_files)),
+                            ", ".join(self.__deleted_files)))
+                        for tl in self.__touched_links:
+                            self.g_tree.erase_dict[tl].set_error_flag(1)
+                    else:
+                        self.log("no objects deleted")
+                else:
+                    conf_dict["called"][cur_conf.name] = True
+                    if ret_code == None:
+                        ret_code = 0
+                    self.log("  exited after %s (%s compile time) with return code %d" % (
+                        logging_tools.get_diff_time_str(time.time() - start_time),
+                        logging_tools.get_diff_time_str(compile_time),
+                        ret_code))
+                    for log_line in [line.rstrip() for line in stdout_c.get_content().split("\n") if line.strip()]:
+                        self.log("out: %s" % (log_line))
+                    for log_line in [line.rstrip() for line in stderr_c.get_content().split("\n") if line.strip()]:
+                        self.log("*** err: %s" % (log_line), logging_tools.LOG_LEVEL_ERROR)
+                        self.log("%s something received on stderr" % (cur_conf.name), logging_tools.LOG_LEVEL_ERROR, register=True)
+                finally:
+                    sys.stdout, sys.stderr = (old_stdout, old_stderr)
+                    code_obj = None
+        # remove local vars
+        for key in local_vars.iterkeys():
+            del conf_dict[key]
 
 class new_config(object):
     def __init__(self, db_rec, c_req):#name, idx, pri, descr, identifier, node_name, log_queue, local_conf):
@@ -1145,7 +1263,7 @@ def get_sys_dict(dc, im_name):
         mes_str = "found no image with this name, using %s-%d.%d as vendor-id-string ..." % (sys_dict["vendor"], sys_dict["version"], sys_dict["release"])
     return sys_dict, mes_str
 
-class network_tree(object):
+class old_network_tree(object):
     def __init__(self, c_req, dc):
         self.__c_req = c_req
         nw_nf  = ["identifier", "network_idx", "name", "postfix", "network", "netmask", "broadcast", "gateway", "gw_pri"]
@@ -1181,13 +1299,13 @@ class network_tree(object):
                 pd_stuff["idxs"].append(loopback_idx)
         self.production_dict = prod_dict
         self.bootnet_idxs, self.loopback_idx = (bootnet_idxs, loopback_idx)
-    def log_network(self, c_req, pd_id):
-        net_stuff = self.production_dict[pd_id]
-        log_str = "  %sProduction network %s has %s%s" % ("active" if net_stuff["net"]["network_idx"] == c_req["prod_link"] else "",
-                                                          pd_id,
-                                                          logging_tools.get_plural("slave network", len(net_stuff["slaves"])),
-                                                          net_stuff["slaves"] and ": %s" % (", ".join([x["identifier"] for x in net_stuff["slaves"]])) or "")
-        c_req.log(log_str)
+##    def log_network(self, c_req, pd_id):
+##        net_stuff = self.production_dict[pd_id]
+##        log_str = "  %sProduction network %s has %s%s" % ("active" if net_stuff["net"]["network_idx"] == c_req["prod_link"] else "",
+##                                                          pd_id,
+##                                                          logging_tools.get_plural("slave network", len(net_stuff["slaves"])),
+##                                                          net_stuff["slaves"] and ": %s" % (", ".join([x["identifier"] for x in net_stuff["slaves"]])) or "")
+##        c_req.log(log_str)
         
 def do_fstab(conf):
     act_ps = partition_setup(conf.get_config_request(), conf.get_cursor())
@@ -1324,43 +1442,43 @@ class config_request(object):
             server_routing = vs_struct.get_route_to_other_device(dc, self.__conf_dev, filter_ip=self.__source_host, allow_route_to_other_networks=True)
             bs_list.append((server_routing[0][0], vs_key))
         return sorted(bs_list)[0][1]
-    def create_base_structs(self, dc):
-        # resolve ip to device_name (cache, FIXME)
-        if self.__source_host:
-            # source_host given, resolve according to ip
-            sql_str, sql_tuple = ("SELECT d.new_image, d.name, d.root_passwd, d.device_idx, d.prod_link, s.status, d.rsync, d.rsync_compressed, d.bootnetdevice, d.bootserver, i.ip, dg.device, dt.identifier FROM " + \
-                                      "status s, device d, netdevice nd, netip i, network nw, network_type nt, device_group dg, device_type dt WHERE d.device_group=dg.device_group_idx AND d.device_type=dt.device_type_idx " + \
-                                      "AND nd.device=d.device_idx AND i.netdevice=nd.netdevice_idx AND (nt.identifier='b' OR nt.identifier='p') AND i.network=nw.network_idx AND nw.network_type=nt.network_type_idx AND " + \
-                                      "i.ip=%s AND s.status_idx=d.newstate", (self.__source_host))
-        else:
-            sql_str, sql_tuple = ("SELECT d.new_image, d.name, d.root_passwd, d.device_idx, d.prod_link, s.status, d.rsync, d.rsync_compressed, d.bootnetdevice, d.bootserver, i.ip, dg.device, dt.identifier FROM " + \
-                                      "status s, device d, netdevice nd, netip i, network nw, network_type nt, device_group dg, device_type dt WHERE d.device_group=dg.device_group_idx AND d.device_type=dt.device_type_idx " + \
-                                      "AND nd.device=d.device_idx AND i.netdevice=nd.netdevice_idx AND nt.identifier='b' AND i.network=nw.network_idx AND nw.network_type=nt.network_type_idx AND " + \
-                                      "d.name=%s AND s.status_idx=d.newstate", (self.__dev_name))
-        dc.execute(sql_str, sql_tuple)
-        if dc.rowcount == 1:
-            self.__node_record = dc.fetchone()
-            #print self.__node_record
-            # set device_name and source_host from db
-            self.__dev_name = self.__node_record["name"]
-            self.__source_host = self.__node_record["ip"]
-            self.__conf_dev = config_tools.server_check(dc=dc,
-                                                        short_host_name=self.__node_record["name"],
-                                                        # type is not so important here because the device_idx is resolved from the name
-                                                        server_type="node",
-                                                        fetch_network_info=True)
-        else:
-            if dc.rowcount:
-                self.log("Found more than one device (%d) matching IP-address %s (command %s)" % (dc.rowcount,
-                                                                                                  self.__source_host,
-                                                                                                  self.command),
-                         logging_tools.LOG_LEVEL_WARN)
-                self.set_ret_str("error resolving ip-address ('%s' not unique), see logs" % (self.__source_host))
-            else:
-                self.log("found no device matching IP-address %s (command %s)" % (self.__source_host,
-                                                                                  self.command),
-                         logging_tools.LOG_LEVEL_WARN)
-                self.set_ret_str("error resolving ip-address ('%s' not found), see logs" % (self.__source_host))
+##    def create_base_structs(self, dc):
+##        # resolve ip to device_name (cache, FIXME)
+##        if self.__source_host:
+##            # source_host given, resolve according to ip
+##            sql_str, sql_tuple = ("SELECT d.new_image, d.name, d.root_passwd, d.device_idx, d.prod_link, s.status, d.rsync, d.rsync_compressed, d.bootnetdevice, d.bootserver, i.ip, dg.device, dt.identifier FROM " + \
+##                                      "status s, device d, netdevice nd, netip i, network nw, network_type nt, device_group dg, device_type dt WHERE d.device_group=dg.device_group_idx AND d.device_type=dt.device_type_idx " + \
+##                                      "AND nd.device=d.device_idx AND i.netdevice=nd.netdevice_idx AND (nt.identifier='b' OR nt.identifier='p') AND i.network=nw.network_idx AND nw.network_type=nt.network_type_idx AND " + \
+##                                      "i.ip=%s AND s.status_idx=d.newstate", (self.__source_host))
+##        else:
+##            sql_str, sql_tuple = ("SELECT d.new_image, d.name, d.root_passwd, d.device_idx, d.prod_link, s.status, d.rsync, d.rsync_compressed, d.bootnetdevice, d.bootserver, i.ip, dg.device, dt.identifier FROM " + \
+##                                      "status s, device d, netdevice nd, netip i, network nw, network_type nt, device_group dg, device_type dt WHERE d.device_group=dg.device_group_idx AND d.device_type=dt.device_type_idx " + \
+##                                      "AND nd.device=d.device_idx AND i.netdevice=nd.netdevice_idx AND nt.identifier='b' AND i.network=nw.network_idx AND nw.network_type=nt.network_type_idx AND " + \
+##                                      "d.name=%s AND s.status_idx=d.newstate", (self.__dev_name))
+##        dc.execute(sql_str, sql_tuple)
+##        if dc.rowcount == 1:
+##            self.__node_record = dc.fetchone()
+##            #print self.__node_record
+##            # set device_name and source_host from db
+##            self.__dev_name = self.__node_record["name"]
+##            self.__source_host = self.__node_record["ip"]
+##            self.__conf_dev = config_tools.server_check(dc=dc,
+##                                                        short_host_name=self.__node_record["name"],
+##                                                        # type is not so important here because the device_idx is resolved from the name
+##                                                        server_type="node",
+##                                                        fetch_network_info=True)
+##        else:
+##            if dc.rowcount:
+##                self.log("Found more than one device (%d) matching IP-address %s (command %s)" % (dc.rowcount,
+##                                                                                                  self.__source_host,
+##                                                                                                  self.command),
+##                         logging_tools.LOG_LEVEL_WARN)
+##                self.set_ret_str("error resolving ip-address ('%s' not unique), see logs" % (self.__source_host))
+##            else:
+##                self.log("found no device matching IP-address %s (command %s)" % (self.__source_host,
+##                                                                                  self.command),
+##                         logging_tools.LOG_LEVEL_WARN)
+##                self.set_ret_str("error resolving ip-address ('%s' not found), see logs" % (self.__source_host))
     def get_config_str_vars(self, dc, cs_name, **args):
         dc.execute("SELECT cs.value, dc.device FROM new_config c INNER JOIN device_config dc INNER JOIN device_group dg INNER JOIN " + \
                        "device d LEFT JOIN config_str cs ON cs.new_config=c.new_config_idx LEFT JOIN device d2 on d2.device_idx=dg.device WHERE " + \
@@ -1409,47 +1527,47 @@ class config_request(object):
         self.log("using kernel_str '%s' (%s)" % (kernel_str,
                                                  log_str))
         return kernel_str
-    def create_config_dir(self):
-        ret_str = "ok config_dir is ok"
-        base_dir = self.__glob_config["CONFIG_DIR"]
-        node_dir, node_link = ("%s/%s" % (base_dir, self.__source_host),
-                               "%s/%s" % (base_dir, self["name"]))
-        self.node_dir = node_dir
-        if not os.path.isdir(node_dir):
-            try:
-                os.mkdir(node_dir)
-            except OSError:
-                self.log("cannot create config_directory %s: %s" % (node_dir,
-                                                                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-                ret_str = "error creating config directory"
-            else:
-                self.log("created config directory %s" % (node_dir))
-        if os.path.isdir(node_dir):
-            if os.path.islink(node_link):
-                if os.readlink(node_link) != self.__source_host:
-                    try:
-                        os.unlink(node_link)
-                    except:
-                        self.log("cannot delete wrong link %s: %s" % (node_link,
-                                                                      process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
-                        ret_str = "error deleting wrong link"
-                    else:
-                        self.log("Removed wrong link %s" % (node_link))
-            if not os.path.islink(node_link):
-                try:
-                    os.symlink(self.__source_host, node_link)
-                except:
-                    self.log("cannot create link from %s to %s: %s" % (node_link,
-                                                                       self.__source_host,
-                                                                       process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-                    ret_str = "error creating link"
-                else:
-                    self.log("Created link from %s to %s" % (node_link,
-                                                             self.__source_host))
-        return ret_str
+##    def create_config_dir(self):
+##        ret_str = "ok config_dir is ok"
+##        base_dir = self.__glob_config["CONFIG_DIR"]
+##        node_dir, node_link = ("%s/%s" % (base_dir, self.__source_host),
+##                               "%s/%s" % (base_dir, self["name"]))
+##        self.node_dir = node_dir
+##        if not os.path.isdir(node_dir):
+##            try:
+##                os.mkdir(node_dir)
+##            except OSError:
+##                self.log("cannot create config_directory %s: %s" % (node_dir,
+##                                                                    process_tools.get_except_info()),
+##                         logging_tools.LOG_LEVEL_ERROR)
+##                ret_str = "error creating config directory"
+##            else:
+##                self.log("created config directory %s" % (node_dir))
+##        if os.path.isdir(node_dir):
+##            if os.path.islink(node_link):
+##                if os.readlink(node_link) != self.__source_host:
+##                    try:
+##                        os.unlink(node_link)
+##                    except:
+##                        self.log("cannot delete wrong link %s: %s" % (node_link,
+##                                                                      process_tools.get_except_info()),
+##                                 logging_tools.LOG_LEVEL_ERROR)
+##                        ret_str = "error deleting wrong link"
+##                    else:
+##                        self.log("Removed wrong link %s" % (node_link))
+##            if not os.path.islink(node_link):
+##                try:
+##                    os.symlink(self.__source_host, node_link)
+##                except:
+##                    self.log("cannot create link from %s to %s: %s" % (node_link,
+##                                                                       self.__source_host,
+##                                                                       process_tools.get_except_info()),
+##                             logging_tools.LOG_LEVEL_ERROR)
+##                    ret_str = "error creating link"
+##                else:
+##                    self.log("Created link from %s to %s" % (node_link,
+##                                                             self.__source_host))
+##        return ret_str
     def create_pinfo_dir(self):
         ret_str = "ok pinfo_dir is ok"
         base_dir = self.__glob_config["CONFIG_DIR"]
@@ -1488,44 +1606,6 @@ class config_request(object):
             self.set_ret_str(p_setup.ret_str)
         else:
             self.set_ret_str("error no partition name given from node")
-    def _clean_directory(self, pd_key):
-        # cleans directory of network_key
-        rem_file_list, rem_dir_list = ([], [])
-        dir_list = ["%s/configdir_%s" % (self.node_dir, pd_key),
-                    "%s/config_dir_%s" % (self.node_dir, pd_key),
-                    "%s/content_%s" % (self.node_dir, pd_key)]
-        file_list = ["%s/config_%s" % (self.node_dir, pd_key),
-                     "%s/configl_%s" % (self.node_dir, pd_key),
-                     "%s/config_d%s" % (self.node_dir, pd_key)]
-        for old_name in dir_list:
-            if os.path.isdir(old_name):
-                for file_name in os.listdir(old_name):
-                    rem_file_list.append("%s/%s" % (old_name, file_name))
-                rem_dir_list.append(old_name)
-        for old_name in file_list:
-            if os.path.isfile(old_name):
-                rem_file_list.append(old_name)
-        # remove files and dirs
-        num_removed = {"file" : 0,
-                       "dir"  : 0}
-        for del_name in rem_file_list + rem_dir_list:
-            try:
-                if os.path.isfile(del_name):
-                    ent_type = "file"
-                    os.unlink(del_name)
-                else:
-                    ent_type = "dir"
-                    os.rmdir(del_name)
-            except:
-                self.log("error removing %s %s: %s" % (ent_type, del_name, process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                num_removed[ent_type] += 1
-        if sum(num_removed.values()):
-            self.log("removed %s for key '%s'" % (" and ".join([logging_tools.get_plural(key, value) for key, value in num_removed.iteritems()]),
-                                                  pd_key))
-        else:
-            self.log("config on disk for key '%s' was empty" % (pd_key))
     def _fetch_image_info(self, dc):
         dc.execute("SELECT d.newimage, d.new_image, i.* FROM device d, image i WHERE d.device_idx=%d AND (i.name = d.newimage OR i.image_idx=d.new_image)" % (self["device_idx"]))
         if dc.rowcount:
@@ -2590,6 +2670,19 @@ class config_error(error):
     def __init__(self, what = "UNKNOWN"):
         error.__init__(self, what)
     
+class network_tree(dict):
+    def __init__(self):
+        all_nets = network.objects.all().select_related("network_type")
+        for cur_net in all_nets:
+            self[cur_net.pk] = cur_net
+            self.setdefault(cur_net.network_type.identifier, {})[cur_net.pk] = cur_net
+            # idx_list, self and slaves
+            cur_net.idx_list = [cur_net.pk]
+        for net_pk, cur_net in self.iteritems():
+            if type(net_pk) in [int, long]:
+                if cur_net.network_type.identifier == "s" and cur_net.master_network_id in self and self[cur_net.master_network_id].network_type.identifier == "p":
+                    self[cur_net.master_network_id].idx_list.append(net_pk)
+            
 class build_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
@@ -2606,9 +2699,196 @@ class build_process(threading_tools.process_obj):
         build_client.close_clients()
         self.__log_template.close()
     def _generate_config(self, attr_dict, **kwargs):
+        # get client
         cur_c = build_client.get_client(**attr_dict)
-        cur_c.internal_state = "done"
+        cur_c.log("starting config build")
+        # get device by name
+        try:
+            b_dev = device.objects.select_related("device_type", "device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(Q(name=cur_c.name))
+        except device.DoesNotExist:
+            cur_c.log("device not found by name", logging_tools.LOG_LEVEL_ERROR, state="done")
+        except device.MultipleObjectsReturned:
+            cur_c.log("more than one device with name '%s' found" % (cur_c.name), logging_tools.LOG_LEVEL_ERROR, state="done")
+        else:
+            dev_sc = config_tools.server_check(
+                short_host_name=cur_c.name,
+                server_type="node",
+                fetch_network_info=True)
+            cur_c.log("server_check report(): %s" % (dev_sc.report()))
+            cur_net_tree = network_tree()
+            # sanity checks
+            if not cur_c.create_config_dir():
+                cur_c.log("creating config_dir", logging_tools.LOG_LEVEL_ERROR, state="done")
+            elif not b_dev.prod_link:
+                cur_c.log("no valid production_link set", logging_tools.LOG_LEVEL_ERROR, state="done")
+            elif len(cur_net_tree.get("b", {})) > 1:
+                cur_c.log("more than one boot network found", logging_tools.LOG_LEVEL_ERROR, state="done")
+            elif not len(cur_net_tree.get("b", {})):
+                cur_c.log("no boot network found", logging_tools.LOG_LEVEL_ERROR, state="done")
+            elif not len(cur_net_tree.get("p", {})):
+                cur_c.log("no production networks found", logging_tools.LOG_LEVEL_ERROR, state="done")
+            else:
+                cur_c.log("found %s: %s" % (
+                    logging_tools.get_plural("production network", len(cur_net_tree["p"])),
+                    ", ".join([unicode(cur_net) for cur_net in cur_net_tree["p"].itervalues()])))
+                act_prod_net = None
+                for prod_net in cur_net_tree["p"].itervalues():
+                    cur_c.clean_directory(prod_net.identifier)
+                    cur_c.log("%s %s" % (
+                        "active" if prod_net.pk == b_dev.prod_link_id else "inactive",
+                        prod_net.get_info()))
+                    if prod_net.pk == b_dev.prod_link.pk:
+                        act_prod_net = prod_net
+                if not act_prod_net:
+                    cur_c.log("invalid production link", logging_tools.LOG_LEVEL_ERROR, state="done")
+                else:
+                    ips_in_prod = dev_sc.identifier_ip_lut["p"]
+                    if ips_in_prod:
+                        netdevices_in_net = [dev_sc.ip_netdevice_lut[ip] for ip in ips_in_prod]
+                        if b_dev.bootnetdevice:
+                            net_devs_ok   = [net_dev for net_dev in netdevices_in_net if net_dev.pk == b_dev.bootnetdevice.pk]
+                            net_devs_warn = [net_dev for net_dev in netdevices_in_net if net_dev.pk != b_dev.bootnetdevice.pk]
+                        else:
+                            net_devs_ok, net_devs_warn = ([], netdevices_in_net)
+                        if len(net_devs_ok) == 1:
+                            boot_netdev = net_devs_ok[0]
+                            # finaly, we have the device, the boot netdevice, actual production net
+                            self._generate_config_step2(cur_c, b_dev, act_prod_net, boot_netdev, dev_sc)
+                        elif len(net_devs_ok) > 1:
+                            cur_c.log("too many netdevices (%d) with IP in production network found" % (len(net_devs_ok)), logging_tools.LOG_LEVEL_ERROR, state="done")
+                        elif len(net_devs_warn) == 1:
+                            cur_c.log(" one netdevice with IP in production network found but not on bootnetdevice", logging_tools.LOG_LEVEL_ERROR, state="done")
+                        else:
+                            cur_c.log("too many netdevices (%d) with IP in production network found (not on bootnetdevice!)" % (len(net_devs_warn)), logging_tools.LOG_LEVEL_ERROR, state="done")
+                    else:
+                        cur_c.log("no IP-address in production network", logging_tools.LOG_LEVEL_ERROR, state="done")
+        cur_c.log_kwargs("after build", only_new=False)
+        # done (yeah ?)
+        # send result
         self.send_pool_message("client_update", cur_c.get_send_dict())
+    def _generate_config_step2(self, cur_c, b_dev, act_prod_net, boot_netdev, dev_sc):
+        running_ip = [ip for ip in dev_sc.identifier_ip_lut["p"] if dev_sc.ip_netdevice_lut[ip].pk == boot_netdev.pk][0]
+        full_postfix = act_prod_net.get_full_postfix()
+        cur_c.log("IP in production network '%s' is %s, full network_postfix is '%s'" % (
+            act_prod_net.identifier,
+            running_ip,
+            full_postfix))
+        # multiple configs
+        multiple_configs = ["server"]
+        all_servers = config_tools.device_with_config("%server%")
+        all_servers.set_key_type("config")
+        def_servers = all_servers.get("server", [])
+        if def_servers:
+            srv_names = sorted(["%s%s" % (cur_srv.short_host_name, full_postfix) for cur_srv in def_servers])
+            cur_c.log("%s found: %s" % (
+                logging_tools.get_plural("server", len(def_servers)),
+                ", ".join(srv_names)
+            ))
+            # store in act_prod_net
+            conf_dict = {}
+            conf_dict["servers"] = srv_names
+            for config_type in sorted(all_servers.keys()):
+                if config_type not in multiple_configs:
+                    routing_info, act_server = ([66666666], None)
+                    for actual_server in all_servers[config_type]:
+                        act_routing_info = actual_server.get_route_to_other_device(dev_sc, filter_ip=running_ip, allow_route_to_other_networks=True)
+                        if act_routing_info:
+                            # store in some dict-like structure
+                            conf_dict["%s:%s" % (actual_server.short_host_name, config_type)] = "%s%s" % (actual_server.short_host_name, full_postfix)
+                            conf_dict["%s:%s_ip" % (actual_server.short_host_name, config_type)] = act_routing_info[0][2][1][0]
+                            if config_type in ["config_server", "mother_server"] and actual_server.server_device_idx == b_dev.bootserver_id:
+                                routing_info, act_server = (act_routing_info[0], actual_server)
+                            else:
+                                if act_routing_info[0][0] < routing_info[0]:
+                                    routing_info, act_server = (act_routing_info[0], actual_server)
+                        else:
+                            cur_c.log("empty routing info for %s" % (config_type), logging_tools.LOG_LEVEL_WARN)
+                    if act_server:
+                        server_ip = routing_info[2][1][0]
+                        conf_dict[config_type] = "%s%s" % (act_server.short_host_name, full_postfix)
+                        conf_dict["%s_ip" % (config_type)] = server_ip
+                        cur_c.log("  %20s: %-25s (IP %15s)" % (config_type,
+                                                               conf_dict[config_type],
+                                                               server_ip))
+                    else:
+                        cur_c.log("  %20s: not found" % (config_type))
+            # populate config dict
+            conf_dict["system"] = 'self["system_dict"]'
+            conf_dict["device"] = b_dev
+            conf_dict["host"]   = b_dev.name
+            conf_dict["hostfq"] = "%s%s" % (b_dev.name, full_postfix)
+            conf_dict["device_idx"] = b_dev.pk
+            # image is missing, FIXME
+##                    dc.execute("SELECT * FROM image WHERE image_idx=%s", (self["new_image"]))
+##                    if dc.rowcount:
+##                        act_prod_net["image"] = dc.fetchone()
+##                    else:
+##                        act_prod_net["image"] = {}
+            config_pks = config.objects.filter(
+                Q(device_config__device=b_dev) | 
+                (Q(device_config__device__device_group=b_dev.device_group_id) & 
+                 Q(device_config__device__device_type__identifier="MD"))). \
+                order_by("priority", "name").distinct().values_list("pk", flat=True)
+            pseudo_config_list = config.objects.all(). \
+                prefetch_related("config_str_set", "config_int_set", "config_bool_set", "config_blob_set", "config_script_set"). \
+                order_by("priority", "name")
+            config_dict = dict([(cur_pc.pk, cur_pc) for cur_pc in pseudo_config_list])
+            # copy variables
+            for p_config in pseudo_config_list:
+                for var_type in ["str", "int", "bool", "blob"]:
+                    for cur_var in getattr(p_config, "config_%s_set" % (var_type)).all():
+                        conf_dict["%s.%s" % (p_config.name, cur_var.name)] = cur_var.value
+            for cur_conf in pseudo_config_list:
+                cur_conf.show_variables(cur_c.log, detail=global_config["DEBUG"])
+            cur_c.log("%s found: %s" % (
+                logging_tools.get_plural("config", len(config_pks)),
+                ", ".join([config_dict[pk].name for pk in config_pks]) if config_pks else "no configs"))
+            # node interfaces
+            conf_dict["node_if"] = []
+            taken_list, not_taken_list = ([], [])
+            for cur_net in b_dev.netdevice_set.all().prefetch_related("net_ip_set", "net_ip_set__network", "net_ip_set__network__network_type"):
+                for cur_ip in cur_net.net_ip_set.all():
+                    #if cur_ip.network_id 
+                    if cur_ip.network_id in act_prod_net.idx_list:
+                        take_it, cause = (True, "network_index in list")
+                    else:
+                        if cur_ip.network.write_other_network_config:
+                            take_it, cause = (True, "network_index not in list but write_other_network_config set")
+                        else:
+                            take_it, cause = (False, "network_index not in list and write_other_network_config not set")
+                    if take_it:
+                        conf_dict["node_if"].append(cur_ip)
+                        taken_list.append((cur_ip, cause))
+                    else:
+                        not_taken_list.append((cur_ip, cause))
+            cur_c.log("%s in taken_list" % (logging_tools.get_plural("Netdevice", len(taken_list))))
+            for entry, cause in taken_list:
+                cur_c.log("  - %-6s (IP %-15s, network %-20s) : %s" % (
+                    entry.netdevice.devname,
+                    entry.ip,
+                    unicode(entry.network),
+                    cause))
+            cur_c.log("%s in not_taken_list" % (logging_tools.get_plural("Netdevice", len(not_taken_list))))
+            for entry, cause in not_taken_list:
+                cur_c.log("  - %-6s (IP %-15s, network %-20s) : %s" % (
+                    entry.netdevice.devname,
+                    entry.ip,
+                    unicode(entry.network),
+                    cause))
+            # create config
+            config_obj = internal_object("CONFIG_VARS")
+            config_obj.add_config("config_vars")
+            config_obj += pretty_print("", conf_dict, 0)
+            # dict: which configg was called (sucessfully)
+            conf_dict["called"] = {}
+            cur_c.conf_dict, cur_c.link_dict, cur_c.erase_dict = ({}, {}, {})
+            cur_c.conf_dict[config_obj.dest] = config_obj
+            new_tree = generated_tree()
+            cur_bc = build_container(cur_c, config_dict, new_tree)
+            for pk in config_pks:
+                cur_bc.process_scripts(conf_dict, pk)
+            cur_bc.close()
+            cur_c.log("config built", state="done")
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
@@ -2763,6 +3043,7 @@ class server_process(threading_tools.process_pool):
             self._send_return(cur_com)
             del self.__pending_commands[run_idx]
     def _send_return(self, cur_com):
+        print cur_com.pretty_print()
         send_sock = self.socket_dict["router"]
         send_sock.send_unicode(cur_com["command"].attrib["uuid"], zmq.SNDMORE)
         send_sock.send_unicode(unicode(cur_com))
@@ -2820,19 +3101,46 @@ class config_control(object):
         return config_control.__cc_dict[name]
     
 class build_client(object):
+    """ holds all the necessary data for a complex config request """
     def __init__(self, **kwargs):
         self.name = kwargs["name"]
         self.pk = int(kwargs.get("pk", device.objects.get(Q(name=self.name)).pk))
         self.create_logger()
+        self.set_keys, self.logged_keys = ([], [])
+    def cleanup(self):
+        self.clean_old_kwargs()
+        self.clean_errors()
+    def clean_old_kwargs(self):
+        for del_kw in self.set_keys:
+            if del_kw not in ["name", "pk"]:
+                delattr(self, del_kw)
+        self.set_keys = [key for key in self.set_keys if key in ["name", "pk"]]
+        self.logged_keys = []
+    def clean_errors(self):
+        self.__error_dict = {}
     def set_kwargs(self, **kwargs):
-        self.set_keys = sorted([key for key in kwargs.keys() if key not in ["name", "pk"]])
-        for key in self.set_keys:
+        new_keys = [key for key in kwargs.keys() if key not in ["name", "pk"]]
+        self.set_keys = sorted(self.set_keys + new_keys)
+        for key in new_keys:
             setattr(self, key, kwargs[key])
         for force_int in ["pk", "run_idx"]:
             if hasattr(self, force_int):
                 setattr(self, force_int, int(getattr(self, force_int)))
-        for key in sorted(self.set_keys):
+        self.log_kwargs(only_new=True)
+    def log_kwargs(self, info_str="", only_new=True):
+        if only_new:
+            log_keys = [key for key in self.set_keys if key not in self.logged_keys]
+        else:
+            log_keys = self.set_keys
+        self.log("%s defined, %d new%s:" % (
+            logging_tools.get_plural("attribute", len(self.set_keys)),
+            len(log_keys),
+            ", %s" % (info_str) if info_str else ""))
+        for key in sorted(log_keys):
             self.log(" %-24s : %s" % (key, getattr(self, key)))
+        self.logged_keys = self.set_keys
+    def add_set_keys(self, *keys):
+        self.set_keys = list(set(self.set_keys) | set(keys))
     def get_send_dict(self):
         return dict([(key, getattr(self, key)) for key in self.set_keys + ["name", "pk"]])
     def create_logger(self):
@@ -2847,8 +3155,15 @@ class build_client(object):
     def close(self):
         if self.__log_template is not None:
             self.__log_template.close()
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK, **kwargs):
         self.__log_template.log(level, what)
+        if "state" in kwargs:
+            self.add_set_keys("info_str", "state_level")
+            self.internal_state = kwargs["state"]
+            self.info_str = what
+            self.state_level = "%d" % (level)
+        if kwargs.get("register", False):
+            self.__error_dict.setdefault(level, []).append(what)
     @staticmethod
     def bc_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         build_client.srv_process.log("[bc] %s" % (what), log_level)
@@ -2870,9 +3185,92 @@ class build_client(object):
             build_client.bc_log("added client %s" % (name))
         else:
             new_c = build_client.__bc_dict[name]
+        new_c.cleanup()
         new_c.set_kwargs(**kwargs)
         return new_c
-
+    # config-related calls
+    def create_config_dir(self):
+        base_dir = global_config["CONFIG_DIR"]
+        # FIXME
+        self.__source_host = self.name
+        node_dir, node_link = (
+            os.path.join(base_dir, self.__source_host),
+            os.path.join(base_dir, self.name))
+        self.set_kwargs(node_dir=node_dir)
+        success = True
+        if not os.path.isdir(node_dir):
+            try:
+                os.mkdir(node_dir)
+            except OSError:
+                self.log("cannot create config_directory %s: %s" % (node_dir,
+                                                                    process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+                success = False
+            else:
+                self.log("created config directory %s" % (node_dir))
+        if os.path.isdir(node_dir):
+            if os.path.islink(node_link):
+                if os.readlink(node_dir) != self.__source_host:
+                    try:
+                        os.unlink(node_link)
+                    except:
+                        self.log("cannot delete wrong link %s: %s" % (node_link,
+                                                                      process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                        success = False
+                    else:
+                        self.log("Removed wrong link %s" % (node_link))
+            if not os.path.islink(node_link) and node_link != node_dir:
+                try:
+                    os.symlink(self.__source_host, node_link)
+                except:
+                    self.log("cannot create link from %s to %s: %s" % (node_link,
+                                                                       self.__source_host,
+                                                                       process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                    success = False
+                else:
+                    self.log("Created link from %s to %s" % (node_link,
+                                                             self.__source_host))
+        return success
+    def clean_directory(self, prod_key):
+        # cleans directory of network_key
+        rem_file_list, rem_dir_list = ([], [])
+        dir_list = ["%s/configdir_%s" % (self.node_dir, prod_key),
+                    "%s/config_dir_%s" % (self.node_dir, prod_key),
+                    "%s/content_%s" % (self.node_dir, prod_key)]
+        file_list = ["%s/config_%s" % (self.node_dir, prod_key),
+                     "%s/configl_%s" % (self.node_dir, prod_key),
+                     "%s/config_d%s" % (self.node_dir, prod_key)]
+        for old_name in dir_list:
+            if os.path.isdir(old_name):
+                rem_file_list.extend(["%s/%s" % (old_name, file_name) for file_name in os.listdir(old_name)])
+                rem_dir_list.append(old_name)
+        for old_name in file_list:
+            if os.path.isfile(old_name):
+                rem_file_list.append(old_name)
+        num_removed = {"file" : 0,
+                       "dir"  : 0}
+        for del_name in rem_file_list + rem_dir_list:
+            try:
+                if os.path.isfile(del_name):
+                    ent_type = "file"
+                    os.unlink(del_name)
+                else:
+                    ent_type = "dir"
+                    os.rmdir(del_name)
+            except:
+                self.log("error removing %s %s: %s" % (ent_type, del_name, process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                num_removed[ent_type] += 1
+        if sum(num_removed.values()):
+            self.log("removed %s for key '%s'" % (
+                " and ".join([logging_tools.get_plural(key, value) for key, value in num_removed.iteritems()]),
+                prod_key))
+        else:
+            self.log("config on disk for key '%s' was empty" % (prod_key))
+                
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, db_con, glob_config, loc_config, log_lines):
         self.__log_buffer = []
