@@ -134,7 +134,6 @@ class ipv4(object):
                 match_list.append((netmask.netmask_bits(), nw_stuff))
         return sorted(match_list, reverse=True)
     def network_matches(self, nw_stuff):
-        print self & ipv4(nw_stuff.netmask), ipv4(nw_stuff.network)
         return self & ipv4(nw_stuff.netmask) == ipv4(nw_stuff.network)
 
 def get_network_name_from_mask(mask):
