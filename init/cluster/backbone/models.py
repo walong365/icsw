@@ -495,6 +495,7 @@ class device_variable(models.Model):
     var_type = models.CharField(max_length=3)
     val_str = models.TextField(blank=True, null=True)
     val_int = models.IntegerField(null=True, blank=True)
+    # base64 encoded
     val_blob = models.TextField(blank=True, null=True)
     val_date = models.DateTimeField(null=True, blank=True)
     val_time = models.TextField(blank=True, null=True) # This field type is a guess.
@@ -2194,7 +2195,7 @@ def config_script_pre_save(sender, **kwargs):
             raise ValidationError("name is empty")
         if not cur_inst.value:
             raise ValidationError("value is empty")
-        if cur_inst.name in config_script.objects.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
+        if cur_inst.name in cur_inst.config.config_script_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
             raise ValidationError("name already used")
         try:
             cur_inst.priority = int(cur_inst.priority)
