@@ -513,6 +513,10 @@ class progress_counter(object):
         return True if not self.__start_count else False
 
 class dummy_ios(object):
+    """
+    dummy container for I/O redirection
+    used for example in cluster-config-server.py
+    """
     def __init__(self):
         self.out_buffer = []
     def write(self, what):
@@ -521,6 +525,8 @@ class dummy_ios(object):
         pass
     def __del__(self):
         pass
+    def get_content(self):
+        return "".join(self.out_buffer)
     
 class dummy_ios_low(object):
     def __init__(self, save_fd):
