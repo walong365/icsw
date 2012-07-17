@@ -47,7 +47,8 @@ import uuid_tools
 import zmq
 from lxml import etree
 from lxml.builder import E
-from init.cluster.backbone.models import device, network, config, device_variable, net_ip, hopcount
+from init.cluster.backbone.models import device, network, config, device_variable, net_ip, hopcount, \
+     partition, sys_partition, wc_files, tree_node
 from django.db.models import Q
 
 try:
@@ -371,7 +372,8 @@ class copy_object(new_config_object):
 ##    def get_node_name(self):
 ##        return self.__c_req["name"]
 
-class tree_node(object):
+class tree_node_g(object):
+    """ tree node representation for intermediate creation of tree_node structure """
     def __init__(self, path="", is_dir=True, parent=None):
         self.path = path
         if parent:
@@ -416,9 +418,9 @@ class tree_node(object):
                 raise KeyError, "path mismatch: %s != %s" % (path_list[0], self.path)
             if path_list[1] not in self.childs:
                 if len(path_list) == 2 and not dir_node:
-                    self.childs[path_list[1]] = tree_node(path_list[1], parent=self, is_dir=False)
+                    self.childs[path_list[1]] = tree_node_g(path_list[1], parent=self, is_dir=False)
                 else:
-                    self.childs[path_list[1]] = tree_node(path_list[1], parent=self)
+                    self.childs[path_list[1]] = tree_node_g(path_list[1], parent=self)
             return self.childs[path_list[1]].get_node(os.path.join(*path_list[1:]), dir_node=dir_node)
     def get_type_str(self):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
@@ -436,10 +438,26 @@ class tree_node(object):
         if self.is_dir:
             ret_f.extend([unicode(cur_c) for cur_c in self.childs.itervalues()])
         return "\n".join(ret_f)
+    def write_node(self, cur_c, cur_bc, **kwargs):
+        num_nodes = 1
+        cur_tn = tree_node(
+            device=cur_bc.conf_dict["device"],
+            is_dir=self.is_dir,
+            is_link=self.is_link,
+            parent=kwargs.get("parent", None))
+        cur_tn.save()
+        if self.is_dir:
+            num_nodes += sum([cur_child.write_node(cur_c, cur_bc, parent=cur_tn) for cur_child in self.childs.itervalues()])
+        return num_nodes
         
-class generated_tree(tree_node):
+class generated_tree(tree_node_g):
     def __init__(self):
-        tree_node.__init__(self, "")
+        tree_node_g.__init__(self, "")
+    def write_config(self, cur_c, cur_bc):
+        cur_c.log("creating tree")
+        tree_node.objects.filter(Q(device=cur_bc.conf_dict["device"])).delete()
+        nodes_written = self.write_node(cur_c, cur_bc)
+        cur_c.log("wrote %s" % (logging_tools.get_plural("node", nodes_written)))
         
 class build_container(object):
     def __init__(self, b_client, config_dict, conf_dict, g_tree):
@@ -542,7 +560,7 @@ class build_container(object):
                         "do_fstab"        : do_fstab,
                         "partition_setup" : partition_setup})
                 except:
-                    conf_dict["called"][cur_conf.name] = False
+                    conf_dict["called"].setdefault(False, []).append(cur_conf.pk)
                     exc_info = process_tools.exception_info()
                     self.log("An Error occured during eval() after %s:" % (logging_tools.get_diff_time_str(time.time() - start_time)),
                              logging_tools.LOG_LEVEL_ERROR,
@@ -560,6 +578,8 @@ class build_container(object):
                             ", ".join([cur_obj.get_path() for cur_obj in self.__touched_objects])))
                         for to in self.__touched_objects:
                             to.error_flag = True
+                    else:
+                        self.log("no objects touched")
                     if self.__touched_links:
                         self.log("%s touched : %s" % (
                             logging_tools.get_plural("link", len(self.__touched_links)),
@@ -567,7 +587,7 @@ class build_container(object):
                         for tl in self.__touched_links:
                             tl.error_flag = True
                     else:
-                        self.log("no objects touched")
+                        self.log("no links touched")
                     if self.__deleted_files:
                         self.log("%s deleted : %s" % (
                             logging_tools.get_plural("delete", len(self.__deleted_files)),
@@ -577,7 +597,7 @@ class build_container(object):
                     else:
                         self.log("no objects deleted")
                 else:
-                    conf_dict["called"][cur_conf.name] = True
+                    conf_dict["called"].setdefault(True, []).append(cur_conf.pk)
                     if ret_code == None:
                         ret_code = 0
                     self.log("  exited after %s (%s compile time) with return code %d" % (
@@ -1111,6 +1131,135 @@ def do_ssh(conf):
                 if var == privfn:
                     new_co.mode = "0600"
     
+def do_fstab(conf):
+    act_ps = partition_setup(conf)
+    fstab_co = conf.add_file_object("/etc/fstab")
+    if act_ps.valid:
+        fstab_co += act_ps.fstab
+    else:
+        raise ValueError, act_ps.ret_str
+    
+class partition_setup(object):
+    def __init__(self, conf):
+        #sql_str = "SELECT pt.name, pt.partition_table_idx, pt.valid, pd.*, p.*, ps.name AS psname, d.partdev FROM partition_table pt " + \
+        #        "INNER JOIN device d LEFT JOIN partition_disc pd ON pd.partition_table=pt.partition_table_idx LEFT #JOIN " + \
+       #         "partition p ON p.partition_disc=pd.partition_disc_idx LEFT JOIN partition_fs ps ON #ps.partition_fs_idx=p.partition_fs " + \
+      #          "WHERE d.device_idx=%s AND d.partition_table=pt.partition_table_idx ORDER BY pd.priority, p.pnum"
+        
+        #dc.execute(sql_str, (c_req["device_idx"]))
+        root_dev = None
+        part_valid = False
+        part_list = partition.objects.filter(Q(partition_disc__partition_table=conf.conf_dict["device"].act_partition_table)).select_related("partition_disc", "partition_disc__partition_table", "partition_fs")
+        if len(part_list):
+            part_valid = True
+            disc_dict, fstab, sfdisk, parted = ({}, [], [], [])
+            fspart_dict = {}
+            first_disc, root_part, root_part_type = (None, None, None)
+            old_pnum, act_pnum = (0, 0)
+            lower_size, upper_size = (0, 0)
+            for cur_part in part_list:
+                cur_disc = cur_part.partition_disc
+                cur_pt = cur_disc.partition_table
+                if root_dev is None:
+                    root_dev = conf.conf_dict["device"].partdev
+                    # partition prefix for cciss partitions
+                    part_pf = "p" if root_dev.count("cciss") else ""
+                is_valid, pt_name = (cur_pt.valid, cur_pt.name)
+                if not is_valid:
+                    part_valid = False
+                    break
+                act_pnum, act_disc = (cur_part.pnum, cur_disc.disc)
+                if not first_disc:
+                    first_disc = act_disc
+                if act_disc == first_disc:
+                    act_disc = root_dev
+                fs_name = cur_part.partition_fs.name
+                disc_dict.setdefault(act_disc, {})
+                if act_pnum:
+                    disc_dict[act_disc][act_pnum] = db_rec
+                # generate sfdisk-entry
+                while old_pnum < act_pnum-1:
+                    old_pnum += 1
+                    sfdisk.append(",0, ")
+                if cur_part and fs_name != "ext":
+                    upper_size += cur_part.size
+                else:
+                    upper_size = 0
+                parted.append("mkpart %s %s %s %s" % (
+                    db_rec[fs_name] == "ext" and "extended" or (act_pnum < 5 and "primary" or "logical"),
+                    {"ext3" : "ext2",
+                     "ext4" : "ext2",
+                     "swap" : "linux-swap",
+                     "lvm"  : "ext2",
+                     "ext"  : ""}.get(fs_name, fs_name),
+                    "%d" % (lower_size),
+                    fs_name == "ext" and "_" or (upper_size and "%d" % (upper_size) or "_")
+                ))
+                if fs_name == "lvm":
+                    parted.append("set %d lvm on" % (act_pnum))
+                if upper_size:
+                    lower_size = upper_size
+                else:
+                    upper_size = lower_size
+                if cur_part.size and fs_name != "ext":
+                    sfdisk.append(",%d,0x%s" % (cur_part.size, cur_part.partition_hex))
+                else:
+                    sfdisk.append(",,0x%s" % (cur_part.partition_hex))
+                fs = fs_name or "auto"
+                if cur_part.ountpoint or fs == "swap":
+                    act_part = "%s%s%d" % (act_disc, part_pf, act_pnum)
+                    mp = cur_part.mountpoint if cur_part.mountpoint else fs
+                    if mp == "/":
+                        root_part, root_part_type = (act_part, fs)
+                    if not fspart_dict.has_key(fs):
+                        fspart_dict[fs] = []
+                    fspart_dict[fs].append(act_part)
+                    fstab.append("%-20s %-10s %-10s %-10s %d %d" % (
+                        act_part,
+                        mp,
+                        fs,
+                        cur_part.mount_options and cur_part.mount_options or "rw",
+                        cur_part.fs_freq,
+                        cur_part.fs_passno))
+                old_pnum = act_pnum
+            print "  creating partition info for partition_table '%s' (root_device %s, partition postfix is '%s')" % (pt_name, root_dev, part_pf)
+            if part_valid:
+                for sys_part in sys_partition.objects.filter(Q(partition=conf.conf_dict["device"].act_partition_table)):
+                    fstab.append("%-20s %-10s %-10s %-10s %d %d" % (
+                        sys_part.name,
+                        sys_part.mountpoint,
+                        sys_part.name,
+                        sys_part.mount_options and sys_part.mount_options or "rw",
+                        0,
+                        0))
+                self.fspart_dict, self.root_part, self.root_part_type, self.fstab, self.sfdisk, self.parted = (
+                    fspart_dict,
+                    root_part,
+                    root_part_type,
+                    fstab,
+                    sfdisk,
+                    parted)
+                # logging
+                for what, name in [(fstab , "fstab "),
+                                   (sfdisk, "sfdisk")]:
+                    print "Content of %s (%s):" % (name, logging_tools.get_plural("line", len(what)))
+                    for line_num, line in zip(xrange(len(what)), what):
+                        print " - %3d %s" % (line_num + 1, line)
+            else:
+                raise ValueError, "Partition-table %s is not valid" % (pt_name)
+        else:
+            raise ValueError, "Found no partition-info"
+    def create_part_files(self, c_req):
+        if self.fspart_dict:
+            for pn, pp in self.fspart_dict.iteritems():
+                file("%s/%sparts" % (c_req.pinfo_dir, pn), "w").write("\n".join(pp + [""]))
+            for file_name, content in [("rootpart"    , self.root_part),
+                                       ("rootparttype", self.root_part_type),
+                                       ("fstab"       , "\n".join(self.fstab)),
+                                       ("sfdisk"      , "\n".join(self.sfdisk)),
+                                       ("parted"      , "\n".join(self.parted))]:
+                file("%s/%s" % (c_req.pinfo_dir, file_name), "w").write("%s\n" % (content))
+
 # generate /etc/hosts for nodes, including routing-info
 def do_etc_hosts(conf):
     conf_dict = conf.conf_dict
@@ -1284,12 +1433,6 @@ class old_network_tree(object):
 ##                                                          net_stuff["slaves"] and ": %s" % (", ".join([x["identifier"] for x in net_stuff["slaves"]])) or "")
 ##        c_req.log(log_str)
         
-def do_fstab(conf):
-    act_ps = partition_setup(conf.get_config_request(), conf.get_cursor())
-    fstab_co = conf.add_file_object("/etc/fstab")
-    if act_ps.valid:
-        fstab_co += act_ps.fstab
-    
 class build_thread(threading_tools.thread_obj):
     """ handles build_requests for the complete config """
     def __init__(self, log_queue, db_con, glob_config, loc_config):
@@ -1907,124 +2050,6 @@ class config_request(object):
         self.__warn_configs.append(warn_cause)
     def register_config_error(self, error_cause):
         self.__error_configs.append(error_cause)
-
-class partition_setup(object):
-    def __init__(self, c_req, dc):
-        sql_str = "SELECT pt.name, pt.partition_table_idx, pt.valid, pd.*, p.*, ps.name AS psname, d.partdev FROM partition_table pt " + \
-                "INNER JOIN device d LEFT JOIN partition_disc pd ON pd.partition_table=pt.partition_table_idx LEFT JOIN " + \
-                "partition p ON p.partition_disc=pd.partition_disc_idx LEFT JOIN partition_fs ps ON ps.partition_fs_idx=p.partition_fs " + \
-                "WHERE d.device_idx=%s AND d.partition_table=pt.partition_table_idx ORDER BY pd.priority, p.pnum"
-        dc.execute(sql_str, (c_req["device_idx"]))
-        root_dev = None
-        part_valid = False
-        if dc.rowcount:
-            part_valid = True
-            disc_dict, fstab, sfdisk, parted = ({}, [], [], [])
-            fspart_dict = {}
-            first_disc, root_part, root_part_type = (None, None, None)
-            old_pnum, act_pnum = (0, 0)
-            lower_size, upper_size = (0, 0)
-            for db_rec in dc.fetchall():
-                if root_dev is None:
-                    root_dev = db_rec["partdev"]
-                    # partition prefix for cciss partitions
-                    part_pf = "p" if root_dev.count("cciss") else ""
-                is_valid, pt_name, part_table_idx = (db_rec["valid"], db_rec["name"], db_rec["partition_table_idx"])
-                if not is_valid:
-                    part_valid = False
-                    break
-                if db_rec["disc"]:
-                    act_pnum, act_disc = (db_rec["pnum"], db_rec["disc"])
-                    if not first_disc:
-                        first_disc = act_disc
-                    if act_disc == first_disc:
-                        act_disc = root_dev
-                    disc_dict.setdefault(act_disc, {})
-                    if act_pnum:
-                        disc_dict[act_disc][act_pnum] = db_rec
-                    # generate sfdisk-entry
-                    while old_pnum < act_pnum-1:
-                        old_pnum += 1
-                        sfdisk.append(",0, ")
-                    if db_rec["size"] and db_rec["psname"] != "ext":
-                        upper_size += db_rec["size"]
-                    else:
-                        upper_size = 0
-                    parted.append("mkpart %s %s %s %s" % (db_rec["psname"] == "ext" and "extended" or (act_pnum < 5 and "primary" or "logical"),
-                                                          {"ext3" : "ext2",
-                                                           "ext4" : "ext2",
-                                                           "swap" : "linux-swap",
-                                                           "lvm"  : "ext2",
-                                                           "ext"  : ""}.get(db_rec["psname"], db_rec["psname"]),
-                                                          "%d" % (lower_size),
-                                                          db_rec["psname"] == "ext" and "_" or (upper_size and "%d" % (upper_size) or "_")
-                                                          ))
-                    if db_rec["psname"] == "lvm":
-                        parted.append("set %d lvm on" % (act_pnum))
-                    if upper_size:
-                        lower_size = upper_size
-                    else:
-                        upper_size = lower_size
-                    if db_rec["size"] and db_rec["psname"] != "ext":
-                        sfdisk.append(",%d,0x%s" % (db_rec["size"], db_rec["partition_hex"]))
-                    else:
-                        sfdisk.append(",,0x%s" % (db_rec["partition_hex"]))
-                    if db_rec["psname"]:
-                        fs = db_rec["psname"]
-                    else:
-                        fs = "auto"
-                    if db_rec["mountpoint"] or fs == "swap":
-                        act_part = "%s%s%d" % (act_disc, part_pf, act_pnum)
-                        mp = db_rec["mountpoint"] if db_rec["mountpoint"] else fs
-                        if mp == "/":
-                            root_part, root_part_type = (act_part, fs)
-                        if not fspart_dict.has_key(fs):
-                            fspart_dict[fs] = []
-                        fspart_dict[fs].append(act_part)
-                        fstab.append("%-20s %-10s %-10s %-10s %d %d" % (act_part, mp, fs, db_rec["mount_options"] and db_rec["mount_options"] or "rw", db_rec["fs_freq"], db_rec["fs_passno"]))
-                old_pnum = act_pnum
-            c_req.log("  creating partition info for partition_table '%s' (root_device %s, partition postfix is '%s')" % (pt_name, root_dev, part_pf))
-            if part_valid:
-                dc.execute("SELECT s.* FROM sys_partition s WHERE s.partition_table=%s", (part_table_idx))
-                for db_rec in dc.fetchall():
-                    fstab.append("%-20s %-10s %-10s %-10s %d %d" % (db_rec["name"], db_rec["mountpoint"], db_rec["name"], db_rec["mount_options"] and db_rec["mount_options"] or "rw", 0, 0))
-                self.fspart_dict, self.root_part, self.root_part_type, self.fstab, self.sfdisk, self.parted = (fspart_dict,
-                                                                                                               root_part,
-                                                                                                               root_part_type,
-                                                                                                               fstab,
-                                                                                                               sfdisk,
-                                                                                                               parted)
-                # logging
-                for what, name in [(fstab, "fstab"),
-                                   (sfdisk, "sfdisk")]:
-                    c_req.log("Content of %s (%s):" % (name, logging_tools.get_plural("line", len(what))))
-                    for line_num, line in zip(xrange(len(what)), what):
-                        c_req.log(" - %3d %s" % (line_num + 1, line))
-                self.ret_str = "ok %s" % (pt_name)
-            else:
-                self.fspart_dict, self.root_part, self.root_part_type, self.fstab, self.sfdisk, self.parted = (None,
-                                                                                                               None,
-                                                                                                               None,
-                                                                                                               None,
-                                                                                                               None,
-                                                                                                               None)
-                c_req.log("  Partition-table %s is not valid" % (pt_name), logging_tools.LOG_LEVEL_ERROR)
-                self.ret_str = "error partition_table %s is invalid" % (pt_name)
-        else:
-            c_req.log("  Found no partition-info", logging_tools.LOG_LEVEL_ERROR)
-            self.ret_str = "error found no partition info"
-            self.fspart_dict = None
-        self.valid = part_valid
-    def create_part_files(self, c_req):
-        if self.fspart_dict:
-            for pn, pp in self.fspart_dict.iteritems():
-                file("%s/%sparts" % (c_req.pinfo_dir, pn), "w").write("\n".join(pp + [""]))
-            for file_name, content in [("rootpart"    , self.root_part),
-                                       ("rootparttype", self.root_part_type),
-                                       ("fstab"       , "\n".join(self.fstab)),
-                                       ("sfdisk"      , "\n".join(self.sfdisk)),
-                                       ("parted"      , "\n".join(self.parted))]:
-                file("%s/%s" % (c_req.pinfo_dir, file_name), "w").write("%s\n" % (content))
         
 class config_thread(threading_tools.thread_obj):
     """ handles (simple) config requests from the nodes """
@@ -2682,6 +2707,7 @@ class build_process(threading_tools.process_obj):
         # get client
         cur_c = build_client.get_client(**attr_dict)
         cur_c.log("starting config build")
+        s_time = time.time()
         # get device by name
         try:
             b_dev = device.objects.select_related("device_type", "device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(Q(name=cur_c.name))
@@ -2745,6 +2771,8 @@ class build_process(threading_tools.process_obj):
         cur_c.log_kwargs("after build", only_new=False)
         # done (yeah ?)
         # send result
+        e_time = time.time()
+        cur_c.log("built took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
         self.send_pool_message("client_update", cur_c.get_send_dict())
     def _generate_config_step2(self, cur_c, b_dev, act_prod_net, boot_netdev, dev_sc):
         running_ip = [ip for ip in dev_sc.identifier_ip_lut["p"] if dev_sc.ip_netdevice_lut[ip].pk == boot_netdev.pk][0]
@@ -2758,7 +2786,9 @@ class build_process(threading_tools.process_obj):
         all_servers = config_tools.device_with_config("%server%")
         all_servers.set_key_type("config")
         def_servers = all_servers.get("server", [])
-        if def_servers:
+        if not def_servers:
+            cur_c.log("no Servers found", logging_tools.LOG_LEVEL_ERROR, state="done")
+        else:
             srv_names = sorted(["%s%s" % (cur_srv.short_host_name, full_postfix) for cur_srv in def_servers])
             cur_c.log("%s found: %s" % (
                 logging_tools.get_plural("server", len(def_servers)),
@@ -2798,6 +2828,7 @@ class build_process(threading_tools.process_obj):
                 "version" : 12,
                 "release" : 0}
             conf_dict["device"] = b_dev
+            conf_dict["net"]    = act_prod_net
             conf_dict["host"]   = b_dev.name
             conf_dict["hostfq"] = "%s%s" % (b_dev.name, full_postfix)
             conf_dict["device_idx"] = b_dev.pk
@@ -2822,7 +2853,8 @@ class build_process(threading_tools.process_obj):
                     for cur_var in getattr(p_config, "config_%s_set" % (var_type)).all():
                         conf_dict["%s.%s" % (p_config.name, cur_var.name)] = cur_var.value
             for cur_conf in pseudo_config_list:
-                cur_conf.show_variables(cur_c.log, detail=global_config["DEBUG"])
+                #cur_conf.show_variables(cur_c.log, detail=global_config["DEBUG"])
+                pass
             cur_c.log("%s found: %s" % (
                 logging_tools.get_plural("config", len(config_pks)),
                 ", ".join([config_dict[pk].name for pk in config_pks]) if config_pks else "no configs"))
@@ -2870,8 +2902,16 @@ class build_process(threading_tools.process_obj):
             cur_bc = build_container(cur_c, config_dict, conf_dict, new_tree)
             for pk in config_pks:
                 cur_bc.process_scripts(pk)
+            new_tree.write_config(cur_c, cur_bc)
+            if False in conf_dict["called"]:
+                cur_c.log("error in scripts for %s: %s" % (
+                    logging_tools.get_plural("config", len(conf_dict["called"][False])),
+                    ", ".join(sorted([unicode(config_dict[pk]) for pk in conf_dict["called"][False]]))),
+                          logging_tools.LOG_LEVEL_ERROR,
+                          state="done")
+            else:
+                cur_c.log("config built", state="done")
             cur_bc.close()
-            cur_c.log("config built", state="done")
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
