@@ -200,7 +200,7 @@ class config_int(models.Model):
 
 class config_script(models.Model):
     idx = models.AutoField(db_column="config_script_idx", primary_key=True)
-    name = models.CharField(max_length=192, unique=True)
+    name = models.CharField(max_length=192)
     description = models.CharField(max_length=765, db_column="descr")
     enabled = models.BooleanField(default=True)
     priority = models.IntegerField(null=True, blank=True)
@@ -343,6 +343,7 @@ class device(models.Model):
                           " (%s)" % (self.comment) if self.comment else "")
     class Meta:
         db_table = u'device'
+        ordering = ("name",)
 
 class device_class(models.Model):
     idx = models.AutoField(db_column="device_class_idx", primary_key=True)
@@ -479,7 +480,7 @@ class device_type(models.Model):
             name=self.description,
             identifier=self.identifier,
             pk="%d" % (self.pk),
-            key="devt__%d" % (sel.pk)
+            key="devt__%d" % (self.pk)
         )
     def __unicode__(self):
         return self.description
@@ -1161,7 +1162,8 @@ class ng_check_command(models.Model):
     config = models.ForeignKey("config", db_column="new_config_id")
     ng_check_command_type = models.ForeignKey("ng_check_command_type")
     ng_service_templ = models.ForeignKey("ng_service_templ")
-    name = models.CharField(max_length=192, unique=True)
+    # only unique per config
+    name = models.CharField(max_length=192)#, unique=True)
     command_line = models.CharField(max_length=765)
     description = models.CharField(max_length=192, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
@@ -2184,7 +2186,7 @@ def ng_check_command_pre_save(sender, **kwargs):
             raise ValidationError("name is empty")
         if not cur_inst.command_line:
             raise ValidationError("command_line is empty")
-        if cur_inst.name in ng_check_command.objects.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
+        if cur_inst.name in cur_inst.config.ng_check_command_set.objects.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
             raise ValidationError("name already used")
 
 @receiver(signals.pre_save, sender=config_script)

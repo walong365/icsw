@@ -68,7 +68,7 @@ def main():
         group_lut[c_group.pk] = new_group
         print "    created django group %s" % (unicode(new_group))
         group_caps = c_group.group_cap_set.all()
-        new_group.permissions.add(*[perm_lut[group_cap.pk] for group_cap in group_caps])
+        new_group.permissions.add(*[perm_lut[group_cap.capability_id] for group_cap in group_caps])
         print "        added %s" % (logging_tools.get_plural("capability", len(group_caps)))
     for c_user in cluster_users:
         new_user = User(
@@ -92,7 +92,7 @@ def main():
             print "        added secondary group %s" % (unicode(group_lut[sec_group.pk]))
         # caps
         user_caps = c_user.user_cap_set.all()
-        new_user.user_permissions.add(*[perm_lut[user_cap.pk] for user_cap in user_caps])
+        new_user.user_permissions.add(*[perm_lut[user_cap.capability_id] for user_cap in user_caps])
         print "        added %s" % (logging_tools.get_plural("capability", len(user_caps)))
         su_perm = "backbone.wf_mu"
         if new_user.has_perm(su_perm):

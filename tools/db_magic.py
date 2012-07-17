@@ -3,6 +3,8 @@
 import sys
 import os
 
+IGNORE_TABLES = ["config_type"]
+
 class handle_insert_line(object):
     def __init__(self, in_line):
         parts = in_line.split(None, 4)
@@ -27,7 +29,22 @@ def main():
             ins_table = line.lower().strip().split()[2][1:-1]
             if ins_table == "network_network_device_type":
                 line = handle_network_network_device_type(line).line
-        print line
+            elif ins_table in IGNORE_TABLES:
+                # ignore inserts into config_type
+                line = None
+        elif line.lower().startswith("lock tables"):
+            ins_table = line.lower().strip().split()[2][1:-1]
+            if ins_table in IGNORE_TABLES:
+                # ignore locks of config_type
+                line = None
+        elif line.startswith("/*") and line.endswith("*/;"):
+            if line.count("`") == 2:
+                table_name = line.split("`")[1]
+                if table_name in IGNORE_TABLES:
+                    line = None
+            
+        if line is not None:
+            print line
 
 if __name__ == "__main__":
     main()
