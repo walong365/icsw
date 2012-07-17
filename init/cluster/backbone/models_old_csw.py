@@ -1,4 +1,8 @@
 #!/usr/bin/python-init
+"""
+ original database setup, optimized from inspectdb
+ only use for the initial migration
+"""
 
 from django.db import models
 from django.contrib.auth.models import User, Group, Permission
@@ -1963,39 +1967,19 @@ class vendor(models.Model):
     class Meta:
         db_table = u'vendor'
 
-class tree_node(models.Model):
-    idx = models.AutoField(primary_key=True)
-    is_dir = models.BooleanField(default=False)
-    is_link = models.BooleanField(default=False)
-    parent = models.ForeignKey("tree_node", null=True, default=None)
-    created = models.DateTimeField(auto_now_add=True)
-        
 class wc_files(models.Model):
     idx = models.AutoField(db_column="wc_files_idx", primary_key=True)
     device = models.ForeignKey("device")
-    tree_node = models.ForeignKey("tree_node", null=True, default=None)
-    run_number = models.IntegerField(default=0)
-    config = models.ManyToManyField("config")
-    #config = models.CharField(max_length=255, blank=True)
-    uid = models.IntegerField(default=0, blank=True)
-    gid = models.IntegerField(default=0, blank=True)
-    mode = models.IntegerField(default=0755, blank=True)
-    dest_type = models.CharField(max_length=8, choices=(
-        ("f", "file"),
-        ("l", "link"),
-        ("d", "directory"),
-        ("e", "erase"),
-        ("c", "copy"),
-        ("i", "internal"),
-    ))
-    # source path
-    source = models.CharField(max_length=1024)
-    # destination path, relative to tree_node
-    dest = models.CharField(max_length=1024)
-    # error
-    error_flag = models.BooleanField(default=False)
-    # content, defaults to the empty string
-    content = models.TextField(blank=True, default="")
+    disk_int = models.IntegerField(null=True, blank=True)
+    config = models.CharField(max_length=255, blank=True)
+    uid = models.IntegerField(null=True, blank=True)
+    gid = models.IntegerField(null=True, blank=True)
+    mode = models.IntegerField(null=True, blank=True)
+    dest_type = models.CharField(max_length=3)
+    source = models.CharField(max_length=765)
+    dest = models.CharField(max_length=765)
+    error_flag = models.BooleanField()
+    content = models.TextField(blank=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'wc_files'

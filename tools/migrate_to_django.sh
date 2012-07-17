@@ -30,6 +30,9 @@ else
     
     echo "sync database via django"
 
+    # put old models file in place, a little hacky but working
+    cp -a ${C_DIR}/backbone/models.py ${C_DIR}/backbone/models_new.py
+    cp -a ${C_DIR}/backbone/models_old_csw.py ${C_DIR}/backbone/models.py
     export NO_AUTO_ADD_APPLICATIONS=1
     ${C_DIR}/manage.py syncdb --noinput
     unset NO_AUTO_ADD_APPLICATIONS
@@ -42,4 +45,12 @@ else
     echo "reinsert data"
     
     cat ${dump_name}.data | /opt/cluster/sbin/db_magic.py | mysql -u ${MYSQL_USER} -h ${MYSQL_HOST} -P ${MYSQL_PORT} -p${MYSQL_PASSWD} ${MYSQL_DATABASE}
+
+    # restore new models file
+    cp -a ${C_DIR}/backbone/models.py ${C_DIR}/backbone/models_old_csw.py
+    cp -a ${C_DIR}/backbone/models_new.py ${C_DIR}/backbone/models.py
+
+    echo "database migrated. Now please call"
+    echo " - ${C_DIR}/sbin/create_django_users.py    to migrate the users"
+    echo " - ${C_DIR}/sbin/update_django_db.sh       to update to the latest database schema"
 fi

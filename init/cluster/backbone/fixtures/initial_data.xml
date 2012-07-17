@@ -47,28 +47,34 @@
         <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
     </object>
     <object pk="1" model="backbone.config_type">
-        <field type="CharField" name="name">Server properties</field>
-        <field type="CharField" name="identifier">s</field>
-        <field type="CharField" name="description"></field>
-        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+        <field type="CharField" name="name">soft</field>
+        <field type="CharField" name="description">Software settings</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:48:58+00:00</field>
     </object>
     <object pk="2" model="backbone.config_type">
-        <field type="CharField" name="name">Node properties</field>
-        <field type="CharField" name="identifier">n</field>
-        <field type="CharField" name="description"></field>
-        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+        <field type="CharField" name="name">hard</field>
+        <field type="CharField" name="description">Hardware setting</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:48:58+00:00</field>
     </object>
     <object pk="3" model="backbone.config_type">
-        <field type="CharField" name="name">Hardware properites</field>
-        <field type="CharField" name="identifier">h</field>
-        <field type="CharField" name="description"></field>
-        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+        <field type="CharField" name="name">Server properties</field>
+        <field type="CharField" name="description">identifier (s)</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:49:10+00:00</field>
     </object>
     <object pk="4" model="backbone.config_type">
+        <field type="CharField" name="name">Node properties</field>
+        <field type="CharField" name="description">identifier (n)</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:49:10+00:00</field>
+    </object>
+    <object pk="5" model="backbone.config_type">
+        <field type="CharField" name="name">Hardware properties</field>
+        <field type="CharField" name="description">identifier (h)</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:49:10+00:00</field>
+    </object>
+    <object pk="6" model="backbone.config_type">
         <field type="CharField" name="name">Export entries</field>
-        <field type="CharField" name="identifier">e</field>
-        <field type="CharField" name="description"></field>
-        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+        <field type="CharField" name="description">identifier (e)</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:49:10+00:00</field>
     </object>
     <object pk="1" model="backbone.partition_fs">
         <field type="CharField" name="name">reiserfs</field>
