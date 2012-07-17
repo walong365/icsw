@@ -2699,7 +2699,7 @@ class build_process(threading_tools.process_obj):
             # sanity checks
             if not cur_c.create_config_dir():
                 cur_c.log("creating config_dir", logging_tools.LOG_LEVEL_ERROR, state="done")
-            elif not b_dev.prod_link:
+            elif (b_dev.prod_link_id == 0 or not b_dev.prod_link):
                 cur_c.log("no valid production_link set", logging_tools.LOG_LEVEL_ERROR, state="done")
             elif len(cur_net_tree.get("b", {})) > 1:
                 cur_c.log("more than one boot network found", logging_tools.LOG_LEVEL_ERROR, state="done")
@@ -2725,7 +2725,7 @@ class build_process(threading_tools.process_obj):
                     ips_in_prod = dev_sc.identifier_ip_lut["p"]
                     if ips_in_prod:
                         netdevices_in_net = [dev_sc.ip_netdevice_lut[ip] for ip in ips_in_prod]
-                        if b_dev.bootnetdevice:
+                        if b_dev.bootnetdevice_id and b_dev.bootnetdevice:
                             net_devs_ok   = [net_dev for net_dev in netdevices_in_net if net_dev.pk == b_dev.bootnetdevice.pk]
                             net_devs_warn = [net_dev for net_dev in netdevices_in_net if net_dev.pk != b_dev.bootnetdevice.pk]
                         else:
