@@ -22,12 +22,11 @@
 #
 """ logging server """
 
-from twisted.internet import reactor, task
-from twisted.internet.protocol import ServerFactory, Protocol, DatagramProtocol, Factory
+from twisted.internet import reactor
+from twisted.internet.protocol import Protocol, DatagramProtocol
 from twisted.python import log
 import zmq
 # twisted integration
-import txZMQ
 import io_stream_helper
 import logging_server_version
 import logging_tools
@@ -617,6 +616,7 @@ def main():
         ("LISTEN_PORT"         , configfile.int_c_var(8011)),
         ("STATISTICS_TIMER"    , configfile.int_c_var(600)),
         ("LOG_COMMANDS"        , configfile.bool_c_var(True)),
+        ("KILL_RUNNING"        , configfile.bool_c_var(True)),
         ("MAX_AGE_FILES"       , configfile.int_c_var(365, help_string="max age for logfiles in days [%(default)i]", short_options="age")),
         ("USER"                , configfile.str_c_var("idlog", help_string="run as user [%(default)s]", short_options="u")),
         ("GROUP"               , configfile.str_c_var("idg", help_string="run as group [%(default)s]", short_options="g")),
@@ -626,6 +626,8 @@ def main():
         ("MAX_LINE_LENGTH"     , configfile.int_c_var(0))])
     global_config.parse_file()
     options = global_config.handle_commandline(description="logging server, version is %s" % (logging_server_version.VERSION_STRING))
+    if global_config["KILL_RUNNING"]:
+        process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
     # daemon has to be a local variable, otherwise system startup can be severly damaged
     lockfile_name = global_config["LOCKFILE_NAME"]
     # attention: global_config is not longer present after the TERM signal
