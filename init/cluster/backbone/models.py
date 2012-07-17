@@ -1965,6 +1965,7 @@ class vendor(models.Model):
 
 class tree_node(models.Model):
     idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("device", default=None)
     is_dir = models.BooleanField(default=False)
     is_link = models.BooleanField(default=False)
     parent = models.ForeignKey("tree_node", null=True, default=None)
