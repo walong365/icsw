@@ -32,7 +32,7 @@ def get_json_tree(request):
     # build list for device_selection -> group lookup
     sel_list = request.session.get("sel_list", [])
     dg_list = device_group.objects.filter(Q(device_group__in=[cur_sel.split("_")[-1] for cur_sel in sel_list if cur_sel.startswith("dev_")])).values_list("pk", flat=True)
-    full_tree = device_group.objects.order_by("-cluster_device_group", "name")
+    full_tree = device_group.objects.prefetch_related("device_group", "device_group__device_type").order_by("-cluster_device_group", "name")
     json_struct = []
     for cur_dg in full_tree:
         key = "devg__%d" % (cur_dg.pk)
@@ -44,14 +44,14 @@ def get_json_tree(request):
             "expand"   : cur_dg.pk in dg_list,
             "key"      : key,
             "data"     : {"devg_pk" : cur_dg.pk},
-            "children" : _get_device_list(request, cur_dg.pk)
+            "children" : _get_device_list(request, cur_dg)
         }
         json_struct.append(cur_jr)
     return HttpResponse(json.dumps(json_struct),
                         mimetype="application/json")
 
-def _get_device_list(request, devg_pk):
-    cur_devs = device.objects.filter(Q(device_group=devg_pk)).select_related("device_type").order_by("name")
+def _get_device_list(request, cur_dg):
+    cur_devs = cur_dg.device_group.all()#.select_related("device_type").order_by("name")
     sel_list = request.session.get("sel_list", [])
     json_struct = []
     for sub_dev in cur_devs:

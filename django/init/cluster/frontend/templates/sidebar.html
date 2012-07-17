@@ -60,7 +60,22 @@ function apply_device_selection() {
                     node.select(false);
                 };
             });
-           console.log(key_list);
+            // traverse tree, unexpand subtrees
+            $("div#sidebar_tree").dynatree("getRoot").visit(function(node) {
+                if (node.hasChildren()) {
+                    var any_selected = false;
+                    // count active
+                    node.visit(function(sub_node) {
+                        if (sub_node.isSelected()) {
+                            any_selected = true;
+                        };
+                    });
+                    if (! any_selected) {
+                        node.expand(false);
+                    };
+                };
+                return "skip";
+            });
             $.ajax({
                 url : "{% url device:add_selection %}",
                 data : {
