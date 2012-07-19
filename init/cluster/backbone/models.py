@@ -1808,46 +1808,46 @@ class user(models.Model):
     class Meta:
         db_table = u'user'
         permissions = {
-            ("wf_apc", "APC control"),
-            ("wf_bc", "Boot control"),
-            ("wf_cc", "Cluster configuration"),
-            ("wf_ccl", "Cluster location config"),
-            ("wf_ccn", "Cluster network"),
-            ("wf_ncd", "Generate new devices"),
+            ("wf_apc" , "APC control"),
+            ("wf_bc"  , "Boot control"),
+            ("wf_cc"  , "Cluster configuration"),
+            ("wf_ccl" , "Cluster location config"),
+            ("wf_ccn" , "Cluster network"),
+            ("wf_ncd" , "Generate new devices"),
             ("wf_conf", "Configuration"),
-            ("wf_sc", "Clusterinfo"),
-            ("wf_clo", "Clusterlog"),
+            ("wf_sc"  , "Clusterinfo"),
+            ("wf_clo" , "Clusterlog"),
             ("wf_info", "Information"),
-            ("wf_uhw", "Update hardware info"),
-            ("wf_hwi", "Hardware info"),
-            ("wf_ic", "Image control"),
-            ("wf_rms", "Resource managment system"),
+            ("wf_uhw" , "Update hardware info"),
+            ("wf_hwi" , "Hardware info"),
+            ("wf_ic"  , "Image control"),
+            ("wf_rms" , "Resource managment system"),
             ("wf_jsko", "Kill jobs from other users"),
             ("wf_sacl", "Show all cells"),
             ("wf_jsoi", "Show stdout / stderr and filewatch-info for all users"),
             ("wf_jsyi", "Jobsystem information (SGE)"),
-            ("wf_kc", "Kernel control"),
-            ("wf_mu", "Modify Users"),
-            ("wf_bu", "Browse Users"),
-            ("wf_mg", "Modify Groups"),
-            ("wf_bg", "Browse Groups"),
+            ("wf_kc"  , "Kernel control"),
+            ("wf_mu"  , "Modify Users"),
+            ("wf_bu"  , "Browse Users"),
+            ("wf_mg"  , "Modify Groups"),
+            ("wf_bg"  , "Browse Groups"),
             ("wf_user", "User configuration"),
-            ("wf_sql", "Display SQL statistics"),
-            ("wf_prf", "Profile webfrontend"),
-            ("wf_li", "User config"),
-            ("wf_mp", "Modify personal userdata (pwd)"),
+            ("wf_sql" , "Display SQL statistics"),
+            ("wf_prf" , "Profile webfrontend"),
+            ("wf_li"  , "User config"),
+            ("wf_mp"  , "Modify personal userdata (pwd)"),
             ("wf_mpsh", "Show hidden user vars"),
-            ("wf_na", "Monitoring daemon"),
-            ("wf_nap", "Nagios Problems"),
-            ("wf_nai", "Nagios Misc"),
-            ("wf_nbs", "Netbotz show"),
-            ("wf_pi", "Package install"),
-            ("wf_pu", "Partition configuration"),
+            ("wf_na"  , "Monitoring daemon"),
+            ("wf_nap" , "Nagios Problems"),
+            ("wf_nai" , "Nagios Misc"),
+            ("wf_nbs" , "Netbotz show"),
+            ("wf_pi"  , "Package install"),
+            ("wf_pu"  , "Partition configuration"),
             ("wf_jsqm", "Queue information (SGE)"),
-            ("wf_ch", "Cluster history"),
-            ("wf_ri", "Rsync install"),
-            ("wf_csc", "Server configuration"),
-            ("wf_si", "Session info"),
+            ("wf_ch"  , "Cluster history"),
+            ("wf_ri"  , "Rsync install"),
+            ("wf_csc" , "Server configuration"),
+            ("wf_si"  , "Session info"),
             ("wf_xeng", "Xen"),
             ("wf_xeni", "Xen Information"),
         }
@@ -1940,7 +1940,7 @@ class user_var(models.Model):
     user = models.ForeignKey("user")
     name = models.CharField(max_length=189)
     hidden = models.BooleanField()
-    type = models.CharField(max_length=3, blank=True)
+    var_type = models.CharField(max_length=3, blank=True, db_column="type")
     editable = models.BooleanField()
     value = models.TextField(blank=True)
     description = models.TextField(blank=True)
@@ -1970,6 +1970,10 @@ class tree_node(models.Model):
     is_link = models.BooleanField(default=False)
     parent = models.ForeignKey("tree_node", null=True, default=None)
     created = models.DateTimeField(auto_now_add=True)
+    def get_type_str(self):
+        return "dir" if self.is_dir else ("link" if self.is_link else "file")
+    def __unicode__(self):
+        return "tree_node, %s" % (self.get_type_str())
         
 class wc_files(models.Model):
     idx = models.AutoField(db_column="wc_files_idx", primary_key=True)
