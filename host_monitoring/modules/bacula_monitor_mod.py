@@ -66,7 +66,7 @@ class my_modclass(hm_classes.hm_fileinfo):
             res_dict = {}
         try:
 #            print "command= %s -client %s -warningAge=0" % (self.__exe_dict[com_name], jobargs[0])
-            cmd = "%s -client %s" % (self.__exe_dict[com_name], jobargs[0] )
+            cmd = "%s -client %s" % (self.__exe_dict[com_name], jobargs[0])
             if len(jobargs) > 1:
                 print "got 2nd arg"
                 cmd+=" -warningAge=%s" % (jobargs[1])
