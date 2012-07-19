@@ -45,6 +45,7 @@ import threading_tools
 import net_tools
 import uuid_tools
 import zmq
+from django.db import connection
 from lxml import etree
 from lxml.builder import E
 from init.cluster.backbone.models import device, network, config, device_variable, net_ip, hopcount, \
@@ -1841,7 +1842,6 @@ class config_request(object):
                 multiple_configs = ["server"]
                 # get all servers
                 all_servers = config_tools.device_with_config("%server%", dc)
-                all_servers.set_key_type("config")
                 def_servers = all_servers.get("server", [])
                 if def_servers:
                     act_prod_net["servers"] = sorted(["%s%s" % (s_struct.short_host_name, full_network_name) for s_struct in def_servers])
@@ -2704,6 +2704,8 @@ class build_process(threading_tools.process_obj):
         build_client.close_clients()
         self.__log_template.close()
     def _generate_config(self, attr_dict, **kwargs):
+        if global_config["DEBUG"]:
+            cur_query_count = len(connection.queries)
         # get client
         cur_c = build_client.get_client(**attr_dict)
         cur_c.log("starting config build")
@@ -2773,6 +2775,11 @@ class build_process(threading_tools.process_obj):
         # send result
         e_time = time.time()
         cur_c.log("built took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+        if global_config["DEBUG"]:
+            tot_query_count = len(connection.queries) - cur_query_count
+            cur_c.log("queries issued: %d" % (tot_query_count - cur_query_count))
+            for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
+                cur_c.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
         self.send_pool_message("client_update", cur_c.get_send_dict())
     def _generate_config_step2(self, cur_c, b_dev, act_prod_net, boot_netdev, dev_sc):
         running_ip = [ip for ip in dev_sc.identifier_ip_lut["p"] if dev_sc.ip_netdevice_lut[ip].pk == boot_netdev.pk][0]
@@ -2784,7 +2791,6 @@ class build_process(threading_tools.process_obj):
         # multiple configs
         multiple_configs = ["server"]
         all_servers = config_tools.device_with_config("%server%")
-        all_servers.set_key_type("config")
         def_servers = all_servers.get("server", [])
         if not def_servers:
             cur_c.log("no Servers found", logging_tools.LOG_LEVEL_ERROR, state="done")
@@ -2797,29 +2803,35 @@ class build_process(threading_tools.process_obj):
             # store in act_prod_net
             conf_dict = {}
             conf_dict["servers"] = srv_names
+            all_servers.prefetch_hopcount_table(dev_sc)
             for config_type in sorted(all_servers.keys()):
                 if config_type not in multiple_configs:
-                    routing_info, act_server = ([66666666], None)
+                    routing_info, act_server, routes_found = ([66666666], None, 0)
                     for actual_server in all_servers[config_type]:
                         act_routing_info = actual_server.get_route_to_other_device(dev_sc, filter_ip=running_ip, allow_route_to_other_networks=True)
                         if act_routing_info:
+                            routes_found += 1
                             # store in some dict-like structure
                             conf_dict["%s:%s" % (actual_server.short_host_name, config_type)] = "%s%s" % (actual_server.short_host_name, full_postfix)
                             conf_dict["%s:%s_ip" % (actual_server.short_host_name, config_type)] = act_routing_info[0][2][1][0]
-                            if config_type in ["config_server", "mother_server"] and actual_server.server_device_idx == b_dev.bootserver_id:
+                            if config_type in ["config_server", "mother_server"] and actual_server.device.pk == b_dev.bootserver_id:
                                 routing_info, act_server = (act_routing_info[0], actual_server)
                             else:
                                 if act_routing_info[0][0] < routing_info[0]:
                                     routing_info, act_server = (act_routing_info[0], actual_server)
                         else:
-                            cur_c.log("empty routing info for %s" % (config_type), logging_tools.LOG_LEVEL_WARN)
+                            cur_c.log("empty routing info for %s to %s" % (
+                                config_type,
+                                actual_server.device.name), logging_tools.LOG_LEVEL_WARN)
                     if act_server:
                         server_ip = routing_info[2][1][0]
                         conf_dict[config_type] = "%s%s" % (act_server.short_host_name, full_postfix)
                         conf_dict["%s_ip" % (config_type)] = server_ip
-                        cur_c.log("  %20s: %-25s (IP %15s)" % (config_type,
-                                                               conf_dict[config_type],
-                                                               server_ip))
+                        cur_c.log("  %20s: %-25s (IP %15s)%s" % (
+                            config_type,
+                            conf_dict[config_type],
+                            server_ip,
+                            " (best of %d)" % (routes_found) if routes_found > 1 else ""))
                     else:
                         cur_c.log("  %20s: not found" % (config_type))
             # populate config dict, FIXME
@@ -3388,9 +3400,6 @@ def main():
                                                positional_arguments=False)
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="config_server")
-    if sql_info.num_servers > 1:
-        print "Database error for host %s (server): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
-        sys.exit(5)
     if global_config["CHECK"]:
         sys.exit(0)
     if global_config["KILL_RUNNING"]:
