@@ -35,7 +35,8 @@ import config_tools
 import types
 import pprint
 from django.db.models import Q
-from init.cluster.backbone.models import device_variable, config, device, config_blob, config_bool, config_int, config_str, net_ip
+from init.cluster.backbone.models import device_variable, config, device, config_blob, config_bool, \
+     config_int, config_str, net_ip, log_source, log_status
 import netifaces
 
 def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwargs):
@@ -104,12 +105,18 @@ def read_global_config(dc, server_type, init_dict=None, host_name=""):
     return gcd
 
 class db_device_variable(object):
-    def __init__(self, dev_idx, var_name, **kwargs):
-        self.__dev_idx = dev_idx
+    def __init__(self, cur_dev, var_name, **kwargs):
+        if type(cur_dev) in [int, long]:
+            try:
+                self.__device = device.objects.get(Q(pk=cur_dev))
+            except device.DoesNotExist:
+                self.__device = None
+        else:
+            self.__device = cur_dev
         self.__var_name = var_name
         self.__var_type, self.__description = (None, "not set")
         try:
-            act_dv = device_variable.objects.get(Q(name=var_name) & Q(device=dev_idx))
+            act_dv = device_variable.objects.get(Q(name=var_name) & Q(device=self.__device))
         except device_variable.DoesNotExist:
             self.__act_dv = None
         else:
@@ -128,26 +135,14 @@ class db_device_variable(object):
             self.__act_dv.description = self.__description
             self.__act_dv.var_type = self.__var_type
             setattr(self.__act_dv, "val_%s" % (self.__var_type_name), self.__var_value)
-##            dc.execute("UPDATE device_variable SET val_%s=%%s, description=%%s, var_type=%%s WHERE device_variable_idx=%%s" % (self.__var_type_name),
-##                       (self.__var_value,
-##                        self.__description,
-##                        self.__var_type,
-##                        self.__var_idx))
         else:
             self.__act_dv = device_variable(
                 description=self.__description,
                 var_type=self.__var_type,
                 name=self.__var_name,
-                device=device.objects.get(Q(pk=self.__dev_idx)))
+                device=self.__device)
             setattr(self.__act_dv, "val_%s" % (self.__var_type_name), self.__var_value)
         self.__act_dv.save()
-##            dc.execute("INSERT INTO device_variable SET val_%s=%%s, description=%%s, var_type=%%s, name=%%s, device=%%s" % (self.__var_type_name),
-##                       (self.__var_value,
-##                        self.__description,
-##                        self.__var_type,
-##                        self.__var_name,
-##                        self.__dev_idx))
-##            self.__var_idx = dc.insert_id()
     def is_set(self):
         return True if self.__act_dv else False
     def set_stuff(self, **kwargs):
@@ -185,7 +180,7 @@ def write_config(server_type, g_config, **kwargs):
     full_host_name = socket.gethostname()
     host_name = full_host_name.split(".")[0]
     srv_info = config_tools.server_check(dc=dc, server_type=server_type, short_host_name=host_name)
-    if srv_info.num_servers and srv_info.config_idx:
+    if srv_info.device and srv_info.config:
         for key in g_config.keys():
             #print k,config.get_source(k)
             #print "write", k, config.get_source(k)
@@ -226,23 +221,25 @@ def write_config(server_type, g_config, **kwargs):
 class device_recognition(object):
     def __init__(self, **kwargs):
         dc = kwargs.get("dc", None)
-        self.short_host_name = kwargs.get("short_host_name", socket.getfqdn(socket.gethostname()).split(".")[0])
+        self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
         try:
-            self.device_idx = device.objects.get(Q(name=self.short_host_name)).pk
+            self.device = device.objects.get(Q(name=self.short_host_name)).pk
         except device.DoesNotExist:
-            self.device_idx = 0
+            self.device = None
         self.device_dict = {}
         # get IP-adresses (from IP)
         self.local_ips = net_ip.objects.filter(Q(netdevice__device__name=self.short_host_name)).values_list("ip", flat=True)
         # get configured IP-Adresses
         if_names = netifaces.interfaces()
-        ipv4_dict = dict([(cur_if_name, [ip_tuple["addr"] for ip_tuple in value[2]][0]) for cur_if_name, value in [(if_name, netifaces.ifaddresses(if_name)) for if_name in netifaces.interfaces()] if 2 in value])
+        ipv4_dict = dict([(
+            cur_if_name,
+            [ip_tuple["addr"] for ip_tuple in value[2]
+             ][0]) for cur_if_name, value in [
+                 (if_name, netifaces.ifaddresses(if_name)) for if_name in netifaces.interfaces()
+                 if if_name not in "lo"] if 2 in value and "127.0.0.1" not in value[2]])
         self_ips = ipv4_dict.values()
         if self_ips:
-            self.device_dict = dict([(cur_dev.pk, cur_dev.name) for cur_dev in device.objects.filter(Q(netdevice__net_ip__ip__in=self_ips))])
-##            sql_str = "SELECT d.name, d.device_idx FROM device d, netdevice n, netip i WHERE d.device_idx=n.device AND i.netdevice=n.netdevice_idx AND (%s)" % (" OR ".join(["i.ip='%s'" % (ip) for ip in self_ips]))
-##            dc.execute(sql_str)
-##            self.device_dict = dict([(x["device_idx"], x["name"]) for x in dc.fetchall()])
+            self.device_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(netdevice__net_ip__ip__in=self_ips))])
 
 def is_server(server_type, long_mode=False, report_real_idx=False, short_host_name="", **kwargs):
     dc = kwargs.get("dc", None)
@@ -333,3 +330,28 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
         return num_servers, server_idx, s_type, s_str, config_idx, real_server_name
     else:
         return num_servers, server_idx
+
+def create_log_source_entry(cur_dev, server_type, descr, ext_descr="", **kwargs):
+    sources = log_source.objects.filter(Q(identifier=server_type) & Q(device=cur_dev or None))
+    if len(sources) > 1:
+        print "Too many log_sources with my id present, exiting..."
+        cur_source = None
+    elif not sources:
+        if cur_dev:
+            if type(cur_dev) in [int, long]:
+                cur_dev = device.objects.get(Q(pk=cur_dev))
+            cur_source = log_source(
+                identifier=server_type,
+                name=descr,
+                device=cur_dev,
+                description="%s on %s" % (descr, process_tools.get_machine_name()))
+            cur_source.save()
+        else:
+            cur_source = log_source(
+                identifier=server_type,
+                name=descr,
+                description=ext_descr)
+            cur_source.save()
+    else:
+        cur_source= sources[0]
+    return cur_source if not kwargs.get("return_pk", False) else (cur_source.pk if cur_source else 0)
