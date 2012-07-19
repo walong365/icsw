@@ -31,8 +31,9 @@ import session_handler
 def sess_logout(request):
     # destroy old sessions stuff
     if "DB_SESSION_ID" in request.session.keys():
-        sess_data = session_handler.read_session(request, request.session["DB_SESSION_ID"])
-        session_handler.delete_session(sess_data)
+        #sess_data = session_handler.read_session(request, request.session["DB_SESSION_ID"])
+        #session_handler.delete_session(sess_data)
+        pass
     logout(request)
     login_form = authentication_form()
     return render_tools.render_me(request, "login.html", {"login_form"  : login_form,
@@ -56,7 +57,9 @@ def sess_login(request):
                 sess_dict = {"session_id" : sess_id}
                 session_handler.init_session(request, sess_id, db_user, {"session_id" : sess_id})
                 request.session["DB_SESSION_ID"] = sess_id
-                return HttpResponseRedirect(reverse("transfer:main", args=["index.py?SID=%s" % (sess_id)]))
+                # no need to use transfer_views
+                return HttpResponseRedirect(reverse("main:index"))
+                #return HttpResponseRedirect(reverse("transfer:main", args=["index.py?SID=%s" % (sess_id)]))
     else:
         login_form = authentication_form()
     return render_tools.render_me(request, "login.html", {"login_form" : login_form,

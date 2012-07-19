@@ -459,7 +459,6 @@ def handle_normal_module_call(req, module_name):
         # set to one if we directly continue to the index-page
         pass_through = False
         if not req.session_data:
-            print "X" * 300
             #req.dc.execute("SELECT u.login FROM user u LIMIT 1")
             #if not req.dc.rowcount:
             #    make_basic_entries(req, req.sys_args.get("username", "admin"), req.sys_args.get("password", "init4u"))
@@ -519,7 +518,7 @@ def handle_normal_module_call(req, module_name):
             module_name = req.module_name
             req.title = req.module_name
     index_page.build_cap_dict(req)
-    find_server_routes(req, "before")
+    #find_server_routes(req, "before")
     if module_name in ["logincheck", "index"]:
         return HttpResponseRedirect(reverse("main:index"))
     else:

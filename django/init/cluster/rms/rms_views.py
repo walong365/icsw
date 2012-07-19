@@ -19,7 +19,7 @@ class tl_sge_info(sge_tools.sge_info):
             server="127.0.0.1",
             default_pref=["server"],
             never_direct=True,
-            initial_update=False,
+            run_initial_update=False,
             log_command=self.__logger.log,
             verbose=settings.DEBUG
         )

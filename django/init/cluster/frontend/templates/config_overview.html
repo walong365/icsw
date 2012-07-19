@@ -604,6 +604,7 @@ function use_devs(dt_div) {
     CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
         return(value.data.key);
     });
+    notify_generate_link();
 };
 
 function add_config_handlers() {

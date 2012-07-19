@@ -78,11 +78,10 @@ class session_data_obj(object):
         else:
             self.is_alias_login = False
     def add_user_info(self):
-        my_vars = user_var.objects.filter(Q(user=self.user_info) & Q(user__active=True) & Q(user__group__active=True)).select_related("user")
-##        sql_str = "SELECT u.*, uv.* FROM ggroup g INNER JOIN user u LEFT JOIN user_var uv ON uv.user=u.user_idx WHERE u.active AND g.active AND u.ggroup=g.ggroup_idx AND u.user_idx='%d'" % (self.user_idx)
-##        dc.execute(sql_str)
+        #my_vars = user_var.objects.filter(Q(user=self.user_info) & Q(user__active=True) & Q(user__group__active=True)).select_related("user")
+        my_vars = user_var.objects.filter(Q(user=self.user_info) & Q(user__active=True) & Q(user__group__active=True))
         for my_var in my_vars:
-            if my_var.type:
+            if my_var.var_type:
                 self.user_info.add_user_var(my_var)
     def init_persistence(self):
         self.init_db()
@@ -128,8 +127,6 @@ def init_session(req, sess_id, user_info, sess_dict):
     s_data.add_user_info()
     s_data.init_persistence()
     s_data.update()
-    #req.session_data = s_data
-    #req.user_info = s_data.get_user_info()
 
 def read_session(req, sess_id):
     s_data = session_data_obj(sess_id, None)
@@ -138,7 +135,7 @@ def read_session(req, sess_id):
     except:
         s_data = None
         print "session error:", process_tools.get_except_info()
-        req.info_stack.add_error("Session : Unknown or invalid session-id '%s'" % (sess_id), "auth")
+        #req.info_stack.add_error("Session : Unknown or invalid session-id '%s'" % (sess_id), "auth")
         req.session_data = None
     if s_data:
         s_data.add_user_info()

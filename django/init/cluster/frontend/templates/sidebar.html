@@ -110,6 +110,20 @@ function install_devsel_link(t_func, fire_when_loaded) {
     CALL_DEVSEL_LINK_WHEN_LOADED = fire_when_loaded;
 };
 
+function resolve_device_keys(key_list) {
+    var list_len = key_list.length;
+    var ret_list = list_len + (list_len == 1 ? " device" : " devices");
+    if (list_len) {
+        ret_list = ret_list + ": ";
+        var d_tree = $("div#sidebar_tree").dynatree("getTree");
+        $.each(key_list, function(idx, val) {
+            if (idx > 0) ret_list = ret_list + ",";
+            ret_list = ret_list + " " + d_tree.getNodeByKey(val).data.title;
+        });
+    };
+    return ret_list;
+};
+
 function sidebar_handler() {
     $("div#sidebar_tree").dynatree({
         autoFocus  : false,

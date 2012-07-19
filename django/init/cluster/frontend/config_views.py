@@ -8,7 +8,8 @@ import process_tools
 from init.cluster.frontend.forms import config_type_form
 from init.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
-     ng_check_command, ng_check_command_type, ng_service_templ, config_script, device_config
+     ng_check_command, ng_check_command_type, ng_service_templ, config_script, device_config, \
+     tree_node, wc_files
 from django.db.models import Q
 from init.cluster.frontend.helper_functions import init_logging
 from init.cluster.frontend.render_tools import render_me
@@ -388,21 +389,62 @@ def alter_config_cb(request):
     request.xml_response["response"] = xml_resp
     #print etree.tostring(xml_resp, pretty_print=True)
     return request.xml_response.create_response()
-    
+
+class tree_struct(object):
+    def __init__(self, node_list, node=None, depth=0, wcf_dict={}):
+        self.depth = depth
+        if not node:
+            self.node = [entry for entry in node_list if not entry.parent_id][0]
+            wcf_dict = dict([(cur_wc.tree_node_id, cur_wc) for cur_wc in wc_files.objects.filter(Q(device=self.node.device_id))])
+        else:
+            self.node = node
+        self.wc_file = wcf_dict.get(self.node.pk, None)
+        self.childs = [tree_struct(node_list, node=cur_node, depth=self.depth + 1, wcf_dict=wcf_dict) for cur_node in node_list if cur_node.parent_id == self.node.pk]
+    def get_name(self):
+        return "%s%s" % (self.wc_file.dest,
+                         "/" if self.node.is_dir else "")
+    def __unicode__(self):
+        return "\n".join([
+            "%s%s (%d), %s" % ("  " * self.depth,
+                               unicode(self.node),
+                               self.depth,
+                               self.get_name())
+            ] + 
+            ["%s" % (unicode(sub_entry)) for sub_entry in self.childs])
+    def get_xml(self):
+        return E.tree(
+            *[sub_node.get_xml() for sub_node in self.childs],
+            name=self.get_name(),
+            depth="%d" % (self.depth)
+        )
+        
 @login_required
 @init_logging
 def generate_config(request):
     _post = request.POST
     sel_list = [key.split("__")[1] for key in _post.getlist("sel_list[]", []) if key.startswith("dev__")]
     dev_list = device.objects.filter(Q(pk__in=sel_list)).order_by("name")
+    dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in dev_list])
     request.log("generating config for %s: %s" % (logging_tools.get_plural("device", len(dev_list)),
                                                   ", ".join([unicode(dev) for dev in dev_list])))
     srv_com = server_command.srv_command(command="build_config")
     srv_com["devices"] = srv_com.builder("devices",
         *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
-    result = net_tools.zmq_connection("config_webfrontend", timeout=2).add_connection("tcp://localhost:8005", srv_com)
+    result = net_tools.zmq_connection("config_webfrontend", timeout=5).add_connection("tcp://localhost:8005", srv_com)
     if not result:
         request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
+        request.xml_response["result"] = E.devices()
+        for dev_node in result.xpath(None, ".//ns:device"):
+            res_node = E.device(dev_node.text, **dev_node.attrib)
+            if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK:
+                cur_dev = dev_dict[int(dev_node.attrib["pk"])]
+                # build tree
+                cur_tree = tree_struct(tree_node.objects.filter(Q(device=cur_dev)))
+                print unicode(cur_tree)
+                print etree.tostring(cur_tree.get_xml(), pretty_print=True)
+                res_node.append(cur_tree.get_xml())
+        request.xml_response["result"].append(res_node)
         request.log("build done", xml=True)
+    print etree.tostring(request.xml_response.build_response(), pretty_print=True)
     return request.xml_response.create_response()
