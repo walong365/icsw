@@ -32,23 +32,33 @@ import pprint
 import configfile
 import configfile_old
 import array
+import process_tools
 import netifaces
 from init.cluster.backbone.models import config, device, net_ip, device_config, \
-     hopcount
+     hopcount, device_group
 from django.db.models import Q
 
 class server_check(object):
     """ is called server_check, but can also be used for nodes """
-    def __init__(self, **args):
-        dc = args.get("dc", None)
-        self.__server_type = args["server_type"]
-        self.short_host_name = args.get("short_host_name", os.uname()[1])
-        self.__fetch_network_info = args.get("fetch_network_info", True)
+    def __init__(self, **kwargs):
+        # server_type: name of server, no wildcards supported (!)
+        self.__server_type = kwargs["server_type"]
+        if self.__server_type.count("%"):
+            raise SyntaxError, "no wildcards supported in server_check, use device_with_config"
+        self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
+        self.__fetch_network_info = kwargs.get("fetch_network_info", True)
         self.__network_info_fetched = False
-        self._check(dc)
-    def _check(self, dc):
-        # device_idx from database
-        self.device_idx = 0
+        self.set_hopcount_cache()
+        self._check(**kwargs)
+    def set_hopcount_cache(self, in_cache=[]):
+        self.__hc_cache = in_cache
+    def _check(self, **kwargs):
+        # device from database or None
+        self.device = None
+        # device for which the config is set
+        self.effective_device = None
+        # config or None
+        self.config = None
         # server origin, one of unknown,
         # ...... real (hostname matches and config set local)
         # ...... meta (hostname matches and config set to meta_device)
@@ -57,16 +67,6 @@ class server_check(object):
         self.server_origin = "unknown"
         # info string
         self.server_info_str = "not set"
-        # config idx, index of new_config
-        self.config_idx = 0
-        # server config idx, index of device for which the config is set
-        self.server_config_idx = 0
-        # name of device which has the config
-        self.server_config_name = ""
-        # server device idx, index of device with matching hostname / ip
-        self.server_device_idx = 0
-        # number of servers found
-        self.num_servers = 0
         # list of ip-addresses for server
         self.ip_list = []
         # list of netdevice-idxs for server
@@ -77,61 +77,53 @@ class server_check(object):
         self.ip_netdevice_lut = {}
         # lookup table ip -> network identifier
         self.ip_identifier_lut = {}
+        # lookup table network_identifier -> ip_list
+        self.identifier_ip_lut = {}
         self.real_server_name = self.__server_type
         # set dummy config_name
         self.config_name = self.__server_type
         # config variable dict
         self.__config_vars = {}
-        #if dc:
-        self._db_check(dc)
-    def _db_check(self, dc):
-        if self.__server_type.count("%"):
-            self.__match_str = " LIKE('%s')" % (self.__server_type)
-            self.__dmatch_str = "name__icontains"
-            self.__m_server_type = self.__server_type.replace("%", "")
-            self.__server_type_info_str = "%s (with wildcard)" % (self.__server_type.replace("%", ""))
+        self._db_check(**kwargs)
+    def _db_check(self, **kwargs):
+        if "device" in kwargs:
+            # got device, no need to query
+            self.config = kwargs["config"]
+            self.device = kwargs["device"]
+            self.effective_device = kwargs.get("effective_device", kwargs["device"])
         else:
-            self.__match_str = "='%s'" % (self.__server_type)
-            self.__dmatch_str = "name"
-            self.__m_server_type = self.__server_type
-            self.__server_type_info_str = self.__server_type
-        # at first resolve device_idx
-        try:
-            dev_record = device.objects.get(Q(name=self.short_host_name))
-        except device.DoesNotExist:
-            self.dev_record = None
-            self.device_idx = 0
-        else:
-            self.device_idx = dev_record.pk
-            self.dev_record = dev_record
-        # return value: (
-        #   device_id of device set for device_config
-        #   pk of config
-        #   name of config
-        #   name of device set for device_config
-        # (device_idx, group_dev_idx, config_name, config_pk)
-        my_confs = config.objects.filter(
-            Q(device_config__device__device_group__device_group=self.device_idx) &
-            Q(**{self.__dmatch_str : self.__m_server_type})
-            ).distinct().values_list(
-                "device_config__device", "pk", "name",
-                "device_config__device__device_group__device_group__name")
-##        dc.execute("SELECT d.device_idx, dc.new_config, c.name AS confname, dc.device FROM device d " + \
-##                   "INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx=dg.device " + \
-##                   "WHERE d.device_group=dg.device_group_idx AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND c.name%s AND d.device_idx=%d" % (self.__match_str, self.device_idx))
-        #all_servers = dc.fetchall()
+            try:
+                self.device = device.objects.get(Q(name=self.short_host_name))
+            except device.DoesNotExist:
+                self.device = None
+            else:
+                try:
+                    self.config = config.objects.get(
+                        Q(name=self.__server_type) & Q(device_config__device=self.device))
+                except config.DoesNotExist:
+                    try:
+                        self.config = config.objects.get(
+                            Q(name=self.__server_type) & Q(device_config__device__device_type__identifier="MD") & 
+                            Q(device_config__device__device_group=self.device.device_group_id))
+                    except config.DoesNotExist:
+                        self.__config = None
+                    else:
+                        self.effective_device = device.objects.get(Q(device_group=self.device.device_group_id) & Q(device_type__identifier="MD"))
+                else:
+                    self.effective_device = self.device
         #self.num_servers = len(all_servers)
-        self.num_servers = len(my_confs)
-        if self.num_servers == 1:
+        if self.config:
             # name matches -> 
-            self._set_srv_info(dc, self.device_idx, my_confs[0], "real", "meta", "hostname '%s'" % (self.short_host_name))
+            self._set_srv_info("real" if self.device.pk == self.effective_device.pk else "meta",
+                               "hostname '%s'" % (self.short_host_name))
             if self.__fetch_network_info:
                 # fetch ip_info only if needed
-                self._fetch_network_info(dc=dc)
-        else:
+                self._fetch_network_info()
+        elif self.device:
+            # we need at least a device to check
             # fetch ip_info
-            self._fetch_network_info(dc=dc)
-            self._db_check_ip(dc)
+            self._fetch_network_info()
+            self._db_check_ip()
     # FIXME, deprecated due to circular import problem
 ##    def fetch_config_vars(self, dc):
 ##        if self.config_idx:
@@ -185,55 +177,36 @@ class server_check(object):
         self.__config_vars[var_name] = var_value
     def __getitem__(self, var_name):
         return self.__config_vars[var_name].get_value()
-    def _set_srv_info(self, dc, srv_dev_idx, srv_rec, sdsc_eq, sdsc_neq, s_info_str):
-        #self.server_device_idx, self.server_config_idx = (srv_rec["device_idx"], srv_rec["device"])
-        self.server_device_idx, self.server_config_idx = (srv_dev_idx, srv_rec[0])
-        conf_dev = device.objects.get(Q(pk=self.server_config_idx))
-        self.server_config_name = conf_dev.name
-        self.config_idx = srv_rec[1]#["new_config"]
-        self.config_name = srv_rec[2]#["confname"]
-        if self.server_device_idx == self.server_config_idx:
-            self.server_origin = sdsc_eq
-        else:
-            self.server_origin = sdsc_neq
+    def _set_srv_info(self, sdsc, s_info_str):
+        self.server_origin = sdsc
         self.server_info_str = "%s '%s'-server via %s" % (self.server_origin,
-                                                          self.__server_type_info_str,
+                                                          self.__server_type,
                                                           s_info_str)
     def _fetch_network_info(self, **kwargs):
-        dc = kwargs.get("dc", None)
+        # commented force_flag, FIXME
         if not self.__network_info_fetched or kwargs.get("force", False):
-            my_ips = net_ip.objects.filter(
-                Q(netdevice__device__name=self.short_host_name)
-            ).select_related("netdevice", "netdevice__device", "network", "network__network_type")
-            #dc.execute("SELECT d.device_idx, n.netdevice_idx, n.devname, i.netip_idx, i.ip, nt.identifier FROM network nw, network_type nt, device d LEFT JOIN netdevice n ON d.device_idx=n.device LEFT JOIN netip i ON i.netdevice=n.netdevice_idx WHERE d.name=%s AND i.network=nw.network_idx AND nw.network_type=nt.network_type_idx", (self.short_host_name))
-            # clear old instances
-            self.ip_list, self.netdevice_idx_list = ([], [])
-            self.netdevice_ip_lut, self.ip_netdevice_lut, self.ip_identifier_lut, self.identifier_ip_lut = ({}, {}, {}, {})
-            for my_ip in my_ips:
-                self.netdevice_idx_list = list(set(self.netdevice_idx_list + [my_ip.netdevice_id]))
-                self.ip_list = list(set(self.ip_list + [my_ip.ip]))
-                self.netdevice_ip_lut.setdefault(my_ip.netdevice_id, []).append(my_ip.ip)
-                self.ip_netdevice_lut[my_ip.ip] = my_ip.netdevice
-                self.ip_identifier_lut[my_ip.ip] = my_ip.network.network_type.identifier
-                self.identifier_ip_lut.setdefault(my_ip.network.network_type.identifier, []).append(my_ip.ip)
-##            for db_rec in dc.fetchall():
-##                if db_rec["ip"]:
-##                    # only check these with a valid ip
-##                    if db_rec["netdevice_idx"] not in self.netdevice_idx_list:
-##                        self.netdevice_idx_list.append(db_rec["netdevice_idx"])
-##                    if db_rec["ip"] not in self.ip_list:
-##                        self.ip_list.append(db_rec["ip"])
-##                    self.netdevice_ip_lut.setdefault(db_rec["netdevice_idx"], []).append(db_rec["ip"])
-##                    self.ip_netdevice_lut[db_rec["ip"]] = db_rec["netdevice_idx"]
-##                    self.ip_identifier_lut[db_rec["ip"]] = db_rec["identifier"]
-##                    self.identifier_ip_lut.setdefault(db_rec["identifier"], []).append(db_rec["ip"])
+            for net_dev in self.device.netdevice_set.all():
+                self.netdevice_idx_list.append(net_dev.pk)
+                self.netdevice_ip_lut[net_dev.pk] = []
+                for net_ip in net_dev.net_ip_set.all():
+                    self.ip_list.append(net_ip.ip)
+                    self.netdevice_ip_lut[net_dev.pk].append(net_ip.ip)
+                    self.ip_netdevice_lut[net_ip.ip] = net_dev
+                    self.ip_identifier_lut[net_ip.ip] = net_ip.network.network_type.identifier
+                    self.identifier_ip_lut.setdefault(net_ip.network.network_type.identifier, []).append(net_ip.ip)
             self.__network_info_fetched = True
-            #print self.netdevice_ip_lut, self.ip_netdevice_lut
-    def _db_check_ip(self, dc):
+    def _db_check_ip(self):
+        # get local ip-addresses
+        my_ips = net_ip.objects.filter(Q(netdevice__device=self.device)).select_related("netdevice", "network", "network__network_type")
         # check for virtual-device
+        # get all real devices with the requested config, no meta-device handling possible
+        dev_list = device.objects.filter(Q(device_config__config__name=self.__server_type)).prefetch_related("netdevice_set", "netdevice_set__net_ip_set", "netdevice_set__net_ip_set__network", "netdevice_set__net_ip_set__network__network_type")
+        print len(dev_list), "FIXME db_check_ip (%s)"
+        # to be fixed
+        return
         my_confs = config.objects.filter(
             Q(device_config__device__device_group__device_group=self.device_idx) &
-            Q(**{self.__dmatch_str : self.__m_server_type})
+            Q(**{self.__match_str : self.__m_server_type})
             ).distinct().values_list(
                 "device_config__device",
                 "pk",
@@ -243,11 +216,6 @@ class server_check(object):
                 "device_config__device__device_group__device_group",
                 "device_config__device__device_group__device_group__netdevice__net_ip__ip")
         my_confs = [entry for entry in my_confs if entry[-1]]
-##        dc.execute("SELECT d.name, d.device_idx, dc.new_config_id, c.name AS confname, dc.device_id, i.ip FROM netip i " + \
-##                   "INNER JOIN netdevice n INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device d INNER JOIN device_group dg " + \
-##                   "LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_group_id=dg.device_group_idx AND n.device_id=d.device_idx AND i.netdevice_id=n.netdevice_idx " + \
-##                   "AND (d2.device_idx=dc.device_id OR n.device_id=dc.device_id) AND dc.new_config_id=c.new_config_idx AND c.name%s" % (self.__match_str))
-##        pprint.pprint(dc.fetchall())
         all_ips_dict = {}
         for db_rec in [entry for entry in my_confs if entry[-1] != u"127.0.0.1"]:
             if db_rec[-1] not in self.ip_list:
@@ -256,38 +224,32 @@ class server_check(object):
                                             "new_config" : db_rec[1],
                                             "name"       : db_rec[3],
                                             "confname"   : db_rec[2]}
-        #print all_ips_dict
-        if_names = netifaces.interfaces()
-        ipv4_dict = dict([(cur_if_name, [ip_tuple["addr"] for ip_tuple in value[2]][0]) for cur_if_name, value in [(if_name, netifaces.ifaddresses(if_name)) for if_name in netifaces.interfaces()] if 2 in value])
-        self_ips = ipv4_dict.values()
         for ai in all_ips_dict.keys():
             if ai in self_ips:
                 #dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (short_host_name))
                 self.num_servers = 1
-                self._set_srv_info(dc, self.device_idx, all_ips_dict[ai], "virtual", "virtual meta", "IP-address %s" % (ai))
+                self._set_srv_info(self.device_idx, all_ips_dict[ai], "virtual", "virtual meta", "IP-address %s" % (ai))
                 break
     def get_route_to_other_device(self, other, **kwargs):
-        dc = kwargs.get("dc", None)
         filter_ip = kwargs.get("filter_ip", None)
         # at first fetch the network info if necessary
-        self._fetch_network_info(dc=dc, force=True)
-        other._fetch_network_info(dc=dc, force=True)
+        self._fetch_network_info()
+        other._fetch_network_info()
         # format of return list: value, network_id, (self.netdevice_idx, [list of self.ips]), (other.netdevice_idx, [list of other.ips])
         ret_list = []
         if self.netdevice_idx_list and other.netdevice_idx_list:
             # skip if any of both netdevice_idx_lists are empty
             # get peer_information
-            all_hcs = hopcount.objects.filter(Q(s_netdevice__in=self.netdevice_idx_list) & Q(d_netdevice__in=other.netdevice_idx_list)).order_by("value")
-##            print all_hcs
-##            sql_str = "SELECT * FROM hopcount WHERE (%s) AND (%s) ORDER BY value" % (" OR ".join(["s_netdevice=%d" % (idx) for idx in self.netdevice_idx_list]),
-##                                                                                     " OR ".join(["d_netdevice=%d" % (idx) for idx in other.netdevice_idx_list]))
-##            dc.execute(sql_str)
+            if self.__hc_cache:
+                all_hcs = self.__hc_cache
+            else:
+                all_hcs = hopcount.objects.filter(Q(s_netdevice__in=self.netdevice_idx_list) & Q(d_netdevice__in=other.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice", "d_netdevice", "value")
             for db_rec in all_hcs:
                 # dicts identifier -> ips
                 source_ip_lut, dest_ip_lut = ({}, {})
-                for s_ip in self.netdevice_ip_lut[db_rec.s_netdevice_id]:
+                for s_ip in self.netdevice_ip_lut[db_rec[0]]:
                     source_ip_lut.setdefault(self.ip_identifier_lut[s_ip], []).append(s_ip)
-                for d_ip in other.netdevice_ip_lut[db_rec.d_netdevice_id]:
+                for d_ip in other.netdevice_ip_lut[db_rec[1]]:
                     dest_ip_lut.setdefault(other.ip_identifier_lut[d_ip], []).append(d_ip)
                 common_identifiers = [key for key in source_ip_lut.keys() if key in dest_ip_lut]
                 if common_identifiers:
@@ -297,10 +259,10 @@ class server_check(object):
                             if filter_ip not in source_ip_lut[act_id] and filter_ip not in dest_ip_lut[act_id]:
                                 add_actual = False
                         if add_actual:
-                            ret_list.append((db_rec.value,
+                            ret_list.append((db_rec[2],
                                              act_id,
-                                             (db_rec.s_netdevice_id, source_ip_lut[act_id]),
-                                             (db_rec.d_netdevice_id, dest_ip_lut[act_id])))
+                                             (db_rec[0], source_ip_lut[act_id]),
+                                             (db_rec[1], dest_ip_lut[act_id])))
                 else:
                     if kwargs.get("allow_route_to_other_networks", False):
                         if "p" in dest_ip_lut and "o" in source_ip_lut:
@@ -309,21 +271,32 @@ class server_check(object):
                                 if filter_ip not in source_ip_lut["o"] and filter_ip not in dest_ip_lut["p"]:
                                     add_actual = False
                             if add_actual:
-                                ret_list.append((db_rec.value,
+                                ret_list.append((db_rec[2],
                                                  "o",
-                                                 (db_rec.s_netdevice_id, source_ip_lut["o"]),
-                                                 (db_rec.d_netdevice_id, dest_ip_lut["p"])))
+                                                 (db_rec[0], source_ip_lut["o"]),
+                                                 (db_rec[1], dest_ip_lut["p"])))
         return ret_list
     def report(self):
-        return "short_host_name is %s (idx %d), server_origin is %s, server_device_idx is %d, server_config_idx is %d, info_str is \"%s\"" % (self.short_host_name,
-                                                                                                                                              self.device_idx,
-                                                                                                                                              self.server_origin,
-                                                                                                                                              self.server_device_idx,
-                                                                                                                                              self.server_config_idx,
-                                                                                                                                              self.server_info_str)
+        if self.effective_device:
+            return "short_host_name is %s (idx %d), server_origin is %s, effective_device_idx is %d, config_idx is %d, info_str is \"%s\"" % (
+                self.short_host_name,
+                self.device.pk,
+                self.server_origin,
+                self.effective_device.pk,
+                self.config.pk,
+                self.server_info_str)
+        else:
+            return "short_host_name is %s (idx %d), server_origin is %s, info_str is \"%s\"" % (
+                self.short_host_name,
+                self.device.pk,
+                self.server_origin,
+                self.server_info_str)
         
-class device_with_config(object):
+from django.db import connection
+
+class device_with_config(dict):
     def __init__(self, config_name, **kwargs):
+        dict.__init__(self)
         self.__config_name = config_name
         if self.__config_name.count("%"):
             self.__match_str = "name__icontains"
@@ -333,49 +306,66 @@ class device_with_config(object):
             self.__m_config_name = self.__config_name
         self._check(**kwargs)
     def _check(self, **kwargs):
-        self.__dict = {"device" : {},
-                       "config" : {}}
         # locates devices with the given config_name
         # right now we are fetching a little bit too much ...
         #print "*** %s=%s" % (self.__match_str, self.__m_config_name)
-        srv_devs = device.objects.filter(
-            Q(**{"device_config__config__%s" % (self.__match_str) : self.__m_config_name}) |
-            (Q(**{"device_config__device__device_group__device_group__device_config__config__%s" % (self.__match_str) : self.__m_config_name}) &
-             Q(device_config__device__device_group__device_group__device_type__identifier="MD"))).distinct()
-##        sql_str = "SELECT d.name, d.device_idx, dc.new_config, c.name AS confname, dc.device FROM device d " + \
-##            "INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx=dg.device " + \
-##            "WHERE d.device_group=dg.device_group_idx AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND c.name%s" % (self.__match_str)
-##        dc.execute(sql_str)
-        for db_rec in srv_devs:
-            self.__dict["device"][db_rec.name] = server_check(
-                server_type=self.__config_name,
-                short_host_name=db_rec.name,
-                fetch_network_info=True)
-            for cur_conf in config.objects.filter(Q(**{self.__match_str : self.__m_config_name}) & (Q(device_config__device=db_rec) | (Q(device_config__device__device_type__identifier='MD') & Q(device_config__device__device_group=db_rec.device_group)))):
-                #print cur_conf.device_id, db_rec.pk
-                conf_server_struct = server_check(server_type=cur_conf.name,
-                                                  short_host_name=db_rec.name,
-                                                  fetch_network_info=True)
-                #self.__dict["config"].setdefault(db_rec["confname"], []).append(conf_server_struct)
-                self.__dict["config"].setdefault(cur_conf.name, []).append(conf_server_struct)
-                #self.__dict["device"][db_rec["name"]] = server_check(server_type=db_rec["confname"],
-                #                                                     short_host_name=db_rec["name"],
-                #                                                     fetch_network_info=True)
-        self.set_key_type("device")
+        exp_group = set()
+        direct_list = device_config.objects.filter(Q(**{"config__%s" % (self.__match_str) : self.__m_config_name})).select_related("device", "config", "device__device_group", "device__device_type").values_list("config__name", "config", "device__name", "device", "device__device_group", "device__device_type__identifier", "device__device_type__identifier")
+        exp_group = set([cur_entry[4] for cur_entry in direct_list if cur_entry[5] == "MD"])
+        conf_pks = set([cur_entry[1] for cur_entry in direct_list])
+        # expand device groups
+        group_dict, md_set, group_md_lut = ({}, set(), {})
+        if exp_group:
+            for group_dev in device.objects.filter(Q(device_group__in=exp_group)).values_list("name", "pk", "device_group", "device_type__identifier"):
+                if group_dev[3] != "MD":
+                    group_dict.setdefault(group_dev[2], []).append(group_dev)
+                else:
+                    # lut: device_group -> md_device
+                    group_md_lut[group_dev[2]] = group_dev[1]
+                    md_set.add(group_dev[1])
+        all_list = []
+        for cur_entry in direct_list:
+            if cur_entry[5] == "MD":
+                all_list.extend([(cur_entry[0], cur_entry[1], g_list[0], g_list[1], g_list[2], g_list[3], "MD") for g_list in group_dict[cur_entry[4]]])
+            else:
+                all_list.append(cur_entry)
+        # list format:
+        # config_name, config_pk, device_name, device_pk, device_group, device_identifier, orig_device_identifier (may be MD)
+        # dict: device_name, device_pk, device_group, identifier -> config_list (config, config_pk, identifier, source_identifier)
+        dev_conf_dict = {}
+        for cur_entry in all_list:
+            dev_conf_dict.setdefault(tuple(cur_entry[2:6]), []).append((cur_entry[0], cur_entry[1], cur_entry[5], cur_entry[6]))
+        dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(pk__in=[key[1] for key in dev_conf_dict.iterkeys()] + list(md_set))).prefetch_related(
+            "netdevice_set",
+            "netdevice_set__net_ip_set",
+            "netdevice_set__net_ip_set__network",
+            "netdevice_set__net_ip_set__network__network_type")])
+        conf_dict = dict([(cur_conf.pk, cur_conf) for cur_conf in config.objects.filter(Q(pk__in=conf_pks))])
+        for dev_key, conf_list in dev_conf_dict.iteritems():
+            dev_name, dev_pk, devg_pk, dev_type = dev_key
+            for conf_name, conf_pk, m_type, src_type in conf_list:
+                #print "%s (%s/%s), %s" % (conf_name, m_type, src_type, dev_key[0])
+                cur_struct = server_check(
+                    short_host_name=dev_name,
+                    server_type=conf_name,
+                    config=conf_dict[conf_pk],
+                    device=dev_dict[dev_pk],
+                    effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
+                )
+                self.setdefault(conf_name, []).append(cur_struct)
+    def prefetch_hopcount_table(self, d_dev):
+        dev_pks = set()
+        for conf, srv_list in self.iteritems():
+            dev_pks |= set([cur_str.device.pk for cur_str in srv_list])
+        all_hcs = hopcount.objects.filter(Q(s_netdevice__device__in=dev_pks) & Q(d_netdevice__in=d_dev.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice__device", "s_netdevice", "d_netdevice", "value")
+        dev_dict = {}
+        for in_list in all_hcs:
+            dev_dict.setdefault(in_list[0], []).append(tuple(in_list[1:]))
+        for conf, srv_list in self.iteritems():
+            [cur_srv.set_hopcount_cache(dev_dict.get(cur_srv.device.pk, [])) for cur_srv in srv_list]
     def set_key_type(self, k_type):
-        self.__key_type = k_type
-    def keys(self):
-        return self.__dict[self.__key_type].keys()
-    def has_key(self, key):
-        return key in self.__dict[self.__key_type]
-    def __contains__(self, key):
-        return key in self.__dict[self.__key_type]
-    def get(self, key, def_value):
-        return self.__dict[self.__key_type].get(key, def_value)
-    def __getitem__(self, key):
-        return self.__dict[self.__key_type][key]
-    def __len__(self):
-        return len(self.__dict[self.__key_type].keys())
+        print "deprecated, only one key_type (config) supported"
+        sys.exit(0)
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."

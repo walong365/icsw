@@ -1281,35 +1281,6 @@ def kill_running_processes(p_name=None, **kwargs):
         time.sleep(wait_time)
     return log_lines
 
-def create_log_source_entry(dc, dev_idx, server_type, descr, ext_descr=""):
-    dc.execute("SELECT * FROM log_source WHERE identifier=%s AND device_id=%s", (server_type, dev_idx))
-    sources = dc.fetchall()
-    if len(sources) > 1:
-        print "Too many log_sources with my id present, exiting..."
-        log_source_idx = 0
-    elif len(sources) == 0:
-        if dev_idx:
-            short_host_name = socket.getfqdn(socket.gethostname()).split(".")[0]
-            sql_str, sql_tuple = ("INSERT INTO log_source VALUES(0, %s, %s, %s, %s, %s)", (
-                server_type,
-                descr,
-                dev_idx,
-                "%s on %s" % (descr, short_host_name),
-                datetime.datetime.now()
-            ))
-        else:
-            sql_str, sql_tuple = ("INSERT INTO log_source VALUES(0, %s, %s, 0, %s, null)", (
-                server_type,
-                descr,
-                ext_descr,
-                datetime.datetime.now()))
-        print sql_str.replace("%s", "'%s'") % sql_tuple
-        dc.execute(sql_str, sql_tuple)
-        log_source_idx = dc.insert_id()
-    else:
-        log_source_idx = sources[0]["log_source_idx"]
-    return log_source_idx
-
 def get_all_log_sources(dc):
     log_sources = {}
     dc.execute("SELECT * FROM log_source")
