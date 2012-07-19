@@ -1,5 +1,5 @@
 {% extends "main.html" %}
-o
+
 {% load i18n compress %}
 
 {% block title %}{% trans "Device Configuration" %}{% endblock %}
@@ -13,10 +13,7 @@ o
 <div id="config">
 </div>
 
-<input type="button" id="generate_button" value="generate" onClick="generate_configs();"/>
-<div id="generated_config">
-gc
-</div>
+{% include "generate_config.html" %}
 
 <script type="text/javascript">
 
@@ -29,22 +26,6 @@ SHOW_LIST = undefined;
 DISPLAY_LIST = undefined;
 // current device selection
 CUR_DEVICES = undefined;
-
-function generate_configs() {
-    $("input#generate_button").attr("disabled", "disabled");
-    $.ajax({
-        url : "{% url config:generate_config %}",
-        data : {
-            "sel_list" : CUR_DEVICES
-        },
-        success : function(xml) {
-            $("input#generate_button").removeAttr("disabled");
-            if (parse_xml_response(xml)) {
-                console.log($(xml));
-            };
-        }
-    });
-};
 
 function clear_filter() {
     $("input#filter").val("");

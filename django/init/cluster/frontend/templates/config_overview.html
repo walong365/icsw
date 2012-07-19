@@ -36,11 +36,16 @@
 <div id="config">
 </div>
 
+{% include "generate_config.html" %}
+
 <script type="text/javascript">
 
 CONFIGS = undefined;
 CUR_FILTER = undefined;
 CODEMIRROR_DICT = new Object();
+// current device selection
+CUR_DEVICES = undefined;
+TR_LUT = new Array();
 
 function get_expand_td(line_prefix, name, title) {
     return $("<td>").append(
@@ -74,8 +79,11 @@ function update_expand_info() {
     });
 };
 
-function toggle_config_line(line_prefix, state, line_spec) {
-    var conf_line = $("table#config tr[id='" + line_prefix + "']");
+function toggle_config_line(line_prefix, state, line_spec, conf_line) {
+    if (conf_line === undefined) {
+        console.log("get");
+        var conf_line = $("table#config tr[id='" + line_prefix + "']");
+    };
     var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
     var cur_dg = conf_line.find("span[id$='__expand_" + line_spec + "']");
     if (state) {
@@ -148,14 +156,18 @@ function apply_filter() {
                 disp_list.push(c_config.attr("key"));
             };
         });
-        var num_shown = 0;
+        // collapse all expanded trs
+        $("table#config").find("tr td span[id*='__expand_'].ui-icon-triangle-1-s").each(function() {
+            var cur_tr = $(this).parents("tr:first");
+            toggle_config_line(cur_tr.attr("id"), false, "var", cur_tr);
+            toggle_config_line(cur_tr.attr("id"), false, "ngcc", cur_tr);
+            toggle_config_line(cur_tr.attr("id"), false, "cscript", cur_tr);
+        });
+        // we start at -1 because of the new config
+        var num_shown = -1;
         $("table#config").find("tr").each(function() {
             var cur_tr = $(this);
             if (cur_tr.attr("id").split("__").length == 2) {
-                toggle_config_line(cur_tr.attr("id"), false, "var");
-                toggle_config_line(cur_tr.attr("id"), false, "ngcc");
-                toggle_config_line(cur_tr.attr("id"), false, "cscript");
-    <!--            var show = cur_tr.attr("id").match(/^conf__new/) || ($.inArray(cur_tr.attr("id").split("__")[0] + "__" + cur_tr.attr("id").split("__")[1], disp_list) >= 0);-->
                 var show = cur_tr.attr("id").match(/^conf__new/) || ($.inArray(cur_tr.attr("id"), disp_list) >= 0);
                 if (show && cur_tr.attr("id").split("__")[0] + "__" + cur_tr.attr("id").split("__")[1] == cur_tr.attr("id")) num_shown++;
                 if (show && ! cur_tr.is(":visible")) {
@@ -588,7 +600,14 @@ function load_configs(sel_list) {
     });
 };
 
+function use_devs(dt_div) {
+    CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
+        return(value.data.key);
+    });
+};
+
 function add_config_handlers() {
+    install_devsel_link(use_devs, true);
     load_configs();
 };
 
