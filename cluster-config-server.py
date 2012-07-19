@@ -447,6 +447,11 @@ class tree_node_g(object):
             is_link=self.is_link,
             parent=kwargs.get("parent", None))
         cur_tn.save()
+        cur_wc = wc_files(
+            device=cur_bc.conf_dict["device"],
+            dest=self.path,
+            tree_node=cur_tn)
+        cur_wc.save()
         if self.is_dir:
             num_nodes += sum([cur_child.write_node(cur_c, cur_bc, parent=cur_tn) for cur_child in self.childs.itervalues()])
         return num_nodes
