@@ -201,7 +201,7 @@ class server_check(object):
         # check for virtual-device
         # get all real devices with the requested config, no meta-device handling possible
         dev_list = device.objects.filter(Q(device_config__config__name=self.__server_type)).prefetch_related("netdevice_set", "netdevice_set__net_ip_set", "netdevice_set__net_ip_set__network", "netdevice_set__net_ip_set__network__network_type")
-        print len(dev_list), "FIXME db_check_ip (%s)"
+        print len(dev_list), "FIXME db_check_ip (%s)" % (self.config.name if self.config else "config ???")
         # to be fixed
         return
         my_confs = config.objects.filter(
