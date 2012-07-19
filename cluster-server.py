@@ -47,6 +47,7 @@ import config_tools
 import cluster_location
 import zmq
 import cluster_server
+from django.db.models import Q
 from host_monitoring import hm_classes
 from twisted.internet import reactor
 from twisted.python import log
@@ -1120,7 +1121,7 @@ class server_process(threading_tools.process_pool):
         dc = self.__db_con.get_connection(SQL_ACCESS)
         for key, value in self.__server_cap_dict.iteritems():
             sql_info = config_tools.server_check(dc=dc, server_type=key)
-            if sql_info.num_servers or key == "dummy":
+            if key == "dummy":
                 self.__cap_list.append(key)
             self.log("capability %s: %s" % (key, "enabled" if key in self.__cap_list else "disabled"))
         dc.release()
@@ -1174,10 +1175,10 @@ class server_process(threading_tools.process_pool):
         dev_r = cluster_location.device_recognition(dc=dc)
         if dev_r.device_dict:
             self.log(" - i am also host for %s: %s" % (logging_tools.get_plural("virtual device", len(dev_r.device_dict.keys())),
-                                                       ", ".join(dev_r.device_dict.values())))
-            for dev_idx in dev_r.device_dict.keys():
-                cluster_location.db_device_variable(dev_idx, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
-                cluster_location.db_device_variable(dev_idx, "is_virtual", description="Flag set for Virtual Machines", value=1)
+                                                       ", ".join(sorted([cur_dev.name for cur_dev in dev_r.device_dict.itervalues()]))))
+            for cur_dev in dev_r.device_dict.itervalues():
+                cluster_location.db_device_variable(cur_dev, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
+                cluster_location.db_device_variable(cur_dev, "is_virtual", description="Flag set for Virtual Machines", value=1)
         dc.release()
     def loop_end(self):
         if self.com_socket:
@@ -1517,22 +1518,21 @@ def main():
         sys.exit(1)
     sql_info = config_tools.server_check(dc=dc, server_type="server")
     ret_state = 256
-    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.server_device_idx, database=False))])
+    if sql_info.device:
+        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False))])
+    else:
+        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(0, database=False))])
     if not global_config["SERVER_IDX"] and not global_config["FORCE"]:
         sys.stderr.write(" %s is no cluster-server, exiting..." % (long_host_name))
         sys.exit(5)
-    if not sql_info.server_device_idx and global_config["FORCE"]:
+    if not sql_info.device and global_config["FORCE"]:
         # set SERVER_IDX according to short hhostname
         dc.execute("SELECT d.device_idx FROM device d WHERE d.name=%s", (mach_name))
         if dc.rowcount:
             global_config["SERVER_IDX"] = dc.fetchone()["device_idx"]
-    if sql_info.num_servers > 1:
-        print "Database error for host %s (server): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
-        dc.release()
-        sys.exit(5)
     if global_config["CHECK"]:
         sys.exit(0)
-    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(process_tools.create_log_source_entry(dc, global_config["SERVER_IDX"], "cluster-server", "Cluster Server")))])
+    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.create_log_source_entry(global_config["SERVER_IDX"], "cluster-server", "Cluster Server", return_pk=True)))])
     if not global_config["LOG_SOURCE_IDX"]:
         print "Too many log_source with my id present, exiting..."
         dc.release()
