@@ -1393,7 +1393,7 @@ def get_fqdn():
     """
     return short and fqdn 
     """
-    short_sock_name = socket.gethostname()
+    short_sock_name = get_machine_name()
     full_sock_name = socket.getfqdn(short_sock_name)
     mach_name = get_machine_name()
     if full_sock_name.count(".") > 0:
