@@ -25,17 +25,35 @@ function iterate_tree(nest_lev, top_node) {
 };
 
 function draw_tree_xml() {
+    var top_div = $("<div>").attr({
+        "id" : "gen_tree"
+    });
+    var tab_ul = $("<ul>");
+    top_div.append(tab_ul);
     TREE_XML.find("devices device").each(function() {
         var cur_dev = $(this);
-        console.log(cur_dev);
-        var new_td = $("<div>");
-        var top_node = $("<ul>");
-        new_td.append(top_node);
-        iterate_tree(cur_dev.find("tree[depth='0']"), top_node);
-        $("div#generated_config").children().remove();
-        $("div#generated_config").append(new_td);
-        new_td.dynatree();
+        tab_ul.append($("<li>").append($("<a>").attr({
+            "href" : "#dev__" + cur_dev.attr("pk")
+        }).text(cur_dev.attr("name"))));
     });
+    TREE_XML.find("devices device").each(function() {
+        var cur_dev = $(this);
+        var new_td = $("<div>").attr({
+            "id" : "dev__" + cur_dev.attr("pk")
+        });
+        var tree_div = $("<div>").attr({
+            "id" : "tree__dev__" + cur_dev.attr("pk")
+        });
+        var top_node = $("<ul>");
+        new_td.append(tree_div);
+        tree_div.append(top_node);
+        iterate_tree(cur_dev.find("tree[depth='0']"), top_node);
+        tree_div.dynatree();
+        top_div.append(new_td);
+    });
+    $("div#generated_config").children().remove();
+    $("div#generated_config").append(top_div);
+    top_div.tabs();
 };
 
 function notify_generate_link() {

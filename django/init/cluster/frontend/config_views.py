@@ -444,7 +444,7 @@ def generate_config(request):
                 print unicode(cur_tree)
                 print etree.tostring(cur_tree.get_xml(), pretty_print=True)
                 res_node.append(cur_tree.get_xml())
-        request.xml_response["result"].append(res_node)
+            request.xml_response["result"].append(res_node)
         request.log("build done", xml=True)
     print etree.tostring(request.xml_response.build_response(), pretty_print=True)
     return request.xml_response.create_response()
