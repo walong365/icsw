@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2012 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
@@ -22,8 +22,9 @@
 """ generates the inital ramdisk for clusterboot """
 
 import sys
-import os, os.path
-import getopt
+import os
+import os.path
+import argparse
 import commands
 import re
 import tempfile
@@ -35,15 +36,13 @@ import pprint
 import logging_tools
 import process_tools
 import server_command
-try:
-    import mysql_tools
-except ImportError:
-    mysql_tools = None
-import socket
+import uuid_tools
+import config_tools
 import time
-import configfile
 import gzip
 import fnmatch
+from django.db.models import Q
+from init.cluster.backbone.models import kernel
 
 MOD_REFUSE_LIST = ["3w-9xxx", "3w-xxxx", "af_packet", "ata_piix",
                    "autofs", "eata", "gdth",
@@ -146,66 +145,69 @@ def eliminate_symlinks(root_dir, in_path):
             real_path = "%s/%s" % (real_path, p_part)
     return "%s/%s" % (real_path, os.path.basename(in_path))
 
+def _shorten_module_name(mod_name):
+    return mod_name.endswith(".ko") and mod_name[:-3] or (mod_name.endswith(".o") and mod_name[:-2] or mod_name)
+
 def get_module_dependencies(kern_dir, mod_list):
-    mod_names = [key.endswith(".ko") and key[:-3] or (key.endswith(".o") and key[:-2] or key) for key in mod_list]
-    matches_found = []
+    # pure module names
+    mod_names = [_shorten_module_name(key) for key in mod_list]
+    # list of modules with postfix
+    matches_found = set()
+    # lut: short_name -> full name (with postfix but without path)
     mod_dict = {}
+    # lut: module with with postfix -> full path
+    file_dict = {}
     for act_dir, dir_names, file_names in os.walk(kern_dir):
         for f_name in file_names:
-            mod_name = f_name.endswith(".ko") and f_name[:-3] or (f_name.endswith(".o") and f_name[:-2] or f_name)
+            mod_name = f_name[:-3] if f_name.endswith(".ko") else (f_name[:-2] if f_name.endswith(".o") else f_name)
+            #print f_name, mod_name
+            file_dict[f_name] = os.path.join(act_dir, f_name)
             match_list = [match_name for match_name in mod_names if fnmatch.fnmatch(mod_name, match_name)]
             if match_list:
-                matches_found.extend(match_list)
-                mod_dict[mod_name] = "%s/%s" % (act_dir, f_name)
+                matches_found.add(f_name)
     dep_file = "%s/lib/modules/" % (kern_dir)
     if os.path.isdir(dep_file): 
         dep_file = "%s/%s/modules.dep" % (dep_file, os.listdir(dep_file)[0])
-    #print dep_file
-    req_dep = [x for x in mod_dict.values() if x]
     if os.path.isfile(dep_file):
-        dep_lines = [x.replace("\t", " ").strip() for x in file(dep_file, "r").read().split("\n") if x.strip()]
+        dep_lines = [line.replace("\t", " ").strip() for line in file(dep_file, "r").read().split("\n") if line.strip()]
         dep_lines2 = []
-        #print dep_lines
-        add_next_line = 0
+        add_next_line = False
         for dep_line in dep_lines:
             if dep_line.endswith("\\"):
-                anl = 1
+                anl = True
                 dep_line = dep_line[:-1]
             else:
-                anl = 0
+                anl = False
             if add_next_line:
                 dep_lines2[-1] += " %s" % (dep_line)
             else:
                 dep_lines2 += [dep_line]
             add_next_line = anl
-        #print dep_lines2
-        dep_dict = dict([q for q in [y.replace("//", "/").split(":") if y.startswith(kern_dir) else (os.path.normpath("%s/%s" % (kern_dir, y))).replace("//", "/").split(":") for y in dep_lines2 if y] if len(q) == 2])
-        auto_dep = copy.deepcopy(req_dep)
-        auto_dep.sort()
+        # simplify
+        dep_lines2 = [line.replace("//", "/").replace("//", "/").split(":") for line in dep_lines2]
+        dep_dict = dict([(key, value.strip().split()) for key, value in [entry for entry in dep_lines2 if len(entry) == 2]])
+        kernel_mod_dict = dict([(os.path.basename(key), key) for key in dep_dict.iterkeys()])
+        kernel_lut_dict = dict([(key, os.path.basename(key)) for key in dep_dict.iterkeys()])
+        dep_dict = dict([(os.path.basename(key), set([kernel_lut_dict[m_path] for m_path in value])) for key, value in dep_dict.iteritems()])
+        m_iter = 0
         while True:
-            next_dep = copy.deepcopy(auto_dep)
-            for dep in auto_dep:
-                if dep in dep_dict:
-                    #print dep, dep_dict[dep]
-                    for next_d in dep_dict[dep].strip().split():
-                        if next_d.startswith(kern_dir):
-                            act_d = next_d
-                        else:
-                            act_d = os.path.normpath("%s/%s" % (kern_dir, next_d))
-                        if act_d not in next_dep and act_d not in req_dep:
-                            next_dep += [act_d]
-            next_dep.sort()
-            if auto_dep == next_dep:
+            cur_size = len(matches_found)
+            m_iter += 1
+            #next_dep = copy.deepcopy(auto_dep)
+            if verbose:
+                print " - %2d %s" % (m_iter, ", ".join(sorted(list(matches_found))))
+            for cur_match in list(matches_found):
+                matches_found |= set(dep_dict[cur_match])
+            if len(matches_found) == cur_size:
                 break
-            auto_dep = copy.deepcopy(next_dep)
-        auto_dep = [x for x in auto_dep if x not in req_dep]
-    else:
-        auto_dep = []
-    not_found_mods = [key for key in mod_names if not key in matches_found]
-    found_mods     = [value for key, value in mod_dict.iteritems() if value]
+    # update mod_dict
+    for entry in matches_found:
+        mod_dict[_shorten_module_name(entry)] = entry
+    not_found_mods = [key for key in mod_names if key not in mod_dict]
+    found_mods     = [value for key, value in mod_dict.iteritems()]
     fw_lines = []
     for f_module in found_mods:
-        fw_stat, fw_out = commands.getstatusoutput("modinfo %s" % (f_module))
+        fw_stat, fw_out = commands.getstatusoutput("modinfo %s" % (file_dict[f_module]))
         if fw_stat:
             print "Error calling modinfo for %s (%d): %s" % (f_module,
                                                              fw_stat,
@@ -219,8 +221,7 @@ def get_module_dependencies(kern_dir, mod_list):
                 fw_lines.extend(loc_fw_lines)
             else:
                 print "no firmware files needed for %s" % (f_module)
-                
-    return found_mods + auto_dep, not_found_mods, fw_lines
+    return [file_dict[entry] for entry in matches_found], not_found_mods, fw_lines
 
 def which(file_name, sp):
     for p_p in sp:
@@ -738,79 +739,54 @@ def main():
     else:
         main_normal()
 
+class local_arg_parser(argparse.ArgumentParser):
+    def __init__(self):
+        argparse.ArgumentParser.__init__(self)
+        self.add_argument("-s", dest="stage_num", type=int, default=1, choices=[1, 2, 3], help="set stage to build [%(default)d]")
+        self.add_argument("-l", dest="show_content", default=False, action="store_true", help="list dirs and files [%(default)s]")
+        self.add_argument("-i", dest="ignore_errors", default=False, action="store_true", help="ignore errors (missing files), [%(default)s]")
+        self.add_argument("-0", dest="stage_0_files", default="", type=str, help="add to stage_dict (key 0) [%(default)s]")
+        self.add_argument("-1", dest="stage_1_files", default="", type=str, help="add to stage_dict (key 1) [%(default)s]")
+        self.add_argument("-d", dest="temp_dir", default="", type=str, help="temporary directory for creating of the stage-disc [%(default)s]")
+        self.add_argument("-v", "--verbose", dest="verbose", default=0, action="count", help="increase verbosity [%(default)d]")
+        self.add_argument("-m", "--modules", dest="modules", default="", type=str, help="comma-separated list of kernel-modules to include in the first stage [%(default)s]")
+    def parse(self):
+        cur_args = self.parse_args()
+        cur_args.stage_0_files = [entry.strip() for entry in cur_args.stage_0_files.strip().split(",") if entry.strip()]
+        cur_args.stage_1_files = [entry.strip() for entry in cur_args.stage_1_files.strip().split(",") if entry.strip()]
+        cur_args.modules = [entry.strip() for entry in cur_args.modules.strip().split(",") if entry.strip()]
+        return cur_args
+    
 def main_local():
     global verbose
+    local_args = local_arg_parser().parse()
     script = sys.argv[0]
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "hs:d:ilv0:1:", ["help", "modules="])
-    except getopt.GetoptError, why:
-        print "Error parsing commandline : %s" % (str(why))
-        sys.exit(1)
-    stage_num, verbose, temp_dir, ignore_errors, show_content, add_modules = (1, 0, None, 0, 0, [])
-    stage_add_dict = {0 : [],
-                      1 : [],
+    stage_add_dict = {0 : local_args.stage_0_files,
+                      1 : local_args.stage_1_files,
                       2 : []}
-    for opt, arg in opts:
-        if opt in ["-h", "--help"]:
-            print "Usage : %s [OPTIONS] kerneldir" % (os.path.basename(script))
-            print "  where OPTIONS is one or more of"
-            print " -h, --help      this help"
-            print " -s 1|2          set stage to build, defaults to %d" % (stage_num)
-            print " -d TEMPDIR      temporary directory for creating of the stage-disc"
-            print " -v              be verbose"
-            print " -i              ignore errors (missing files)"
-            print " -l              show content"
-            print " -0 FILES        add to stage_dict (key 0)"
-            print " -1 FILES        add to stage_dict (key 1)"
-            print " --modules MODS  modules to load at stage1"
-            sys.exit(0)
-        if opt == "--modules":
-            add_modules = [mod_arg.split(":", 1) for mod_arg in arg.split(",")]
-        if opt == "-i":
-            ignore_errors = 1
-        if opt == "-l":
-            show_content = 1
-        if opt == "-v":
-            verbose += 1
-        if opt == "-d":
-            temp_dir = arg
-        if opt == "-0":
-            stage_add_dict[0] = arg.split(",")
-        if opt == "-1":
-            stage_add_dict[1] = arg.split(",")
-        if opt == "-s":
-            try:
-                stage_num = max(1, min(3, int(arg)))
-            except:
-                print "Cannot parse stage_number '%s', exiting..." % (arg)
-                sys.exit(1)
-    if not temp_dir:
+    if not local_args.temp_dir:
         print "Error, need temp_dir ..."
         sys.exit(1)
-    print "Generating stage%d initrd, verbosity level is %d ..." % (stage_num, verbose)
-    if stage_num == 1:
-        stage_ok = populate_it(stage_num, temp_dir, stage1_dir_dict, stage1_file_dict, stage_add_dict, ignore_errors, show_content, add_modules)
-    elif stage_num == 2:
-        stage_ok = populate_it(stage_num, temp_dir, stage2_dir_dict, stage2_file_dict, stage_add_dict, ignore_errors, show_content, add_modules)
+    verbose = local_args.verbose
+    print "Generating stage%d initrd, verbosity level is %d ..." % (local_args.stage_num, local_args.verbose)
+    if local_args.stage_num == 1:
+        stage_ok = populate_it(local_args.stage_num, local_args.temp_dir, stage1_dir_dict, stage1_file_dict, stage_add_dict, local_args.ignore_errors, local_args.show_content, local_args.modules)
+    elif local_args.stage_num == 2:
+        stage_ok = populate_it(local_args.stage_num, local_args.temp_dir, stage2_dir_dict, stage2_file_dict, stage_add_dict, local_args.ignore_errors, local_args.show_content, local_args.modules)
     else:
-        stage_ok = populate_it(stage_num, temp_dir, stageloc_dir_dict, stageloc_file_dict, stage_add_dict, ignore_errors, show_content, add_modules)
+        stage_ok = populate_it(local_args.stage_num, local_args.temp_dir, stageloc_dir_dict, stageloc_file_dict, stage_add_dict, local_args.ignore_errors, local_args.show_content, local_args.modules)
     sys.exit(stage_ok)
 
 def do_show_kernels(dev_assoc):
-    try:
-        import mysql_tools
-    except ImportError:
-        print "Need mysql_tools support for this function"
-        sys.exit(1)
-    dbcon = mysql_tools.dbcon_container()
-    dc = dbcon.get_connection()
     kern_dict = {}
     out_list = logging_tools.form_list()
     if dev_assoc:
+        # FIXME
         out_list.set_format_string(1, "d", "")
         out_list.set_format_string(3, "d", "")
         out_list.set_format_string(5, "d", "")
         out_list.set_header_string(0, ["Kernel", "#d", "drivers", "#new", "Device list (new mode)", "#old", "Device list (old mode)"])
+        
         dc.execute("SELECT d.name AS devname, k.name AS kernname, n.devname AS netname, n.driver FROM device d, kernel k, netdevice n WHERE d.new_kernel=k.kernel_idx AND n.device=d.device_idx AND n.netdevice_idx=d.bootnetdevice ORDER by d.name")
         for db_rec in dc.fetchall():
             kern_dict.setdefault(db_rec["kernname"], {}).setdefault(db_rec["driver"], []).append(("new", db_rec["devname"], db_rec["netname"]))
@@ -848,9 +824,8 @@ def do_show_kernels(dev_assoc):
                                    ", ".join([logging_tools.compress_list(drv_dict[x]["old"]) for x in drvs if drv_dict[x]["old"]])))
     else:
         out_list.set_header_string(0, ["Kernel", "initrd_version", "initrd_built", "modules"])
-        dc.execute("SELECT k.* FROM kernel k ORDER BY k.name")
-        for db_rec in dc.fetchall():
-            kern_dict[db_rec["name"]] = db_rec
+        # FIXME
+        all_kernels = kernel.objects.all().order_by("name")
         k_names = kern_dict.keys()
         k_names.sort()
         for k_name in k_names:
@@ -865,304 +840,223 @@ def do_show_kernels(dev_assoc):
         print out_list
     else:
         print "Empty list"
-    dc.release()
-    del dbcon
     sys.exit(0)
     
 def log_it(what):
     print " - %s" % (what)
     
+class arg_parser(argparse.ArgumentParser):
+    def __init__(self):
+        argparse.ArgumentParser.__init__(self)
+        self.add_argument("-v", "--verbose", dest="verbose", default=0, action="count", help="increase verbosity [%(default)d]")
+        self.add_argument("-6", dest="kernel_64_bit", default=False, action="store_true", help="force 64-bit Kernel [%(default)s]")
+        self.add_argument("-k", dest="keep_dirs", default=False, action="store_true", help="keep stage 2 directories [%(default)s]")
+        self.add_argument("-i", dest="ignore_errors", default=False, action="store_true", help="ignore errors (missing files), [%(default)s]")
+        self.add_argument("-D", dest="do_depmod_call", default=True, action="store_false", help="skip depmod-call [%(default)s]")
+        self.add_argument("-q", dest="quiet", default=False, action="store_true", help="quiet (except errors) [%(default)s]")
+        self.add_argument("-t", dest="supress_transfer", default=True, action="store_false", help="transfer to other mother_server(s) [%(default)s]")
+        self.add_argument("-m", dest="modules", default="", type=str, help="comma-separated list of kernel-modules to include in the first stage [%(default)s]")
+        self.add_argument("--grub", dest="add_grub_binaries", default=False, action="store_true", help="add grub binaries in stage1 [%(default)s]")
+        self.add_argument("--lilo", dest="add_lilo_binaries", default=False, action="store_true", help="add lilo binaries in stage1 [%(default)s]")
+        self.add_argument("-l", dest="show_content", default=False, action="store_true", help="list dirs and files [%(default)s]")
+        self.add_argument("-L", dest="show_kernels", default=0, action="count", help="gives an overview of the used kernels and drivers, use twice to show device association [%(default)d]")
+        self.add_argument("-S", dest="stage_source_dir", default="/opt/cluster/lcs", type=str, help="source directory of stage files [%(default)s]")
+        self.add_argument("-T", dest="stage_target_dir", default="", type=str, help="target directory of init files [%(default)s]")
+        self.add_argument("-r", dest="root_dir", default="/", type=str, help="set rootdir [%(default)s]")
+        self.add_argument("-s", dest="init_size", default=0, type=int, help="set the size for the initial ramdisk, is automatically extracted from .config [%(default)d]")
+        self.add_argument("-F", dest="force_kernel_server", default=False, action="store_true", help="ignore if no kernel-server [%(default)s]")
+        self.add_argument("--set-master-server", default=False, action="store_true", help="sets master-server of kernel to local server_idx [%(default)s]")
+        self.add_argument("-M", dest="modules_file", default="", type=str, help="read list of kernel-modules from this file, if neither -m or -M is used the latest setting from the db is used")
+        self.add_argument(dest="kernel_dir", default="", nargs="?")
+    def parse(self):
+        cur_args = self.parse_args()
+        if not os.path.isdir(cur_args.root_dir):
+            print "root_dir '%s' is no directory" % (cur_args.root_dir)
+            sys.exit(0)
+        cur_args.modules = [entry.strip() for entry in cur_args.modules.strip().split(",") if entry.strip()]
+        return cur_args
+    
 def main_normal():
     global verbose
+    my_args = arg_parser().parse()
+    print my_args
+    verbose = my_args.verbose
     script = sys.argv[0]
     local_script = "%s_local.py" % (script[:-3])
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "hs:6m:M:r:vkilDS:T:LqfFt", ["help", "grub", "lilo", "modules=", "set-master-server"])
-    except getopt.GetoptError, why:
-        print "Error parsing commandline : %s" % (str(why))
-        sys.exit(1)
-    loc_config = configfile.configuration("local_config", {"VERBOSE"             : configfile.int_c_var(0),
-                                                           "IGNORE_ERRORS"       : configfile.bool_c_var(False),
-                                                           "KEEP_DIRS"           : configfile.bool_c_var(False),
-                                                           "DO_DEPMOD_CALL"      : configfile.bool_c_var(True),
-                                                           "SUPRESS_TRANSFER"    : configfile.bool_c_var(True),
-                                                           "FORCE_KERNEL_SERVER" : configfile.bool_c_var(False),
-                                                           "FORCE_MYSQL_SERVER"  : configfile.bool_c_var(False),
-                                                           "QUIET_MODE"          : configfile.bool_c_var(False),
-                                                           "SHOW_KERNELS"        : configfile.int_c_var(0),
-                                                           "KERNEL_64_BIT"       : configfile.int_c_var(0),
-                                                           "INIT_SIZE"           : configfile.int_c_var(0),
-                                                           "SHOW_CONTENT"        : configfile.bool_c_var(False),
-                                                           "STAGE_SOURCE_DIR"    : configfile.str_c_var("/opt/cluster/lcs"),
-                                                           "STAGE_DEST_DIR"      : configfile.str_c_var(""),
-                                                           "KERNEL_DIR"          : configfile.str_c_var(""),
-                                                           "ROOT_DIR"            : configfile.str_c_var("/"),
-                                                           "ADD_GRUB_BINARIES"   : configfile.bool_c_var(False),
-                                                           "ADD_LILO_BINARIES"   : configfile.bool_c_var(False),
-                                                           "SET_MASTER_SERVER"   : configfile.bool_c_var(False),
-                                                           "ADD_MODULES"         : configfile.array_c_var([])})
-    mods, mods_file = ([], None)
     stage_add_dict = {1 : {0 : [],
                            1 : []},
                       2 : {0 : [],
                            1 : []},
                       3 : {0 : [],
                            1 : []}}
-    for opt, arg in opts:
-        if opt in ["-h", "--help"]:
-            print "Usage : %s [OPTIONS] kerneldir" % (os.path.basename(script))
-            print "  where OPTIONS is one or more of"
-            print " -h, --help           this help"
-            print " -m MODS              comma-separated list of kernel-modules to include in the first stage"
-            print " -M MODFILE           read list of kernel-modules from this file"
-            print "                       o if neither -m or -M is used the latest setting from the db is used"
-            print "                       o use -m \"\" to clear module list"
-            print " -s SIZE              set the size for the initial ramdisk, is automatically extracted from .config"
-            print " -6                   force 64bit Kernel"
-            print " -r DIR               set rootdir to DIR, default is '%s'" % (loc_config["ROOT_DIR"])
-            print " -v                   increase level of verbosity"
-            print " -k                   keep stage1/2 directories after generation"
-            print " -i                   ignore errors (missing files)"
-            print " -l                   list dirs and files"
-            print " -D                   skip depmod-call"
-            print " -S                   sets source stage_dir (default is %s)" % (loc_config["STAGE_SOURCE_DIR"])
-            print " -T                   sets target stage_dir (default is equal to kernel directory)"
-            print " -L                   gives an overview of the used kernels and drivers, use twice to show device association"
-            print " -q                   quiet (except errors)"
-            print " -f                   ignore if no mysql-tools"
-            print " -F                   ignore if no kernel-server"
-            print " -t                   transfer to mother_servers"
-            print " --grub               add grub binaries"
-            print " --lilo               add lilo binaries"
-            print " --set-master-server  sets master-server of kernel to local server_idx"
-            print " --modules ARGS  additional modules to load in stage1, comma-separated: mod1[:mod1_options][,mod2[:mod2_options]]"
-            sys.exit(0)
-        if opt in ["--lilo", "--grub"]:
-            loc_config["ADD_%s_BINARIES" % (opt.upper())] = True
-        if opt == "--set-master-server":
-            loc_config["SET_MASTER_SERVER"] = True
-        if opt == "-t":
-            loc_config["SUPRESS_TRANSFER"] = False
-        if opt == "-D":
-            loc_config["DO_DEPMOD_CALL"] = False
-        if opt == "-f":
-            loc_config["FORCE_MYSQL_SERVER"] = True
-        if opt == "-F":
-            loc_config["FORCE_KERNEL_SERVER"] = True
-        if opt == "-q":
-            loc_config["QUIET_MODE"] = True
-        if opt == "-S":
-            loc_config["STAGE_SOURCE_DIR"] = arg
-        if opt == "-T":
-            loc_config["STAGE_DEST_DIR"] = arg
-        if opt == "-M":
-            mods_file = arg
-        if opt == "-i":
-            loc_config["IGNORE_ERRORS"] = True
-        if opt == "-l":
-            loc_config["SHOW_CONTENT"] = True
-        if opt == "-k":
-            loc_config["KEEP_DIRS"] = True
-        if opt == "-v":
-            loc_config["VERBOSE"] += 1
-        if opt == "-m":
-            mods = [x.strip() for x in arg.split(",")]
-        if opt == "-6":
-            loc_config["KERNEL_64_BIT"] = 1
-        if opt == "-L":
-            loc_config["SHOW_KERNELS"] += 1
-        if opt == "--modules":
-            add_mods = []
-            for line in arg.split(","):
-                if line.count(":"):
-                    mod_name, mod_option = line.split(":", 1)
-                else:
-                    mod_name, mod_option = (line, "")
-                if mod_name.endswith(".o"):
-                    mod_name = mod_name[:-2]
-                elif mod_name.endswith(".ko"):
-                    mod_name = mod_name[:-3]
-                add_mods.append((mod_name, mod_option))
-            loc_config["ADD_MODULES"] = add_mods
-        if opt == "-s":
-            try:
-                loc_config["INIT_SIZE"] = int(arg)
-            except:
-                print "Cannot parse initsize '%s', exiting..." % (arg)
-                sys.exit(1)
-        if opt == "-r":
-            if os.path.isdir(arg):
-                loc_config["ROOT_DIR"] = arg
-            else:
-                print "'%s' is not a directory, exiting..."
-                sys.exit(1)
-    if loc_config["SHOW_KERNELS"]:
-        do_show_kernels(loc_config["SHOW_KERNELS"]==2)
-    if not args:
+##    for opt, arg in opts:
+##        if opt in ["-h", "--help"]:
+##            print " -M MODFILE           read list of kernel-modules from this file"
+##            print "                       o if neither -m or -M is used the latest setting from the db is used"
+##            print "                       o use -m \"\" to clear module list"
+##            print " --modules ARGS  additional modules to load in stage1, comma-separated: mod1[:mod1_options][,mod2[:mod2_options]]"
+##            sys.exit(0)
+##        if opt == "--modules":
+##            add_mods = []
+##            for line in arg.split(","):
+##                if line.count(":"):
+##                    mod_name, mod_option = line.split(":", 1)
+##                else:
+##                    mod_name, mod_option = (line, "")
+##                if mod_name.endswith(".o"):
+##                    mod_name = mod_name[:-2]
+##                elif mod_name.endswith(".ko"):
+##                    mod_name = mod_name[:-3]
+##                add_mods.append((mod_name, mod_option))
+##            loc_config["ADD_MODULES"] = add_mods
+    if my_args.show_kernels:
+        do_show_kernels(my_args.show_kernels == 2)
+    if not my_args.kernel_dir:
         print "No kernel-dir given, exiting"
         sys.exit(1)
-    loc_config["KERNEL_DIR"] = args[0]
-    kernel_name = os.path.split(os.path.normpath(loc_config["KERNEL_DIR"]))[1]
+    kernel_name = os.path.split(os.path.normpath(my_args.kernel_dir))
     if not kernel_name:
-        print "Cannot extract kernel_name from %s" % (loc_config["KERNEL_DIR"])
+        print "Cannot extract kernel_name from %s" % (my_args.kernel_dir)
         sys.exit(1)
-    if not os.path.isfile("%s/bzImage" % (loc_config["KERNEL_DIR"])):
-        print "Found no kernel (bzImage) under %s, exiting" % (loc_config["KERNEL_DIR"])
+    if not os.path.isfile("%s/bzImage" % (my_args.kernel_dir)):
+        print "Found no kernel (bzImage) under %s, exiting" % (my_args.kernel_dir)
         sys.exit(1)
-    long_host_name = socket.getfqdn(socket.gethostname())
-    short_host_name = long_host_name.split(".")[0]
-    if mysql_tools:
-        dbcon = mysql_tools.dbcon_container()
-        dc = dbcon.get_connection()
-    else:
-        dbcon = None
+    long_host_name, short_host_name = process_tools.get_fqdn()
     # kernel_server idx
     kernel_server_idx = 0
-    if dbcon:
-        # check for kernel_server
-        import config_tools
-        ks_check = config_tools.server_check(dc=dc, server_type="kernel_server")
-        if not ks_check.num_servers:
-            if loc_config["FORCE_KERNEL_SERVER"]:
-                print "Host '%s' is not a kernel_server but continuing due to force flag, just building initrd" % (short_host_name)
-                ms_dict = {}
-            else:
-                print "Host '%s' is not a kernel_server, exiting ..." % (short_host_name)
-                sys.exit(1)
+    # check for kernel_server
+    mother_configs = config_tools.device_with_config("kernel_server")
+    ks_check = config_tools.server_check(server_type="kernel_server")
+    if not ks_check.effective_device:
+        if my_args.force_kernel_server:
+            print "Host '%s' is not a kernel_server but continuing due to force flag, just building initrd" % (short_host_name)
         else:
-            kernel_server_idx = ks_check.server_device_idx
-            dc.execute("SELECT d.name, d.device_idx FROM device d INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx = dg.device WHERE d.device_group=dg.device_group_idx AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND c.name='mother_server'")
-            mother_servers = [x["name"] for x in dc.fetchall()]
-            # get local netdevices
-            dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE n.device=%d" % (ks_check.server_device_idx))
-            all_ids = [x["netdevice_idx"] for x in dc.fetchall()]
-            dc.execute("SELECT d.name, i.ip, h.value, i.alias FROM netip i, hopcount h, netdevice n, device d WHERE i.netdevice=n.netdevice_idx AND n.netdevice_idx=h.d_netdevice AND n.device=d.device_idx AND (%s) AND (%s) ORDER BY h.value, d.name" % (" OR ".join(["d.name='%s'" % (x) for x in mother_servers]),
-                                                                                                                                                                                                                                                                 " OR ".join(["h.s_netdevice=%d" % (x) for x in all_ids])))
-            ms_dict = {}
-            for db_rec in dc.fetchall():
-                if not ms_dict.has_key(db_rec["name"]):
-                    ms_dict[db_rec["name"]] = (db_rec["ip"], db_rec["alias"])
-            print "Host '%s' is a kernel_server (device_idx %d), found %s: %s" % (short_host_name,
-                                                                                  ks_check.server_device_idx,
-                                                                                  logging_tools.get_plural("mother_server", len(mother_servers)),
-                                                                                  ", ".join(["%s [%s]" % (k, ms_dict.get(k, ("not reachable", "not reachable"))[0]) for k in mother_servers]))
-    else:
-        if loc_config["FORCE_MYSQL_SERVER"]:
-            print "Cannot connect to SQL database, just building initrd"
-            ms_dict = {}
-        else:
-            print "Cannot connect to SQL database, exiting ..."
+            print "Host '%s' is not a kernel_server, exiting ..." % (short_host_name)
             sys.exit(1)
-    if len(args) != 1:
-        print "Need exactly one directory as argument (given: %d)" % (len(args))
+    else:
+        #print ks_check.effective_device
+##        kernel_server_idx = ks_check.server_device_idx
+##        dc.execute("SELECT d.name, d.device_idx FROM device d INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx = dg.device WHERE d.device_group=dg.device_group_idx AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND c.name='mother_server'")
+##        mother_servers = [x["name"] for x in dc.fetchall()]
+##        # get local netdevices
+##        dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE n.device=%d" % (ks_check.server_device_idx))
+##        all_ids = [x["netdevice_idx"] for x in dc.fetchall()]
+##        dc.execute("SELECT d.name, i.ip, h.value, i.alias FROM netip i, hopcount h, netdevice n, device d WHERE i.netdevice=n.netdevice_idx AND n.netdevice_idx=h.d_netdevice AND n.device=d.device_idx AND (%s) AND (%s) ORDER BY h.value, d.name" % (" OR ".join(["d.name='%s'" % (x) for x in mother_servers]),
+##                                                                                                                                                                                                                                                             " OR ".join(["h.s_netdevice=%d" % (x) for x in all_ids])))
+        mother_list = mother_configs["kernel_server"]
+        print "Host '%s' is a kernel_server (device_idx %d), found %s: %s" % (
+            short_host_name,
+            ks_check.effective_device.pk,
+            logging_tools.get_plural("mother_server", len(mother_list)),
+            ", ".join(["%s [%s]" % (
+                unicode(cur_entry.effective_device),
+                ", ".join(cur_entry.ip_list)) for cur_entry in mother_list]))
+    if not os.path.isdir(my_args.kernel_dir):
+        print "Need a directory as argument ('%s' is not a directory)" % (my_args.kernel_dir)
         sys.exit(1)
-    if not os.path.isdir(loc_config["KERNEL_DIR"]):
-        print "Need a directory as argument ('%s' is not a directory)" % (loc_config["KERNEL_DIR"])
+    elif not os.path.isabs(my_args.kernel_dir):
+        print "Need an absoult path as argument ('%s' is a relative path)" % (my_args.kernel_dir)
         sys.exit(1)
-    elif not os.path.isabs(loc_config["KERNEL_DIR"]):
-        print "Need an absoult path as argument ('%s' is a relative path)" % (loc_config["KERNEL_DIR"])
-        sys.exit(1)
-    kernel_idx, kernel_stuff = (0, None)
-    if dbcon:
-        target_path = os.path.normpath(loc_config["KERNEL_DIR"])
-        dc.execute("SELECT * FROM kernel k WHERE k.name=%s", kernel_name)
-        if dc.rowcount:
-            kernel_stuff = dc.fetchone()
-            kernel_idx = kernel_stuff["kernel_idx"]
-            print "Found kernel at path '%s' (name %s) in database (kernel_idx is %d)" % (target_path, kernel_name, kernel_idx)
-            if kernel_stuff["xen_host_kernel"]:
-                print " - kernel for Xen-hosts"
-            if kernel_stuff["xen_guest_kernel"]:
-                print " - kernel for Xen-guests"
-            if kernel_server_idx:
-                if kernel_server_idx != kernel_stuff["master_server"]:
-                    if loc_config["SET_MASTER_SERVER"]:
-                        print "setting master_server of kernel to local kernel_server_idx"
-                        dc.execute("UPDATE kernel SET master_server=%s WHERE kernel_idx=%s", (kernel_server_idx,
-                                                                                                    kernel_idx))
-                    else:
-                        print "server_device_idx for kernel_server differs from master_server from DB, exiting (override with --set-master-server)"
-                        sys.exit(0)
-        else:
-            print "*** Cannot find a kernel at path '%s' (name %s) in database" % (target_path, kernel_name)
+    target_path = os.path.normpath(my_args.kernel_dir)
+    try:
+        my_kernel = kernel.objects.get(Q(name=kernel_name))
+    except kernel.DoesNotExist:
+        print "*** Cannot find a kernel at path '%s' (name %s) in database" % (target_path, kernel_name)
+        my_kernel = None
+    else:
+        print "Found kernel at path '%s' (name %s) in database (kernel_idx is %d)" % (target_path, kernel_name, my_kernel.pk)
+        if kernel_stuff["xen_host_kernel"]:
+            print " - kernel for Xen-hosts"
+        if kernel_stuff["xen_guest_kernel"]:
+            print " - kernel for Xen-guests"
+        if kernel_server_idx:
+            if kernel_server_idx != kernel_stuff["master_server"]:
+                if loc_config["SET_MASTER_SERVER"]:
+                    print "setting master_server of kernel to local kernel_server_idx"
+                    dc.execute("UPDATE kernel SET master_server=%s WHERE kernel_idx=%s", (kernel_server_idx,
+                                                                                                kernel_idx))
+                else:
+                    print "server_device_idx for kernel_server differs from master_server from DB, exiting (override with --set-master-server)"
+                    sys.exit(0)
     # build list of modules
     act_mods = []
-    take_modules_from_db = (mods == [] and not mods_file)
+    take_modules_from_db = (my_args.modules == [] and not my_args.modules_file)
     if not take_modules_from_db:
-        if mods_file:
+        if my_args.modules_file:
             if os.path.isfile(mods_file):
-                mods.extend([y for y in [x.strip() for x in file(mods_file, "r").read().split("\n")] if y])
+                mods.extend([line.strip() for line in file(mods_file, "r").read().split("\n") if line.strip()])
             else:
                 print "cannot read mods_file '%s', exiting..." % (mods_file)
                 sys.exit(1)
-        for mod in mods:
+        for mod in my_args.modules:
             if mod.endswith(".o"):
                 mod = mod[:-2]
             elif mod.endswith(".ko"):
                 mod = mod[:-3]
             if mod and mod not in MOD_REFUSE_LIST:
                 act_mods.append(mod)
-    if loc_config["ADD_MODULES"]:
-        act_mods.extend([mod_name for mod_name, mod_option in loc_config["ADD_MODULES"]])
+    my_args.add_modules = []
+    #if my_args.loc_config["ADD_MODULES"]:
+    #    act_mods.extend([mod_name for mod_name, mod_option in loc_config["ADD_MODULES"]])
     act_mods.sort()
     # check type of build-dir linux (32/64 bit)
-    build_arch_64bit = get_system_bitcount(loc_config["ROOT_DIR"])
+    build_arch_64bit = get_system_bitcount(my_args.root_dir)
     local_arch_64bit = get_system_bitcount("/")
     if build_arch_64bit > local_arch_64bit:
         print "don't known how to build 64bit initrds on a 32bit System, exiting..."
         sys.exit(1)
     # try to get kernel config
-    wrong_config_name = "%s/config" % (loc_config["KERNEL_DIR"])
+    wrong_config_name = "%s/config" % (my_args.kernel_dir)
     if os.path.isfile(wrong_config_name):
         print
         print " *** Found %s, please move to .config" % (wrong_config_name)
         print
-    if os.path.isfile("%s/.config" % (loc_config["KERNEL_DIR"])):
-        conf_lines = [y for y in [x.strip() for x in file("%s/.config" % (loc_config["KERNEL_DIR"]), "r").read().split("\n") if x.strip()] if not y.strip().startswith("#")]
+    if os.path.isfile("%s/.config" % (my_args.kernel_dir)):
+        conf_lines = [y for y in [x.strip() for x in file("%s/.config" % (my_args.kernel_dir), "r").read().split("\n") if x.strip()] if not y.strip().startswith("#")]
         conf_dict = dict([x.split("=", 1) for x in conf_lines])
     else:
-        print "Warning, no kernel_config %s/.config found" % (loc_config["KERNEL_DIR"])
+        print "Warning, no kernel_config %s/.config found" % (my_args.kernel_dir)
         conf_dict = {}
     # set initsize if not already set
-    if not loc_config["INIT_SIZE"]:
-        loc_config["INIT_SIZE"] = int(conf_dict.get("CONFIG_BLK_DEV_RAM_SIZE", "16384"))
+    if not my_args.init_size:
+        my_args.init_size = int(conf_dict.get("CONFIG_BLK_DEV_RAM_SIZE", "16384"))
     # check for 64bit Kernel
-    if not loc_config["KERNEL_64_BIT"]:
-        loc_config["KERNEL_64_BIT"] = conf_dict.has_key("CONFIG_X86_64")
-    if not local_arch_64bit and loc_config["KERNEL_64_BIT"]:
+    if not my_args.kernel_64_bit:
+        my_args.kernel_64_bit = "CONFIG_X86_64" in conf_dict
+    if not local_arch_64bit and my_args.kernel_64_bit:
         print "/ is 32bit and Kernel 64 bit, exiting"
         sys.exit(1)
-    if build_arch_64bit and not loc_config["KERNEL_64_BIT"]:
-        print "build_architecture under %s is 64bit and Kernel 32 bit, exiting" % (loc_config["ROOT_DIR"])
+    if build_arch_64bit and not my_args.kernel_64_bit:
+        print "build_architecture under %s is 64bit and Kernel 32 bit, exiting" % (my_args.root_dir)
         sys.exit(1)
     # check for kernel version
-    if os.path.isdir("%s/lib/modules" % (loc_config["KERNEL_DIR"])):
-        kverdirs = os.listdir("%s/lib/modules" % (loc_config["KERNEL_DIR"]))
+    if os.path.isdir("%s/lib/modules" % (my_args.kernel_dir)):
+        kverdirs = os.listdir("%s/lib/modules" % (my_args.kernel_dir))
         if len(kverdirs) > 1:
             print "More than one KernelVersionDirectory found: %s" % (", ".join(kverdirs))
             sys.exit(1)
         elif len(kverdirs) == 0:
-            print "No KernelVersionDirectory found below '%s/lib/modules'" % (loc_config["KERNEL_DIR"])
+            print "No KernelVersionDirectory found below '%s/lib/modules'" % (my_args.kernel_dir)
             sys.exit(1)
         kverdir = kverdirs[0]
-        if loc_config["DO_DEPMOD_CALL"]:
-            depmod_call = "depmod -aeb %s %s" % (loc_config["KERNEL_DIR"], kverdir)
-            if not loc_config["QUIET_MODE"]:
+        if my_args.do_depmod_call:
+            depmod_call = "depmod -aeb %s %s" % (my_args.kernel_dir, kverdir)
+            if not my_args.quiet:
                 print "Doing depmod_call '%s' ..." % (depmod_call)
             c_stat, out = commands.getstatusoutput(depmod_call)
             if c_stat:
                 print " - some error occured (%d): %s" % (c_stat, out)
                 sys.exit(1)
     else:
-        kverdir = os.path.basename(os.path.normpath(loc_config["KERNEL_DIR"]))
-        print "No lib/modules directory found under '%s', setting kernel_version to %s" % (loc_config["KERNEL_DIR"], kverdir)
+        kverdir = os.path.basename(os.path.normpath(my_args.kernel_dir))
+        print "No lib/modules directory found under '%s', setting kernel_version to %s" % (my_args.kernel_dir, kverdir)
     bit_dict = {0 : "32",
                 1 : "64"}
     # check availability of stages
     for stage in ["1", "2", "3", "local"]:
-        fname = "/%s/stage%s" % (loc_config["STAGE_SOURCE_DIR"], stage)
+        fname = "/%s/stage%s" % (my_args.stage_source_dir, stage)
         if not os.path.isfile(fname):
-            print "Cannot find stage %s file %s in stage_dir %s" % (stage, fname, loc_config["STAGE_SOURCE_DIR"])
+            print "Cannot find stage %s file %s in stage_dir %s" % (stage, fname, my_args.stage_source_dir)
             sys.exit(1)
     free_lo_dev = find_free_loopdevice()
     if free_lo_dev == -1:
@@ -1170,16 +1064,15 @@ def main_normal():
         sys.exit(1)
     loop_dev = "/dev/loop%d" % (free_lo_dev)
     # read uuid
-    import uuid_tools
     my_uuid = uuid_tools.get_uuid()
-    if not loc_config["QUIET_MODE"]:
+    if not my_args.quiet:
         print "cluster_device_uuid is %s" % (my_uuid.get_urn())
-        print "Kernel directory is '%s', initsize is %d kBytes" % (loc_config["KERNEL_DIR"], loc_config["INIT_SIZE"])
-        print "  kernel_version is %s, %s-bit kernel" % (kverdir, bit_dict[loc_config["KERNEL_64_BIT"]])
-        print "  build_dir is '%s', %s-bit linux" % (loc_config["ROOT_DIR"], bit_dict[build_arch_64bit])
+        print "Kernel directory is '%s', initsize is %d kBytes" % (my_args.kernel_dir, my_args.init_size)
+        print "  kernel_version is %s, %s-bit kernel" % (kverdir, bit_dict[my_args.kernel_64_bit])
+        print "  build_dir is '%s', %s-bit linux" % (my_args.root_dir, bit_dict[build_arch_64bit])
         print "  local_system is a %s-bit linux" % (bit_dict[local_arch_64bit])
-        print "  stage source directory is %s" % (loc_config["STAGE_SOURCE_DIR"])
-        print "  stage target directory is %s" % (loc_config["STAGE_DEST_DIR"] and loc_config["STAGE_DEST_DIR"] or loc_config["KERNEL_DIR"])
+        print "  stage source directory is %s" % (my_args.stage_source_dir)
+        print "  stage target directory is %s" % (my_args.stage_target_dir and my_args.stage_target_dir or my_args.kernel_dir)
         print "  will create three flavours:"
         print "    - use mkfs.cramfs to build stage1 initrd"
         print "    - create a cpio-archive for stage1 initrd"
@@ -1187,19 +1080,19 @@ def main_normal():
     stage_add_dict[1][1].append("run-init")
     stage_add_dict[3][1].append("run-init")
     # add boot-load specific files
-    if loc_config["ADD_GRUB_BINARIES"]:
-        if not loc_config["QUIET_MODE"]:
+    if my_args.add_grub_binaries:
+        if not my_args.quiet:
             print "  adding grub-binaries"
         stage_add_dict[2][1].extend(["grub", "grub-install"])
-    if loc_config["ADD_LILO_BINARIES"]:
-        if not loc_config["QUIET_MODE"]:
+    if my_args.add_lilo_binaries:
+        if not my_args.quiet:
             print "  adding lilo-binaries"
         stage_add_dict[2][1].extend(["lilo"])
     # get kernel-module dependencies
-    if kernel_idx:
+    if my_kernel:
         if take_modules_from_db:
             if kernel_stuff["target_module_list"]:
-                act_mods = [x.strip() for x in kernel_stuff["target_module_list"].split(",") if x.strip() not in MOD_REFUSE_LIST]
+                act_mods = [line.strip() for line in kernel_stuff["target_module_list"].split(",") if line.strip() not in MOD_REFUSE_LIST]
             else:
                 act_mods = []
             print "Using module_list from database: %s, %s" % (logging_tools.get_plural("module", len(act_mods)),
@@ -1210,26 +1103,26 @@ def main_normal():
             dc.execute("UPDATE kernel SET target_module_list='%s' WHERE kernel_idx=%d" % (",".join(act_mods),
                                                                                                 kernel_idx))
     if act_mods:
-        all_mods, del_mods, fw_files = get_module_dependencies(loc_config["KERNEL_DIR"], act_mods)
+        all_mods, del_mods, fw_files = get_module_dependencies(my_args.kernel_dir, act_mods)
         all_mods = [x for x in all_mods if x not in MOD_REFUSE_LIST]
         act_mods.sort()
         all_mods.sort()
         del_mods.sort()
-        if not loc_config["QUIET_MODE"]:
+        if not my_args.quiet:
             print "  %s given: %s; %s not found, %s have to be installed" % (logging_tools.get_plural("kernel module", len(act_mods)),
                                                                              ", ".join(act_mods),
                                                                              logging_tools.get_plural("module", len(del_mods)),
                                                                              logging_tools.get_plural("module", len(all_mods)))
-        if loc_config["VERBOSE"] and not loc_config["QUIET_MODE"]:
+        if my_args.verbose and not my_args.quiet:
             for mod in del_mods:
                 print " - (not found) : %s" % (mod)
             for mod in all_mods:
                 print " + (found) : %s" % (mod)
     else:
         all_mods, fw_files = ([], [])
-        if not loc_config["QUIET_MODE"]:
+        if not my_args.quiet:
             print "  no kernel-modules given"
-    if kernel_idx:
+    if my_kernel:
         base_mods = [".".join(os.path.basename(x).split(".")[0:-1]) for x in all_mods]
         base_mods.sort()
         if kernel_stuff["module_list"]:
@@ -1244,79 +1137,79 @@ def main_normal():
         dc.execute("UPDATE kernel SET module_list='%s', initrd_built=NOW() WHERE kernel_idx=%d" % (",".join(base_mods),
                                                                                                          kernel_idx))
         print "ok"
-    if loc_config["ROOT_DIR"] != "/":
-        loc_src, loc_dst = (script, os.path.normpath("%s/%s" % (loc_config["ROOT_DIR"], os.path.basename(local_script))))
-        if not loc_config["QUIET_MODE"]:
+    if my_args.root_dir != "/":
+        loc_src, loc_dst = (script, os.path.normpath("%s/%s" % (my_args.root_dir, os.path.basename(local_script))))
+        if not my_args.quiet:
             print "  copying %s to %s" % (loc_src, loc_dst)
         shutil.copy(loc_src, loc_dst)
     # setting up loopdevice for stage1
-    stage1_lo_file     = os.path.normpath("/%s/initrd_lo" % (loc_config["STAGE_DEST_DIR"] and loc_config["STAGE_DEST_DIR"] or loc_config["KERNEL_DIR"]))
-    stage1_cramfs_file = os.path.normpath("/%s/initrd_cramfs" % (loc_config["STAGE_DEST_DIR"] and loc_config["STAGE_DEST_DIR"] or loc_config["KERNEL_DIR"]))
-    stage1_cpio_file   = os.path.normpath("/%s/initrd_cpio" % (loc_config["STAGE_DEST_DIR"] and loc_config["STAGE_DEST_DIR"] or loc_config["KERNEL_DIR"]))
-    stage2_file        = os.path.normpath("/%s/initrd_stage2.gz" % (loc_config["STAGE_DEST_DIR"] and loc_config["STAGE_DEST_DIR"] or loc_config["KERNEL_DIR"]))
-    stageloc_file      = os.path.normpath("/%s/initrd_local" % (loc_config["STAGE_DEST_DIR"] and loc_config["STAGE_DEST_DIR"] or loc_config["KERNEL_DIR"]))
+    stage1_lo_file     = os.path.normpath("/%s/initrd_lo" % (my_args.stage_target_dir and my_args.stage_target_dir or my_args.kernel_dir))
+    stage1_cramfs_file = os.path.normpath("/%s/initrd_cramfs" % (my_args.stage_target_dir and my_args.stage_target_dir or my_args.kernel_dir))
+    stage1_cpio_file   = os.path.normpath("/%s/initrd_cpio" % (my_args.stage_target_dir and my_args.stage_target_dir or my_args.kernel_dir))
+    stage2_file        = os.path.normpath("/%s/initrd_stage2.gz" % (my_args.stage_target_dir and my_args.stage_target_dir or my_args.kernel_dir))
+    stageloc_file      = os.path.normpath("/%s/initrd_local" % (my_args.stage_target_dir and my_args.stage_target_dir or my_args.kernel_dir))
     for del_file in [stage1_lo_file, stage1_cramfs_file, stage1_cpio_file, stage2_file, stageloc_file]:
         if os.path.isfile(del_file):
             os.unlink(del_file)
         if os.path.isfile("%s.gz" % (del_file)):
             os.unlink("%s.gz" % (del_file))
-    stage1_dir   = tempfile.mkdtemp(".stage1_dir"  , "/%s/tmp/.rdc_" % (loc_config["ROOT_DIR"]))
-    stage2_dir   = tempfile.mkdtemp(".stage2_dir"  , "/%s/tmp/.rdc_" % (loc_config["ROOT_DIR"]))
-    stageloc_dir = tempfile.mkdtemp(".stageloc_dir", "/%s/tmp/.rdc_" % (loc_config["ROOT_DIR"]))
+    stage1_dir   = tempfile.mkdtemp(".stage1_dir"  , "/%s/tmp/.rdc_" % (my_args.root_dir))
+    stage2_dir   = tempfile.mkdtemp(".stage2_dir"  , "/%s/tmp/.rdc_" % (my_args.root_dir))
+    stageloc_dir = tempfile.mkdtemp(".stageloc_dir", "/%s/tmp/.rdc_" % (my_args.root_dir))
     stat_out = []
-    stat_out += [("dd"       , commands.getstatusoutput("dd if=/dev/zero of=%s bs=1024 count=%d" % (stage1_lo_file, loc_config["INIT_SIZE"])))]
+    stat_out += [("dd"       , commands.getstatusoutput("dd if=/dev/zero of=%s bs=1024 count=%d" % (stage1_lo_file, my_args.init_size)))]
     stat_out += [("losetup"  , commands.getstatusoutput("losetup %s %s" % (loop_dev, stage1_lo_file)))]
-    stat_out += [("mkfs.ext2", commands.getstatusoutput("mkfs.ext2 -F -v -m 0 -b 1024 %s %d" % (stage1_lo_file, loc_config["INIT_SIZE"])))]
+    stat_out += [("mkfs.ext2", commands.getstatusoutput("mkfs.ext2 -F -v -m 0 -b 1024 %s %d" % (stage1_lo_file, my_args.init_size)))]
     stat_out += [("mount"    , commands.getstatusoutput("mount -o loop -t ext2 %s %s" % (stage1_lo_file, stage1_dir)))]
-    if len([err_name for name, (err_name, y) in stat_out if err_name]):
+    if len([err_name for name, (err_name, line) in stat_out if err_name]):
         print "Something went wrong during setup of stage1:"
-        for name, (err_name, y) in stat_out:
-            print "%s (%d) : \n%s" % (name, err_name, "\n".join([" - %s" % (z) for z in y.split("\n")]))
+        for name, (err_name, line) in stat_out:
+            print "%s (%d) : \n%s" % (name, err_name, "\n".join([" - %s" % (part) for part in line.split("\n")]))
         sys.exit(-1)
     stage_targ_dirs = [stage1_dir, stage2_dir, stageloc_dir]
     stage_dirs, del_dirs = ([], [])
     for stage in range(1, 4):
-        if not loc_config["QUIET_MODE"]:
+        if not my_args.quiet:
             print "Generating stage%s initrd ..." % ({1 : "1",
                                                       2 : "2",
                                                       3 : "local"}[stage])
         act_stage_dir = stage_targ_dirs[stage - 1]
         loc_root_dir = "/".join([""] + act_stage_dir.split("/")[-2:])
-        loc_args = " ".join(["-v"] * loc_config["VERBOSE"])
-        if loc_config["IGNORE_ERRORS"]:
+        loc_args = " ".join(["-v"] * my_args.verbose)
+        if my_args.ignore_errors:
             loc_args += " -i "
-        if loc_config["SHOW_CONTENT"]:
+        if my_args.show_content:
             loc_args += " -l "
-        if loc_config["ROOT_DIR"] != "/":
-            gen_com = "chroot %s /%s %s -d %s -s %d" % (loc_config["ROOT_DIR"], os.path.basename(local_script), loc_args, loc_root_dir, stage)
+        if my_args.root_dir != "/":
+            gen_com = "chroot %s /%s %s -d %s -s %d" % (my_args.root_dir, os.path.basename(local_script), loc_args, loc_root_dir, stage)
         else:
             gen_com = "%s %s -s %d -d %s " % (local_script, loc_args, stage, loc_root_dir)
         gen_com = "%s %s" % (gen_com, " ".join(["-%d %s" % (im_key, ",".join(stage_add_dict[stage][im_key])) for im_key in [0, 1] if stage_add_dict[stage][im_key]]))
-        if loc_config["ADD_MODULES"] and stage in [1, 3]:
-            gen_com = "%s --modules %s" % (gen_com, ",".join(["%s:%s" % (mod_name, mod_option) for mod_name, mod_option in loc_config["ADD_MODULES"]]))
-        if not loc_config["QUIET_MODE"]:
+        if my_args.add_modules and stage in [1, 3]:
+            gen_com = "%s --modules %s" % (gen_com, ",".join(["%s:%s" % (mod_name, mod_option) for mod_name, mod_option in my_args.add_modules]))
+        if not my_args.quiet:
             print gen_com
         c_stat, out = commands.getstatusoutput(gen_com)
-        if loc_config["VERBOSE"] and not loc_config["QUIET_MODE"]:
+        if my_args.verbose and not my_args.quiet:
             print "\n".join([" - %s" % (x) for x in out.split("\n")])
         act_stage_dir = [y.split()[1].strip() for y in [x.strip() for x in out.strip().split("\n")] if y.startswith("INITDIR")]
         if act_stage_dir:
-            stage_dirs += ["%s/%s" % (loc_config["ROOT_DIR"], act_stage_dir[0])]
+            stage_dirs += ["%s/%s" % (my_args.root_dir, act_stage_dir[0])]
         else:
             print "Error generating stage%d dir" % (stage)
             print "\n".join(["  - %s" % (x) for x in out.split("\n") if x.strip().startswith("E ")])
-        del_dirs += [os.path.normpath("%s/%s" % (loc_config["ROOT_DIR"], loc_root_dir))]
+        del_dirs += [os.path.normpath("%s/%s" % (my_args.root_dir, loc_root_dir))]
     stage_dirs_ok = len(stage_dirs) == len(stage_targ_dirs)
     if stage_dirs_ok:
         for linuxrc_name in LINUXRC_NAMES:
             # stage1 stuff
             stage1_dest = "/%s/%s" % (stage_dirs[0], linuxrc_name)
-            shutil.copy2("/%s/stage1" % (loc_config["STAGE_SOURCE_DIR"]), stage1_dest)
+            shutil.copy2("/%s/stage1" % (my_args.stage_source_dir), stage1_dest)
             os.chmod(stage1_dest, 0744)
             os.chown(stage1_dest, 0, 0)
             # stagelocal stuff
             stageloc_dest = "/%s/%s" % (stage_dirs[2], linuxrc_name)
-            shutil.copy2("/%s/stagelocal" % (loc_config["STAGE_SOURCE_DIR"]), stageloc_dest)
+            shutil.copy2("/%s/stagelocal" % (my_args.stage_source_dir), stageloc_dest)
             os.chmod(stageloc_dest, 0744)
             os.chown(stageloc_dest, 0, 0)
         # add kernel-modules to stage1 / stageloc
@@ -1333,7 +1226,7 @@ def main_normal():
             os.makedirs(fw_dir)
             if fw_files:
                 for fw_file in fw_files:
-                    fw_src_file = "/%s/lib/firmware/%s/%s" % (loc_config["KERNEL_DIR"], kverdir, fw_file) 
+                    fw_src_file = "/%s/lib/firmware/%s/%s" % (my_args.kernel_dir, kverdir, fw_file) 
                     if os.path.isfile(fw_src_file):
                         loc_fw_dir = "/%s/%s" % (fw_dir, os.path.dirname(fw_file))
                         loc_fw_dir_2 = "/%s/%s" % (fw_dir_2, os.path.dirname(fw_file))
@@ -1400,26 +1293,24 @@ def main_normal():
         print "from %s to %s in %s" % (get_size_str(o_sl_size),
                                        get_size_str(n_sl_size),
                                        logging_tools.get_diff_time_str(e_time - s_time))
-    if kernel_idx:
+    if my_kernel:
         dc.execute("UPDATE kernel SET stage1_lo_present=%s, stage1_cpio_present=%s, stage1_cramfs_present=%s, stage2_present=%s WHERE kernel_idx=%s", (1,
                                                                                                                                                        1,
                                                                                                                                                        1,
                                                                                                                                                        1,
                                                                                                                                                        kernel_idx))
-    if dbcon:
-        dc.release()
     # cleaning up
-    if loc_config["ROOT_DIR"] != "/":
+    if my_args.root_dir != "/":
         os.unlink(loc_dst)
     if not stage_dirs_ok:
         print "Stage directories not OK, exiting..."
         sys.exit(0)
-    if not loc_config["KEEP_DIRS"]:
+    if not my_args.keep_dirs:
         for del_dir in del_dirs:
-            if not loc_config["QUIET_MODE"]:
+            if not my_args.quiet:
                 print "removing directory %s ..." % (del_dir)
             shutil.rmtree(del_dir)
-    if not loc_config["SUPRESS_TRANSFER"]:
+    if not my_args.supress_transfer:
         uuid_connected = [my_uuid]
         print "command_stack is not longer available, please copy from hand"
 ##         send_list = command_stack.send_list([command_stack.send_data(stage1_file),
