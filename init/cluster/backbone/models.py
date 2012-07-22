@@ -859,7 +859,7 @@ class netdevice(models.Model):
     devname = models.CharField(max_length=36)
     macaddr = models.CharField(db_column="macadr", max_length=177, blank=True)
     driver_options = models.CharField(max_length=672, blank=True)
-    speed = models.IntegerField(null=True, blank=True)
+    speed = models.IntegerField(default=0, null=True, blank=True)
     netdevice_speed = models.ForeignKey("netdevice_speed")
     driver = models.CharField(max_length=384, blank=True)
     routing = models.BooleanField(default=False)
