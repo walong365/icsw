@@ -96,6 +96,13 @@ class srv_command(object):
         if start_el is None:
             start_el = self.__tree
         return start_el.xpath(*args, **kwargs)
+    def set_result(self, ret_str, level=SRV_REPLY_STATE_OK):
+        print ret_str, level
+        if "result" not in self:
+            self["result"] = None
+        self["result"].attrib.update({
+            "reply" : ret_str,
+            "state" : "%d" % (level)})
     def builder(self, tag_name, *args, **kwargs):
         if type(tag_name) == type(0):
             tag_name = "__int__%d" % (tag_name)
