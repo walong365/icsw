@@ -2961,7 +2961,6 @@ class server_process(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
-            # signal via file-creating
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
