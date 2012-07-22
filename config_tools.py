@@ -106,7 +106,7 @@ class server_check(object):
                             Q(name=self.__server_type) & Q(device_config__device__device_type__identifier="MD") & 
                             Q(device_config__device__device_group=self.device.device_group_id))
                     except config.DoesNotExist:
-                        self.__config = None
+                        self.config = None
                     else:
                         self.effective_device = device.objects.get(Q(device_group=self.device.device_group_id) & Q(device_type__identifier="MD"))
                 else:
