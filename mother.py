@@ -31,7 +31,8 @@ import threading
 import re
 import shutil
 # transition fix
-import configfile_old as configfile
+import configfile
+import cluster_location
 import socket
 import commands
 import stat
@@ -60,6 +61,10 @@ from pysnmp.carrier.asynsock import dispatch
 from pysnmp.carrier.asynsock import dgram
 from pysnmp.proto import rfc1902
 from pysnmp.proto import api
+from mother.config import global_config
+from django.db.models import Q
+import mother.kernel
+from init.cluster.backbone.models import network
 
 SQL_ACCESS = "cluster_full_access"
 
@@ -3939,6 +3944,116 @@ class configure_thread(threading_tools.thread_obj):
             int_com.set_int_result(mach_struct, ret_str)
         mach_struct.decr_use_count("read_dots")
 
+class server_process(threading_tools.process_pool):
+    def __init__(self):
+        self.__log_cache, self.__log_template = ([], None)
+        self.__pid_name = global_config["PID_NAME"]
+        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        self.register_exception("int_error", self._int_error)
+        self.register_exception("term_error", self._int_error)
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        # log config
+        self._log_config()
+        # prepare directories
+        self._prepare_directories()
+        # check nfs exports
+        self._check_nfs_exports()
+        self.__msi_block = None#self._init_msi_block()
+        self._init_subsys()
+        #self._init_network_sockets()
+        self.add_process(mother.kernel.kernel_sync_process("kernel"), start=True)
+        #self.add_process(build_process("build"), start=True)
+        #self.register_func("client_update", self._client_update)
+    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+        if self.__log_template:
+            while self.__log_cache:
+                self.__log_template.log(*self.__log_cache.pop(0))
+            self.__log_template.log(lev, what)
+        else:
+            self.__log_cache.append((lev, what))
+    def _init_subsys(self):
+        self.log("init subsystems")
+    def _int_error(self, err_cause):
+        if self["exit_requested"]:
+            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
+        else:
+            self["exit_requested"] = True
+    def _log_config(self):
+        self.log("Config info:")
+        for line, log_level in global_config.get_log(clear=True):
+            self.log(" - clf: [%d] %s" % (log_level, line))
+        conf_info = global_config.get_config_info()
+        self.log("Found %d valid config-lines:" % (len(conf_info)))
+        for conf in conf_info:
+            self.log("Config : %s" % (conf))
+    def loop_end(self):
+        #config_control.close_clients()
+        process_tools.delete_pid(self.__pid_name)
+        if self.__msi_block:
+            self.__msi_block.remove_meta_block()
+    def loop_post(self):
+        #for open_sock in self.socket_dict.itervalues():
+        #    open_sock.close()
+        self.__log_template.close()
+    # utility calls
+    def _prepare_directories(self):
+        self.log("Checking directories ...")
+        for d_dir in [global_config["TFTP_DIR"],
+                      global_config["ETHERBOOT_DIR"],
+                      global_config["CONFIG_DIR"],
+                      global_config["KERNEL_DIR"]]:
+            if not os.path.isdir(d_dir):
+                self.log("trying to create directory %s" % (d_dir))
+                try:
+                    os.makedirs(d_dir)
+                except:
+                    pass
+        for d_link, s_link in [(global_config["TFTP_LINK"], global_config["TFTP_DIR"])]:
+            if not os.path.islink(d_link):
+                self.log("Trying to create link from %s to %s" % (d_link, s_link))
+                try:
+                    os.symlink(s_link, d_link)
+                except:
+                    pass
+    def _check_nfs_exports(self):
+        log_lines = []
+        if global_config["MODIFY_NFS_CONFIG"]:
+            exp_file = "/etc/exports"
+            if os.path.isfile(exp_file):
+                act_exports = dict([(part[0], " ".join(part[1:])) for part in [line.strip().split() for line in open(exp_file, "r").read().split("\n")] if len(part) > 1 and part[0].startswith("/")])
+                self.log("found /etc/exports file with %s:" % (logging_tools.get_plural("export entry", len(act_exports))))
+                exp_keys = sorted(act_exports.keys())
+                my_fm = logging_tools.form_list()
+                for act_exp in exp_keys:
+                    where = act_exports[act_exp]
+                    my_fm.add_line([act_exp, where])
+                if my_fm:
+                    for line in str(my_fm).split("\n"):
+                        self.log("  - %s" % (line))
+            else:
+                self.log("found no /etc/exports file, creating new one ...")
+                act_exports = {}
+            valid_nt_ids = ["p", "b"]
+            valid_nets = network.objects.filter(Q(network_type__identifier__in=valid_nt_ids))
+            exp_dict = {"etherboot" : "ro",
+                        "kernels"   : "ro",
+                        "images"    : "ro",
+                        "config"    : "rw"}
+            new_exports = {}
+            exp_nets = ["%s/%s" % (cur_net.network, cur_net.netmask) for cur_net in valid_nets]
+            if exp_nets:
+                for exp_dir, rws in exp_dict.iteritems():
+                    act_exp_dir = "%s/%s" % (global_config["TFTP_DIR"], exp_dir)
+                    if not act_exp_dir in act_exports:
+                        new_exports[act_exp_dir] = " ".join(["%s(%s,no_root_squash,async,no_subtree_check)" % (exp_net, rws) for exp_net in exp_nets])
+            if new_exports:
+                open(exp_file, "a").write("\n".join(["%-30s %s" % (x, y) for x, y in new_exports.iteritems()] + [""]))
+                at_command = "/etc/init.d/nfsserver restart"
+                at_stat, add_log_lines = process_tools.submit_at_command(at_command)
+                self.log("starting the at-command '%s' gave %d:" % (at_command, at_stat))
+                for log_line in add_log_lines:
+                    self.log(log_line)
+
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, db_con, g_config, loc_config):
         self.__log_cache, self.__log_queue = ([], None)
@@ -3951,12 +4066,7 @@ class server_thread_pool(threading_tools.thread_pool):
         self.register_func("macaddrs_written", self._macaddrs_written)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
-        self.__log_queue = self.add_thread(logging_thread(self.__glob_config, self.__loc_config), start_thread=True).get_thread_queue()
         #self.register_exception("hup_error", self._hup_error)
-        # log config
-        self._log_config()
-        # prepare directories
-        self._prepare_directories()
         # enable syslog config
         self._enable_syslog_config()
         dc = self.__db_con.get_connection(SQL_ACCESS)
@@ -3968,7 +4078,6 @@ class server_thread_pool(threading_tools.thread_pool):
         self.__syslog_udb = self.__ns.add_object(net_tools.unix_domain_bind(self._new_ud_out_recv, socket=self.__glob_config["SYSLOG_UDS_NAME"], mode=0666, bind_state_call=self._bind_state_call))[0]
         self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_command_con, port=g_config["COMPORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=120, in_buffer_size=65536))
         self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_node_con, port=g_config["NODEPORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=60))
-        self._check_nfs_exports(dc)
         self._check_netboot_functionality()
         # global network settings
         self._check_global_network_stuff(dc)
@@ -3986,31 +4095,31 @@ class server_thread_pool(threading_tools.thread_pool):
         self.__glob_config.add_config_dict({"SERVER_SHORT_NAME" : configfile.str_c_var(self.__loc_config["SERVER_SHORT_NAME"]),
                                             "SQL_ACCESS"        : configfile.str_c_var(self.__loc_config["SQL_ACCESS"]),
                                             "SYNCER_ROLE"       : configfile.str_c_var("mother")})
-        self.__kernel_queue    = self.add_thread(kernel_sync_tools.kernel_sync_thread(self.__glob_config, self.__db_con, log_type="queue", log_queue=self.__log_queue), start_thread=True).get_thread_queue()
-        self.__snmp_send_queue = self.add_thread(snmp_send_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__snmp_trap_queue = self.add_thread(snmp_trap_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__dhcp_queue.put(("set_ad_struct", self.__ad_struct))
-        self.__config_queue.put(("set_ad_struct", self.__ad_struct))
-        self.__control_queue.put(("set_ad_struct", self.__ad_struct))
-        self.__com_queue.put(("set_ad_struct", self.__ad_struct))
-        self.__snmp_trap_queue.put(("set_ad_struct", self.__ad_struct))
-        self.__queue_dict = {"log_queue"       : self.__log_queue,
-                             "dhcp_queue"      : self.__dhcp_queue,
-                             "command_queue"   : self.__com_queue,
-                             "sql_queue"       : self.__sql_queue,
-                             "config_queue"    : self.__config_queue,
-                             "control_queue"   : self.__control_queue,
-                             "kernel_queue"    : self.__kernel_queue,
-                             "snmp_send_queue" : self.__snmp_send_queue}
-        self.__log_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__com_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__dhcp_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__config_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__control_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__snmp_send_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__snmp_trap_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__control_queue.put(("set_net_stuff", (self.__ns, self.__icmp_obj)))
-        self.__kernel_queue.put(("set_net_stuff", self.__ns))
+##        self.__kernel_queue    = self.add_thread(kernel_sync_tools.kernel_sync_thread(self.__glob_config, self.__db_con, log_type="queue", log_queue=self.__log_queue), start_thread=True).get_thread_queue()
+##        self.__snmp_send_queue = self.add_thread(snmp_send_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
+##        self.__snmp_trap_queue = self.add_thread(snmp_trap_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
+##        self.__dhcp_queue.put(("set_ad_struct", self.__ad_struct))
+##        self.__config_queue.put(("set_ad_struct", self.__ad_struct))
+##        self.__control_queue.put(("set_ad_struct", self.__ad_struct))
+##        self.__com_queue.put(("set_ad_struct", self.__ad_struct))
+##        self.__snmp_trap_queue.put(("set_ad_struct", self.__ad_struct))
+##        self.__queue_dict = {"log_queue"       : self.__log_queue,
+##                             "dhcp_queue"      : self.__dhcp_queue,
+##                             "command_queue"   : self.__com_queue,
+##                             "sql_queue"       : self.__sql_queue,
+##                             "config_queue"    : self.__config_queue,
+##                             "control_queue"   : self.__control_queue,
+##                             "kernel_queue"    : self.__kernel_queue,
+##                             "snmp_send_queue" : self.__snmp_send_queue}
+##        self.__log_queue.put(("set_queue_dict", self.__queue_dict))
+##        self.__com_queue.put(("set_queue_dict", self.__queue_dict))
+##        self.__dhcp_queue.put(("set_queue_dict", self.__queue_dict))
+##        self.__config_queue.put(("set_queue_dict", self.__queue_dict))
+##        self.__control_queue.put(("set_queue_dict", self.__queue_dict))
+##        self.__snmp_send_queue.put(("set_queue_dict", self.__queue_dict))
+##        self.__snmp_trap_queue.put(("set_queue_dict", self.__queue_dict))
+##        self.__control_queue.put(("set_net_stuff", (self.__ns, self.__icmp_obj)))
+##        self.__kernel_queue.put(("set_net_stuff", self.__ns))
         if self.__loc_config["DAEMON"]:
             # only restart hoststatus when in daemon-mode
             self.__log_queue.put(("delay_request", (self.get_own_queue(), "restart_hoststatus", 5)))
@@ -4025,31 +4134,19 @@ class server_thread_pool(threading_tools.thread_pool):
         self.__kernel_queue.put(("check_kernel_dir", server_command.server_command(command="check_kernel_dir", option_dict={"insert_all_found" : True})))
         # init apc-update-timestmamp
         self.__last_apc_update = None
-    def _int_error(self, err_cause):
-        if self["exit_requested"]:
-            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
-        else:
-            self.log("exit requested", logging_tools.LOG_LEVEL_WARN)
-            self._disable_syslog_config()
-            self["exit_requested"] = True
-    def _new_pid(self, (thread_name, new_pid)):
-        self.log("received new_pid message from thread %s" % (thread_name))
-        process_tools.append_pids(self.__loc_config["PID_NAME"], new_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(new_pid)
-            self.__msi_block.save_block()
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in self.__glob_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = self.__glob_config.get_config_info()
-        self.log("Found %d valid global config-lines:" % (len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : %s" % (conf))
-        conf_info = self.__loc_config.get_config_info()
-        self.log("Found %d valid local config-lines:" % (len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : %s" % (conf))
+##    def _int_error(self, err_cause):
+##        if self["exit_requested"]:
+##            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
+##        else:
+##            self.log("exit requested", logging_tools.LOG_LEVEL_WARN)
+##            self._disable_syslog_config()
+##            self["exit_requested"] = True
+##    def _new_pid(self, (thread_name, new_pid)):
+##        self.log("received new_pid message from thread %s" % (thread_name))
+##        process_tools.append_pids(self.__loc_config["PID_NAME"], new_pid)
+##        if self.__msi_block:
+##            self.__msi_block.add_actual_pid(new_pid)
+##            self.__msi_block.save_block()
     def _re_insert_config(self, dc):
         self.log("re-insert config")
         configfile.write_config(dc, "mother_server", self.__glob_config)
@@ -4073,46 +4170,30 @@ class server_thread_pool(threading_tools.thread_pool):
         else:
             self.log("no %s found" % (dhcp_init_file),
                      logging_tools.LOG_LEVEL_ERROR)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_queue:
-            if self.__log_cache:
-                for c_what, c_lev in self.__log_cache:
-                    self.__log_queue.put(("log", (self.name, "(delayed) %s" % (c_what), c_lev)))
-                self.__log_cache = []
-            self.__log_queue.put(("log", (self.name, what, lev)))
-        else:
-            self.__log_cache.append((what, lev))
-    def _check_global_network_stuff(self, dc):
-        self.log("Checking global network settings")
-        dc.execute("SELECT i.ip,n.netdevice_idx,nw.network_idx FROM netdevice n, netip i, network nw WHERE n.device=%d AND i.netdevice=n.netdevice_idx AND i.network=nw.network_idx" % (self.__loc_config["MOTHER_SERVER_IDX"]))
-        glob_net_devices = {}
-        for net_rec in dc.fetchall():
-            n_d, n_i, n_w = (net_rec["netdevice_idx"],
-                             net_rec["ip"],
-                             net_rec["network_idx"])
-            if not glob_net_devices.has_key(n_d):
-                glob_net_devices[n_d] = []
-            glob_net_devices[n_d].append((n_i, n_w))
-        # get all network_device_types
-        dc.execute("SELECT * FROM network_device_type")
-        self.__loc_config["GLOBAL_NET_DEVICES"] = glob_net_devices
-        self.__loc_config["GLOBAL_NET_DEVICE_DICT"] = dict([(x["identifier"], x["network_device_type_idx"]) for x in dc.fetchall()])
-    def _prepare_directories(self):
-        self.log("Checking directories ...")
-        for d_dir in [self.__glob_config["TFTP_DIR"], self.__glob_config["ETHERBOOT_DIR"], self.__glob_config["CONFIG_DIR"], self.__glob_config["KERNEL_DIR"]]:
-            if not os.path.isdir(d_dir):
-                self.log("trying to create directory %s" % (d_dir))
-                try:
-                    os.makedirs(d_dir)
-                except:
-                    pass
-        for d_link, s_link in [(self.__glob_config["TFTP_LINK"], self.__glob_config["TFTP_DIR"])]:
-            if not os.path.islink(d_link):
-                self.log("Trying to create link from %s to %s" % (d_link, s_link))
-                try:
-                    os.symlink(s_link, d_link)
-                except:
-                    pass
+##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+##        if self.__log_queue:
+##            if self.__log_cache:
+##                for c_what, c_lev in self.__log_cache:
+##                    self.__log_queue.put(("log", (self.name, "(delayed) %s" % (c_what), c_lev)))
+##                self.__log_cache = []
+##            self.__log_queue.put(("log", (self.name, what, lev)))
+##        else:
+##            self.__log_cache.append((what, lev))
+##    def _check_global_network_stuff(self, dc):
+##        self.log("Checking global network settings")
+##        dc.execute("SELECT i.ip,n.netdevice_idx,nw.network_idx FROM netdevice n, netip i, network nw WHERE n.device=%d AND i.netdevice=n.netdevice_idx AND i.network=nw.network_idx" % (self.__loc_config["MOTHER_SERVER_IDX"]))
+##        glob_net_devices = {}
+##        for net_rec in dc.fetchall():
+##            n_d, n_i, n_w = (net_rec["netdevice_idx"],
+##                             net_rec["ip"],
+##                             net_rec["network_idx"])
+##            if not glob_net_devices.has_key(n_d):
+##                glob_net_devices[n_d] = []
+##            glob_net_devices[n_d].append((n_i, n_w))
+##        # get all network_device_types
+##        dc.execute("SELECT * FROM network_device_type")
+##        self.__loc_config["GLOBAL_NET_DEVICES"] = glob_net_devices
+##        self.__loc_config["GLOBAL_NET_DEVICE_DICT"] = dict([(x["identifier"], x["network_device_type_idx"]) for x in dc.fetchall()])
     def _init_msi_block(self):
         process_tools.save_pid(self.__loc_config["PID_NAME"])
         if self.__loc_config["DAEMON"]:
@@ -4269,44 +4350,6 @@ class server_thread_pool(threading_tools.thread_pool):
         self.log("restarting %s gave %d:" % (syslog_rc, stat))
         for line in out_f:
             self.log(line)
-    def _check_nfs_exports(self, dc):
-        log_lines = []
-        if self.__glob_config["MODIFY_NFS_CONFIG"]:
-            exp_file = "/etc/exports"
-            if os.path.isfile(exp_file):
-                act_exports = dict([(x[0], " ".join(x[1:])) for x in [y.strip().split() for y in open(exp_file, "r").read().split("\n")] if len(x) > 1 and x[0].startswith("/")])
-                self.log("found /etc/exports file with %s:" % (logging_tools.get_plural("export entry", len(act_exports))))
-                exp_keys = sorted(act_exports.keys())
-                my_fm = logging_tools.form_list()
-                for act_exp in exp_keys:
-                    where = act_exports[act_exp]
-                    my_fm.add_line([act_exp, where])
-                if my_fm:
-                    for line in str(my_fm).split("\n"):
-                        self.log("  - %s" % (line))
-            else:
-                self.log("found no /etc/exports file, creating new one ...")
-                act_exports = {}
-            valid_nt_ids = ["p", "b"]
-            dc.execute("SELECT nw.network, nw.netmask FROM network nw, network_type nt WHERE nt.network_type_idx=nw.network_type AND (%s)" % (" OR ".join(["nt.identifier='%s'" % (x) for x in valid_nt_ids])))
-            exp_dict = {"etherboot" : "ro",
-                        "kernels"   : "ro",
-                        "images"    : "ro",
-                        "config"    : "rw"}
-            new_exports = {}
-            exp_nets = ["%s/%s" % (x["network"], x["netmask"]) for x in dc.fetchall()]
-            if exp_nets:
-                for exp_dir, rws in exp_dict.iteritems():
-                    act_exp_dir = "%s/%s" % (self.__glob_config["TFTP_DIR"], exp_dir)
-                    if not act_exp_dir in act_exports:
-                        new_exports[act_exp_dir] = " ".join(["%s(%s,no_root_squash,async,no_subtree_check)" % (exp_net, rws) for exp_net in exp_nets])
-            if new_exports:
-                open(exp_file, "a").write("\n".join(["%-30s %s" % (x, y) for x, y in new_exports.iteritems()] + [""]))
-                at_command = "/etc/init.d/nfsserver restart"
-                at_stat, add_log_lines = process_tools.submit_at_command(at_command)
-                self.log("starting the at-command '%s' gave %d:" % (at_command, at_stat))
-                for log_line in add_log_lines:
-                    self.log(log_line)
     def _check_netboot_functionality(self):
         self.__glob_config.add_config_dict({"PXEBOOT" : configfile.bool_c_var(False, source="default"),
                                             "XENBOOT" : configfile.bool_c_var(False, source="default")})
@@ -4340,155 +4383,72 @@ class server_thread_pool(threading_tools.thread_pool):
                 self.log("Found no mboot.c32 in %s" % (mb32_path), logging_tools.LOG_LEVEL_WARN)
         
 def main():
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "dvCu:g:fkh", ["version", "help"])
-    except getopt.GetoptError, bla:
-        print "Error parsing commandline %s: %s" % (" ".join(sys.argv[1:]),
-                                                    process_tools.get_except_info())
-        sys.exit(1)
-    long_host_name = socket.getfqdn(socket.gethostname())
-    short_host_name = long_host_name.split(".")[0]
-    # read version
-    try:
-        from mother_version import VERSION_STRING
-    except ImportError:
-        VERSION_STRING = "?.?"
-    loc_config = configfile.configuration("local_config", {"PID_NAME"               : configfile.str_c_var("mother/mother"),
-                                                           "SERVER_FULL_NAME"       : configfile.str_c_var(long_host_name),
-                                                           "SERVER_SHORT_NAME"      : configfile.str_c_var(short_host_name),
-                                                           "DAEMON"                 : configfile.bool_c_var(True),
-                                                           "VERBOSE"                : configfile.int_c_var(0),
-                                                           "MOTHER_SERVER_IDX"      : configfile.int_c_var(0),
-                                                           "LOG_SOURCE_IDX"         : configfile.int_c_var(0),
-                                                           "NODE_SOURCE_IDX"        : configfile.int_c_var(0),
-                                                           "GLOBAL_NET_DEVICES"     : configfile.dict_c_var({}),
-                                                           "GLOBAL_NET_DEVICE_DICT" : configfile.dict_c_var({}),
-                                                           "LOG_STATUS"             : configfile.dict_c_var({}),
-                                                           "VERSION_STRING"         : configfile.str_c_var(VERSION_STRING),
-                                                           "LIST_TAG_KERNEL"        : configfile.array_c_var(["installation",
-                                                                                                              "installation_clean",
-                                                                                                              "boot",
-                                                                                                              "boot_normal",
-                                                                                                              "boot_rescue",
-                                                                                                              "boot_clean"]),
-                                                           "LIST_DOSBOOT"           : configfile.array_c_var(["boot_dos"]),
-                                                           "LIST_MEMTEST"           : configfile.array_c_var(["memtest"]),
-                                                           "LIST_BOOTLOCAL"         : configfile.array_c_var(["boot_local"]),
-                                                           "SQL_ACCESS"             : configfile.str_c_var(SQL_ACCESS)})
-    check, kill_running = (False, True)
-    user, group, fixit = ("root", "root", False)
-    pname = os.path.basename(sys.argv[0])
-    for opt, arg in opts:
-        if opt in ["-h", "--help"]:
-            print "Usage: %s [OPTIONS]" % (pname)
-            print " where options is one or more of"
-            print "  -h, --help          this help"
-            print "  --version           version info"
-            print "  -v                  be verbose, specify twice to debug poll-object"
-            print "  -d                  no daemonizing"
-            print "  -f                  fix directory permissions"
-            print "  -C                  check if i am a mother-server"
-            print "  -u [USER]           set user to USER"
-            print "  -g [GROUP]          set group to GROUP"
-            print "  -k                  kill running instances of mother"
-            sys.exit(0)
-        if opt == "--version":
-            print "mother, Version %s" % (loc_config["VERSION_STRING"])
-            sys.exit(0)
-        if opt == "-d":
-            loc_config["DAEMON"] = False
-        if opt == "-v":
-            loc_config["VERBOSE"] += 1
-        if opt == "-C":
-            check = True
-        if opt == "-f":
-            fixit = True
-        if opt == "-u":
-            user = arg
-        if opt == "-g":
-            group = arg
-        if opt == "-k":
-            kill_running = False
-    db_con = mysql_tools.dbcon_container(with_logging=not loc_config["DAEMON"])
-    try:
-        dc = db_con.get_connection(SQL_ACCESS)
-    except MySQLdb.OperationalError:
-        sys.stderr.write(" Cannot connect to SQL-Server ")
-        sys.exit(1)
-    num_servers, loc_config["MOTHER_SERVER_IDX"] = process_tools.is_server(dc, "mother_server")
-    if num_servers == 0:
-        sys.stderr.write(" Host %s is no mother-server " % (loc_config["SERVER_SHORT_NAME"]))
-        sys.exit(5)
-    if check:
+    long_host_name, mach_name = process_tools.get_fqdn()
+    prog_name = global_config.name()
+    global_config.add_config_entries([
+        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+        ("PID_NAME"            , configfile.str_c_var(prog_name)),
+        ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
+        ("FORCE"               , configfile.bool_c_var(False, help_string="force running [%(default)s]", action="store_true", only_commandline=True)),
+        ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True, short_options="C")),
+        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
+        ("USER"                , configfile.str_c_var("root", help_string="user to run as [%(default)s]")),
+        ("GROUP"               , configfile.str_c_var("root", help_string="group to run as [%(default)s]")),
+        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
+        ("MODIFY_NFS_CONFIG"   , configfile.bool_c_var(True, help_string="modify /etc/exports [%(default)s]", action="store_true")),
+        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("SERVER_PUB_PORT"     , configfile.int_c_var(8000, help_string="server publish port [%(default)d]")),
+        ("SERVER_PULL_PORT"    , configfile.int_c_var(8001, help_string="server pull port [%(default)d]")),
+    ])
+    global_config.parse_file()
+    VERSION_STRING = "???"
+    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
+                                                                                  VERSION_STRING),
+                                               add_writeback_option=True,
+                                               positional_arguments=False)
+    global_config.write_file()
+    sql_info = config_tools.server_check(server_type="mother")
+    if global_config["CHECK"]:
         sys.exit(0)
-    if kill_running:
-        kill_dict = process_tools.build_kill_dict(pname)
-        for kill_pid, proc_name in kill_dict.iteritems():
-            log_str = "Trying to kill pid %d (%s) with signal 9 ..." % (kill_pid, proc_name)
-            try:
-                os.kill(kill_pid, 9)
-            except:
-                log_str = "%s error (%s)" % (log_str, process_tools.get_except_info())
-            else:
-                log_str = "%s ok" % (log_str)
-            logging_tools.my_syslog(log_str)
-    g_config = configfile.read_global_config(dc, "mother_server", {"LOG_DIR"                     : configfile.str_c_var("/var/log/cluster/mother"),
-                                                                   "TMP_DIR"                     : configfile.str_c_var("/tmp"),
-                                                                   "TFTP_DIR"                    : configfile.str_c_var("/usr/local/share/cluster/tftpboot"),
-                                                                   "TFTP_LINK"                   : configfile.str_c_var("/tftpboot"),
-                                                                   "ETHERBOOT_DIR_OFFSET"        : configfile.str_c_var("etherboot"),
-                                                                   "CONFIG_DIR_OFFSET"           : configfile.str_c_var("config"),
-                                                                   "KERNEL_DIR_OFFSET"           : configfile.str_c_var("kernels"),
-                                                                   "CLUSTER_HOME_DIR"            : configfile.str_c_var("/opt/cluster"),
-                                                                   "NODEPORT"                    : configfile.int_c_var(8000),
-                                                                   "COMPORT"                     : configfile.int_c_var(8001),
-                                                                   "HWI_MAX_RETRIES"             : configfile.int_c_var(10),
-                                                                   "HWI_DELAY_TIME"              : configfile.int_c_var(30),
-                                                                   "SNMP_MAIN_TIMEOUT"           : configfile.int_c_var(10),
-                                                                   "IGNORE_KERNEL_BUILD_MACHINE" : configfile.int_c_var(0),
-                                                                   "SET_DEFAULT_BUILD_MACHINE"   : configfile.int_c_var(0),
-                                                                   "PREFER_KERNEL_NAME"          : configfile.int_c_var(1),
-                                                                   "SIMULTANEOUS_REBOOTS"        : configfile.int_c_var(8),
-                                                                   "REBOOT_DELAY"                : configfile.int_c_var(15),
-                                                                   "NODE_BOOT_DELAY"             : configfile.int_c_var(0),
-                                                                   "MODIFY_NFS_CONFIG"           : configfile.bool_c_var(True),
-                                                                   "FANCY_PXE_INFO"              : configfile.bool_c_var(False),
-                                                                   "SYSLOG_UDS_NAME"             : configfile.str_c_var("/var/lib/mother/syslog"),
-                                                                   "APC_REPROGRAMM_TIME"         : configfile.int_c_var(3600, info="looptime in seconds to reprogramm APCs"),
-                                                                   "DEVICE_MONITOR_TIME"         : configfile.int_c_var(240, info="time in seconds to check for downnodes"),
-                                                                   "DEVICE_REBOOT_TIME"          : configfile.int_c_var(600, info="after this time a device is rebooted")})
-    g_config.add_config_dict({"ETHERBOOT_DIR" : configfile.str_c_var("%s/%s" % (g_config["TFTP_DIR"], g_config["ETHERBOOT_DIR_OFFSET"])),
-                              "CONFIG_DIR"    : configfile.str_c_var("%s/%s" % (g_config["TFTP_DIR"], g_config["CONFIG_DIR_OFFSET"])),
-                              "KERNEL_DIR"    : configfile.str_c_var("%s/%s" % (g_config["TFTP_DIR"], g_config["KERNEL_DIR_OFFSET"]))})
-    if fixit:
-        process_tools.fix_directories(user, group, [g_config["LOG_DIR"], "/var/lib/mother", "/var/run/mother"])
+    if global_config["KILL_RUNNING"]:
+        log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
+    cluster_location.read_config_from_db(global_config, "mother", [
+        ("TFTP_LINK"                 , configfile.str_c_var("/tftpboot")),
+        ("TFTP_DIR"                  , configfile.str_c_var("/usr/local/share/cluster/tftpboot")),
+        ("CLUSTER_DIR"               , configfile.str_c_var("/opt/cluster")),
+        ("NODE_PORT"                 , configfile.int_c_var(2001))])
+    global_config.add_config_entries([
+        ("CONFIG_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
+        ("ETHERBOOT_DIR", configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "etherboot"))),
+        ("KERNEL_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
+##    if fixit:
+##        process_tools.fix_directories(user, group, [g_config["LOG_DIR"], "/var/lib/mother", "/var/run/mother"])
 #    if fixit:
 #        process_tools.fix_directories(user, group, [g_config["LOG_DIR"], "/var/lib/mother", "/var/run/mother", g_config["ETHERBOOT_DIR"], g_config["KERNEL_DIR"]])
-    ret_state = 256
-    if num_servers > 1:
-        print "Database error for host %s (mother_server): too many entries found (%d)" % (loc_config["SERVER_SHORT_NAME"], num_servers)
-        dc.release()
+##    ret_state = 256
+##    if num_servers > 1:
+##        print "Database error for host %s (mother_server): too many entries found (%d)" % (loc_config["SERVER_SHORT_NAME"], num_servers)
+##        dc.release()
+##    else:
+##        loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, loc_config["MOTHER_SERVER_IDX"], "mother", "Mother Server")
+##        if not loc_config["LOG_SOURCE_IDX"]:
+##            print "Too many log_sources with my id present, exiting..."
+##            dc.release()
+##        else:
+##            loc_config["NODE_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, 0, "node", "Cluster node", "String written by one of the nodes")
+##            loc_config["LOG_STATUS"] = process_tools.get_all_log_status(dc)
+    process_tools.renice()
+    if not global_config["DEBUG"]:
+        # become daemon and wait 2 seconds
+        process_tools.become_daemon(wait = 2)
+        process_tools.set_handles({"out" : (1, "mother.out"),
+                                   "err" : (0, "/var/lib/logging-server/py_err")})
     else:
-        loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, loc_config["MOTHER_SERVER_IDX"], "mother", "Mother Server")
-        if not loc_config["LOG_SOURCE_IDX"]:
-            print "Too many log_sources with my id present, exiting..."
-            dc.release()
-        else:
-            loc_config["NODE_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, 0, "node", "Cluster node", "String written by one of the nodes")
-            loc_config["LOG_STATUS"] = process_tools.get_all_log_status(dc)
-            dc.release()
-            process_tools.renice()
-            if loc_config["DAEMON"]:
-                # become daemon and wait 2 seconds
-                process_tools.become_daemon(wait = 2)
-                process_tools.set_handles({"out" : (1, "mother.out"),
-                                           "err" : (0, "/var/lib/logging-server/py_err")})
-            else:
-                print "Debugging mother"
-            my_tp = server_thread_pool(db_con, g_config, loc_config)
-            my_tp.thread_loop()
-    db_con.close()
-    del db_con
+        print "Debugging mother"
+    ret_state = server_process().loop()
     sys.exit(ret_state)
 
 if __name__ == "__main__":
