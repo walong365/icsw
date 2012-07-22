@@ -64,6 +64,7 @@ from pysnmp.proto import api
 from mother.config import global_config
 from django.db.models import Q
 import mother.kernel
+import mother.commands
 from init.cluster.backbone.models import network
 
 SQL_ACCESS = "cluster_full_access"
@@ -78,95 +79,95 @@ SQL_ACCESS = "cluster_full_access"
 
 # --------- connection objects ------------------------------------
 
-class node_con_obj(net_tools.buffer_object):
-    # connects to a foreign node
-    def __init__(self, com, dst_ip, (send_str, mach_struct)):
-        self.__command = com
-        self.__dst_ip = dst_ip
-        self.__send_str = send_str
-        self.__mach_struct = mach_struct
-        net_tools.buffer_object.__init__(self)
-    def __del__(self):
-        pass
-    def setup_done(self):
-        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__send_str, True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
-        if p1_ok:
-            self.__command._result_ok(self.__mach_struct, self.__dst_ip, p1_data)
-            #self.__stc.set_host_result(self.__dst_ip, p1_data)
-            self.delete()
-    def report_problem(self, flag, what):
-        self.__command._result_error(self.__mach_struct, self.__dst_ip, "%s (code %d)" % (what, flag))
-        #self.__stc.set_host_error(self.__dst_ip, "%s : %s" % (net_tools.net_flag_to_str(flag), what))
-        self.delete()
-
-class new_tcp_con(net_tools.buffer_object):
-    # connection object for mother
-    def __init__(self, con_type, sock, src, recv_queue, log_queue):
-        self.__con_type = con_type
-        self.__src_host, self.__src_port = src
-        self.__recv_queue = recv_queue
-        self.__log_queue = log_queue
-        net_tools.buffer_object.__init__(self)
-        self.__init_time = time.time()
-        self.__in_buffer = ""
-    def __del__(self):
-        pass
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (threading.currentThread().getName(), what, level)))
-    def get_src_host(self):
-        return self.__src_host
-    def get_src_port(self):
-        return self.__src_port
-    def add_to_in_buffer(self, what):
-        self.__in_buffer += what
-        p1_ok, p1_dec = net_tools.check_for_proto_1_header(self.__in_buffer)
-        if p1_ok:
-            self.__decoded = p1_dec
-            if self.__con_type == "com":
-                self.__recv_queue.put(("in_bytes", self))
-            else:
-                self.__recv_queue.put(("node_con", self))
-    def add_to_out_buffer(self, what, new_in_str=""):
-        self.lock()
-        # to give some meaningful log
-        if new_in_str:
-            self.__decoded = new_in_str
-        if self.socket:
-            self.out_buffer = net_tools.add_proto_1_header(what)
-            self.socket.ready_to_send()
-        else:
-            self.log("timeout, other side has closed connection")
-        self.unlock()
-    def out_buffer_sent(self, d_len):
-        if d_len == len(self.out_buffer):
-            self.__recv_queue = None
-            if self.__con_type == "com":
-                self.log("command %s from %s (port %d) took %s" % (self.__decoded.replace("\n", "\\n"),
-                                                                   self.__src_host,
-                                                                   self.__src_port,
-                                                                   logging_tools.get_diff_time_str(abs(time.time() - self.__init_time))))
-            self.close()
-        else:
-            self.out_buffer = self.out_buffer[d_len:]
-            #self.socket.ready_to_send()
-    def get_decoded_in_str(self):
-        return self.__decoded
-    def report_problem(self, flag, what):
-        self.__log_queue.put(("log", (threading.currentThread().getName(), "error for connection from %s (port %d): %s (%d)" % (self.__src_host,
-                                                                                                                                self.__src_port,
-                                                                                                                                what,
-                                                                                                                                flag),
-                                      logging_tools.LOG_LEVEL_ERROR)))
-        self.close()
+##class node_con_obj(net_tools.buffer_object):
+##    # connects to a foreign node
+##    def __init__(self, com, dst_ip, (send_str, mach_struct)):
+##        self.__command = com
+##        self.__dst_ip = dst_ip
+##        self.__send_str = send_str
+##        self.__mach_struct = mach_struct
+##        net_tools.buffer_object.__init__(self)
+##    def __del__(self):
+##        pass
+##    def setup_done(self):
+##        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__send_str, True))
+##    def out_buffer_sent(self, send_len):
+##        if send_len == len(self.out_buffer):
+##            self.out_buffer = ""
+##            self.socket.send_done()
+##        else:
+##            self.out_buffer = self.out_buffer[send_len:]
+##    def add_to_in_buffer(self, what):
+##        self.in_buffer += what
+##        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
+##        if p1_ok:
+##            self.__command._result_ok(self.__mach_struct, self.__dst_ip, p1_data)
+##            #self.__stc.set_host_result(self.__dst_ip, p1_data)
+##            self.delete()
+##    def report_problem(self, flag, what):
+##        self.__command._result_error(self.__mach_struct, self.__dst_ip, "%s (code %d)" % (what, flag))
+##        #self.__stc.set_host_error(self.__dst_ip, "%s : %s" % (net_tools.net_flag_to_str(flag), what))
+##        self.delete()
+##
+##class new_tcp_con(net_tools.buffer_object):
+##    # connection object for mother
+##    def __init__(self, con_type, sock, src, recv_queue, log_queue):
+##        self.__con_type = con_type
+##        self.__src_host, self.__src_port = src
+##        self.__recv_queue = recv_queue
+##        self.__log_queue = log_queue
+##        net_tools.buffer_object.__init__(self)
+##        self.__init_time = time.time()
+##        self.__in_buffer = ""
+##    def __del__(self):
+##        pass
+##    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+##        self.__log_queue.put(("log", (threading.currentThread().getName(), what, level)))
+##    def get_src_host(self):
+##        return self.__src_host
+##    def get_src_port(self):
+##        return self.__src_port
+##    def add_to_in_buffer(self, what):
+##        self.__in_buffer += what
+##        p1_ok, p1_dec = net_tools.check_for_proto_1_header(self.__in_buffer)
+##        if p1_ok:
+##            self.__decoded = p1_dec
+##            if self.__con_type == "com":
+##                self.__recv_queue.put(("in_bytes", self))
+##            else:
+##                self.__recv_queue.put(("node_con", self))
+##    def add_to_out_buffer(self, what, new_in_str=""):
+##        self.lock()
+##        # to give some meaningful log
+##        if new_in_str:
+##            self.__decoded = new_in_str
+##        if self.socket:
+##            self.out_buffer = net_tools.add_proto_1_header(what)
+##            self.socket.ready_to_send()
+##        else:
+##            self.log("timeout, other side has closed connection")
+##        self.unlock()
+##    def out_buffer_sent(self, d_len):
+##        if d_len == len(self.out_buffer):
+##            self.__recv_queue = None
+##            if self.__con_type == "com":
+##                self.log("command %s from %s (port %d) took %s" % (self.__decoded.replace("\n", "\\n"),
+##                                                                   self.__src_host,
+##                                                                   self.__src_port,
+##                                                                   logging_tools.get_diff_time_str(abs(time.time() - self.__init_time))))
+##            self.close()
+##        else:
+##            self.out_buffer = self.out_buffer[d_len:]
+##            #self.socket.ready_to_send()
+##    def get_decoded_in_str(self):
+##        return self.__decoded
+##    def report_problem(self, flag, what):
+##        self.__log_queue.put(("log", (threading.currentThread().getName(), "error for connection from %s (port %d): %s (%d)" % (self.__src_host,
+##                                                                                                                                self.__src_port,
+##                                                                                                                                what,
+##                                                                                                                                flag),
+##                                      logging_tools.LOG_LEVEL_ERROR)))
+##        self.close()
 
 # --------- connection objects ------------------------------------
 
@@ -3313,455 +3314,96 @@ class command_thread(threading_tools.thread_obj):
             self.__queue_dict["snmp_send_queue"].put(("new_snmp_batch", snmp_batch))
         # send hello to sender_thread
 
-class sql_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config, db_con, log_queue):
-        self.__db_con = db_con
-        self.__log_queue = log_queue
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        threading_tools.thread_obj.__init__(self, "sql", queue_size=200)
-        self.register_func("update"      , self._update_db)
-        self.register_func("insert_value", self._insert_value_db)
-        self.register_func("insert_set"  , self._insert_set_db)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (self.name, what, lev)))
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        self._init_start_time()
-        self.__dc = self.__db_con.get_connection(SQL_ACCESS)
-    def _init_start_time(self):
-        self.__start_time = time.time()
-        self.__num_written, self.__num_update, self.__num_ins_v, self.__num_ins_s = (0, 0, 0, 0)
-    def _check_written(self, force=False):
-        if not force:
-            self.__num_written += 1
-        if self.__num_written > 50 or force:
-            act_time = time.time()
-            self.log("wrote %d entries (%s, %s [with values], %s [with set]) in %s" % (self.__num_written,
-                                                                                       logging_tools.get_plural("update", self.__num_update),
-                                                                                       logging_tools.get_plural("insert", self.__num_ins_v),
-                                                                                       logging_tools.get_plural("insert", self.__num_ins_s),
-                                                                                       logging_tools.get_diff_time_str(act_time - self.__start_time)))
-            self._init_start_time()
-    def _update_db(self, args):
-        if len(args) == 2:
-            sql_table, sql_data = args
-            sql_args = None
-        else:
-            sql_table, sql_data, sql_args = args
-        self.__dc.execute("UPDATE %s SET %s" % (sql_table, sql_data), sql_args)
-        self.__num_update += 1
-        self._check_written()
-    def _insert_value_db(self, args):
-        if len(args) == 2:
-            sql_table, sql_data = args
-            sql_args = None
-        else:
-            sql_table, sql_data, sql_args = args
-        self.__dc.execute("INSERT INTO %s VALUES(%s)" % (sql_table, sql_data), sql_args)
-        self.__num_ins_v += 1
-        self._check_written()
-    def _insert_set_db(self, args):
-        if len(args) == 2:
-            sql_table, sql_data = args
-            sql_args = None
-        else:
-            sql_table, sql_data, sql_args = args
-        self.__dc.execute("INSERT INTO %s SET %s" % (sql_table, sql_data), sql_args)
-        self.__num_ins_s += 1
-        self._check_written()
-    def loop_end(self):
-        self._check_written(True)
-        self.__dc.release()
+##class sql_thread(threading_tools.thread_obj):
+##    def __init__(self, glob_config, loc_config, db_con, log_queue):
+##        self.__db_con = db_con
+##        self.__log_queue = log_queue
+##        self.__glob_config, self.__loc_config = (glob_config, loc_config)
+##        threading_tools.thread_obj.__init__(self, "sql", queue_size=200)
+##        self.register_func("update"      , self._update_db)
+##        self.register_func("insert_value", self._insert_value_db)
+##        self.register_func("insert_set"  , self._insert_set_db)
+##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+##        self.__log_queue.put(("log", (self.name, what, lev)))
+##    def thread_running(self):
+##        self.send_pool_message(("new_pid", (self.name, self.pid)))
+##        self._init_start_time()
+##        self.__dc = self.__db_con.get_connection(SQL_ACCESS)
+##    def _init_start_time(self):
+##        self.__start_time = time.time()
+##        self.__num_written, self.__num_update, self.__num_ins_v, self.__num_ins_s = (0, 0, 0, 0)
+##    def _check_written(self, force=False):
+##        if not force:
+##            self.__num_written += 1
+##        if self.__num_written > 50 or force:
+##            act_time = time.time()
+##            self.log("wrote %d entries (%s, %s [with values], %s [with set]) in %s" % (self.__num_written,
+##                                                                                       logging_tools.get_plural("update", self.__num_update),
+##                                                                                       logging_tools.get_plural("insert", self.__num_ins_v),
+##                                                                                       logging_tools.get_plural("insert", self.__num_ins_s),
+##                                                                                       logging_tools.get_diff_time_str(act_time - self.__start_time)))
+##            self._init_start_time()
+##    def _update_db(self, args):
+##        if len(args) == 2:
+##            sql_table, sql_data = args
+##            sql_args = None
+##        else:
+##            sql_table, sql_data, sql_args = args
+##        self.__dc.execute("UPDATE %s SET %s" % (sql_table, sql_data), sql_args)
+##        self.__num_update += 1
+##        self._check_written()
+##    def _insert_value_db(self, args):
+##        if len(args) == 2:
+##            sql_table, sql_data = args
+##            sql_args = None
+##        else:
+##            sql_table, sql_data, sql_args = args
+##        self.__dc.execute("INSERT INTO %s VALUES(%s)" % (sql_table, sql_data), sql_args)
+##        self.__num_ins_v += 1
+##        self._check_written()
+##    def _insert_set_db(self, args):
+##        if len(args) == 2:
+##            sql_table, sql_data = args
+##            sql_args = None
+##        else:
+##            sql_table, sql_data, sql_args = args
+##        self.__dc.execute("INSERT INTO %s SET %s" % (sql_table, sql_data), sql_args)
+##        self.__num_ins_s += 1
+##        self._check_written()
+##    def loop_end(self):
+##        self._check_written(True)
+##        self.__dc.release()
 
-class dhcp_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config, db_con, log_queue):
-        self.__db_con = db_con
-        self.__log_queue = log_queue
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        threading_tools.thread_obj.__init__(self, "dhcp", queue_size=100)
-        self.register_func("server_com", self._server_com)
-        self.register_func("set_ad_struct", self._set_ad_struct)
-        self.register_func("set_queue_dict", self._set_queue_dict)
-    def _set_queue_dict(self, q_dict):
-        self.__queue_dict = q_dict
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        self.__om_error_re = re.compile("^can't (.*) object: (.*)$")
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        dc.execute("SELECT i.ip,nw.netmask FROM netip i, netdevice n, network nw, device d, device_config dc, new_config c, network_type nt WHERE " + \
-                   "dc.device=d.device_idx AND dc.new_config=c.new_config_idx AND c.name='mother_server' AND i.netdevice=n.netdevice_idx AND nw.network_idx=i.network AND " + \
-                   "nt.identifier='b' AND nt.network_type_idx=nw.network_type AND n.device=d.device_idx AND d.device_idx=%d" % (self.__loc_config["MOTHER_SERVER_IDX"]))
-        self.__server_ip = dc.fetchone()
-        if self.__server_ip:
-            self.log("IP-Address in bootnet is %s (netmask %s)" % (self.__server_ip["ip"], self.__server_ip["netmask"]))
-        else:
-            self.log("found no IP-Adress in bootnet", logging_tools.LOG_LEVEL_WARN)
-        dc.release()
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (self.name, what, lev)))
-    def _set_ad_struct(self, ad_struct):
-        self.log("got ad_struct")
-        self.__ad_struct = ad_struct
-    def _server_com(self, s_com):
-        dst_call = {"alter_macadr"  : self._adw_macadr,
-                    "delete_macadr" : self._adw_macadr,
-                    "write_macadr"  : self._adw_macadr,
-                    "syslog_line"   : self._syslog_line}.get(s_com.get_command(), None)
-        if dst_call:
-            dst_call(s_com.get_command(), s_com)
-        else:
-            self.log("Unknown server_message_command: %s" % (s_com.get_command()), logging_tools.LOG_LEVEL_ERROR)
-        if s_com.get_option_dict().has_key("SIGNAL_MAIN_THREAD"):
-            self.send_pool_message(s_com.get_option_dict()["SIGNAL_MAIN_THREAD"])
-    def _syslog_line(self, com_name, s_com):
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        server_opts = s_com.get_option_dict()
-        sm_type     = server_opts["sm_type"]
-        ip          = server_opts["ip"]
-        mac         = server_opts["mac"]
-        full_string = server_opts["message"]
-        mach_idx = 0
-        if ip:
-            if self.__ad_struct.has_key(ip):
-                mach = self.__ad_struct[ip]
-                mach.incr_use_count("syslog line")
-                dc.execute("SELECT d.device_idx, s.status, d.name, d.bootserver, n.devname, n.macadr, d.dhcp_mac, n.netdevice_idx, d.newkernel, d.new_kernel, d.kernel_append, d.stage1_flavour FROM device d INNER JOIN netdevice n INNER JOIN netip i LEFT JOIN status s ON d.newstate=s.status_idx WHERE i.netdevice=n.netdevice_idx AND n.device=d.device_idx AND i.ip='%s'" % (ip))
-                dev_list = dc.fetchall()
-                if len(dev_list):
-                    first_dev = dev_list[0]
-                    boot_server, dev_name = (first_dev["bootserver"], first_dev["name"])
-                    if boot_server != self.__loc_config["MOTHER_SERVER_IDX"]:
-                        self.log("Not responsible for device '%s' (ip %s); bootserver has idx %d" % (dev_name, ip, boot_server))
-                    else:
-                        mach_idx = mach.device_idx
-                        if first_dev["dhcp_mac"]:
-                            dc.execute("UPDATE device SET dhcp_mac=0 WHERE name='%s'" % (mach.name))
-                            mach.log("Clearing dhcp_mac flag for device '%s' (using ip %s)" % (dev_name, ip))
-                        #else:
-                        #    mach.log("dhcp_mac flag for device '%s' (using ip %s) already cleared" % (dev_name, ip))
-                        mach.device_log_entry(5,
-                                              "i",
-                                              "got ipaddr (%s)" % (sm_type),
-                                              self.__queue_dict["sql_queue"],
-                                              self.__loc_config["LOG_SOURCE_IDX"])
-                        mach.set_recv_state("got IPaddress via DHCP", self.__queue_dict["sql_queue"])
-                        if first_dev["status"] in self.__loc_config["LIST_TAG_KERNEL"]:
-                            if not first_dev["stage1_flavour"]:
-                                first_dev["stage1_flavour"] = "lo"
-                                mach.log("setting stage1_flavour to '%s'" % (first_dev["stage1_flavour"]))
-                                dc.execute("UPDATE device SET stage1_flavour=%s WHERE device_idx=%s", (first_dev["stage1_flavour"],
-                                                                                                       first_dev["device_idx"]))
-                            new_kernel_stuff = get_kernel_stuff(dc, self.__glob_config, first_dev["newkernel"], first_dev["new_kernel"])
-                            mach.write_kernel_config(self.__queue_dict["sql_queue"],
-                                                     new_kernel_stuff,
-                                                     first_dev["kernel_append"],
-                                                     self.__server_ip["ip"],
-                                                     self.__server_ip["netmask"],
-                                                     self.__loc_config,
-                                                     first_dev["stage1_flavour"],
-                                                     True)
-                        elif first_dev["status"] in self.__loc_config["LIST_DOSBOOT"]:
-                            # we dont handle dosboot right now, FIXME
-                            pass
-                        elif first_dev["status"] in self.__loc_config["LIST_MEMTEST"]:
-                            mach.write_memtest_config()
-                        elif first_dev["status"] in self.__loc_config["LIST_BOOTLOCAL"]:
-                            mach.write_localboot_config()
-                        # check if the macadr from the database matches the received mac
-                        if first_dev["macadr"] != mac:
-                            mach.log("got wrong macadr (DHCP: %s, database: %s), fixing " % (mac, first_dev["macadr"]),
-                                     logging_tools.LOG_LEVEL_WARN)
-                            dc.execute("UPDATE netdevice SET macadr='00:00:00:00:00:00' WHERE macadr='%s'" % (mac))
-                            dc.execute("UPDATE netdevice SET macadr='%s' WHERE netdevice_idx=%d" % (mac, first_dev["netdevice_idx"]))
-                else:
-                    mach.log("Device with IP %s not found in database" % (ip))
-                mach.decr_use_count("syslog line")
-        if sm_type == "DISCOVER":
-            if re.match("^.*no free leases.*$", full_string):
-                dc.execute("SELECT d.name, nd.devname, nd.netdevice_idx, d.bootserver, d.dhcp_mac, d.bootnetdevice FROM netdevice nd, device d WHERE nd.device=d.device_idx AND nd.macadr='%s'" % (mac))
-                mac_list = dc.fetchall()
-                if len(mac_list):
-                    mac_entry = mac_list[0]
-                    if mac_entry["bootserver"] and mac_entry["bootserver"] != self.__loc_config["MOTHER_SERVER_IDX"]:
-                        # dhcp-DISCOVER request need not to be answered (other Server responsible)
-                        dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "OTHER", mac, self.__loc_config["LOG_SOURCE_IDX"]))
-                        self.log("DHCPDISCOVER for macadr %s (device %s, %s): other bootserver (%d)" % (mac, mac_entry["name"], mac_entry["devname"], mac_entry["bootserver"]))
-                    else:
-                        # dhcp-DISCOVER request can not be answered (macadress already used in DB)
-                        dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "REJECT", mac, self.__loc_config["LOG_SOURCE_IDX"]))
-                        self.log("DHCPDISCOVER for macadr %s (device %s%s, %s%s): address already used" % (mac,
-                                                                                                           mac_entry["name"],
-                                                                                                           mac_entry["dhcp_mac"] and "[is greedy]" or "",
-                                                                                                           mac_entry["devname"],
-                                                                                                           mac_entry["netdevice_idx"] == mac_entry["bootnetdevice"] and "[is bootdevice]" or "[is not bootdevice]"))
-                        if mac_entry["netdevice_idx"] != mac_entry["bootnetdevice"]:
-                            dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "MODIFY", mac, self.__loc_config["LOG_SOURCE_IDX"]))
-                            self.log("deleting macadr of netdevice %s on device %s (%s)" % (mac_entry["devname"],
-                                                                                            mac_entry["name"],
-                                                                                            mac))
-                            dc.execute("UPDATE netdevice SET macadr='00:00:00:00:00:00' WHERE netdevice_idx=%d" % (mac_entry["netdevice_idx"]))
-                            self._remove_macadr({"name"   : mac_entry["name"],
-                                                 "ip"     : "",
-                                                 "macadr" : mac})
-                        else:
-                            dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "REJECT", mac, self.__loc_config["LOG_SOURCE_IDX"]))
-                else:
-                    dc.execute("SELECT nd.netdevice_idx, d.name, d.device_idx, d.bootserver FROM netdevice nd, device d WHERE d.dhcp_mac=1 AND d.bootnetdevice=nd.netdevice_idx AND nd.device=d.device_idx ORDER by d.name")
-                    ndidx_list = dc.fetchall()
-                    if len(ndidx_list):
-                        for nd in ndidx_list:
-                            if nd["bootserver"]:
-                                if nd["bootserver"] == self.__loc_config["MOTHER_SERVER_IDX"]:
-                                    ins_idx = nd["netdevice_idx"]
-                                    dev_name = nd["name"]
-                                    dc.execute("SELECT macadr FROM mac_ignore WHERE macadr='%s'" % (mac))
-                                    if dc.rowcount:
-                                        self.log("Ignoring MAC-Adress '%s' (in ignore-list)" % (mac))
-                                        dc.execute("INSERT INTO macbootlog VALUES (0, %s, %s, %s, %s, %s, null)", (0, sm_type, "IGNORELIST", mac, self.__loc_config["LOG_SOURCE_IDX"]))
-                                    else:
-                                        self.log("Setting bootmacaddress of device '%s' to '%s'" % (dev_name, mac))
-                                        dc.execute("UPDATE device SET dhcp_mac=0 WHERE name='%s'" % (dev_name))
-                                        dc.execute("UPDATE netdevice SET macadr='%s' WHERE netdevice_idx=%d" % (mac, ins_idx))
-                                        dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (dev_name))
-                                        didx = dc.fetchone()["device_idx"]
-                                        sql_str, sql_tuple = mysql_tools.get_device_log_entry_part(didx, self.__loc_config["NODE_SOURCE_IDX"], 0, self.__loc_config["LOG_STATUS"]["i"]["log_status_idx"], mac)
-                                        dc.execute("INSERT INTO devicelog VALUES(%s)" % (sql_str), sql_tuple)
-                                        self.get_thread_queue().put(("server_com", server_command.server_command(command="alter_macadr", nodes=[dev_name])))
-                                        # set the mac-address
-                                        dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (nd["device_idx"], sm_type, "SET", mac, self.__loc_config["LOG_SOURCE_IDX"]))
-                                    break
-                                else:
-                                    self.log("Not responsible for device '%s' (ip %s); bootserver has idx %d" % (nd["name"], ip, nd["bootserver"]))
-                                    break
-                            else:
-                                self.log("Greedy device %s has no bootserver associated" % (nd["name"]), nd["name"])
-                    else:
-                        # ignore mac-address (no greedy devices)
-                        dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "IGNORE", mac, self.__loc_config["LOG_SOURCE_IDX"]))
-                        self.log("No greedy devices found for MAC-Address %s" % (mac))
-            else:
-                # dhcp-DISCOVER request got an answer
-                dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "---", mac, self.__loc_config["LOG_SOURCE_IDX"]))
-        else:
-            # non dhcp-DISCOVER request
-            dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (mach_idx, sm_type, ip, mac, self.__loc_config["LOG_SOURCE_IDX"]))
-        dc.release()
-    def _remove_macadr(self, machdat):
-        # removes macadr from dhcp-server
-        om_shell_coms = ["delete"]
-        for om_shell_com in om_shell_coms:
-            om_array = ['server 127.0.0.1',
-                        'port 7911',
-                        'connect',
-                        'new host',
-                        'set name = "%s"' % (machdat["name"])]
-            if om_shell_com == "write":
-                om_array.extend(['set hardware-address = %s' % (machdat["macadr"]),
-                                 'set hardware-type = 1',
-                                 'set ip-address=%s' % (machdat["ip"])])
-                om_array.extend(['set statements = "'+
-                                 'supersede host-name = \\"%s\\" ;' % (machdat["name"])+
-                                 'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { '+
-                                 'filename = \\"etherboot/%s/pxelinux.0\\" ; ' % (machdat["ip"])+
-                                 '} "'])
-                om_array.append('create')
-            elif om_shell_com == "delete":
-                om_array.extend(['open',
-                                 'remove'])
-            else:
-                self.log("Internal error: Unknown om_shell command %s" % (om_shell_com), logging_tools.LOG_LEVEL_ERROR)
-            #print om_array
-            self.log("starting omshell for command %s" % (om_shell_com))
-            (errnum, outstr) = commands.getstatusoutput("echo -e '%s' | /usr/bin/omshell" % ("\n".join(om_array)))
-            self.log("got (%d) %s" % (errnum, logging_tools.get_plural("line", len(outstr.split("\n")))))
-    def _adw_macadr(self, com_name, s_com):
-        nodes = s_com.get_nodes()
-        self.log("got command %s (key %s), %s%s" % (s_com.get_command(),
-                                                    s_com.get_key() and "set" or "not set",
-                                                    logging_tools.get_plural("node", len(nodes)),
-                                                    nodes and ": %s" % (logging_tools.compress_list(nodes)) or ""))
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        sql_str = "SELECT nd.macadr,d.name,i.ip,d.dhcp_written,d.dhcp_write,d.dhcp_error, nd.dhcp_device,nt.identifier,nd.netdevice_idx FROM " + \
-                  "netdevice nd, device d, netip i, network nw, network_type nt WHERE nd.device=d.device_idx AND i.netdevice=nd.netdevice_idx AND ((d.bootnetdevice=nd.netdevice_idx AND nt.identifier='b') OR nd.dhcp_device=1) " + \
-                  "AND nw.network_type=nt.network_type_idx AND i.network=nw.network_idx AND d.bootserver=%d" % (self.__loc_config["MOTHER_SERVER_IDX"])
-        all_rets_dict = {}
-        if len(nodes):
-            sql_str = "%s AND (%s)" % (sql_str,
-                                       " OR ".join(["d.name='%s'" % (x) for x in nodes]))
-            for node_name in nodes:
-                all_rets_dict[node_name] = "warn no SQL-result"
-        dc.execute(sql_str)
-        mach_dict = {}
-        for sql_rec in dc.fetchall():
-            if not mach_dict.has_key(sql_rec["name"]):
-                mach_dict[sql_rec["name"]] = sql_rec
-            else:
-                if sql_rec["identifier"] == "b" and mach_dict[sql_rec["name"]]["identifier"] != "b":
-                    mach_dict[sql_rec["name"]]["ip"] = sql_rec["ip"]
-        empty_result = True
-        # additional flags 
-        add_flags = []
-        for machdat in mach_dict.values():
-            empty_result = False
-            #print "-----------------------------"
-            #print com_name, "::", machdat
-            if self.__ad_struct.has_key(machdat["name"]):
-                mach = self.__ad_struct[machdat["name"]]
-                if mach.maint_ip:
-                    ip_to_write, ip_to_write_src = (mach.maint_ip, "maint_ip")
-                elif machdat["dhcp_device"]:
-                    if len(mach.ip_dict.keys()) == 1:
-                        ip_to_write, ip_to_write_src = (mach.ip_dict.keys()[0], "first ip of ip_dict.keys()")
-                    else:
-                        ip_to_write, ip_to_write_src = (None, "")
-                else:
-                    ip_to_write, ip_to_write_src = (None, "")
-                mach.incr_use_count("dhcp_command")
-                dhcp_written, dhcp_write, dhcp_last_error = (machdat["dhcp_written"], machdat["dhcp_write"], machdat["dhcp_error"])
-                # list of om_shell commands
-                om_shell_coms, err_lines = ([], [])
-                #print mach.name, com_name, force_flag, dhcp_write, dhcp_written
-                # try to determine om_shell_coms
-                if com_name == "alter_macadr":
-                    if dhcp_written:
-                        if dhcp_write and ip_to_write:
-                            om_shell_coms = ["delete", "write"]
-                        else:
-                            om_shell_coms = ["delete"]
-                    else:
-                        if dhcp_write and ip_to_write:
-                            om_shell_coms = ["write"]
-                        else:
-                            om_shell_coms = ["delete"]
-                elif com_name == "write_macadr":
-                    if dhcp_write and ip_to_write:
-                        om_shell_coms = ["write"]
-                    else:
-                        om_shell_coms = []
-                elif com_name == "delete_macadr":
-                    if dhcp_write:
-                        om_shell_coms = ["delete"]
-                    else:
-                        om_shell_coms = []
-                mach.log("transformed dhcp_com %s to %s: %s (%s)" % (com_name,
-                                                                     logging_tools.get_plural("om_shell_command", len(om_shell_coms)),
-                                                                     ", ".join(om_shell_coms),
-                                                                     ip_to_write and "ip %s from %s" % (ip_to_write, ip_to_write_src) or "no ip"))
-                # global success of all commands
-                g_success = 1
-                # dict of dev_fields to change
-                dev_sql_fields = {}
-                for om_shell_com in om_shell_coms:
-                    om_array = ['server 127.0.0.1',
-                                'port 7911',
-                                'connect',
-                                'new host',
-                                'set name = "%s"' % (machdat["name"])]
-                    if om_shell_com == "write":
-                        om_array.extend(['set hardware-address = %s' % (machdat["macadr"]),
-                                         'set hardware-type = 1',
-                                         'set ip-address=%s' % (machdat["ip"])])
-                        om_array.extend(['set statements = "'+
-                                         'supersede host-name = \\"%s\\" ;' % (machdat["name"])+
-                                         'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { '+
-                                         'filename = \\"etherboot/%s/pxelinux.0\\" ; ' % (ip_to_write)+
-                                         '} "'])
-                        om_array.append('create')
-                    elif om_shell_com == "delete":
-                        om_array.extend(['open',
-                                         'remove'])
-                    else:
-                        self.log("Internal error: Unknown om_shell command %s" % (om_shell_com), logging_tools.LOG_LEVEL_ERROR)
-                    #print om_array
-                    mach.log("starting omshell for command %s (%s)" % (om_shell_com,
-                                                                       ip_to_write and "ip %s from %s" % (ip_to_write, ip_to_write_src) or "no ip"))
-                    (errnum, outstr) = commands.getstatusoutput("echo -e '%s' | /usr/bin/omshell" % ("\n".join(om_array)))
-                    #print errnum, outstr
-                    if errnum == 0:
-                        for line in [x.strip()[2:].strip() for x in outstr.split("\n") if x.strip().startswith(">")]:
-                            if len(line):
-                                if not line.startswith(">") and not line.startswith("obj:"):
-                                    omm = self.__om_error_re.match(line)
-                                    if omm:
-                                        #print mach.name, ":", omm.group(1), "*", omm.group(2)
-                                        #print om_array
-                                        errnum, g_success, errline = (1, 0, line)
-                                        errfac, errstr = (omm.group(1), omm.group(2))
-                                elif re.match("^.*connection refused.*$", line):
-                                    errnum, g_success, errline = (1, 0, line)
-                                    errfac, errstr = ("connection refused", "server")
-                    else:
-                        g_success = 0
-                        errline, errstr, errfac = ("command error", "error", "omshell")
-                    if errnum:
-                        mach.log("omshell for command %s returned error %s (%s)" % (om_shell_com, errline, errstr), logging_tools.LOG_LEVEL_ERROR)
-                        mach.log("error: %s" % (errline), logging_tools.LOG_LEVEL_ERROR)
-                    else:
-                        mach.log("finished omshell for command %s successfully" % (om_shell_com))
-                    # error handling
-                    #print "++++", act_com, "---", mach.name, dhcp_written
-                    new_dhcp_written = None
-                    if errnum:
-                        if errstr == "key conflict":
-                            new_dhcp_written = 0
-                        elif errstr == "already exists":
-                            new_dhcp_written = 1
-                        elif errstr == "not found":
-                            new_dhcp_written = 0
-                        errline = "dhcp-error: %s (%s)" % (errstr, errfac)
-                        err_lines.append("%s: %s" % (om_shell_com, errline))
-                    else:
-                        err_lines.append("%s: ok" % (om_shell_com))
-                        if om_shell_com == "write":
-                            new_dhcp_written = 1
-                        elif om_shell_com == "delete":
-                            new_dhcp_written = 0
-                    if new_dhcp_written is not None:
-                        dhcp_written = new_dhcp_written
-                        dev_sql_fields["dhcp_written"] = dhcp_written
-                    if dhcp_write:
-                        dhw_0 = "write"
-                    else:
-                        dhw_0 = "no write"
-                    if dhcp_written:
-                        dhw_1 = "written"
-                    else:
-                        dhw_1 = "not written"
-                    mach.log("dhcp_info: %s/%s, mac-address is %s" % (dhw_0, dhw_1, machdat["macadr"]))
-                if g_success:
-                    loc_result = "ok done"
-                else:
-                    loc_result = "error: %s" % ("/".join(err_lines))
-                if not om_shell_coms:
-                    om_shell_coms = ["<nothing>"]
-                dhcp_act_error = loc_result
-                if dhcp_act_error != dhcp_last_error:
-                    dev_sql_fields["dhcp_error"] = dhcp_act_error
-                mach.log("dhcp command(s) %s (om: %s) result: %s" % (com_name,
-                                                                     ", ".join(om_shell_coms),
-                                                                     loc_result))
-                all_rets_dict[machdat["name"]] = loc_result
-                if dev_sql_fields:
-                    dev_sql_keys = dev_sql_fields.keys()
-                    sql_str, sql_tuple = ("UPDATE device SET %s WHERE name=%%s" % (", ".join(["%s=%%s" % (x) for x in dev_sql_keys])),
-                                          tuple([dev_sql_fields[x] for x in dev_sql_keys] + [mach.name]))
-                    dc.execute(sql_str, sql_tuple)
-                mach.decr_use_count("dhcp_command")
-            else:
-                self.log("error maintenance IP (write_macadr) not set for node %s" % (machdat["name"]), logging_tools.LOG_LEVEL_ERROR)
-                all_rets_dict[machdat["name"]] = "error maintenance IP (write_macadr) not set for node %s" % (machdat["name"])
-        if empty_result:
-            self.log("SQL-Query %s gave empty result ?" % (sql_str), logging_tools.LOG_LEVEL_WARN)
-        if s_com.get_key():
-            res_com = server_command.server_reply()
-            res_com.set_node_results(all_rets_dict)
-            if empty_result:
-                res_com.set_warn_result("empty SQL result")
-            else:
-                res_com.set_ok_result("ok")
-            s_com.get_queue().put(("result_ready", (s_com, res_com)))
-        dc.release()
-        
+##class dhcp_thread(threading_tools.thread_obj):
+##    def __init__(self, glob_config, loc_config, db_con, log_queue):
+##        self.__db_con = db_con
+##        self.__log_queue = log_queue
+##        self.__glob_config, self.__loc_config = (glob_config, loc_config)
+##        threading_tools.thread_obj.__init__(self, "dhcp", queue_size=100)
+##        self.register_func("server_com", self._server_com)
+##        self.register_func("set_ad_struct", self._set_ad_struct)
+##        self.register_func("set_queue_dict", self._set_queue_dict)
+##    def _set_queue_dict(self, q_dict):
+##        self.__queue_dict = q_dict
+##    def thread_running(self):
+##        self.send_pool_message(("new_pid", (self.name, self.pid)))
+##        self.__om_error_re = re.compile("^can't (.*) object: (.*)$")
+##        dc = self.__db_con.get_connection(SQL_ACCESS)
+##        dc.execute("SELECT i.ip,nw.netmask FROM netip i, netdevice n, network nw, device d, device_config dc, new_config c, network_type nt WHERE " + \
+##                   "dc.device=d.device_idx AND dc.new_config=c.new_config_idx AND c.name='mother_server' AND i.netdevice=n.netdevice_idx AND nw.network_idx=i.network AND " + \
+##                   "nt.identifier='b' AND nt.network_type_idx=nw.network_type AND n.device=d.device_idx AND d.device_idx=%d" % (self.__loc_config["MOTHER_SERVER_IDX"]))
+##        self.__server_ip = dc.fetchone()
+##        if self.__server_ip:
+##            self.log("IP-Address in bootnet is %s (netmask %s)" % (self.__server_ip["ip"], self.__server_ip["netmask"]))
+##        else:
+##            self.log("found no IP-Adress in bootnet", logging_tools.LOG_LEVEL_WARN)
+##        dc.release()
+##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+##        self.__log_queue.put(("log", (self.name, what, lev)))
+##    def _set_ad_struct(self, ad_struct):
+##        self.log("got ad_struct")
+##        self.__ad_struct = ad_struct
+
 class configure_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, loc_config, db_con, log_queue):
         self.__db_con = db_con
@@ -3958,12 +3600,22 @@ class server_process(threading_tools.process_pool):
         self._prepare_directories()
         # check nfs exports
         self._check_nfs_exports()
+        self._enable_syslog_config()
         self.__msi_block = None#self._init_msi_block()
         self._init_subsys()
+        my_uuid = uuid_tools.get_uuid()
+        self.log("cluster_device_uuid is '%s'" % (my_uuid.get_urn()))
         #self._init_network_sockets()
         self.add_process(mother.kernel.kernel_sync_process("kernel"), start=True)
+        self.add_process(mother.commands.external_command_process("command"), start=True)
         #self.add_process(build_process("build"), start=True)
         #self.register_func("client_update", self._client_update)
+        # send initial commands
+        self.send_to_process(
+            "kernel",
+            "srv_command",
+            unicode(server_command.srv_command(command="check_kernel_dir", insert_all_found="1"))
+        )
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -4053,6 +3705,130 @@ class server_process(threading_tools.process_pool):
                 self.log("starting the at-command '%s' gave %d:" % (at_command, at_stat))
                 for log_line in add_log_lines:
                     self.log(log_line)
+    def _enable_syslog_config(self):
+        syslog_exe_dict = dict([(key, value) for key, value in process_tools.get_proc_list().iteritems() if value and value.get("exe", "") and value["exe"].count("syslog")])
+        syslog_type = None
+        for key, value in syslog_exe_dict.iteritems():
+            self.log("syslog process found: %6d = %s" % (key, value["exe"]))
+            if value["exe"].endswith("rsyslogd"):
+                syslog_type = "rsyslogd"
+        self.log("syslog type found: %s" % (syslog_type or "none"))
+        self.__syslog_type = syslog_type
+        if self.__syslog_type == "rsyslogd":
+            pass
+        elif self.__syslog_type == "syslog-ng":
+            self._enable_syslog_ng()
+    def _disable_syslog_config(self):
+        if self.__syslog_type == "rsyslogd":
+            pass
+        elif self.__syslog_type == "syslog-ng":
+            self._disable_syslog_ng()
+    def _enable_syslog_ng(self):
+        slcn = "/etc/syslog-ng/syslog-ng.conf"
+        if os.path.isfile(slcn):
+            # start of shiny new modification code, right now only used to get the name of the /dev/log source
+            dev_log_source_name = "src"
+            try:
+                act_conf = logging_tools.syslog_ng_config()
+            except:
+                self.log("Unable to parse config: %s, using '%s' as /dev/log-source" % (process_tools.get_except_info(),
+                                                                                        dev_log_source_name),
+                         logging_tools.LOG_LEVEL_ERROR)
+
+            else:
+                source_key = "/dev/log"
+                source_dict = act_conf.get_dict_sort(act_conf.get_multi_object("source"))
+                if source_dict.has_key(source_key):
+                    dev_log_source_name = source_dict[source_key][0]
+                    self.log("'%s'-key in config, using '%s' as /dev/log-source" % (source_key,
+                                                                                    dev_log_source_name))
+                else:
+                    self.log("'%s'-key not in config, using '%s' as /dev/log-source" % (source_key,
+                                                                                        dev_log_source_name))
+            self.log("Trying to rewrite syslog-ng.conf for mother ...")
+            try:
+                orig_conf = [x.rstrip() for x in open(slcn, "r").readlines()]
+                # check for mother-lines and/or dhcp-lines
+                opt_list = ["dhcp", "mother", "dhcp_filter"]
+                opt_dict = dict([(x, 0) for x in opt_list])
+                for line in orig_conf:
+                    if re.match("^.*source dhcp.*$", line):
+                        opt_dict["dhcp"] = 1
+                    if re.match("^.*filter f_dhcp.*$", line):
+                        opt_dict["dhcp_filter"] = 1
+                    if re.match("^.*mother.*$", line):
+                        opt_dict["mother"] = 1
+                self.log("after parsing: %s" % (", ".join(["%s: %d" % (x, opt_dict[x]) for x in opt_list])))
+                if not opt_dict["mother"]:
+                    mother_lines = []
+                    if not opt_dict["dhcp_filter"]:
+                        # message() instead of match() since syslog-ng 2.1
+                        mother_lines.extend(["",
+                                             'filter f_dhcp       { message("DHCP") ; };'])
+                    if opt_dict["dhcp"]:
+                        self.log("dhcp-source found, so it seems that the DHCPD is running chrooted() ...")
+                        mother_lines.extend(["",
+                                             'destination dhcpmother { unix-dgram("%s") ;};' % (self.__glob_config["SYSLOG_UDS_NAME"]),
+                                             "",
+                                             'log { source(dhcp); source(%s); filter(f_dhcp)    ; destination(dhcpmother); };' % (dev_log_source_name)])
+                    else:
+                        self.log("dhcp-source not found, so it seems that the DHCPD is NOT running chrooted() ...")
+                        mother_lines.extend(["",
+                                             'destination dhcpmother { unix-dgram("%s") ;};' % (self.__glob_config["SYSLOG_UDS_NAME"]),
+                                             "",
+                                             'log {               source(%s); filter(f_dhcp)    ; destination(dhcpmother);};' % (dev_log_source_name)])
+                    for ml in mother_lines:
+                        self.log("adding line to %s : %s" % (slcn, ml))
+                    open(slcn, "w").write("\n".join(orig_conf + mother_lines + [""]))
+                else:
+                    self.log("%s seems to be OK, leaving unchanged..." % (slcn))
+                self.log("...done")
+            except:
+                self.log("Something went wrong while trying to modify '%s', help..." % (slcn), logging_tools.LOG_LEVEL_CRITICAL)
+        else:
+            self.log("config file '%s' not present" % (slcn), logging_tools.LOG_LEVEL_WARN)
+        self._restart_syslog()
+    def _disable_syslog_ng(self):
+        self.log("Trying to rewrite syslog-ng.conf for normal operation ...")
+        slcn = "/etc/syslog-ng/syslog-ng.conf"
+        try:
+            orig_conf = [x.rstrip() for x in open(slcn, "r").readlines()]
+            new_conf = []
+            del_lines = []
+            for line in orig_conf:
+                if re.match("^.*mother.*$", line):
+                    del_lines.append(line)
+                else:
+                    new_conf.append(line)
+            if del_lines:
+                self.log("Found %s:" % (logging_tools.get_plural("mother-related line", len(del_lines))))
+                for dl in del_lines:
+                    self.log("  removing : %s" % (dl))
+                # remove double empty-lines
+                new_conf_2, last_line = ([], None)
+                for line in new_conf:
+                    if line == last_line and last_line == "":
+                        pass
+                    else:
+                        new_conf_2.append(line)
+                    last_line = line
+                open(slcn, "w").write("\n".join(new_conf_2))
+            else:
+                self.log("Found no mother-related lines, leaving %s untouched" % (slcn))
+            self.log("...done")
+        except:
+            self.log("Something went wrong while trying to modify '%s': %s, help..." % (slcn,
+                                                                                        process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+        self._restart_syslog()
+    def _restart_syslog(self):
+        for syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng"]:
+            if os.path.isfile(syslog_rc):
+                break
+        stat, out_f = process_tools.submit_at_command("%s restart" % (syslog_rc), 0)
+        self.log("restarting %s gave %d:" % (syslog_rc, stat))
+        for line in out_f:
+            self.log(line)
 
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, db_con, g_config, loc_config):
@@ -4068,7 +3844,6 @@ class server_thread_pool(threading_tools.thread_pool):
         self.register_exception("term_error", self._int_error)
         #self.register_exception("hup_error", self._hup_error)
         # enable syslog config
-        self._enable_syslog_config()
         dc = self.__db_con.get_connection(SQL_ACCESS)
         # re-insert config
         self._re_insert_config(dc)
@@ -4126,12 +3901,9 @@ class server_thread_pool(threading_tools.thread_pool):
         dc.release()
         self.__config_queue.put(("refresh_all", (None, None)))
         # uuid log
-        my_uuid = uuid_tools.get_uuid()
-        self.log("cluster_device_uuid is '%s'" % (my_uuid.get_urn()))
         # write dhcp-address
         self.__dhcp_queue.put(("server_com", server_command.server_command(command="alter_macadr",
                                                                            option_dict={"SIGNAL_MAIN_THREAD" : "macaddrs_written"})))
-        self.__kernel_queue.put(("check_kernel_dir", server_command.server_command(command="check_kernel_dir", option_dict={"insert_all_found" : True})))
         # init apc-update-timestmamp
         self.__last_apc_update = None
 ##    def _int_error(self, err_cause):
@@ -4244,112 +4016,6 @@ class server_thread_pool(threading_tools.thread_pool):
         process_tools.delete_pid(self.__loc_config["PID_NAME"])
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-    def _enable_syslog_config(self):
-        slcn = "/etc/syslog-ng/syslog-ng.conf"
-        if os.path.isfile(slcn):
-            # start of shiny new modification code, right now only used to get the name of the /dev/log source
-            dev_log_source_name = "src"
-            try:
-                act_conf = logging_tools.syslog_ng_config()
-            except:
-                self.log("Unable to parse config: %s, using '%s' as /dev/log-source" % (process_tools.get_except_info(),
-                                                                                        dev_log_source_name),
-                         logging_tools.LOG_LEVEL_ERROR)
-
-            else:
-                source_key = "/dev/log"
-                source_dict = act_conf.get_dict_sort(act_conf.get_multi_object("source"))
-                if source_dict.has_key(source_key):
-                    dev_log_source_name = source_dict[source_key][0]
-                    self.log("'%s'-key in config, using '%s' as /dev/log-source" % (source_key,
-                                                                                    dev_log_source_name))
-                else:
-                    self.log("'%s'-key not in config, using '%s' as /dev/log-source" % (source_key,
-                                                                                        dev_log_source_name))
-            self.log("Trying to rewrite syslog-ng.conf for mother ...")
-            try:
-                orig_conf = [x.rstrip() for x in open(slcn, "r").readlines()]
-                # check for mother-lines and/or dhcp-lines
-                opt_list = ["dhcp", "mother", "dhcp_filter"]
-                opt_dict = dict([(x, 0) for x in opt_list])
-                for line in orig_conf:
-                    if re.match("^.*source dhcp.*$", line):
-                        opt_dict["dhcp"] = 1
-                    if re.match("^.*filter f_dhcp.*$", line):
-                        opt_dict["dhcp_filter"] = 1
-                    if re.match("^.*mother.*$", line):
-                        opt_dict["mother"] = 1
-                self.log("after parsing: %s" % (", ".join(["%s: %d" % (x, opt_dict[x]) for x in opt_list])))
-                if not opt_dict["mother"]:
-                    mother_lines = []
-                    if not opt_dict["dhcp_filter"]:
-                        # message() instead of match() since syslog-ng 2.1
-                        mother_lines.extend(["",
-                                             'filter f_dhcp       { message("DHCP") ; };'])
-                    if opt_dict["dhcp"]:
-                        self.log("dhcp-source found, so it seems that the DHCPD is running chrooted() ...")
-                        mother_lines.extend(["",
-                                             'destination dhcpmother { unix-dgram("%s") ;};' % (self.__glob_config["SYSLOG_UDS_NAME"]),
-                                             "",
-                                             'log { source(dhcp); source(%s); filter(f_dhcp)    ; destination(dhcpmother); };' % (dev_log_source_name)])
-                    else:
-                        self.log("dhcp-source not found, so it seems that the DHCPD is NOT running chrooted() ...")
-                        mother_lines.extend(["",
-                                             'destination dhcpmother { unix-dgram("%s") ;};' % (self.__glob_config["SYSLOG_UDS_NAME"]),
-                                             "",
-                                             'log {               source(%s); filter(f_dhcp)    ; destination(dhcpmother);};' % (dev_log_source_name)])
-                    for ml in mother_lines:
-                        self.log("adding line to %s : %s" % (slcn, ml))
-                    open(slcn, "w").write("\n".join(orig_conf + mother_lines + [""]))
-                else:
-                    self.log("%s seems to be OK, leaving unchanged..." % (slcn))
-                self.log("...done")
-            except:
-                self.log("Something went wrong while trying to modify '%s', help..." % (slcn), logging_tools.LOG_LEVEL_CRITICAL)
-        else:
-            self.log("config file '%s' not present" % (slcn), logging_tools.LOG_LEVEL_WARN)
-        self._restart_syslog()
-    def _disable_syslog_config(self):
-        self.log("Trying to rewrite syslog-ng.conf for normal operation ...")
-        slcn = "/etc/syslog-ng/syslog-ng.conf"
-        try:
-            orig_conf = [x.rstrip() for x in open(slcn, "r").readlines()]
-            new_conf = []
-            del_lines = []
-            for line in orig_conf:
-                if re.match("^.*mother.*$", line):
-                    del_lines.append(line)
-                else:
-                    new_conf.append(line)
-            if del_lines:
-                self.log("Found %s:" % (logging_tools.get_plural("mother-related line", len(del_lines))))
-                for dl in del_lines:
-                    self.log("  removing : %s" % (dl))
-                # remove double empty-lines
-                new_conf_2, last_line = ([], None)
-                for line in new_conf:
-                    if line == last_line and last_line == "":
-                        pass
-                    else:
-                        new_conf_2.append(line)
-                    last_line = line
-                open(slcn, "w").write("\n".join(new_conf_2))
-            else:
-                self.log("Found no mother-related lines, leaving %s untouched" % (slcn))
-            self.log("...done")
-        except:
-            self.log("Something went wrong while trying to modify '%s': %s, help..." % (slcn,
-                                                                                        process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
-        self._restart_syslog()
-    def _restart_syslog(self):
-        for syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng"]:
-            if os.path.isfile(syslog_rc):
-                break
-        stat, out_f = process_tools.submit_at_command("%s restart" % (syslog_rc), 0)
-        self.log("restarting %s gave %d:" % (syslog_rc, stat))
-        for line in out_f:
-            self.log(line)
     def _check_netboot_functionality(self):
         self.__glob_config.add_config_dict({"PXEBOOT" : configfile.bool_c_var(False, source="default"),
                                             "XENBOOT" : configfile.bool_c_var(False, source="default")})
@@ -4419,7 +4085,8 @@ def main():
         ("TFTP_LINK"                 , configfile.str_c_var("/tftpboot")),
         ("TFTP_DIR"                  , configfile.str_c_var("/usr/local/share/cluster/tftpboot")),
         ("CLUSTER_DIR"               , configfile.str_c_var("/opt/cluster")),
-        ("NODE_PORT"                 , configfile.int_c_var(2001))])
+        ("NODE_PORT"                 , configfile.int_c_var(2001)),
+        ("SERVER_SHORT_NAME"         , configfile.str_c_var(mach_name))])
     global_config.add_config_entries([
         ("CONFIG_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
         ("ETHERBOOT_DIR", configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "etherboot"))),
