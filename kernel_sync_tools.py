@@ -75,7 +75,7 @@ class srv_con_obj(net_tools.buffer_object):
         #self.__stc.set_host_error(self.__dst_ip, "%s : %s" % (net_tools.net_flag_to_str(flag), what))
         self.delete()
 
-class kernel(object):
+class kernel_helper(object):
     # filenames to sync
     pos_names = ["bzImage",
                  "modules.tar.bz2",
@@ -86,25 +86,26 @@ class kernel(object):
                  "xen.gz",
                  ".comment",
                  ".config"]
-    def __init__(self, name, root_dir, log_func, dc, config, **args):
+    def __init__(self, name, root_dir, log_func, config, **kwargs):
         self.__slots__ = []
         # meassure the lifetime
         self.__start_time = time.time()
         self.__db_idx = 0
-        self.__dc = dc
-        self.__local_master_server = args.get("master_server", 0)
+        self.__local_master_server = kwargs.get("master_server", None)
+        self.name = name
+        self.__db_kernel = kwargs.get("kernel_struct", None)
         self.name = name
         self.root_dir = root_dir
         self.__config = config
         self.path = os.path.normpath("%s/%s" % (self.root_dir, self.name))
         self.__config_dict = {}
         self.__log_func = log_func
-        self.__sync_kernel = args.get("sync_kernel", False)
+        self.__sync_kernel = kwargs.get("sync_kernel", False)
         if self.__sync_kernel:
             if not os.path.isdir(self.path):
                 self.log("creating kernel_dir %s" % (self.path))
                 os.makedirs(self.path)
-            self._copy_from_sync_dict(args.get("sync_dict", {}))
+            self._copy_from_sync_dict(kwargs.get("sync_dict", {}))
         self.__bz_path = "%s/bzImage" % (self.path)
         self.__xen_path = "%s/xen.gz" % (self.path)
         for c_path in ["config", ".config"]:
@@ -135,11 +136,11 @@ class kernel(object):
         #    raise IOError, "kernel_dir %s has no initrd*.gz" % (self.path)
         # init db-Fields
         self.__checks = []
-        self.__db_kernel = {"name"          : self.name,
-                            "target_dir"    : self.path,
-                            "initrd_built"  : None,
-                            "module_list"   : "",
-                            "master_server" : self.__local_master_server}
+        #self.__db_kernel = {"name"          : self.name,
+        #                    "target_dir"    : self.path,
+        #                    "initrd_built"  : None,
+        #                    "module_list"   : "",
+        #                    "master_server" : self.__local_master_server}
     def _copy_from_sync_dict(self, in_dict):
         for f_name in self.pos_names:
             tf_name = "%s/%s" % (self.path, f_name)
@@ -222,13 +223,13 @@ class kernel(object):
                     file(md5_file, "w").write(self.__option_dict[md5_name])
                 else:
                     self.__option_dict[md5_name] = file(md5_file, "r").read()
-    def set_db_kernel(self, db_k):
-        self.__db_kernel = db_k
-        self.__option_dict["database"] = True
-        self.__db_idx = db_k["kernel_idx"]
-    def get_db_kernel(self):
-        return self.__db_kernel
-    db_kernel = property(get_db_kernel, set_db_kernel)
+##    def set_db_kernel(self, db_k):
+##        self.__db_kernel = db_k
+##        self.__option_dict["database"] = True
+##        self.__db_idx = db_k["kernel_idx"]
+##    def get_db_kernel(self):
+##        return self.__db_kernel
+##    db_kernel = property(get_db_kernel, set_db_kernel)
     def move_old_initrd(self):
         if os.path.isfile(self.__initrd_paths["old"]):
             c_stat, c_out = commands.getstatusoutput("file -z %s" % (self.__initrd_paths["old"]))
@@ -268,9 +269,10 @@ class kernel(object):
                                  logging_tools.LOG_LEVEL_ERROR)
                     else:
                         self.check_md5_sums()
-    def _update_kernel(self, set_str, set_tuple):
-        if self.__db_idx:
-            if self.__db_kernel["master_server"] == self.__local_master_server:
+    def _update_kernel(self, **kwargs):
+        print "X", kwargs
+        if self.__db_kernel:
+            if self.__db_kernel.master_server == self.__local_master_server.pk:
                 self.__dc.execute("UPDATE kernel SET %s WHERE kernel_idx=%d" % (set_str,
                                                                                 self.__db_idx), set_tuple)
             else:
@@ -287,7 +289,7 @@ class kernel(object):
             present_flag = 1 if os.path.isfile(self.__initrd_paths[initrd_flavour]) else 0
             present_dict[initrd_flavour] = True if present_flag else False
             self.__db_kernel[db_name] = present_flag
-            self._update_kernel("%s=%%s" % (db_name), (present_flag))
+            self._update_kernel(**{db_name : present_flag})
         if self.__db_kernel["initrd_built"] == None:
             present_keys = sorted([key for key in ["cpio", "cramfs", "lo"] if present_dict.get(key, False)])
             if present_keys:
@@ -296,8 +298,8 @@ class kernel(object):
                          db_write=True)
                 self.__checks.append("initrd")
                 initrd_built = os.stat(self.__initrd_paths[present_keys[0]])[stat.ST_MTIME]
-                self.__db_kernel["initrd_built"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(initrd_built))
-                self._update_kernel("initrd_built=%s", (self.__db_kernel["initrd_built"]))
+                #initrd_built = time.localtime(initrd_built)
+                self._update_kernel(initrd_built=initrd_build)
                 # temporary file and directory
                 tfile_name = "%s/.initrd_check" % (self.__config["TMP_DIR"])
                 tdir_name  = "%s/.initrd_mdir" % (self.__config["TMP_DIR"])
@@ -358,11 +360,10 @@ class kernel(object):
                             self.log("found no modules")
                         if self.__db_idx:
                             if mod_list != self.__db_kernel["module_list"]:
-                                self.__db_kernel["module_list"] = mod_list
-                                self._update_kernel("module_list=%s", (self.__db_kernel["module_list"]))
-                        else:
-                            self.__db_kernel["module_list"] = mod_list
-                            self.__db_kernel["target_module_list"] = mod_list
+                                self._update_kernel(module_list=mod_list)
+##                        else:
+##                            self.__db_kernel["module_list"] = mod_list
+##                            self.__db_kernel["target_module_list"] = mod_list
                     if do_umount:
                         c_stat, c_out = commands.getstatusoutput(um_com)
                         if c_stat:
@@ -398,8 +399,7 @@ class kernel(object):
                 pass
         else:
             comment = ""
-        self.__db_kernel["comment"] = comment
-        self._update_kernel("comment=%s", (self.__db_kernel["comment"]))
+        self._update_kernel(comment=comment)
     def check_version_file(self):
         self.__checks.append("versionfile")
         kernel_version, k_ver, k_rel = (self.name.split("_")[0], 1, 1)
@@ -432,10 +432,10 @@ class kernel(object):
                     self.__option_dict["kernel_is_local"] = (build_mach == self.__config["SERVER_SHORT_NAME"])
         if config_name:
             config_name = "/usr/src/configs/.config_%s" % (config_name)
-        self.__db_kernel["kernel_version"] = kernel_version
-        self.__db_kernel["version"] = k_ver
-        self.__db_kernel["release"] = k_rel
-        self.__db_kernel["config_name"] = config_name
+##        self.__db_kernel["kernel_version"] = kernel_version
+##        self.__db_kernel["version"] = k_ver
+##        self.__db_kernel["release"] = k_rel
+##        self.__db_kernel["config_name"] = config_name
         return build_mach
     def check_bzimage_file(self):
         self.__checks.append("bzImage")
@@ -459,9 +459,9 @@ class kernel(object):
             except:
                 # FIXME
                 pass
-        self.__db_kernel["major"] = major
-        self.__db_kernel["minor"] = minor
-        self.__db_kernel["patchlevel"] = patchlevel
+##        self.__db_kernel["major"] = major
+##        self.__db_kernel["minor"] = minor
+##        self.__db_kernel["patchlevel"] = patchlevel
         return build_mach
     def check_kernel_dir(self):
         # if not in database read values from disk
@@ -486,15 +486,15 @@ class kernel(object):
                 self.__dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (build_mach))
                 if self.__dc.rowcount:
                     build_mach_idx = self.__dc.fetchone()["device_idx"]
-        self.__db_kernel["build_machine"] = build_mach
-        self.__db_kernel["device"] = build_mach_idx
+        #self.__db_kernel["build_machine"] = build_mach
+        #self.__db_kernel["device"] = build_mach_idx
     def check_xen(self):
-        self.__db_kernel["xen_host_kernel"] = 1 if os.path.isfile(self.__xen_path) else 0
-        self.__db_kernel["xen_guest_kernel"] = 0
+        xen_host_kernel = True if os.path.isfile(self.__xen_path) else False
+        xen_guest_kernel = False
         if self.__config_dict.get("CONFIG_XEN", False):
-            self.__db_kernel["xen_guest_kernel"] = 1
-        self._update_kernel("xen_host_kernel=%s, xen_guest_kernel=%s", (self.__db_kernel["xen_host_kernel"],
-                                                                        self.__db_kernel["xen_guest_kernel"]))
+            xen_guest_kernel = True
+        self._update_kernel(xen_host_kernel=xen_host_kernel,
+                            xen_guest_kernel=xen_guest_kernel)
     def check_config(self):
         bc = 0
         if self.__config_dict:
@@ -502,12 +502,13 @@ class kernel(object):
                 bc = 64
             else:
                 bc = 32
-        self.__db_kernel["bitcount"] = bc
-        self._update_kernel("bitcount=%s", (self.__db_kernel["bitcount"]))
+        self._update_kernel(bitcount=bc)
     def set_option_dict_values(self):
         # local kernel ?
-        self.__option_dict["kernel_is_local"] = (self.__db_kernel["build_machine"] or "").split(".")[0] == self.__config["SERVER_SHORT_NAME"]
-        self.__option_dict["build_machine"] = self.__db_kernel["build_machine"]
+        #self.__option_dict["kernel_is_local"] = (self.__db_kernel["build_machine"] or "").split(".")[0] == self.__config["SERVER_SHORT_NAME"]
+        # FIXME
+        self.__option_dict["kernel_is_local"] = False
+        #self.__option_dict["build_machine"] = self.__db_kernel["build_machine"]
         # initrds found, not used right now
         for initrd_flavour in ["lo", "cramfs", "cpio"]:
             self.__option_dict["initrd_flavour_%s" % (initrd_flavour)] = os.path.exists(self.__initrd_paths[initrd_flavour])
@@ -557,7 +558,8 @@ class kernel(object):
                                                                                           str(ext_opt_dict["ignore_kernel_build_machine"])))
                         kl_ok = True
                 if not kl_ok:
-                    self.log("kernel is not local (%s)" % (self.__option_dict["build_machine"]),
+                    # FIXME
+                    self.log("kernel is not local (%s)" % ('self.__option_dict["build_machine"]'),
                              logging_tools.LOG_LEVEL_ERROR)
                 else:
                     ins = True
@@ -569,7 +571,6 @@ class kernel(object):
                                                 ", ".join(self.__checks)) if self.__checks else "no checks"))
     def get_option_dict(self):
         return self.__option_dict
-        
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
