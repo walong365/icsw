@@ -112,6 +112,8 @@ def create_device_group(request):
     try:
         new_dg = device_group(name=name,
                               description=_post["description"])
+        if not device_group.objects.count():
+            new_dg.cluster_device_group = True
         new_dg.save()
     except:
         request.log("cannot create device_group %s" % (name),

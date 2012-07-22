@@ -188,8 +188,17 @@ def get_network_tree(request):
         "device_type").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").order_by("device_group__name", "name"):
         dev_list.append(cur_dev.get_xml())
     xml_resp.append(dev_list)
-    xml_resp.append(E.netspeed_list(
-        *[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()]))
+    ns_list = E.netspeed_list(
+        *[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()])
+    if not len(ns_list):
+        # create some dummy entries
+        netdevice_speed(
+            speed_bps=1000000000,
+            check_via_ethtool=True,
+            full_duplex=True).save()
+        ns_list = E.netspeed_list(
+            *[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()])
+    xml_resp.append(ns_list)
     xml_resp.append(E.network_device_type_list(
         *[E.network_device_type(unicode(cur_ndt), pk="%d" % (cur_ndt.pk)) for cur_ndt in network_device_type.objects.all()]))
     # networks

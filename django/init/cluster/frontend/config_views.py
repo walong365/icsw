@@ -100,7 +100,7 @@ def change_xml_entry(request):
     except:
         request.log("cannot parse", logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
-        mod_obj = {"dg"      : device_group,
+        mod_obj = {"devg"    : device_group,
                    "dev"     : device,
                    "nd"      : netdevice,
                    "ip"      : net_ip,
