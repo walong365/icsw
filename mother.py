@@ -23,18 +23,17 @@
 """ mother daemon """
 
 import sys
-import getopt
 import time
 import os
 import os.path
 import threading
 import re
+import zmq
 import shutil
 # transition fix
 import configfile
 import cluster_location
 import socket
-import commands
 import stat
 import process_tools
 import logging_tools
@@ -44,7 +43,6 @@ import mysql_tools
 import MySQLdb
 import pprint
 import server_command
-import gzip
 import uuid_tools
 import cpu_database
 import ipvx_tools
@@ -64,7 +62,8 @@ from pysnmp.proto import api
 from mother.config import global_config
 from django.db.models import Q
 import mother.kernel
-import mother.commands
+import mother.command
+import mother.control
 from init.cluster.backbone.models import network
 
 SQL_ACCESS = "cluster_full_access"
@@ -3598,6 +3597,8 @@ class server_process(threading_tools.process_pool):
         self._log_config()
         # prepare directories
         self._prepare_directories()
+        # check netboot functionality
+        self._check_netboot_functionality()
         # check nfs exports
         self._check_nfs_exports()
         self._enable_syslog_config()
@@ -3605,17 +3606,21 @@ class server_process(threading_tools.process_pool):
         self._init_subsys()
         my_uuid = uuid_tools.get_uuid()
         self.log("cluster_device_uuid is '%s'" % (my_uuid.get_urn()))
-        #self._init_network_sockets()
-        self.add_process(mother.kernel.kernel_sync_process("kernel"), start=True)
-        self.add_process(mother.commands.external_command_process("command"), start=True)
-        #self.add_process(build_process("build"), start=True)
-        #self.register_func("client_update", self._client_update)
-        # send initial commands
-        self.send_to_process(
-            "kernel",
-            "srv_command",
-            unicode(server_command.srv_command(command="check_kernel_dir", insert_all_found="1"))
-        )
+        if self._init_network_sockets():
+            self.add_process(mother.kernel.kernel_sync_process("kernel"), start=True)
+            self.add_process(mother.command.external_command_process("command"), start=True)
+            self.add_process(mother.control.node_control_process("control"), start=True)
+            self.add_process(mother.control.twisted_process("twisted"), twisted=True, start=True)
+            #self.add_process(build_process("build"), start=True)
+            #self.register_func("client_update", self._client_update)
+            # send initial commands
+            self.send_to_process(
+                "kernel",
+                "srv_command",
+                unicode(server_command.srv_command(command="check_kernel_dir", insert_all_found="1"))
+            )
+        else:
+            self._int_error("bind problem")
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -3644,9 +3649,52 @@ class server_process(threading_tools.process_pool):
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
     def loop_post(self):
-        #for open_sock in self.socket_dict.itervalues():
-        #    open_sock.close()
+        for open_sock in self.socket_dict.itervalues():
+            open_sock.close()
         self.__log_template.close()
+    def _init_network_sockets(self):
+        success = True
+        my_0mq_id = uuid_tools.get_uuid().get_urn()
+        self.socket_dict = {}
+        # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
+        for key, sock_type, bind_port, target_func in [
+            ("router", zmq.ROUTER, global_config["SERVER_PUB_PORT"] , self._new_com),
+            ("pull"  , zmq.PULL  , global_config["SERVER_PULL_PORT"], self._new_com),
+            ]:
+            client = self.zmq_context.socket(sock_type)
+            client.setsockopt(zmq.IDENTITY, my_0mq_id)
+            client.setsockopt(zmq.LINGER, 100)
+            client.setsockopt(zmq.HWM, 256)
+            client.setsockopt(zmq.BACKLOG, 1)
+            conn_str = "tcp://*:%d" % (bind_port)
+            try:
+                client.bind(conn_str)
+            except zmq.core.error.ZMQError:
+                self.log("error binding to %s{%d}: %s" % (
+                    conn_str,
+                    sock_type, 
+                    process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_CRITICAL)
+                client.close()
+                success = False
+            else:
+                self.log("bind to port %s{%d}" % (conn_str,
+                                                  sock_type))
+                self.register_poller(client, zmq.POLLIN, target_func)
+                self.socket_dict[key] = client
+        return success
+    def _new_com(self, zmq_sock):
+        print "nc"
+        data = [zmq_sock.recv_unicode()]
+        while zmq_sock.getsockopt(zmq.RCVMORE):
+            data.append(zmq_sock.recv_unicode())
+        if len(data) == 2:
+            print data
+            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+            zmq_sock.send_unicode("ok")
+        else:
+            self.log("wrong number of data chunks (%d != 2)" % (len(data)),
+                     logging_tools.LOG_LEVEL_ERROR)
     # utility calls
     def _prepare_directories(self):
         self.log("Checking directories ...")
@@ -3829,6 +3877,40 @@ class server_process(threading_tools.process_pool):
         self.log("restarting %s gave %d:" % (syslog_rc, stat))
         for line in out_f:
             self.log(line)
+    def _check_netboot_functionality(self):
+        global_config.add_config_entries([
+            ("PXEBOOT", configfile.bool_c_var(False, source="default")),
+            ("XENBOOT", configfile.bool_c_var(False, source="default"))])
+        pxe_paths = ["%s/share/mother/syslinux/pxelinux.0" % (global_config["CLUSTER_DIR"])]
+        for pxe_path in pxe_paths:
+            if os.path.isfile(pxe_path):
+                try:
+                    pxelinux_0 = open(pxe_path, "r").read()
+                except:
+                    self.log("Cannot read pxelinux.0 from %s" % (pxe_path), logging_tools.LOG_LEVEL_WARN)
+                else:
+                    global_config.add_config_entries([
+                        ("PXEBOOT"   , configfile.bool_c_var(True, source="filesystem")),
+                        ("PXELINUX_0", configfile.blob_c_var(pxelinux_0, source="filesystem"))])
+                    self.log("Found pxelinux.0 in %s" % (pxe_path))
+                    break
+            else:
+                self.log("Found no pxelinux.0 in %s" % (pxe_path), logging_tools.LOG_LEVEL_WARN)
+        mb32_paths = ["%s/share/mother/syslinux/mboot.c32" % (global_config["CLUSTER_DIR"])]
+        for mb32_path in mb32_paths:
+            if os.path.isfile(mb32_path):
+                try:
+                    mb32_0 = open(mb32_path, "r").read()
+                except:
+                    self.log("Cannot read mboot.c32 from %s" % (mb32_path), logging_tools.LOG_LEVEL_WARN)
+                else:
+                    global_config.add_config_entries([
+                        ("XENBOOT"  , configfile.bool_c_var(True, source="filesystem")),
+                        ("MBOOT.C32", configfile.blob_c_var(mb32_0, source="filesystem"))])
+                    self.log("Found mboot.c32 in %s" % (mb32_path))
+                    break
+            else:
+                self.log("Found no mboot.c32 in %s" % (mb32_path), logging_tools.LOG_LEVEL_WARN)
 
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, db_con, g_config, loc_config):
@@ -3853,7 +3935,6 @@ class server_thread_pool(threading_tools.thread_pool):
         self.__syslog_udb = self.__ns.add_object(net_tools.unix_domain_bind(self._new_ud_out_recv, socket=self.__glob_config["SYSLOG_UDS_NAME"], mode=0666, bind_state_call=self._bind_state_call))[0]
         self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_command_con, port=g_config["COMPORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=120, in_buffer_size=65536))
         self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_node_con, port=g_config["NODEPORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=60))
-        self._check_netboot_functionality()
         # global network settings
         self._check_global_network_stuff(dc)
         self.__ad_struct = all_devices(self.__log_queue, self.__glob_config, self.__loc_config, self.__db_con)
@@ -4016,37 +4097,6 @@ class server_thread_pool(threading_tools.thread_pool):
         process_tools.delete_pid(self.__loc_config["PID_NAME"])
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-    def _check_netboot_functionality(self):
-        self.__glob_config.add_config_dict({"PXEBOOT" : configfile.bool_c_var(False, source="default"),
-                                            "XENBOOT" : configfile.bool_c_var(False, source="default")})
-        pxe_paths = ["%s/share/mother/syslinux/pxelinux.0" % (self.__glob_config["CLUSTER_HOME_DIR"])]
-        for pxe_path in pxe_paths:
-            if os.path.isfile(pxe_path):
-                try:
-                    pxelinux_0 = open(pxe_path, "r").read()
-                except:
-                    self.log("Cannot read pxelinux.0 from %s" % (pxe_path), logging_tools.LOG_LEVEL_WARN)
-                else:
-                    self.__glob_config.add_config_dict({"PXEBOOT"    : configfile.bool_c_var(True, source="filesystem"),
-                                                        "PXELINUX_0" : configfile.blob_c_var(pxelinux_0, source="filesystem")})
-                    self.log("Found pxelinux.0 in %s" % (pxe_path))
-                    break
-            else:
-                self.log("Found no pxelinux.0 in %s" % (pxe_path), logging_tools.LOG_LEVEL_WARN)
-        mb32_paths = ["%s/share/mother/syslinux/mboot.c32" % (self.__glob_config["CLUSTER_HOME_DIR"])]
-        for mb32_path in mb32_paths:
-            if os.path.isfile(mb32_path):
-                try:
-                    mb32_0 = open(mb32_path, "r").read()
-                except:
-                    self.log("Cannot read mboot.c32 from %s" % (mb32_path), logging_tools.LOG_LEVEL_WARN)
-                else:
-                    self.__glob_config.add_config_dict({"XENBOOT"   : configfile.bool_c_var(True, source="filesystem"),
-                                                        "MBOOT.C32" : configfile.blob_c_var(mb32_0, source="filesystem")})
-                    self.log("Found mboot.c32 in %s" % (mb32_path))
-                    break
-            else:
-                self.log("Found no mboot.c32 in %s" % (mb32_path), logging_tools.LOG_LEVEL_WARN)
         
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
@@ -4054,7 +4104,7 @@ def main():
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("PID_NAME"            , configfile.str_c_var(prog_name)),
+        ("PID_NAME"            , configfile.str_c_var(os.path.join(prog_name, prog_name))),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("FORCE"               , configfile.bool_c_var(False, help_string="force running [%(default)s]", action="store_true", only_commandline=True)),
         ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True, short_options="C")),
