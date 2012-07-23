@@ -969,7 +969,7 @@ def do_nets(conf):
             # redhat-mode
             act_filename = "ifcfg-%s" % (cur_nd.devname)
             if cur_nd.devname == "lo":
-                d_file = "/etc/sysconfig/networking/%s" % (act_filename)
+                d_file = "/etc/sysconfig/network-scripts/%s" % (act_filename)
             else:
                 d_file = "/etc/sysconfig/network-scripts/%s" % (act_filename)
             new_co = conf.add_file_object(d_file)
@@ -978,7 +978,8 @@ def do_nets(conf):
                        "IPADDR"    : cur_ip.ip,
                        "NETMASK"   : cur_net.netmask,
                        "NETWORK"   : cur_net.network,
-                       "DEVICE"    : cur_nd.devname}
+                       "DEVICE"    : cur_nd.devname,
+                       "ONBOOT"    : "yes"}
             if global_config["WRITE_REDHAT_HWADDR_ENTRY"]:
                 new_co += {"HWADDR" : cur_nd.macaddr.lower()}
         print log_str
