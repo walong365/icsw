@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2001-2004,2006,2007 init.at
+# Copyright (c) 2001-2004,2006,2007,2012 init.at
 #
 
 #
@@ -26,8 +26,8 @@ else
 fi
 [ -f /etc/redhat-release ] && . /etc/init.d/functions
 
-HOSTSTAT_BIN=/opt/cluster/sbin/hoststatus
-CHILD_BIN=/opt/cluster/sbin/tell_mother
+HOSTSTAT_BIN=/opt/cluster/sbin/hoststatus_zmq
+CHILD_BIN=/opt/cluster/sbin/tell_mother_zmq
 test -x ${HOSTSTAT_BIN} || exit 5
 test -x ${CHILD_BIN} || exit 5
 
@@ -35,7 +35,7 @@ rc_reset
 
 # set variables
 export CRL_MESG="to runlevel"
-export HOSTSTAT_ARG="-n 5 running"
+export HOSTSTAT_ARG="running"
 export HOSTNAME=`/bin/hostname`
 
 # runlevel
@@ -51,22 +51,14 @@ case "$1" in
         echo -n "Starting hoststatus (${HOSTSTAT_ARG})"
         ${HOSTSTAT_BIN} ${HOSTSTAT_ARG}
         rc_status -v
-	sleep 1
-	echo -n "Sending start message to mother ${MOTHER_SERVER} "
-	count=5
-	while true ; do
-	    echo -n " ."
-	    ${CHILD_BIN} -m ${MOTHER_SERVER} -p 8000 "up ${CRL_MESG} $runlevel" >/dev/null && break
-	    sleep 2
-	    count=$(( $count - 1 ))
-	    [ "$count" = "0" ] && { rc_failed ; break ;  }
-	done
-	rc_status -v
+        echo -n "Sending start message to mother ${MOTHER_SERVER} "
+        ${CHILD_BIN} -m ${MOTHER_SERVER} -p 8000 "up ${CRL_MESG} $runlevel" >/dev/null
+    rc_status -v
         ;;
     stop)
-	echo -n "Sending stop message to mother ${MOTHER_SERVER} "
-	${CHILD_BIN} -m ${MOTHER_SERVER} -p 8000 "down ${CRL_MESG} $runlevel" >/dev/null || rc_failed
-	rc_status -v
+        echo -n "Sending stop message to mother ${MOTHER_SERVER} "
+        ${CHILD_BIN} -m ${MOTHER_SERVER} -p 8000 "down ${CRL_MESG} $runlevel" >/dev/null || rc_failed
+        rc_status -v
         echo -n "Stopping hoststatus"
         killall ${HOSTSTAT_BIN} 2>/dev/null || rc_failed
         rc_status -v
@@ -84,11 +76,11 @@ case "$1" in
         ;;
     status)
         echo -n "Checking for hoststatus..."
-	if [ -f /etc/redhat-release ] ; then
-	    status ${HOSTSTAT_BIN}
-	else
-	    checkproc ${HOSTSTAT_BIN}
-	fi
+        if [ -f /etc/redhat-release ] ; then
+            status ${HOSTSTAT_BIN}
+        else
+            checkproc ${HOSTSTAT_BIN}
+        fi
         rc_status -v
         rc_reset
         ;;
@@ -98,5 +90,4 @@ case "$1" in
 esac
 
 exit $return
-#! /bin/sh
-#
+

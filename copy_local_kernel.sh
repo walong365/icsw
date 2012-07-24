@@ -24,10 +24,12 @@
 if [ "$#" -lt "2" ] ; then
     echo "Need at least two parameters (kernel_name and local kernel_dir, optional the xen-version)"
     echo "Local kernels found:"
-    echo "$(ls -1 /lib/modules/)"
+    echo "$(ls -1 ${IMAGE_ROOT}/lib/modules/)"
     echo ""
     echo "Xen versions found:"
-    echo "$(find /boot -type f -name "xen*gz" -printf '%f\n')"
+    echo "$(find ${IMAGE_ROOT}/boot -type f -name "xen*gz" -printf '%f\n')"
+	echo ""
+	echo "set IMAGE_ROOT to change root directory from ''"
     exit -1
 fi
 
@@ -35,9 +37,10 @@ k_name=$1
 loc_dir=$2
 xen_version=${3:-0}
 
-lib_dir=/lib/modules/${k_name}
-firm_dir=/lib/firmware/${k_name}
+lib_dir=${IMAGE_ROOT}/lib/modules/${k_name}
+firm_dir=${IMAGE_ROOT}/lib/firmware/
 targ_dir=$loc_dir/${k_name}
+config_file=config-${k_name}
 
 if [ ! -d $lib_dir ] ; then
     echo "Kernelmoduledir $lib_dir not found"
@@ -55,7 +58,7 @@ if [ -d ${targ_dir} ] ; then
 fi
 
 if [ "${xen_version}" != "0" ] ; then
-    xen_file=/boot/xen-${xen_version}
+    xen_file=${IMAGE_ROOT}/boot/xen-${xen_version}
     if [ ! -f $xen_file ] ; then
 	echo "Xen file $xen_file not found"
 	exit -1
@@ -64,12 +67,12 @@ else
     xen_file="not set"
 fi
 
-if [ ! -f "/boot/System.map-${k_name}" ] ; then
-    echo "No System-map file /boot/System.map-${k_name} found"
+if [ ! -f "${IMAGE_ROOT}/boot/System.map-${k_name}" ] ; then
+    echo "No System-map file ${IMAGE_ROOT}/boot/System.map-${k_name} found"
     exit -1
 fi
-if [ ! -f "/boot/vmlinuz-${k_name}" ] ; then
-    echo "No vmlinuz file /boot/vmlinuz-${k_name} found"
+if [ ! -f "${IMAGE_ROOT}/boot/vmlinuz-${k_name}" ] ; then
+    echo "No vmlinuz file ${IMAGE_ROOT}/boot/vmlinuz-${k_name} found"
     exit -1
 fi
 
@@ -80,22 +83,19 @@ echo "Copying local kernel ${k_name} to kernel_dir $loc_dir (target_dir is ${tar
 
 mkdir ${targ_dir}
 
-config_file=config-${k_name}
-
 echo "Copying bzImage and System.map"
-cp -a /boot/System.map-${k_name} ${targ_dir}/System.map
-cp -a /boot/vmlinuz-${k_name} ${targ_dir}/bzImage
+cp -a ${IMAGE_ROOT}/boot/System.map-${k_name} ${targ_dir}/System.map
+cp -a ${IMAGE_ROOT}/boot/vmlinuz-${k_name} ${targ_dir}/bzImage
+if [ ! -f "${IMAGE_ROOT}/boot/${config_file}" ] ; then
+    echo "No config file ${IMAGE_ROOT}/boot/${config_file} found, ignoring"
+else
+    echo "Copying config $config_file"
+    cp -a ${IMAGE_ROOT}/boot/${config_file} ${targ_dir}/.config
+fi
 
 if [ "$xen_version" != "0" ] ; then
     echo "Copying xen"
     cp -a $xen_file ${targ_dir}/xen.gz
-fi
-
-if [ ! -f /boot/$config_file ] ; then
-    echo "No config file $config_file found"
-else
-    echo "Copying config $config_file"
-    cp -a /boot/$config_file ${targ_dir}/.config
 fi
 
 echo "Copying modules (${lib_dir} -> ${targ_dir}/lib/modules)"

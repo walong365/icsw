@@ -1,6 +1,5 @@
 /*
   Copyright (C) 2001,2002,2003,2004,2009 Andreas Lang-Nevyjel, init.at
-  
   Send feedback to: <lang-nevyjel@init.at>
   
   This program is free software; you can redistribute it and/or modify

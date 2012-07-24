@@ -4138,9 +4138,9 @@ def main():
         ("NODE_PORT"                 , configfile.int_c_var(2001)),
         ("SERVER_SHORT_NAME"         , configfile.str_c_var(mach_name))])
     global_config.add_config_entries([
-        ("CONFIG_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
+        ("CONFIG_DIR"   , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
         ("ETHERBOOT_DIR", configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "etherboot"))),
-        ("KERNEL_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
+        ("KERNEL_DIR"   , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
 ##    if fixit:
 ##        process_tools.fix_directories(user, group, [g_config["LOG_DIR"], "/var/lib/mother", "/var/run/mother"])
 #    if fixit:

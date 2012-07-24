@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2001,2002,2003,2004,2009,2011 Andreas Lang-Nevyjel, init.at
+    Copyright (C) 2001,2002,2003,2004,2009,2011,2012 Andreas Lang-Nevyjel, init.at
 
     Send feedback to: <lang-nevyjel@init.at>
 
@@ -44,7 +44,6 @@
 #define STATE_WARNING 1
 #define STATE_CRITICAL 2
 #define FNAME "/var/run/.hoststat"
-#define UUID_NAME "/etc/sysconfig/cluster/.cluster_device_uuid"
 #define SERVICE_NAME "tell_mother"
 
 /* internal buffer sizes */
@@ -52,6 +51,8 @@
 #define HOSTB_SIZE 256
 #define SENDBUFF_SIZE 16384
 #define IOBUFF_SIZE 16384
+
+#include "parse_uuid.c"
 
 int err_message(char* str) {
     char* errstr;
@@ -79,7 +80,7 @@ void mysigh(int dummy) {
 }
 
 int main (int argc, char** argv) {
-    int ret, num, uuid_file, inlen, file, i/*, time*/, port, rchar, verbose, quiet, retcode, write_file, timeout;
+    int ret, num, inlen, file, i/*, time*/, port, rchar, verbose, quiet, retcode, write_file, timeout;
     struct in_addr sia;
     struct hostent *h;
     char *iobuff, *sendbuff, *host_b, *act_pos, *act_source, *act_bp, *dest_host, *uuid_buffer;
@@ -166,22 +167,8 @@ int main (int argc, char** argv) {
         if (close(file) < 0) err_message("Failed to close "FNAME);
     }
     void *context = zmq_init(1);
-    void *requester = zmq_socket(context, ZMQ_XREQ);
-    char* identity_str;
-    identity_str = (char*)malloc(1000);
-    identity_str[0] = 0;
-    uuid_buffer = (char*)malloc(1000);
-    uuid_file = open(UUID_NAME, O_RDONLY);
-    if (uuid_file > 0) {
-        read(uuid_file, uuid_buffer, 46);
-        for (i=0; i < strlen(uuid_buffer); i++) {
-            if ((colons_passed > 1 || i > 17) && (uuid_buffer[i] != '\n')) sprintf(identity_str, "%s%c", identity_str, uuid_buffer[i]);
-            if (uuid_buffer[i] == ':') colons_passed++;
-        };
-        sprintf(identity_str, "%s:%s", identity_str, SERVICE_NAME);
-    } else {
-        sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
-    };
+    void *requester = zmq_socket(context, ZMQ_DEALER);
+    char* identity_str = parse_uuid();
     zmq_setsockopt(requester, ZMQ_IDENTITY, identity_str, strlen(identity_str));
     alrmsigact = (struct sigaction*)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
@@ -218,6 +205,8 @@ int main (int argc, char** argv) {
         zmq_msg_close(&reply);
         printf("%s\n", recv_buffer);
     }
+    zmq_close(requester);
+    zmq_term(context);
     free(sendbuff);
     free(host_b);
     free(dest_host);

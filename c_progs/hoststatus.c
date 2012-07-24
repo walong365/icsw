@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <signal.h>
+#include <string.h>
 
 #define PORT 2002
 #define FNAME "/var/run/.hoststat"
@@ -123,7 +124,7 @@ int main (int argc, char** argv) {
 	/* Sets the default hoststatus */
 	file = open(FNAME, O_NOFOLLOW|O_WRONLY|O_CREAT|O_TRUNC, S_IREAD|S_IWRITE|S_IRGRP|S_IROTH); /* S_IWGRP|S_IWOTH */
 	if (file < 0) err_exit("Can't open statusfile "FNAME" for writing");
-	ret = write(file, argv[optind], strlen(argv[optind]));
+	ret = write(file, argv[optind], strlen(argv[optind])); 
 	if (ret < 0) err_message("Failed to write to "FNAME);
 	ret = close(file);
 	if (ret < 0) err_message("Failed to close "FNAME);
