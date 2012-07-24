@@ -378,30 +378,30 @@ if [ "$BUILD" = "1" ] ; then
     rm -rf boot/vmlinu* boot/System*
     rm -rf lib/modules/*
     if [ "$MODIFY_IMAGE" = "1" ] ; then
-	chroot . depmod -a 2> /dev/null
-	
-	if [ "${im_type}" = "suse" ] ; then
-	    echo "Doing SuSEconfig..."
-	    rm -f var/run/SuSEconfig-is-running var/lock/SuSEconfig-is-running
-	    chroot . ${SHELL} -i -c '[ -n "`which SuSEconfig`" ] && SuSEconfig ; umount proc'"$NULL"
-	fi
-	
-	if [ "$imtype" = "normal" ] ; then
-	    if [ "${im_type}" = "suse" ] ; then
-		debug "Disabling startup YaST call..."
-		rm -rf var/adm/setup/ 
-		echo "Fixing startup-scripts..."
-		chroot . ${SHELL} -i -c "for file in host-monitoring hoststatus child package-client loadmodules ; do [ -x etc/init.d/\$file ] && /sbin/insserv -d etc/rc.d/\$file ; done"
-	    elif [ "${im_type}" = "redhat" -o "${im_type}" = "fedora" ] ; then
-		echo "Fixing startup-scripts..."
-		chroot . ${SHELL} -i -c "for file in host-monitoring hoststatus child package-client loadmodules ; do [ -x etc/init.d/\$file ] && /sbin/chkconfig \$file on ; done"
-	    elif [ "${im_type}" = "debian" ] ; then
-		echo "Fixing startup-scripts..."
-		chroot . ${SHELL} -i -c "for file in host-monitoring hoststatus child package-client loadmodules ; do [ -x etc/init.d/\$file ] && /usr/sbin/update-rc.d \$file defaults ; done"
-	    else
-		echo "no special fixup known for '${im_type}'."
-	    fi
-	fi
+		chroot . depmod -a 2> /dev/null
+		
+		if [ "${im_type}" = "suse" ] ; then
+			echo "Doing SuSEconfig..."
+			rm -f var/run/SuSEconfig-is-running var/lock/SuSEconfig-is-running
+			chroot . ${SHELL} -i -c '[ -n "`which SuSEconfig`" ] && SuSEconfig ; umount proc'"$NULL"
+		fi
+		
+		if [ "$imtype" = "normal" ] ; then
+			if [ "${im_type}" = "suse" ] ; then
+				debug "Disabling startup YaST call..."
+				rm -rf var/adm/setup/ 
+				echo "Fixing startup-scripts..."
+				chroot . ${SHELL} -c "for file in host-monitoring hoststatus child package-client loadmodules ; do [ -x etc/init.d/\$file ] && /sbin/insserv -d etc/rc.d/\$file ; done"
+			elif [ "${im_type}" = "redhat" -o "${im_type}" = "fedora" ] ; then
+				echo "Fixing startup-scripts..."
+				chroot . ${SHELL} -c "for file in host-monitoring hoststatus child package-client loadmodules ; do [ -x etc/init.d/\$file ] && /sbin/chkconfig \$file on ; done"
+			elif [ "${im_type}" = "debian" ] ; then
+				echo "Fixing startup-scripts..."
+				chroot . ${SHELL} -c "for file in host-monitoring hoststatus child package-client loadmodules ; do [ -x etc/init.d/\$file ] && /usr/sbin/update-rc.d \$file defaults ; done"
+			else
+				echo "no special fixup known for '${im_type}'."
+			fi
+		fi
     fi
     echo
     echo "Inserting package information into database "

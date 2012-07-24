@@ -868,14 +868,29 @@ echo -e "saving environment variables"
 set > /conf/.output/act_set
 echo -e " netdevice given by server is ${nbd} (driver '$net_driver', options '$net_options', ethtool_options '$eto')" > /conf/.output/ethtool
 
-[ -r /proc/partitions ] && {
-    fdev=/dev/`cat /proc/partitions | sort -n | tr -s " " | egrep "^ [0-9]+ ? [0-9]+ (.*)" | grep -v "ram" | cut -d " "  -f 5 | head -1`
-} || {
-    [ -d /sys/block ] && fdev=/dev/$(cd /sys/block;ls -1d * | egrep -v "^(ram|loop|fd)" | head -1)
-}
-
-# check if a valid disc has been found
-echo $fdev | grep -E "^/dev/.+$" > /dev/null || { err_exit "no disc" ; }
+sleep_time=0
+incr_sleep_time=1
+while true ; do
+	[ -r /proc/partitions ] && {
+		fdev=/dev/`cat /proc/partitions | sort -n | tr -s " " | egrep "^ [0-9]+ ? [0-9]+ (.*)" | grep -v "ram" | cut -d " "  -f 5 | head -1`
+	} || {
+		[ -d /sys/block ] && fdev=/dev/$(cd /sys/block;ls -1d * | egrep -v "^(ram|loop|fd)" | head -1)
+	}
+	
+	# check if a valid disc has been found
+    echo $fdev | grep -E "^/dev/.+$" > /dev/null && {
+        break ; 
+	} || {
+		sleep_time=$(( $sleep_time + $incr_sleep_time ));
+		incr_sleep_time=$(( $incr_sleep_time + 1 ));
+		if [ "$sleep_time" -gt 30 ] ; then
+            err_exit "no disc after $sleep_time seconds" ;
+		else
+            set_hoststat "no disc after $sleep_time , waiting for $incr_sleep_time seconds"
+		fi
+		sleep $incr_sleep_time;
+    }
+done
 
 echo -e "Will use device $fdev as install/boot device ."
 
