@@ -961,10 +961,10 @@ def main_normal():
     try:
         my_kernel = kernel.objects.get(Q(name=kernel_name))
     except kernel.DoesNotExist:
-        print "*** Cannot find a kernel at path '%s' (name %s) in database" % (target_path, kernel_name)
+        print "*** Cannot find a kernel at path '%s' (%s at %s) in database" % (kernel_name, target_path)
         my_kernel = None
     else:
-        print "Found kernel at path '%s' (name %s) in database (kernel_idx is %d)" % (target_path, kernel_name, my_kernel.pk)
+        print "Found kernel at path '%s' (%s at %s) in database (kernel_idx is %d)" % (kernel_name, target_path, my_kernel.pk)
         if kernel_stuff["xen_host_kernel"]:
             print " - kernel for Xen-hosts"
         if kernel_stuff["xen_guest_kernel"]:

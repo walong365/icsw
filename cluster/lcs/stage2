@@ -274,30 +274,30 @@ function handle_runlevel_links() {
     echo -e "Handling runlevel links"
     stop_levs=`get_conf_str "get_stop_scripts" | cut -d " " -f 3- `
     for sl in $stop_levs ; do 
-	if [ -f /$basedir/etc/redhat-release ] ; then
-	    echo -e "Trying to chkconfig --del $sl"
-	    chroot /$basedir /sbin/chkconfig --del $sl
-	elif [ -f /$basedir/etc/debian_version ] ; then
-	    echo -e "Trying to update-rc.d -f $sl remove"
-	    chroot /$basedir /usr/sbin/update-rc.d -f $sl remove
-	else
-	    echo -e "Trying to insserv -r $sl"
-	    chroot /$basedir /sbin/insserv -r $sl
-	fi
+		if [ -f /$basedir/etc/redhat-release ] ; then
+			echo -e "Trying to chkconfig --del $sl"
+			chroot /$basedir /sbin/chkconfig --del $sl
+		elif [ -f /$basedir/etc/debian_version ] ; then
+			echo -e "Trying to update-rc.d -f $sl remove"
+			chroot /$basedir /usr/sbin/update-rc.d -f $sl remove
+		else
+			echo -e "Trying to insserv -r $sl"
+			chroot /$basedir /sbin/insserv -r $sl
+		fi
     done
     start_levs=`get_conf_str "get_start_scripts" | cut -d " " -f 3- `
     for sl in $start_levs ; do 
-	if [ -f /$basedir/etc/redhat-release ] ; then
-	    echo -e "Trying to chkconfig --add $sl"
-	    chroot /$basedir /sbin/chkconfig --add $sl
-	    chroot /$basedir /sbin/chkconfig $sl on
-	elif [ -f /$basedir/etc/debian_version ] ; then
-	    echo -e "Trying to update-rc.d $sl defaults"
-	    chroot /$basedir /usr/sbin/update-rc.d $sl defaults
-	else
-	    echo -e "Trying to insserv $sl"
-	    chroot /$basedir /sbin/insserv $sl
-	fi
+		if [ -f /$basedir/etc/redhat-release ] ; then
+			echo -e "Trying to chkconfig --add $sl"
+			chroot /$basedir /sbin/chkconfig --add $sl
+			chroot /$basedir /sbin/chkconfig $sl on
+		elif [ -f /$basedir/etc/debian_version ] ; then
+			echo -e "Trying to update-rc.d $sl defaults"
+			chroot /$basedir /usr/sbin/update-rc.d $sl defaults
+		else
+			echo -e "Trying to insserv $sl"
+			chroot /$basedir /sbin/insserv $sl
+		fi
     done
     # sleep 30
 }
