@@ -102,12 +102,12 @@ class server_com(object):
         doit, srv_origin, err_str = (False, "---", "OK")
         if self.Meta.needed_configs:
             for act_c in self.Meta.needed_configs:
-                sql_info = config_tools.server_check(dc=dc, server_type="%s%%" % (act_c))
-                if sql_info.num_servers:
+                sql_info = config_tools.server_check(dc=dc, server_type="%s" % (act_c))
+                if sql_info.effective_device:
                     doit, srv_origin = (True, sql_info.server_origin)
                     if not self.server_idx:
-                        self.server_device_name = sql_info.server_config_name
-                        self.server_idx, self.act_config_name = (sql_info.server_config_idx, sql_info.real_server_name)
+                        self.server_device_name = sql_info.effective_device.name
+                        self.server_idx, self.act_config_name = (sql_info.effective_device.pk, sql_info.effective_device.name)
             if doit:
                 self.Meta.actual_configs = self.Meta.needed_configs
             else:
