@@ -77,6 +77,8 @@ class server_check(object):
         self.ip_netdevice_lut = {}
         # lookup table ip -> network identifier
         self.ip_identifier_lut = {}
+        # lookup table netdev_pk -> netdev
+        self.nd_lut = {}
         # lookup table network_identifier -> ip_list
         self.identifier_ip_lut = {}
         self.real_server_name = self.__server_type
@@ -188,6 +190,7 @@ class server_check(object):
             for net_dev in self.device.netdevice_set.all():
                 self.netdevice_idx_list.append(net_dev.pk)
                 self.netdevice_ip_lut[net_dev.pk] = []
+                self.nd_lut[net_dev.pk] = net_dev
                 for net_ip in net_dev.net_ip_set.all():
                     self.ip_list.append(net_ip.ip)
                     self.netdevice_ip_lut[net_dev.pk].append(net_ip.ip)
