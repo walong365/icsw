@@ -279,7 +279,7 @@ class device(models.Model):
     device_class = models.ForeignKey("device_class")
     rrd_class = models.ForeignKey("rrd_class", null=True)
     save_rrd_vectors = models.BooleanField()
-    etherboot_valid = models.BooleanField()
+    etherboot_valid = models.BooleanField(default=False)
     kernel_append = models.CharField(max_length=384, blank=True)
     newkernel = models.CharField(max_length=192, blank=True)
     new_kernel = models.ForeignKey("kernel", null=True, related_name="new_kernel")
@@ -308,7 +308,7 @@ class device(models.Model):
     reqstate = models.TextField(blank=True, null=True)
     bootnetdevice = models.ForeignKey("netdevice", null=True, related_name="boot_net_device")
     bootserver = models.ForeignKey("device", null=True, related_name="boot_server")
-    reachable_via_bootserver = models.IntegerField(null=True, blank=True)
+    reachable_via_bootserver = models.BooleanField(default=False)
     dhcp_mac = models.IntegerField(null=True, blank=True)
     dhcp_write = models.IntegerField(null=True, blank=True)
     dhcp_written = models.IntegerField(null=True, blank=True)
@@ -318,9 +318,10 @@ class device(models.Model):
     last_boot = models.CharField(max_length=192, blank=True)
     last_kernel = models.CharField(max_length=192, blank=True)
     root_passwd = models.CharField(max_length=192, blank=True)
-    device_mode = models.BooleanField()
+    # remove, no longer needed
+    #device_mode = models.BooleanField()
     relay_device = models.ForeignKey("device", null=True)
-    nagios_checks = models.BooleanField()
+    nagios_checks = models.BooleanField(default=True)
     show_in_bootcontrol = models.BooleanField()
     cpu_info = models.TextField(blank=True, null=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -875,7 +876,7 @@ class netdevice(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def find_matching_network_device_type(self):
         # remove digits
-        name = self.devname.strip("0123456789")
+        name = self.devname.split(":")[0].strip("0123456789")
         ndt_list = network_device_type.objects.filter(Q(identifier__startswith=name))
         if len(ndt_list) == 0:
             return None
@@ -905,6 +906,8 @@ class netdevice(models.Model):
     @ethtool_speed.setter
     def ethtool_speed(self, in_val):
         self.ethtool_options = ((self.ethtool_options or 0) & 15) | (int(in_val) << 4)
+    def ethtool_string(self):
+        return ",".join(["FIXME"])
     def __unicode__(self):
         return self.devname
     def get_xml(self):
@@ -962,6 +965,8 @@ class net_ip(models.Model):
     alias = models.CharField(max_length=765, blank=True, default="")
     alias_excl = models.NullBooleanField(null=True, blank=True, default=False)
     date = models.DateTimeField(auto_now_add=True)
+    def get_hex_ip(self):
+        return "".join(["%02X" % (int(part)) for part in self.ip.split(".")])
     def get_xml(self):
         return E.net_ip(
             unicode(self),
