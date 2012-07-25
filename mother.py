@@ -78,166 +78,9 @@ SQL_ACCESS = "cluster_full_access"
 
 # --------- connection objects ------------------------------------
 
-##class node_con_obj(net_tools.buffer_object):
-##    # connects to a foreign node
-##    def __init__(self, com, dst_ip, (send_str, mach_struct)):
-##        self.__command = com
-##        self.__dst_ip = dst_ip
-##        self.__send_str = send_str
-##        self.__mach_struct = mach_struct
-##        net_tools.buffer_object.__init__(self)
-##    def __del__(self):
-##        pass
-##    def setup_done(self):
-##        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__send_str, True))
-##    def out_buffer_sent(self, send_len):
-##        if send_len == len(self.out_buffer):
-##            self.out_buffer = ""
-##            self.socket.send_done()
-##        else:
-##            self.out_buffer = self.out_buffer[send_len:]
-##    def add_to_in_buffer(self, what):
-##        self.in_buffer += what
-##        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
-##        if p1_ok:
-##            self.__command._result_ok(self.__mach_struct, self.__dst_ip, p1_data)
-##            #self.__stc.set_host_result(self.__dst_ip, p1_data)
-##            self.delete()
-##    def report_problem(self, flag, what):
-##        self.__command._result_error(self.__mach_struct, self.__dst_ip, "%s (code %d)" % (what, flag))
-##        #self.__stc.set_host_error(self.__dst_ip, "%s : %s" % (net_tools.net_flag_to_str(flag), what))
-##        self.delete()
-##
-##class new_tcp_con(net_tools.buffer_object):
-##    # connection object for mother
-##    def __init__(self, con_type, sock, src, recv_queue, log_queue):
-##        self.__con_type = con_type
-##        self.__src_host, self.__src_port = src
-##        self.__recv_queue = recv_queue
-##        self.__log_queue = log_queue
-##        net_tools.buffer_object.__init__(self)
-##        self.__init_time = time.time()
-##        self.__in_buffer = ""
-##    def __del__(self):
-##        pass
-##    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-##        self.__log_queue.put(("log", (threading.currentThread().getName(), what, level)))
-##    def get_src_host(self):
-##        return self.__src_host
-##    def get_src_port(self):
-##        return self.__src_port
-##    def add_to_in_buffer(self, what):
-##        self.__in_buffer += what
-##        p1_ok, p1_dec = net_tools.check_for_proto_1_header(self.__in_buffer)
-##        if p1_ok:
-##            self.__decoded = p1_dec
-##            if self.__con_type == "com":
-##                self.__recv_queue.put(("in_bytes", self))
-##            else:
-##                self.__recv_queue.put(("node_con", self))
-##    def add_to_out_buffer(self, what, new_in_str=""):
-##        self.lock()
-##        # to give some meaningful log
-##        if new_in_str:
-##            self.__decoded = new_in_str
-##        if self.socket:
-##            self.out_buffer = net_tools.add_proto_1_header(what)
-##            self.socket.ready_to_send()
-##        else:
-##            self.log("timeout, other side has closed connection")
-##        self.unlock()
-##    def out_buffer_sent(self, d_len):
-##        if d_len == len(self.out_buffer):
-##            self.__recv_queue = None
-##            if self.__con_type == "com":
-##                self.log("command %s from %s (port %d) took %s" % (self.__decoded.replace("\n", "\\n"),
-##                                                                   self.__src_host,
-##                                                                   self.__src_port,
-##                                                                   logging_tools.get_diff_time_str(abs(time.time() - self.__init_time))))
-##            self.close()
-##        else:
-##            self.out_buffer = self.out_buffer[d_len:]
-##            #self.socket.ready_to_send()
-##    def get_decoded_in_str(self):
-##        return self.__decoded
-##    def report_problem(self, flag, what):
-##        self.__log_queue.put(("log", (threading.currentThread().getName(), "error for connection from %s (port %d): %s (%d)" % (self.__src_host,
-##                                                                                                                                self.__src_port,
-##                                                                                                                                what,
-##                                                                                                                                flag),
-##                                      logging_tools.LOG_LEVEL_ERROR)))
-##        self.close()
-
-# --------- connection objects ------------------------------------
 
 class all_devices(object):
-    def __init__(self, log_queue, glob_config, loc_config, db_con):
-        self.__lut = {}
-        self.__lock = threading.Lock()
-        self.__log_queue = log_queue
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        self.__db_con = db_con
-        self.log("all_devices struct init")
-    def get_db_con(self):
-        return self.__db_con
-    def get_glob_config(self):
-        return self.__glob_config
-    def get_loc_config(self):
-        return self.__loc_config
-    def get_log_queue(self):
-        return self.__log_queue
-    def is_an_ip(self, key):
-        if key.count(".") == 3 and len([True for x in key.split(".") if x.isdigit()]):
-            return True
-        else:
-            return False
     def db_sync(self, dc, new_names=[], new_ips=[]):
-        self._lock(self.__loc_config["VERBOSE"] > 0 or not self.__loc_config["DAEMON"])
-        if not new_names:
-            # database settings
-            self.log("Checking for bootdev->netbootdevice changes")
-            dc.execute("DESCRIBE device")
-            all_fields = [x["Field"] for x in dc.fetchall()]
-            if "bootdev" in all_fields:
-                db_ok = dc.execute("SELECT d.name, d.device_idx, n.netdevice_idx, d.bootdev, n.devname FROM device d, netdevice n, netip ip, network nw, network_type nt " + \
-                                   "WHERE ip.netdevice=n.netdevice_idx AND ip.network=nw.network_idx AND n.device=d.device_idx AND d.bootserver=%d AND nt.network_type_idx=nw.network_type AND nt.identifier='b' AND NOT d.bootnetdevice" % (self.__loc_config["MOTHER_SERVER_IDX"]))
-                if db_ok:
-                    for sql_rec in dc.fetchall():
-                        self.log(" adapting device '%s' (index %d), bootdev '%s' -> bootnetdevice %d" % (sql_rec["name"], sql_rec["device_idx"], sql_rec["devname"], sql_rec["netdevice_idx"]))
-                        dc.execute("UPDATE device SET bootnetdevice=%d WHERE name='%s'" % (sql_rec["netdevice_idx"], sql_rec["name"]))
-            self.log("Checking for network type changes (x->o)")
-            db_ok = dc.execute("SELECT nw.name,nw.network_idx FROM network nw, network_type nt WHERE nw.network_type=nt.network_type_idx AND nt.identifier='x'")
-            if db_ok:
-                all_net_idx = dict([(sql_rec["network_idx"], sql_rec["name"]) for sql_rec in dc.fetchall()])
-                if all_net_idx:
-                    self.log("Modifying network_type of %d networks: %s" % (len(all_net_idx.keys()), ", ".join(["'%s'" % (sql_rec) for sql_rec in all_net_idx.values()])))
-                    dc.execute("SELECT nt.network_type_idx FROM network_type nt WHERE nt.identifier='o'")
-                    new_nt_idx = dc.fetchone()["network_type_idx"]
-                    sql_str = "UPDATE network SET network_type=%d,write_bind_config=0 WHERE (%s)" % (new_nt_idx, " OR ".join(["network_idx=%d" % (sql_rec) for sql_rec in all_net_idx.keys()]))
-                    dc.execute(sql_str)
-                #log_queue.
-            self.log("Checking for netdevice.alias->netip.alias changes")
-            dc.execute("DESCRIBE netdevice")
-            all_fields = [x["Field"] for x in dc.fetchall()]
-            if "alias" in all_fields:
-                dc.execute("SELECT n.netdevice_idx,n.alias,i.netip_idx,i.alias AS netip_alias FROM netdevice n LEFT JOIN netip i ON i.netdevice=n.netdevice_idx ORDER BY n.netdevice_idx")
-                for sql_rec in dc.fetchall():
-                    if sql_rec["alias"] and not sql_rec["netip_alias"] and sql_rec["netip_idx"]:
-                        if sql_rec["alias"] == "localhost":
-                            dc.execute("UPDATE netip SET alias=%s,alias_excl=1 WHERE netip_idx=%s", (sql_rec["alias"], sql_rec["netip_idx"]))
-                        else:
-                            dc.execute("UPDATE netip SET alias=%s WHERE netip_idx=%s", (sql_rec["alias"], sql_rec["netip_idx"]))
-            # check for missing network_device_type_indices
-            if self.__loc_config["GLOBAL_NET_DEVICE_DICT"]:
-                dc.execute("SELECT n.netdevice_idx,n.devname,n.network_device_type FROM netdevice n")
-                for sql_rec in dc.fetchall():
-                    all_ndt_idxs = [self.__loc_config["GLOBAL_NET_DEVICE_DICT"][y] for y in self.__loc_config["GLOBAL_NET_DEVICE_DICT"].keys() if sql_rec["devname"].startswith(y)]
-                    if all_ndt_idxs:
-                        new_ndt_idx = all_ndt_idxs[0]
-                        if new_ndt_idx != sql_rec["network_device_type"]:
-                            dc.execute("UPDATE netdevice SET network_device_type=%d WHERE netdevice_idx=%d" % (new_ndt_idx, sql_rec["netdevice_idx"]))
-                    else:
-                        self.log("not network_device_type found", logging_tools.LOG_LEVEL_ERROR)
         if new_names:
             sql_add_str = "AND (%s)" % (" OR ".join(["d.name='%s'" % (x) for x in new_names]))
         elif new_ips:
@@ -265,74 +108,18 @@ class all_devices(object):
             else:
                 self.log("Device %s already in internal dictionaries, checking network settings ..." % (name))
                 self.__lut[name].check_network_settings(dc)
-        self._release(self.__loc_config["VERBOSE"] > 0 or not self.__loc_config["DAEMON"])
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (threading.currentThread().getName(), what, lev)))
-    def _lock(self, verb):
-        if verb:
-            self.log("Acquiring lock for ad_struct")
-        self.__lock.acquire()
-    def _release(self, verb):
-        if verb:
-            self.log("Releasing lock for ad_struct")
-        self.__lock.release()
-    def keys(self):
-        return self.__lut.keys()
-    def has_key(self, key):
-        return self.__lut.has_key(key)
-    def __setitem__(self, key, val):
-        self.__lut[key] = val
-    def __getitem__(self, key):
-        return self.__lut[key]
-    def __delitem__(self, key):
-        if self.__lut.has_key(key):
-            del self.__lut[key]
-        else:
-            self.log("no key '%s' found in lut" % (key),
-                     logging_tools.LOG_LEVEL_ERROR)
-    def iteritems(self):
-        return od_iteritems_iterator(self)
-        
-class od_iteritems_iterator(object):
-    def __init__(self, od):
-        self.__od = od
-        self.__kl = self.__od.keys()
-    def __iter__(self):
-        self.__index = 0
-        return self
-    def next(self):
-        if self.__index == len(self.__kl):
-            raise StopIteration
-        act_key = self.__kl[self.__index]
-        self.__index += 1
-        return act_key, self.__od[act_key]
-    def __repr__(self):
-        return "{%s}" % (", ".join(["'%s' : %s" % (k, v) for k, v in self.__iter__()]))
         
 class machine(object):
     #def __init__(self, name, idx, ips={}, log_queue=None):
     def __init__(self, name, idx, dc, ad_struct):
         # set dicts
-        self.__glob_config, self.__loc_config = (ad_struct.get_glob_config(),
-                                                 ad_struct.get_loc_config())
-        self.__ad_struct = ad_struct
-        # machine name
-        self.name = name
-        # set log_queue
-        self.set_log_queue(ad_struct.get_log_queue())
         # clear reachable flag
-        self.set_reachable_flag(False)
-        # init locking structure
-        self.init_lock()
-        # machine idx
-        self.device_idx = idx
-        # init device_mode
-        self.set_device_mode()
+        #self.set_reachable_flag(False)
         # add to global devname_dict
-        if not ad_struct.has_key(self.name):
-            ad_struct[self.name] = self
-            self.log("Added myself (%s) to ad_struct" % (self.name))
-        # ip dictionary; ip->networktype
+##        if not ad_struct.has_key(self.name):
+##            ad_struct[self.name] = self
+##            self.log("Added myself (%s) to ad_struct" % (self.name))
+##        # ip dictionary; ip->networktype
         self.ip_dict = {}
         #self.set_ip_dict(ips)
         # actual net [(P)roduction, (M)aintenance, (T)est or (O)ther] / IP-address
@@ -343,21 +130,15 @@ class machine(object):
         # boot netdevice, driver for boot netdevice and options
         self.bootnetdevice_name, self.boot_netdriver, self.ethtool_options, self.boot_netdriver_options = (None, None, 0, "")
         # maintenance ip address (and hex) (also sets the node-flag)
-        self.set_maint_ip()
+        #self.set_maint_ip()
         # init hwi delay_counter
-        self.clear_hwi_delay_counter()
-        self.set_use_count()
-        self.check_network_settings(dc)
+        #self.clear_hwi_delay_counter()
+        #self.set_use_count()
+        #self.check_network_settings(dc)
         self.set_recv_req_state()
         self.set_last_reset_time()
     def get_db_con(self):
         return self.__ad_struct.get_db_con()
-    def set_device_mode(self, dm=0):
-        self.__device_mode = dm
-        self.log("Setting device_mode to %s and updating ip_ok_time" % {0 : "no check",
-                                                                        1 : "auto reboot (sw)",
-                                                                        2 : "auto reboot (hw)"}[self.__device_mode])
-        self.__last_ip_ok_set = time.time()
     def get_community_strings(self, dc):
         dc.execute("SELECT s.* FROM snmp_class s, device d WHERE s.snmp_class_idx=d.snmp_class AND d.device_idx=%d" % (self.device_idx))
         if dc.rowcount:
@@ -370,28 +151,26 @@ class machine(object):
             db_rec["write_community"] = "private"
         return {"read_community"  : db_rec["read_community"],
                 "write_community" : db_rec["write_community"]}
-    def get_device_mode(self):
-        return self.__device_mode
     def set_reachable_flag(self, reachable):
         self.__reachable = reachable
     def get_reachable_flag(self):
         return self.__reachable
     def get_name(self):
         return self.name
-    def set_use_count(self, val=0):
-        self.use_count = val
-        if self.__loc_config["VERBOSE"]:
-            self.log("Setting use_count to %d" % (self.use_count))
-    def incr_use_count(self, why, incr=1):
-        self.use_count += incr
-        if self.__loc_config["VERBOSE"]:
-            self.log("incrementing use_count to %d (%s)" % (self.use_count, why))
-    def decr_use_count(self, why, decr=1):
-        self.use_count -= decr
-        if self.__loc_config["VERBOSE"]:
-            self.log("decrementing use_count to %d (%s)" % (self.use_count, why))
-    def get_use_count(self):
-        return self.use_count
+##    def set_use_count(self, val=0):
+##        self.use_count = val
+##        if self.__loc_config["VERBOSE"]:
+##            self.log("Setting use_count to %d" % (self.use_count))
+##    def incr_use_count(self, why, incr=1):
+##        self.use_count += incr
+##        if self.__loc_config["VERBOSE"]:
+##            self.log("incrementing use_count to %d (%s)" % (self.use_count, why))
+##    def decr_use_count(self, why, decr=1):
+##        self.use_count -= decr
+##        if self.__loc_config["VERBOSE"]:
+##            self.log("decrementing use_count to %d (%s)" % (self.use_count, why))
+##    def get_use_count(self):
+##        return self.use_count
     def device_log_entry(self, user, status, what, sql_queue, log_src_idx):
         sql_str, sql_tuple = mysql_tools.get_device_log_entry_part(self.device_idx, log_src_idx, user, self.__loc_config["LOG_STATUS"][status]["log_status_idx"], what)
         sql_queue.put(("insert_value", ("devicelog", sql_str, sql_tuple)))
@@ -439,12 +218,12 @@ class machine(object):
             if upd_list:
                 sql_queue.put(("update", ("device", "%s WHERE name=%%s" % (", ".join(["%s=%%s" % (x) for x, y in upd_list])),
                                           tuple([y for x, y in upd_list] + [self.name]))))
-    def clear_hwi_delay_counter(self):
-        self.hwi_delay_counter = 0
-    def incr_hwi_delay_counter(self):
-        self.hwi_delay_counter += 1
-    def get_hwi_delay_counter(self):
-        return self.hwi_delay_counter
+##    def clear_hwi_delay_counter(self):
+##        self.hwi_delay_counter = 0
+##    def incr_hwi_delay_counter(self):
+##        self.hwi_delay_counter += 1
+##    def get_hwi_delay_counter(self):
+##        return self.hwi_delay_counter
     def set_log_queue(self, log_queue):
         self.log_queue = log_queue
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK, glob=0):
@@ -455,44 +234,44 @@ class machine(object):
                 self.log_queue.put(("log", (threading.currentThread().getName(), what, lev)))
         else:
             print "Log for machine %s: %s" % (self.name, what)
-    def set_lock(self, why):
-        # locks are mapped to lock-classes (for instance, a device can be locked by a refresh_hwi-lock AND a status-lock
-        lock_class = self.lock_mapping.get(why, "general")
-        self.lock[lock_class] = why
-        if self.__loc_config["VERBOSE"]:
-            self.log("Setting lock to %s (class %s)" % (str(why), lock_class))
-        self.incr_use_count("lock %s" % (why))
-    def init_lock(self):
-        self.lock_mapping = {"refresh_hwi"        : "hwi_lock",
-                             "fetch_network_info" : "hwi_lock",
-                             "resync_config"      : "net_lock",
-                             "restart_network"    : "net_lock",
-                             "readdots"           : "readfile_lock",
-                             "apc_com"            : "apc_lock",
-                             "apc_dev"            : "apc_lock",
-                             "apc_dev2"           : "apc_lock"}
-        if self.__loc_config["VERBOSE"]:
-            self.log("Init locking-structure")
-        self.lock = {"general" : None}
-        for lock_val in self.lock_mapping.values():
-            self.lock.setdefault(lock_val, None)
-    def get_lock(self, why):
-        lock_class = self.lock_mapping.get(why, "general")
-        return self.lock[lock_class]
-    def release_lock(self, why):
-        lock_class = self.lock_mapping.get(why, "general")
-        if self.lock.has_key(lock_class):
-            if not self.lock[lock_class]:
-                self.log("lock-class %s (%s) already released" % (lock_class, str(why)),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                self.lock[lock_class] = None
-                if self.__loc_config["VERBOSE"]:
-                    self.log("Releasing lock (%s, lock_class %s)" % (str(why), lock_class))
-        else:
-            self.log("trying to release nonexistent lock-class %s (%s)" % (lock_class, str(why)),
-                     logging_tools.LOG_LEVEL_ERROR)
-        self.decr_use_count("lock %s" % (why))
+##    def set_lock(self, why):
+##        # locks are mapped to lock-classes (for instance, a device can be locked by a refresh_hwi-lock AND a status-lock
+##        lock_class = self.lock_mapping.get(why, "general")
+##        self.lock[lock_class] = why
+##        if self.__loc_config["VERBOSE"]:
+##            self.log("Setting lock to %s (class %s)" % (str(why), lock_class))
+##        self.incr_use_count("lock %s" % (why))
+##    def init_lock(self):
+##        self.lock_mapping = {"refresh_hwi"        : "hwi_lock",
+##                             "fetch_network_info" : "hwi_lock",
+##                             "resync_config"      : "net_lock",
+##                             "restart_network"    : "net_lock",
+##                             "readdots"           : "readfile_lock",
+##                             "apc_com"            : "apc_lock",
+##                             "apc_dev"            : "apc_lock",
+##                             "apc_dev2"           : "apc_lock"}
+##        if self.__loc_config["VERBOSE"]:
+##            self.log("Init locking-structure")
+##        self.lock = {"general" : None}
+##        for lock_val in self.lock_mapping.values():
+##            self.lock.setdefault(lock_val, None)
+##    def get_lock(self, why):
+##        lock_class = self.lock_mapping.get(why, "general")
+##        return self.lock[lock_class]
+##    def release_lock(self, why):
+##        lock_class = self.lock_mapping.get(why, "general")
+##        if self.lock.has_key(lock_class):
+##            if not self.lock[lock_class]:
+##                self.log("lock-class %s (%s) already released" % (lock_class, str(why)),
+##                         logging_tools.LOG_LEVEL_ERROR)
+##            else:
+##                self.lock[lock_class] = None
+##                if self.__loc_config["VERBOSE"]:
+##                    self.log("Releasing lock (%s, lock_class %s)" % (str(why), lock_class))
+##        else:
+##            self.log("trying to release nonexistent lock-class %s (%s)" % (lock_class, str(why)),
+##                     logging_tools.LOG_LEVEL_ERROR)
+##        self.decr_use_count("lock %s" % (why))
     def check_network_settings(self, dc):
         sql_str = "SELECT d.bootnetdevice, d.bootserver, d.reachable_via_bootserver, nd.macadr, nd.devname, nd.ethtool_options, nd.driver, nd.driver_options, ip.ip, ip.network, nt.identifier, nw.postfix, nw.identifier as netident, nw.network_type, nd.netdevice_idx FROM " + \
                   "device d, netip ip, netdevice nd, network nw, network_type nt WHERE " + \
@@ -553,133 +332,60 @@ class machine(object):
                 self.log("Found %s : %s" % (logging_tools.get_plural("ip-address", len(loc_ip_dict.keys())), ", ".join(loc_ip_dict.keys())))
                 # change maint_ip
                 self.set_maint_ip(maint_ip, maint_mac)
-                if self.get_etherboot_dir():
-                    link_array.extend([("d", self.get_etherboot_dir()),
-                                       ("d", self.get_pxelinux_dir()),
-                                       ("l", ("%s/%s" % (self.__glob_config["ETHERBOOT_DIR"], self.name), self.maint_ip))])
-                    dev_upd_stuff.append("etherboot_valid=1")
-                    dc.execute("UPDATE device SET etherboot_valid=1 WHERE name='%s'" % (self.name))
-                else:
-                    self.log("Error: etherboot-directory (maint_ip) not defined")
-                    dev_upd_stuff.append("etherboot_valid=0")
+##                if self.get_etherboot_dir():
+##                    link_array.extend([("d", self.get_etherboot_dir()),
+##                                       ("d", self.get_pxelinux_dir()),
+##                                       ("l", ("%s/%s" % (self.__glob_config["ETHERBOOT_DIR"], self.name), self.maint_ip))])
+##                    dev_upd_stuff.append("etherboot_valid=1")
+##                    dc.execute("UPDATE device SET etherboot_valid=1 WHERE name='%s'" % (self.name))
+##                else:
+##                    self.log("Error: etherboot-directory (maint_ip) not defined")
+##                    dev_upd_stuff.append("etherboot_valid=0")
                 # set bootnetdevice
-                self.set_bootnetdevice_name(bootnetdevice_name)
-                if maint_ip:
-                    self.set_boot_netdriver(driver, driver_ethtool_options, driver_options)
-                self.process_link_array(link_array)
-                self.set_ip_dict(loc_ip_dict)
-                # set server_reverse_ip dict
-                self.set_server_ip_dict(server_ip_dict)
-                if not self.get_reachable_flag():
-                    self.set_reachable_flag(True)
-                    self.log("Setting reachable flag")
-                    dev_upd_stuff.append("reachable_via_bootserver=1")
-                dev_updated = True
-            else:
-                self.log("Cannot add device %s (empty ip_list -> cannot reach host)" % (self.name),
-                         logging_tools.LOG_LEVEL_WARN)
-        else:
-            self.log("refuse to add device without netdevices")
-        if not dev_updated:
-            self.set_maint_ip(None, None)
-            if self.get_reachable_flag():
-                self.set_reachable_flag(False)
-                self.log("Clearing reachable flag")
-                dev_upd_stuff.append("reachable_via_bootserver=0")
-            self.set_ip_dict(loc_ip_dict)
-        if dev_upd_stuff:
-            dc.execute("UPDATE device SET %s WHERE name='%s'" % (", ".join(dev_upd_stuff), self.name))
-        self.log("actual settings: %s" % (self.get_reachable_flag() and "reachable" or "not reachable"))
+                # self.set_bootnetdevice_name(bootnetdevice_name)
+                #if maint_ip:
+                #    self.set_boot_netdriver(driver, driver_ethtool_options, driver_options)
+##                self.process_link_array(link_array)
+##                self.set_ip_dict(loc_ip_dict)
+##                # set server_reverse_ip dict
+##                self.set_server_ip_dict(server_ip_dict)
+##                if not self.get_reachable_flag():
+##                    self.set_reachable_flag(True)
+##                    self.log("Setting reachable flag")
+##                    dev_upd_stuff.append("reachable_via_bootserver=1")
+##                dev_updated = True
+##            else:
+##                self.log("Cannot add device %s (empty ip_list -> cannot reach host)" % (self.name),
+##                         logging_tools.LOG_LEVEL_WARN)
+##        else:
+##            self.log("refuse to add device without netdevices")
+##        if not dev_updated:
+##            self.set_maint_ip(None, None)
+##            if self.get_reachable_flag():
+##                self.set_reachable_flag(False)
+##                self.log("Clearing reachable flag")
+##                dev_upd_stuff.append("reachable_via_bootserver=0")
+##            self.set_ip_dict(loc_ip_dict)
+##        if dev_upd_stuff:
+##            dc.execute("UPDATE device SET %s WHERE name='%s'" % (", ".join(dev_upd_stuff), self.name))
+##        self.log("actual settings: %s" % (self.get_reachable_flag() and "reachable" or "not reachable"))
         # check for deleting of old ip-dicts
-    def set_ip_dict(self, ips):
-        for act_key in self.ip_dict.keys():
-            if not ips.has_key(act_key):
-                self.log("Removing IP %s from IP-dictionary" % (act_key))
-                del self.__ad_struct[act_key]
-        for act_key in ips.keys():
-            if not self.ip_dict.has_key(act_key):
-                self.log("Adding ip %s to IP-dictionary" % (act_key))
-                self.__ad_struct[act_key] = self
-        self.ip_dict = ips
+##    def set_ip_dict(self, ips):
+##        for act_key in self.ip_dict.keys():
+##            if not ips.has_key(act_key):
+##                self.log("Removing IP %s from IP-dictionary" % (act_key))
+##                del self.__ad_struct[act_key]
+##        for act_key in ips.keys():
+##            if not self.ip_dict.has_key(act_key):
+##                self.log("Adding ip %s to IP-dictionary" % (act_key))
+##                self.__ad_struct[act_key] = self
+##        self.ip_dict = ips
     def get_server_ip_addr(self, own_ip):
         return self.server_ip_dict.get(own_ip, None)
-    def set_server_ip_dict(self, sip_dict):
-        self.log("Found %s:" % (logging_tools.get_plural("valid device->server ip-mapping", len(sip_dict.keys()))))
-        for my_ip, s_ip in sip_dict.iteritems():
-            self.log("  %s -> %s" % (my_ip, s_ip))
-        self.server_ip_dict = sip_dict
-    def process_link_array(self, l_array):
-        for pt, ps in l_array:
-            if pt == "d":
-                if not os.path.isdir(ps):
-                    try:
-                        self.log("pla(): Creating directory %s" % (ps))
-                        os.mkdir(ps)
-                    except:
-                        self.log("  ...something went wrong for mkdir(): %s" % (process_tools.get_except_info()))
-            elif pt == "l":
-                if type(ps) == type(""):
-                    dest = self.name
-                else:
-                    ps, dest = ps
-                create_link = False
-                if not os.path.islink(ps):
-                    create_link = True
-                else:
-                    if os.path.exists(ps):
-                        old_dest = os.readlink(ps)
-                        if old_dest != dest:
-                            try:
-                                os.unlink(ps)
-                            except OSError:
-                                self.log("  ...something went wrong for unlink(): %s" % (process_tools.get_except_info()))
-                            else:
-                                self.log(" removed wrong link (%s pointed to %s instead of %s)" % (ps, old_dest, dest))
-                                create_link = True
-                    else:
-                        pass
-                if create_link:
-                    if os.path.exists(ps):
-                        try:
-                            self.log("pla(): Unlink %s" % (ps))
-                            os.unlink(ps)
-                        except:
-                            self.log("  ...something went wrong for unlink(): %s" % (process_tools.get_except_info()))
-                        try:
-                            self.log("pla(): rmtree %s" % (ps))
-                            shutil.rmtree(ps, 1)
-                        except:
-                            self.log("  ...something went wrong for rmtree(): %s" % (process_tools.get_except_info()))
-                    try:
-                        self.log("pla(): symlink from %s to %s" % (ps, dest))
-                        os.symlink(dest, ps)
-                    except:
-                        self.log("  ...something went wrong for symlink(): %s" % (process_tools.get_except_info()))
-    def set_bootnetdevice_name(self, bdev=None):
-        if self.bootnetdevice_name != bdev:
-            self.log("Changing bootnetdevice_name from '%s' to '%s'" % (self.bootnetdevice_name, bdev))
-            self.bootnetdevice_name = bdev
-    def set_maint_ip(self, ip=None, mac=None):
-        if ip:
-            hex_ip = "".join(["%02X" % (int(x)) for x in ip.split(".")])
-            if self.maint_ip != ip or self.maint_mac != mac:
-                self.log("Changing maintenance IP and MAC from %s (%s) [%s] to %s (%s) [%s] and setting node-flag" % (self.maint_ip, self.maint_ip_hex, self.maint_mac, ip, hex_ip, mac))
-                self.node = True
-                self.maint_ip = ip
-                self.maint_ip_hex = hex_ip
-                self.maint_mac = mac
-        else:
-            self.log("Clearing maintenance IP and MAC (and node-flag)")
-            self.maint_ip = None
-            self.maint_ip_hex = None
-            self.maint_mac = None
-            self.node = False
-    def set_boot_netdriver(self, driver="eepro100", ethtool_options=0, options=""):
-        if driver != self.boot_netdriver or ethtool_options != self.ethtool_options or options != self.boot_netdriver_options:
-            self.log("Changing boot_netdriver/ethtool_options/netdriver_options from '%s / %d / %s' to '%s / %d / %s'" % (str(self.boot_netdriver), self.ethtool_options, str(self.boot_netdriver_options), str(driver), ethtool_options, str(options)))
-        self.boot_netdriver = driver
-        self.ethtool_options = ethtool_options
-        self.boot_netdriver_options = options
+##    def set_bootnetdevice_name(self, bdev=None):
+##        if self.bootnetdevice_name != bdev:
+##            self.log("Changing bootnetdevice_name from '%s' to '%s'" % (self.bootnetdevice_name, bdev))
+##            self.bootnetdevice_name = bdev
     def set_req_state(self, what, sql_queue):
         self.req_state = what
         sql_queue.put(("update", ("device", "reqstate=%s WHERE name=%s", (what.strip(), self.name))))
@@ -1098,35 +804,6 @@ class machine(object):
             loc_error, ret_str = (True, "return string does not start with ok")
         self.log("  returning with %s (%s)" % (loc_error and "error" or "no error", ret_str))
         return loc_error, ret_str, macs_changed
-    def get_pxe_file_name(self):
-        return "%s/pxelinux.0" % (self.get_etherboot_dir())
-    def get_mboot_file_name(self):
-        return "%s/mboot.c32" % (self.get_etherboot_dir())
-    def get_net_file_name(self):
-        return "%s/bootnet" % (self.get_etherboot_dir())
-    def get_etherboot_dir(self):
-        if self.maint_ip:
-            return "%s/%s" % (self.__glob_config["ETHERBOOT_DIR"], self.maint_ip)
-        else:
-            return None
-    def get_pxelinux_dir(self):
-        if self.maint_ip:
-            return "%s/%s/pxelinux.cfg" % (self.__glob_config["ETHERBOOT_DIR"], self.maint_ip)
-        else:
-            return None
-    def get_config_dir(self):
-        if self.maint_ip:
-            return "%s/%s" % (self.__glob_config["CONFIG_DIR"], self.maint_ip)
-        else:
-            return None
-    def get_menu_file_name(self):
-        return "%s/menu" % (self.get_etherboot_dir())
-    def get_ip_file_name(self):
-        return "%s/%s" % (self.get_pxelinux_dir(), self.maint_ip_hex)
-    def get_ip_mac_file_base_name(self):
-        return "01-%s" % (self.maint_mac.lower().replace(":", "-"))
-    def get_ip_mac_file_name(self):
-        return "%s/%s" % (self.get_pxelinux_dir(), self.get_ip_mac_file_base_name())
     def clear_ip_mac_files(self, except_list=[]):
         # clears all ip_mac_files except the ones listed in except_list
         pxe_dir = self.get_pxelinux_dir()
@@ -2699,19 +2376,6 @@ class readdots_command(command_class):
         command_class.__init__(self, "readdots")
     def post_call(self, mach_struct):
         self.queue_dict["config_queue"].put(("readdots", (mach_struct.name, self)))
-
-class device_mode_change_command(command_class):
-    def __init__(self):
-        command_class.__init__(self, "device_mode_change", needed_sql_fields=["device_mode"])
-    def db_change_call(self, mach_struct, db_s):
-        mach_struct.set_device_mode(db_s["device_mode"])
-    def post_call(self, mach_struct):
-        log_str = "checked for device_mode change"
-        mach_struct.log(log_str)
-        self.set_int_result(mach_struct, "changed device_mode")
-        #self.set_dev_state(mach_name, log_str)
-        #print "***"
-        #mach_struct.release_lock(self.get_name())
 
 class refresh_tk_command(command_class):
     def __init__(self):
