@@ -218,9 +218,8 @@ def get_network_tree(request):
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
 
-@login_required
-@init_logging
-def get_hopcount_state(request):
+def _get_hopcount_state(request):
+    rebuild_possible = False
     xml_resp = E.hopcount_state()
     # hopcount info
     try:
@@ -230,22 +229,26 @@ def get_hopcount_state(request):
             state_var = device_variable.objects.get(Q(name="hopcount_state_var") & Q(device__device_group__cluster_device_group=True))
         except:
             xml_resp.attrib["rebuild_info"] = "never built"
+            rebuild_possible = True
         else:
             xml_resp.attrib["rebuild_info"] = "rebuilding, %d %% done" % (state_var.val_int)
     else:
         xml_resp.attrib["rebuild_info"] = "built %s" % (logging_tools.get_relative_dt(reb_var.val_date))
+        rebuild_possible = True
     request.xml_response["response"] = xml_resp
+    return rebuild_possible
+    
+@login_required
+@init_logging
+def get_hopcount_state(request):
+    _get_hopcount_state(request)
     return request.xml_response.create_response()
     
 @login_required
 @init_logging
 def rebuild_hopcount(request):
-    srv_com = server_command.srv_command(command="rebuild_hopcount")
-    try:
-        reb_var = device_variable.objects.get(Q(name="hopcount_table_build_time") & Q(device__device_group__cluster_device_group=True))
-    except device_variable.DoesNotExist:
-        request.log("hopcount rebuild already running", logging_tools.LOG_LEVEL_WARN, xml=True)
-    else:
+    if _get_hopcount_state(request):
+        srv_com = server_command.srv_command(command="rebuild_hopcount")
         result = net_tools.zmq_connection("blabla", timeout=2).add_connection("tcp://localhost:8004", srv_com)
         if not result:
             request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
