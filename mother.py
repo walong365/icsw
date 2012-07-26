@@ -64,7 +64,7 @@ from django.db.models import Q
 import mother.kernel
 import mother.command
 import mother.control
-from init.cluster.backbone.models import network
+from init.cluster.backbone.models import network, status
 
 SQL_ACCESS = "cluster_full_access"
 
@@ -800,199 +800,6 @@ class machine(object):
             loc_error, ret_str = (True, "return string does not start with ok")
         self.log("  returning with %s (%s)" % (loc_error and "error" or "no error", ret_str))
         return loc_error, ret_str, macs_changed
-    def clear_ip_mac_files(self, except_list=[]):
-        # clears all ip_mac_files except the ones listed in except_list
-        pxe_dir = self.get_pxelinux_dir()
-        for entry in os.listdir(pxe_dir):
-            if entry.startswith("01-") and not entry in except_list:
-                try:
-                    os.unlink("%s/%s" % (pxe_dir, entry))
-                except:
-                    self.log("error removing pxe-boot file %s" % (entry),
-                             logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    self.log("removing pxe-boot file %s" % (entry))
-    def write_dosboot_config(self, eepro100_pxe):
-        os.symlink("../../images/dos_image", self.get_net_file_name())
-        open(self.get_pxe_file_name(), "w").write(eepro100_pxe)
-    def write_memtest_config(self):
-        pxe_dir = self.get_pxelinux_dir()
-        if pxe_dir:
-            if os.path.isdir(pxe_dir):
-                self.clear_ip_mac_files()
-                open(self.get_ip_file_name()    , "w").write("DEFAULT ../../images/memtest.bin\n")
-                open(self.get_ip_mac_file_name(), "w").write("DEFAULT ../../images/memtest.bin\n")
-                if (os.path.isdir(self.get_etherboot_dir())):
-                    if self.__glob_config["PXEBOOT"]:
-                        open(self.get_pxe_file_name(), "w").write(self.__glob_config["PXELINUX_0"])
-                    else:
-                        self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("pxelinux_dir() returned NONE",
-                     logging_tools.LOG_LEVEL_ERROR)
-    def write_localboot_config(self):
-        if self.get_pxelinux_dir():
-            if os.path.isdir(self.get_pxelinux_dir()):
-                self.clear_ip_mac_files()
-                for name in [self.get_ip_file_name(), self.get_ip_mac_file_name()]:
-                    open(name, "w").write("\n".join(["DEFAULT linux",
-                                                     "LABEL linux",
-                                                     "IMPLICIT 0",
-                                                     "LOCALBOOT 0",
-                                                     ""]))
-                if self.__glob_config["PXEBOOT"]:
-                    open(self.get_pxe_file_name(), "w").write(self.__glob_config["PXELINUX_0"])
-                else:
-                    self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
-    def write_kernel_config(self, sql_queue, kernel_stuff, kernel_append, s_ip, s_netmask, loc_config, stage1_flavour, check=False):
-        kern_dst_dir = self.get_etherboot_dir()
-        if kern_dst_dir:
-            if os.path.isdir(kern_dst_dir):
-                for file_name in ["i", "k", "x"]:
-                    fname = "%s/%s" % (kern_dst_dir, file_name)
-                    if not check:
-                        if os.path.islink(fname):
-                            os.unlink(fname)
-                for stage_name in ["stage2", "stage3"]:
-                    stage_source = "/opt/cluster/lcs/%s" % (stage_name)
-                    stage_dest  ="%s/%s" % (kern_dst_dir, stage_name)
-                    if not os.path.isfile(stage_source):
-                        self.log("Error, cannot find %s_source '%s'..." % (stage_name, stage_source))
-                    elif not os.path.isfile(stage_dest) or (os.path.isfile(stage_dest) and os.stat(stage_source)[stat.ST_MTIME] > os.stat(stage_dest)[stat.ST_MTIME]):
-                        self.log("Copying %s from %s to %s ..." % (stage_name, stage_source, stage_dest))
-                        open(stage_dest, "w").write(open(stage_source, "r").read())
-                kernel_name = kernel_stuff["name"]
-                #print kernel_stuff
-                kern_base_dir = "../../kernels/%s" % (kernel_name)
-                kern_abs_base_dir = "%s/kernels/%s" % (self.__glob_config["TFTP_DIR"], kernel_name)
-                unlink_field = ["%s/k" % (kern_dst_dir),
-                                "%s/i" % (kern_dst_dir),
-                                "%s/x" % (kern_dst_dir)]
-                valid_links = []
-                if os.path.isdir(kern_abs_base_dir):
-                    # check if requested flavour is ok
-                    if not kernel_stuff["stage1_%s_present" % (stage1_flavour)]:
-                        self.log("requested stage1_flavour '%s' not present" % (stage1_flavour),
-                                 logging_tools.LOG_LEVEL_ERROR)
-                    else:
-                        link_field = [("%s/bzImage" % (kern_abs_base_dir)                     , "%s/bzImage" % (kern_base_dir)                     , "%s/k" % (kern_dst_dir)),
-                                      ("%s/initrd_%s.gz" % (kern_abs_base_dir, stage1_flavour), "%s/initrd_%s.gz" % (kern_base_dir, stage1_flavour), "%s/i" % (kern_dst_dir))]
-                        if kernel_stuff["xen_host_kernel"]:
-                            link_field.append(("%s/xen.gz" % (kern_abs_base_dir), "%s/xen.gz" % (kern_base_dir), "%s/x" % (kern_dst_dir)))
-                        for abs_src, src, dst in link_field:
-                            if kernel_name:
-                                if os.path.isfile(abs_src):
-                                    c_link = True
-                                    if check:
-                                        if os.path.islink(dst):
-                                            act_dst = os.readlink(dst)
-                                            if src == act_dst:
-                                                #self.log("Link %s is still valid (points to %s)" % (dst, act_dst))
-                                                valid_links.append(dst)
-                                                c_link = False
-                                            else:
-                                                os.unlink(dst)
-                                        elif os.path.isfile(dst):
-                                            os.unlink(dst)
-                                    if c_link:
-                                        self.log("Linking from %s to %s" % (dst, src))
-                                        #print "symlink()", src, dst
-                                        os.symlink(src, dst)
-                                        valid_links.append(dst)
-                                else:
-                                    self.log("source %s for symlink() does not exist" % (abs_src),
-                                             logging_tools.LOG_LEVEL_ERROR)
-                                    if not check:
-                                        valid_links.append(dst)
-                else:
-                    self.log("source_kernel_dir %s does not exist" % (kern_abs_base_dir),
-                             logging_tools.LOG_LEVEL_ERROR)
-                    self.device_log_entry(0,
-                                          "e",
-                                          "error kernel_dir dir '%s' not found" % (kern_abs_base_dir),
-                                          sql_queue,
-                                          loc_config["LOG_SOURCE_IDX"])
-                if unlink_field:
-                    unlink_field = [l_path for l_path in unlink_field if os.path.islink(l_path) and not l_path in valid_links]
-                    if unlink_field:
-                        self.log("Removing %s: %s" % (logging_tools.get_plural("dead link", len(unlink_field)),
-                                                      ", ".join(unlink_field)))
-                        for l_path in unlink_field:
-                            try:
-                                os.unlink(l_path)
-                            except:
-                                self.log("error removing link %s: %s" % (l_path,
-                                                                         process_tools.get_except_info()),
-                                         logging_tools.LOG_LEVEL_ERROR)
-                if stage1_flavour == "cpio":
-                    root_str = ""
-                else:
-                    root_str = "root=/dev/ram0"
-                append_string = (" ".join([root_str,
-                                           "init=/linuxrc rw nbd=%s,%s,%d,%s %s" % (self.bootnetdevice_name,
-                                                                                    self.boot_netdriver,
-                                                                                    self.ethtool_options,
-                                                                                    self.boot_netdriver_options.replace(" ", r"§"),
-                                                                                    kernel_append)])).strip().replace("  ", " ").replace("  ", " ")
-                self.clear_ip_mac_files([self.get_ip_mac_file_base_name()])
-                if kernel_stuff["xen_host_kernel"]:
-                    append_field = ["x dom0_mem=524288",
-                                    "k console=tty0 ip=%s:%s::%s %s" % (self.maint_ip, s_ip, ipvx_tools.get_network_name_from_mask(s_netmask), append_string),
-                                    "i"]
-                else:
-                    total_append_string = "initrd=i ip=%s:%s::%s %s" % (self.maint_ip, s_ip, ipvx_tools.get_network_name_from_mask(s_netmask), append_string)
-                pxe_lines = []
-                if self.__glob_config["NODE_BOOT_DELAY"]:
-                    pxe_lines.extend(["TIMEOUT %d" % (self.__glob_config["NODE_BOOT_DELAY"]),
-                                      "PROMPT 1"])
-                pxe_lines.extend(["DISPLAY menu",
-                                  "DEFAULT linux auto"])
-                if kernel_name:
-                    if kernel_stuff["xen_host_kernel"]:
-                        pxe_lines.extend(["LABEL linux",
-                                          "    KERNEL mboot.c32",
-                                          "    APPEND %s" % (" --- ".join(append_field))])
-                    else:
-                        pxe_lines.extend(["LABEL linux",
-                                          "    KERNEL k",
-                                          "    APPEND %s" % (total_append_string)])
-                pxe_lines.extend([""])
-                if self.__glob_config["FANCY_PXE_INFO"]:
-                    menu_lines = ["\x0c\x0f20%s\x0f07" % (("init.at Bootinfo, %s%s" % (time.ctime(), 80 * " "))[0:79])]
-                else:
-                    menu_lines = ["",
-                                  ("init.at Bootinfo, %s%s" % (time.ctime(), 80 * " "))[0:79]]
-                menu_lines.extend(["Nodename  , IP : %-30s, %s" % (self.get_name(), self.maint_ip),
-                                   "Servername, IP : %-30s, %s" % (loc_config["SERVER_SHORT_NAME"], s_ip),
-                                   "Netmask        : %s (%s)" % (s_netmask, ipvx_tools.get_network_name_from_mask(s_netmask)),
-                                   "MACAddress     : %s" % (self.maint_mac.lower()),
-                                   "Stage1 flavour : %s" % (stage1_flavour),
-                                   "Kernel to boot : %s" % (kernel_name or "<no kernel set>"),
-                                   "Kernel options : %s" % (append_string or "<none set>"),
-                                   "will boot %s" % ("in %s" % (logging_tools.get_plural("second", int(self.__glob_config["NODE_BOOT_DELAY"] / 10))) if self.__glob_config["NODE_BOOT_DELAY"] else "immediately"),
-                                   "",
-                                   ""])
-                open(self.get_ip_file_name()    , "w").write("\n".join(pxe_lines))
-                open(self.get_ip_mac_file_name(), "w").write("\n".join(pxe_lines))
-                open(self.get_menu_file_name()  , "w").write("\n".join(menu_lines))
-                if kernel_stuff["xen_host_kernel"]:
-                    if self.__glob_config["XENBOOT"]:
-                        open(self.get_mboot_file_name(), "w").write(self.__glob_config["MBOOT.C32"])
-                    else:
-                        self.log("not XENBOOT capable (MBOOT.C32 not found)", logging_tools.LOG_LEVEL_ERROR)
-                if self.__glob_config["PXEBOOT"]:
-                    open(self.get_pxe_file_name(), "w").write(self.__glob_config["PXELINUX_0"])
-                else:
-                    self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
-            else:
-                self.log("Error: directory %s does not exist" % (kern_dst_dir))
-                self.device_log_entry(1,
-                                      "e",
-                                      "error etherboot dir '%s' not found" % (kern_dst_dir),
-                                      sql_queue,
-                                      self.__loc_config["NODE_SOURCE_IDX"])
-        else:
-            self.log("Error: etherboot-dir not defined")
 
 class outlet(object):
     def __init__(self, number=0):
@@ -3165,8 +2972,6 @@ class configure_thread(threading_tools.thread_obj):
                                                         self.__server_ip["netmask"],
                                                         self.__loc_config,
                                                         newk["stage1_flavour"])
-##                 elif newk["status"] in LIST_DOSBOOT:
-##                     mach_struct.write_dosboot_config(eepro100_pxe)
                 elif newk["status"] in self.__loc_config["LIST_MEMTEST"]:
                     mach_struct.write_memtest_config()
                 elif newk["status"] in self.__loc_config["LIST_BOOTLOCAL"]:
@@ -3262,7 +3067,10 @@ class server_process(threading_tools.process_pool):
         self._check_netboot_functionality()
         # check nfs exports
         self._check_nfs_exports()
+        # modify syslog config
         self._enable_syslog_config()
+        # check status entries
+        self._check_status_entries()
         self.__msi_block = None#self._init_msi_block()
         self._init_subsys()
         my_uuid = uuid_tools.get_uuid()
@@ -3380,6 +3188,55 @@ class server_process(threading_tools.process_pool):
                     os.symlink(s_link, d_link)
                 except:
                     pass
+    def _check_status_entries(self):
+        map_dict = {
+            "memtest" : [
+                ("prod_link", False),
+                ("memory_test", True),
+                ("boot_local", False),
+                ("do_install", False),
+                ("is_clean", False)],
+            "boot_local" : [
+                ("prod_link", False),
+                ("memory_test", False),
+                ("boot_local", True),
+                ("do_install", False),
+                ("is_clean", False)],
+            "boot_clean" : [
+                ("prod_link", True),
+                ("memory_test", False),
+                ("boot_local", False),
+                ("do_install", False),
+                ("is_clean", True)],
+            "boot" : [
+                ("prod_link", True),
+                ("memory_test", False),
+                ("boot_local", False),
+                ("do_install", False),
+                ("is_clean", False)],
+            "installation_clean" : [
+                ("prod_link", True),
+                ("memory_test", False),
+                ("boot_local", False),
+                ("do_install", True),
+                ("is_clean", True)],
+            "installation" : [
+                ("prod_link", True),
+                ("memory_test", False),
+                ("boot_local", False),
+                ("do_install", True),
+                ("is_clean", False)]}
+        for mod_status in status.objects.filter(Q(allow_boolean_modify=True)):
+            cur_uc = unicode(mod_status)
+            if mod_status.status in map_dict:
+                for key, value in map_dict[mod_status.status]:
+                    setattr(mod_status, key, value)
+                mod_status.allow_boolean_modify = False
+                new_uc = unicode(mod_status)
+                self.log("changed from %s to %s" % (cur_uc, new_uc))
+                mod_status.save()
+            else:
+                self.log("unknown status '%s' (%s)" % (mod_status.status, cur_uc), logging_tools.LOG_LEVEL_ERROR)
     def _check_nfs_exports(self):
         log_lines = []
         if global_config["MODIFY_NFS_CONFIG"]:
@@ -3802,6 +3659,9 @@ def main():
         ("TFTP_DIR"                  , configfile.str_c_var("/usr/local/share/cluster/tftpboot")),
         ("CLUSTER_DIR"               , configfile.str_c_var("/opt/cluster")),
         ("NODE_PORT"                 , configfile.int_c_var(2001)),
+        # in 10th of seconds
+        ("NODE_BOOT_DELAY"           , configfile.int_c_var(50)),
+        ("FANCY_PXE_INFO"            , configfile.bool_c_var(False)),
         ("SERVER_SHORT_NAME"         , configfile.str_c_var(mach_name))])
     global_config.add_config_entries([
         ("CONFIG_DIR"   , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),

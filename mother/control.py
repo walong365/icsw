@@ -33,8 +33,10 @@ import config_tools
 import icmp_twisted
 import copy
 import uuid
+import shutil
+import stat
+import ipvx_tools
 from django.db import connection
-from kernel_sync_tools import kernel_helper
 from twisted.internet import reactor
 from twisted.python import log
 from init.cluster.backbone.models import kernel, device, hopcount
@@ -71,6 +73,7 @@ class machine(object):
         machine.process = c_process
         machine.g_log("init")
         machine.__lut = {}
+        machine.__unique_keys = set()
     @staticmethod
     def shutdown():
         while machine.__lut:
@@ -79,7 +82,7 @@ class machine(object):
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         machine.process.log("[mach] %s" % (what), log_level)
     @staticmethod
-    def sync(names=[], ips=[]):
+    def get_query(names=[], ips=[]):
         query = device.objects.filter(Q(bootserver=machine.process.sc.effective_device)).select_related("device_type").prefetch_related(
             "netdevice_set",
             "netdevice_set__net_ip_set",
@@ -89,6 +92,17 @@ class machine(object):
             query = query.filter(Q(name__in=names))
         if ips:
             query = query.filter(Q(netdevice__net_ip__ip__in=ips))
+        return query
+    def refresh_device(self):
+        found_devs = machine.get_query(names=[self.device.name])
+        if len(found_devs) == 1:
+            self.device = found_devs[0]
+        elif not len(found_devs):
+            self.device = None
+            self.log("device has vanished from database ...", logging_tools.LOG_LEVEL_ERROR)
+    @staticmethod
+    def sync(names=[], ips=[]):
+        query = machine.get_query(names=names, ips=ips)
         machine.g_log("found %s: %s" % (logging_tools.get_plural("device", len(query)),
                                         logging_tools.compress_list([cur_dev.name for cur_dev in query])))
         for cur_dev in query:
@@ -107,6 +121,7 @@ class machine(object):
             new_mach = host(new_dev)
         else:
             new_mach = machine(new_dev)
+        machine.__unique_keys.add(new_dev.pk)
         machine.__lut[new_dev.name] = new_mach
         machine.__lut[new_dev.pk] = new_mach
     @staticmethod
@@ -116,9 +131,19 @@ class machine(object):
             mach.close()
             del machine.__lut[mach.name]
             del machine.__lut[mach.pk]
+            machine.__unique_keys.remove(mach.pk)
     @staticmethod
     def get_device(dev_spec):
         return machine.__lut.get(dev_spec, None)
+    @staticmethod
+    def iterate(com_name, *args, **kwargs):
+        for u_key in machine.__unique_keys:
+            cur_dev = machine.get_device(u_key)
+            if hasattr(cur_dev, com_name):
+                cur_dev.log("call '%s'" % (com_name))
+                getattr(cur_dev, com_name)(*args, **kwargs)
+            else:
+                cur_dev.log("call '%s' not defined" % (com_name), logging_tools.LOG_LEVEL_WARN)
     def set_ip_dict(self, in_dict):
         old_dict = self.ip_dict
         self.ip_dict = in_dict
@@ -326,7 +351,250 @@ class host(machine):
         return "%s/%s" % (self.get_pxelinux_dir(), self.get_ip_mac_file_base_name())
     def set_recv_req_state(self, recv_state = "error not set", req_state="error not set"):
         self.device.recvstate, self.device.reqstate = (recv_state, req_state)
-        
+    def refresh_target_kernel(self, *args, **kwargs):
+        self.refresh_device()
+        self.check_network_settings()
+        if self.is_node:
+            if self.device.new_kernel:
+                if not self.device.stage1_flavour:
+                    self.device.stage1_flavour = "cpio"
+                    self.log("setting stage1_flavour to '%s'" % (self.device.stage1_flavour))
+                    self.device.save()
+                if not self.device.prod_link:
+                    self.log("no production link set", logging_tools.LOG_LEVEL_WARN)
+                    prod_net = None
+                else:
+                    prod_net = self.device.prod_link
+                    self.log("production network is %s" % (unicode(prod_net)))
+                if self.device.new_state:
+                    new_kernel = self.device.new_kernel
+                    new_state = self.device.new_state
+                    self.log("refresh for target_state %s, kernel %s" % (unicode(self.device.new_state),
+                                                                         unicode(new_kernel)))
+                else:
+                    self.log("no state set", logging_tools.LOG_LEVEL_WARN)
+                    new_state, new_kernel = (None, None)
+                pxe_file = self.get_pxe_file_name()
+                net_file = self.get_net_file_name()
+                if os.path.exists(pxe_file):
+                    os.unlink(pxe_file)
+                if new_state:
+                    if new_kernel and new_state.prod_link:
+                        if machine.process.server_ip:
+                            self.write_kernel_config(
+                                new_kernel)
+                            pass
+                        else:
+                            self.log("no server_ip set", logging_tools.LOG_LEVEL_ERROR)
+                    elif new_state.boot_local:
+                        # boot localboot
+                        self.write_localboot_config()
+                    elif new_state.memory_test:
+                        # memory test
+                        self.write_memtest_config()
+                    else:
+                        self.log("cannot handle new_state '%s'" % (unicode(new_state)),
+                                 logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("new_kernel not set", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("not node", logging_tools.LOG_LEVEL_WARN)
+    def clear_ip_mac_files(self, except_list=[]):
+        # clears all ip_mac_files except the ones listed in except_list
+        pxe_dir = self.get_pxelinux_dir()
+        for entry in os.listdir(pxe_dir):
+            if entry.startswith("01-") and not entry in except_list:
+                try:
+                    os.unlink("%s/%s" % (pxe_dir, entry))
+                except:
+                    self.log("error removing pxe-boot file %s" % (entry),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("removing pxe-boot file %s" % (entry))
+    def write_memtest_config(self):
+        pxe_dir = self.get_pxelinux_dir()
+        if pxe_dir:
+            if os.path.isdir(pxe_dir):
+                self.clear_ip_mac_files()
+                open(self.get_ip_file_name()    , "w").write("DEFAULT ../../images/memtest.bin\n")
+                open(self.get_ip_mac_file_name(), "w").write("DEFAULT ../../images/memtest.bin\n")
+                if (os.path.isdir(self.get_etherboot_dir())):
+                    if global_config["PXEBOOT"]:
+                        open(self.get_pxe_file_name(), "w").write(self.__glob_config["PXELINUX_0"])
+                    else:
+                        self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("pxelinux_dir() returned NONE",
+                     logging_tools.LOG_LEVEL_ERROR)
+    def write_localboot_config(self):
+        if self.get_pxelinux_dir():
+            if os.path.isdir(self.get_pxelinux_dir()):
+                self.clear_ip_mac_files()
+                for name in [self.get_ip_file_name(), self.get_ip_mac_file_name()]:
+                    open(name, "w").write("\n".join(["DEFAULT linux",
+                                                     "LABEL linux",
+                                                     "IMPLICIT 0",
+                                                     "LOCALBOOT 0",
+                                                     ""]))
+                if global_config["PXEBOOT"]:
+                    open(self.get_pxe_file_name(), "w").write(self.__glob_config["PXELINUX_0"])
+                else:
+                    self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
+    def write_kernel_config(self, new_kernel):
+        kern_dst_dir = self.get_etherboot_dir()
+        if kern_dst_dir:
+            if os.path.isdir(kern_dst_dir):
+                for file_name in ["i", "k", "x"]:
+                    fname = "%s/%s" % (kern_dst_dir, file_name)
+                    if os.path.islink(fname):
+                        os.unlink(fname)
+                for stage_name in ["stage2", "stage3"]:
+                    stage_source = "%s/lcs/%s" % (global_config["CLUSTER_DIR"], 
+                                                  stage_name)
+                    stage_dest  ="%s/%s" % (kern_dst_dir, stage_name)
+                    if not os.path.isfile(stage_source):
+                        self.log("Error, cannot find %s_source '%s'..." % (stage_name, stage_source))
+                    elif not os.path.isfile(stage_dest) or (os.path.isfile(stage_dest) and os.stat(stage_source)[stat.ST_MTIME] > os.stat(stage_dest)[stat.ST_MTIME]):
+                        self.log("Copying %s from %s to %s ..." % (stage_name, stage_source, stage_dest))
+                        open(stage_dest, "w").write(open(stage_source, "r").read())
+                #print kernel_stuff
+                kern_base_dir = "../../kernels/%s" % (new_kernel.name)
+                kern_abs_base_dir = "%s/kernels/%s" % (global_config["TFTP_DIR"], new_kernel.name)
+                unlink_field = ["%s/k" % (kern_dst_dir),
+                                "%s/i" % (kern_dst_dir),
+                                "%s/x" % (kern_dst_dir)]
+                valid_links = []
+                if os.path.isdir(kern_abs_base_dir):
+                    # check if requested flavour is ok
+                    if not getattr(new_kernel, "stage1_%s_present" % (self.device.stage1_flavour)):
+                        self.log("requested stage1_flavour '%s' not present" % (self.device.stage1_flavour),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        link_field = [
+                            ("%s/bzImage" % (kern_abs_base_dir),
+                             "%s/bzImage" % (kern_base_dir),
+                             "%s/k" % (kern_dst_dir)),
+                            ("%s/initrd_%s.gz" % (kern_abs_base_dir, self.device.stage1_flavour),
+                             "%s/initrd_%s.gz" % (kern_base_dir, self.device.stage1_flavour),
+                             "%s/i" % (kern_dst_dir))]
+                        if new_kernel.xen_host_kernel:
+                            link_field.append(("%s/xen.gz" % (kern_abs_base_dir), "%s/xen.gz" % (kern_base_dir), "%s/x" % (kern_dst_dir)))
+                        for abs_src, src, dst in link_field:
+                            if kernel_name:
+                                if os.path.isfile(abs_src):
+                                    c_link = True
+                                    if check:
+                                        if os.path.islink(dst):
+                                            act_dst = os.readlink(dst)
+                                            if src == act_dst:
+                                                #self.log("Link %s is still valid (points to %s)" % (dst, act_dst))
+                                                valid_links.append(dst)
+                                                c_link = False
+                                            else:
+                                                os.unlink(dst)
+                                        elif os.path.isfile(dst):
+                                            os.unlink(dst)
+                                    if c_link:
+                                        self.log("Linking from %s to %s" % (dst, src))
+                                        #print "symlink()", src, dst
+                                        os.symlink(src, dst)
+                                        valid_links.append(dst)
+                                else:
+                                    self.log("source %s for symlink() does not exist" % (abs_src),
+                                             logging_tools.LOG_LEVEL_ERROR)
+                                    if not check:
+                                        valid_links.append(dst)
+                else:
+                    self.log("source_kernel_dir %s does not exist" % (kern_abs_base_dir),
+                             logging_tools.LOG_LEVEL_ERROR)
+                    self.device_log_entry(0,
+                                          "e",
+                                          "error kernel_dir dir '%s' not found" % (kern_abs_base_dir),
+                                          sql_queue,
+                                          loc_config["LOG_SOURCE_IDX"])
+                if unlink_field:
+                    unlink_field = [l_path for l_path in unlink_field if os.path.islink(l_path) and not l_path in valid_links]
+                    if unlink_field:
+                        self.log("Removing %s: %s" % (logging_tools.get_plural("dead link", len(unlink_field)),
+                                                      ", ".join(unlink_field)))
+                        for l_path in unlink_field:
+                            try:
+                                os.unlink(l_path)
+                            except:
+                                self.log("error removing link %s: %s" % (l_path,
+                                                                         process_tools.get_except_info()),
+                                         logging_tools.LOG_LEVEL_ERROR)
+                if self.device.stage1_flavour == "cpio":
+                    root_str = ""
+                else:
+                    root_str = "root=/dev/ram0"
+                append_string = (" ".join([
+                    root_str,
+                    "init=/linuxrc rw nbd=%s,%s,%d,%s %s" % (self.bootnetdevice.devname,
+                                                             self.bootnetdevice.driver,
+                                                             self.bootnetdevice.ethtool_options,
+                                                             self.bootnetdevice.driver_options.replace(" ", ur"§"),
+                                                             self.device.kernel_append)])).strip().replace("  ", " ").replace("  ", " ")
+                self.clear_ip_mac_files([self.get_ip_mac_file_base_name()])
+                if new_kernel.xen_host_kernel:
+                    append_field = ["x dom0_mem=524288",
+                                    "k console=tty0 ip=%s:%s::%s %s" % (self.maint_ip, s_ip, ipvx_tools.get_network_name_from_mask(s_netmask), append_string),
+                                    "i"]
+                else:
+                    total_append_string = "initrd=i ip=%s:%s::%s %s" % (self.maint_ip.ip, machine.process.server_ip, ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask), append_string)
+                pxe_lines = []
+                if global_config["NODE_BOOT_DELAY"]:
+                    pxe_lines.extend(["TIMEOUT %d" % (global_config["NODE_BOOT_DELAY"]),
+                                      "PROMPT 1"])
+                pxe_lines.extend(["DISPLAY menu",
+                                  "DEFAULT linux auto"])
+                if new_kernel.name:
+                    if new_kernel.xen_host_kernel:
+                        pxe_lines.extend(["LABEL linux",
+                                          "    KERNEL mboot.c32",
+                                          "    APPEND %s" % (" --- ".join(append_field))])
+                    else:
+                        pxe_lines.extend(["LABEL linux",
+                                          "    KERNEL k",
+                                          "    APPEND %s" % (total_append_string)])
+                pxe_lines.extend([""])
+                if global_config["FANCY_PXE_INFO"]:
+                    menu_lines = ["\x0c\x0f20%s\x0f07" % (("init.at Bootinfo, %s%s" % (time.ctime(), 80 * " "))[0:79])]
+                else:
+                    menu_lines = ["",
+                                  ("init.at Bootinfo, %s%s" % (time.ctime(), 80 * " "))[0:79]]
+                menu_lines.extend(["Nodename  , IP : %-30s, %s" % (self.device.name, self.maint_ip.ip),
+                                   "Servername, IP : %-30s, %s" % (global_config["SERVER_SHORT_NAME"], machine.process.server_ip),
+                                   "Netmask        : %s (%s)" % (self.maint_ip.network.netmask, ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask)),
+                                   "MACAddress     : %s" % (self.bootnetdevice.macaddr.lower()),
+                                   "Stage1 flavour : %s" % (self.device.stage1_flavour),
+                                   "Kernel to boot : %s" % (new_kernel.name or "<no kernel set>"),
+                                   "Kernel options : %s" % (append_string or "<none set>"),
+                                   "will boot %s" % ("in %s" % (logging_tools.get_plural("second", int(global_config["NODE_BOOT_DELAY"] / 10))) if global_config["NODE_BOOT_DELAY"] else "immediately"),
+                                   "",
+                                   ""])
+                open(self.get_ip_file_name()    , "w").write("\n".join(pxe_lines))
+                open(self.get_ip_mac_file_name(), "w").write("\n".join(pxe_lines))
+                open(self.get_menu_file_name()  , "w").write("\n".join(menu_lines))
+                if new_kernel.xen_host_kernel:
+                    if self.__glob_config["XENBOOT"]:
+                        open(self.get_mboot_file_name(), "w").write(self.__glob_config["MBOOT.C32"])
+                    else:
+                        self.log("not XENBOOT capable (MBOOT.C32 not found)", logging_tools.LOG_LEVEL_ERROR)
+                if global_config["PXEBOOT"]:
+                    open(self.get_pxe_file_name(), "w").write(global_config["PXELINUX_0"])
+                else:
+                    self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("Error: directory %s does not exist" % (kern_dst_dir))
+                self.device_log_entry(1,
+                                      "e",
+                                      "error etherboot dir '%s' not found" % (kern_dst_dir),
+                                      sql_queue,
+                                      self.__loc_config["NODE_SOURCE_IDX"])
+        else:
+            self.log("Error: etherboot-dir not defined")
+         
 class hm_icmp_protocol(icmp_twisted.icmp_protocol):
     def __init__(self, tw_process, log_template):
         self.__log_template = log_template
@@ -465,10 +733,10 @@ class node_control_process(threading_tools.process_obj):
         connection.close()
         self.sc = config_tools.server_check(server_type="mother")
         if "b" in self.sc.identifier_ip_lut:
-            self.__kernel_ip = self.sc.identifier_ip_lut["b"][0]
-            self.log("IP address in boot-net is %s" % (self.__kernel_ip))
+            self.server_ip = self.sc.identifier_ip_lut["b"][0]
+            self.log("IP address in boot-net is %s" % (self.server_ip))
         else:
-            self.__kernel_ip = None
+            self.server_ip = None
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
         machine.setup(self)
         machine.sync()
@@ -478,7 +746,7 @@ class node_control_process(threading_tools.process_obj):
         self.__log_template.log(log_level, what)
     def _refresh(self, *args, **kwargs):
         # use kwargs to specify certain devices
-        print args, kwargs
+        machine.iterate("refresh_target_kernel")
     def loop_post(self):
         machine.shutdown()
         self.__log_template.close()
