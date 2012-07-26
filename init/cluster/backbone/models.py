@@ -267,12 +267,14 @@ class device(models.Model):
     # FIXME
     device_group = models.ForeignKey("device_group", related_name="device_group")
     device_type = models.ForeignKey("device_type")
-    axnumber = models.CharField(max_length=192, blank=True)
+    # removed, ancient NDS stuff
+    #axnumber = models.CharField(max_length=192, blank=True)
     alias = models.CharField(max_length=384, blank=True)
     comment = models.CharField(max_length=384, blank=True)
     snmp_class = models.ForeignKey("snmp_class", null=True)
-    switch = models.ForeignKey("device", null=True, related_name="switch_device")
-    switchport = models.IntegerField(null=True, blank=True)
+    # better suited in a n:m model, removed
+    #switch = models.ForeignKey("device", null=True, related_name="switch_device")
+    #switchport = models.IntegerField(null=True, blank=True)
     ng_device_templ = models.ForeignKey("ng_device_templ", null=True)
     ng_ext_host = models.IntegerField(null=True, blank=True)
     device_location = models.ForeignKey("device_location", null=True)
@@ -304,8 +306,8 @@ class device(models.Model):
     rsync = models.BooleanField()
     rsync_compressed = models.BooleanField()
     prod_link = models.ForeignKey("network", db_column="prod_link", null=True)
-    recvstate = models.TextField(blank=True, null=True)
-    reqstate = models.TextField(blank=True, null=True)
+    recvstate = models.TextField(blank=True, default="not set")
+    reqstate = models.TextField(blank=True, default="not set")
     bootnetdevice = models.ForeignKey("netdevice", null=True, related_name="boot_net_device")
     bootserver = models.ForeignKey("device", null=True, related_name="boot_server")
     reachable_via_bootserver = models.BooleanField(default=False)
@@ -323,7 +325,10 @@ class device(models.Model):
     relay_device = models.ForeignKey("device", null=True)
     nagios_checks = models.BooleanField(default=True)
     show_in_bootcontrol = models.BooleanField()
+    # not so clever here, better in extra table, FIXME
     cpu_info = models.TextField(blank=True, null=True)
+    # machine uuid
+    uuid = models.TextField(default="", max_length=64)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self, full=True):
         r_xml = E.device(
