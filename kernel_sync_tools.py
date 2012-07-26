@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007,2008,2009 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007,2008,2009,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -26,54 +26,24 @@ import sys
 import os
 import time
 import threading
-import MySQLdb
-import configfile
 import commands
 import stat
 import process_tools
 import logging_tools
-import mysql_tools
 import pprint
 import server_command
 import gzip
 import hashlib
-import threading_tools
-import net_tools
-import config_tools
+import tempfile
+from init.cluster.backbone.models import kernel, kernel_build, kernel_log, device
+from django.db.models import Q
 
 KNOWN_INITRD_FLAVOURS = ["lo", "cpio", "cramfs"]
 
-KNOWN_KERNEL_SYNC_COMMANDS = ["check_kernel_dir",
-                              "sync_kernels",
-                              "kernel_sync_data"]
-
-class srv_con_obj(net_tools.buffer_object):
-    # connects to a foreign node
-    def __init__(self, t_queue, dst_ip, add_dict):
-        self.__target_queue = t_queue
-        self.__dst_ip = dst_ip
-        self.__add_dict = add_dict
-        net_tools.buffer_object.__init__(self)
-    def __del__(self):
-        pass
-    def setup_done(self):
-        self.add_to_out_buffer(net_tools.add_proto_1_header(str(self.__add_dict["send_com"]), True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
-        if p1_ok:
-            self.__target_queue.put(("srv_ok", (self.__add_dict, p1_data)))
-            self.delete()
-    def report_problem(self, flag, what):
-        self.__target_queue.put(("srv_error", (self.__add_dict, "%s (code %d)" % (what, flag))))
-        #self.__stc.set_host_error(self.__dst_ip, "%s : %s" % (net_tools.net_flag_to_str(flag), what))
-        self.delete()
+KNOWN_KERNEL_SYNC_COMMANDS = [
+    "check_kernel_dir",
+    "sync_kernels",
+    "kernel_sync_data"]
 
 class kernel_helper(object):
     # filenames to sync
@@ -93,7 +63,10 @@ class kernel_helper(object):
         self.__db_idx = 0
         self.__local_master_server = kwargs.get("master_server", None)
         self.name = name
-        self.__db_kernel = kwargs.get("kernel_struct", None)
+        try:
+            self.__db_kernel = kernel.objects.get(Q(name=name))
+        except kernel.DoesNotExist:
+            self.__db_kernel = None
         self.name = name
         self.root_dir = root_dir
         self.__config = config
@@ -136,6 +109,11 @@ class kernel_helper(object):
         #    raise IOError, "kernel_dir %s has no initrd*.gz" % (self.path)
         # init db-Fields
         self.__checks = []
+        self.__values = {
+            "name"         : self.name,
+            "path"         : self.path,
+            "initrd_built" : None,
+            "module_list"  : ""}
         #self.__db_kernel = {"name"          : self.name,
         #                    "target_dir"    : self.path,
         #                    "initrd_built"  : None,
@@ -181,14 +159,17 @@ class kernel_helper(object):
             if os.path.isfile("%s/%s" % (self.path, f_name)):
                 sync_dict[f_name] = file("%s/%s" % (self.path, f_name), "r").read()
         return sync_dict
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, **args):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, **kwargs):
         self.__log_func("[kernel %s] %s" % (self.name, what), log_level)
-        if args.get("db_write", False) and self.__db_idx and self.__local_master_server:
-            self.__dc.execute("INSERT INTO kernel_log SET kernel=%s, device=%s, log_level=%s, log_str=%s, syncer_role=%s", (self.__db_idx,
-                                                                                                                            self.__local_master_server,
-                                                                                                                            log_level,
-                                                                                                                            what,
-                                                                                                                            self.__config["SYNCER_ROLE"]))
+        if kwargs.get("db_write", False) and self.__db_idx and self.__local_master_server:
+            new_kl = kernel_log()
+            new_kl.save()
+            self.__dc.execute("INSERT INTO kernel_log SET kernel=%s, device=%s, log_level=%s, log_str=%s, syncer_role=%s", (
+                self.__db_idx,
+                self.__local_master_server,
+                log_level,
+                what,
+                self.__config["SYNCER_ROLE"]))
     def __getitem__(self, key):
         return self.__option_dict[key]
     def check_md5_sums(self):
@@ -270,7 +251,7 @@ class kernel_helper(object):
                     else:
                         self.check_md5_sums()
     def _update_kernel(self, **kwargs):
-        print "X", kwargs
+        #print "X", kwargs
         if self.__db_kernel:
             if self.__db_kernel.master_server == self.__local_master_server.pk:
                 self.__dc.execute("UPDATE kernel SET %s WHERE kernel_idx=%d" % (set_str,
@@ -288,9 +269,9 @@ class kernel_helper(object):
                 db_name = "stage1_%s_present" % (initrd_flavour)
             present_flag = 1 if os.path.isfile(self.__initrd_paths[initrd_flavour]) else 0
             present_dict[initrd_flavour] = True if present_flag else False
-            self.__db_kernel[db_name] = present_flag
+            self.__values[db_name] = present_flag
             self._update_kernel(**{db_name : present_flag})
-        if self.__db_kernel["initrd_built"] == None:
+        if self.__values["initrd_built"] == None:
             present_keys = sorted([key for key in ["cpio", "cramfs", "lo"] if present_dict.get(key, False)])
             if present_keys:
                 self.log("%s for checking initrd: %s" % (logging_tools.get_plural("key", len(present_keys)),
@@ -299,10 +280,11 @@ class kernel_helper(object):
                 self.__checks.append("initrd")
                 initrd_built = os.stat(self.__initrd_paths[present_keys[0]])[stat.ST_MTIME]
                 #initrd_built = time.localtime(initrd_built)
-                self._update_kernel(initrd_built=initrd_build)
+                self._update_kernel(initrd_built=initrd_built)
                 # temporary file and directory
-                tfile_name = "%s/.initrd_check" % (self.__config["TMP_DIR"])
-                tdir_name  = "%s/.initrd_mdir" % (self.__config["TMP_DIR"])
+                tmp_dir = tempfile.mkdtemp()
+                tfile_name = "%s/.initrd_check" % (tmp_dir)
+                tdir_name  = "%s/.initrd_mdir" % (tmp_dir)
                 if not os.path.isdir(tdir_name):
                     os.mkdir(tdir_name)
                 checked = False
@@ -359,11 +341,11 @@ class kernel_helper(object):
                         else:
                             self.log("found no modules")
                         if self.__db_idx:
-                            if mod_list != self.__db_kernel["module_list"]:
+                            if mod_list != self.__values["module_list"]:
                                 self._update_kernel(module_list=mod_list)
-##                        else:
-##                            self.__db_kernel["module_list"] = mod_list
-##                            self.__db_kernel["target_module_list"] = mod_list
+                        else:
+                            self.__values["module_list"] = mod_list
+                            self.__values["target_module_list"] = mod_list
                     if do_umount:
                         c_stat, c_out = commands.getstatusoutput(um_com)
                         if c_stat:
@@ -379,6 +361,7 @@ class kernel_helper(object):
                     os.rmdir(tdir_name)
                 if os.path.isfile(tfile_name):
                     os.unlink(tfile_name)
+                os.rmdir(tmp_dir)
             else:
                 self.log("not initrd-file found",
                          logging_tools.LOG_LEVEL_WARN)
@@ -432,14 +415,14 @@ class kernel_helper(object):
                     self.__option_dict["kernel_is_local"] = (build_mach == self.__config["SERVER_SHORT_NAME"])
         if config_name:
             config_name = "/usr/src/configs/.config_%s" % (config_name)
-##        self.__db_kernel["kernel_version"] = kernel_version
-##        self.__db_kernel["version"] = k_ver
-##        self.__db_kernel["release"] = k_rel
-##        self.__db_kernel["config_name"] = config_name
+        self.__values["kernel_version"] = kernel_version
+        self.__values["version"] = k_ver
+        self.__values["release"] = k_rel
+        self.__values["config_name"] = config_name
         return build_mach
     def check_bzimage_file(self):
         self.__checks.append("bzImage")
-        major, minor, patchlevel = [""] * 3
+        major, minor, patchlevel = ("", "", "")
         build_mach = ""
         cstat, out = commands.getstatusoutput("file %s" % (self.__bz_path))
         if cstat:
@@ -448,9 +431,13 @@ class kernel_helper(object):
                      db_write=True)
         else:
             try:
-                for line in [x.strip().lower() for x in out.split(",")]:
+                for line in [part.strip().lower() for part in out.split(",")]:
                     if line.startswith("version"):
                         vers_str = line.split()[1]
+                        if vers_str.count("-"):
+                            vers_str, rel_str = vers_str.split("-", 1)
+                        else:
+                            rel_str = ""
                         vers_parts = vers_str.split(".")
                         major, minor = (vers_parts.pop(0), vers_parts.pop(0))
                         patchlevel = ".".join(vers_parts)
@@ -459,9 +446,9 @@ class kernel_helper(object):
             except:
                 # FIXME
                 pass
-##        self.__db_kernel["major"] = major
-##        self.__db_kernel["minor"] = minor
-##        self.__db_kernel["patchlevel"] = patchlevel
+        self.__values["major"] = major
+        self.__values["minor"] = minor
+        self.__values["patchlevel"] = patchlevel
         return build_mach
     def check_kernel_dir(self):
         # if not in database read values from disk
@@ -480,14 +467,15 @@ class kernel_helper(object):
             build_mach = self.__config["SERVER_SHORT_NAME"]
         else:
             build_mach = ""
-        build_mach_idx = 0
         if build_mach:
-            if build_mach:
-                self.__dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (build_mach))
-                if self.__dc.rowcount:
-                    build_mach_idx = self.__dc.fetchone()["device_idx"]
-        #self.__db_kernel["build_machine"] = build_mach
-        #self.__db_kernel["device"] = build_mach_idx
+            try:
+                build_dev = device.objects.get(Q(name=build_mach))
+            except device.DoesNotExist:
+                build_dev = None
+        else:
+            build_dev = None
+        self.__values["build_machine"] = build_mach
+        self.__values["device"]        = build_dev
     def check_xen(self):
         xen_host_kernel = True if os.path.isfile(self.__xen_path) else False
         xen_guest_kernel = False
@@ -529,40 +517,46 @@ class kernel_helper(object):
                                                                                                                            self.__config["SYNCER_ROLE"]))
     def insert_into_database(self):
         self.__checks.append("SQL insert")
-        k_keys = self.__db_kernel.keys()
-        sql_ks, sql_tuple = (", ".join([key == "release" and "`%s`=%%s" % (key) or "%s=%%s" % (key) for key in k_keys]),
-                             tuple([self.__db_kernel[key] for key in k_keys]))
-        self.__dc.execute("INSERT INTO kernel SET %s" % (sql_ks), sql_tuple)
-        self.__db_idx = self.__dc.insert_id()
-        self.log("inserted new kernel at idx %d" % (self.__db_idx),
-                 db_write=True)
-        kb_keys = ["version",
-                   "release",
-                   "build_machine",
-                   "device"]
-        sql_kbs, sql_tuple = (", ".join([key == "release" and "`%s`=%%s" % (key) or "%s=%%s" % (key) for key in kb_keys] + ["kernel=%s"]),
-                              tuple([self.__db_kernel[key] for key in kb_keys] + [self.__db_idx]))
-        self.__dc.execute("INSERT INTO kernel_build SET %s" % (sql_kbs), sql_tuple)
-        self.log("inserted kernel_build at idx %d" % (self.__dc.insert_id()))
+        if not self.__db_kernel:
+            new_k = kernel()
+            for key, value in self.__values.iteritems():
+                setattr(new_k, key, value)
+            new_k.save()
+            self.__db_kernel = new_k
+            self.log("inserted new kernel at idx %d" % (self.__db_kernel.pk),
+                     db_write=True)
+            new_kb = kernel_build(
+                kernel=new_k,
+                version=self.__values["version"],
+                release=self.__values["release"],
+                build_machine=self.__values["build_machine"],
+                device=self.__values["device"])
+            new_kb.save()
+            self.log("inserted kernel_build at idx %d" % (new_kb.pk))
         self.__option_dict["database"] = True
     def check_for_db_insert(self, ext_opt_dict):
         ins = False
         if not self.__option_dict["database"]:
             # check for insert_all or insert_list
-            if ext_opt_dict["insert_all_found"] or self.name in ext_opt_dict["kernels_to_insert"]:
-                # check for kernel locality
-                kl_ok = self.__option_dict["kernel_is_local"]
-                if not kl_ok:
-                    if self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False) or ext_opt_dict["ignore_kernel_build_machine"]:
-                        self.log("ignore kernel build_machine (global: %s, local: %s)" % (str(self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False)),
-                                                                                          str(ext_opt_dict["ignore_kernel_build_machine"])))
-                        kl_ok = True
-                if not kl_ok:
-                    # FIXME
-                    self.log("kernel is not local (%s)" % ('self.__option_dict["build_machine"]'),
-                             logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    ins = True
+            if self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False) or ext_opt_dict["ignore_kernel_build_machine"]:
+                self.log("ignore kernel build_machine (global: %s, local: %s)" % (str(self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False)),
+                                                                                  str(ext_opt_dict["ignore_kernel_build_machine"])))
+            ins = True
+            # old code, check locality
+##            if ext_opt_dict["insert_all_found"] or self.name in ext_opt_dict["kernels_to_insert"]:
+##                # check for kernel locality
+##                kl_ok = self.__option_dict["kernel_is_local"]
+##                if not kl_ok:
+##                    if self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False) or ext_opt_dict["ignore_kernel_build_machine"]:
+##                        self.log("ignore kernel build_machine (global: %s, local: %s)" % (str(self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False)),
+##                                                                                          str(ext_opt_dict["ignore_kernel_build_machine"])))
+##                        kl_ok = True
+##                if not kl_ok:
+##                    # FIXME
+##                    self.log("kernel is not local (%s)" % ('self.__option_dict["build_machine"]'),
+##                             logging_tools.LOG_LEVEL_ERROR)
+##                else:
+##                    ins = True
         return ins
     def log_statistics(self):
         t_diff = time.time() - self.__start_time

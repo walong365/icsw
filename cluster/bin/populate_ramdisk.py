@@ -867,6 +867,7 @@ class arg_parser(argparse.ArgumentParser):
         self.add_argument("-F", dest="force_kernel_server", default=False, action="store_true", help="ignore if no kernel-server [%(default)s]")
         self.add_argument("--set-master-server", default=False, action="store_true", help="sets master-server of kernel to local server_idx [%(default)s]")
         self.add_argument("-M", dest="modules_file", default="", type=str, help="read list of kernel-modules from this file, if neither -m or -M is used the latest setting from the db is used")
+        #self.add_argument("--insert", dest="db_insert", default=False, action="store_true", help="insert kernel into database (if not already present) [%(default)s]")
         self.add_argument(dest="kernel_dir", default="", nargs="?")
     def parse(self):
         cur_args = self.parse_args()
@@ -879,7 +880,6 @@ class arg_parser(argparse.ArgumentParser):
 def main_normal():
     global verbose
     my_args = arg_parser().parse()
-    print my_args
     verbose = my_args.verbose
     script = sys.argv[0]
     local_script = "%s_local.py" % (script[:-3])
@@ -961,10 +961,12 @@ def main_normal():
     try:
         my_kernel = kernel.objects.get(Q(name=kernel_name))
     except kernel.DoesNotExist:
-        print "*** Cannot find a kernel at path '%s' (%s at %s) in database" % (kernel_name, target_path)
+        #if my_args.db_insert:
+        #    print "*** Cannot find a kernel at path '%s' (%s at %s) in database, inserting..." % #(my_args.kernel_dir, kernel_name, target_path)
+        print "*** Cannot find a kernel at path '%s' (%s at %s) in database" % (my_args.kernel_dir, kernel_name, target_path)
         my_kernel = None
-    else:
-        print "Found kernel at path '%s' (%s at %s) in database (kernel_idx is %d)" % (kernel_name, target_path, my_kernel.pk)
+    if my_kernel:
+        print "Found kernel at path '%s' (%s at %s) in database (kernel_idx is %d)" % (my_args.kernel_dir, kernel_name, target_path, my_kernel.pk)
         if kernel_stuff["xen_host_kernel"]:
             print " - kernel for Xen-hosts"
         if kernel_stuff["xen_guest_kernel"]:
