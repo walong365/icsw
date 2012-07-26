@@ -229,59 +229,32 @@
     </object>
     <object pk="1" model="backbone.status">
         <field type="CharField" name="status">memtest</field>
-        <field type="BooleanField" name="prod_link">0</field>
-        <field type="BooleanField" name="memory_test">1</field>
-        <field type="BooleanField" name="boot_local">0</field>
+        <field type="IntegerField" name="prod_link">0</field>
         <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
     </object>
     <object pk="2" model="backbone.status">
         <field type="CharField" name="status">boot_local</field>
-        <field type="BooleanField" name="prod_link">0</field>
-        <field type="BooleanField" name="memory_test">0</field>
-        <field type="BooleanField" name="boot_local">1</field>
-        <field type="BooleanField" name="do_install">0</field>
-        <field type="BooleanField" name="is_clean">0</field>
-        <field type="BooleanField" name="allow_boolean_modify">0</field>
+        <field type="IntegerField" name="prod_link">0</field>
         <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
     </object>
     <object pk="3" model="backbone.status">
         <field type="CharField" name="status">boot_clean</field>
-        <field type="BooleanField" name="prod_link">1</field>
-        <field type="BooleanField" name="memory_test">0</field>
-        <field type="BooleanField" name="boot_local">0</field>
-        <field type="BooleanField" name="do_install">0</field>
-        <field type="BooleanField" name="is_clean">0</field>
-        <field type="BooleanField" name="allow_boolean_modify">0</field>
+        <field type="IntegerField" name="prod_link">1</field>
         <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
     </object>
     <object pk="4" model="backbone.status">
         <field type="CharField" name="status">installation_clean</field>
-        <field type="BooleanField" name="prod_link">1</field>
-        <field type="BooleanField" name="memory_test">0</field>
-        <field type="BooleanField" name="boot_local">0</field>
-        <field type="BooleanField" name="do_install">0</field>
-        <field type="BooleanField" name="is_clean">0</field>
-        <field type="BooleanField" name="allow_boolean_modify">0</field>
+        <field type="IntegerField" name="prod_link">1</field>
         <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
     </object>
     <object pk="5" model="backbone.status">
         <field type="CharField" name="status">boot</field>
-        <field type="BooleanField" name="prod_link">1</field>
-        <field type="BooleanField" name="memory_test">0</field>
-        <field type="BooleanField" name="boot_local">0</field>
-        <field type="BooleanField" name="do_install">0</field>
-        <field type="BooleanField" name="is_clean">0</field>
-        <field type="BooleanField" name="allow_boolean_modify">0</field>
+        <field type="IntegerField" name="prod_link">1</field>
         <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
     </object>
     <object pk="6" model="backbone.status">
         <field type="CharField" name="status">installation</field>
-        <field type="BooleanField" name="prod_link">1</field>
-        <field type="BooleanField" name="memory_test">0</field>
-        <field type="BooleanField" name="boot_local">0</field>
-        <field type="BooleanField" name="do_install">0</field>
-        <field type="BooleanField" name="is_clean">0</field>
-        <field type="BooleanField" name="allow_boolean_modify">0</field>
+        <field type="IntegerField" name="prod_link">1</field>
         <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
     </object>
     <object pk="1" model="backbone.genstuff">

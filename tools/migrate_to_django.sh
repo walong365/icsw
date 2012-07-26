@@ -33,6 +33,9 @@ else
     # put old models file in place, a little hacky but working
     cp -a ${C_DIR}/backbone/models.py ${C_DIR}/backbone/models_new.py
     cp -a ${C_DIR}/backbone/models_old_csw.py ${C_DIR}/backbone/models.py
+    # put old initial_data in place
+    cp -a ${C_DIR}/backbone/fixtures/initial_data.py ${C_DIR}/backbone/fixtures/initial_data_new.py
+    cp -a ${C_DIR}/backbone/fixtures/initial_data_old_csw.py ${C_DIR}/backbone/fixtures/initial_data.py
     export NO_AUTO_ADD_APPLICATIONS=1
     ${C_DIR}/manage.py syncdb --noinput
     unset NO_AUTO_ADD_APPLICATIONS
@@ -49,6 +52,9 @@ else
     # restore new models file
     cp -a ${C_DIR}/backbone/models.py ${C_DIR}/backbone/models_old_csw.py
     cp -a ${C_DIR}/backbone/models_new.py ${C_DIR}/backbone/models.py
+    # restore fixture file
+    cp -a ${C_DIR}/backbone/fixtures/initial_data.py ${C_DIR}/backbone/fixtures/initial_data_old_csw.py
+    cp -a ${C_DIR}/backbone/fixtures/initial_data_new.py ${C_DIR}/backbone/fixtures/initial_data.py
 
     echo "database migrated. Now please call"
     echo " - ${C_DIR}/sbin/create_django_users.py    to migrate the users"

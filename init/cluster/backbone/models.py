@@ -302,7 +302,7 @@ class device(models.Model):
     partdev = models.CharField(max_length=192, blank=True)
     fixed_partdev = models.IntegerField(null=True, blank=True)
     bz2_capable = models.IntegerField(null=True, blank=True)
-    newstate = models.ForeignKey("status", null=True)
+    new_state = models.ForeignKey("status", null=True, db_column="newstate_id")
     rsync = models.BooleanField()
     rsync_compressed = models.BooleanField()
     prod_link = models.ForeignKey("network", db_column="prod_link", null=True)
@@ -315,7 +315,7 @@ class device(models.Model):
     dhcp_write = models.IntegerField(null=True, blank=True)
     dhcp_written = models.IntegerField(null=True, blank=True)
     dhcp_error = models.CharField(max_length=765, blank=True)
-    propagation_level = models.IntegerField(null=True, blank=True)
+    propagation_level = models.IntegerField(default=0, blank=True)
     last_install = models.CharField(max_length=192, blank=True)
     last_boot = models.CharField(max_length=192, blank=True)
     last_kernel = models.CharField(max_length=192, blank=True)
@@ -326,7 +326,7 @@ class device(models.Model):
     nagios_checks = models.BooleanField(default=True)
     show_in_bootcontrol = models.BooleanField()
     # not so clever here, better in extra table, FIXME
-    cpu_info = models.TextField(blank=True, null=True)
+    #cpu_info = models.TextField(blank=True, null=True)
     # machine uuid
     uuid = models.TextField(default="", max_length=64)
     date = models.DateTimeField(auto_now_add=True)
@@ -731,6 +731,8 @@ class kernel(models.Model):
     stage1_cramfs_present = models.BooleanField()
     stage2_present = models.BooleanField()
     date = models.DateTimeField(auto_now_add=True)
+    def __unicode__(self):
+        return self.name
     class Meta:
         db_table = u'kernel'
 
@@ -1698,8 +1700,23 @@ class snmp_mib(models.Model):
 class status(models.Model):
     idx = models.AutoField(db_column="status_idx", primary_key=True)
     status = models.CharField(unique=True, max_length=255)
-    prod_link = models.BooleanField()
+    prod_link = models.BooleanField(default=True)
+    memory_test = models.BooleanField(default=False)
+    boot_local = models.BooleanField(default=False)
+    do_install = models.BooleanField(default=False)
+    is_clean = models.BooleanField(default=False)
+    # allow mother to set bools according to status
+    allow_boolean_modify = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+    def __unicode__(self):
+        return u"%s (%s)%s" % (self.status,
+                             ",".join([short for short, attr_name in [
+                                 ("link", "prod_link"),
+                                 ("mem", "memory_test"),
+                                 ("loc", "boot_local"),
+                                 ("ins", "do_install"),
+                                 ("clean", "is_clean")] if getattr(self, attr_name)]),
+                             "(*)" if self.allow_boolean_modify else "")
     class Meta:
         db_table = u'status'
 
