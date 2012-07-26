@@ -830,25 +830,29 @@ class process_obj(multiprocessing.Process):
         s_time = time.time()
         if not kwargs.get("instant", False):
             s_time = s_time + timeout
-        self.__timer_list.append((timeout, s_time, cb_func))
-        self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+        self.__timer_list.append((timeout, s_time, cb_func, kwargs.get("oneshot", False)))
+        self.__next_timeout = min([last_to for cur_to, last_to, cb_func, is_oneshot in self.__timer_list])
+        if not self.loop_timer:
+            self.loop_timer = 1
+            self.log("set loop_timer to %d" % (self.loop_timer))
     def unregister_timer(self, ut_cb_func):
         new_tl = []
-        for cur_to, t_time, cb_func in self.__timer_list:
+        for cur_to, t_time, cb_func, is_oneshot in self.__timer_list:
             if cb_func != ut_cb_func:
-                new_tl.append((cur_to, t_time, cb_func))
+                new_tl.append((cur_to, t_time, cb_func, is_oneshot))
         self.__timer_list = new_tl
     def _handle_timer(self, cur_time):
         new_tl, t_funcs = ([], [])
-        for cur_to, t_time, cb_func in self.__timer_list:
+        for cur_to, t_time, cb_func, is_oneshot in self.__timer_list:
             if t_time <= cur_time:
                 t_funcs.append(cb_func)
-                new_tl.append((cur_to, t_time + cur_to, cb_func))
+                if not is_oneshot:
+                    new_tl.append((cur_to, t_time + cur_to, cb_func, is_oneshot))
             else:
-                new_tl.append((cur_to, t_time, cb_func))
+                new_tl.append((cur_to, t_time, cb_func, is_oneshot))
         self.__timer_list = new_tl
         if self.__timer_list:
-            self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+            self.__next_timeout = min([last_to for cur_to, last_to, cb_func, is_oneshot in self.__timer_list])
         else:
             self.__next_timeout = None
         for t_func in t_funcs:
@@ -957,11 +961,11 @@ class process_obj(multiprocessing.Process):
     def any_message_received(self):
         pass
     def _handle_message(self, cur_mes):
-        src_process = cur_mes.pop(0)
-        src_pid = cur_mes.pop(0)
-        mes_type = cur_mes.pop(0)
+        src_process = cur_mes["name"]
+        src_pid = cur_mes["pid"]
+        mes_type = cur_mes["type"]
         if mes_type in self.__func_table:
-            self.__func_table[mes_type](*cur_mes, src_pid=src_pid, src_process=src_process)
+            self.__func_table[mes_type](*cur_mes["args"], src_pid=src_pid, src_process=src_process, **cur_mes["kwargs"])
             self.any_message_received()
         else:
             self.log("unknown message type '%s' from %s (%d)" % (
@@ -1238,15 +1242,25 @@ class process_pool(object):
     def send_to_process(self, t_process, m_type, *args, **kwargs):
         """ send message to target_process, type is m_type """
         if t_process not in self.__sockets:
-            self.__socket_buffer.setdefault(t_process, []).append((m_type, list(args)))
+            self.__socket_buffer.setdefault(t_process, []).append((m_type, list(args), dict(kwargs)))
         else:
             if t_process in self.__socket_buffer:
                 self._flush_process_buffers(t_process)
-            self.__sockets[t_process].send_pyobj([self.name, self.pid, m_type] + list(args))
+            self.__sockets[t_process].send_pyobj({
+                "name"   : self.name,
+                "pid"    : self.pid,
+                "type"   : m_type,
+                "args"   : list(args),
+                "kwargs" : dict(kwargs)})
     def _flush_process_buffers(self, t_process):
         if t_process in self.__socket_buffer:
-            for b_m_type, b_args in self.__socket_buffer[t_process]:
-                self.__sockets[t_process].send_pyobj([self.name, self.pid, b_m_type] + list(b_args))
+            for b_m_type, b_args, b_kwargs in self.__socket_buffer[t_process]:
+                self.__sockets[t_process].send_pyobj({
+                "name"   : self.name,
+                "pid"    : self.pid,
+                "type"   : b_m_type,
+                "args"   : list(b_args),
+                "kwargs" : dict(b_kwargs)})
             del self.__socket_buffer[t_process]
     #def get_thread_names(self):
     #    return self.__processes.keys()

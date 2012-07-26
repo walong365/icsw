@@ -106,6 +106,7 @@ class build_package(object):
                          "BuildRoot: %{_tmppath}/%{name}-%{version}-build",
                          "Packager: %s" % (self["packager"]),
                          "%define _binary_payload w9.bzdio",
+                         "%%define _topdir %s" % (self.rpm_base_dir),
                          "%description",
                          "%s" % (self["description"]),
                          "%prep",

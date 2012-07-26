@@ -37,7 +37,8 @@ def get_uuid():
     else:
         write_uuid = True
     if write_uuid:
-        the_uuid = uuid.uuid1()
+        # changed from uuid1 to uuid4 by ALN, 20120726
+        the_uuid = uuid.uuid4()
         uuid_dir = os.path.dirname(UUID_NAME)
         if not os.path.isdir(uuid_dir):
             try:
@@ -54,4 +55,4 @@ def get_uuid():
 
 if __name__ == "__main__":
     print get_uuid()
-
+    
