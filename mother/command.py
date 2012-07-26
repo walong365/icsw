@@ -28,8 +28,65 @@ import logging_tools
 from mother.config import global_config
 import config_tools
 import commands
+import time
+import subprocess
 from django.db import connection
 
+class simple_command(object):
+    sc_idx = 0
+    com_list = []
+    def __init__(self, process, com_str, **kwargs):
+        self.process = process
+        simple_command.sc_idx += 1
+        self.idx = simple_command.sc_idx
+        self.com_str = com_str
+        self.delay_time = kwargs["delay_time"]
+        self.start_time, self.popen = (None, None)
+        self.max_run_time = kwargs.get("max_run_time", 30)
+        self.log("init command '%s', delay is %s" % (self.com_str,
+                                                     logging_tools.get_plural("second", self.delay_time)))
+        self.process.register_timer(self.call, self.delay_time, oneshot=True)
+        simple_command.com_list.append(self)
+    @staticmethod
+    def check():
+        cur_time = time.time()
+        new_list = []
+        for com in simple_command.com_list:
+            keep = True
+            if com.start_time:
+                if com.finished():
+                    com.done()
+                    keep = False
+                elif abs(cur_time - com.start_time) > com.max_run_time:
+                    com.log("maximum runtime exceeded, killing", logging_tools.LOG_LEVEL_ERROR)
+                    keep = False
+                    com.terminate()
+            if keep:
+                new_list.append(com)
+        simple_command.com_list = new_list
+    @staticmethod
+    def idle():
+        return True if not simple_command.com_list else False
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.process.log("[sc %d] %s" % (self.idx, what), log_level)
+    def terminate(self):
+        if self.popen:
+            del self.popen
+    def finished(self):
+        self.result = self.popen.poll()
+        return self.result != None
+    def read(self):
+        if self.popen:
+            return self.popen.stdout.read()
+        else:
+            return None
+    def done(self):
+        self.end_time = time.time()
+        self.process.sc_finished(self)
+    def call(self):
+        self.start_time = time.time()
+        self.popen = subprocess.Popen(self.com_str, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        
 class external_command_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
@@ -47,10 +104,16 @@ class external_command_process(threading_tools.process_obj):
         else:
             self.__kernel_ip = None
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
+        self.register_func("delay_command", self._delay_command)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
         self.__log_template.close()
+    def _delay_command(self, *args, **kwargs):
+        print simple_command.idle()
+        if simple_command.idle():
+            self.register_timer(self._check_commands, 1)
+        new_sc = simple_command(self, args[0], delay_time=kwargs.get("delay_time", 0))
     def _server_com(self, s_com):
         dst_call = {"alter_macadr"  : self._adw_macadr,
                     "delete_macadr" : self._adw_macadr,
@@ -62,6 +125,13 @@ class external_command_process(threading_tools.process_obj):
             self.log("Unknown server_message_command: %s" % (s_com.get_command()), logging_tools.LOG_LEVEL_ERROR)
         if s_com.get_option_dict().has_key("SIGNAL_MAIN_THREAD"):
             self.send_pool_message(s_com.get_option_dict()["SIGNAL_MAIN_THREAD"])
+    def _check_commands(self):
+        simple_command.check()
+        if simple_command.idle():
+            self.unregister_timer(self._check_commands)
+    def sc_finished(self, sc_com):
+        self.log("simple command done")
+        print sc_com.read()
     def _syslog_line(self, com_name, s_com):
         dc = self.__db_con.get_connection(SQL_ACCESS)
         server_opts = s_com.get_option_dict()

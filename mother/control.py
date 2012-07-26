@@ -32,6 +32,7 @@ import os
 import config_tools
 import icmp_twisted
 import copy
+import uuid
 from django.db import connection
 from kernel_sync_tools import kernel_helper
 from twisted.internet import reactor
@@ -141,6 +142,11 @@ class host(machine):
         # check network settings
         self.check_network_settings()
         # save changes done during init
+        self.set_recv_req_state()
+        if not self.device.uuid:
+            self.device.uuid = str(uuid.uuid4())
+            self.log("setting uuid to %s" % (self.device.uuid))
+        machine.add_lut_key(self, self.device.uuid)
         self.device.save()
     # machine related
     def set_maint_ip(self, ip=None):
@@ -318,6 +324,8 @@ class host(machine):
         return "01-%s" % (self.maint_ip.netdevice.macaddr.lower().replace(":", "-"))
     def get_ip_mac_file_name(self):
         return "%s/%s" % (self.get_pxelinux_dir(), self.get_ip_mac_file_base_name())
+    def set_recv_req_state(self, recv_state = "error not set", req_state="error not set"):
+        self.device.recvstate, self.device.reqstate = (recv_state, req_state)
         
 class hm_icmp_protocol(icmp_twisted.icmp_protocol):
     def __init__(self, tw_process, log_template):
@@ -456,12 +464,21 @@ class node_control_process(threading_tools.process_obj):
         # close database connection
         connection.close()
         self.sc = config_tools.server_check(server_type="mother")
+        if "b" in self.sc.identifier_ip_lut:
+            self.__kernel_ip = self.sc.identifier_ip_lut["b"][0]
+            self.log("IP address in boot-net is %s" % (self.__kernel_ip))
+        else:
+            self.__kernel_ip = None
+            self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
         machine.setup(self)
         machine.sync()
-        #self.register_func("srv_command", self._srv_command)
+        self.register_func("refresh", self._refresh)
         #self.kernel_dev = config_tools.server_check(server_type="kernel_server")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+    def _refresh(self, *args, **kwargs):
+        # use kwargs to specify certain devices
+        print args, kwargs
     def loop_post(self):
         machine.shutdown()
         self.__log_template.close()

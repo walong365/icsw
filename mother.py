@@ -136,9 +136,7 @@ class machine(object):
         #self.set_use_count()
         #self.check_network_settings(dc)
         self.set_recv_req_state()
-        self.set_last_reset_time()
-    def get_db_con(self):
-        return self.__ad_struct.get_db_con()
+##        self.set_last_reset_time()
     def get_community_strings(self, dc):
         dc.execute("SELECT s.* FROM snmp_class s, device d WHERE s.snmp_class_idx=d.snmp_class AND d.device_idx=%d" % (self.device_idx))
         if dc.rowcount:
@@ -151,12 +149,12 @@ class machine(object):
             db_rec["write_community"] = "private"
         return {"read_community"  : db_rec["read_community"],
                 "write_community" : db_rec["write_community"]}
-    def set_reachable_flag(self, reachable):
-        self.__reachable = reachable
-    def get_reachable_flag(self):
-        return self.__reachable
-    def get_name(self):
-        return self.name
+##    def set_reachable_flag(self, reachable):
+##        self.__reachable = reachable
+##    def get_reachable_flag(self):
+##        return self.__reachable
+##    def get_name(self):
+##        return self.name
 ##    def set_use_count(self, val=0):
 ##        self.use_count = val
 ##        if self.__loc_config["VERBOSE"]:
@@ -224,8 +222,8 @@ class machine(object):
 ##        self.hwi_delay_counter += 1
 ##    def get_hwi_delay_counter(self):
 ##        return self.hwi_delay_counter
-    def set_log_queue(self, log_queue):
-        self.log_queue = log_queue
+##    def set_log_queue(self, log_queue):
+##        self.log_queue = log_queue
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK, glob=0):
         if self.log_queue:
             if glob == 0 or glob == 2:
@@ -394,8 +392,6 @@ class machine(object):
         sql_queue.put(("update", ("device", "recvstate=%s WHERE name=%s", (what.strip(), self.name))))
     def get_recv_req_state(self):
         return self.recv_state, self.req_state
-    def set_recv_req_state(self, recv_state = "error not set", req_state="error not set"):
-        self.recv_state, self.req_state = (recv_state, req_state)
     def get_act_net(self):
         return self.__act_net
     def get_act_ip(self):
@@ -406,8 +402,8 @@ class machine(object):
         return self.__last_ip_ok_set
     def get_last_reset_time(self):
         return self.__last_reset_time
-    def set_last_reset_time(self):
-        self.__last_reset_time = time.time()
+##    def set_last_reset_time(self):
+##        self.__last_reset_time = time.time()
     def set_actual_ip(self, ip=None):
         self.__last_ip_set = time.time()
         if ip:
@@ -2525,42 +2521,43 @@ class control_thread(threading_tools.thread_obj):
     def _set_queue_dict(self, q_dict):
         self.__queue_dict = q_dict
     def _update(self):
-        if self.__devices_to_monitor:
-            act_time = time.time()
-            # build accurate ping_list and reboot_dict
-            ping_list, reboot_dict = ([], {})
-            rb_type_dict = {1 : "reboot (software)",
-                            2 : "reboot (hardware)"}
-            for dev_name in self.__devices_to_monitor:
-                if self.__ad_struct.has_key(dev_name):
-                    dev_struct = self.__ad_struct[dev_name]
-                    if dev_struct.get_device_mode():
-                        if abs(dev_struct.get_last_ip_set() - act_time) >= self.__glob_config["DEVICE_MONITOR_TIME"]:
-                            ping_list.append(dev_name)
-                        if dev_struct.get_last_ip_ok_set() and \
-                               abs(dev_struct.get_last_ip_ok_set() - act_time) >= self.__glob_config["DEVICE_REBOOT_TIME"] and \
-                               abs(dev_struct.get_last_reset_time() - act_time) >= self.__glob_config["DEVICE_REBOOT_TIME"]:
-                            dev_struct.set_last_reset_time()
-                            reboot_dict.setdefault(dev_struct.get_device_mode(), []).append(dev_name)
-                            dev_struct.device_log_entry(0,
-                                                        "w",
-                                                        "doing a %s (not reachable for %d seconds)" % (rb_type_dict[dev_struct.get_device_mode()],
-                                                                                                       abs(dev_struct.get_last_ip_ok_set() - act_time)),
-                                                        self.__queue_dict["sql_queue"],
-                                                        self.__loc_config["LOG_SOURCE_IDX"])
-            if ping_list:
-                ping_list.sort()
-                self.log("<devicemonitor> Sending ping to %s: %s" % (logging_tools.get_plural("device", len(ping_list)),
-                                                                     logging_tools.compress_list(ping_list)))
-                self.get_thread_queue().put(("server_com", server_command.server_command(command="ping", nodes=ping_list)))
-            for rb_type, rb_list in reboot_dict.iteritems():
-                self.log("<devicemonitor> Doing a %s on %s: %s" % (rb_type_dict[rb_type],
-                                                                   logging_tools.get_plural("device", len(rb_list)),
-                                                                   logging_tools.compress_list(rb_list)))
-                if rb_type == 1:
-                    self.get_thread_queue().put(("server_com", server_command.server_command(command="reboot", nodes=rb_list)))
-                else:
-                    self.get_thread_queue().put(("server_com", server_command.server_command(command="apc_dev", nodes=rb_list, node_commands=dict([(k, "reboot") for k in rb_list]))))
+        pass
+##        if self.__devices_to_monitor:
+##            act_time = time.time()
+##            # build accurate ping_list and reboot_dict
+##            ping_list, reboot_dict = ([], {})
+##            rb_type_dict = {1 : "reboot (software)",
+##                            2 : "reboot (hardware)"}
+##            for dev_name in self.__devices_to_monitor:
+##                if self.__ad_struct.has_key(dev_name):
+##                    dev_struct = self.__ad_struct[dev_name]
+##                    if dev_struct.get_device_mode():
+##                        if abs(dev_struct.get_last_ip_set() - act_time) >= self.__glob_config["DEVICE_MONITOR_TIME"]:
+##                            ping_list.append(dev_name)
+##                        if dev_struct.get_last_ip_ok_set() and \
+##                               abs(dev_struct.get_last_ip_ok_set() - act_time) >= self.__glob_config["DEVICE_REBOOT_TIME"] and \
+##                               abs(dev_struct.get_last_reset_time() - act_time) >= self.__glob_config["DEVICE_REBOOT_TIME"]:
+##                            dev_struct.set_last_reset_time()
+##                            reboot_dict.setdefault(dev_struct.get_device_mode(), []).append(dev_name)
+##                            dev_struct.device_log_entry(0,
+##                                                        "w",
+##                                                        "doing a %s (not reachable for %d seconds)" % (rb_type_dict[dev_struct.get_device_mode()],
+##                                                                                                       abs(dev_struct.get_last_ip_ok_set() - act_time)),
+##                                                        self.__queue_dict["sql_queue"],
+##                                                        self.__loc_config["LOG_SOURCE_IDX"])
+##            if ping_list:
+##                ping_list.sort()
+##                self.log("<devicemonitor> Sending ping to %s: %s" % (logging_tools.get_plural("device", len(ping_list)),
+##                                                                     logging_tools.compress_list(ping_list)))
+##                self.get_thread_queue().put(("server_com", server_command.server_command(command="ping", nodes=ping_list)))
+##            for rb_type, rb_list in reboot_dict.iteritems():
+##                self.log("<devicemonitor> Doing a %s on %s: %s" % (rb_type_dict[rb_type],
+##                                                                   logging_tools.get_plural("device", len(rb_list)),
+##                                                                   logging_tools.compress_list(rb_list)))
+##                if rb_type == 1:
+##                    self.get_thread_queue().put(("server_com", server_command.server_command(command="reboot", nodes=rb_list)))
+##                else:
+##                    self.get_thread_queue().put(("server_com", server_command.server_command(command="apc_dev", nodes=rb_list, node_commands=dict([(k, "reboot") for k in rb_list]))))
     def _server_com(self, srv_com):
         command = srv_com.get_command()
         # check for delay
@@ -3078,27 +3075,27 @@ class configure_thread(threading_tools.thread_obj):
         self.register_func("refresh_tk", self._refresh_target_kernel)
         self.register_func("refresh_all", self._refresh_all)
         self.register_func("readdots", self._read_dot_files)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (self.name, what, lev)))
-    def _set_ad_struct(self, ad_struct):
-        self.log("got ad_struct")
-        self.__ad_struct = ad_struct
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        self.__dc = self.__db_con.get_connection(SQL_ACCESS)
-        self.__dc.execute("SELECT i.ip,nw.netmask FROM netip i, netdevice n, network nw, device d, device_config dc, new_config c, network_type nt WHERE " + \
-                          "dc.device=d.device_idx AND dc.new_config=c.new_config_idx AND c.name='mother_server' AND i.netdevice=n.netdevice_idx AND nw.network_idx=i.network AND " + \
-                          "nt.identifier='b' AND nt.network_type_idx=nw.network_type AND n.device=d.device_idx AND d.device_idx=%d" % (self.__loc_config["MOTHER_SERVER_IDX"]))
-        self.__server_ip = self.__dc.fetchone()
-        if self.__server_ip:
-            self.log("IP-Address in bootnet is %s (netmask %s)" % (self.__server_ip["ip"], self.__server_ip["netmask"]))
-        else:
-            self.log("found no IP-Adress in bootnet", logging_tools.LOG_LEVEL_WARN)
-    def loop_end(self):
-        self.__dc.release()
-    def _set_queue_dict(self, q_dict):
-        self.__dhcp_queue = q_dict["dhcp_queue"]
-        self.__sql_queue  = q_dict["sql_queue"]
+##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+##        self.__log_queue.put(("log", (self.name, what, lev)))
+##    def _set_ad_struct(self, ad_struct):
+##        self.log("got ad_struct")
+##        self.__ad_struct = ad_struct
+##    def thread_running(self):
+##        self.send_pool_message(("new_pid", (self.name, self.pid)))
+##        self.__dc = self.__db_con.get_connection(SQL_ACCESS)
+##        self.__dc.execute("SELECT i.ip,nw.netmask FROM netip i, netdevice n, network nw, device d, device_config dc, new_config c, network_type nt WHERE " + \
+##                          "dc.device=d.device_idx AND dc.new_config=c.new_config_idx AND c.name='mother_server' AND i.netdevice=n.netdevice_idx AND nw.network_idx=i.network AND " + \
+##                          "nt.identifier='b' AND nt.network_type_idx=nw.network_type AND n.device=d.device_idx AND d.device_idx=%d" % (self.__loc_config["MOTHER_SERVER_IDX"]))
+##        self.__server_ip = self.__dc.fetchone()
+##        if self.__server_ip:
+##            self.log("IP-Address in bootnet is %s (netmask %s)" % (self.__server_ip["ip"], self.__server_ip["netmask"]))
+##        else:
+##            self.log("found no IP-Adress in bootnet", logging_tools.LOG_LEVEL_WARN)
+##    def loop_end(self):
+##        self.__dc.release()
+##    def _set_queue_dict(self, q_dict):
+##        self.__dhcp_queue = q_dict["dhcp_queue"]
+##        self.__sql_queue  = q_dict["sql_queue"]
     def _refresh_all(self, (mach, int_com)):
         if mach == None:
             # refresh all machines
@@ -3283,6 +3280,10 @@ class server_process(threading_tools.process_pool):
                 "srv_command",
                 unicode(server_command.srv_command(command="check_kernel_dir", insert_all_found="1"))
             )
+            # restart hoststatus
+            self.send_to_process("command", "delay_command", "/etc/init.d/hoststatus restart", delay_time=5)
+            self.send_to_process("control", "refresh")
+            #self.__log_queue.put(("delay_request", (self.get_own_queue(), "restart_hoststatus", 5)))
         else:
             self._int_error("bind problem")
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -3412,6 +3413,7 @@ class server_process(threading_tools.process_pool):
                         new_exports[act_exp_dir] = " ".join(["%s(%s,no_root_squash,async,no_subtree_check)" % (exp_net, rws) for exp_net in exp_nets])
             if new_exports:
                 open(exp_file, "a").write("\n".join(["%-30s %s" % (x, y) for x, y in new_exports.iteritems()] + [""]))
+                # hm, dangerous, FIXME
                 at_command = "/etc/init.d/nfsserver restart"
                 at_stat, add_log_lines = process_tools.submit_at_command(at_command)
                 self.log("starting the at-command '%s' gave %d:" % (at_command, at_stat))
@@ -3596,22 +3598,22 @@ class server_thread_pool(threading_tools.thread_pool):
         self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=self.__loc_config["VERBOSE"] > 1)
         self.__icmp_obj = net_tools.icmp_bind()
         self.__ns.add_object(self.__icmp_obj)
-        self.__syslog_udb = self.__ns.add_object(net_tools.unix_domain_bind(self._new_ud_out_recv, socket=self.__glob_config["SYSLOG_UDS_NAME"], mode=0666, bind_state_call=self._bind_state_call))[0]
-        self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_command_con, port=g_config["COMPORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=120, in_buffer_size=65536))
-        self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_node_con, port=g_config["NODEPORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=60))
+##        self.__syslog_udb = self.__ns.add_object(net_tools.unix_domain_bind(self._new_ud_out_recv, socket=self.__glob_config["SYSLOG_UDS_NAME"], mode=0666, bind_state_call=self._bind_state_call))[0]
+##        self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_command_con, port=g_config["COMPORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=120, in_buffer_size=65536))
+##        self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_node_con, port=g_config["NODEPORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=60))
         # global network settings
         self._check_global_network_stuff(dc)
-        self.__ad_struct = all_devices(self.__log_queue, self.__glob_config, self.__loc_config, self.__db_con)
+##        self.__ad_struct = all_devices(self.__log_queue, self.__glob_config, self.__loc_config, self.__db_con)
         # to enable logging
-        self.__log_queue.put(("set_ad_struct", self.__ad_struct))
-        self.__ad_struct.db_sync(dc)
+##        self.__log_queue.put(("set_ad_struct", self.__ad_struct))
+##        self.__ad_struct.db_sync(dc)
         # start threads
-        self.__sql_queue       = self.add_thread(sql_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__dhcp_queue      = self.add_thread(dhcp_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__com_queue       = self.add_thread(command_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__config_queue    = self.add_thread(configure_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__control_queue   = self.add_thread(control_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        # copy stuff from glob_config to loc_config for kernel_sync_thread
+##        self.__sql_queue       = self.add_thread(sql_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
+##        self.__dhcp_queue      = self.add_thread(dhcp_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
+##        self.__com_queue       = self.add_thread(command_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
+##        self.__config_queue    = self.add_thread(configure_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
+##        self.__control_queue   = self.add_thread(control_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
+##        # copy stuff from glob_config to loc_config for kernel_sync_thread
         self.__glob_config.add_config_dict({"SERVER_SHORT_NAME" : configfile.str_c_var(self.__loc_config["SERVER_SHORT_NAME"]),
                                             "SQL_ACCESS"        : configfile.str_c_var(self.__loc_config["SQL_ACCESS"]),
                                             "SYNCER_ROLE"       : configfile.str_c_var("mother")})
@@ -3640,11 +3642,11 @@ class server_thread_pool(threading_tools.thread_pool):
 ##        self.__snmp_trap_queue.put(("set_queue_dict", self.__queue_dict))
 ##        self.__control_queue.put(("set_net_stuff", (self.__ns, self.__icmp_obj)))
 ##        self.__kernel_queue.put(("set_net_stuff", self.__ns))
-        if self.__loc_config["DAEMON"]:
-            # only restart hoststatus when in daemon-mode
-            self.__log_queue.put(("delay_request", (self.get_own_queue(), "restart_hoststatus", 5)))
-        dc.release()
-        self.__config_queue.put(("refresh_all", (None, None)))
+##        if self.__loc_config["DAEMON"]:
+##            # only restart hoststatus when in daemon-mode
+##            self.__log_queue.put(("delay_request", (self.get_own_queue(), "restart_hoststatus", 5)))
+##        dc.release()
+##        self.__config_queue.put(("refresh_all", (None, None)))
         # uuid log
         # write dhcp-address
         self.__dhcp_queue.put(("server_com", server_command.server_command(command="alter_macadr",
@@ -3667,13 +3669,13 @@ class server_thread_pool(threading_tools.thread_pool):
     def _re_insert_config(self, dc):
         self.log("re-insert config")
         configfile.write_config(dc, "mother_server", self.__glob_config)
-    def _restart_hoststatus(self):
-        if os.path.isfile("/etc/init.d/hoststatus"):
-            self.log("restart hoststatus (child)")
-            c_stat, out_f = process_tools.submit_at_command("/etc/init.d/hoststatus restart", 0)
-            self.log("restarting /etc/init.d/hoststatus gave %d:" % (c_stat))
-            for line in out_f:
-                self.log(line)
+##    def _restart_hoststatus(self):
+##        if os.path.isfile("/etc/init.d/hoststatus"):
+##            self.log("restart hoststatus (child)")
+##            c_stat, out_f = process_tools.submit_at_command("/etc/init.d/hoststatus restart", 0)
+##            self.log("restarting /etc/init.d/hoststatus gave %d:" % (c_stat))
+##            for line in out_f:
+##                self.log(line)
     def _macaddrs_written(self):
         self.log("all macaddresses refreshed from db, restarting dhcpd server")
         dhcp_init_file = "/etc/init.d/dhcpd"
