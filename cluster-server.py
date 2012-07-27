@@ -148,7 +148,7 @@ class call_params(object):
             self.opt_str, self.opt_dict = ("<no server_com>", {})
     def link_with_command(self, s_com=None):
         if self.server_com:
-            opts_found = [k for k in s_com.needed_option_keys if k in self.opt_dict.keys()]
+            opts_found = [key for key in s_com.needed_option_keys if key in self.opt_dict.keys()]
             if len(opts_found) == len(s_com.needed_option_keys):
                 self.set_option_dict_valid(1)
             else:
@@ -1050,7 +1050,7 @@ class socket_server_thread(threading_tools.thread_obj):
 # --------- connection objects ------------------------------------
 
 class server_process(threading_tools.process_pool):
-    def __init__(self, db_con):
+    def __init__(self, db_con, options):
         self.__log_cache, self.__log_template = ([], None)
         self.__db_con = db_con
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
@@ -1077,6 +1077,7 @@ class server_process(threading_tools.process_pool):
         self._load_modules()#self.__loc_config, self.log, self.__is_server)
         self._init_capabilities()
         self._init_network_sockets()
+        self.__options = options
         if self.__run_command:
             self.register_timer(self._run_command, 3600, instant=True)
         else:
@@ -1245,9 +1246,13 @@ class server_process(threading_tools.process_pool):
         self.log("direct command %s" % (global_config["COMMAND"]))
         cur_com = server_command.srv_command(command=global_config["COMMAND"])
         cur_com["command"].attrib["via_comline"] = "1"
+        for keyval in self.__options.OPTION_KEYS:
+            key, value = keyval.split(":", 1)
+            cur_com["server_key:%s" % (key)] = value
         self._process_command(cur_com)
         self["return_value"] = int(cur_com["result"].attrib["state"])
         self["exit_requested"] = True
+        # show result
         print cur_com["result"].attrib["reply"]
     def _process_command(self, srv_com):
         com_name = srv_com["command"].text
@@ -1264,6 +1269,7 @@ class server_process(threading_tools.process_pool):
             self.log("checking the config gave: %s (%s) %s" % (str(do_it),
                                                                srv_origin,
                                                                err_str))
+            #print srv_com.pretty_print()
             if do_it:
                 try:
                     found_keys = [key for key in com_obj.Meta.needed_option_keys if "server_key:%s" % (key) in srv_com]
@@ -1563,7 +1569,7 @@ def main():
     else:
         if global_config["DEBUG"]:
             print "Debugging cluster-server on %s" % (long_host_name)
-    ret_state = server_process(db_con).loop()
+    ret_state = server_process(db_con, options).loop()
     if global_config["DEBUG"]:
         show_database_calls()
     sys.exit(ret_state)
