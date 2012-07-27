@@ -184,6 +184,10 @@ class server_check(object):
         self.server_info_str = "%s '%s'-server via %s" % (self.server_origin,
                                                           self.__server_type,
                                                           s_info_str)
+    # utility funcitions
+    @property
+    def simple_ip_list(self):
+        return [cur_ip.ip for cur_ip in self.ip_list]
     def _fetch_network_info(self, **kwargs):
         # commented force_flag, FIXME
         if not self.__network_info_fetched or kwargs.get("force", False):
@@ -192,11 +196,11 @@ class server_check(object):
                 self.netdevice_ip_lut[net_dev.pk] = []
                 self.nd_lut[net_dev.pk] = net_dev
                 for net_ip in net_dev.net_ip_set.all():
-                    self.ip_list.append(net_ip.ip)
-                    self.netdevice_ip_lut[net_dev.pk].append(net_ip.ip)
+                    self.ip_list.append(net_ip)
+                    self.netdevice_ip_lut[net_dev.pk].append(net_ip)
                     self.ip_netdevice_lut[net_ip.ip] = net_dev
                     self.ip_identifier_lut[net_ip.ip] = net_ip.network.network_type.identifier
-                    self.identifier_ip_lut.setdefault(net_ip.network.network_type.identifier, []).append(net_ip.ip)
+                    self.identifier_ip_lut.setdefault(net_ip.network.network_type.identifier, []).append(net_ip)
             self.__network_info_fetched = True
     def _db_check_ip(self):
         # get local ip-addresses
@@ -221,7 +225,7 @@ class server_check(object):
         my_confs = [entry for entry in my_confs if entry[-1]]
         all_ips_dict = {}
         for db_rec in [entry for entry in my_confs if entry[-1] != u"127.0.0.1"]:
-            if db_rec[-1] not in self.ip_list:
+            if db_rec[-1] not in self.simple_ip_list:
                 all_ips_dict[db_rec[-1]] = {"device_idx" : db_rec[0],
                                             "device"     : db_rec[4],
                                             "new_config" : db_rec[1],

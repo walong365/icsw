@@ -823,9 +823,16 @@ class process_obj(multiprocessing.Process):
     def __getitem__(self, fn):
         return self.__flags[fn]
     def send_to_socket(self, t_socket, data):
-        t_socket.send_pyobj([self.name, self.pid] + data)
+        t_socket.send_pyobj({"name"   : self.name,
+                             "pid"    : self.pid,
+                             "type"   : data[0],
+                             "args"   : data[1:]})
     def send_pool_message(self, *args):
-        self.__pp_queue.send_pyobj([self.name, self.pid] + list(args))
+        self.__pp_queue.send_pyobj({
+            "name" : self.name,
+            "pid"  : self.pid,
+            "type" : list(args)[0],
+            "args" : list(args)[1:]})
     def register_timer(self, cb_func, timeout, **kwargs):
         s_time = time.time()
         if not kwargs.get("instant", False):
@@ -833,8 +840,18 @@ class process_obj(multiprocessing.Process):
         self.__timer_list.append((timeout, s_time, cb_func, kwargs.get("oneshot", False)))
         self.__next_timeout = min([last_to for cur_to, last_to, cb_func, is_oneshot in self.__timer_list])
         if not self.loop_timer:
-            self.loop_timer = 1
+            self.loop_timer = 500
             self.log("set loop_timer to %d" % (self.loop_timer))
+    def change_timer(self, ct_cb_func, timeout):
+        new_tl = []
+        for cur_to, t_time, cb_func, is_oneshot in self.__timer_list:
+            if cb_func == ct_cb_func:
+                cur_to = timeout
+                self.set_loop_timer(min(self.loop_timer, cur_to))
+                t_time = time.time() + cur_to / 1000
+            new_tl.append((cur_to / 1000, t_time, cb_func, is_oneshot))
+        self.__timer_list = new_tl
+        self.__next_timeout = min([last_to for cur_to, last_to, cb_func, is_oneshot in self.__timer_list])
     def unregister_timer(self, ut_cb_func):
         new_tl = []
         for cur_to, t_time, cb_func, is_oneshot in self.__timer_list:
@@ -857,6 +874,9 @@ class process_obj(multiprocessing.Process):
             self.__next_timeout = None
         for t_func in t_funcs:
             t_func()
+    def set_loop_timer(self, lt):
+        # loop timer in millisecons
+        self.loop_timer = lt
     def _init_sockets(self):
         if self.debug_zmq:
             self.zmq_context = debug_zmq_ctx()
@@ -965,7 +985,7 @@ class process_obj(multiprocessing.Process):
         src_pid = cur_mes["pid"]
         mes_type = cur_mes["type"]
         if mes_type in self.__func_table:
-            self.__func_table[mes_type](*cur_mes["args"], src_pid=src_pid, src_process=src_process, **cur_mes["kwargs"])
+            self.__func_table[mes_type](*cur_mes["args"], src_pid=src_pid, src_process=src_process, **cur_mes.get("kwargs", {}))
             self.any_message_received()
         else:
             self.log("unknown message type '%s' from %s (%d)" % (
@@ -1398,11 +1418,11 @@ class process_pool(object):
                 self.log("SRM: received message %s" % (mes))
     def _tp_message_received(self, zmq_socket):
         mes_parts = zmq_socket.recv_pyobj() 
-        src_process = mes_parts.pop(0)
-        src_pid = mes_parts.pop(0)
-        msg_type = mes_parts.pop(0)
+        src_process = mes_parts["name"]
+        src_pid = mes_parts["pid"]
+        msg_type = mes_parts["type"]
         if msg_type in self.__func_table:
-            self.__func_table[msg_type](src_process, src_pid, *mes_parts)
+            self.__func_table[msg_type](src_process, src_pid, *mes_parts["args"], **mes_parts.get("kwargs", {}))
         else:
             self.log("unknown msg_type '%s' from src_process %s (%d)" % (msg_type, src_process, src_pid),
                      logging_tools.LOG_LEVEL_ERROR)
