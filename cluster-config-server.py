@@ -1800,7 +1800,7 @@ class config_request(object):
         elif not self["image_info"]:
             self.set_ret_str("error no image defined")
         else:
-            maint_ip = self.__conf_dev.identifier_ip_lut["b"][0]
+            maint_ip = self.__conf_dev.identifier_ip_lut["b"][0].ip
             self.log("boot-ip is %s, config_directory is %s" % (maint_ip, self.node_dir))
             self.log("found %s: %s" % (logging_tools.get_plural("production network", len(act_network_tree.production_dict.keys())),
                                        ", ".join(act_network_tree.production_dict.keys())))
@@ -1817,7 +1817,7 @@ class config_request(object):
                 self.set_ret_str("error invalid production link %d set" % (self["prod_link"]))
             else:
                 # ips in active production net
-                ips_in_net = self.__conf_dev.identifier_ip_lut.get("p", [])
+                ips_in_net = [cur_ip.ip for cur_ip in self.__conf_dev.identifier_ip_lut.get("p", [])]
                 if ips_in_net:
                     netdevices_in_net = [self.__conf_dev.ip_netdevice_lut[ip] for ip in ips_in_net]
                     net_idxs_ok   = [idx for idx in netdevices_in_net if idx == self["bootnetdevice"]]
@@ -1839,7 +1839,7 @@ class config_request(object):
                 full_network_name = "%s.%s" % (act_prod_net["net"]["postfix"],
                                                act_prod_net["net"]["name"])
                 # get ip-address of production network
-                running_ip = [ip for ip in self.__conf_dev.identifier_ip_lut["p"] if self.__conf_dev.ip_netdevice_lut[ip] == boot_netdev_idx][0]
+                running_ip = [ip.ip for ip in self.__conf_dev.identifier_ip_lut["p"] if self.__conf_dev.ip_netdevice_lut[ip.ip] == boot_netdev_idx][0]
                 self.log("IP in production network '%s' is %s, full_network_name is '%s'" % (act_prod_net["net"]["identifier"],
                                                                                              running_ip,
                                                                                              full_network_name))
@@ -2756,7 +2756,7 @@ class build_process(threading_tools.process_obj):
                 if not act_prod_net:
                     cur_c.log("invalid production link", logging_tools.LOG_LEVEL_ERROR, state="done")
                 else:
-                    ips_in_prod = dev_sc.identifier_ip_lut["p"]
+                    ips_in_prod = [cur_ip.ip for cur_ip in dev_sc.identifier_ip_lut["p"]]
                     if ips_in_prod:
                         netdevices_in_net = [dev_sc.ip_netdevice_lut[ip] for ip in ips_in_prod]
                         if b_dev.bootnetdevice_id and b_dev.bootnetdevice:
@@ -2788,7 +2788,7 @@ class build_process(threading_tools.process_obj):
                 cur_c.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
         self.send_pool_message("client_update", cur_c.get_send_dict())
     def _generate_config_step2(self, cur_c, b_dev, act_prod_net, boot_netdev, dev_sc):
-        running_ip = [ip for ip in dev_sc.identifier_ip_lut["p"] if dev_sc.ip_netdevice_lut[ip].pk == boot_netdev.pk][0]
+        running_ip = [ip.ip for ip in dev_sc.identifier_ip_lut["p"] if dev_sc.ip_netdevice_lut[ip.ip].pk == boot_netdev.pk][0]
         full_postfix = act_prod_net.get_full_postfix()
         cur_c.log("IP in production network '%s' is %s, full network_postfix is '%s'" % (
             act_prod_net.identifier,
