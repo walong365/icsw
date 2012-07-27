@@ -950,7 +950,7 @@ def main_normal():
             logging_tools.get_plural("mother_server", len(mother_list)),
             ", ".join(["%s [%s]" % (
                 unicode(cur_entry.effective_device),
-                ", ".join(cur_entry.ip_list)) for cur_entry in mother_list]))
+                ", ".join(cur_entry.simple_ip_list)) for cur_entry in mother_list]))
     if not os.path.isdir(my_args.kernel_dir):
         print "Need a directory as argument ('%s' is not a directory)" % (my_args.kernel_dir)
         sys.exit(1)
