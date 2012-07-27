@@ -35,13 +35,15 @@ import copy
 import uuid
 import shutil
 import stat
+import re
 import ipvx_tools
 from django.db import connection
 from twisted.internet import reactor
 from twisted.python import log
-from init.cluster.backbone.models import kernel, device, hopcount
+from init.cluster.backbone.models import kernel, device, hopcount, image
 from django.db.models import Q
 import process_tools
+from mother.command_tools import simple_command
 
 class machine(object):
     # store important device-related settings
@@ -74,6 +76,10 @@ class machine(object):
         machine.g_log("init")
         machine.__lut = {}
         machine.__unique_keys = set()
+        machine.__unique_names = set()
+    @staticmethod
+    def get_all_names():
+        return sorted(machine.__unique_names)
     @staticmethod
     def shutdown():
         while machine.__lut:
@@ -122,6 +128,7 @@ class machine(object):
         else:
             new_mach = machine(new_dev)
         machine.__unique_keys.add(new_dev.pk)
+        machine.__unique_names.add(new_dev.name)
         machine.__lut[new_dev.name] = new_mach
         machine.__lut[new_dev.pk] = new_mach
     @staticmethod
@@ -132,6 +139,7 @@ class machine(object):
             del machine.__lut[mach.name]
             del machine.__lut[mach.pk]
             machine.__unique_keys.remove(mach.pk)
+            machine.__unique_names.remove(mach.name)
     @staticmethod
     def get_device(dev_spec):
         return machine.__lut.get(dev_spec, None)
@@ -237,7 +245,7 @@ class host(machine):
                 srv_dev, mach_dev = (machine.process.sc.nd_lut[_.s_netdevice_id], nd_lut[_.d_netdevice_id])
                 for cur_ip in mach_dev.net_ip_set.all():
                     cur_id = cur_ip.network.network_type.identifier
-                    srv_ips = list(set(machine.process.sc.identifier_ip_lut.get(cur_id, [])) & set(machine.process.sc.netdevice_ip_lut[srv_dev.pk]))
+                    srv_ips = list(set([srv_ip.ip for srv_ip in machine.process.sc.identifier_ip_lut.get(cur_id, [])]) & set([x2.ip for x2 in machine.process.sc.netdevice_ip_lut[srv_dev.pk]]))
                     if srv_ips and not cur_ip.ip in server_ip_dict:
                         server_ip_dict[cur_ip.ip] = {"identifier" : cur_id,
                                                      "ip"         : srv_ips[0] if srv_ips else None}
@@ -594,6 +602,178 @@ class host(machine):
                                       self.__loc_config["NODE_SOURCE_IDX"])
         else:
             self.log("Error: etherboot-dir not defined")
+    def read_dot_files(self):
+        if not self.is_node:
+            self.log("not node, checking network settings", logging_tools.LOG_LEVEL_WARN)
+            self.refresh_device()
+            self.check_network_settings()
+        if self.is_node:
+            c_dir = self.get_config_dir()
+            self.log("starting readdots in dir '%s'" % (c_dir))
+            hlist = [(".version"  , "imageversion"       , None             ),
+                     (".imagename", "actimage"           , None             ),
+                     (".imagename", "act_image"          , "image"          ),
+                     (".kernel"   , "actkernel"          , None             ),
+                     (".kernel"   , "act_kernel"         , "kernel"         ),
+                     (".kversion" , "kernelversion"      , None             ),
+                     (".parttype" , "act_partition_table", "partition_table"),
+                     (None        , "act_kernel_build"   , None             )]
+            
+            s_list = []
+            num_tried, num_ok, num_found = (0, 0, 0)
+            for file_name, dbentry, obj_name in hlist:
+                if file_name:
+                    full_name = os.path.join(c_dir, file_name)
+                    num_tried += 1
+                    if os.path.exists(full_name):
+                        num_found += 1
+                        try:
+                            line = open(full_name, "r").readline().strip()
+                        except:
+                            pass
+                        else:
+                            num_ok += 1
+                            if obj_name:
+                                set_obj = gobals()[obj_name].objects.get(Q(name=line))
+                                print set_obj
+    ##                            self.__dc.execute("SELECT x.%s_idx FROM %s x WHERE x.name=%%s" % (orig_db, orig_db), line)
+    ##                            if self.__dc.rowcount:
+    ##                                line = int(self.__dc.fetchone()["%s_idx" % (orig_db)])
+    ##                            else:
+    ##                                line = 0
+                            print dbentry, line
+                            #if act_conf[dbentry] != line:
+                            #    act_conf[dbentry] = line
+                            #    s_list.append((dbentry, line))
+            # dirty hack
+##            if act_conf["act_kernel"] and act_conf["actkernel"] and act_conf["kernelversion"]:
+##                if re.match("^(\d+)\.(\d+)$", act_conf["kernelversion"]):
+##                    mach_struct.log(" - dirty hack to guess act_kernel_build (act_kernel %d, act_version %s)" % (act_conf["act_kernel"], act_conf["kernelversion"]))
+##                    self.__dc.execute("SELECT kernel_build_idx FROM kernel_build WHERE kernel=%d AND version=%d AND `release`=%d" % (act_conf["act_kernel"],
+##                                                                                                                                    int(act_conf["kernelversion"].split(".")[0]),
+##                                                                                                                                    int(act_conf["kernelversion"].split(".")[1])))
+##                    if self.__dc.rowcount:
+##                        line = self.__dc.fetchone()["kernel_build_idx"]
+##                        if act_conf["act_kernel_build"] != line:
+##                            s_list.append(("act_kernel_build", line))
+##                else:
+##                    mach_struct.log("cannot parse kernelversion '%s'" % (act_conf["kernelversion"]), logging_tools.LOG_LEVEL_ERROR)
+            if s_list:
+                self.__dc.execute("UPDATE device SET %s WHERE name=%%s" % (", ".join(["%s=%%s" % (x) for x, y in s_list])), tuple([y for x, y in s_list] + [mach_struct.name]))
+            num_changed = len(s_list)
+            self.log("readdots finished (%d tried, %d found, %d ok, %d changed%s)" % (
+                num_tried,
+                num_found,
+                num_ok,
+                num_changed,
+                (num_changed and " [%s]" % (", ".join(["%s=%s" % (x, str(y)) for x, y in s_list])) or "")))
+    def handle_mac_command(self, com_name):
+        self.refresh_device()
+        self.check_network_settings()
+        if self.maint_ip:
+            ip_to_write, ip_to_write_src = (self.maint_ip.ip, "maint_ip")
+        elif self.bootnetdevice.dhcp_device:
+            # FIXME
+            if len(mach.ip_dict.keys()) == 1:
+                ip_to_write, ip_to_write_src = (mach.ip_dict.keys()[0], "first ip of ip_dict.keys()")
+            else:
+                ip_to_write, ip_to_write_src = (None, "")
+        else:
+            ip_to_write, ip_to_write_src = (None, "")
+        om_shell_coms, err_lines = ([], [])
+        if com_name == "alter":
+            if self.device.dhcp_written:
+                if self.device.dhcp_write and ip_to_write:
+                    om_shell_coms = ["delete", "write"]
+                else:
+                    om_shell_coms = ["delete"]
+            else:
+                if self.device.dhcp_write and ip_to_write:
+                    om_shell_coms = ["write"]
+                else:
+                    om_shell_coms = ["delete"]
+        elif com_name == "write":
+            if self.device.dhcp_write and ip_to_write:
+                om_shell_coms = ["write"]
+            else:
+                om_shell_coms = []
+        elif com_name == "delete":
+            if self.device.dhcp_write:
+                om_shell_coms = ["delete"]
+            else:
+                om_shell_coms = []
+        self.log("transformed dhcp_command %s to %s: %s (%s)" % (
+            com_name,
+            logging_tools.get_plural("om_shell_command", len(om_shell_coms)),
+            ", ".join(om_shell_coms),
+            ip_to_write and "ip %s from %s" % (ip_to_write, ip_to_write_src) or "no ip"))
+        for om_shell_com in om_shell_coms:
+            om_array = ['server 127.0.0.1',
+                        'port 7911',
+                        'connect',
+                        'new host',
+                        'set name = "%s"' % (self.device.name)]
+            if om_shell_com == "write":
+                om_array.extend(['set hardware-address = %s' % (self.device.bootnetdevice.macaddr),
+                                 'set hardware-type = 1',
+                                 'set ip-address=%s' % (self.maint_ip.ip)])
+                om_array.extend(['set statements = "'+
+                                 'supersede host-name = \\"%s\\" ;' % (self.device.name)+
+                                 'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { '+
+                                 'filename = \\"etherboot/%s/pxelinux.0\\" ; ' % (ip_to_write)+
+                                 '} "'])
+                om_array.append('create')
+            elif om_shell_com == "delete":
+                om_array.extend(['open',
+                                 'remove'])
+            simple_command.process.set_check_freq(200)
+            simple_command("echo -e '%s' | /usr/bin/omshell" % ("\n".join(om_array)),
+                           done_func=self.omshell_done,
+                           stream_id="mac",
+                           short_info=True,
+                           add_info="omshell %s" % (com_name),
+                           log_com=self.log,
+                           info=om_shell_com)
+    def omshell_done(self, om_sc):
+        cur_out = om_sc.read()
+        self.log("omshell finished with state %d (%d bytes)" % (om_sc.result,
+                                                                len(cur_out)))
+        error_re = re.compile("^.*can't (?P<what>.*) object: (?P<why>.*)$")
+        lines = cur_out.split("\n")
+        error_str = ""
+        for line in lines:
+            if line.lower().count("connection refused"):
+                self.log(line, logging_tools.LOG_LEVEL_ERROR)
+                error_str = "connection refused"
+            if line.startswith(">"):
+                err_m = error_re.match(line)
+                if err_m:
+                    error_str = err_m.group("why")
+                    self.log("an error occured: %s (%s, %s)" % (line,
+                                                                err_m.group("what"),
+                                                                err_m.group("why")),
+                             logging_tools.LOG_LEVEL_ERROR)
+        update_obj = False
+        if error_str:
+            if error_str in ["key conflict", "not found"]:
+                new_dhcp_written = False
+            elif error_str in ["already exists"]:
+                new_dhcp_written = True
+            else:
+                # unknown
+                new_dhcp_written = None
+        else:
+            if om_sc.info == "write":
+                new_dhcp_written = True
+            elif om_sc.info == "delete":
+                new_dhcp_written = False
+        if new_dhcp_written is None:
+            new_dhcp_written = self.device.dhcp_written
+        # selective update
+        self.log("storing state to db: dhcp_written=%s, dhcp_error='%s'" % (new_dhcp_written, error_str))
+        self.device.dhcp_written = new_dhcp_written
+        self.device.dhcp_error = error_str
+        self.device.save(update_fields=["dhcp_written", "dhcp_error"])
          
 class hm_icmp_protocol(icmp_twisted.icmp_protocol):
     def __init__(self, tw_process, log_template):
@@ -731,9 +911,10 @@ class node_control_process(threading_tools.process_obj):
             init_logger=True)
         # close database connection
         connection.close()
+        simple_command.setup(self)
         self.sc = config_tools.server_check(server_type="mother")
         if "b" in self.sc.identifier_ip_lut:
-            self.server_ip = self.sc.identifier_ip_lut["b"][0]
+            self.server_ip = self.sc.identifier_ip_lut["b"][0].ip
             self.log("IP address in boot-net is %s" % (self.server_ip))
         else:
             self.server_ip = None
@@ -741,12 +922,142 @@ class node_control_process(threading_tools.process_obj):
         machine.setup(self)
         machine.sync()
         self.register_func("refresh", self._refresh)
+        self.register_func("alter_macaddr", self.alter_macaddr)
+        self.register_timer(self._check_commands, 10)
         #self.kernel_dev = config_tools.server_check(server_type="kernel_server")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def _refresh(self, *args, **kwargs):
         # use kwargs to specify certain devices
         machine.iterate("refresh_target_kernel")
+        machine.iterate("read_dot_files")
     def loop_post(self):
         machine.shutdown()
         self.__log_template.close()
+    def set_check_freq(self, cur_to):
+        self.log("changing check_freq of check_commands to %d msecs" % (cur_to))
+        self.change_timer(self._check_commands, cur_to)
+    def _check_commands(self):
+        simple_command.check()
+        if simple_command.idle():
+            self.set_loop_timer(1000)
+    def _remove_macadr(self, machdat):
+        # removes macadr from dhcp-server
+        om_shell_coms = ["delete"]
+        for om_shell_com in om_shell_coms:
+            om_array = ['server 127.0.0.1',
+                        'port 7911',
+                        'connect',
+                        'new host',
+                        'set name = "%s"' % (machdat["name"])]
+            if om_shell_com == "write":
+                om_array.extend(['set hardware-address = %s' % (machdat["macadr"]),
+                                 'set hardware-type = 1',
+                                 'set ip-address=%s' % (machdat["ip"])])
+                om_array.extend(['set statements = "'+
+                                 'supersede host-name = \\"%s\\" ;' % (machdat["name"])+
+                                 'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { '+
+                                 'filename = \\"etherboot/%s/pxelinux.0\\" ; ' % (machdat["ip"])+
+                                 '} "'])
+                om_array.append('create')
+            elif om_shell_com == "delete":
+                om_array.extend(['open',
+                                 'remove'])
+            else:
+                self.log("Internal error: Unknown om_shell command %s" % (om_shell_com), logging_tools.LOG_LEVEL_ERROR)
+            #print om_array
+            self.log("starting omshell for command %s" % (om_shell_com))
+            (errnum, outstr) = commands.getstatusoutput("echo -e '%s' | /usr/bin/omshell" % ("\n".join(om_array)))
+            self.log("got (%d) %s" % (errnum, logging_tools.get_plural("line", len(outstr.split("\n")))))
+    def alter_macaddr(self, *args, **kwargs):
+        self._adw_macaddr("alter", *args, **kwargs)
+    def _adw_macaddr(self, com_name, *args, **kwargs):
+        print args, kwargs
+        nodes = kwargs.get("nodes", machine.get_all_names())
+        self.log("got %s command for %s%s" % (
+            com_name,
+            logging_tools.get_plural("node", len(nodes)),
+            nodes and ": %s" % (logging_tools.compress_list(nodes)) or ""))
+        empty_result = True
+        # additional flags 
+        add_flags = []
+        for mach_name in nodes:
+            cur_dev = machine.get_device(mach_name)
+            cur_dev.handle_mac_command(com_name)
+            #dhcp_written, dhcp_write, dhcp_last_error = (
+            #    cur_dev.dhcp_wrmachdat["dhcp_written"], machdat["dhcp_write"], machdat["dhcp_error"])
+            # list of om_shell commands
+            #print mach.name, com_name, force_flag, dhcp_write, dhcp_written
+            # try to determine om_shell_coms
+            # global success of all commands
+            #print om_array
+            continue
+            mach.log("starting omshell for command %s (%s)" % (om_shell_com,
+                                                               ip_to_write and "ip %s from %s" % (ip_to_write, ip_to_write_src) or "no ip"))
+            (errnum, outstr) = commands.getstatusoutput("echo -e '%s' | /usr/bin/omshell" % ("\n".join(om_array)))
+            #print errnum, outstr
+            if errnum == 0:
+                for line in [x.strip()[2:].strip() for x in outstr.split("\n") if x.strip().startswith(">")]:
+                    if len(line):
+                        if not line.startswith(">") and not line.startswith("obj:"):
+                            omm = self.__om_error_re.match(line)
+                            if omm:
+                                #print mach.name, ":", omm.group(1), "*", omm.group(2)
+                                #print om_array
+                                errnum, g_success, errline = (1, 0, line)
+                                errfac, errstr = (omm.group(1), omm.group(2))
+                        elif re.match("^.*connection refused.*$", line):
+                            errnum, g_success, errline = (1, 0, line)
+                            errfac, errstr = ("connection refused", "server")
+            else:
+                g_success = 0
+                errline, errstr, errfac = ("command error", "error", "omshell")
+            if errnum:
+                mach.log("omshell for command %s returned error %s (%s)" % (om_shell_com, errline, errstr), logging_tools.LOG_LEVEL_ERROR)
+                mach.log("error: %s" % (errline), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                mach.log("finished omshell for command %s successfully" % (om_shell_com))
+            # error handling
+            #print "++++", act_com, "---", mach.name, dhcp_written
+            new_dhcp_written = None
+            if errnum:
+                if errstr == "key conflict":
+                    new_dhcp_written = 0
+                elif errstr == "already exists":
+                    new_dhcp_written = 1
+                elif errstr == "not found":
+                    new_dhcp_written = 0
+                errline = "dhcp-error: %s (%s)" % (errstr, errfac)
+                err_lines.append("%s: %s" % (om_shell_com, errline))
+            else:
+                err_lines.append("%s: ok" % (om_shell_com))
+                if om_shell_com == "write":
+                    new_dhcp_written = 1
+                elif om_shell_com == "delete":
+                    new_dhcp_written = 0
+            if new_dhcp_written is not None:
+                dhcp_written = new_dhcp_written
+                dev_sql_fields["dhcp_written"] = dhcp_written
+            if dhcp_write:
+                dhw_0 = "write"
+            else:
+                dhw_0 = "no write"
+            if dhcp_written:
+                dhw_1 = "written"
+            else:
+                dhw_1 = "not written"
+            mach.log("dhcp_info: %s/%s, mac-address is %s" % (dhw_0, dhw_1, machdat["macadr"]))
+            if not om_shell_coms:
+                om_shell_coms = ["<nothing>"]
+            dhcp_act_error = loc_result
+            if dhcp_act_error != dhcp_last_error:
+                dev_sql_fields["dhcp_error"] = dhcp_act_error
+            mach.log("dhcp command(s) %s (om: %s) result: %s" % (com_name,
+                                                                 ", ".join(om_shell_coms),
+                                                                 loc_result))
+            all_rets_dict[machdat["name"]] = loc_result
+            if dev_sql_fields:
+                dev_sql_keys = dev_sql_fields.keys()
+                sql_str, sql_tuple = ("UPDATE device SET %s WHERE name=%%s" % (", ".join(["%s=%%s" % (x) for x in dev_sql_keys])),
+                                      tuple([dev_sql_fields[x] for x in dev_sql_keys] + [mach.name]))
+                dc.execute(sql_str, sql_tuple)
