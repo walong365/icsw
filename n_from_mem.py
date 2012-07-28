@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007,2008,2009 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2008,2009,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,25 +21,21 @@
 #
 """ calculates N for HPL from memory """
 
-import optparse
+import argparse
 import sys
 import math
 
-class my_opt_parser(optparse.OptionParser):
+class my_opt_parser(argparse.ArgumentParser):
     def __init__(self):
-        optparse.OptionParser.__init__(self)
-        self.add_option("--nodes", type="int", dest="nodes", help="set number of nodes [%default]", default=1)
-        self.add_option("--reserve-relative", type="int", dest="reserve_relative", help="set remaning memory in percent [%default %]", default=5)
-        self.add_option("--reserve-absolute", type="int", dest="reserve_absolute", help="set remaning memory in MByte [%default MB]", default=150)
-        self.add_option("--precision", type="int", dest="precision", help="set precision [%default]", default=100)
-        self.add_option("--memory", type="int", dest="memory", help="set size of memory is Megabytes (or - Gigabytes), [default is autodetermine]", default=0)
+        argparse.ArgumentParser.__init__(self)
+        self.add_argument("--nodes", type=int, dest="nodes", help="set number of nodes [%(default)d]", default=1)
+        self.add_argument("--reserve-relative", type=int, dest="reserve_relative", help="set remaning memory in percent [%(default)d %%]", default=5)
+        self.add_argument("--reserve-absolute", type=int, dest="reserve_absolute", help="set remaning memory in MByte [%(default)d MB]", default=150)
+        self.add_argument("--precision", type=int, dest="precision", help="set precision [%(default)d]", default=100)
+        self.add_argument("--memory", type=int, dest="memory", help="set size of memory is Megabytes (or - Gigabytes), [default is autodetermine]", default=0)
         #self.add_option("--cores", type="int", dest="cores", help="set number of cores per node [default is autodetermine]", default=0)
     def parse(self):
-        options, args = self.parse_args()
-        if args:
-            print "Additional arguments found, exiting"
-            sys.exit(0)
-        return options
+        return self.parse_args()
         
 def main():
     options = my_opt_parser().parse()
@@ -63,8 +59,11 @@ def main():
     mem_tot_rel, mem_tot_abs = (options.memory * (1. - options.reserve_relative / 100.),
                                 options.memory - 1024 * 1024 * options.reserve_absolute)
     mem_tot_use = min(mem_tot_rel, mem_tot_abs) * options.nodes
-    n = math.sqrt(mem_tot_use / 8)
-    print options.precision * (int(n / options.precision))
+    if mem_tot_use <= 0:
+        print "No memory left, please check settings"
+        sys.exit(-1)
+    n_mat = math.sqrt(mem_tot_use / 8)
+    print options.precision * (int(n_mat / options.precision))
 
 if __name__ == "__main__":
     main()
