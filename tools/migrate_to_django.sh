@@ -20,6 +20,7 @@ mysql_dump.sh > ${dump_name}.full
 mysql_dump.sh -d > ${dump_name}.data
 
 C_DIR="/opt/python-init/lib/python/site-packages/init/cluster/"
+CLUSTER_DIR=/opt/cluster
 MIG_DIR="${C_DIR}/backbone/migrations/"
 if [ -d ${MIG_DIR} ] ; then
     echo "migration directory ${MIG_DIR} already exists, refuse to operate"
@@ -34,8 +35,8 @@ else
     cp -a ${C_DIR}/backbone/models.py ${C_DIR}/backbone/models_new.py
     cp -a ${C_DIR}/backbone/models_old_csw.py ${C_DIR}/backbone/models.py
     # put old initial_data in place
-    cp -a ${C_DIR}/backbone/fixtures/initial_data.py ${C_DIR}/backbone/fixtures/initial_data_new.py
-    cp -a ${C_DIR}/backbone/fixtures/initial_data_old_csw.py ${C_DIR}/backbone/fixtures/initial_data.py
+    cp -a ${C_DIR}/backbone/fixtures/initial_data.xml ${C_DIR}/backbone/fixtures/initial_data_new.xml
+    cp -a ${C_DIR}/backbone/fixtures/initial_data_old_csw.xml ${C_DIR}/backbone/fixtures/initial_data.xml
     export NO_AUTO_ADD_APPLICATIONS=1
     ${C_DIR}/manage.py syncdb --noinput
     unset NO_AUTO_ADD_APPLICATIONS
@@ -53,10 +54,10 @@ else
     cp -a ${C_DIR}/backbone/models.py ${C_DIR}/backbone/models_old_csw.py
     cp -a ${C_DIR}/backbone/models_new.py ${C_DIR}/backbone/models.py
     # restore fixture file
-    cp -a ${C_DIR}/backbone/fixtures/initial_data.py ${C_DIR}/backbone/fixtures/initial_data_old_csw.py
-    cp -a ${C_DIR}/backbone/fixtures/initial_data_new.py ${C_DIR}/backbone/fixtures/initial_data.py
+    cp -a ${C_DIR}/backbone/fixtures/initial_data.xml ${C_DIR}/backbone/fixtures/initial_data_old_csw.xml
+    cp -a ${C_DIR}/backbone/fixtures/initial_data_new.xml ${C_DIR}/backbone/fixtures/initial_data.xml
 
     echo "database migrated. Now please call"
-    echo " - ${C_DIR}/sbin/create_django_users.py    to migrate the users"
-    echo " - ${C_DIR}/sbin/update_django_db.sh       to update to the latest database schema"
+    echo " - ${CLUSTER_DIR}/sbin/create_django_users.py    to migrate the users"
+    echo " - ${CLUSTER_DIR}/sbin/update_django_db.sh       to update to the latest database schema"
 fi

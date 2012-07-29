@@ -22,6 +22,14 @@ class handle_network_network_device_type(handle_insert_line):
             sub_parts.pop(-1)
         return ",".join(sub_parts)
 
+class handle_user(handle_insert_line):
+    def handle(self, sub_value):
+        sub_parts = sub_value.split(",")
+        if len(sub_parts) == 21:
+            # nt/lm_password missing
+            sub_parts = sub_parts[:20] + ["''", "''"] + [sub_parts[20]]
+        return ",".join(sub_parts)
+
 def main():
     for line in sys.stdin.readlines():
         line = line.rstrip()
@@ -29,6 +37,8 @@ def main():
             ins_table = line.lower().strip().split()[2][1:-1]
             if ins_table == "network_network_device_type":
                 line = handle_network_network_device_type(line).line
+            if ins_table == "user":
+                line = handle_user(line).line
             elif ins_table in IGNORE_TABLES:
                 # ignore inserts into config_type
                 line = None
