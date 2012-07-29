@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2007,2008,2009 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007,2008,2009,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -52,7 +52,10 @@ if [ ! -d ${SGE_ROOT}/bin ] ; then
     ./scripts/zerodepend
     ./aimk -only-depend -no-dump
     ./aimk -man -no-dump
-    ./aimk -spool-classic -no-dump -no-secure -no-jni -no-java -parallel $(( $(cat /proc/cpuinfo | grep processor | wc -l ) * 2)) || { echo "Compilation failed, exiting" ; exit -1 ; }
+	# removed parallel, not working with SoG
+	# -parallel $(( $(cat /proc/cpuinfo | grep processor | wc -l ) * 2))
+    #./aimk -spool-classic -no-dump -no-secure -no-jni -no-java  || { echo "Compilation failed, exiting" ; exit -1 ; }
+    ./aimk -spool-classic -no-dump -no-hwloc -no-secure -no-jni -no-java  || { echo "Compilation failed, exiting" ; exit -1 ; }
     echo "Installing"
     echo Y | scripts/distinst -noexit -local -allall 
     echo "Modifying ownership of $SGE_ROOT to sge.sge"
@@ -80,8 +83,8 @@ inst_file=/tmp/sge_inst
 echo "Creating installation template in $inst_file"
 cat > $inst_file << EOF
 SGE_ROOT=${SGE_ROOT}
-SGE_QMASTER_PORT=$(cat /etc/services | grep sge_qmaster | grep tcp | tr -s " " | cut -f 2 | cut -d "/" -f 1)
-SGE_EXECD_PORT=$(cat /etc/services | grep sge_execd | grep tcp | tr -s " " | cut -f 2 | cut -d "/" -f 1)
+SGE_QMASTER_PORT=$(cat /etc/services | grep sge_qmaster | grep tcp | tr -s " " | cut -d " " -f 2 | cut -d "/" -f 1)
+SGE_EXECD_PORT=$(cat /etc/services | grep sge_execd | grep tcp | tr -s " " | cut -d " " -f 2 | cut -d "/" -f 1)
 CELL_NAME=${SGE_CELL}
 ADMIN_USER="sge"
 QMASTER_SPOOL_DIR=/var/spool/${sge_flavour}

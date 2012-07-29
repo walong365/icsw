@@ -174,16 +174,15 @@ def main():
     # copy 3rdparty-files
     copy_files(var_dict, ".party_files", "3rd_party")
     # build link dict
-    link_dict = {"%s/3rd_party/proepilogue.py" % (var_dict["SGE_ROOT"]) : ["%s/3rd_party/%s" % (var_dict["SGE_ROOT"], x) for x in ["prologue",
-                                                                                                                                   "epilogue",
-                                                                                                                                   "lamstart",
-                                                                                                                                   "lamstop",
-                                                                                                                                   "pvmstart",
-                                                                                                                                   "pvmstop",
-                                                                                                                                   "pestart",
-                                                                                                                                   "pestop",
-                                                                                                                                   "mvapich2start",
-                                                                                                                                   "mvapich2stop"]]}
+    link_dict = {"%s/3rd_party/proepilogue.py" % (var_dict["SGE_ROOT"]) : ["%s/3rd_party/%s" % (var_dict["SGE_ROOT"], x) for x in [
+        "prologue",
+        "epilogue",
+        "lamstart",
+        "lamstop",
+        "pestart",
+        "pestop",
+        "mvapich2start",
+        "mvapich2stop"]]}
     generate_links(link_dict)
 
 if __name__ == "__main__":

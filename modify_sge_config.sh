@@ -20,51 +20,27 @@ echo "Architecture is $ARCH (root is $SGE_ROOT)"
 # adding usefull stuff to SGE (PEs and so one)
 pe_tmp=`mktemp /tmp/.pe_XXXXXX`
 conf_temp=`mktemp /tmp/.conf_XXXXXX`
-lam_pe_name="lam";
+orte_pe_name="orte";
 simple_pe_name="simple";
 pvm_pe_name="pvm";
-# lam pe
-echo "pe_name            $lam_pe_name
+# orte pe
+echo "pe_name            $orte_pe_name
 slots              65536
 user_lists         NONE
 xuser_lists        NONE
-start_proc_args    ${SGE_ROOT}/3rd_party/lamstart \$host \$job_owner \$job_id \$job_name \$queue \$pe_hostfile \$pe \$pe_slots
-stop_proc_args     ${SGE_ROOT}/3rd_party/lamstop \$host \$job_owner \$job_id \$job_name \$queue \$pe_hostfile \$pe \$pe_slots
+start_proc_args    ${SGE_ROOT}/3rd_party/pestart \$host \$job_owner \$job_id \$job_name \$queue \$pe_hostfile \$pe \$pe_slots
+stop_proc_args     ${SGE_ROOT}/3rd_party/pestop \$host \$job_owner \$job_id \$job_name \$queue \$pe_hostfile \$pe \$pe_slots
 allocation_rule    \$fill_up
 control_slaves     FALSE
 job_is_first_task  TRUE
 accounting_summary TRUE
+urgency_slots      min
+qsort_args         NONE
 " > $pe_tmp
-if [ "$sge6" = "1" ] ; then
-    echo "urgency_slots min" >> $pe_tmp
-else
-    echo "queue_list all" >> $pe_tmp
-fi
+
 . /etc/profile.d/batchsys.sh
-${SGE_ROOT}/bin/${ARCH}/qconf -spl | grep $lam_pe_name > /dev/null || {
-    echo "Adding PE named '$lam_pe_name' ..."
-    ${SGE_ROOT}/bin/${ARCH}/qconf -Ap $pe_tmp
-}
-# pvm pe
-echo "pe_name            $pvm_pe_name
-slots              65536
-user_lists         NONE
-xuser_lists        NONE
-start_proc_args    ${SGE_ROOT}/3rd_party/pvmstart \$host \$job_owner \$job_id \$job_name \$queue \$pe_hostfile \$pe \$pe_slots
-stop_proc_args     ${SGE_ROOT}/3rd_party/pvmstop \$host \$job_owner \$job_id \$job_name \$queue \$pe_hostfile \$pe \$pe_slots
-allocation_rule    \$fill_up
-control_slaves     FALSE
-job_is_first_task  TRUE
-accounting_summary TRUE
-" > $pe_tmp
-if [ "$sge6" = "1" ] ; then
-    echo "urgency_slots min" >> $pe_tmp
-else
-    echo "queue_list all" >> $pe_tmp
-fi
-. /etc/profile.d/batchsys.sh
-${SGE_ROOT}/bin/${ARCH}/qconf -spl | grep $pvm_pe_name > /dev/null || {
-    echo "Adding PE named '$pvm_pe_name' ..."
+${SGE_ROOT}/bin/${ARCH}/qconf -spl | grep $orte_pe_name > /dev/null || {
+    echo "Adding PE named '$orte_pe_name' ..."
     ${SGE_ROOT}/bin/${ARCH}/qconf -Ap $pe_tmp
 }
 # simple pe
@@ -78,12 +54,9 @@ allocation_rule    \$fill_up
 control_slaves     FALSE
 job_is_first_task  TRUE
 accounting_summary TRUE
+urgency_slots      min
+qsort_args         NONE
 " > $pe_tmp
-if [ "$sge6" = "1" ] ; then
-    echo "urgency_slots max" >> $pe_tmp
-else
-    echo "queue_list all" >> $pe_tmp
-fi
 . /etc/profile.d/batchsys.sh
 ${SGE_ROOT}/bin/${ARCH}/qconf -spl | grep $simple_pe_name > /dev/null || {
     echo "Adding PE named '$simple_pe_name' ..."

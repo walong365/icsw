@@ -259,7 +259,7 @@ def main():
                                                positional_arguments=False)
     global_config.write_file()
     sql_s_info = config_tools.server_check(server_type="sge_server")
-    if sql_s_info.num_servers == 0:
+    if not sql_s_info.effective_device:
         if global_config["FORCE"]:
             global_config.add_config_entries([("DUMMY_RUN", configfile.bool_c_var(True))])
         else:
@@ -269,11 +269,8 @@ def main():
         global_config.add_config_entries([("DUMMY_RUN", configfile.bool_c_var(False))])
     if global_config["CHECK"]:
         sys.exit(0)
-    if sql_s_info.num_servers > 1:
-        print "Database error for host %s (sge_server): too many entries found (%d)" % (long_host_name, sql_s_info.num_servers)
-        sys.exit(5)
     if not global_config["DUMMY_RUN"]:
-        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_s_info.server_device_idx, database=False))])
+        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_s_info.effective_device.pk, database=False))])
         # FIXME
         #global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(process_tools.create_log_source_entry(dc, global_config["SERVER_IDX"], "sge_server", "RMS Server")))])
     if global_config["KILL_RUNNING"]:
