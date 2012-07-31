@@ -36,8 +36,11 @@ case "$1" in
         cd /opt/python-init/lib/python/site-packages/init/cluster/
         python-init manage.py runfcgi host=127.0.0.1 port=9002 method=prefork maxrequests=64 daemonize=true maxspare=16 pidfile=${PID_FILE} outlog=${LOG_FILE}
     
-        /etc/init.d/nginx restart
-    
+        if [ -f /etc/init.d/nginx ] ; then        
+            /etc/init.d/nginx restart
+        else
+            echo "nginx not found ..."
+        fi
         rc_status -v
     
         ;;
