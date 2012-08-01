@@ -2939,6 +2939,7 @@ class server_process(threading_tools.process_pool):
             self.log("Config : %s" % (conf))
     def loop_end(self):
         #config_control.close_clients()
+        self._disable_syslog_config()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
@@ -2978,14 +2979,16 @@ class server_process(threading_tools.process_pool):
                 self.socket_dict[key] = client
         return success
     def _new_com(self, zmq_sock):
-        print "nc"
         data = [zmq_sock.recv_unicode()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
             data.append(zmq_sock.recv_unicode())
         if len(data) == 2:
-            print data
-            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
-            zmq_sock.send_unicode("ok")
+            if data[0].endswith("syslog_scan"):
+                print "syslog_scan", data[1]
+            else:
+                print data
+                zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                zmq_sock.send_unicode("ok")
         else:
             self.log("wrong number of data chunks (%d != 2)" % (len(data)),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -3107,14 +3110,30 @@ class server_process(threading_tools.process_pool):
         self.log("syslog type found: %s" % (syslog_type or "none"))
         self.__syslog_type = syslog_type
         if self.__syslog_type == "rsyslogd":
-            pass
+            self._enable_rsyslog()
         elif self.__syslog_type == "syslog-ng":
             self._enable_syslog_ng()
     def _disable_syslog_config(self):
         if self.__syslog_type == "rsyslogd":
-            pass
+            self._disable_rsyslog()
         elif self.__syslog_type == "syslog-ng":
             self._disable_syslog_ng()
+    def _enable_rsyslog(self):
+        import mother.syslog_scan
+        rsyslog_lines = [
+            "$ModLoad omprog",
+            "$actionomprogbinary %s" % (mother.syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),
+            "",
+            "if $programname contains_i 'dhcp' then :omprog:",
+            ""]
+        slcn = "/etc/rsyslog.d/mother.conf"
+        file(slcn, "w").write("\n".join(rsyslog_lines))
+        self._restart_syslog()
+    def _disable_rsyslog(self):
+        slcn = "/etc/rsyslog.d/mother.conf"
+        if os.path.isfile(slcn):
+            os.unlink(slcn)
+        self._restart_syslog()
     def _enable_syslog_ng(self):
         slcn = "/etc/syslog-ng/syslog-ng.conf"
         if os.path.isfile(slcn):
