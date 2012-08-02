@@ -23,7 +23,6 @@
   {% endblock %}
 
   <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
-  {{ settings }}
   {% block stylesheets %}
   <link rel="stylesheet" href="{{ settings.STATIC_URL }}initcore/css/style.css">
   {% endblock %}
@@ -34,7 +33,7 @@
        Modernizr enables HTML5 elements & feature detects for optimal performance.
        Create your own custom Modernizr build: www.modernizr.com/download/ -->
   {% block modernizr %}
-  <script src="{{ settings.STATIC_URL }}/initcore/js/libs/modernizr-2.5.3.min.js"></script>
+  <script src="{{ settings.STATIC_URL }}initcore/js/libs/modernizr-2.5.3.min.js"></script>
   {% endblock %}
 </head>
 <body>
@@ -46,10 +45,8 @@
   {% endblock %}
   </header>
 
-  <div role="main">
   {% block main %}
   {% endblock %}
-  </div>
 
   <footer>
   {% block footer %}
@@ -65,7 +62,8 @@
 
   <!-- scripts concatenated and minified via build script -->
   {% block javascript %}
-  <script src="{{ settings.STATIC_URL }}/initcore/js/plugins.js"></script>
+  <script src="{{ settings.STATIC_URL }}initcore/js/plugins.js"></script>
+  <script src="{{ settings.STATIC_URL }}initcore/js/libs/jquery-1.7.2.min.js"></script>
   {% endblock %}
   <!-- end scripts -->
 
