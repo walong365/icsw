@@ -13,9 +13,8 @@ for root, dirs, files in os.walk("src/initcore/static"):
         static_files.append(os.path.join(stripped_root, i))
 
 setup(name="initcore",
-      version="1.0.6.2",
+      version="1.1.0",
       package_dir={"initcore": "src/initcore"},
       packages=["initcore", "initcore.templatetags"],
-      package_data={"initcore": ["templates/*.html", "templates/initcore/*.html",
-                                 "templates/initcore/*.css"] + static_files}
+      package_data={"initcore": ["templates/initcore/*.html", "templates/initcore/*.xml"] + static_files}
       )
