@@ -1,15 +1,15 @@
-#!/usr/bin/python-init -Otu
 import re
-import pdb
-from StringIO import StringIO
-from django.core.urlresolvers import reverse
+import os
 import base64
 import codecs
-from django.conf import settings
-from django.utils.encoding import smart_unicode
+from StringIO import StringIO
 from lxml import etree
 from lxml.builder import E
-import os
+
+from django.core.urlresolvers import reverse
+from django.conf import settings
+from django.utils.encoding import smart_unicode
+
 
 from initcore import logger
 
@@ -87,35 +87,13 @@ COPY_ATTRIBUTES_SS = """<xsl:stylesheet
                 <xsl:with-param name="attrname" select="'useragent'"/>
                 <xsl:with-param name="default" select="'all'"/>
             </xsl:call-template>
+
             <xsl:if test="@name"><xsl:attribute name="name"><xsl:value-of select="@name"/></xsl:attribute></xsl:if>
             <xsl:if test="@de"><xsl:attribute name="de"><xsl:value-of select="@de"/></xsl:attribute></xsl:if>
             <xsl:if test="@en"><xsl:attribute name="en"><xsl:value-of select="@en"/></xsl:attribute></xsl:if>
             <xsl:if test="@ref"><xsl:attribute name="ref"><xsl:value-of select="@ref"/></xsl:attribute></xsl:if>
             <xsl:if test="@refargs"><xsl:attribute name="refargs"><xsl:value-of select="@refargs"/></xsl:attribute></xsl:if>
             <xsl:if test="@xpath"><xsl:attribute name="xpath"><xsl:value-of select="@xpath"/></xsl:attribute></xsl:if>
-
-            <!--xsl:if test="@id"><xsl:attribute name="id"><xsl:value-of select="@id"/></xsl:attribute></xsl:if>
-            <xsl:if test="@table"><xsl:attribute name="table"><xsl:value-of select="@table"/></xsl:attribute></xsl:if>
-            <xsl:if test="@table1"><xsl:attribute name="table1"><xsl:value-of select="@table1"/></xsl:attribute></xsl:if>
-            <xsl:if test="@table2"><xsl:attribute name="table2"><xsl:value-of select="@table2"/></xsl:attribute></xsl:if>
-            <xsl:if test="@action"><xsl:attribute name="action"><xsl:value-of select="@action"/></xsl:attribute></xsl:if>
-            <xsl:if test="@filter"><xsl:attribute name="filter"><xsl:value-of select="@filter"/></xsl:attribute></xsl:if>
-            <xsl:if test="@filter1"><xsl:attribute name="filter1"><xsl:value-of select="@filter1"/></xsl:attribute></xsl:if>
-            <xsl:if test="@filter2"><xsl:attribute name="filter2"><xsl:value-of select="@filter2"/></xsl:attribute></xsl:if>
-            <xsl:if test="@sort"><xsl:attribute name="sort"><xsl:value-of select="@sort"/></xsl:attribute></xsl:if>
-            <xsl:if test="@sort1"><xsl:attribute name="sort1"><xsl:value-of select="@sort1"/></xsl:attribute></xsl:if>
-            <xsl:if test="@sort2"><xsl:attribute name="sort2"><xsl:value-of select="@sort2"/></xsl:attribute></xsl:if>
-            <xsl:if test="@list"><xsl:attribute name="list"><xsl:value-of select="@list"/></xsl:attribute></xsl:if>
-            <xsl:if test="@list1"><xsl:attribute name="list1"><xsl:value-of select="@list1"/></xsl:attribute></xsl:if>
-            <xsl:if test="@list2"><xsl:attribute name="list2"><xsl:value-of select="@list2"/></xsl:attribute></xsl:if>
-            <xsl:if test="@edit"><xsl:attribute name="edit"><xsl:value-of select="@edit"/></xsl:attribute></xsl:if>
-            <xsl:if test="@form"><xsl:attribute name="form"><xsl:value-of select="@form"/></xsl:attribute></xsl:if>
-            <xsl:if test="@form1"><xsl:attribute name="form"><xsl:value-of select="@form"/></xsl:attribute></xsl:if>
-            <xsl:if test="@form2"><xsl:attribute name="form2"><xsl:value-of select="@form2"/></xsl:attribute></xsl:if>
-            <xsl:if test="@trail"><xsl:attribute name="trail"><xsl:value-of select="@trail"/></xsl:attribute></xsl:if>
-            <xsl:if test="@add"><xsl:attribute name="add"><xsl:value-of select="@add"/></xsl:attribute></xsl:if>
-            <xsl:if test="@key"><xsl:attribute name="key"><xsl:value-of select="@key"/></xsl:attribute></xsl:if>
-            <xsl:if test="@frozen"><xsl:attribute name="frozen"><xsl:value-of select="@frozen"/></xsl:attribute></xsl:if-->
 
             <xsl:value-of select="$node/text()"/>
             <xsl:apply-templates/>
@@ -212,9 +190,11 @@ TRANS_TO_HTML_SS = """<xsl:stylesheet
     </xsl:stylesheet>
 """
 
+
 class local_resolver(etree.Resolver):
     def __init__(self, menu_obj):
         self.menu_obj = menu_obj
+
     def resolve(self, url, cur_id, context):
         full_path = os.path.join(self.menu_obj.root_dir, url)
         if os.path.exists(full_path):
@@ -222,7 +202,8 @@ class local_resolver(etree.Resolver):
         else:
             raise IOError, "no file named '%s' found" % (full_path)
 
-class olim_menu(object):
+
+class Menu(object):
     def __init__(self, root_dir, **kwargs):
         self.root_dir = os.path.normpath(os.path.join(settings.FILE_ROOT, root_dir))
         self._parser = etree.XMLParser(remove_comments=True, ns_clean=True)
@@ -303,11 +284,11 @@ class olim_menu(object):
                     href = reverse(node.attrib["ref"], args=[part.strip() for part in node.attrib.get("refargs", "").split(",") if part.strip()])
             except Exception as e:
                 logger.exception("Exception while resolving in menu")
-                href = reverse("session:menu_folder", args=[base64.b64encode(node.attrib["xpath"])])
+                href = reverse("initcore:menu_folder", args=[base64.b64encode(node.attrib["xpath"])])
             else:
                 pass
         else:
-            href = reverse("session:menu_folder", args=[base64.b64encode(node.attrib["xpath"])])
+            href = reverse("initcore:menu_folder", args=[base64.b64encode(node.attrib["xpath"])])
         return href
     def _translate_node(self, context, node, *args):
         cur_lang = self.__kwargs.get("language_code", settings.DEFAULT_LANGUAGE)
@@ -317,6 +298,7 @@ class olim_menu(object):
                 ret_str = node[0].attrib[pref]
                 break
         return ret_str.strip() or "no name set"
+
 
 def get_menu_html(request, is_mobile, for_dynatree):
     #print is_mobile, for_dynatree
@@ -330,7 +312,7 @@ def get_menu_html(request, is_mobile, for_dynatree):
     else:
         current_role = None
         language = settings.DEFAULT_LANGUAGE
-    my_menu = olim_menu(settings.MENU_XML_DIR, **{"filter_useragent": useragent_list,
+    my_menu = Menu(settings.MENU_XML_DIR, **{"filter_useragent": useragent_list,
                                                   "language_code": language,
                                                   "filter_role": current_role})
     xml_doc = my_menu.process(codecs.open(settings.MENU_XML_PATH, "r", "utf-8").read())
@@ -391,6 +373,7 @@ class menu_resolver_base(object):
     def request_to_xpath(self, request):
         raise NotImplementedError("You have to implement request_to_xpath")
 
+
 class menu_direct_link_resolver(menu_resolver_base):
     """ Resolves all links of type *http|https|ftp://path* """
     def node_to_href(self, node):
@@ -401,4 +384,3 @@ class menu_direct_link_resolver(menu_resolver_base):
 
     def request_to_xpath(self, request):
         return []
-
