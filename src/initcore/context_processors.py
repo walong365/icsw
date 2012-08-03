@@ -1,4 +1,3 @@
-""" contex processor """
 from django.conf import settings
 
 
