@@ -311,7 +311,7 @@ class device(models.Model):
     bootnetdevice = models.ForeignKey("netdevice", null=True, related_name="boot_net_device")
     bootserver = models.ForeignKey("device", null=True, related_name="boot_server")
     reachable_via_bootserver = models.BooleanField(default=False)
-    dhcp_mac = models.IntegerField(null=True, blank=True)
+    dhcp_mac = models.NullBooleanField(null=True, blank=True)
     dhcp_write   = models.NullBooleanField(default=False)
     dhcp_written = models.NullBooleanField(default=False)
     dhcp_error = models.CharField(max_length=765, blank=True)
@@ -814,17 +814,17 @@ class lvm_vg(models.Model):
 
 class mac_ignore(models.Model):
     idx = models.AutoField(db_column="mac_ignore_idx", primary_key=True)
-    macadr = models.CharField(max_length=192)
+    macaddr = models.CharField(max_length=192, db_column="macadr", default="")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'mac_ignore'
 
 class macbootlog(models.Model):
     idx = models.AutoField(db_column="macbootlog_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    type = models.CharField(max_length=96)
-    ip = models.CharField(max_length=96)
-    macadr = models.CharField(max_length=192)
+    device = models.ForeignKey("device", null=True)
+    entry_type = models.CharField(max_length=96, db_column="type")
+    ip_action = models.CharField(max_length=96, default="", db_column="ip")
+    macaddr = models.CharField(max_length=192, db_column="macadr")
     log_source = models.ForeignKey("log_source", null=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
