@@ -8,7 +8,6 @@ from lxml.builder import E
 
 from django.core.urlresolvers import reverse
 from django.conf import settings
-from django.utils.encoding import smart_unicode
 
 
 from initcore import logger
@@ -200,7 +199,7 @@ class local_resolver(etree.Resolver):
         if os.path.exists(full_path):
             return self.resolve_filename(full_path, context)
         else:
-            raise IOError, "no file named '%s' found" % (full_path)
+            raise IOError("no file named '%s' found" % (full_path))
 
 
 class Menu(object):
@@ -216,8 +215,8 @@ class Menu(object):
         self._to_html_trans = etree.XSLT(etree.parse(StringIO(TRANS_TO_HTML_SS), parser=self._parser),
                                          access_control=etree.XSLTAccessControl.DENY_WRITE)
         my_ns = etree.FunctionNamespace("http://www.init.at/xslt/functions")
-        my_ns["filter_node"]    = self._filter_node
-        my_ns["get_href"]       = self._get_href
+        my_ns["filter_node"] = self._filter_node
+        my_ns["get_href"] = self._get_href
         my_ns["translate_node"] = self._translate_node
         self.__kwargs = kwargs
         # Attributes that contain a list of values (for filtering)
@@ -229,6 +228,7 @@ class Menu(object):
                 class_name = resolver.split(".")[-1]
                 imp = __import__(file_name, globals(), locals(), [class_name, ])
                 self.menu_resolvers.append(getattr(imp, class_name)())
+
     def process(self, menu_content, **kwargs):
         xml_doc = etree.parse(StringIO(menu_content), self._parser)
         # handle includes
@@ -245,10 +245,12 @@ class Menu(object):
             # second step: filter
             xml_doc = self._second_trans(xml_doc)
         return xml_doc
+
     def to_html(self, in_xml, is_mobile, for_dynatree, **kwargs):
-        kwargs.update({"for_dynatree" : "1" if for_dynatree else "0",
-                       "is_mobile"    : "1" if is_mobile else "0"})
+        kwargs.update({"for_dynatree": "1" if for_dynatree else "0",
+                       "is_mobile": "1" if is_mobile else "0"})
         return self._to_html_trans(in_xml, **dict([(key, etree.XSLT.strparam(value)) for key, value in kwargs.iteritems()]))
+
     def _filter_node(self, context, node, *args):
         node = node[0]
         keep_node = True
@@ -270,6 +272,7 @@ class Menu(object):
                 elif node.attrib[filter_key] not in filter_value:
                     keep_node = False
         return keep_node
+
     def _get_href(self, context, node, *args):
         node = node[0]
         if "ref" in node.attrib:
@@ -290,6 +293,7 @@ class Menu(object):
         else:
             href = reverse("initcore:menu_folder", args=[base64.b64encode(node.attrib["xpath"])])
         return href
+
     def _translate_node(self, context, node, *args):
         cur_lang = self.__kwargs.get("language_code", settings.DEFAULT_LANGUAGE)
         ret_str = ""
@@ -313,10 +317,10 @@ def get_menu_html(request, is_mobile, for_dynatree):
         current_role = None
         language = settings.DEFAULT_LANGUAGE
     my_menu = Menu(settings.MENU_XML_DIR, **{"filter_useragent": useragent_list,
-                                                  "language_code": language,
-                                                  "filter_role": current_role})
+                                             "language_code": language,
+                                             "filter_role": current_role})
     xml_doc = my_menu.process(codecs.open(settings.MENU_XML_PATH, "r", "utf-8").read())
-    if request.session.has_key("menu_xpath"):
+    if "menu_xpath" in request.session:
         menu_xpath = request.session["menu_xpath"]
     else:
         if len(xml_doc.getroot()):
@@ -355,17 +359,20 @@ def get_menu_html(request, is_mobile, for_dynatree):
                                                      **child.attrib) for child in entry if type(child) == el_type])
         else:
             xml_doc = xml_doc.getroot()
-    xml_doc.attrib.update({"id"    : "main_navigation",
-                           "class" : "sf-menu"})
+    xml_doc.attrib.update({"id": "main_navigation",
+                           "class": "sf-menu"})
     #print is_mobile, for_dynatree, "***", menu_xpath
     return etree.tostring(my_menu.to_html(xml_doc, is_mobile, for_dynatree,
                                           user=unicode(request.user),
                                           menu_xpath=menu_xpath))
 
 
-class menu_resolver_base(object):
-    """ Base object for all menu resolvers. Primarily there to document the
-    structure of of menu_resolver. """
+class MenuResolverBase(object):
+    """
+    Base object for all menu resolvers.
+
+    Primarily here to document the structure of a menu resolver.
+    """
     def node_to_href(self, node):
         """ Take a xml node with a ref attribute and return a valid href link """
         raise NotImplementedError("You have to implement node_to_href")
@@ -374,7 +381,7 @@ class menu_resolver_base(object):
         raise NotImplementedError("You have to implement request_to_xpath")
 
 
-class menu_direct_link_resolver(menu_resolver_base):
+class menu_direct_link_resolver(MenuResolverBase):
     """ Resolves all links of type *http|https|ftp://path* """
     def node_to_href(self, node):
         href = None

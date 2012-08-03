@@ -1,19 +1,26 @@
+"""
+Generalized forms for login and password change.
+"""
+
 from django import forms
 from django.contrib import auth
 from django.utils.translation import ugettext_lazy as _
 from django.forms.util import ErrorList
 from django.conf import settings
 
-from edmdb.models import OlimUser
 
-class authentication_form(forms.Form):
-    """ Standard login form """
+class AuthenticationForm(forms.Form):
+    """
+    A standard login form that will fit most use cases.
+    """
     username = forms.CharField(label=_("Username"), max_length=30)
     password = forms.CharField(label=_("Password"), widget=forms.PasswordInput)
+
     def __init__(self, request=None, *args, **kwargs):
         self.request = request
         self.user_cache = None
-        super(authentication_form, self).__init__(*args, **kwargs)
+        super(AuthenticationForm, self).__init__(*args, **kwargs)
+
     def clean(self):
         username = self.cleaned_data.get("username")
         password = self.cleaned_data.get("password")
@@ -30,68 +37,31 @@ class authentication_form(forms.Form):
             if not self.request.session.test_cookie_worked():
                 raise forms.ValidationError(_("Your Web browser doesn't appear to have cookies enabled. Cookies are required for logging in."))
         return self.cleaned_data
+
     def get_user(self):
         return self.user_cache
 
 
-class change_language_form(forms.Form):
-    language = forms.ChoiceField(widget=forms.widgets.Select(),
-                                 choices=settings.LANGUAGES)
-
-
-class user_config_form(forms.Form):
-    css_theme = forms.ChoiceField(
-        widget=forms.widgets.Select(
-            attrs={"class" : "inputwidth200"}
-        ), choices=(
-            ("sunny", "Sunny"),
-            ("cupertino", "Cupertino"),
-            ("pepper-grinder", "Peeper Grinder"),
-            ("smoothness", "Smoothness"),
-            ("ui-lightness", "Lightness")
-        ), label=_("CSS Theme")
-    )
-    font_scale = forms.ChoiceField(
-        choices=(
-            ("16", "Small"),
-            ("27", "Big")
-        ), label=_("size"), initial="small")
-
-
-##class simple_password_form(forms.Form):
-##    password_1 = forms.CharField(label=_("Password"), widget=forms.PasswordInput)
-##    password_2 = forms.CharField(label=_("Password (again)"), widget=forms.PasswordInput)
-##    def clean(self):
-##        cleaned_data = self.cleaned_data
-##        if cleaned_data:
-##            pass_ok = True
-##            if len(cleaned_data["password_1"]) < 6:
-##                self._errors["password_1"] = ErrorList(["password is too short (min 6 chars)"])
-##                pass_ok = False
-##            elif cleaned_data["password_1"] != cleaned_data["password_2"]:
-##                self._errors["password_1"] = ErrorList(["passwords do not match"])
-##                pass_ok = False
-##            if not pass_ok:
-##                del self.cleaned_data["password_1"]
-##                del self.cleaned_data["password_2"]
-##        return self.cleaned_data
-
-
-class change_password_form(forms.Form):
+class ChangePasswordForm(forms.Form):
+    """
+    A form to do password changes in a safe way. New password is input twice.
+    """
     password_old = forms.CharField(label=_("Old Password"), widget=forms.PasswordInput)
-    password_1   = forms.CharField(label=_("New Password"), widget=forms.PasswordInput)
-    password_2   = forms.CharField(label=_("New Password (again)"), widget=forms.PasswordInput)
+    password_1 = forms.CharField(label=_("New Password"), widget=forms.PasswordInput)
+    password_2 = forms.CharField(label=_("New Password (again)"), widget=forms.PasswordInput)
+
     def __init__(self, *args, **kwargs):
         self.username = kwargs.pop("username", None)
         super(change_password_form, self).__init__(*args, **kwargs)
+
     def clean(self):
         cleaned_data = self.cleaned_data
         if cleaned_data:
             pass_ok = True
             username = self.username
             password_old = cleaned_data.get("password_old")
-            password_1   = cleaned_data.get("password_1")
-            password_2   = cleaned_data.get("password_2")
+            password_1 = cleaned_data.get("password_1")
+            password_2 = cleaned_data.get("password_2")
             if username and password_old and password_1 and password_2:
                 if username and password_old:
                     my_cache = auth.authenticate(username=username, password=password_old)
@@ -114,4 +84,3 @@ class change_password_form(forms.Form):
                     self._errors["password_1"] = ErrorList(["Your new password cannot be the same like your old password"])
                     pass_ok = False
         return self.cleaned_data
-

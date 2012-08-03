@@ -41,7 +41,7 @@ DEBUG_FILE = "/tmp/lp_debug"
 
 
 def generate_md5_key(*args):
-    new_key = hashlib.md5()
+    new_key = hashlib.md5()  # pylint: disable-msg=E1101
     for cur_arg in args:
         new_key.update(unicode(cur_arg))
     return new_key.hexdigest()
@@ -202,30 +202,6 @@ class progress_counter(object):
 
     def delete(self):
         cache.delete("pc_%s" % (self.name))
-
-"""
-def remove_temporary_documents(log_com, **kwargs):
-    temp_docs = document.objects.filter(Q(temporary=True) & (Q(created=None) | Q(created__lt=datetime.datetime.now() - datetime.timedelta(days=kwargs.get("days", 1)))))
-    if len(temp_docs):
-        temp_paths = [temp_doc._temp_file_path() for temp_doc in temp_docs]
-        log_com("removing %s" % (logging_tools.get_plural("temporary document", len(temp_docs))))
-        temp_docs.delete()
-    else:
-        temp_paths = []
-    for full_name in temp_paths:
-        if os.path.exists(full_name):
-            try:
-                os.unlink(full_name)
-            except:
-                log_com("cannot remove temporary file '%s': %s" % (full_name,
-                                                                   process_tools.get_except_info()),
-                        logging_tools.LOG_LEVEL_ERROR)
-            else:
-                log_com("removed temporary file '%s'" % (full_name))
-        else:
-            log_com("temporary file '%s' does not exist" % (full_name),
-                    logging_tools.LOG_LEVEL_WARN)
-"""
 
 
 class sidebar_element(object):

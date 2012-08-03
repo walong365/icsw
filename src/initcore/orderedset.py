@@ -7,6 +7,7 @@ import collections
 
 KEY, PREV, NEXT = range(3)
 
+
 class OrderedSet(collections.MutableSet):
 
     def __init__(self, iterable=None):
@@ -67,8 +68,3 @@ class OrderedSet(collections.MutableSet):
 
     def __del__(self):
         self.clear()                    # remove circular references
-
-
-if __name__ == '__main__':
-    print(OrderedSet('abracadaba'))
-    print(OrderedSet('simsalabim'))
