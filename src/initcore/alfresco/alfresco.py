@@ -1,17 +1,14 @@
 # -*- coding: utf-8 -*-
 
 """
-Toolkit for accessing alfresco.
+Toolkit for accessing Alfresco. The AlfrescoHandler is the class
+that does all the work for us.
 """
 
-from pkg_resources import require
-require("Suds")
-import suds
-from suds.client import Client
-from suds.sax.element import Element
-from initcore.helper_functions import keyword_check
-from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
-import suds.wsse
+import process_tools
+import cmislib
+# extensions, very important
+import cmislibalf
 import time
 import sys
 import re
@@ -21,11 +18,19 @@ import pprint
 import logging
 import mimetypes
 import StringIO
+
+from pkg_resources import require
+require("Suds")
+import suds
+from suds.client import Client
+from suds.sax.element import Element
+import suds.wsse
+
 from django.conf import settings
-import process_tools
-import cmislib
-# extensions, very important
-import cmislibalf
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
+
+from initcore.utils import keyword_check
+from initcore.alfresco import logger
 
 ALFRESCO_WS_CML_NS = "http://www.alfresco.org/ws/cml/1.0"
 ALFRESCO_WS_MODEL_CONTENT_NS = "http://www.alfresco.org/ws/model/content/1.0"
@@ -35,7 +40,12 @@ ALFRESCO_MODEL_CONTENT_NS = "http://www.alfresco.org/model/content/1.0"
 ALFRESCO_MODEL_SYSTEM_NS = "http://www.alfresco.org/model/system/1.0"
 ALFRESCO_MODEL_APPLICATION_NS = "http://www.alfresco.org/model/application/1.0"
 
-CASE_INSENSITIVE = False
+
+def get_uuid(document):
+    """
+    Return the UUID of an alfresco cmislib document.
+    """
+    return document.getObjectId()[-36:]
 
 
 def get_content_dict(in_str):
@@ -555,10 +565,3 @@ class alfresco_handler(object):
                                              call_name,
                                              logging_tools.get_diff_time_str(e_time - s_time)))
         return ret_obj
-
-if sys.platform in ["linux2", "linux3"]:
-    # add suds logging on linux hosts
-    logging_tools.get_logger("suds.client",
-                             "uds:/var/lib/logging-server/py_log",
-                             base_log_level=logging.ERROR,
-                             init_logger=False)
