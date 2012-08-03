@@ -2543,20 +2543,20 @@ class logging_thread(threading_tools.thread_obj):
                                           s_thread,
                                           pre_str,
                                           what))
-    def _build_regexp(self):
-        sys.path.append("/usr/local/sbin")
-        log_lines, sys_dict = process_tools.fetch_sysinfo()
-        # determine correct regexp
-        if sys_dict["version"] in ["8.0", "8.1"] and sys_dict["vendor"] != "redhat":
-            self.log("System Version is < SUSE 8.2, using non-standard regexp for syslog-ng messages")
-            self.__line_re = re.compile("^\<\d+\>(?P<time>\S+\s+\S+\s+\S+)\s+(?P<facility>\S+):\s+(?P<message>.*)$")
-        else:
-            self.log("System Version is >= SUSE 8.2 or RedHat, using standard regexp for syslog-ng messages")
-            self.__line_re = re.compile("^\<\d+\>(?P<time>\S+\s+\S+\s+\S+)\s+(?P<host>\S+)\s+(?P<facility>\S+):\s+(?P<message>.*)$")
-        self.__dhcp_discover = re.compile("^DHCPDISCOVER from (?P<macaddr>\S+) via .*$")
-        self.__dhcp_offer    = re.compile("^DHCPOFFER on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")
-        self.__dhcp_request  = re.compile("^DHCPREQUEST for (?P<ip>\S+) .*from (?P<macaddr>\S+) via .*$")
-        self.__dhcp_answer   = re.compile("^DHCPACK on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")
+##    def _build_regexp(self):
+##        sys.path.append("/usr/local/sbin")
+##        log_lines, sys_dict = process_tools.fetch_sysinfo()
+##        # determine correct regexp
+##        if sys_dict["version"] in ["8.0", "8.1"] and sys_dict["vendor"] != "redhat":
+##            self.log("System Version is < SUSE 8.2, using non-standard regexp for syslog-ng messages")
+##            self.__line_re = re.compile("^\<\d+\>(?P<time>\S+\s+\S+\s+\S+)\s+(?P<facility>\S+):\s+(?P<message>.*)$")
+##        else:
+##            self.log("System Version is >= SUSE 8.2 or RedHat, using standard regexp for syslog-ng messages")
+##            self.__line_re = re.compile("^\<\d+\>(?P<time>\S+\s+\S+\s+\S+)\s+(?P<host>\S+)\s+(?P<facility>\S+):\s+(?P<message>.*)$")
+##        self.__dhcp_discover = re.compile("^DHCPDISCOVER from (?P<macaddr>\S+) via .*$")
+##        self.__dhcp_offer    = re.compile("^DHCPOFFER on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")
+##        self.__dhcp_request  = re.compile("^DHCPREQUEST for (?P<ip>\S+) .*from (?P<macaddr>\S+) via .*$")
+##        self.__dhcp_answer   = re.compile("^DHCPACK on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")
     def _remove_handle(self, name):
         self.log("Closing log for device %s" % (name))
         self._mach_log((self.name, "(%s) : Closing log" % (self.name), logging_tools.LOG_LEVEL_OK, name))
@@ -2582,41 +2582,41 @@ class logging_thread(threading_tools.thread_obj):
             else:
                 handle, pre_str = (self.__glob_log, "device %s: " % (name))
         return (handle, pre_str)
-    def _syslog_dhcp(self, in_line):
-        in_line = in_line.strip()
-        line_m = self.__line_re.match(in_line)
-        if line_m:
-            mess_str = line_m.group("message").strip()
-            if line_m.group("facility") == "dhcpd":
-                for line in [y.strip() for y in in_line.split("\n") if y.strip()]:
-                    self.log("got line %s from dhcp-server" % (line))
-                for prefix, regexp in [("DISCOVER", self.__dhcp_discover),
-                                       ("OFFER"   , self.__dhcp_offer),
-                                       ("REQUEST" , self.__dhcp_request),
-                                       ("ACK"     , self.__dhcp_answer)]:
-                    dhcp_s = regexp.match(mess_str)
-                    if dhcp_s:
-                        if prefix == "DISCOVER":
-                            ip = "---"
-                        else:
-                            ip = dhcp_s.group("ip")
-                        server_com = server_command.server_command(command="syslog_line")
-                        server_com.set_option_dict({"sm_type" : prefix,
-                                                    "ip"      : ip,
-                                                    "mac"     : dhcp_s.group("macaddr"),
-                                                    "message" : mess_str})
-                        self.__dhcp_queue.put(("server_com", server_com))
-                        break
-                else:
-                    self.log("cannot parse line (match) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
-            else:
-                if in_line.count("syslog-thread-test"):
-                    # string from logcheck-server, ignore
-                    pass
-                else:
-                    self.log("cannot parse line (facility) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
-        else:
-            self.log("cannot parse line (general) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
+##    def _syslog_dhcp(self, in_line):
+##        in_line = in_line.strip()
+##        line_m = self.__line_re.match(in_line)
+##        if line_m:
+##            mess_str = line_m.group("message").strip()
+##            if line_m.group("facility") == "dhcpd":
+##                for line in [y.strip() for y in in_line.split("\n") if y.strip()]:
+##                    self.log("got line %s from dhcp-server" % (line))
+##                for prefix, regexp in [("DISCOVER", self.__dhcp_discover),
+##                                       ("OFFER"   , self.__dhcp_offer),
+##                                       ("REQUEST" , self.__dhcp_request),
+##                                       ("ACK"     , self.__dhcp_answer)]:
+##                    dhcp_s = regexp.match(mess_str)
+##                    if dhcp_s:
+##                        if prefix == "DISCOVER":
+##                            ip = "---"
+##                        else:
+##                            ip = dhcp_s.group("ip")
+##                        server_com = server_command.server_command(command="syslog_line")
+##                        server_com.set_option_dict({"sm_type" : prefix,
+##                                                    "ip"      : ip,
+##                                                    "mac"     : dhcp_s.group("macaddr"),
+##                                                    "message" : mess_str})
+##                        self.__dhcp_queue.put(("server_com", server_com))
+##                        break
+##                else:
+##                    self.log("cannot parse line (match) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
+##            else:
+##                if in_line.count("syslog-thread-test"):
+##                    # string from logcheck-server, ignore
+##                    pass
+##                else:
+##                    self.log("cannot parse line (facility) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
+##        else:
+##            self.log("cannot parse line (general) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
         
 def get_kernel_stuff(dc, glob_config, k_n, k_idx):
     if glob_config["PREFER_KERNEL_NAME"]:
@@ -2984,7 +2984,7 @@ class server_process(threading_tools.process_pool):
             data.append(zmq_sock.recv_unicode())
         if len(data) == 2:
             if data[0].endswith("syslog_scan"):
-                print "syslog_scan", data[1]
+                self.send_to_process("control", "syslog_line", data[1])
             else:
                 print data
                 zmq_sock.send_unicode(data[0], zmq.SNDMORE)
@@ -3122,6 +3122,7 @@ class server_process(threading_tools.process_pool):
         import mother.syslog_scan
         rsyslog_lines = [
             "$ModLoad omprog",
+            "$RepeatedMsgReduction off",
             "$actionomprogbinary %s" % (mother.syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),
             "",
             "if $programname contains_i 'dhcp' then :omprog:",

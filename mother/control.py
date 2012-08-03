@@ -40,7 +40,7 @@ import ipvx_tools
 from django.db import connection
 from twisted.internet import reactor
 from twisted.python import log
-from init.cluster.backbone.models import kernel, device, hopcount, image
+from init.cluster.backbone.models import kernel, device, hopcount, image, macbootlog, mac_ignore
 from django.db.models import Q
 import process_tools
 from mother.command_tools import simple_command
@@ -360,14 +360,15 @@ class host(machine):
     def set_recv_req_state(self, recv_state = "error not set", req_state="error not set"):
         self.device.recvstate, self.device.reqstate = (recv_state, req_state)
     def refresh_target_kernel(self, *args, **kwargs):
-        self.refresh_device()
-        self.check_network_settings()
+        if kwargs.get("refresh", True):
+            self.refresh_device()
+            self.check_network_settings()
         if self.is_node:
             if self.device.new_kernel:
                 if not self.device.stage1_flavour:
                     self.device.stage1_flavour = "cpio"
                     self.log("setting stage1_flavour to '%s'" % (self.device.stage1_flavour))
-                    self.device.save()
+                    self.device.save(update_fields=["stage1_flavour"])
                 if not self.device.prod_link:
                     self.log("no production link set", logging_tools.LOG_LEVEL_WARN)
                     prod_net = None
@@ -774,6 +775,46 @@ class host(machine):
         self.device.dhcp_written = new_dhcp_written
         self.device.dhcp_error = error_str
         self.device.save(update_fields=["dhcp_written", "dhcp_error"])
+    def feed_dhcp(self, in_dict, in_line):
+        if in_dict["key"] == "discover":
+            # dhcp feed, in most cases discover
+            self.log("set macaddress of bootnetdevice to '%s'" % (in_dict["macaddr"]))
+            self.bootnetdevice.macaddr = in_dict["macaddr"]
+            self.bootnetdevice.save(update_fields=["macaddr"])
+            self.device.dhcp_mac = False
+            self.device.save(update_fields=["dhcp_mac"])
+            # FIXME, devicelog
+    ##        dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (dev_name))
+    ##        didx = dc.fetchone()["device_idx"]
+    ##        sql_str, sql_tuple = mysql_tools.get_device_log_entry_part(didx, self.__loc_config["NODE_SOURCE_IDX"], 0, self.__loc_config["LOG_STATUS"]["i"]["log_status_idx"], mac)
+    ##        dc.execute("INSERT INTO devicelog VALUES(%s)" % (sql_str), sql_tuple)
+    ##        self.get_thread_queue().put(("server_com", server_command.server_command(command="alter_macadr", nodes=[dev_name])))
+            macbootlog(
+                device=self.device,
+                macaddr=in_dict["macaddr"],
+                entry_type=in_dict["key"],
+                ip_action="SET").save()
+            # no change dhcp-server
+            self.handle_mac_command("alter")
+        else:
+            change_fields = set()
+            if self.device.dhcp_mac:
+                # clear dhcp_mac
+                self.log("clearing dhcp_mac")
+                self.device.dhcp_mac = False
+                change_fields.add("dhcp_mac")
+            # FIXME, devicelog
+##            mach.device_log_entry(5,
+##                                  "i",
+##                                  "got ipaddr (%s)" % (sm_type),
+##                                  self.__queue_dict["sql_queue"],
+##                                  self.__loc_config["LOG_SOURCE_IDX"])
+            self.device.recvstate = "got IP-Address via DHCP"
+            change_fields.add("recvstate")
+            if change_fields:
+                self.device.save(update_fields=list(change_fields))
+            if self.device.new_state:
+                self.refresh_target_kernel(refresh=False)
          
 class hm_icmp_protocol(icmp_twisted.icmp_protocol):
     def __init__(self, tw_process, log_template):
@@ -925,6 +966,13 @@ class node_control_process(threading_tools.process_obj):
         self.register_func("alter_macaddr", self.alter_macaddr)
         self.register_timer(self._check_commands, 10)
         #self.kernel_dev = config_tools.server_check(server_type="kernel_server")
+        self.register_func("syslog_line", self._syslog_line)
+        # build dhcp res
+        self.__dhcp_res = {
+            "discover" : re.compile("(?P<program>\S+): DHCPDISCOVER from (?P<macaddr>\S+) via .*$"),
+            "offer"    : re.compile("^(?P<program>\S+): DHCPOFFER on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$"),
+            "request"  : re.compile("^(?P<program>\S+): DHCPREQUEST for (?P<ip>\S+) .*from (?P<macaddr>\S+) via .*$"),
+            "answer"   : re.compile("^(?P<program>\S+): DHCPACK on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")}
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def _refresh(self, *args, **kwargs):
@@ -1061,3 +1109,170 @@ class node_control_process(threading_tools.process_obj):
                 sql_str, sql_tuple = ("UPDATE device SET %s WHERE name=%%s" % (", ".join(["%s=%%s" % (x) for x in dev_sql_keys])),
                                       tuple([dev_sql_fields[x] for x in dev_sql_keys] + [mach.name]))
                 dc.execute(sql_str, sql_tuple)
+    def _syslog_line(self, *args, **kwargs):
+        in_line = args[0]
+        if "DHCP" not in in_line:
+            self.log("got dhcp_line %s, skip" % (in_line))
+        else:
+            for key, cur_re in self.__dhcp_res.iteritems():
+                cur_m = cur_re.match(in_line)
+                if cur_m:
+                    break
+            if not cur_m:
+                self.log("cannot parse %s" % (in_line), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                cur_dict = cur_m.groupdict()
+                cur_dict["key"] = key
+                self._handle_syslog(cur_dict, in_line)
+    def _handle_syslog(self, in_dict, in_line):
+        if "ip" in in_dict:
+            try:
+                ip_dev = device.objects.select_related("bootnetdevice").get(Q(netdevice__net_ip__ip=in_dict["ip"]))
+            except device.DoesNotExist:
+                self.log("got %s for unknown ip %s" % (in_dict["key"],
+                                                       in_dict["ip"]), logging_tools.LOG_LEVEL_WARN)
+                ip_dev = None
+            else:
+                if ip_dev.bootserver:
+                    if ip_dev.bootserver.pk == self.sc.effective_device.pk:
+                        boot_dev = machine.get_device(ip_dev.name)
+                        boot_dev.log("parsed: %s" % (", ".join(["%s=%s" % (key, in_dict[key]) for key in sorted(in_dict.keys())])))
+                        boot_dev.feed_dhcp(in_dict, in_line)
+                    else:
+                        self.log("got request %s for %s, not responsible" % (in_dict["key"],
+                                                                             ip_dev.name),
+                                 logging_tools.LOG_LEVEL_WARN)
+                else:
+                    self.log("no bootserver set for device %s, strange..." % (ip_dev.name), logging_tools.LOG_LEVEL_ERROR)
+        if in_dict["key"] == "discover":
+            self.log("parsed: %s" % (", ".join(["%s=%s" % (key, in_dict[key]) for key in sorted(in_dict.keys())])))
+            if in_line.lower().count("no free leases"):
+                # nothing found
+                try:
+                    used_dev = device.objects.get(Q(bootserver=self.sc.effective_device) & Q(netdevice__macaddr__iexact=in_dict["macaddr"].lower()))
+                except device.DoesNotExist:
+                    greedy_devs = device.objects.filter(Q(bootserver=self.sc.effective_device) & Q(dhcp_mac=True)).select_related("bootnetdevice").order_by("name")
+                    if len(greedy_devs):
+                        if mac_ignore.objects.filter(Q(macaddr__iexact=in_dict["macaddr"].lower())).count():
+                            self.log("ignoring mac-address '%s' (in ignore_list)" % (in_dict["macaddr"]))
+                            macbootlog(
+                                entry_type=in_dict["key"],
+                                ip_action="IGNORE",
+                                macaddr=in_dict["macaddr"].lower()).save()
+                        else:
+                            # no feed to device
+                            machine.get_device(greedy_devs[0].name).feed_dhcp(in_dict, in_line)
+                    else:
+                        all_greedy_devs = device.objects.filter(Q(dhcp_mac=True)).select_related("bootnetdevice").order_by("name")
+                        if all_greedy_devs:
+                            self.log("found %s but none related to me" % (logging_tools.get_plural("greedy device", len(all_greedy_devs))), logging_tools.LOG_LEVEL_WARN)
+                        else:
+                            self.log("no greedy devices found for MAC-address %s or not responsible" % (in_dict["mac"]))
+                else:
+                    # reject entry because we are unable to answer the DHCP-Request
+                    macbootlog(
+                        entry_type=in_dict["key"],
+                        ip_action="REJECT",
+                        macaddr=in_dict["macaddr"].lower()
+                    ).save()
+                    # FIXME
+                    self.log("FIXME, handling of DHCP-requests", logging_tools.LOG_LEVEL_ERROR)
+##                    dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "REJECT", mac, self.__loc_config["LOG_SOURCE_IDX"]))
+##                    self.log("DHCPDISCOVER for macadr %s (device %s%s, %s%s): address already used" % (
+##                        mac,
+##                        mac_entry["name"],
+##                        mac_entry["dhcp_mac"] and "[is greedy]" or "",
+##                        mac_entry["devname"],
+##                        mac_entry["netdevice_idx"] == mac_entry["bootnetdevice"] and "[is bootdevice]" or "[is not bootdevice]"))
+##                    if mac_entry["netdevice_idx"] != mac_entry["bootnetdevice"]:
+##                        dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "MODIFY", mac, self.__loc_config["LOG_SOURCE_IDX"]))
+##                        self.log("deleting macadr of netdevice %s on device %s (%s)" % (mac_entry["devname"],
+##                                                                                        mac_entry["name"],
+##                                                                                        mac))
+##                        dc.execute("UPDATE netdevice SET macadr='00:00:00:00:00:00' WHERE netdevice_idx=%d" % (mac_entry["netdevice_idx"]))
+##                        self._remove_macadr({"name"   : mac_entry["name"],
+##                                             "ip"     : "",
+##                                             "macadr" : mac})
+##                    else:
+##                        dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "REJECT", mac, self.__loc_config["LOG_SOURCE_IDX"]))
+            else:
+                # discover request got an answer
+                macbootlog(
+                    entry_type=in_dict["key"],
+                    ip_action="---",
+                    macaddr=in_dict["macaddr"].lower()
+                    ).save()
+        else:
+            # non-discover call, should have an ip-entry
+            macbootlog(
+                entry_type=in_dict["key"],
+                device=ip_dev,
+                ip_action=in_dict["ip"],
+                macaddr=in_dict["macaddr"].lower()
+                ).save()
+        return
+        dc = self.__db_con.get_connection(SQL_ACCESS)
+        server_opts = s_com.get_option_dict()
+        sm_type     = server_opts["sm_type"]
+        ip          = server_opts["ip"]
+        mac         = server_opts["mac"]
+        full_string = server_opts["message"]
+        mach_idx = 0
+        if ip:
+            if self.__ad_struct.has_key(ip):
+                mach = self.__ad_struct[ip]
+                mach.incr_use_count("syslog line")
+        if sm_type == "DISCOVER":
+            if re.match("^.*no free leases.*$", full_string):
+                dc.execute("SELECT d.name, nd.devname, nd.netdevice_idx, d.bootserver, d.dhcp_mac, d.bootnetdevice FROM netdevice nd, device d WHERE nd.device=d.device_idx AND nd.macadr='%s'" % (mac))
+                mac_list = dc.fetchall()
+                if len(mac_list):
+                    mac_entry = mac_list[0]
+                    if mac_entry["bootserver"] and mac_entry["bootserver"] != self.__loc_config["MOTHER_SERVER_IDX"]:
+                        # dhcp-DISCOVER request need not to be answered (other Server responsible)
+                        dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "OTHER", mac, self.__loc_config["LOG_SOURCE_IDX"]))
+                        self.log("DHCPDISCOVER for macadr %s (device %s, %s): other bootserver (%d)" % (mac, mac_entry["name"], mac_entry["devname"], mac_entry["bootserver"]))
+                    #else:
+                    #    # dhcp-DISCOVER request can not be answered (macadress already used in DB)
+                else:
+                    pass
+##                    dc.execute("SELECT nd.netdevice_idx, d.name, d.device_idx, d.bootserver FROM netdevice nd, device d WHERE d.dhcp_mac=1 AND d.bootnetdevice=nd.netdevice_idx AND nd.device=d.device_idx ORDER by d.name")
+##                    ndidx_list = dc.fetchall()
+##                    if len(ndidx_list):
+##                        for nd in ndidx_list:
+##                            if nd["bootserver"]:
+##                                if nd["bootserver"] == self.__loc_config["MOTHER_SERVER_IDX"]:
+##                                    ins_idx = nd["netdevice_idx"]
+##                                    dev_name = nd["name"]
+##                                    dc.execute("SELECT macadr FROM mac_ignore WHERE macadr='%s'" % (mac))
+##                                    if dc.rowcount:
+##                                        self.log("Ignoring MAC-Adress '%s' (in ignore-list)" % (mac))
+##                                        dc.execute("INSERT INTO macbootlog VALUES (0, %s, %s, %s, %s, %s, null)", (0, sm_type, "IGNORELIST", mac, self.__loc_config["LOG_SOURCE_IDX"]))
+##                                    else:
+##                                        self.log("Setting bootmacaddress of device '%s' to '%s'" % (dev_name, mac))
+##                                        dc.execute("UPDATE device SET dhcp_mac=0 WHERE name='%s'" % (dev_name))
+##                                        dc.execute("UPDATE netdevice SET macadr='%s' WHERE netdevice_idx=%d" % (mac, ins_idx))
+##                                        dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (dev_name))
+##                                        didx = dc.fetchone()["device_idx"]
+##                                        sql_str, sql_tuple = mysql_tools.get_device_log_entry_part(didx, self.__loc_config["NODE_SOURCE_IDX"], 0, self.__loc_config["LOG_STATUS"]["i"]["log_status_idx"], mac)
+##                                        dc.execute("INSERT INTO devicelog VALUES(%s)" % (sql_str), sql_tuple)
+##                                        self.get_thread_queue().put(("server_com", server_command.server_command(command="alter_macadr", nodes=[dev_name])))
+##                                        # set the mac-address
+##                                        dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (nd["device_idx"], sm_type, "SET", mac, self.__loc_config["LOG_SOURCE_IDX"]))
+##                                    break
+##                                else:
+##                                    self.log("Not responsible for device '%s' (ip %s); bootserver has idx %d" % (nd["name"], ip, nd["bootserver"]))
+##                                    break
+##                            else:
+##                                self.log("Greedy device %s has no bootserver associated" % (nd["name"]), nd["name"])
+##                    else:
+##                        # ignore mac-address (no greedy devices)
+##                        dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "IGNORE", mac, self.__loc_config["LOG_SOURCE_IDX"]))
+##                        self.log("No greedy devices found for MAC-Address %s" % (mac))
+            else:
+                # dhcp-DISCOVER request got an answer
+                dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "---", mac, self.__loc_config["LOG_SOURCE_IDX"]))
+        else:
+            # non dhcp-DISCOVER request
+            dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (mach_idx, sm_type, ip, mac, self.__loc_config["LOG_SOURCE_IDX"]))
+        dc.release()
