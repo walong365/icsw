@@ -1,0 +1,39 @@
+{% extends "main.html" %}
+
+{% load i18n compress %}
+
+{% block title %}{% trans "Boot" %}{% endblock %}
+
+
+{% block content %}
+
+<h1 class="center">Boot settings</h1>
+
+<div id="boot">
+</div>
+
+<script type="text/javascript">
+
+// current device selection
+CUR_DEVICES = undefined;
+
+function load_table() {
+    console.log("load_boot", CUR_DEVICES);
+};
+
+function use_devs(dt_div) {
+    CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
+        return(value.data.key);
+    });
+    load_table();
+};
+
+function add_config_handlers() {
+    install_devsel_link(use_devs, true);
+};
+
+$(document).ready(add_config_handlers);
+
+</script>
+
+{% endblock %}

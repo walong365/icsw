@@ -44,6 +44,11 @@ config_patterns = patterns(
     url("^generate_config$"  , "config_views.generate_config"         , name="generate_config"   ),
 )
 
+boot_patterns = patterns(
+    "init.cluster.frontend",
+    url("^show_boot$"   , "boot_views.show_boot", name="show_boot"),
+)
+
 device_patterns = patterns(
     "init.cluster.frontend",
     url("^device_tree$"       , "device_views.device_tree"        , name="tree"               ),
@@ -98,6 +103,7 @@ my_url_patterns = patterns(
     url(r"^device/" , include(device_patterns  , namespace="device"  )),
     url(r"^network/", include(network_patterns , namespace="network" )),
     url(r"^nagios/" , include(nagios_patterns  , namespace="nagios"  )),
+    url(r"^boot/"   , include(boot_patterns    , namespace="boot"    )),
 )
 
 url_patterns = patterns(
