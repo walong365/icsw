@@ -74,6 +74,7 @@ class my_opt_parser(argparse.ArgumentParser):
         self.options = options
         self.mpi_selector = options.mpi_selector
         self.module_file = options.module_file
+        self.hwloc = options.hwloc
         self._check_compiler_settings()
         self.package_name = "openmpi-%s-%s-%s-%s%s" % (self.options.openmpi_version,
                                                        self.options.fcompiler,
