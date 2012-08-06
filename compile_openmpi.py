@@ -63,6 +63,7 @@ class my_opt_parser(argparse.ArgumentParser):
         self.add_argument("--release", dest="release", type=str, help="Set release [%(default)s]", default="1")
         self.add_argument("--without-mpi-selecter", dest="mpi_selector", default=True, action="store_false", help="disable support for MPI-Selector [%(default)s]")
         self.add_argument("--without-module", dest="module_file", default=True, action="store_false", help="disable support for modules [%(default)s]")
+        self.add_argument("--without-hwloc", dest="hwloc", default=True, action="store_false", help="disable hwloc support [%(default)s]")
         if is_64_bit:
             # add option for 32-bit goto if machine is NOT 32 bit
             self.add_argument("--32", dest="use_64_bit", help="Set 32-Bit build [%(default)s]", action="store_false", default=True)
@@ -219,11 +220,14 @@ class openmpi_builder(object):
         if os.path.islink("%s/etc/openmpi-mca-params.conf" % (self.parser.openmpi_dir)):
             os.unlink("%s/etc/openmpi-mca-params.conf" % (self.parser.openmpi_dir))
         success = True
-        for command, time_name in [("./configure --prefix=%s %s" % (self.parser.openmpi_dir,
-                                                                    self.parser.options.extra_settings), "configure"),
+        config_list = [("--prefix", self.parser.openmpi_dir)]
+        if self.parser.hwloc:
+            config_list.append(("--with-hwloc", "/opt/cluster"))
+        for command, time_name in [("./configure %s %s" % (
+            " ".join(["%s=%s" % (key, value) for key, value in config_list]),
+            self.parser.options.extra_settings), "configure"),
                                    ("make -j %d" % (num_cores), "make"),
-                                   ("make install", "install")
-                                   ]:
+                                   ("make install", "install")]:
             self.time_dict[time_name] = {"start" : time.time()}
             print "Doing command %s" % (command)
             sp_obj = subprocess.Popen(command.split(), 0, None, None, subprocess.PIPE, subprocess.STDOUT)
@@ -272,7 +276,8 @@ class openmpi_builder(object):
             "append-path LD_LIBRARY_PATH %s" % (lib_dir),
             ""
             ]
-        os.makedirs(targ_dir)
+        if not os.path.isdir(targ_dir):
+            os.makedirs(targ_dir)
         file("%s/%s" % (targ_dir, self.modulefile_name), "w").write("\n".join(mod_lines))
     def _create_mpi_selector_file(self):
         self.mpi_selector_sh_name  = "%s.sh" % (self.parser.package_name)
@@ -325,7 +330,8 @@ class openmpi_builder(object):
                      '    setenv MANPATH %s/share/man:' % (self.parser.openmpi_dir),
                      'endif']
         targ_dir = "%s/%s" % (self.tempdir, self.mpi_selector_dir)
-        os.makedirs(targ_dir)
+        if not os.path.isdir(targ_dir):
+            os.makedirs(targ_dir)
         file("%s/%s" % (targ_dir, self.mpi_selector_sh_name), "w").write("\n".join(sh_lines))
         file("%s/%s" % (targ_dir, self.mpi_selector_csh_name), "w").write("\n".join(csh_lines))
     def package_it(self):
