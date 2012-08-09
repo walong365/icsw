@@ -886,7 +886,7 @@ while true ; do
 		if [ "$sleep_time" -gt 30 ] ; then
             err_exit "no disc after $sleep_time seconds" ;
 		else
-            set_hoststat "no disc after $sleep_time , waiting for $incr_sleep_time seconds"
+            set_hoststat "no disc after $sleep_time seconds, waiting for $incr_sleep_time seconds"
 		fi
 		sleep $incr_sleep_time;
     }
