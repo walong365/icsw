@@ -78,7 +78,7 @@ stage2_file_dict = {0 : ["inetd", "xinetd", "mkfs.xfs", "rmmod.old", "lsmod.old"
                          "df", "tar", "gzip", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "basename",
                          "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
                          "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
-                         "rmmod", "depmod", "insmod", "mkfs.ext2", "mv",
+                         "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "udevadm",
                          "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
                          "reboot", "halt", "shutdown", "init", "route", "tell_mother", "date", "tune2fs",
                          ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",

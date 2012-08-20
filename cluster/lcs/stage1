@@ -235,7 +235,7 @@ alias ...='cd ../..'
 
 echo "/dev/ram0 / ext2 rw 0 0 " >> /etc/mtab
 
-export PATH=/sbin:/bin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+export PATH=/sbin:/bin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/cluster/bin:/opt/cluster/sbin
 
 depmod -ae || depmod -ave
 
@@ -388,7 +388,7 @@ while true ; do
 		echo ${echo_opt} "${GREEN}Server $motherserver reachable via ping and hoststatus over $net${OFF}" ;
 		valid_net=$net ;
 	    } || {
-		echo ${echo_opt} "${WARN}Server $motherserver reachable via ping over $net but no respone to hoststatus (mother running ?)${OFF}" ;
+		echo ${echo_opt} "${WARN}Server $motherserver reachable via ping over $net but no response to hoststatus (mother running ?)${OFF}" ;
 	    }
 	} || {
 	    echo ${echo_opt} "${RED}Server $motherserver not reachable via ping over $net${OFF}" ;

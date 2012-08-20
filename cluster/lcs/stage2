@@ -73,7 +73,7 @@ RO_MOUNTOPTS="-o nolock,ro,udp,rsize=8192,wsize=8192,noac,vers=3"
 MOUNT_RETRIES=10
 MOUNT_SLEEP=30
 
-export PATH=/sbin:/bin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+export PATH=/sbin:/bin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/cluster/bin:/opt/cluster/sbin
 
 #case $(uname -r | cut -d'.' -f2) in
 #	4) depmod=depmod.old;
@@ -305,49 +305,51 @@ function handle_runlevel_links() {
 function do_sfdisk_call() {
     dev=$1
     if [ -x /usr/sbin/parted -o -x /sbin/parted ] ; then
-	set_hoststat "${PART_MESG} using parted"
-	parted -s $dev print > /conf/.output/parted_before
-	dd if=/dev/zero of=$dev count=512 bs=1024
-	parted -s $dev mklabel msdos
-	# get the size of the disk; a little hack
-	# two cases:
-	# old parted (up to 1.6.21/22/23): report as <LOWER>-<UPPER> MB
-	# new parted (starting with at least 1.6.24): report as <LOWER> - <UPPER>GB
-	# new version as of 31.1.2006 (Novartis): rewrite \ -\ to - via sed
-	# debian_etch parted reports as Disk <disk>: <size>GB, sigh ...
-	# pre-debian version
-	size=$(parted -s $dev print | grep Disk\ geo | sed s/\ -\ /-/g | cut -d "-" -f 2 | sed s/^\ //g | cut -d " " -f 1 | cut -d "." -f 1)
-	if [ "${size:-0}" = "0" ] ; then
-            # try with-debian version
-	    size=$(parted -s $dev print | grep Disk | tr " " "\n" | grep -e "GB\|MB" )
-	fi
-	echo "***$size"
-	echo $size | grep GB > /dev/null && {
-	    size=$(($(($(echo $(echo $size | cut -d "." -f 1) | tr -dc [:digit:] ) - 1 )) * 1000)) ;
-	}
-	echo "***$size"
-	echo $size | grep MB > /dev/null && {
-	    size=$(($(($(echo $(echo $size | cut -d "." -f 1) | tr -dc [:digit:] ) - 1 )) )) ;
-	}
-	echo "***$size"
-	if [ "${size:-0}" = "0" ] ; then
-	    err_exit "Unable to determine size of disk $dev"
-	else
-	    echo -e "Size of disk $dev is $size"
-	    req_size=$(cat /conf/pinfo/parted  | tr -s " " | grep -v "extend" | cut -d " " -f 4 | sort -n | tail -1 | cut -d "." -f 1)
-	    cat /conf/pinfo/parted | sed s/_/$size/g > /parted
-	    cp -a /parted /conf/.output/parted
-	    [ $size -lt $req_size ] && { err_exit "$PART_MESG Disk to small ($size MB, requested $req_size MB)" ; }
-	    while read line ; do
-		echo "Doing parted -s $dev $line ..."
-		parted -s $dev $line
-	    done < /parted
-	    parted -s $dev print > /conf/.output/parted_after
-	fi
-    else
-	set_hoststat "${PART_MESG} using sfdisk"
-	cat /conf/pinfo/sfdisk | sfdisk --force -L -uM $dev > /conf/.output/sfdisk 2>&1 || { err_exit "$PART_MESG (code=$?)" ; }
-    fi
+		set_hoststat "${PART_MESG} using parted"
+		parted -s $dev print > /conf/.output/parted_before
+		dd if=/dev/zero of=$dev count=512 bs=1024
+		parted -s $dev mklabel msdos
+		# get the size of the disk; a little hack
+		# two cases:
+		# old parted (up to 1.6.21/22/23): report as <LOWER>-<UPPER> MB
+		# new parted (starting with at least 1.6.24): report as <LOWER> - <UPPER>GB
+		# new version as of 31.1.2006 (Novartis): rewrite \ -\ to - via sed
+		# debian_etch parted reports as Disk <disk>: <size>GB, sigh ...
+		# pre-debian version
+		size=$(parted -s $dev print | grep Disk\ geo | sed s/\ -\ /-/g | cut -d "-" -f 2 | sed s/^\ //g | cut -d " " -f 1 | cut -d "." -f 1)
+		if [ "${size:-0}" = "0" ] ; then
+				# try with-debian version
+			size=$(parted -s $dev print | grep Disk | tr " " "\n" | grep -e "GB\|MB" )
+		fi
+		echo "***$size"
+		echo $size | grep GB > /dev/null && {
+			size=$(($(($(echo $(echo $size | cut -d "." -f 1) | tr -dc [:digit:] ) - 1 )) * 1000)) ;
+		}
+		echo "***$size"
+		echo $size | grep MB > /dev/null && {
+			size=$(($(($(echo $(echo $size | cut -d "." -f 1) | tr -dc [:digit:] ) - 1 )) )) ;
+		}
+		echo "***$size"
+		if [ "${size:-0}" = "0" ] ; then
+			err_exit "Unable to determine size of disk $dev"
+		else
+			echo -e "Size of disk $dev is $size"
+			req_size=$(cat /conf/pinfo/parted  | tr -s " " | grep -v "extend" | cut -d " " -f 4 | sort -n | tail -1 | cut -d "." -f 1)
+			cat /conf/pinfo/parted | sed s/_/$size/g > /parted
+			cp -a /parted /conf/.output/parted
+			[ $size -lt $req_size ] && { err_exit "$PART_MESG Disk to small ($size MB, requested $req_size MB)" ; }
+			while read line ; do
+				echo "Doing parted -s $dev $line ..."
+				parted -s $dev $line
+				# reread partition
+				sfdisk -R $dev
+			done < /parted
+			parted -s $dev print > /conf/.output/parted_after
+		fi
+		else
+		set_hoststat "${PART_MESG} using sfdisk"
+		cat /conf/pinfo/sfdisk | sfdisk --force -L -uM $dev > /conf/.output/sfdisk 2>&1 || { err_exit "$PART_MESG (code=$?)" ; }
+		fi
 }
 
 function copy_config() {
