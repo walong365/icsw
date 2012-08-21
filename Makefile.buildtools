@@ -1,0 +1,14 @@
+# -*- Makefile -*-
+
+include /etc/init_build_tools
+
+VERSION=1.0.6
+
+NAME=initcore
+src_objs=Makefile Makefile.buildtools src/ setup.py build.spec CHANGELOG README
+
+include $(INIT_BUILD_TOOLS)/mk.pre
+
+all: $(FULL_BIN_RPM_PATH)
+
+include $(INIT_BUILD_TOOLS)/mk.build
