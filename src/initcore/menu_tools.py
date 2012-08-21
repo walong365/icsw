@@ -11,6 +11,8 @@ from lxml import etree
 from lxml.builder import E
 import os
 
+from initcore import logger
+
 COPY_ATTRIBUTES_SS = """<xsl:stylesheet
     version="1.0"
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
@@ -300,7 +302,7 @@ class olim_menu(object):
                     # If all registered resolvers found nothing, do standard resolving
                     href = reverse(node.attrib["ref"], args=[part.strip() for part in node.attrib.get("refargs", "").split(",") if part.strip()])
             except Exception as e:
-                print e
+                logger.exception("Exception while resolving in menu")
                 href = reverse("session:menu_folder", args=[base64.b64encode(node.attrib["xpath"])])
             else:
                 pass
