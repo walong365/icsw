@@ -122,6 +122,9 @@ class twisted_process(threading_tools.process_obj):
         self.send_pool_message("pong", cur_idx)
     def log_recv(self, raw_data):
         self.send_to_socket(self.__log_socket, ["log_recv", raw_data])
+    def loop_post(self):
+        self.log("closing receiver socket")
+        self.__log_socket.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.send_to_socket(self.__log_socket, ["log", what, log_level])
         
@@ -496,7 +499,7 @@ class main_process(threading_tools.process_pool):
         self.register_func("startup_error", self._startup_error)
         self.renice()
         self._init_msi_block()
-        self.add_process(log_receiver("receiver"), start=True)
+        self.add_process(log_receiver("receiver", priority=50), start=True)
         self._log_config()
         self._init_network_sockets()
         self.add_process(twisted_process("twisted"), twisted=True, start=True)
@@ -504,7 +507,8 @@ class main_process(threading_tools.process_pool):
         self.register_timer(self._update, 60)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         if not self["exit_requested"]:
-            self.send_to_process("receiver", "log", what, level)
+            pass
+            #self.send_to_process("receiver", "log", what, level)
         else:
             logging_tools.my_syslog(what, level)
     def _startup_error(self, src_name, src_pid, num_errors):
@@ -543,7 +547,7 @@ class main_process(threading_tools.process_pool):
                 os.unlink(act_hname)
                 any_removed = True
         if any_removed:
-            time.sleep(1)
+            time.sleep(0.5)
     def _pong(self, src_name, src_pid, *args, **kwargs):
         if args[0] % 10000 == 0:
             self.log("index: %d" % (args[0]))
