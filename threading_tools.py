@@ -622,7 +622,6 @@ class thread_pool(object):
                 self.loop_end()
                 excepted = False
             except:
-                print "he"
                 self._handle_exception()
         self.uninstall_signal_handlers()
         self.thread_loop_post()

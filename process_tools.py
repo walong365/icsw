@@ -135,6 +135,8 @@ def remove_zmq_dirs(dir_name):
 LOCAL_ZMQ_DIR = "/tmp/.zmq_%d:%d" % (os.getuid(),
                                      os.getpid())
 
+LOCAL_ROOT_ZMQ_DIR = "/var/log/cluster/sockets/%d" % (os.getpid())
+
 def get_zmq_ipc_name(name, **kwargs):
     if "s_name" in kwargs:
         s_name = kwargs["s_name"]
@@ -151,10 +153,10 @@ def get_zmq_ipc_name(name, **kwargs):
         # non-root call
         root_dir = LOCAL_ZMQ_DIR
         atexit.register(remove_zmq_dirs, root_dir)
-        if not os.path.isdir(root_dir):
-            os.mkdir(root_dir)
     else:
-        root_dir = "/var/log/cluster/sockets"
+        root_dir = LOCAL_ROOT_ZMQ_DIR
+    if not os.path.isdir(root_dir):
+        os.mkdir(root_dir)
     sub_dir = os.path.join(root_dir, s_name)
     if not os.path.isdir(sub_dir):
         os.mkdir(sub_dir)
@@ -178,6 +180,8 @@ def bind_zmq_socket(zmq_socket, name):
         logging_tools.my_syslog("error binding to zmq_socket '%s': %s" % (name,
                                                                           get_except_info()))
         raise
+    else:
+        logging_tools.my_syslog("zmq_socket bound to %s" % (name))
 
 def submit_at_command(com, diff_time=0):
     if os.path.isfile("/etc/redhat-release") or os.path.isfile("/etc/debian_version") or not diff_time:
