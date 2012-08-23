@@ -9,8 +9,8 @@ from lxml.builder import E
 from django.core.urlresolvers import reverse
 from django.conf import settings
 
-
 from initcore import logger
+
 
 COPY_ATTRIBUTES_SS = """<xsl:stylesheet
     version="1.0"
