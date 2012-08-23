@@ -86,6 +86,8 @@ class io_stream(object):
         else:
             self.__zmq_sock.send(cPickle.dumps(t_dict))
     def close(self):
+        if self.__zmq_sock:
+            self.__zmq_sock.close()
         del self.__protocol
     def flush(self):
         pass

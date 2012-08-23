@@ -838,6 +838,7 @@ def set_handles(pfix, error_only=False, **kwargs):
 #      the second being a filename. If the filename starts with a "/",
 #      it is handled as an absolute path
     zmq_context = kwargs.get("zmq_context", None)
+    ext_return = kwargs.get("ext_return", False)
     pf_dict = {}
     if type(pfix) == type(""):
         pf_dict = {"out" : (1, "%s.out" % (pfix)),
@@ -855,7 +856,8 @@ def set_handles(pfix, error_only=False, **kwargs):
         else:
             cvs = [x for x in ["out", "err"] if x in pf_dict.keys()]
             close_num = [0, 1, 2]
-        handles, h_types, h_names = ({}, {}, {})
+        h_names = {}
+        new_h_struct = {}
         for cv in cvs:
             create_new, f_name = pf_dict[cv]
             new_name = f_name.startswith("/") and f_name or os.path.normpath("%s/%s" % (act_dir, f_name))
@@ -885,12 +887,12 @@ def set_handles(pfix, error_only=False, **kwargs):
                     except:
                         logging_tools.my_syslog("cannot chmod() '%s' to 0640" % (f_name))
             if act_h:
-                handles[name] = act_h
-                h_types[name] = acth_t
-        if len(handles.keys()) < len(h_names.keys()):
-            for act_h in handles:
-                handles[act_h].close()
-            handles = {}
+                new_h_struct[name] = {"handle" : act_h,
+                                      "type"   : acth_t}
+        if len(new_h_struct.keys()) < len(h_names.keys()):
+            for act_h in new_h_struct.keys():
+                new_h_struct[act_h]["handle"].close()
+            new_h_struct = {}
         else:
             act_time = time.ctime(time.time())
             sys.stderr.close()
@@ -901,17 +903,20 @@ def set_handles(pfix, error_only=False, **kwargs):
                 os.close(c_handle)
             if not error_only:
                 sys.stdin = file("/dev/null", "r")
-                sys.stdout = handles["out"]
-                if h_types["out"] == "f":
+                sys.stdout = new_h_struct["out"]["handle"]
+                if new_h_struct["out"]["type"] == "f":
                     sys.stdout.write("starting at %s\n" % (act_time))
-            sys.stderr = handles["err"]
-            if h_types["err"] == "f":
+            sys.stderr = new_h_struct["err"]["handle"]
+            if new_h_struct["err"]["type"] == "f":
                 sys.stderr.write("starting at %s\n" % (act_time))
             h_changed = 1
             break
     if not h_changed and not pf_dict["strict"]:
         h_changed = 2
-    return h_changed
+    if ext_return:
+        return h_changed, new_h_struct
+    else:
+        return h_changed
 
 def handles_write_endline(error_only=False):
     act_time = time.ctime(time.time())
