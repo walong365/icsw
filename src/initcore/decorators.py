@@ -1,4 +1,13 @@
-from django.http import HttpResponseForbidden
+import logging_tools
+import sys
+import process_tools
+import time
+
+from django.http import HttpResponseForbidden, HttpResponse
+from django.conf import settings
+
+from initcore.utils import (logging_pool, send_emergency_mail, xml_response,
+                            build_simple_xml)
 
 
 def require_POST_params(params):
@@ -41,6 +50,11 @@ class init_logging(object):
         self.__name__ = func.__name__
         self.__logger = logging_pool.get_logger("http")
         self._func = func
+        self.xml_response = None
+        self.__prev_xml_response = None
+        self.__stdout_buffer = None
+        self.orig_stdout = None
+        self.__prev_logger = None
 
     def log(self, what="", log_level=logging_tools.LOG_LEVEL_OK, **kwargs):
         if kwargs.get("request_vars", False):
@@ -104,7 +118,7 @@ class init_logging(object):
         request.log = self.log
         try:
             ret_value = self._func(*args, **kwargs)
-        except:
+        except Exception:  # pylint: disable-msg=W0703
             exc_info = process_tools.exception_info()
             log_lines = exc_info.log_lines
             self.log_request_vars(request, log_lines)
