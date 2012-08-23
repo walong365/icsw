@@ -1,5 +1,5 @@
 Name: initcore
-Version: 1.0.6.2
+Version: 1.1.0
 Summary: The core init python package (alfresco, web, ...)
 Release: 1
 Group: Development/Languages/Python

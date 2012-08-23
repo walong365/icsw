@@ -2,7 +2,7 @@
 
 include /etc/init_build_tools
 
-VERSION=1.0.6.1
+VERSION=1.1.0
 
 NAME=initcore
 src_objs=Makefile Makefile.buildtools src/ setup.py build.spec CHANGELOG README
