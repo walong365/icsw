@@ -6,8 +6,8 @@ from django.core.urlresolvers import reverse
 from django.conf import settings
 
 from initcore.alfresco import logger
-from initcore.alfresco.alfresco import get_uuid
-from initcore.alfresco.alfresco import AlfrescoHandler
+from initcore.alfresco.alfresco import get_uuid, alfresco_handler
+from initcore.models import AlfrescoDocument
 
 
 class AlfrescoStorageError(Exception):
@@ -32,7 +32,7 @@ class AlfrescoStorage(Storage):
 
     # FIXME the handler should return a UUID to indicate success
     def _save(self, name, content):
-        success = self.handler.store_content(name, content, check_for_existing=True,
+        success = self.handler.store_content(name, content.read(), check_for_existing=True,
                                              create_new_version_if_exists=True)
         uuid = None
         if not success:
@@ -41,8 +41,11 @@ class AlfrescoStorage(Storage):
         else:
             logger.info("Upload of %s successful!" % name)
             document = self.handler.load_content(path=name)
-            uuid = alf_uuid(document)
-
+            version_major, version_minor = document.getProperties()["cmis:versionLabel"].split(".")
+            uuid = get_uuid(document)
+            # Create or update db entry
+            AlfrescoDocument(uuid=uuid, version_major=version_major,
+                             path=name, version_minor=version_minor).save()
         return uuid
 
     def get_valid_name(self, name):

@@ -9,6 +9,20 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
+class AlfrescoDocument(models.Model):
+    """
+    The model for *all* Alfresco documents.
+    """
+    uuid = models.CharField(max_length=36, primary_key=True)
+    version_major = models.IntegerField()
+    version_minor = models.IntegerField()
+    path = models.TextField()
+    upload_date = models.DateTimeField()
+
+    class Meta:
+        app_label = u'edmdb'
+
+
 class user_variable(models.Model):
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey(User)

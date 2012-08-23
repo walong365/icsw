@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Toolkit for accessing Alfresco. The AlfrescoHandler is the class
+Toolkit for accessing Alfresco. The alfresco_handler is the class
 that does all the work for us.
 """
 
