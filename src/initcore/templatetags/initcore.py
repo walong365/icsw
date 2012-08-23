@@ -7,22 +7,14 @@ formatting helpers and the interface to get the menu.
 
 import datetime
 import logging_tools
-import codecs
-from lxml.builder import E
-from lxml import etree
 
-import django.core.urlresolvers
-import django.utils.http
-import django.forms.forms
 from django import template
 from django.utils.safestring import mark_safe
 from django.template.defaultfilters import stringfilter
-from django.db.models import Q
-from django.conf import settings
-from django.utils.functional import memoize
-from django.conf import settings
 
-from initcore import menu_tools
+# We can't say from initcore import menu because this resolves initcore
+# to initcore.templatetags.initcore
+from .. import menu
 
 register = template.Library()
 
@@ -54,7 +46,7 @@ def class_name(ob):
 
 
 @register.tag("get_menu")
-def get_menu(parser, token):
+def get_menu(parser, token):  # pylint: disable-msg=W0613
     return init_menu()
 
 
@@ -62,7 +54,7 @@ class init_menu(template.Node):
     def render(self, context):
         request = context["request"]
         is_mobile = request.session.get("is_mobile", False)
-        return mark_safe(menu_tools.get_menu_html(request, is_mobile, False))
+        return mark_safe(menu.get_menu_html(request, is_mobile, False))
 
 
 @register.filter(name="modulo")
