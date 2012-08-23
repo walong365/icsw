@@ -5,7 +5,7 @@
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-#init-hook=
+init-hook=sys.path.append(".")
 
 # Profiled execution.
 profile=no
@@ -35,8 +35,17 @@ load-plugins=
 # it should appear only once).
 
 # W0212: access to protected member (e.g. _meta)
-# R0912: to many branches
-disable=W0212,R0912,W0142,C0111,R0915,R0914,R0902
+# W0142: * or ** magic
+# W0232: class has no __init__ method
+# W0511: FIXME in code
+#
+# R0914: too many arugments
+# R0915: too many statements
+# R0903: too few public methods
+# R0904: too many public methods
+#
+# C0111: missing docstring
+disable=W0212,W0142,W0232,R0915,R0914,C0111,R0903,R0904,W0511
 
 
 [REPORTS]
@@ -160,7 +169,7 @@ init-import=no
 
 # A regular expression matching the beginning of the name of dummy variables
 # (i.e. not used).
-dummy-variables-rgx=_|dummy|unused
+dummy-variables-rgx=_|dummy|unused|request|raw|sender|using|kwargs
 
 # List of additional names supposed to be defined in builtins. Remember that
 # you should avoid to define new builtins when possible.

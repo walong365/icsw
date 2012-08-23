@@ -12,7 +12,7 @@ pylint_refactor=8    # 8 if a refactor message was issued
 pylint_convention=16 # 16 if a convention message was issued
 
 PYLINT="pylint"
-PYLINT_RETURN=$(($pylint_fatal | $pylint_error))
+PYLINT_RETURN=$(($pylint_fatal | $pylint_error | $pylint_warning))
 PYLINT_RC=pylintrc-init
 PEP8="pep8"
 
