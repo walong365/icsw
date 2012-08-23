@@ -24,6 +24,10 @@ from email.mime.text import MIMEText
 from lxml import etree
 from lxml.builder import E
 
+from openpyxl.writer.excel import save_virtual_workbook
+from openpyxl.workbook import Workbook
+
+import django
 from django.conf import settings
 from django.http import HttpResponse
 from django.core.cache import cache
@@ -38,6 +42,7 @@ else:
     zmq = None
 
 DEBUG_FILE = "/tmp/lp_debug"
+TEMP_DIR = "/tmp/xlsx_olim"
 
 
 def generate_md5_key(*args):
@@ -190,7 +195,7 @@ class progress_counter(object):
             else:
                 return None
         else:
-            return progress_counter("".join([chr(random.randint(97, 122)) for x in range(16)]))
+            return progress_counter("".join([chr(random.randint(97, 122)) for unused in range(16)]))
 
     def __init__(self, name, **kwargs):
         self.name = name
@@ -376,6 +381,11 @@ class init_base_object(object):
         self._log_start()
         self.__mail_lines = []
         self.__mail_lines_log_level = logging_tools.LOG_LEVEL_OK
+        self.__step_time = None
+        self.__step_num = None
+        self.__step_history = None
+        self.__act_step = None
+        self.__verbose = None
 
     def mail_log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log(what, log_level, mail=True)
@@ -487,6 +497,7 @@ class xml_response(object):
     def __init__(self):
         self.reset()
 
+    # pylint: disable-msg=W0201
     def reset(self):
         self.log_buffer = []
         self.val_dict = {}
@@ -506,7 +517,7 @@ class xml_response(object):
 
     def is_ok(self):
         if self.log_buffer:
-            return True if max([log_lev for log_lev, log_str in self.log_buffer]) == logging_tools.LOG_LEVEL_OK else False
+            return True if max([log_lev for log_lev, unused in self.log_buffer]) == logging_tools.LOG_LEVEL_OK else False
         else:
             return True
 
@@ -555,14 +566,6 @@ def keyword_check(*kwarg_list):
     return decorator
 
 
-class keyword_checkd(object):
-    def __init__(self, *kwarg_list):
-        self.__allowed_kwargs = kwarg_list
-
-    def __call__(self, *args, **kwargs):
-        return self._func(*args, **kwargs)
-
-
 def send_emergency_mail(**kwargs):
     # mainly used for windows
     exc_info = process_tools.exception_info()
@@ -586,7 +589,7 @@ def create_email(**kwargs):
     if body_type == "text":
         msg_root = email.mime.text.MIMEText(kwargs["Body"], _charset=header_cs)
     else:
-        msg_root = email.MIMEMultipart.MIMEMultipart(header_cs)
+        msg_root = email.MIMEMultipart.MIMEMultipart(header_cs)  # pylint: disable-msg=E1101
         msg_root.preamble = "This is a multi-part message in MIME-format."
     if "Subject" in kwargs:
         msg_root["Subject"] = email.header.Header(kwargs["Subject"].encode(header_cs),
@@ -618,7 +621,7 @@ def create_email(**kwargs):
                                         remove_content_type_line=True)
         #for text mails the body is added at the top
         if body_type != "text":
-            msg_body = email.MIMEText.MIMEText(body_txt,
+            msg_body = email.MIMEText.MIMEText(body_txt,  # pylint: disable-msg=E1101
                                                body_type,
                                                header_cs)
             msg_root.attach(msg_body)
@@ -678,7 +681,7 @@ def add_month(in_date, diff):
             next_date = in_date.replace(year=next_year,
                                         month=next_month,
                                         day=next_day)
-        except:
+        except Exception:  # pylint: disable-msg=W0703
             next_day -= 1
         else:
             break
@@ -697,7 +700,7 @@ def next_bill_date(in_date, interval):
     while True:
         try:
             next_date = next_date.replace(day=next_date.day + 1)
-        except:
+        except Exception:  # pylint: disable-msg=W0703
             break
     return next_date
 
@@ -723,3 +726,81 @@ def mk_last_of_month(dt_datetime):
     next_month = datetime.date(d_year, d_month, d_day)
     delta = datetime.timedelta(days=1)
     return next_month - delta
+
+
+def xlsx_export_response(request, xlsx_dict, name=None):
+    from initcore.alfresco.alfresco import alfresco_handler
+
+    if not name:
+        name = "xlsx_export"
+    file_name = "%s_export.xlsx" % (name)
+    # save_virtual_workbook converts the Workbook-object in a buffer
+    # it's heavy time-consuming
+    print "save_virtual_workbook, this may take a few minutes..."
+    _stime = datetime.datetime.now()
+    xlsx_content = save_virtual_workbook(xlsx_dict["xlsx"])
+    print "save_virtual_workbook done in %s" % (datetime.datetime.now() - _stime)
+
+    if not os.path.isdir(TEMP_DIR):
+        os.mkdir(TEMP_DIR)
+    file(os.path.join(TEMP_DIR, file_name), "wb").write(xlsx_content)
+    xlsx_file = file(os.path.join(TEMP_DIR, file_name), "rb").read()
+
+    a = alfresco_handler(request.log, directory="Olim")
+    testfolder = "test/testfolder"
+    print "##", a.get_dir_list(testfolder)
+    if a.get_dir_list(testfolder):
+        a.store_content("%s/%s" % (testfolder, file_name), xlsx_file, create_new_version_if_exists=True)
+
+        uuid = "WRONG"
+        request.xml_response["url"] = django.core.urlresolvers.reverse("xlsx:fetch_content", args=[uuid])
+    else:
+        request.log()
+        a.log("folder \"%s\" not found" % (testfolder), logging_tools.LOG_LEVEL_ERROR)
+    return request.xml_response.create_response()
+
+
+def xlsx_export_create(ammount, col_index="", col_names="", sheetname=None):
+    if ammount > 10000000:
+        # to many resultx raise Ajax request timeout
+        raise OverflowError
+    if col_index == "" or col_names == "":
+        # we don't want to export all Lucene table fields
+        raise ValueError
+    wb = Workbook()
+    ws = wb.get_active_sheet()
+    if sheetname:
+        ws.title = sheetname
+    col_index = col_index.split(" ")
+    col_names = col_names.split(";")
+    return {"xlsx": wb, "col_index": col_index, "col_names": col_names}
+
+
+def xlsx_export_append(xlsx_dict, export_list, start_row=0):
+    wb = xlsx_dict["xlsx"]
+    ws = wb.get_active_sheet()
+    col_index = xlsx_dict["col_index"]
+    col_names = xlsx_dict["col_names"]
+    r_count = start_row
+    if start_row == 0:
+        c_count = 0
+        for head_col in col_names:
+            cell = ws.cell(row=r_count, column=c_count)
+            cell.value = head_col
+            c_count = c_count + 1
+    r_count = r_count + 1
+    for raw in export_list:
+        c_count = 0
+        for field in col_index:
+            cell = ws.cell(row=r_count, column=c_count)
+            cell_attr = raw
+            if isinstance(cell_attr, dict):
+                if cell_attr.get(field) is not None:
+                    cell.value = cell_attr.get(field)
+            else:
+                for attr_name in field.replace("__", ".").split("."):
+                    cell_attr = getattr(cell_attr, attr_name)
+                cell.value = unicode(cell_attr)
+            c_count = c_count + 1
+        r_count = r_count + 1
+    return {"xlsx": wb, "col_index": col_index, "col_names": col_names}
