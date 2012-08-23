@@ -1,6 +1,5 @@
 import re
 import codecs
-import process_tools
 
 from django.core.urlresolvers import resolve
 from django.conf import settings
