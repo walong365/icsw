@@ -210,7 +210,7 @@ class id_discovery(object):
             for key, value in id_discovery.mapping.iteritems():
                 # only use ip-address / hostname from key
                 id_discovery.reverse_mapping.setdefault(value, []).append(key[6:].split(":")[0])
-            pprint.pprint(id_discovery.reverse_mapping)
+            #pprint.pprint(id_discovery.reverse_mapping)
         else:
             id_discovery.mapping = {}
         id_discovery.pending = {}
@@ -753,9 +753,13 @@ class relay_process(threading_tools.process_pool):
         # init lut
         self.__old_send_lut = {}
         if not global_config["DEBUG"]:
-            process_tools.set_handles({"out" : (1, "collrelay.out"),
-                                       "err" : (0, "/var/lib/logging-server/py_err_zmq")},
-                                      zmq_context=self.zmq_context)
+            c_flag, self.__io_dict = process_tools.set_handles(
+                {"out" : (1, "collrelay.out"),
+                 "err" : (0, "/var/lib/logging-server/py_err_zmq")},
+                zmq_context=self.zmq_context,
+                ext_return=True)
+        else:
+            self.__io_dict = None
         # we need no icmp capability in relaying
         self.add_process(twisted_process("twisted", icmp=False), twisted=True, start=True)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
@@ -1169,8 +1173,15 @@ class relay_process(threading_tools.process_pool):
             self.unregister_poller(self.client_socket, zmq.POLLIN)
             self.client_socket.close()
         host_connection.close()
+    def _close_io_sockets(self):
+        if self.__io_dict:
+            for key, value in self.__io_dict.iteritems():
+                if value["type"] == "s":
+                    self.log("closing stream for %s" % (key))
+                    value["handle"].close()
     def loop_end(self):
         self._close_ipc_sockets()
+        self._close_io_sockets()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()

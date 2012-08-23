@@ -52,9 +52,9 @@ int err_message(char* str) {
     errstr = (char*)malloc(ERRSTR_SIZE);
     if (!errstr) return -ENOMEM;
     if (errno) {
-        sprintf (errstr, "An error occured : %s (%d) %s\n", str, errno, strerror(errno));
+        sprintf (errstr, "An error occured (%d) : %s (%d) %s\n", getpid(), str, errno, strerror(errno));
     } else {
-        sprintf (errstr, "An error occured : %s\n", str);
+        sprintf (errstr, "An error occured (%d): %s\n", getpid(), str);
     }
     syslog (LOG_DAEMON|LOG_ERR, errstr);
     fprintf (stderr, errstr);
