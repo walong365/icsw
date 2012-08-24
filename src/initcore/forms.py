@@ -6,7 +6,6 @@ from django import forms
 from django.contrib import auth
 from django.utils.translation import ugettext_lazy as _
 from django.forms.util import ErrorList
-from django.conf import settings
 
 
 class AuthenticationForm(forms.Form):
@@ -52,7 +51,7 @@ class ChangePasswordForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         self.username = kwargs.pop("username", None)
-        super(change_password_form, self).__init__(*args, **kwargs)
+        super(ChangePasswordForm, self).__init__(*args, **kwargs)
 
     def clean(self):
         cleaned_data = self.cleaned_data
