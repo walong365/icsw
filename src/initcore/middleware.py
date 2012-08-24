@@ -61,4 +61,5 @@ class check_menu_xpath(object):
                     else:
                         logger.error("Empty ref_str list!")
             except:
-                logger.exception("Unable to resolve path '%s'" % request.path)
+                #logger.exception("Unable to resolve path '%s'" % request.path)
+                pass
