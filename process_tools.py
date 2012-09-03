@@ -135,7 +135,9 @@ def remove_zmq_dirs(dir_name):
 LOCAL_ZMQ_DIR = "/tmp/.zmq_%d:%d" % (os.getuid(),
                                      os.getpid())
 
-LOCAL_ROOT_ZMQ_DIR = "/var/log/cluster/sockets/%d" % (os.getpid())
+LOCAL_ROOT_ZMQ_DIR = "/var/log/cluster/sockets"
+INIT_ZMQ_DIR_PID = "%d" % (os.getpid())
+ALLOW_MULTIPLE_INSTANCES = True
 
 def get_zmq_ipc_name(name, **kwargs):
     if "s_name" in kwargs:
@@ -154,10 +156,15 @@ def get_zmq_ipc_name(name, **kwargs):
         root_dir = LOCAL_ZMQ_DIR
         atexit.register(remove_zmq_dirs, root_dir)
     else:
-        root_dir = LOCAL_ROOT_ZMQ_DIR
+        if ALLOW_MULTIPLE_INSTANCES:
+            root_dir = os.path.join(LOCAL_ROOT_ZMQ_DIR, INIT_ZMQ_DIR_PID)
+        else:
+            root_dir = LOCAL_ROOT_ZMQ_DIR
     if not os.path.isdir(root_dir):
         os.mkdir(root_dir)
     sub_dir = os.path.join(root_dir, s_name)
+    if not os.getuid():
+        atexit.register(remove_zmq_dirs, sub_dir)
     if not os.path.isdir(sub_dir):
         os.mkdir(sub_dir)
     _name = "ipc://%s/%s" % (sub_dir,
