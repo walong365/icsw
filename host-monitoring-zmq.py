@@ -738,6 +738,8 @@ class my_cached_file(process_tools.cached_file):
         
 class relay_process(threading_tools.process_pool):
     def __init__(self):
+        # monkey path process tools to allow consistent access
+        process_tools.ALLOW_MULTIPLE_INSTANCES = False
         # copy to access from modules
         from host_monitoring import modules
         self.modules = modules
@@ -1218,6 +1220,8 @@ class relay_process(threading_tools.process_pool):
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
+        # monkey path process tools to allow consistent access
+        process_tools.ALLOW_MULTIPLE_INSTANCES = False
         # copy to access from modules
         self.global_config = global_config
         self.__log_cache, self.__log_template = ([], None)
