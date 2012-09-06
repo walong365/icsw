@@ -27,7 +27,7 @@ class user_variable(models.Model):
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey(User)
     name = models.CharField(max_length=64)
-    value0 = models.TextField(null=False, default="")
+    value_0 = models.TextField(null=False, default="")
 
     def store(self, value, **kwargs):
         self.value_0 = base64.b64encode(marshal.dumps(value))
