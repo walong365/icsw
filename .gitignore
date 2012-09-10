@@ -7,8 +7,3 @@
 dist
 build
 MANIFEST
-
-initcore.tgz
-.all_srpms
-.rpm_list_*
-.srpm_list_*
