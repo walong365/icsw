@@ -88,9 +88,10 @@ class check_menu_xpath(object):
                             request.session.update({"menu_xpath": xml_node.getroottree().getpath(xml_node)})
                             request.session.save()
                         else:
-                            logger.debug("No xml_nodes found for '%s'" % xpath_str)
+                            pass
+                            #logger.debug("No xml_nodes found for '%s'" % xpath_str)
                     else:
                         logger.error("Empty ref_str list!")
-            except:
+            except Exception:  # pylint: disable-msg=W0703
                 #logger.exception("Unable to resolve path '%s'" % request.path)
                 pass
