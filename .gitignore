@@ -7,3 +7,5 @@
 dist
 build
 MANIFEST
+
+documentation/build/

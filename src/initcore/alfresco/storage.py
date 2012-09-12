@@ -19,7 +19,7 @@ class AlfrescoStorage(Storage):
         super(AlfrescoStorage, self).__init__()
         if directory is None:
             directory = settings.DEFAULT_ALFRESCO_DIR
-        self.handler = alfresco_handler(log_com=lambda x, y: logger.info(y),
+        self.handler = alfresco_handler(log_com=lambda x, y: logger.info(x),
                                         directory=directory)
 
     def __del__(self):

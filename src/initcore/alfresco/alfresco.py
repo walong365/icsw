@@ -10,12 +10,9 @@ import cmislib
 # extensions, very important
 import cmislibalf
 import time
-import sys
 import re
 import logging_tools
 import os
-import pprint
-import logging
 import mimetypes
 import StringIO
 
@@ -30,7 +27,6 @@ from django.conf import settings
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 
 from initcore.utils import keyword_check
-from initcore.alfresco import logger
 
 ALFRESCO_WS_CML_NS = "http://www.alfresco.org/ws/cml/1.0"
 ALFRESCO_WS_MODEL_CONTENT_NS = "http://www.alfresco.org/ws/model/content/1.0"
