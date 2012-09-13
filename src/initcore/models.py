@@ -1,17 +1,17 @@
-"""
-Just one basic model to save general user preferences
-in a key: value fashion.
-"""
+# -*- coding: utf-8 -*-
 
 import base64
+import datetime
 import marshal
 from django.db import models
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
 from django.contrib.auth.models import User
 
 
-class AlfrescoDocument(models.Model):
+class AbstractAlfrescoDocument(models.Model):
     """
-    The model for *all* Alfresco documents.
+    A handy abstract model from Alfresco documents.
     """
     uuid = models.CharField(max_length=36, primary_key=True)
     version_major = models.IntegerField()
@@ -20,10 +20,20 @@ class AlfrescoDocument(models.Model):
     upload_date = models.DateTimeField()
 
     class Meta:
-        app_label = u'edmdb'
+        abstract = True
+
+
+class AlfrescoDocument(AbstractAlfrescoDocument):
+    """
+    This is the model that AlfrescoFileFields use.
+    """
+    pass
 
 
 class user_variable(models.Model):
+    """
+    Stores arbitrary name value combinations per user.
+    """
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey(User)
     name = models.CharField(max_length=64)
@@ -41,3 +51,8 @@ class user_variable(models.Model):
         return "%s for %s: %d bytes" % (self.name,
                                         self.user,
                                         len(self.value_0))
+
+
+@receiver(pre_save, sender=AlfrescoDocument)
+def _alf_document_pre_save(sender, instance, raw, using, **kwargs):
+    instance.upload_date = datetime.datetime.now()
