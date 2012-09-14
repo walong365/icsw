@@ -31,19 +31,27 @@ import server_command
 from lxml import etree
 
 class _general(hm_classes.hm_module):
-    def _exec_command(self, com):
-        stat, out = commands.getstatusoutput(com)
-        if stat:
-            self.log("cannot execute %s (%d): %s" % (com, stat, out), logging_tools.LOG_LEVEL_WARN)
-            out = ""
-        return out.split("\n")
+    def _exec_command(self, com, **kwargs):
+        c_stat, c_out = commands.getstatusoutput(com)
+        if kwargs.get("full_output", False):
+            return c_out, c_stat
+        else:
+            if stat:
+                self.log("cannot execute %s (%d): %s" % (com, c_stat, c_out), logging_tools.LOG_LEVEL_WARN)
+                c_out = ""
+            return c_out.split("\n")
                     
 class corosync_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         # not beautifull, FIXME ...
-        srv_com["corosync_status"] = "\n".join(self.module._exec_command("/usr/sbin/corosync-cfgtool -s"))
+        c_out, c_stat = self.module._exec_command("/usr/sbin/corosync-cfgtool -s", full_output=True)
+        srv_com["corosync_status"] = c_out
+        srv_com["corosync_status"].attrib["status"] = "%d" % (c_stat)
     def interpret(self, srv_com, cur_ns): 
-        return self._interpret(srv_com["corosync_status"].text.split("\n"), cur_ns)
+        coro_node = srv_com["corosync_status"]
+        coro_stat = int(coro_node.attrib.get("status", "0"))
+        lines = (coro_node.text or "").split("\n")
+        return self._interpret(lines, cur_ns, status=coro_stat)
     def interpret_old(self, result, cur_ns):
         return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
     def _parse_lines(self, lines):
@@ -65,25 +73,29 @@ class corosync_status_command(hm_classes.hm_command):
                     if key in r_dict["rings"][cur_ring_id]:
                         r_dict["rings"][cur_ring_id][key] = value.strip()
         return r_dict
-    def _interpret(self, r_lines, parsed_coms):
-        hb_dict = self._parse_lines(r_lines)
-        ret_state, out_f = (limits.nag_STATE_OK, ["node_id is %s" % (hb_dict["node_id"])])
-        ring_keys = sorted(hb_dict["rings"].keys())
-        if ring_keys:
-            for ring_key in ring_keys:
-                ring_dict = hb_dict["rings"][ring_key]
-                ring_stat = ring_dict["status"]
-                match_str = "ring %d" % (ring_key)
-                if ring_stat.lower().startswith(match_str):
-                    ring_stat = ring_stat[len(match_str) : ].strip()
-                out_f.append("ring %d: id %s, %s" % (ring_key,
-                                                     ring_dict["id"],
-                                                     ring_stat))
-                if not ring_stat.lower().count("no faults"):
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+    def _interpret(self, r_lines, parsed_coms, **kwargs):
+        coro_stat = kwargs.get("status", 0)
+        if coro_stat:
+            ret_state, out_f = (limits.nag_STATE_CRITICAL, r_lines)
         else:
-            out_f.append("no rings defined")
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            hb_dict = self._parse_lines(r_lines)
+            ret_state, out_f = (limits.nag_STATE_OK, ["node_id is %s" % (hb_dict["node_id"])])
+            ring_keys = sorted(hb_dict["rings"].keys())
+            if ring_keys:
+                for ring_key in ring_keys:
+                    ring_dict = hb_dict["rings"][ring_key]
+                    ring_stat = ring_dict["status"]
+                    match_str = "ring %d" % (ring_key)
+                    if ring_stat.lower().startswith(match_str):
+                        ring_stat = ring_stat[len(match_str) : ].strip()
+                    out_f.append("ring %d: id %s, %s" % (ring_key,
+                                                         ring_dict["id"],
+                                                         ring_stat))
+                    if not ring_stat.lower().count("no faults"):
+                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            else:
+                out_f.append("no rings defined")
+                ret_state = max(ret_state, limits.nag_STATE_WARNING)
         return ret_state, ", ".join(out_f)
 
 class heartbeat_status_command(hm_classes.hm_command):
