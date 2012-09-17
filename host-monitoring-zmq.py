@@ -1238,6 +1238,7 @@ class server_process(threading_tools.process_pool):
         self.add_process(twisted_process("twisted"), twisted=True, start=True)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
+        self._check_ksm()
         self._init_msi_block()
         self._change_socket_settings()
         self._init_network_sockets()
@@ -1260,6 +1261,21 @@ class server_process(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+    def _check_ksm(self):
+        if global_config["ENABLE_KSM"]:
+            ksm_dir = "/sys/kernel/mm/ksm/"
+            if os.path.isdir(ksm_dir):
+                try:
+                    file(os.path.join(ksm_dir, "run"), "w").write("1\n")
+                except:
+                    self.log("error enabling KSM: %s" % (process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("enabled KSM")
+            else:
+                self.log("ksm_dir '%s' not found" % (ksm_dir), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("KSM not touched")
     def _change_socket_settings(self):
         # hm, really needed ?
         for sys_name, sys_value in [
@@ -1627,7 +1643,8 @@ def main():
                                                                  prog_name)))])
     if prog_name == "collserver":
         global_config.add_config_entries([
-            ("COM_PORT", configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
+            ("COM_PORT"  , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
+            ("ENABLE_KSM", configfile.bool_c_var(False, info="enable KSM", help_string="enable KSM [%(default)s]"))
         ])
     elif prog_name == "collclient":
         global_config.add_config_entries([

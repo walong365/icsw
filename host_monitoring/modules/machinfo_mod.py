@@ -1718,6 +1718,31 @@ class umount_command(hm_classes.hm_command):
                    ", error: %s" % (",".join([error_node.text for error_node in error_list])) if error_list else "",
                ])
 
+class ksminfo_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        ksm_dir = "/sys/kernel/mm/ksm"
+        if os.path.isdir(ksm_dir):
+            srv_com["ksm"] = dict([(entry, file(os.path.join(ksm_dir, entry), "r").read().strip()) for entry in os.listdir(ksm_dir)])
+        else:
+            srv_com["ksm"] = "not found"
+    def interpret(self, srv_com, cur_ns):
+        ksm_info = srv_com["ksm"]
+        if type(ksm_info) == dict:
+            page_size = 4096
+            ksm_info = dict([(key, int(value) * page_size if value.isdigit() else value) for key, value in ksm_info.iteritems()])
+            if ksm_info["run"]:
+                info_field = [
+                    "%s shared" % (logging_tools.get_size_str(ksm_info["pages_shared"]).strip()),
+                    "%s saved" % (logging_tools.get_size_str(ksm_info["pages_sharing"]).strip()),
+                    "%s volatile" % (logging_tools.get_size_str(ksm_info["pages_volatile"]).strip()),
+                    "%s unshared" % (logging_tools.get_size_str(ksm_info["pages_unshared"]).strip())
+                ]
+                return limits.nag_STATE_OK, "KSM info: %s" % (", ".join(info_field))
+            else:
+                return limits.nag_STATE_WARNING, "KSM available but not enabled"
+        else:
+            return limits.nag_STATE_CRITICAL, "ksm problem: %s" % (ksm_info.text)
+            
 class pciinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["pci"] = pci_database.get_actual_pci_struct(*pci_database.get_pci_dicts())
