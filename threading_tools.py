@@ -45,9 +45,9 @@ try:
             from txzmq import ZmqSubConnection, ZmqEndpoint
         except ImportError:
             raise
-    from twisted.internet import reactor
 except ImportError:
     zmq = None
+from twisted.internet import reactor
     
 # default stacksize
 DEFAULT_STACK_SIZE = 2 * 1024 * 1024
