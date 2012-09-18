@@ -114,11 +114,13 @@ class _conf_var(object):
     def add_argument(self, name, arg_parser):
         if self._short_opts:
             if len(self._short_opts) > 1:
-                opts = "--%s" % (self._short_opts)
+                opts = ["--%s" % (self._short_opts)]
             else:
-                opts = "-%s" % (self._short_opts)
+                opts = ["-%s" % (self._short_opts)]
         else:
-            opts = "--%s" % (name.lower())
+            opts = ["--%s" % (name.lower())]
+            if name.lower().count("_"):
+                opts.append("--%s" % (name.lower().replace("_", "-")))
         kwargs = {"dest" : name,
                   "help" : self._help_string}
         if self._choices:
@@ -129,13 +131,13 @@ class _conf_var(object):
             if self.short_type == "b":
                 # bool
                 if self._only_commandline and not self._writeback:
-                    arg_parser.add_argument(opts, action="store_%s" % ("false" if self.__default_val else "true"), default=self.__default_val, **kwargs)
+                    arg_parser.add_argument(*opts, action="store_%s" % ("false" if self.__default_val else "true"), default=self.__default_val, **kwargs)
                 else:
-                    arg_parser.add_argument(opts, action="store_%s" % ("false" if self.value else "true"), default=self.value, **kwargs)
+                    arg_parser.add_argument(*opts, action="store_%s" % ("false" if self.value else "true"), default=self.value, **kwargs)
             else:
                 print "*? unknown short_type in _conf_var ?*", self.short_type, name, self.argparse_type
         else:
-            arg_parser.add_argument(opts, type=self.argparse_type, default=self.value, **kwargs)
+            arg_parser.add_argument(*opts, type=self.argparse_type, default=self.value, **kwargs)
     @property
     def database(self):
         return self._database
