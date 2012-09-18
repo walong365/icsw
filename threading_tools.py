@@ -38,7 +38,13 @@ import pprint
 import pickle
 try:
     import zmq
-    from txZMQ import ZmqSubConnection, ZmqEndpoint
+    try:
+        from txZMQ import ZmqSubConnection, ZmqEndpoint
+    except ImportError:
+        try:
+            from txzmq import ZmqSubConnection, ZmqEndpoint
+        except ImportError:
+            raise
     from twisted.internet import reactor
 except ImportError:
     zmq = None
