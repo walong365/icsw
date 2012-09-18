@@ -1239,6 +1239,7 @@ class server_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
         self._check_ksm()
+        self._check_huge()
         self._init_msi_block()
         self._change_socket_settings()
         self._init_network_sockets()
@@ -1276,6 +1277,57 @@ class server_process(threading_tools.process_pool):
                 self.log("ksm_dir '%s' not found" % (ksm_dir), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("KSM not touched")
+    def _check_huge(self):
+        if global_config["ENABLE_HUGE"]:
+            huge_dir = "/sys/kernel/mm/hugepages/"
+            mem_total = int([line for line in file("/proc/meminfo", "r").read().lower().split("\n") if line.startswith("memtotal")][0].split()[1]) * 1024
+            mem_to_map = mem_total * global_config["HUGEPAGES"] / 100
+            self.log("memory to use for hugepages: %s (of %s)" % (logging_tools.get_size_str(mem_to_map),
+                                                                  logging_tools.get_size_str(mem_total)))
+            if os.path.isdir(huge_dir):
+                for sub_dir in os.listdir(huge_dir):
+                    if sub_dir.startswith("hugepages"):
+                        full_subdir = os.path.join(huge_dir, sub_dir)
+                        local_size = sub_dir.split("-")[1].lower()
+                        if local_size.endswith("kb"):
+                            local_size = int(local_size[:-2]) * 1024
+                        elif local_size.endswith("mb"):
+                            local_size = int(local_size[:-2]) * 1024 * 1024
+                        elif local_size.endswith("gb"):
+                            local_size = int(local_size[:-2]) * 1024 * 1024 * 1024
+                        else:
+                            self.log("cannot interpret %s (%s)" % (local_size, full_subdir), logging_tools.LOG_LEVEL_ERROR)
+                            local_size = None
+                        if local_size:
+                            num_pages = int(mem_to_map / local_size)
+                            self.log("size of %s is %s, resulting in %s" % (
+                                sub_dir,
+                                logging_tools.get_size_str(local_size),
+                                logging_tools.get_plural("page", num_pages)
+                            ))
+                            if num_pages:
+                                pages_file = os.path.join(full_subdir, "nr_hugepages")
+                                try:
+                                    cur_pages = int(file(pages_file, "r").read().strip())
+                                except:
+                                    self.log("cannot read pages from %s: %s" % (pages_file, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                                else:
+                                    if cur_pages:
+                                        self.log("current pages set to %d, skipping set to %d" % (cur_pages, num_pages), logging_tools.LOG_LEVEL_WARN)
+                                    else:
+                                        try:
+                                            file(pages_file, "w").write("%d\n" % (num_pages))
+                                        except:
+                                            self.log("cannot write %d to %s: %s" % (
+                                                num_pages,
+                                                pages_file,
+                                                process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                                        else:
+                                            self.log("wrote %d to %s" % (num_pages, pages_file))
+            else:
+                self.log("huge_dir '%s' not found" % (huge_dir), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("hugepages not touched")
     def _change_socket_settings(self):
         # hm, really needed ?
         for sys_name, sys_value in [
@@ -1643,8 +1695,10 @@ def main():
                                                                  prog_name)))])
     if prog_name == "collserver":
         global_config.add_config_entries([
-            ("COM_PORT"  , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
-            ("ENABLE_KSM", configfile.bool_c_var(False, info="enable KSM", help_string="enable KSM [%(default)s]"))
+            ("COM_PORT"   , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
+            ("ENABLE_KSM" , configfile.bool_c_var(False, info="enable KSM", help_string="enable KSM [%(default)s]")),
+            ("ENABLE_HUGE", configfile.bool_c_var(False, info="enable hugepages", help_string="enable hugepages [%(default)s]")),
+            ("HUGEPAGES"  , configfile.int_c_var(50, info="percentage of memory to use for hugepages", help_string="hugepages percentage [%(default)d]"))
         ])
     elif prog_name == "collclient":
         global_config.add_config_entries([
