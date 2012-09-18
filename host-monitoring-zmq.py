@@ -1282,8 +1282,10 @@ class server_process(threading_tools.process_pool):
             huge_dir = "/sys/kernel/mm/hugepages/"
             mem_total = int([line for line in file("/proc/meminfo", "r").read().lower().split("\n") if line.startswith("memtotal")][0].split()[1]) * 1024
             mem_to_map = mem_total * global_config["HUGEPAGES"] / 100
-            self.log("memory to use for hugepages: %s (of %s)" % (logging_tools.get_size_str(mem_to_map),
-                                                                  logging_tools.get_size_str(mem_total)))
+            self.log("memory to use for hugepages (%d %%): %s (of %s)" % (
+                global_config["HUGEPAGES"],
+                logging_tools.get_size_str(mem_to_map),
+                logging_tools.get_size_str(mem_total)))
             if os.path.isdir(huge_dir):
                 for sub_dir in os.listdir(huge_dir):
                     if sub_dir.startswith("hugepages"):
