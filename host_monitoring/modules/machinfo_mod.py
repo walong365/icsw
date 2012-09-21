@@ -1742,6 +1742,40 @@ class ksminfo_command(hm_classes.hm_command):
                 return limits.nag_STATE_WARNING, "KSM available but not enabled"
         else:
             return limits.nag_STATE_CRITICAL, "ksm problem: %s" % (ksm_info.text)
+
+class hugepageinfo_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        hpage_dir = "/sys/kernel/mm/hugepages"
+        if os.path.isdir(hpage_dir):
+            srv_com["hpages"] = dict([(entry, dict([(sub_entry, file(os.path.join(hpage_dir, entry, sub_entry), "r").read().strip()) for sub_entry in os.listdir(os.path.join(hpage_dir, entry))])) for entry in os.listdir(hpage_dir)])
+        else:
+            srv_com["hpages"] = "not found"
+    def interpret(self, srv_com, cur_ns):
+        hpage_info = srv_com["hpages"]
+        if type(hpage_info) == dict:
+            ret_state = limits.nag_STATE_OK
+            info_field = []
+            for page_dir, page_dict in hpage_info.iteritems():
+                local_size = page_dir.split("-")[-1].lower()
+                if local_size.endswith("kb"):
+                    local_size = int(local_size[:-2]) * 1024
+                elif local_size.endswith("mb"):
+                    local_size = int(local_size[:-2]) * 1024 * 1024
+                elif local_size.endswith("gb"):
+                    local_size = int(local_size[:-2]) * 1024 * 1024 * 1024
+                else:
+                    local_size = None
+                    info_field.append("cannot interpret %s" % (local_size))
+                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                if local_size is not None:
+                    hpage_info = dict([(key, int(value) * local_size if value.isdigit() else value) for key, value in page_dict.iteritems()])
+                    info_field.append("%s: %s reserved, %s used" % (
+                        (logging_tools.get_size_str(local_size)).strip(),
+                        (logging_tools.get_size_str(hpage_info["nr_hugepages"])).strip(),
+                        (logging_tools.get_size_str(hpage_info["nr_hugepages"] - hpage_info["free_hugepages"])).strip()))
+            return ret_state, "hugepage info: %s" % (", ".join(info_field))
+        else:
+            return limits.nag_STATE_CRITICAL, "hugepage problem: %s" % (ksm_info.text)
             
 class pciinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
