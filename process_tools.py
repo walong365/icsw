@@ -1692,15 +1692,15 @@ def find_file(file_name, s_path=None):
     else:
         return None
     
-def create_password(**args):
+def create_password(**kwargs):
     def_chars = "".join([chr(asc) for asc in range(ord("a"), ord("z") + 1)])
-    chars = args.get("chars", "%s%s%s" % (def_chars,
-                                          def_chars.upper(),
-                                          "".join(["%d" % (idx) for idx in range(0, 10)])))
-    if args.get("special_characters", False):
+    chars = kwargs.get("chars", "%s%s%s" % (
+        def_chars,
+        def_chars.upper(),
+        "".join(["%d" % (idx) for idx in range(0, 10)])))
+    if kwargs.get("special_characters", False):
         chars = "%s!§$%%&/()[]#+*~" % (chars)
-    length = args.get("lenght", 8)
-
+    length = kwargs.get("lenght", 8)
     return "".join([chars[random.randrange(len(chars))] for idx in xrange(length)])
 
 if __name__ == "__main__":
