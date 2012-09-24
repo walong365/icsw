@@ -1566,7 +1566,10 @@ def fetch_sysinfo(root_dir="/"):
                 sys_dict["arch"] = arch
         else:
             # new code, uses /bin/ls format
-            arch_com = "file %s/bin/ls" % (root_dir)
+            ls_path = os.path.join(root_dir, "/bin/ls")
+            if os.path.islink(ls_path):
+                ls_path = os.path.join(root_dir, os.readlink(ls_path))
+            arch_com = "file %s" % (ls_path)
             c_stat, out = commands.getstatusoutput(arch_com)
             if c_stat:
                 log_lines.append(("Cannot execute %s (%d): %s" % (arch_com, c_stat, out), logging_tools.LOG_LEVEL_ERROR))
@@ -1582,7 +1585,7 @@ def fetch_sysinfo(root_dir="/"):
                     arch = "alpha"
                 if arch:
                     sys_dict["arch"] = arch
-        for arch_str in [x for x in isl if x]:
+        for arch_str in [line for line in isl if line]:
             if not arch:
                 if arch_str.count("i386"):
                     arch = "i586"
@@ -1625,7 +1628,7 @@ def fetch_sysinfo(root_dir="/"):
                     if versm:
                         sys_dict["version"] = versm.group(1)
                 elif sys_dict["vendor"] == "suse":
-                    sr_ems = 0
+                    sr_ems = False
                     try:
                         isl = [y for y in [x.strip().lower() for x in file("/etc/SuSE-release", "r").read().split("\n")] if y]
                     except:
@@ -1634,7 +1637,7 @@ def fetch_sysinfo(root_dir="/"):
                         #sr_vers = None
                         for eml in isl:
                             if re.search("email server", eml):
-                                sr_ems = 1
+                                sr_ems = True
                                 ems_file = "/etc/IMAP-release"
                                 #m = re.match("^version\s*=\s*(.*)$", eml)
                                 #if m:
@@ -1644,7 +1647,7 @@ def fetch_sysinfo(root_dir="/"):
                     except:
                         pass
                     else:
-                        sr_ems = 1
+                        sr_ems = True
                         ems_file = "/etc/SLOX-release"
                     if sr_ems:
                         try:
