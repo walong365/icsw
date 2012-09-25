@@ -469,6 +469,7 @@ class net_device(object):
         self.nd_keys = set(self.nd_mapping) - set([None])
         self.invalidate()
         self.__history = []
+        self.__driver_info = None
         self.__check_ethtool = any([self.name.startswith(check_name) for check_name in ETHTOOL_DEVICES])
         self.last_update = time.time() - 3600
         self.update_ethtool()
@@ -498,9 +499,17 @@ class net_device(object):
         if cur_time > self.last_update + 30:
             res_dict = {}
             if self.__check_ethtool and self.ethtool_path:
+                if not self.__driver_info:
+                    ce_stat, ce_out = commands.getstatusoutput("%s -i %s" % (self.ethtool_path, self.name))
+                    if not ce_stat:
+                        res_dict = dict([(key.lower(), value.strip()) for key, value in [line.strip().split(":", 1) for line in ce_out.split("\n") if line.count(":")] if len(value.strip())])
+                        self.__driver_info = res_dict.get("driver", "driver unknown")
+                    else:
+                        self.__driver_info = "driver unknown"
                 ce_stat, ce_out = commands.getstatusoutput("%s %s" % (self.ethtool_path, self.name))
                 if not ce_stat:
                     res_dict = dict([(key.lower(), value.strip()) for key, value in [line.strip().split(":", 1) for line in ce_out.split("\n") if line.count(":")] if len(value.strip())])
+                    res_dict["driver"] = self.__driver_info
             self.last_update = cur_time
             self.ethtool_results = res_dict
     def get_xml(self, srv_com):
@@ -852,6 +861,10 @@ class net_command(hm_classes.hm_command):
         ethtool_dict.update(dict([(el.get("name"), el.text) for el in ethtool_tree]))
         ethtool_dict["duplex"] = self._parse_duplex_str(ethtool_dict.get("duplex", "unknown"))
         ethtool_dict["speed"] = self._parse_speed_str(ethtool_dict.get("speed", "unknown"))
+        if ethtool_dict.get("speed", -1) < 0 and ethtool_dict.get("driver", None) in ["virtio_net"]:
+            # set ethtool speed/duplex to 10G/full
+            ethtool_dict["speed"] = 10 * 1000 * 1000 * 1000
+            ethtool_dict["duplex"] = "full"
         connected = ethtool_dict["link detected"] == "yes"
         max_rxtx = max([value_dict["rx"], value_dict["tx"]])
         if cur_ns.warn:
