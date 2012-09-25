@@ -89,7 +89,7 @@ def get_relative_dt(dt_struct):
     else:
         return dt_struct.strftime("%a, %d. %b %Y %H:%M:%S")
     
-def get_plural(in_str, num, show_int=1, fstr_len=0, **args):
+def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
     if type(num) in [type([]), type(set())]:
         r_num = len(num)
     else:
@@ -355,9 +355,9 @@ class zmq_handler(logging.Handler):
         
 class queue_handler(logging.Handler):
     """ sends log requests to other queues """
-    def __init__(self, t_queue, **args):
+    def __init__(self, t_queue, **kwargs):
         self.__target_queue = t_queue
-        self.__pre_tuple = args.get("pre_tuple", "int_log")
+        self.__pre_tuple = kwargs.get("pre_tuple", "int_log")
         logging.Handler.__init__(self)
     def emit(self, record):
         try:
@@ -395,7 +395,7 @@ class udp_handler(logging.handlers.DatagramHandler):
     
 class local_uds_handler(logging.Handler):
     """ local unix domain socket handler """
-    def __init__(self, address, **args):
+    def __init__(self, address, **kwargs):
         self.__address = address
         logging.Handler.__init__(self)
         self.__unix_socket = True

@@ -52,6 +52,7 @@ import pprint
 import random
 import inspect
 import atexit
+import codecs
 
 try:
     ENCODING = locale.getpreferredencoding()
@@ -76,11 +77,11 @@ def net_to_sys(in_val):
 def sys_to_net(in_val):
     return cPickle.dumps(in_val)
 
-def get_except_info(exc_info=None, **args):
+def get_except_info(exc_info=None, **kwargs):
     if not exc_info:
         exc_info = sys.exc_info()
     frame_info = []
-    if args.get("frame_info", False):
+    if kwargs.get("frame_info", False):
         fr_idx = 0
         while True:
             try:
@@ -102,9 +103,9 @@ def get_except_info(exc_info=None, **args):
                              ", ".join(frame_info) if frame_info else "no frame_info")
 
 class exception_info(object):
-    def __init__(self, **args):
+    def __init__(self, **kwargs):
         self.thread_name = threading.currentThread().getName()
-        self.except_info = args.get("exc_info", sys.exc_info())
+        self.except_info = kwargs.get("exc_info", sys.exc_info())
         tb_object = self.except_info[2]
         exc_type = str(self.except_info[0]).split(".")[-1].split("'")[0]
         self.log_lines = ["caught exception %s (%s), traceback follows:" % (exc_type, get_except_info(self.except_info)),
@@ -630,10 +631,10 @@ class meta_server_info(object):
          
 
 class cached_file(object):
-    def __init__(self, name, **args):
+    def __init__(self, name, **kwargs):
         self.__name = name
-        self.__log_handle = args.get("log_handle", None)
-        self.__cache_time = args.get("cache_time", 3600)
+        self.__log_handle = kwargs.get("log_handle", None)
+        self.__cache_time = kwargs.get("cache_time", 3600)
         self.__last_stat, self.__last_update = (None, None)
         self.update()
     @property
@@ -1155,12 +1156,12 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
     else:
         return pid_list + [".%d" % (x) for x in dotpid_list]
 
-def get_proc_list(last_dict=None, **args):
+def get_proc_list(last_dict=None, **kwargs):
     #s_time = time.time()
     s_fields = ["name", "state"]
     i_fields = ["pid", "uid", "gid", "ppid"]
-    add_stat = args.get("add_stat_info", False)
-    add_affinity = args.get("add_affinity", False)
+    add_stat = kwargs.get("add_stat_info", False)
+    add_affinity = kwargs.get("add_affinity", False)
     try:
         pid_list = [int(key) for key in os.listdir("/proc") if key.isdigit()]
     except:
@@ -1174,7 +1175,7 @@ def get_proc_list(last_dict=None, **args):
                 check_pid = False
             if check_pid:
                 try:
-                    status_lines = [(x.split() + ["", ""])[0 : 2] for x in open("/proc/%d/status" % (pid), "r").read().split("\n")]
+                    status_lines = [(line.split() + ["", ""])[0 : 2] for line in open("/proc/%d/status" % (pid), "r").read().split("\n")]
                     stat_fields = open("/proc/%d/stat" % (pid), "r").read().split(")", 1)[1].split()
                 except IOError:
                     pass
@@ -1187,9 +1188,9 @@ def get_proc_list(last_dict=None, **args):
                         elif r_what in i_fields:
                             t_dict[r_what] = int(rest)
                     try:
-                        t_dict["cmdline"] = [x for x in file("/proc/%d/cmdline" % (pid), "r").read().split("\x00") if x]
+                        t_dict["cmdline"] = [line for line in codecs.open("/proc/%d/cmdline" % (pid), "r", "utf-8").read().split("\x00") if line]
                     except:
-                        t_dict["cmdline"] = []
+                        t_dict["cmdline"] = [get_except_info()]
                     if t_dict["pid"] == pid:
                         p_dict[pid] = t_dict
                     try:
@@ -1443,8 +1444,8 @@ def get_cluster_name(f_name="/etc/sysconfig/cluster/cluster_name"):
     return c_name
     
 class automount_checker(object):
-    def __init__(self, **args):
-        if args.get("check_paths", True):
+    def __init__(self, **kwargs):
+        if kwargs.get("check_paths", True):
             self._check_paths()
         else:
             self.__automount_path, self.__autofs_path = ("", "")

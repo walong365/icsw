@@ -94,7 +94,7 @@ def get_act_thread_name():
 # message format is (com_str, rest) or com_str for simple commands
 
 class min_thread_obj(threading.Thread):
-    def __init__(self, name, **args):
+    def __init__(self, name, **kwargs):
         threading.Thread.__init__(self, name=name, target=self._code)
         self.__thread_queue = Queue.Queue(1)
     def _code(self):
@@ -109,12 +109,12 @@ class min_thread_obj(threading.Thread):
         return None
 
 class thread_obj(threading.Thread):
-    def __init__(self, name, **args):
+    def __init__(self, name, **kwargs):
         threading.Thread.__init__(self, name=name, target=self._code)
         self.name = name
         self.pid = os.getpid()
         self.__thread_pool = None
-        self.__thread_queue = Queue.Queue(args.get("queue_size", 100))
+        self.__thread_queue = Queue.Queue(kwargs.get("queue_size", 100))
         # exit queue
         self.__exit_queue = None
         # spool for thread_pool_messages
@@ -126,18 +126,18 @@ class thread_obj(threading.Thread):
         # ignore calls
         self.__ignore_funcs = []
         # verbose
-        self.__verbose = args.get("verbose", False)
+        self.__verbose = kwargs.get("verbose", False)
         # wait for more messages if one processed (for gathering of messages)
-        self.__gather_timeout    = args.get("gather_timeout"   , 0.)
-        self.__total_gather_wait = args.get("total_gather_wait", 0.)
+        self.__gather_timeout    = kwargs.get("gather_timeout"   , 0.)
+        self.__total_gather_wait = kwargs.get("total_gather_wait", 0.)
         # internal exit-function
         self.register_func("exit", self._exit_thread)
         # run flag
         self["run_flag"] = True
         # thread priority: when stopping threads start with the lowest priority and end with the highest
-        self["priority"] = args.get("priority", 0)
+        self["priority"] = kwargs.get("priority", 0)
         # is a busy-loop thread ?
-        self._busy_loop_function = args.get("loop_function", None)
+        self._busy_loop_function = kwargs.get("loop_function", None)
         self.set_min_loop_time()
     def getName(self):
         return self.name
@@ -1541,14 +1541,14 @@ class process_pool(object):
                                             logging_tools.get_plural("0MQ socket", len(self.__sockets.keys())))
 
 class twisted_main_thread(object):
-    def __init__(self, name, **args):
+    def __init__(self, name, **kwargs):
         self.name = name
         threading.currentThread().setName(self.name)
         self.__flags = {"run_flag"                  : True,
                         "signal_handlers_installed" : False,
                         "exit_requested"            : False}
         self.__exception_table = {}
-        self.set_stack_size(args.get("stack_size", DEFAULT_STACK_SIZE))
+        self.set_stack_size(kwargs.get("stack_size", DEFAULT_STACK_SIZE))
     def __getitem__(self, fn):
         return self.__flags[fn]
     def __setitem__(self, fn, state):
