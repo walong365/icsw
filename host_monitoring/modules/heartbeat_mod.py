@@ -36,7 +36,7 @@ class _general(hm_classes.hm_module):
         if kwargs.get("full_output", False):
             return c_out, c_stat
         else:
-            if stat:
+            if c_stat:
                 self.log("cannot execute %s (%d): %s" % (com, c_stat, c_out), logging_tools.LOG_LEVEL_WARN)
                 c_out = ""
             return c_out.split("\n")
