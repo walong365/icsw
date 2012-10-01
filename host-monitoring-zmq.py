@@ -1065,7 +1065,7 @@ class relay_process(threading_tools.process_pool):
                 # handle commandline
                 cur_hc.send(cur_mes, com_struct)
             else:
-                cur_hc.return_error(cur_mes, "command '%s' not defined" % (com_name))
+                cur_hc.return_error(cur_mes, "command '%s' not defined on relayer" % (com_name))
         elif id_discovery.is_pending(conn_str):
             cur_hc = host_connection.get_hc_0mq(conn_str)
             com_name = srv_com["command"].text
@@ -1134,7 +1134,7 @@ class relay_process(threading_tools.process_pool):
             cur_hc.send(cur_mes, com_struct)
             self.__old_send_lut[cur_mes.src_id] = cur_hc
         else:
-            cur_hc.return_error(cur_mes, "command '%s' not defined" % (com_name))
+            cur_hc.return_error(cur_mes, "command '%s' not defined on relayer" % (com_name))
     def _send_to_old_nhm_service(self, src_id, srv_com, xml_input):
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
