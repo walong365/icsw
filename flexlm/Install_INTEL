@@ -1,0 +1,2025 @@
+#!/bin/sh
+#
+copyright_notice="Copyright (C) 1987-2005 by Intel Corporation.  All Rights Reserved."
+#
+package_name="Intel(R) License Manager for FLEXlm*"
+#
+package_attr="*Other brands and names are the property of their respective owners."
+# 
+cvs_id="$Id: Install_INTEL,v 1.14.2.3 2005/02/03 16:50:24 sbhandar Exp $"
+#
+# This software is furnished under a license and may be used and copied
+# only  in  accordance  with  the  terms  of  such license and with the
+# inclusion of the above copyright notice. This software or  any  other
+# copies thereof may not be provided or otherwise made available to any
+# other person.  No title to and ownership of  the  software is  hereby
+# transferred.  The information in  this  software is subject to change
+# without notice.
+
+#
+# Manifest constants.
+#
+
+flexlm_version="9.2"
+support_www="http://support.intel.com/support/performancetools/support.htm"
+
+name_script="Install_INTEL"
+
+name_lmgrd="lmgrd.intel"
+name_vendor="INTEL"
+name_lmutil="lmutil"
+name_chklic="chklic"
+name_getip="getip"
+name_readme="README"
+name_eula="END_USER_LICENSE"
+name_howto="HowTo.html"
+name_enduser="enduser.pdf"
+# see get_install_file_mode() to get the right chmod mode for each of $all_files
+all_files="$name_lmutil $name_script $name_lmgrd $name_vendor $name_howto $name_readme $name_eula $name_enduser $name_getip $name_chklic"
+
+name_lmstat=lmstat
+name_lmreread=lmreread
+all_links="$name_lmreread $name_lmstat lmdiag lmdown lmhostid lminstall lmremove lmswitchr lmver"
+case "$flexlm_version" in
+    "7.2i" ) all_links="$all_links lmcksum" ;;
+    "9.2" )  all_links="$all_links lmpath lmborrow lmswitch lmnewlog" ;;
+    * ) ;;
+esac
+
+dir_inst_lic="/opt/intel/licenses"
+dir_tmpdir_subdir="${name_script}.$$.dir"
+file_inst_lic="server.lic"
+file_local_lic="server.lic"
+file_temp="${name_script}.$$.tmp"
+file_temp_wdtest="${name_script}.$$.tmp2"
+file_log="${name_script}.log"
+file_server_log="${name_lmgrd}.log"
+file_rc="${name_lmgrd}.rc"
+file_cfg="${name_script}.cfg"
+
+tag="***"
+
+do_work=true
+verbose_command=
+assume_server_lic=
+interrupt_exit_enabled=true
+dir_inst_files_is=current
+
+# constant: if true, do SCR_12: enable copying licenses to $dir_inst_lic (/opt/intel/licenses)
+do_dir_inst_lic=
+# constant: if true, execute $file_rc directly to start server during installation
+do_start_file_rc=true
+
+echo_hr()
+{
+    echo
+    echo "--------------------------------------------------------------------------------"
+}
+
+#
+# Setup things that have to be done right away.
+#
+
+umask 022
+my_cmd_name="$0"
+start_date=`date`
+trap 'int_handler' INT
+
+# Like parse_arguments but for certain switches that need to be read early.
+pre_parse_arguments()
+{
+    while [ $# -gt 0 ]; do
+	arg="$1"
+	if [ -n "$arg" ]; then
+	    case "$arg" in
+		-nowork )          do_work= ; verbose_command=true ;;
+		-verbose )         do_work=true ; verbose_command=true ;;
+		* )                ;;
+	    esac
+	fi
+	shift
+    done
+}
+
+# $1 = file with possible absolute or relative path
+# returns:
+#     $file_dir with directory containing the file (with no / at the end)
+#         (NOTE: $file_dir can be absolute or relative)
+#     $file_name with just the filename part (with no / at the beginning)
+#     anything illegal, empty, etc. returns an empty file_dir
+#         (good idea to not call this if ! -f $1, though)
+#     anything in . returns file_dir=.
+#     anything in .. returns file_dir=..
+#     anything relative returns file_dir starting with ./ or ../
+#     anything absolute returns file_dir starting with /
+get_file_directory_name()
+{
+    file_dir=
+    file_name=
+
+    if [ -z "$1" ]; then return; fi
+    case "$1" in
+	/ | . | .. ) return ;;
+	/*/* )       dirnam="$1" ;;
+        /* )
+	    file_dir="/"
+	    file_name=`echo "$1" | sed -e 's/^\///'`
+	    return
+	;;
+        ./* )        dirnam="$1"   ;;
+        ../* )       dirnam="$1"   ;;
+        * )          dirnam="./$1" ;;
+    esac
+
+    file_dir=`echo "$dirnam" | sed -e 's/\/[^/]*$//'`
+    file_name=`echo "$dirnam" | sed -e 's/^.*\///'`
+}
+
+# Like run_command_dev_null but no $file_log and no my_exit.
+# $1 = command string to run
+# $2 = error message to use on failure (if not specified, return silently on failure rather than exiting noisily)
+# $failed = returned on failure
+# if $verbose_command is set the command will be printed before being executed
+# if $do_work is not set the command won't actually be executed
+run_command_dev_null_nolog()
+{
+    failed=
+    if [ -n "$verbose_command" ]; then echo "$tag $1"; fi
+    if [ -n "$do_work" ]; then
+	$1 > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+	    failed=true
+	    if [ -n "$2" ]; then
+		echo "$tag Error: $2"
+		echo "$tag Command: $1 > /dev/null 2>&1"
+		# Not my_exit; too early in script
+		exit 1
+	    fi
+	fi
+    fi
+}
+
+# Like run_command_cd but no $file_log and no my_exit.
+# $1 = directory to cd to
+# $2 = error message to use on failure
+# $failed = returned on failure
+# if $verbose_command is set the command will be printed before being executed
+# if $do_work is not set the command won't actually be executed
+run_command_cd_nolog()
+{
+    if [ -n "$verbose_command" ]; then echo "$tag cd $1"; fi
+    if [ -n "$do_work" ]; then
+	if [ -d "$1" ]; then
+	    cd $1
+	else
+	    echo "$tag Error: $2"
+	    echo "$tag Command: cd $1"
+	    # Not my_exit; too early in script
+	    exit 1
+	    failed=true
+	fi
+    else
+	failed=
+    fi
+}
+
+# See if $1 is a writable directory.  Return failed=true if it is not.
+# $1 = name of directory we hope is writable
+# $2 = name of test directory to try to create (helps check for name clashes)
+check_if_writable_dir()
+{
+    if [ -z "$2" ]; then
+	echo "$tag Internal Error: not enough arguments to check_if_writable_dir"
+	failed=true
+	return
+    fi
+    if [ -d "$1" ]; then
+	if [ -w "$1" ]; then
+	    # It might not really be writable.  The -w test will pass in a readonly directory
+	    # or even on a readonly filesystem (e.g., CDROM) if you are root.  Test and see.
+	    run_command_dev_null_nolog "mkdir $1/$2"
+	    if [ -z "$failed" ]; then
+		run_command_dev_null_nolog "rmdir $1/$2"
+		# We'll assume everything is ok if the mkdir and the rmdir both succeed.
+	    fi
+	else
+	    failed=true
+	fi
+    else
+	failed=true
+    fi
+}
+
+set_up_tmpdir()
+{
+    for i in "$TMPDIR" "$TEMP" "$TMP" /tmp /var/tmp /usr/tmp; do
+	check_if_writable_dir "$i" "$file_temp_wdtest"
+	if [ -z "$failed" ]; then
+	    TMPDIR="$i"
+	    return
+	fi
+    done
+    echo "$tag Error: could not find a temporary directory to use (and TMPDIR, TEMP, TMP environment variables not set)"
+    # Not my_exit; too early in script
+    exit 1
+}
+
+set_up_pwdcmd()
+{
+    for i in `which pwd 2> /dev/null` /bin/pwd /usr/ucb/pwd; do
+	if [ -f "$i" -a -x "$i" ]; then
+	    PWDCMD="$i"
+	    return
+	fi
+    done
+    PWDCMD="pwd"
+}
+
+# If $1 == $name_chklic we might have to do special processing on it.  This is because
+# this installer can be run inside an Intel Linux compiler install.  In that case, it
+# is possible that $name_chklic does not exist but ../chklic.{32,64} do.  This whole business
+# could be skipped (just return special_chklic=) if we could verify that the installer
+# was not being invoked from within a Linux Intel compiler install.
+# $1 = filename (one of $all_files)
+# $special_chklic = path/name of chklic file found in Intel compiler installer, if applicable
+special_chklic_processing()
+{
+    special_chklic=
+    case "$1" in
+	$name_chklic )
+	    if [ -f "$dir_inst_files/$1" ]; then
+		return  # we've got the file in the usual place we expected; no action required
+	    fi
+	    uname=`uname`
+	    case "$uname" in
+		Linux )
+		    unamem=`uname -m`
+		    case "$unamem" in
+			ia64 )
+			    special_chklic="$1"
+			    special_chklic="$dir_inst_files/../${special_chklic}.64"
+			    if [ -f "$special_chklic" ]; then
+				return  # we've got something we can use, just with the wrong location/name
+			    fi
+			;;
+			* )
+			    special_chklic="$1"
+			    special_chklic="$dir_inst_files/../${special_chklic}.32"
+			    if [ -f "$special_chklic" ]; then
+				return  # we've got something we can use, just with the wrong location/name
+			    fi
+			;;
+		    esac
+		    # we didn't find a suitable chklic anywhere
+		    special_chklic=
+		;;
+		* ) ;;  # nothing to do here, not Linux
+	    esac
+	;;
+	* ) ;;  # nothing to do here, not chklic
+    esac
+}
+
+echo_version()
+{
+    echo "$tag $my_cmd_name, version $flexlm_version / $cvs_id"
+}
+
+# Do this right away so everything below can handle -verbose or -nowork.
+pre_parse_arguments "$@"
+
+# Figure out where the user really was when he invoked the installer.
+set_up_pwdcmd
+dir_orig=`$PWDCMD`
+dir_inst_files="$dir_orig"
+
+# This is required so we can find the rest of the installation files.  See places in code that say:
+# Expect $name_script and $all_files to be in $dir_inst_files, the directory where we were when we ran $name_script.
+get_file_directory_name "$my_cmd_name"
+if [ -z "$file_dir" ]; then
+    echo "$tag Error: could not determine directory path from command name: $my_cmd_name"
+    # Not my_exit; too early in script
+    exit 1
+fi
+if [ "$file_dir" != "." ]; then
+    # make sure that $dir_inst_files is always an absolute path
+    if [ -n "`echo "$file_dir" | sed -e '/^\//d'`" ]; then
+	file_dir="$dir_orig/$file_dir"
+    fi
+    dir_inst_files="$file_dir"
+    dir_inst_files_is=install
+fi
+
+# Have to make sure we are working in a writable directory before we even
+# start off the log file.  We need write access for $file_log, $file_cfg,
+# and for the chmod done in setup().
+set_up_tmpdir
+check_if_writable_dir "$dir_inst_files" "$file_temp_wdtest"
+if [ -n "$failed" ]; then
+    # This can happen if the files are on a CDROM or a read-only filesystem.
+    # To work around this, we pre-copy all the files to $TMPDIR/$dir_tmpdir_subdir and then go from there
+    # as though we untarred the package in $TMPDIR/$dir_tmpdir_subdir in the first place.
+
+    dir_inst_files_is=temporary
+
+    # No run_command_dev_null_nolog here; just try as hard as possible to erase, _if_ it exists
+    /bin/rm -rf "$TMPDIR/$dir_tmpdir_subdir" > /dev/null 2>&1
+
+    run_command_dev_null_nolog "mkdir $TMPDIR/$dir_tmpdir_subdir" "could not create $dir_inst_files_is directory"
+
+    # Expect $name_script and $all_files to be in $dir_inst_files, the directory where we were when we ran $name_script.
+    # Copy them all to a writable $TMPDIR/$dir_tmpdir_subdir so we can continue from there.
+    for i in $all_files; do
+	special_chklic_processing "$i"
+	if [ -n "$special_chklic" ]; then
+	    run_command_dev_null_nolog "/bin/cp $special_chklic $TMPDIR/$dir_tmpdir_subdir/$i" "could not copy file to $dir_inst_files_is directory"
+	else
+	    if [ ! -f "$dir_inst_files/$i" ]; then
+		echo "$tag Error: could not find installation file: $dir_inst_files/$i"
+		# Not my_exit; too early in script
+		exit 1
+	    fi
+	    run_command_dev_null_nolog "/bin/cp $dir_inst_files/$i $TMPDIR/$dir_tmpdir_subdir/$i" "could not copy file to $dir_inst_files_is directory"
+	fi
+    done
+
+    dir_inst_files="$TMPDIR/$dir_tmpdir_subdir"
+fi
+check_if_writable_dir "$dir_inst_files" "$file_temp_wdtest"
+if [ -n "$failed" ]; then
+    echo "$tag Error: cannot write to $dir_inst_files_is directory: $dir_inst_files"
+    # Not my_exit; too early in script
+    exit 1
+fi
+
+# start: start off the log file
+file_log="$dir_inst_files/$file_log"
+echo_hr >> $file_log
+echo_version >> $file_log
+echo "$tag Installation started on: $start_date" >> $file_log
+unamea=`uname -a`
+echo "$tag System uname -a output:  $unamea" >> $file_log
+# end: start off the log file
+
+#
+# Utilities.
+#
+
+set_up_echo_n()
+{
+    if [ -z "`echo -n`" ]; then
+	ECHO_N=-n
+	ECHO_C=
+    else
+	ECHO_N=
+	ECHO_C='\c'
+    fi
+}
+
+echo_n()
+{
+    echo $ECHO_N "$@"$ECHO_C
+}
+
+set_up_pager()
+{
+    orig_LESS_opts="$LESS"
+    for i in "$PAGER" less more; do
+	ii=`which $i 2> /dev/null`
+	if [ -f "$ii" -a -x "$ii" ]; then
+	    PAGER="$ii"
+	    return
+	fi
+    done
+    PAGER="cat"
+}
+
+set_up_editor()
+{
+    for i in "$EDITOR" vi vim ex ed; do
+	ii=`which $i 2> /dev/null`
+	if [ -f "$ii" -a -x "$ii" ]; then
+	    EDITOR="$ii"
+	    return
+	fi
+    done
+    echo "$tag Error: could not find an editor to use (EDITOR environment variable not set)" | tee -a $file_log
+    EDITOR=
+    return 0
+}
+
+#
+# Messages and exit handlers.
+#
+
+# save state for future runs (see also setup() which defines what's in the state)
+save_cfg_options()
+{
+    echo "#!/bin/sh" > $dir_inst_files/$file_cfg
+    echo "dir_install_other=\"$dir_install_other\"" >> $dir_inst_files/$file_cfg
+    echo "dir_install=\"$dir_install\"" >> $dir_inst_files/$file_cfg
+    echo "file_lic_online=\"$file_lic_online\"" >> $dir_inst_files/$file_cfg
+    echo "file_lic_server=\"$file_lic_server\"" >> $dir_inst_files/$file_cfg
+    echo "mode_server_install=\"$mode_server_install\"" >> $dir_inst_files/$file_cfg
+    echo "mode_license_install=\"$mode_license_install\"" >> $dir_inst_files/$file_cfg
+    echo "mode_dir_install=\"$mode_dir_install\"" >> $dir_inst_files/$file_cfg
+}
+
+further_info()
+{
+    echo "Further information is available in the documentation:"
+    echo "    ${name_eula} - End User License Agreement"
+    echo "    ${name_readme}, $name_howto - general installation information"
+    echo "    $name_enduser - FLEXlm* End Users Manual"
+    echo "and from http://www.macrovision.com."
+    echo
+    echo "A detailed log of the installation process can be found in the file:"
+    echo "        $file_log"
+    echo "An installation can be [re]started from this directory."
+    echo
+    echo "If you have any questions or encountered any problems during this installation,"
+    echo "please contact customer support at:"
+    echo "        $support_www"
+    echo
+    echo "${package_attr}"
+}
+
+# $1 = exit status (0 for success)
+my_exit()
+{
+    if [ -n "$1" ]; then
+	ret="$1"
+    else
+	ret=1
+    fi
+
+    case "$ret" in
+	quit_calling | int_calling ) # user requested quit
+	    ret=1
+	    do_further_inf=true
+	    do_save_cfg=true
+	    do_hr=true
+	;;
+	help_calling ) # -help
+	    ret=1
+	    do_further_inf=true
+	    do_save_cfg=
+	    do_hr=
+	;;
+	version_calling ) # -version
+	    ret=1
+	    do_further_inf=
+	    do_save_cfg=
+	    do_hr=
+	;;
+	0 ) # normal exit
+	    do_further_inf=
+	    do_save_cfg=true
+	    do_hr=true
+	;;
+	* ) # error exit
+	    do_further_inf=true
+	    do_save_cfg=true
+	    do_hr=true
+	;;
+    esac
+
+    if [ -n "$do_further_inf" ]; then
+	echo | tee -a $file_log
+	further_info
+	further_info >> $file_log
+    fi
+
+    if [ -n "$do_save_cfg" ]; then save_cfg_options; fi
+
+    # Don't use run_command_dev_null etc.; if this fails we can live with that
+    if [ -f "$TMPDIR/$file_temp" ]; then /bin/rm -f "$TMPDIR/$file_temp" > /dev/null 2>&1; fi
+
+    if [ -n "$do_hr" ]; then
+	if [ -n "$file_log" ]; then
+	    echo_hr | tee -a $file_log
+	else
+	    echo_hr
+	fi
+    fi
+
+    interrupt_exit_enabled= # fixes OSF1 /bin/sh bug where my_exit() triggers int_handler(
+    exit $ret
+}
+
+quit()
+{
+    ask "Do you really want to quit" yn n
+    case "$answer" in
+	n ) return ;;
+    esac
+    my_exit quit_calling
+}
+
+int_handler()
+{
+    if [ -z "$interrupt_exit_enabled" ]; then return; fi # fixes OSF1 /bin/sh bug where my_exit() triggers int_handler()
+    echo | tee -a $file_log
+    echo "$tag Warning: installation interrupted" | tee -a $file_log
+    my_exit int_calling
+}
+
+do_help()
+{
+    echo
+    echo_version
+    echo "Usage: $my_cmd_name <options>"
+    echo "Options:"
+    echo "    -help             display this message"
+    echo "    -nowork           do not actually install, just display installer actions"
+    echo "    -verbose          display installer actions while installing"
+    echo "    -version          display installer version and exit"
+    echo "    -server_license   run installation assuming a valid server license is present"
+    my_exit help_calling
+}
+
+#
+# More utilities.
+#
+
+# $1 = the number of the screen that should be presented next
+# $2 = title to display at bottom of PAGER screens
+run_pager()
+{
+    if [ -f "$PAGER" -a -x "$PAGER" ]; then
+	my_less_title=
+	case "$PAGER" in
+	    */less )
+		my_less_title="[spacebar to continue, q to quit, h for help]"
+		if [ -n "$2" ]; then
+		    my_less_title="$2  $my_less_title"
+		fi
+		if [ -n "$orig_LESS_opts" ]; then
+		    LESS="$orig_LESS_opts -P$my_less_title"
+		else
+		    LESS="-P$my_less_title"
+		fi
+		export LESS
+	    ;;
+	esac
+	$PAGER "$1"
+	if [ -n "$my_less_title" ]; then
+	    LESS="$orig_LESS_opts"
+	    export LESS
+	fi
+    else
+	# This should never happen due to set_up_pager() having a default.
+	echo "$tag Error: could not find a pager to use (PAGER environment variable not set)" | tee -a $file_log
+	my_exit 1
+    fi
+}
+
+# $1 = the number of the screen that should be presented next
+go_to_screen()
+{
+    if [ -z "$1" ]; then
+	echo "$tag Internal Error: go_to_screen() screen not specified" | tee -a $file_log
+	my_exit 1
+    fi
+    screen_prev="$screen_next"
+    screen_next="$1"
+}
+
+# $1 = command string to run
+# $2 = error message to use on failure
+# $failed = returned on failure
+# if $verbose_command is set the command will be printed before being executed
+# if $do_work is not set the command won't actually be executed
+run_command_dev_null()
+{
+    failed=
+    if [ -z "$2" ]; then
+	echo "$tag Internal Error: no message specified in case of command failure" | tee -a $file_log
+	my_exit 1
+    fi
+    if [ -n "$verbose_command" ]; then echo "$tag $1" | tee -a $file_log; fi
+    if [ -n "$do_work" ]; then
+	$1 > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+	    failed=true
+	    echo "$tag Error: $2" | tee -a $file_log
+	    echo "$tag Command: $1 > /dev/null 2>&1" | tee -a $file_log
+	    my_exit 1
+	fi
+    fi
+}
+
+# $1 = directory to cd to
+# $2 = error message to use on failure
+# $failed = returned on failure
+# if $verbose_command is set the command will be printed before being executed
+# if $do_work is not set the command won't actually be executed
+run_command_cd()
+{
+    if [ -n "$verbose_command" ]; then echo "$tag cd $1" | tee -a $file_log; fi
+    if [ -n "$do_work" ]; then
+	if [ -d "$1" ]; then
+	    cd $1
+	else
+	    echo "$tag Error: $2" | tee -a $file_log
+	    echo "$tag Command: cd $1" | tee -a $file_log
+	    my_exit 1
+	    failed=true
+	fi
+    else
+	failed=
+    fi
+}
+
+# $1 and $2 are two strings for directories
+# return $diff_dir if they really represent two different directories
+is_different_directory()
+{
+    diff_dir=true
+    if [ -n "$1" -a -n "$2" ]; then
+	if [ -d "$1" -a -d "$2" ]; then
+	    if [ "$1" = "$2" ]; then
+		diff_dir=
+		return # definitely same
+	    else
+		# try to tell if . and /dir are the same thing, etc.
+		dirpush=`$PWDCMD`
+		run_command_cd "$1" "could not cd to dir1 for is_different_directory"
+		dir1=`$PWDCMD`
+		run_command_cd "$2" "could not cd to dir2 for is_different_directory"
+		dir2=`$PWDCMD`
+		run_command_cd "$dirpush" "could not cd to original directory for is_different_directory"
+		if [ "$dir1" = "$dir2" ]; then
+		    diff_dir=
+		    return # definitely same
+		else
+		    diff_dir=true
+		    return # definitely different
+		fi
+	    fi
+	fi
+    fi
+}
+
+# $1 = path
+# return $can_make_dir if $1 doesn't already exist and if we think we can mkdir -p $1 successfully
+can_make_directory()
+{
+    can_make_dir=
+
+    if [ -z "$1" ]; then return; fi
+    case "$1" in
+	/ | . | .. )  return ;;
+	*/ )          dir=`echo "$1" | sed -e 's/\/$//'` ;;
+	* )           dir="$1" ;;
+    esac
+
+    if [ -f "$dir" ]; then return; fi  # we can't create a directory inside a file
+    if [ -d "$dir" ]; then return; fi  # we can't create a directory that already exists
+
+    while [ 1 ]; do
+	get_file_directory_name "$dir"
+	if [ -z "$file_dir" ]; then return; fi
+	if [ -f "$file_dir" ]; then return; fi  # we can't create a directory inside a file
+	if [ -d "$file_dir" ]; then
+	    check_if_writable_dir "$file_dir" "$file_name"
+	    if [ -z "$failed" ]; then can_make_dir=true; fi
+	    return
+	fi
+	dir="$file_dir"
+    done
+}
+
+# $1 = question to ask
+# $2 = possible answers
+# $3 = default answer
+# $answer = returned answer (always a single lower-case letter; or (fully-qualified) path for pq and pbq)
+ask()
+{
+    case "$2" in
+	yn | ynq | yq | ynbq )
+	    if [ -z "$3" ]; then
+		echo "$tag Internal Error: ask() default not specified" | tee -a $file_log
+		my_exit 1
+	    fi
+	;;
+	eula )
+	    if [ -n "$3" ]; then
+		echo "$tag Internal Error: ask() default should not be specified" | tee -a $file_log
+		my_exit 1
+	    fi
+	;;
+	pq | pbq ) ;;  # optional default value in these cases (i.e., a path)
+	* )
+	    echo "$tag Internal Error: unknown ask() option: $2" | tee -a $file_log
+	    my_exit 1
+	;;
+    esac
+
+    answered=
+    while [ -z "$answered" ]; do
+
+	# Even though $choices is loop-invariant, set it up each time through, because if
+	# quit() is called, and we don't reall quit, we'll come around again and $choices
+	# will be messed up.  Having a function-local variable for $choices would fix this.
+	case "$2" in
+	    yn )   choices=" ([y]es/[n]o)?" ;;
+	    ynq )  choices=" ([y]es/[n]o/[q]uit)?" ;;
+	    yq )   choices=" ([y]es/[q]uit)?" ;;
+	    ynbq ) choices=" ([y]es/[n]o/[b]ack/[q]uit)?" ;;
+	    pq )   choices=" (<path>/[q]uit):" ;;
+	    pbq )  choices=" (<path>/[b]ack/[q]uit):" ;;
+	    eula ) choices=" (accept/reject)?" ;;
+	    * )
+		echo "$tag Internal Error: unknown ask() option: $2" | tee -a $file_log
+		my_exit 1
+	    ;;
+	esac
+	if [ -n "$3" ]; then choices="${choices} [$3]"; fi
+
+	echo | tee -a $file_log
+	echo_n $1 $choices " " | tee -a $file_log
+	read answer
+	answered="true"
+	if [ -z "$answer" ]; then
+	    if [ -n "$3" ]; then
+		answer="$3"
+		echo "$answer" >> $file_log
+	    else
+		echo "$answer" >> $file_log
+		answered= ; continue
+	    fi
+	else
+	    echo "$answer" >> $file_log
+	fi
+	case "$answer" in
+	    [yY] | [yY][eE][sS] )     answer="y" ;;
+	    [nN] | [nN][oO] )         answer="n" ;;
+	    [bB] | [bB][aA][cC][kK] ) answer="b" ;;
+	    [qQ] | [qQ][uU][iI][tT] ) answer="q" ;;
+	esac
+
+	case "$2" in
+	    yn )
+		case "$answer" in
+		    y | n ) ;;
+		    * ) answered= ; continue ;;
+		esac
+	    ;;
+	    ynq )
+		case "$answer" in
+		    y | n ) ;;
+		    q ) quit ; answered= ; continue ;;
+		    * ) answered= ; continue ;;
+		esac
+	    ;;
+	    yq )
+		case "$answer" in
+		    y ) ;;
+		    q ) quit ; answered= ; continue ;;
+		    * ) answered= ; continue ;;
+		esac
+	    ;;
+	    ynbq )
+		case "$answer" in
+		    y | n | b ) ;;
+		    q ) quit ; answered= ; continue ;;
+		    * ) answered= ; continue ;;
+		esac
+	    ;;
+	    pq | pbq )
+		case "$answer" in
+		    b ) ;;
+		    q ) quit ; answered= ; continue ;;
+		    * )
+			# valid path; make sure path is fully-qualified before returning
+			if [ -n "`echo "$answer" | sed -e '/^\//d'`" ]; then
+			    answer="$dir_orig/$answer"
+			fi
+		    ;;
+		esac
+	    ;;
+	    eula )
+		case "$answer" in
+		    accept ) ;;
+		    reject ) quit ; answered= ; continue ;;
+		    * ) answered= ; continue ;;
+		esac
+	    ;;
+	    * )
+		echo "$tag Internal Error: unknown ask() option: $2" | tee -a $file_log
+		my_exit 1
+	    ;;
+	esac
+    done
+}
+
+#
+# Setup and initialization.
+#
+
+# $1 = filename (one of $all_files)
+# $mode = returned chmod mode for this file
+get_install_file_mode()
+{
+    case "$1" in
+	$name_script ) mode=740 ;;
+	$name_lmgrd | $name_vendor ) mode=750 ;;
+	$name_lmutil | $name_getip | $name_chklic ) mode=700 ;;
+	$name_howto | $name_readme | $name_eula | $name_enduser ) mode=644 ;;
+	* )
+	    echo "$tag Internal Error: unrecognized installation file: $i" | tee -a $file_log
+	    my_exit 1
+	;;
+    esac
+}
+
+setup()
+{
+    screen_next=SCR_00
+    screen_prev="$screen_next"
+    set_up_echo_n
+
+    set_up_pager
+    set_up_editor
+
+    if [ -n "$verbose_command" ]; then
+	# some environment debug dumps
+	echo "$tag Internal environment settings:" | tee -a $file_log
+	echo "$tag     TMPDIR = <$TMPDIR>" | tee -a $file_log
+	echo "$tag     PWDCMD = <$PWDCMD>" | tee -a $file_log
+	echo "$tag     PAGER  = <$PAGER>"  | tee -a $file_log
+	echo "$tag     EDITOR = <$EDITOR>" | tee -a $file_log
+    fi
+
+    # saved/restored state (see also save_cfg_options() which saves this state)
+    dir_install_other=
+    dir_install=
+    file_lic_online=
+    file_lic_server=
+    mode_server_install=
+    if [ -n "$do_dir_inst_lic" ]; then
+	mode_license_install=
+    else
+	mode_license_install=local
+    fi
+    mode_dir_install=
+    # things in the state that shouldn't be saved/restored
+    verbose=true
+    use_no_license=
+    file_lic_editor="$TMPDIR/$file_temp"
+
+    # update state from saved values, if any
+    if [ -f "$dir_inst_files/$file_cfg" ]; then
+	. "$dir_inst_files/$file_cfg"
+    fi
+
+    # Expect $name_script and $all_files to be in $dir_inst_files, the directory where we were when we ran $name_script.
+    # Check and make sure all the files are there; chmod them so we can run them if we need to.
+    # Do chmod on $all_files in $dir_inst_files.
+    for i in $all_files; do
+	special_chklic_processing "$i"
+	if [ -n "$special_chklic" ]; then
+	    run_command_dev_null_nolog "/bin/cp $special_chklic $dir_inst_files/$i" "could not copy file to $dir_inst_files_is directory"
+	fi
+	if [ ! -f "$dir_inst_files/$i" ]; then
+	    echo "$tag Error: could not find installation file in $dir_inst_files_is directory: $dir_inst_files/$i" | tee -a $file_log
+	    my_exit 1
+	fi
+	get_install_file_mode $i
+	# I think this one can run even in -nowork mode to check out the license (leaving under do_work just for now)
+	run_command_dev_null "chmod $mode $dir_inst_files/$i" "chmod of installation file in $dir_inst_files_is directory failed"
+    done
+    # I think this one can run even in -nowork mode to check out the license (leaving under do_work since it's platform-dependent)
+    # early check that installation files actually run
+    run_command_dev_null "$dir_inst_files/$name_lmutil" "installed software will not run; package might be for the wrong platform, or corrupted"
+}
+
+parse_arguments()
+{
+    while [ $# -gt 0 ]; do
+	arg="$1"
+	if [ -n "$arg" ]; then
+	    case "$arg" in
+		-help )              do_help ;;
+		-server_license )    assume_server_lic=true ;;
+		-version )           echo_version ; my_exit version_calling ;;
+		-nowork )            ;; # handled in pre_parse_arguments
+		-verbose )           ;; # handled in pre_parse_arguments
+		* )
+		    echo "$tag Error: unknown command-line option: $arg" | tee -a $file_log
+		    do_help
+		;;
+	    esac
+	fi
+	shift
+    done
+}
+
+#
+# Discovery routines and installer actions.
+#
+
+check_for_valid_platform()
+{
+    uname=`uname`
+    case "$uname" in
+	AIX | HP-UX | IRIX | IRIX64 | Linux | OSF1 )
+	    # recognized platform, regardless of OS version (at least we're not checking)
+	    return
+	;;
+	SunOS )
+	    uname=`uname -r`
+	    case "$uname" in
+		5* )
+		    uname=`uname -m`
+		    case "$uname" in
+			sun4* | i86pc )
+			    # recognized SunOS for sparc or IA
+			    return
+			;;
+		    esac
+		;;
+	    esac
+	;;
+    esac
+    echo "$tag Error: unknown platform: $unamea" | tee -a $file_log
+    my_exit 1
+}
+
+# return LFD_HAD_ERRORS on errors
+check_license()
+{
+    use_no_license=
+    LFD_HAD_ERRORS=0
+    LFD_SAW_VALID_LICENSES=0
+    LFD_SAW_COUNTED_LICENSES=0
+
+    if [ ! -f "$file_lic_server" ]; then
+	ask "License file does not exist; do you wish to fix this" ynq y
+	case "$answer" in
+	    n )
+		echo | tee -a $file_log
+		echo "$tag Warning: license server will not be configured; no server license file exists" | tee -a $file_log
+		LFD_HAD_ERRORS=1
+		use_no_license=true
+		go_to_screen SCR_13 ; return # installation settings
+	    ;;
+	esac
+	# errors found in license; user said he wanted to fix it
+	LFD_HAD_ERRORS=1
+	go_to_screen SCR_05 ; return # select license data
+    fi
+
+    if [ -n "$verbose_command" ]; then echo "$tag wc -l $file_lic_server | sed -e 's/^ *//' -e 's/ .*$//'" | tee -a $file_log; fi
+    # I think this one can run even in -nowork mode to check out the license
+    ###if [ -n "$do_work" ]; then
+	file_lines=`wc -l $file_lic_server | sed -e 's/^ *//' -e 's/ .*$//'`
+	if [ "$file_lines" -lt 2 ]; then
+	    ask "License file appears empty or malformed; do you wish to fix this" ynq y
+	    case "$answer" in
+		n )
+		    echo | tee -a $file_log
+		    echo "$tag Warning: license server will not be configured; server license file is empty or malformed" | tee -a $file_log
+		    LFD_HAD_ERRORS=1
+		    use_no_license=true
+		    go_to_screen SCR_13 ; return # installation settings
+		;;
+	    esac
+	    # errors found in license; user said he wanted to fix it
+	    LFD_HAD_ERRORS=1
+	    go_to_screen SCR_05 ; return # select license data
+	fi
+    ###fi
+
+    # check for valid vs. invalid licenses, licenses that require server, etc.
+    if [ -n "$verbose_command" ]; then echo "$tag $dir_inst_files/$name_chklic -q -r -c$file_lic_server" | tee -a $file_log; fi
+    if [ -n "$do_work" ]; then
+
+	# Have to turn off INTEL_LMD_DEBUG around chklic if it goes to stderr.
+	env_var_string=`env | grep "^INTEL_LMD_DEBUG="`
+	chklic_debug_to_stderr=
+	if [ -n "$env_var_string" ]; then
+	    save_INTEL_LMD_DEBUG="$INTEL_LMD_DEBUG"
+	    if [ -n "$INTEL_LMD_DEBUG" ]; then
+		env_var_is_numeric=`expr $INTEL_LMD_DEBUG + 1 2> /dev/null`
+		if [ -n "$env_var_is_numeric" ]; then
+		    chklic_debug_to_stderr=true
+		fi
+	    else
+		chklic_debug_to_stderr=true
+	    fi
+	fi
+	if [ -n "$chklic_debug_to_stderr" ]; then
+	    INTEL_LMD_DEBUG=0
+	    export INTEL_LMD_DEBUG
+	fi
+	chklic_status=`$dir_inst_files/$name_chklic -q -r -c$file_lic_server`
+	if [ -n "$chklic_debug_to_stderr" ]; then
+	    INTEL_LMD_DEBUG="$save_INTEL_LMD_DEBUG"
+	    export INTEL_LMD_DEBUG
+	fi
+
+	# decode bits out of $chklic_status and process them (lsb first)
+	nexti="$chklic_status"
+	LFD_HAD_ERRORS=`expr $nexti % 2` ; nexti=`expr $nexti / 2`
+	if [ $LFD_HAD_ERRORS -ne 0 ]; then
+	    echo "$tag Error: problems encountered while checking license file" | tee -a $file_log
+	    echo "$tag Command: $dir_inst_files/$name_chklic -r -c$file_lic_server" | tee -a $file_log
+	    echo "$tag Contents of license file:" | tee -a $file_log
+	    cat $file_lic_server | tee -a $file_log
+
+	    ask "License file may be malformed, which could have caused the above problems; do you wish to fix this" ynq y
+	    case "$answer" in
+		n )
+		    echo | tee -a $file_log
+		    echo "$tag Warning: license server will not be configured; server license file may be malformed" | tee -a $file_log
+		    LFD_HAD_ERRORS=1
+		    use_no_license=true
+		    go_to_screen SCR_13 ; return # installation settings
+		;;
+	    esac
+	    # errors found in license; user said he wanted to fix it
+	    LFD_HAD_ERRORS=1
+	    go_to_screen SCR_05 ; return # select license data
+	fi
+	LFD_SAW_VALID_LICENSES=`expr $nexti % 2` ; nexti=`expr $nexti / 2`
+	if [ $LFD_SAW_VALID_LICENSES -eq 0 ]; then
+	    ask "License file appears to contain no valid licenses; do you wish to fix this" ynq y
+	    case "$answer" in
+		n )
+		    echo | tee -a $file_log
+		    echo "$tag Warning: license server will not be configured; server license file contains no valid licenses" | tee -a $file_log
+		    LFD_HAD_ERRORS=1
+		    use_no_license=true
+		    go_to_screen SCR_13 ; return # installation settings
+		;;
+	    esac
+	    # errors found in license; user said he wanted to fix it
+	    LFD_HAD_ERRORS=1
+	    go_to_screen SCR_05 ; return # select license data
+	fi
+	LFD_SAW_COUNTED_LICENSES=`expr $nexti % 2` ; nexti=`expr $nexti / 2`
+	if [ $LFD_SAW_COUNTED_LICENSES -eq 0 ]; then
+	    echo | tee -a $file_log
+	    echo "$tag Warning: license server will not be configured; server license file contains no counted licenses" | tee -a $file_log
+	    # do not go_to_screen SCR_13 etc. in this case; we still want to install the license file because it _is_ valid
+	fi
+    fi
+}
+
+# returns $server_running if server is running
+check_server()
+{
+    server_running=
+    # we can run $name_lmutil before install_files() because we installed it early in setup()
+    if [ -n "$verbose_command" ]; then echo "$tag $dir_inst_files/$name_lmutil $name_lmstat -c $file_lic_server | egrep 'UP'" | tee -a $file_log; fi
+    # I think this one can run even in -nowork mode to check out the license (leaving under do_work since it's platform-dependent)
+    if [ -n "$do_work" ]; then
+	server_stat=`$dir_inst_files/$name_lmutil $name_lmstat -c $file_lic_server | egrep 'UP'`
+	case "$server_stat" in
+	    *UP* ) server_running=true ;;
+	esac
+    fi
+
+    if [ -z "$server_running" ]; then
+	# the server is not up now
+	go_to_screen SCR_10 ; return # start license server
+    else
+	# the server is up now
+	go_to_screen SCR_11 ; return # refresh license server
+    fi
+}
+
+install_files()
+{
+    # actual files listed in $all_files
+    case "$mode_dir_install" in
+	other_mkdir )
+	    echo | tee -a $file_log
+	    echo "$tag Note: creating installation directory" | tee -a $file_log
+	    run_command_dev_null "mkdir -p $dir_install" "could not create installation directory"
+	;;
+	current | other ) ;;
+	* )
+	    echo "$tag Internal Error: unknown install directory mode: $mode_dir_install" | tee -a $file_log
+	    my_exit 1
+	;;
+    esac
+
+    echo | tee -a $file_log
+    echo "$tag Note: installing files" | tee -a $file_log
+    for i in $all_files; do
+	case "$mode_dir_install" in
+	    current ) ;;
+	    other | other_mkdir )
+		run_command_dev_null "/bin/rm -f $dir_install/$i" "could not remove previous installation file"
+		run_command_dev_null "/bin/cp $dir_inst_files/$i $dir_install/$i" "could not install file"
+	    ;;
+	    * )
+		echo "$tag Internal Error: unknown install directory mode: $mode_dir_install" | tee -a $file_log
+		my_exit 1
+	    ;;
+	esac
+	get_install_file_mode $i
+	run_command_dev_null "chmod $mode $dir_install/$i" "chmod of installation file failed"
+    done
+
+    echo | tee -a $file_log
+    echo "$tag Note: making symbolic links for $name_lmutil" | tee -a $file_log
+    # various aliases for $name_lmutil
+    dirpush=`$PWDCMD`
+    run_command_cd "$dir_install" "could not cd to installation directory"
+    for i in $all_links; do
+	run_command_dev_null "/bin/rm -f $i" "could not remove previous installation file"
+	run_command_dev_null "ln -s $name_lmutil $i" "could not make link of installation file"
+    done
+    run_command_cd "$dirpush" "could not cd to original directory"
+}
+
+install_license()
+{
+    echo | tee -a $file_log
+    echo "$tag Note: installing server license file" | tee -a $file_log
+    case "$mode_license_install" in
+	global )
+	    if [ -z "$do_dir_inst_lic" ]; then
+		echo "$tag Internal Error: invalid license install mode: $mode_license_install" | tee -a $file_log
+		my_exit 1
+	    fi
+	    run_command_dev_null "/bin/cp $file_lic_server $dir_inst_lic/$file_inst_lic" "could not install license file"
+	    run_command_dev_null "chmod 444 $dir_inst_lic/$file_inst_lic" "could not chmod installed license file"
+	;;
+	global_append )
+	    #
+	    # See where mode_license_install=global_append gets set for notes on why a pre-chmod is required.
+	    #
+	    if [ -z "$do_dir_inst_lic" ]; then
+		echo "$tag Internal Error: invalid license install mode: $mode_license_install" | tee -a $file_log
+		my_exit 1
+	    fi
+	    run_command_dev_null "chmod 666 $dir_inst_lic/$file_inst_lic" "could not chmod installed license file"
+	    if [ -n "$verbose_command" ]; then echo "$tag cat $file_lic_server >> $dir_inst_lic/$file_inst_lic" | tee -a $file_log; fi
+	    if [ -n "$do_work" ]; then
+		cat $file_lic_server >> $dir_inst_lic/$file_inst_lic
+	    fi
+	    run_command_dev_null "chmod 444 $dir_inst_lic/$file_inst_lic" "could not chmod installed license file"
+	;;
+	global_mkdir )
+	    if [ -z "$do_dir_inst_lic" ]; then
+		echo "$tag Internal Error: invalid license install mode: $mode_license_install" | tee -a $file_log
+		my_exit 1
+	    fi
+	    run_command_dev_null "mkdir -p $dir_inst_lic" "could not create license directory"
+	    run_command_dev_null "/bin/cp $file_lic_server $dir_inst_lic/$file_inst_lic" "could not install license file"
+	    run_command_dev_null "chmod 444 $dir_inst_lic/$file_inst_lic" "could not chmod installed license file"
+	;;
+	global_not )
+	    if [ -z "$do_dir_inst_lic" ]; then
+		echo "$tag Internal Error: invalid license install mode: $mode_license_install" | tee -a $file_log
+		my_exit 1
+	    fi
+	;;
+	local ) ;;
+	* )
+	    echo "$tag Internal Error: unknown license install mode: $mode_license_install" | tee -a $file_log
+	    my_exit 1
+	;;
+    esac
+    run_command_dev_null "/bin/cp $file_lic_server $dir_install/$file_local_lic" "could not install local license file"
+    run_command_dev_null "chmod 644 $dir_install/$file_local_lic" "could not chmod installed local license file"
+}
+
+make_server_start_rc_file()
+{
+    rc_cmd_for_echo="$dir_install/$name_lmgrd -c $dir_install/$file_local_lic -l $dir_install/$file_server_log"
+    rc_security_note="$tag Note: It is STRONGLY recommended not to start the server as root for security reasons."
+
+    echo | tee -a $file_log
+    if [ -n "$do_start_file_rc" ]; then
+	echo "$tag Note: the license server can be started by using this command:" | tee -a $file_log
+	echo "        $dir_install/$file_rc" | tee -a $file_log
+	echo "This command can be invoked from /etc/rc.d (etc.) during system start-up to start the server." | tee -a $file_log
+	echo "$rc_security_note" | tee -a $file_log
+	if [ -n "$verbose_command" ]; then echo "$tag (create $dir_install/$file_rc)" | tee -a $file_log; fi
+    else
+	echo "$tag Note: the license server can be started by using these commands:" | tee -a $file_log
+	echo "        cd $dir_install" | tee -a $file_log
+	echo "        $rc_cmd_for_echo" | tee -a $file_log
+	echo "$rc_security_note" | tee -a $file_log
+	echo | tee -a $file_log
+	echo "$tag Note: a copy of these commands is being written to the file:" | tee -a $file_log
+	echo "        $dir_install/$file_rc" | tee -a $file_log
+	echo "This file can be invoked from /etc/rc.d (etc.) during system start-up to start the server." | tee -a $file_log
+	if [ -n "$verbose_command" ]; then echo "$tag (echo above commands to $dir_install/$file_rc)" | tee -a $file_log; fi
+    fi
+
+    if [ -n "$do_work" ]; then
+	echo "#!/bin/sh" > $dir_install/$file_rc
+	echo "echo \"$rc_security_note\"" >> $dir_install/$file_rc
+	echo "if [ -d \"$dir_install\" ]; then" >> $dir_install/$file_rc
+	echo "    cd \"$dir_install\"" >> $dir_install/$file_rc
+	echo "    if \`$rc_cmd_for_echo > /dev/null 2>&1\`; then" >> $dir_install/$file_rc
+	echo "        failed=" >> $dir_install/$file_rc
+	echo "    else" >> $dir_install/$file_rc
+	echo "        echo \"$tag Error: $dir_install/${file_rc}: could not start license server\"" >> $dir_install/$file_rc
+	echo "        echo \"$tag Command: $rc_cmd_for_echo > /dev/null 2>&1\"" >> $dir_install/$file_rc
+	echo "        exit 1" >> $dir_install/$file_rc
+	echo "    fi" >> $dir_install/$file_rc
+	echo "else" >> $dir_install/$file_rc
+	echo "    echo \"$tag Error: $dir_install/${file_rc}: could not cd to server directory $dir_install\"" >> $dir_install/$file_rc
+	echo "    exit 1" >> $dir_install/$file_rc
+	echo "fi" >> $dir_install/$file_rc
+	echo "exit 0" >> $dir_install/$file_rc
+    fi
+    run_command_dev_null "chmod 755 $dir_install/$file_rc" "could not chmod license server start-up file"
+}
+
+install_server()
+{
+    case "$mode_server_install" in
+	no_counted )
+	    echo | tee -a $file_log
+	    echo "$tag Note: license server not started; no counted licenses in license file" | tee -a $file_log
+	;;
+	start )
+	    make_server_start_rc_file
+	    echo | tee -a $file_log
+	    if [ -n "$do_start_file_rc" ]; then
+		echo "$tag Note: starting license server now by using the above command" | tee -a $file_log
+		run_command_dev_null "$dir_install/$file_rc" "could not start license server"
+	    else
+		echo "$tag Note: starting license server now by using the above commands" | tee -a $file_log
+		dirpush=`$PWDCMD`
+		run_command_cd "$dir_install" "could not cd to installation directory"
+		run_command_dev_null "$rc_cmd_for_echo" "could not start license server"
+	    fi
+	    # wait a few seconds for server start-up, then check logs to see how it did
+	    run_command_dev_null "sleep 3" "sleep command failed"
+	    for badword in "exiting" "can't" "cannot" "kill" "error" "invalid"; do
+		grep -i $badword $dir_install/$file_server_log > /dev/null 2>&1
+		if [ $? -eq 0 ]; then
+		    # bad keyword found; server start-up must have failed
+		    echo "$tag Error: license server failed to start" | tee -a $file_log
+		    my_exit 1
+		fi
+	    done
+	    if [ -z "$do_start_file_rc" ]; then
+		run_command_cd "$dirpush" "could not cd to original directory"
+	    fi
+	;;
+	make_start_rc_file )
+	    make_server_start_rc_file
+	;;
+	reread )
+	    make_server_start_rc_file
+	    echo | tee -a $file_log
+	    echo "$tag Note: refreshing license server now by using this command:" | tee -a $file_log
+	    echo "        $dir_install/$name_lmutil $name_lmreread -c $dir_install/$file_local_lic" | tee -a $file_log
+	    run_command_dev_null "$dir_install/$name_lmutil $name_lmreread -c $dir_install/$file_local_lic" "could not refresh license server"
+	;;
+	no_reread )
+	    make_server_start_rc_file
+	    echo | tee -a $file_log
+	    echo "$tag Warning: license server not refreshed; this may result in future license check-out problems" | tee -a $file_log
+	;;
+	* )
+	    echo "$tag Internal Error: unknown server install mode: $mode_server_install" | tee -a $file_log
+	    my_exit 1
+	;;
+    esac
+}
+
+perform_installation()
+{
+    install_files
+    if [ -n "$use_no_license" ]; then
+	make_server_start_rc_file
+    else
+	install_license
+	install_server
+    fi
+}
+
+#
+# Screens for each step in install process.
+#
+
+# $1 = title string
+# $2 means just print title to stdout not log file
+title()
+{
+    if [ -n "$2" ]; then
+	echo_hr
+	echo "$tag $1 $tag"
+    else
+	echo_hr | tee -a $file_log
+	echo "$tag $1 $tag" | tee -a $file_log
+    fi
+}
+
+msg_SCR_00()
+{
+    # NOTE: $verbose does not affect this message (it contains the copyright notice) and because $verbose is not set until SCR_02
+    echo
+    echo "$copyright_notice"
+    echo "The ${package_name} is furnished under a license and"
+    echo "may be used and copied only in accordance with the terms of said license."
+    echo
+    echo "This package utilizes Macrovision FLEXlm license management software."
+    echo "Copyright (C) Macrovision Corporation.  All Rights Reserved."
+    echo
+    echo "This script installs the ${package_name}, which consists"
+    echo "of a license server and related utilities.  The $name_lmgrd and $name_vendor"
+    echo "license server daemons are VERSION ${flexlm_version}."
+    echo
+    echo "You may quit or ^C this script at any time and re-install later."
+    echo
+    echo "${package_attr}"
+}
+
+screen_SCR_00()
+{
+    title "Installing ${package_name}"
+    msg_SCR_00 | tee -a $file_log
+    ask "Do you wish to begin the installation process" yq y
+    go_to_screen SCR_01 ; return # continue
+}
+
+msg_SCR_01()
+{
+    # NOTE: $verbose does not affect this message (it contains the copyright notice) and because $verbose is not set until SCR_02
+    echo
+    echo "You must accept the End User License Agreement in order to proceed"
+    echo "with the installation of the ${package_name}."
+}
+
+screen_SCR_01()
+{
+    title "Displaying End User License Agreement" stdout_only
+    sleep 3
+    run_pager "$dir_inst_files/$name_eula" "End User License Agreement"
+
+    title "Accept End User License Agreement"
+    msg_SCR_01 | tee -a $file_log
+    echo >> $file_log ; cat $dir_inst_files/$name_eula >> $file_log
+    ask "Do you accept the End User License Agreement" eula
+    go_to_screen SCR_02 ; return # continue
+}
+
+msg_SCR_02()
+{
+    # NOTE: $verbose does not affect this message since $verbose is just being set here
+    echo
+    echo "By default, the installer prints verbose messages describing each"
+    echo "installation option or question asked."
+}
+
+screen_SCR_02()
+{
+    title "Verbose Messages"
+    msg_SCR_02 | tee -a $file_log
+    ask "Do you wish to see verbose messages" ynbq y
+    case "$answer" in
+	b ) go_to_screen SCR_01 ; return ;; # back
+	y ) verbose=true ;;
+	n ) verbose= ;;
+    esac
+    go_to_screen SCR_03 ; return # continue
+}
+
+msg_SCR_03()
+{
+    if [ "$dir_inst_files_is" = "temporary" ]; then
+	echo
+	echo "NOTE:"
+	echo "The directory in which the installation was started was not writable,"
+	echo "so the installation files were copied to a $dir_inst_files_is directory:"
+	echo "        $dir_inst_files"
+	echo
+	echo "It is strongly recommended, then, that the installation files be copied"
+	echo "to and installed in some other, more permanent, directory, rather than"
+	echo "installing them in the $dir_inst_files_is directory."
+    elif [ -n "$verbose" ]; then
+	echo
+	echo "By default, the installation is performed in the $dir_inst_files_is directory:"
+	echo "        $dir_inst_files"
+	echo
+	echo "which contains the installation files.  These files may also, however,"
+	echo "be copied to and installed in some other directory."
+    fi
+}
+
+screen_SCR_03()
+{
+    mode_dir_install=
+
+    title "Select Installation Location"
+    msg_SCR_03 | tee -a $file_log
+    if [ "$dir_inst_files_is" = "temporary" ]; then
+	ask "Install software in $dir_inst_files_is directory" ynbq n
+    else
+	ask "Install software in $dir_inst_files_is directory" ynbq y
+    fi
+    case "$answer" in
+	b ) go_to_screen SCR_02 ; return ;; # back
+	y )
+	    mode_dir_install=current
+	    dir_install="$dir_inst_files"
+	    if [ "$dir_inst_files_is" = "temporary" ]; then
+		echo | tee -a $file_log
+		echo "NOTE: the software will be installed in the above $dir_inst_files_is directory." | tee -a $file_log
+	    fi
+	    go_to_screen SCR_05 ; return # select license data
+	;;
+	n ) mode_dir_install=other ; go_to_screen SCR_04 ; return ;; # enter install directory name
+    esac
+}
+
+msg_SCR_04()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	echo "Please enter the path to the directory in which you wish to"
+	echo "install the license server software.  The installed software will"
+	echo "operate from the selected installation directory.  Note, however,"
+	echo "that the installation log will be left in the $dir_inst_files_is directory"
+	echo "where the installation was started."
+    fi
+}
+
+screen_SCR_04()
+{
+    title "Enter Installation Directory"
+    msg_SCR_04 | tee -a $file_log
+    while [ 1 ]; do
+	ask "Enter path to directory in which to install software" pbq "$dir_install_other"
+	answerd="$answer"
+	case "$answer" in
+	    b ) go_to_screen SCR_03 ; return ;; # back
+	esac
+	# keep going around until we get a valid answer
+	if [ -z "$answer" ]; then continue; fi # empty answer
+	if [ -f "$answer" ]; then
+	    echo "$tag Error: directory specified already exists as a file" | tee -a $file_log
+	    continue
+	fi
+	if [ -d "$answer" ]; then
+	    check_if_writable_dir "$answer" "$file_temp_wdtest"
+	    if [ -n "$failed" ]; then
+		echo "$tag Error: directory specified exists, but is not writable" | tee -a $file_log
+		continue
+	    fi
+	    is_different_directory "$answer" "$dir_inst_files"
+	    if [ -z "$diff_dir" ]; then
+		echo "$tag Error: directory specified is same as $dir_inst_files_is directory" | tee -a $file_log
+		continue
+	    fi
+	    ask "Directory specified already exists; do you wish to overwrite any existing installation there" ynbq y
+	    case "$answer" in
+		b | n ) continue ;; # go around again
+	    esac
+	    break # valid $answer
+	else
+	    can_make_directory "$answer"
+	    if [ -n "$can_make_dir" ]; then
+		ask "Directory specified does not exist; do you wish to create it" ynbq y
+		case "$answer" in
+		    b | n ) continue ;; # go around again
+		esac
+		mode_dir_install=other_mkdir ; break # valid $answer
+	    else
+		echo "$tag Error: directory specified does not exist and cannot be created" | tee -a $file_log
+	    fi
+	    continue
+	fi
+    done
+    dir_install_other="$answerd"
+    dir_install="$dir_install_other"
+    go_to_screen SCR_05 ; return # select license data
+}
+
+msg_SCR_05()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	echo "Enter license data if you have licenses for your software products that"
+	echo "may require a license server.  A server is required if licenses contain"
+	echo "SERVER lines that specify the current machine as the server.  If you are"
+	echo "unsure if your licenses require a server, enter the license data, and the"
+	echo "installation script will determine if a server may be required.  If you"
+	echo "do not enter license data, the license server cannot be configured, but"
+	echo "the license server daemons and utilities will still be installed, and"
+	echo "the server can be started later if desired."
+    fi
+}
+
+screen_SCR_05()
+{
+    use_no_license=
+
+    title "Enter License Data"
+    msg_SCR_05 | tee -a $file_log
+    ask "Do you wish to enter license data" ynbq y
+    case "$answer" in
+	b ) go_to_screen SCR_03 ; return ;; # select installation location
+	y ) go_to_screen SCR_06 ; return ;; # select license data
+	n ) use_no_license=true ; go_to_screen SCR_13 ; return ;; # installation settings
+    esac
+}
+
+msg_SCR_06()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	echo "The license server must be configured to use a particular license"
+	echo "file.  If the license data to be used with the license server is"
+	echo "already stored in a file, which is available online now, this"
+	echo "license data may be configured directly for use with the server."
+	echo "If the license data is not stored in a file, an editor will be"
+	echo "invoked so that you may enter the license data manually.  The"
+	echo "license data used may be from a new license, received with your"
+	echo "software, or from an existing, already-installed license file."
+	echo
+	echo "In any case, a copy of the license data to be used with the license"
+	echo "server will be placed in the local license file:"
+	echo "        $dir_install/$file_local_lic"
+	echo "during the actual installation process.  This local license file"
+	echo "will then be used when actually starting up the license server."
+    fi
+}
+
+screen_SCR_06()
+{
+    title "Select License Data"
+    msg_SCR_06 | tee -a $file_log
+    ask "Is the license data to be used stored in a file" ynbq y
+    case "$answer" in
+	b ) go_to_screen SCR_05 ; return ;; # enter license data
+	y ) go_to_screen SCR_07 ; return ;; # enter server license file name
+	n ) go_to_screen SCR_08 ; return ;; # editor input
+    esac
+}
+
+msg_SCR_07()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	echo "Please enter the path and name of the file containing the"
+	echo "license data you wish to use with the license server.  This"
+	echo "license data used may be from a new license, received with your"
+	echo "software, or from an existing, already-installed license file."
+    fi
+}
+
+screen_SCR_07()
+{
+    title "Enter Server License File Name"
+    msg_SCR_07 | tee -a $file_log
+    while [ 1 ]; do
+	ask "Enter path/name of license file to be used" pbq "$file_lic_online"
+	case "$answer" in
+	    b ) go_to_screen SCR_05 ; return ;; # back
+	esac
+	# keep going around until we get a valid answer
+	if [ -z "$answer" ]; then continue; fi # empty answer
+	if [ ! -f "$answer" ]; then
+	    echo "$tag Error: license file path/name does not exist" | tee -a $file_log
+	    continue
+	fi
+	get_file_directory_name "$answer"
+	if [ -z "$file_dir" -o -z "$file_name" ]; then
+	    echo "$tag Internal Error: could not separate license file path/name" | tee -a $file_log
+	    continue
+	fi
+	if [ "$file_name" = "$file_local_lic" ]; then
+	    is_different_directory "$file_dir" "$dir_install"
+	    if [ -z "$diff_dir" ]; then
+		echo "$tag Error: license file path/name cannot be same as local license file $dir_install/$file_local_lic" | tee -a $file_log
+		continue
+	    fi
+	fi
+	break # valid $answer
+    done
+    file_lic_online="$answer"
+    file_lic_server="$file_lic_online"
+    go_to_screen SCR_09 ; return # displaying selected license data
+}
+
+msg_SCR_08()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	echo "An editor will now be started so that you can enter your license data manually."
+    fi
+}
+
+screen_SCR_08()
+{
+    title "Enter Server License Data Via Editor"
+    msg_SCR_08 | tee -a $file_log
+    if [ -f "$EDITOR" -a -x "$EDITOR" ]; then
+	sleep 3
+	$EDITOR "$file_lic_editor"
+	file_lic_server="$file_lic_editor"
+	go_to_screen SCR_09 ; return # displaying selected license data
+    else
+	echo "$tag Error: could not find an editor to use (EDITOR environment variable not set)" | tee -a $file_log
+	go_to_screen SCR_06 ; return # select license data
+    fi
+}
+
+msg_SCR_09()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	echo "You have requested that license data from the following file:"
+	echo "        $file_lic_server"
+	echo
+	echo "be used with the installed license server, which contains the"
+	echo "license data shown here."
+	echo
+	echo "A copy of this license data will be placed in the local license"
+	echo "file:"
+	echo "        $dir_install/$file_local_lic"
+	echo "during the actual installation process.  This local license file"
+	echo "will then be used when actually starting up the license server."
+    else
+	echo
+	echo "A copy of the license data shown here will be placed in the file:"
+	echo "        $dir_install/$file_local_lic"
+	echo "which will then be used when actually starting up the license server."
+    fi
+}
+
+screen_SCR_09()
+{
+    mode_server_install=
+
+    title "Displaying Selected License Data" stdout_only
+    sleep 3
+    run_pager "$file_lic_server" "Selected License Data"
+
+    title "Validate Server License Data"
+    msg_SCR_09 | tee -a $file_log
+    echo >> $file_log ; cat $file_lic_server >> $file_log
+    ask "Is this the correct license data" ynbq y
+    case "$answer" in
+	b ) go_to_screen SCR_05 ; return ;; # select license data
+	n ) go_to_screen SCR_05 ; return ;; # select license data
+    esac
+    if [ -n "$assume_server_lic" ]; then
+	# This is mostly "just in case" check_license() or chklic has a bug.
+	# Assume we had LFD_SAW_COUNTED_LICENSES && !LFD_HAD_ERRORS and proceed.
+	check_server
+	return # go_to_screen was done in check_server()
+    fi
+    check_license
+    if [ $LFD_HAD_ERRORS -ne 0 ]; then
+	return # go_to_screen was done in check_license()
+    elif [ $LFD_SAW_COUNTED_LICENSES -ne 0 ]; then
+	check_server
+	return # go_to_screen was done in check_server()
+    else
+	mode_server_install="no_counted"
+	if [ -n "$do_dir_inst_lic" ]; then
+	    go_to_screen SCR_12 ; return # install license file
+	else
+	    go_to_screen SCR_13 ; return # installation settings
+	fi
+    fi
+}
+
+msg_SCR_10()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	echo "A license server is apparently not already running."
+	echo "The license server can be started as part of the installation"
+	echo "process.  However, this may not be particularly useful because"
+	echo "a system-administrator would need to configure /etc/rc.d (etc.)"
+	echo "so that the server is re-started at system boot-time."
+    fi
+}
+
+screen_SCR_10()
+{
+    title "Start License Server"
+    msg_SCR_10 | tee -a $file_log
+    ask "The license server is apparently not running; do you wish to start it" ynbq n
+    case "$answer" in
+	b ) go_to_screen SCR_09 ; return ;; # validate server license data
+	y ) mode_server_install="start" ;;
+	n ) mode_server_install="make_start_rc_file" ;;
+    esac
+    if [ -n "$do_dir_inst_lic" ]; then
+	go_to_screen SCR_12 ; return # install license file
+    else
+        go_to_screen SCR_13 ; return # installation settings
+    fi
+}
+
+msg_SCR_11()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	echo "A license server is apparently already running.  The"
+	echo "server must be refreshed if it is to utilize the license"
+	echo "file data selected during this installation process."
+    fi
+}
+
+screen_SCR_11()
+{
+    title "Refresh License Server"
+    msg_SCR_11 | tee -a $file_log
+    ask "The license server is apparently running; do you wish to refresh it" ynbq y
+    case "$answer" in
+	b ) go_to_screen SCR_09 ; return ;; # validate license server data
+	y ) mode_server_install="reread" ;;
+	n ) mode_server_install="no_reread" ;;
+    esac
+    if [ -n "$do_dir_inst_lic" ]; then
+	go_to_screen SCR_12 ; return # continue (to install license file)
+    else
+        go_to_screen SCR_13 ; return # continue (to installation settings)
+    fi
+}
+
+msg_SCR_12()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	echo "A copy of the license data to be used will be placed in the local"
+	echo "license file:"
+	echo "        $dir_install/$file_local_lic"
+	echo
+	echo "This local license file will be used to actually start up the license"
+	echo "server (if applicable).  In addition, a copy of this license file may"
+	echo "be placed in the default license directory in:"
+	echo "        $dir_inst_lic/$file_inst_lic"
+	echo
+	echo "for use by your licensed software products."
+    fi
+}
+
+screen_SCR_12()
+{
+    if [ -z "$do_dir_inst_lic" ]; then
+	echo "$tag Internal Error: invalid screen: $screen_next" | tee -a $file_log
+	my_exit 1
+    fi
+
+    mode_license_install=
+
+    title "Install License File"
+    msg_SCR_12 | tee -a $file_log
+    while [ 1 ]; do
+	ask "Do you wish to install a copy of the license in $dir_inst_lic" ynbq y
+	case "$answer" in
+	    b ) go_to_screen SCR_09 ; return ;; # validate license server data
+	    n ) mode_license_install="global_not" ; go_to_screen SCR_13 ; return ;; # continue
+	esac
+	# keep going around until we get a valid answer
+	if [ -d "$dir_inst_lic/$file_inst_lic" ]; then
+	    echo "$tag Error: license file $dir_inst_lic/$file_inst_lic already exists as a directory" | tee -a $file_log
+	    continue
+	fi
+	check_if_writable_dir "$dir_inst_lic" "$file_temp_wdtest"
+	if [ -z "$failed" -a -f "$dir_inst_lic/$file_inst_lic" ]; then
+	    #
+	    # If we created $dir_inst_lic/$file_inst_lic in the first place, then we left it with chmod 444.
+	    # This will make it appear non-writable at this point, but it has to be writable to append to it.
+	    # However, the only way we can find out if chmod 666 will work is to actually do that chmod, and
+	    # that's against the installer's philosophy of ask questions first and do work at the end.  So,
+	    # go ahead even if it's not writable here, and have install_license() try to do the appropriate
+	    # pre-chmod and post-chmod so the append will hopefully work.
+	    #
+	    ask "License file $dir_inst_lic/$file_inst_lic already exists; do you wish to append to it" ynbq y
+	    case "$answer" in
+		b | n ) continue ;; # go around again
+	    esac
+	    mode_license_install="global_append"
+	    go_to_screen SCR_13 ; return # continue
+	fi
+	if [ -d "$dir_inst_lic" ]; then
+	    check_if_writable_dir "$answer" "$file_temp_wdtest"
+	    if [ -z "$failed" ]; then break; fi # valid answer
+	    echo "$tag Error: license directory $dir_inst_lic exists, but is not writable" | tee -a $file_log
+	    continue
+	else
+	    can_make_directory "$dir_inst_lic"
+	    if [ -n "$can_make_dir" ]; then
+		ask "License directory $dir_inst_lic does not exist; do you wish to create it" ynbq y
+		case "$answer" in
+		    b | n ) continue ;; # go around again
+		esac
+		mode_license_install="global_mkdir"
+		go_to_screen SCR_13 ; return # continue
+	    else
+		echo "$tag Error: license directory $dir_inst_lic does not exist and cannot be created" | tee -a $file_log
+	    fi
+	    continue
+	fi
+    done
+    mode_license_install="global"
+    go_to_screen SCR_13 ; return # continue
+}
+
+msg_SCR_13()
+{
+    # NOTE: $verbose does not affect this message (it contains the installation settings to be approved)
+    echo
+    echo "You selected the following choices for installation parameters.  Please"
+    echo "review this list for any changes/corrections that need to be made."
+    echo
+    case "$mode_dir_install" in
+	current )
+	    echo "        Installation Directory     $dir_install ($dir_inst_files_is directory)" # $dir_inst_files
+	;;
+	other )
+	    # $dir_install_other
+	    echo "        Installation Directory     $dir_install (not $dir_inst_files_is directory; directory exists)"
+	;;
+	other_mkdir )
+	    # $dir_install_other
+	    echo "        Installation Directory     $dir_install (not $dir_inst_files_is directory; create directory)"
+	;;
+	* )
+	    echo "$tag Internal Error: unknown install directory mode: $mode_dir_install"
+	    my_exit 1
+	;;
+    esac
+    if [ -n "$use_no_license" ]; then
+	echo "        Server License File        (none; do not configure server)"
+    else
+	if [ "$file_lic_server" = "$file_lic_online" ]; then
+	    echo "        Server License File        $file_lic_server"
+	else
+	    echo "        Server License File        (entered manually via editor)"
+	fi
+	case "$mode_license_install" in
+	    global )
+		if [ -z "$do_dir_inst_lic" ]; then
+		    echo "$tag Internal Error: invalid license install mode: $mode_license_install"
+		    my_exit 1
+		fi
+		echo "        Install Server License     (in $dir_inst_lic/$file_inst_lic)"
+		echo "                                   (and locally in $dir_install/$file_local_lic)"
+	    ;;
+	    global_append )
+		if [ -z "$do_dir_inst_lic" ]; then
+		    echo "$tag Internal Error: invalid license install mode: $mode_license_install"
+		    my_exit 1
+		fi
+		echo "        Install Server License     (append to $dir_inst_lic/$file_inst_lic)"
+		echo "                                   (and locally in $dir_install/$file_local_lic)"
+	    ;;
+	    global_mkdir )
+		if [ -z "$do_dir_inst_lic" ]; then
+		    echo "$tag Internal Error: invalid license install mode: $mode_license_install"
+		    my_exit 1
+		fi
+		echo "        Install Server License     (in $dir_inst_lic/$file_inst_lic; create directory)"
+		echo "                                   (and locally in $dir_install/$file_local_lic)"
+	    ;;
+	    global_not )
+		if [ -z "$do_dir_inst_lic" ]; then
+		    echo "$tag Internal Error: invalid license install mode: $mode_license_install"
+		    my_exit 1
+		fi
+		echo "        Install Server License     (locally in $dir_install/$file_local_lic only)"
+	    ;;
+	    local )
+		echo "        Install Server License     (locally in $dir_install/$file_local_lic)"
+	    ;;
+	    * )
+		echo "$tag Internal Error: unknown license install mode: $mode_license_install"
+		my_exit 1
+	    ;;
+	esac
+	case "$mode_server_install" in
+	    no_counted ) ;;
+	    start | make_start_rc_file )  echo "        Server Current State       (not running)" ;;
+	    reread | no_reread )          echo "        Server Current State       (running)" ;;
+	    * )
+		echo "$tag Internal Error: unknown server install mode: $mode_server_install"
+		my_exit 1
+	    ;;
+	esac
+	case "$mode_server_install" in
+	    no_counted )         echo "        Server Configuration       (do not start server; no counted licenses in license file)" ;;
+	    start )              echo "        Server Configuration       (start server on installation)" ;;
+	    make_start_rc_file ) echo "        Server Configuration       (do not start server)" ;;
+	    reread )             echo "        Server Configuration       (refresh server with license file)" ;;
+	    no_reread )          echo "        Server Configuration       (do not refresh server with license file)" ;;
+	    * )
+		echo "$tag Internal Error: unknown server install mode: $mode_server_install"
+		my_exit 1
+	    ;;
+	esac
+    fi
+}
+
+screen_SCR_13()
+{
+    title "Installation Settings"
+    msg_SCR_13 | tee -a $file_log
+    ask "Are the above settings ok" ynbq y
+    case "$answer" in
+	b )
+	    if [ -n "$use_no_license" ]; then
+		go_to_screen SCR_05 ; return # back
+	    elif [ -n "$do_dir_inst_lic" ]; then
+		go_to_screen SCR_12 ; return # back (to install license file)
+	    else
+		# no clear place to go...guess I'll just back up to wherever we were previously
+		go_to_screen $screen_prev ; return # back (to where we came from)
+	    fi
+	;;
+	y ) go_to_screen SCR_14 ; return ;; # begin installation
+	n ) go_to_screen SCR_03 ; return ;; # select installation location
+    esac
+}
+
+msg_SCR_14()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	echo "You are now ready to begin actually installing the license server and"
+	echo "utilities.  Go back to make any changes to your installation settings,"
+	echo "or quit if you wish to install at a later time.  If you choose to"
+	echo "proceed, the actual installation process will begin."
+    fi
+}
+
+screen_SCR_14()
+{
+    title "Begin Installation"
+    msg_SCR_14 | tee -a $file_log
+    ask "Do you wish to begin installing now" ynbq y
+    case "$answer" in
+	b ) go_to_screen SCR_13 ; return ;; # back
+	n ) go_to_screen SCR_03 ; return ;; # select installation location
+    esac
+    go_to_screen SCR_15 ; return # continue
+}
+
+msg_SCR_15()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	echo "The installation will now be performed.  Do not interrupt the installation"
+	echo "process at this time.  Messages will be printed detailing the status of"
+	echo "the installation process."
+    fi
+}
+
+screen_SCR_15()
+{
+    title "Perform Installation"
+    msg_SCR_15 | tee -a $file_log
+    perform_installation
+    go_to_screen SCR_16 ; return # continue
+}
+
+msg_SCR_16()
+{
+    if [ -n "$verbose" ]; then
+	echo
+	further_info
+    else
+	echo
+	echo "A detailed log of the installation process can be found in the file:"
+	echo "        $file_log"
+	echo "An installation can be [re]started from this directory."
+    fi
+}
+
+screen_SCR_16()
+{
+    title "Installation Completed Successfully"
+    msg_SCR_16 | tee -a $file_log
+    my_exit 0
+}
+
+#
+# "Main program"
+#
+
+parse_arguments "$@"
+setup
+
+# Discovery
+
+check_for_valid_platform
+
+# User input and installer actions
+
+while [ 1 ]; do
+    screen_$screen_next
+done
+
+# should not really get here
+echo "$tag Internal Error: unexpected exit" | tee -a $file_log
+my_exit 1

@@ -1,0 +1,480 @@
+README
+
+The Intel(R) License Manager for FLEXlm* provides license
+servers and utilities for use with Intel(R) software products,
+when counted licenses are used.
+
+Before configuration this directory should contain files:
+
+   HowTo.html       - Contains a "How To" help html file.
+   INTEL            - The Intel(R)-specific VENDOR Daemon.
+   Install_INTEL    - A C-shell script to configure this directory.
+   README           - This file.
+   chklic           - A utility for checking license contents.
+   enduser.pdf      - The Macrovision FLEXlm* End Users Guide.
+   getip            - A command to retrieve the host name and IP address.
+   lmgrd.intel      - The Macrovision FLEXlm* licensing Daemon.
+   lmutil           - The Macrovision FLEXlm* utilities executable.
+   END_USER_LICENSE - End-User License Agreement
+
+After configuration the following files should have been created:
+
+   Install_INTEL.log   - Log of any/all installation attempts.
+   Install_INTEL.cfg   - Saved settings from most recent install.
+   lmgrd.intel.rc      - A sample boot start-up file (see NOTE below).
+   server.lic          - The server license file.
+   lmcksum@            - A soft link (ln -s) to "lmutil"
+                         for computing checksums of a license file.
+   lmdiag@             - A soft link (ln -s) to "lmutil"
+                         for diagnosis of license checkout problems.
+   lmdown@             - A soft link (ln -s) to "lmutil"
+                         for shutdown of license daemons.
+   lmhostid@           - A soft link (ln -s) to "lmutil"
+                         for reporting the hostid of the system
+   lminstall@          - A soft link (ln -s) to "lmutil"
+                         for generating licenses from decimal format.
+   lmremove@           - A soft link (ln -s) to "lmutil"
+                         for removing an endusers license.
+   lmreread@           - A soft link (ln -s) to "lmutil"
+                         for causing the "lmgrd.intel" to re-read the
+                         license file.
+   lmstat@             - A soft link (ln -s) to "lmutil"
+                         for reporting status of licensing activities.
+   lmswitchr@          - A soft link (ln -s) to "lmutil"
+                         for switching the report writer.
+   lmver@              - A soft link (ln -s) to "lmutil"
+                         for reporting the FLEXlm* version of a file.
+
+
+
+Introduction.
+
+   The Intel(R) License Manager for FLEXlm* is a network license manager
+   that allows licenses to be available (floating) anywhere on a network,
+   or allows licenses to be available only on a locked set of hosts
+   (node-locked HOSTID list).
+
+   The three main components of the Intel(R) License Manager for FLEXlm*
+   are the license data file, the license manager daemon, lmgrd.intel,
+   and the vendor daemon, INTEL.
+
+License Data File.
+
+   The license file contains information about the SERVER and VENDOR
+   daemons (if necessary), and data for each licensed product (such as
+   expiration dates, number of licenses available, etc.).  Licenses are
+   provided for each of your products, but edited and installed by you.
+
+   When a product starts up, whether by direct invocation or by an
+   indirect call (e.g., as the result of 'make') the license file is
+   checked for valid license data.  The product must know where to find
+   the license file.
+
+   The license file placed in the "/opt/intel/licenses" directory of the
+   product installation directory becomes the default, and the environment
+   variable:
+   
+      INTEL_LICENSE_FILE
+   
+   should be set to point to this file.
+
+   In most products a short shell script is used as the entry to exec-
+   ution and the environment variable INTEL_LICENSE_FILE is set just
+   before execution begins.  In this case the enduser need not know where
+   the license file is located.
+
+The Licensing Daemon lmgrd.intel.
+
+   The lmgrd.intel is the master daemon; it starts the VENDOR daemon,
+   INTEL.  The lmgrd.intel daemon handles the initial contact with the product.
+   If you have received a "counted" license then both daemons must be running
+   in order to execute this product.
+
+The VENDOR Daemon INTEL.
+
+   The INTEL daemon keeps track of how many licenses are checked out,
+   and what users have them (unless the licenses are uncounted, in which
+   case the product need only read the license file to execute and NO
+   daemons need to be running).
+
+Adding the Daemon to the Start-up File.
+
+   This installation may have done the server startup for you.  The
+   daemons reside in the flexlm subdirectory of the installation direct-
+   ory; and were started with the C-shell commands:
+
+      cd <installation-directory>
+      `pwd`/lmgrd.intel -c `pwd`/server.lic -l `pwd`/lmgrd.intel.log
+
+   To avoid restarting the daemons, lmgrd.intel and INTEL, each time the
+   system is rebooted, you may modify your boot startup script to start
+   the daemons.
+
+   The file
+
+      lmgrd.intel.rc
+
+   created for counted licenses during configuration will contain the
+   Bourne shell startup line that should be added.
+
+      IMPORTANT NOTE:  It is strongly recommended that
+                       this start up not be done by root.
+                       Please see the FLEXlm* End User
+                       Manual Appendix D.3.6-7.
+
+The Options File.
+
+   The Intel(R) License Manager for FLEXlm* allows the use of an "options"
+   file.  This file is used by the local system manager to control FLEXlm*
+   licensing options (such as what items are entered into the log file,
+   or, to restrict usage to named groups of users).  See the "FLEXlm* End
+   Users Guide" for details concerning "options" files.
+    
+
+
+
+The Install_INTEL Configuration Script.
+
+   When you first run the product configuration script the Install_INTEL
+   script is also executed so no other steps may be required.
+   However, this script may be executed standalone to configure the
+   Intel(R) License Manager for FLEXlm*.
+
+   When you have received your license data, begin the license configura-
+   tion process by executing the commands:
+
+      cd <installation-directory>
+      ./Install_INTEL
+
+   Install_INTEL is an interactive script.  If you are installing a
+   license file it will take you through the following steps:
+
+      1)  Entering your license data.  After creating the FLEXlm*
+          utility soft links ("lmcksum", "lmdiag", etc) the script will
+          accept your licensing data in two ways.  The script will read
+          a license file you already have created on line (either in
+          the installation flexlm directory as ./server.lic or
+          any other convenient location), or the script will enter one
+          of the EDITORs available to you for manually creating the
+          file.  An lmcksum checksum will be calculated for the license
+          file you have indicated or created.  If the checksum is BAD
+          you will have an opportunity to correct the license data.
+          The file is stored in the installation directory as:
+
+             <installation_directory>/server.lic
+
+      2)  Installing the license file.  An attempt may be made to place
+          the new license file in the INTEL default license file
+          location:
+
+             /opt/intel/licenses/server.lic
+
+          If the license file CANNOT be placed in this default, the
+          <installation_directory>/server.lic file will be
+          used as the default license file.  This means that in
+          the small shell calling scripts the environment variable
+          is assigned as:
+
+             INTEL_LICENSE_FILE=${INTEL_LICENSE_FILE:+${INTEL_LICENSE_FILE}:} \
+                "<installation_directory>/server.lic"
+             export INTEL_LICENSE_FILE
+
+          If the licenses are "uncounted" the products will execute
+	  (since no daemons are needed for license management).
+
+      3)  Optionally Starting the license manager.  You may instruct the
+	  script to attempt to start up the license manager daemons for
+	  "counted" licenses.  It will use the commands:
+
+             cd <installation_directory>
+             `pwd`/lmgrd.intel -c `pwd`/server.lic -l `pwd`/lmgrd.intel.log
+
+
+
+
+Installing Daemons on Different Architectures.
+
+   In more sophisticated FLEXlm* installations, it may be desirable to run a
+   FLEXlm* license server on a platform other than the one for which your
+   software has already been downloaded.  FLEXlm* servers for the various
+   platforms used with Intel(R) products are available for separate download.
+
+
+
+
+FLEXlm* Version Compatibility.
+
+   When combining license files for two different FLEXlm* licensed prod-
+   ucts, it may be that those products do not use the same versions of
+   FLEXlm*.  The solution is to always use the newest version of 'lmgrd'
+   (this may not be lmgrd.intel -- the license manager supplied by Intel(R))
+   and the Vendor daemons.  Always use the newest FLEXlm* utilities as well. 
+
+
+
+
+Combining Multiple License Files.
+
+   When you are running FLEXlm* licensed products from one vendor, or from
+   multiple vendors, you may need to take steps to prevent licensing
+   conflicts.  Note that vendors may have their own copies of 'lmgrd', the
+   licensing daemon.  These daemons may be renamed to create unique names
+   (lmgrd.intel is an example).  Conflict may be avoided in three ways:
+
+      a) Multiple license SERVER nodes; each running one license manager
+         ('lmgrd' or its renamed version) reading one license file.
+
+      b) One license SERVER node running one license manager reading
+         one (or more) license files.
+
+      c) One license SERVER node running multiple license managers
+         reading one (or more) license files.
+
+   If the license files for two or more products contain identical hostids
+   on the SERVER lines, then these files can be combined.  If the files
+   contain different hostids on a SERVER line, then the license managers
+   for those products will be running on different nodes and the license
+   files cannot be combined.
+
+   If your license files are compatible, then you have the option of com-
+   bining license files into one file and running a single license manager
+   ('lmgrd') reading this file.  If the license files are not compatible,
+   then you must run separate copies of the license manager for each file.
+
+   You are not required to combine compatible license files; you always
+   have the option of running separate license managers for each vendor.
+
+
+
+
+Combining License Files.
+
+   All Intel(R) products licensed with FLEXlm* Version 7.x (or later) have
+   default license file location:
+
+      /opt/intel/licenses
+
+   If this location and file are available to you then combining Intel(R)
+   product license files should be considered.
+
+   Simply collect all the license files for identical SERVER lines into
+   one file; remove any identical lines and place this file in the default
+   location (/opt/intel/licenses).  [Re]start lmgrd.intel with the command:
+
+      cd <installation_directory>
+      `pwd`/lmgrd.intel -c /opt/intel/licenses/server.lic -l `pwd`/<newlogfile>
+
+
+
+
+
+Redundant Servers.
+
+   FLEXlm* supports redundant SERVERS.  With three-SERVER redundancy, if
+   any two of the three license servers are up and running, the system is
+   functional and issues all licenses available (Two out of three license
+   SERVERs is referred to as a "quorum").
+
+   If all data, input and output, and all executables are on a single file
+   SERVER, then there is no need for redundant SERVERs, and it is recom-
+   mended that a single SERVER node for the FLEXlm* daemons be used. If
+   these resources are split among two or more SERVER nodes and work is
+   possible when one of these goes down or off the network, then multiple
+   SERVER nodes can be employed.  In all cases, an effort should be made
+   to select stable systems as SERVER nodes.  It is not required that the
+   SERVER nodes be the same architecture or operating system.
+   
+   If you wish to employ redundant servers, a license must be provided for
+   you that specifies the three SERVERs you wish to use.
+
+
+
+Trouble-shooting.
+
+   Entering License File Data.
+
+      You can edit the hostname on the server line (first argument),
+      the port address (third argument), the path to the vendor-daemon
+      on the VENDOR line (if present), or any right half of a string
+      (b) of the form a=b where (a) is all lower case.  Any other changes
+      will invalidate the license.
+   
+      Be cautious when transferring date received by Mailers.  Many
+      Mailers add characters at the end-of-line that may confuse the
+      reader about the real license data.
+   
+   
+   Use the 'lmdiag' utility.
+
+      This command analyzes a license file with respect to the SERVER,
+      the FEATUREs, license counts and dates.  It may help you to under-
+      stand problems that may occur.  'Lmdiag' attempts to checkout all
+      FEATUREs and explains failures.  You may run extended diagnostics
+      attempting to connect to the license manager on each port on the
+      host.
+   
+
+   Use INTEL_LMD_DEBUG environment variable
+
+      Setting this environment variable will cause the application to
+      produce product diagnostic information at every checkout.
+   
+   
+   Daemon Startup Problems.
+   
+      Cannot find license file
+         Most products have a default location in their directory
+         hierarchy (or use /opt/intel/licenses/server.lic).  The
+	 environment variable INTEL_LICENSE_FILE names this directory.
+	 Startup may fail if these variables are set wrong, or the
+	 default location for the license is missing.
+   
+      No such feature exists
+         The most common reason for this is that the wrong license
+         file, or an outdated copy of the file, is being used.
+   
+      Retrying socket bind
+         This means the TCP port number is already in use.  Almost always,
+         this means an lmgrd.intel is already running, and you've tried to
+         start it twice.  Sometimes it means that another program is 
+         using this TCP port number.  The number is listed on the SERVER 
+         line in the license file as the last item.  You can change the
+         number and restart lmgrd.intel, but only do this if you don't already
+         have an lmgrd.intel  running for this license file.
+   
+      INTEL: can't initialize
+      (INTEL) FLEXlm version 9.2
+      (lmgrd) Please correct problem and restart daemons
+         You may be starting the lmgrd.intel from the wrong directory, or with
+         relative paths.  Use:
+	      cd <installation-directory>
+	      `pwd`/lmgrd.intel -c `pwd`/server.lic -l `pwd`/lmgrd.intel.log
+	 in the start up and add a full root path to 'INTEL' to the end of the
+	 VENDOR line in the license file.
+
+      License manager: can't initialize: Cannot find license file
+         You've started lmgrd.intel on a non-existent file.  The recommended
+	 way to specify the file for lmgrd.intel to use -c <license>:
+
+	    cd <installation-directory>
+	    `pwd`/lmgrd.intel -c `pwd`/server.lic -l `pwd`/lmgrd.intel.log
+
+      Invalid license key (inconsistent encryption code for 'FEATURE')
+         This happens for 3 different reasons:
+
+            1. The license file has been typed in incorrectly
+               (cutting and pasting from email is a safe way to
+               avoid this).  Or the data have been altered by
+               the enduser.  See "Entering License File Data"
+               above.
+
+            2. The license is generated incorrectly.  Your vendor
+               will have to generate a new license if this is the
+               case.
+
+            3. The license vendor has changed encryption seeds
+               (rare).
+   
+      MULTIPLE vendor-daemon-name servers running
+         There are 2 'lmgrd' and vendor-daemons running for this license
+         file.  Only one process per vendor-daemon/per node is allowed
+         to run.  Sometimes this can happen because the  'lmgrd'
+         was killed with a -9 signal (which should not be done!).  The
+         'lmgrd' was then not able to bring the vendor-daemon process
+         down, so it's still running, although not able to serve licenses.
+         If 'lmgrd' is killed with a -9, the vendor-daemons also then must
+         be killed with a -9 signal.  In general, 'lmdown' should be used.
+   
+      Vendor daemon can't talk to 'lmgrd'
+         This means a pre-version-3.0 'lmgrd' version is being used with
+         a 3.0+ vendor daemon.  Simply use the latest version of 'lmgrd'
+         (MUST be a version equal to or greater than the vendor daemon
+         version).  This can also happen if TCP networking doesn't
+         function on the node where your're trying to run 'lmgrd' (rare).
+   
+      No licenses to serve
+         The license file has only 'uncounted' licenses, and these don't 
+         require a server.  Uncounted licenses have a '0' or 'uncounted'
+         in the 'number-of-licenses' field on the FEATURE line.
+   
+      Other
+	 Starting lmgrd.intel from a remote directory may lead to unknown
+	 results.  If lmgrd.intel is started from a remote directory the
+	 license file line:
+
+	    VENDOR INTEL
+
+         should be modified to include the root directory where the
+	 'INTEL' vendor daemon resides:
+
+	    VENDOR INTEL <root-directory-path>
+
+         The lmgrd.intel daemon MUST be started with the -c argument
+
+	    cd <installation-directory>
+	    `pwd`/lmgrd.intel -c `pwd`/server.lic -l `pwd`/lmgrd.intel.log
+   
+   Application Execution Problems.
+   
+      Cannot connect to license server
+         Usually this means the server isn't running.  It can also mean
+         the server is using a different copy of the license file, which
+         has a different port number than the license file you're cur-
+         rently using indictes.  You can use the 'lmdiag' utility to more
+         fully analyze this error.
+   
+      License server does not support this feature
+         This means the server is using a different copy of the license
+         file than the application.  They should be synchronized.  This
+         error will also report "UNSUPPORTED" in the debug log file.
+   
+      Invalid host
+         You may be attempting to run the application on a host not
+         listed in the "HOSTID" field of your license.  Use 'lmhostid'
+         to find the hostid number for the current host. 
+   
+      Cannot find license file.  No such file or directory
+      Expected license file location: <path>
+         The application was not able to find a license file.  It gives
+         you the location(s) where it was looking for a license file.
+         Check that the named file exists.  To use a file at a different
+         location, use the environment variable INTEL_LICENSE_FILE.
+   
+      No such feature exists
+         The license manager cannot find a 'FEATURE'  line in the license
+         file.
+   
+      Feature has expired
+         Your license has expired.  The system time may be set incorrectly.
+         Run the 'date' command to make sure the date is not later than
+         the Expiration Date listed in the license file.
+
+      <FEATURE name>: Invalid (inconsistent) license key
+         The license-key and data for the feature do not match.  This
+         usually happens when a license file has been altered.  See
+         "Entering License File Data" above.
+
+   
+   
+   System Bootup Problems
+   
+      For reasons unknown some bootup files (/etc/rc, /sbin/rc2.d, etc)
+      refuse to run 'lmgrd' with the simple commands indicated above (see
+      "Adding the Daemon to the Start-up File").  Here are two work-
+      arounds:
+
+         1. Use 'nohup su username -c 'umask 022;lmgrd -c ...''
+               (It is not recommended to run 'lmgrd' as root;
+               the "su username" is used to run 'lmgrd' as a
+               non-privileged user.) 
+
+         2. Add 'sleep 2' after the 'lmgrd' command.
+
+
+
+   For More Help
+   
+      Contact customer support at http://support.intel.com/support/performancetools/support.htm.
+
+
+   *Other brands and names are the property of their respective owners.

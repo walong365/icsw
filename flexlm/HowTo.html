@@ -1,0 +1,522 @@
+<html>
+<head>
+<TITLE>HowTo For Intel(R) License Manager for FLEXlm*</TITLE>
+</head>
+<body>
+<br clear="right">
+<H1 align="center"><B>HowTo For Intel(R) License Manager for FLEXlm*</B></H3>
+
+The Intel(R) License Manager for FLEXlm* controls per-seat licenses, node-locked
+licenses, one-platform-type floating licenses, all-platform-type licenses,
+and node-locked, unlimited users licenses.
+
+<H3 TOC="Before Installation"><a name="Before Installation"></a>Before Installing the Intel(R) License Manager for FLEXlm*</H3>
+
+<H4 TOC="Check License"><a name="Check License"></a>Ensure that you have license data</H4>
+
+<P>You should already have a license file containing the
+license data for the product you wish to run.
+If this license contains at least one <b><code>PACKAGE</code></b> line,
+at least one <b><code>FEATURE</code></b> line,
+at least one <b><code>SERVER</code></b> line,
+and at least one <b><code>VENDOR</code></b> line containing the word <b><code>INTEL</code></b>,
+then it is a counted license that requires a license server.
+Licenses that are not counted (i.e., do not have <b><code>SERVER</code></b> and <b><code>VENDOR</code></b> lines)
+do not require a license server.
+</P>
+
+<H4 TOC="Edit License"><a name="Edit License"></a>Create the new-license-data-file</H4>
+
+<P>
+On the system where you will be installing the Intel(R) License Manager for FLEXlm*,
+create a file that contains only the multi-line license data you wish to use.
+Be sure to include all 
+<b><code>SERVER</code></b>,
+<b><code>VENDOR</code></b>, 
+<b><code>PACKAGE</code></b> 
+and <b><code>FEATURE</code></b> lines (and their
+continuation lines). 
+<p>
+This document refers to this file as the
+<b><code>new-license-data-file</code></b>. 
+The <b><code>new-license-data-file</code></b>
+must be a normal ASCII text file. </P>
+
+<H4 TOC="Use Guru"><a name="Use Guru"></a>Use your local FLEXlm* guru if you have one</H4>
+
+<P>Many large sites have central facilities for dealing with FLEXlm*
+licenses. If your site is one of those, give a copy of the license
+data to your local FLEXlm* support person, and let them perform
+their installation magic. Then skip to the 
+<!-- <A HREF="#Installation">Install the License Server</A> section.</P> -->
+<A HREF="#Install License Server">Install the License Server</A> section.</P>
+
+<H4 TOC="Daemon Check"><a name="Daemon Check"></a>Determine if you need license manager daemons</H4>
+
+<P>Examine the license data. If you have at least one line beginning
+with the word <b><code>SERVER</code></b> and at least one line beginning with
+the word <b><code>VENDOR</code></b>, which contains the word <b><code>INTEL</code></b>, then you will need the 
+license manager daemons.
+If the license data does not contain these lines, then you will
+not need the license manager daemons, and you can skip to the
+<!-- <A HREF="#Installation">Install the License Server</A> section.</P> -->
+<A HREF="#Install License Server">Install the License Server</A> section.</P>
+
+<P>Login to the machine identified by the <b><code>SERVER</code></b> line of
+the license data. See if a license manager daemon is already running
+that serves Intel(R) FLEXlm* licenses by executing the following command:</P>
+
+<PRE><B>    ls /usr/tmp/.flexlm/lockINTEL</B></PRE>
+
+<P>If this file does exist, then there should be license manager daemons
+running that are serving Intel(R) FLEXlm* licenses. Go to the section on <A
+HREF="#Adding">adding license data to an existing license file</A>.</P>
+
+<a href="Installation"></a>
+<H3 TOC="Install License Server"><a name="Install License Server"></a>Install the License Server</H3>
+<p>
+Login to the machine where the Intel(R) License Manager for FLEXlm* will be installed.
+Note that if you need license manager daemons, 
+this need not be the same machine as the one identified
+on the <b><code>SERVER</code></b> line.
+<P>
+The installation process will ask you if the license data to be used with
+the server is stored in a file.  Answer <B>y</B> and enter the full path
+to the new license file data.
+<P>
+Complete the installation process.
+
+<P>The installation process will place a copy of 
+<B><CODE>new-license-data-file</CODE></B>
+into the <B><CODE>server.lic</CODE></B> file in the
+Intel(R) License Manager for FLEXlm* installation directory.</P>
+
+<P>
+If the license data does not contain a <B><CODE>SERVER</CODE></B>
+or a <B><CODE>VENDOR</CODE></B> line, then you are done.</P>
+<P>
+Otherwise you may have to 
+<a href="#Daemons">start the license manager daemons</a>. </P>
+
+<H3 TOC="Daemons"><a name="Daemons"></a>License Manager Daemons</H3>
+
+<H4 TOC="Status"><a name="Status"></a>Determining if the Daemons are running</H4>
+<p>
+<b><code>cd</code></b> to the directory where the
+Intel(R) License Manager for FLEXlm* is installed. Use the following command to
+determine if the license manager daemons are running:
+<pre><b>    ./lmstat -c server.lic</b></pre>
+
+If the license manager daemons are running, you will see output that
+looks something like:
+<PRE><B>    Flexible License Manager status on Mon ...</B>
+<B>    License server status: ...</B>
+<B>       License file(s) on &lt;server&gt;: &lt;full-path-to-a-file&gt;</B>
+<B>       &lt;server&gt;: license server UP (MASTER) v9.2</B>
+<B>    Vendor daemon status (on &lt;server&gt;):</B>
+<B>        ...</B>
+<B>        INTEL: UP v9.2</B></PRE>
+If you see an output that looks like this, check:
+<ul>
+  <li>the license server is <b><code>UP</code></b> 
+  <li>the license server has a version number 
+      greater than or equal to <b><code>v9.2</code></b>
+  <li>the <b><code>INTEL</code></b> is listed under the
+      vendor daemon status section
+  <li>the <b><code>INTEL</code></b> is <b><code>UP</code></b> 
+  <li>the <b><code>INTEL</code></b> has a version
+      number greater than or equal to <b><code>v9.2</code></b>
+</ul>
+If the output <b><code>./lmstat</code></b> passes all of these checks, 
+then you are done.  You should read the sections on
+<a href="#StartingDaemons">starting</a> and
+<a href="#StoppingDaemons">stopping</a>
+license manager daemons, 
+unless your site has a FLEXlm* guru to handle these tasks.
+<p>
+If the output <b><code>./lmstat</code></b> looks close to
+the above sample output, but fails one or more of the checks, 
+then there is a problem that needs to be resolved, and you need
+<a href="#Need Help">help</a>.
+<p>
+If the license manager daemons are not running, 
+the output from <b><code>./lmstat</code></b> 
+will look something like:
+<pre><b>    License server status: ...</b>
+<B>       License file(s) on &lt;server&gt;: &lt;full-path-to-a-file&gt;</B>
+<b>    lmgrd is not running: Cannot connect to license server ...</b>
+<b>    (Connection refused)</b></pre>
+The license manager daemons must be running in order to use your product.
+First, make sure that you have the correct daemons
+for the <b><code>SERVER</code></b>s platform type.
+
+<H4 TOC="Downloading"><a name="Downloading"></a>Getting the Correct Daemons</H4>
+
+<P>If the system identified on the <b><code>SERVER</code></b> 
+line of the license
+data is not the same platform type as the machine where your product
+is installed (that is, one is Linux and the other Windows,
+or the server machine is a non-IA machine, etc.),
+then you need to download the latest
+FLEXlm* daemons and utilities</A> for the <b><code>SERVER</code></b> 
+machine before proceeding.</P>
+
+<!-- <a name="StartingDaemons"></a> -->
+<H4 TOC="Starting"><a name="StartingDaemons"></a>Starting the License Manager Daemons</H4>
+
+<P>Login to the system identified by the <B><CODE>SERVER</CODE></B>
+line of the license data. 
+
+<P>To start the license manager daemons: </P>
+
+<PRE><B>    &lt;server-install-dir&gt;/lmgrd.intel -c &lt;server-install-dir&gt;/server.lic</B></PRE>
+where <b><code>&lt;server-install-dir&gt;</code></b> is the full path to 
+the <b><code>flexlm</code></b> subdirectory containing the FLEXlm* daemons
+and utilities for the <b><code>SERVER</code></b> platform type.
+<p>
+Yes, it is a little annoying to use full paths for the previous command.
+You will find it useful if you ever have to track down where
+a license manager resides in the file system from the output of
+a <b><code>ps</code></b> command.
+<P>
+The Intel(R) License Manager for FLEXlm* should now be operational.</P>
+<P>
+To make things easier, we recommend that you talk to your system
+administrator, so that these daemons are automatically started
+when the system is booted and stopped when the system is taken down. 
+Show the system administrator the sections on this WEB page
+about <a href="#StartingDaemons">starting</a> and
+<a href="#StoppingDaemons">stopping</a>
+license manager daemons, 
+and the file: <B><CODE>lmgrd.intel.rc</CODE></B> from
+the Intel(R) License Manager for FLEXlm* <B><CODE>flexlm</CODE></B> installation.</P>
+
+<!-- <a name="StoppingDaemons"></a> -->
+<H4 TOC="Stopping"><a name="StoppingDaemons"></a>Stopping the License Manager Daemons</H4>
+
+<P>Login to the system identified by the <B><CODE>SERVER</CODE></B>
+line of the license data. 
+
+<P>To stop the license manager daemons:</P>
+
+<PRE><B>    &lt;server-install-dir&gt;/lmdown -c &lt;server-install-dir&gt;server.lic </B></PRE>
+where <b><code>&lt;server-install-dir&gt;</code></b> is the full path to 
+the <b><code>flexlm</code></b> subdirectory containing the FLEXlm* daemons
+and utilities for the <b><code>SERVER</code></b> platform type.
+
+<H3 TOC="Advanced Topics"><a name="Advanced Topics"></a>Advanced Topics</H3>
+<p>
+The following sections contain various detailed information 
+about existing license data files.  Yes, you can do these
+tasks yourself, but it is a lot easier to ask your local FLEXlm*
+guru for help ... if you have one.
+
+<a name="Adding"></a>
+<H3>Adding License Data to an Existing License File</H3>
+
+<H4 TOC="Locate Server"><a name="Locate Server"></a>Determining Which Server is Running INTEL</H4>
+
+<P>Login to the machine where you will install the License Server.
+<B>cd</B> to the directory where the Intel(R) License Manager for FLEXlm* distribution
+file will be un<B>tar</B>'ed. Un<B>compress</B> (if necessary) and
+un<B>tar</B> the Intel(R) License Manager for FLEXlm* distribution file. Look to see if
+the command <B>lmutil</B> is present with the following command:</P>
+
+<PRE><B>    find . -name lmutil -print</B></PRE>
+
+<P>If <B>lmutil</B> is not present, then you need to download a
+copy for this system type.</P>
+
+<P><B>cd</B> to the directory that contains the <B>lmutil</B>
+command. 
+<p>
+Make a copy of the <b><code>new-license-data-file</code></b> that you
+created earlier in the current directory and call that file:
+<b><code>temporary.lic</code></b>.
+<p>
+Edit <b><code>./temporary.lic</code></b>, changing the last group of digits on
+the <b><code>SERVER</code></b> line (the port number) 
+to <b><code>0001</code></b>.  
+If you want to keep the original form of the <b><code>SERVER</code></b> 
+line around, any line that begins with a <b><code>#</code></b> character
+is treated as a comment.
+<p>
+Then run the following command:
+
+<PRE><B>    ./lmutil lmdiag -c ./temporary.lic</B></PRE>
+
+It is important to use the <B>./lmutil</B> form of this command 
+to make sure that you get the correct version of <B>lmutil</B> 
+and not another version of <B>lmutil</B> that might happen to be 
+on your path.</P>
+<p>
+You will get an output that looks something like:
+<pre><b>    lmutil - Copyright (C) 1989-2001 Macrovision Corporation
+    FLEXlm diagnostics on ...
+
+    -----------------------------------------------------
+    License file: temporary.lic
+    -----------------------------------------------------
+
+    </b>=== (lines edited out for brevity) ===<b>
+
+    This license cannot be checked out because:
+    Cannot connect to license server
+
+	    ... I will try to determine what the problem is...
+
+    ->Node &lt;server&gt; is UP and the network is working
+    ->the lmgrd for this license file (1@&lt;server&gt;) does not respond
+
+	This means that either the license servers were not
+	started, or that lmgrd is running on another port.  If
+	you would like to see if lmgrd is running on another port,
+	choose the extended connection diagnostics.
+
+     The extended connection diagnostics attempt to determine the
+     reason you cannot connect to the license server.
+     This process involves an attempt to connect to
+     every port on the server node.  This operation can
+     take a few minutes.
+
+    Do you want to perform the extended connection diagnostics?: [y/n]:
+
+</b>Answer:<b>y</b></PRE>
+<p>
+The utility will search all of the ports on the system
+identified on the <b><code>SERVER</code></b> line, 
+looking for FLEXlm* license managers.  The utility will
+provide a list of active ports, and tell you which ones
+are FLEXlm* license managers.  If one of the FLEXlm* license
+managers is serving licenses for your product, then it will
+contain an entry mentioning the vendor daemon <b><code>INTEL</code></b>.
+<p>
+Here is a typical output for a system running a single FLEXlm*
+license manager that is already serving licenses:
+<pre><b>    Running extended connection diagnostics to host &lt;server&gt;
+
+	     There is an lmgrd running on port 1710
+
+    The vendor daemon "INTEL" is running with the lmgrd at port 1710
+    This means that the port number in your license file (1)
+    is wrong, and should be changed to 1710
+
+    6 ports are listening, 1 of them are lmgrd processes
+    Extended diagnostics done - all ports found reported above
+    -----------------------------------------------------
+
+    Enter &lt;CR&gt; to continue:
+
+</b>Answer: <b>Control-C</b></PRE>
+<p>
+At this point, we know that the port number on the <b><code>SERVER</code></b>
+line should be the number indicated in the output that YOU RECEIVE
+(not the number 1710 from the above sample output).
+Edit both <b><code>temporary.lic</code></b> and 
+<b><code>new-license-data-file</code></b> and change the 
+final group of digits on the <b><code>SERVER</code></b> line 
+to the new port number.
+<p>
+
+<h4 TOC="Locate License File"><a name="Locate License File"></a>Find the License File for this Server</h4>
+<p>
+Execute the following command:
+<pre><b>    ./lmutil lmstat -c temporary.lic</b></pre>
+<p>
+Output from this command will look something like:
+<pre><b>    Flexible License Manager status on ...
+
+    License server status: ...
+	License file(s) on &lt;server&gt;: &lt;server-license-file&gt;:
+
+	  &lt;server&gt;: license server UP (MASTER) v9.2
+
+    Vendor daemon status (on &lt;server&gt;):
+
+	INTEL: UP v9.2
+</b></pre>
+Where <b><code>&lt;server&gt;</code></b> is the name of the 
+system identified by
+the <b><code>SERVER</code></b> line in your license data, and 
+where <b><code>&lt;server-license-file&gt;</code></b> is the full path to the 
+license file that this license manager daemon is using.  
+There may be more than one <b><code>server-license-file</code></b> listed.
+<p>
+You have two choices: either add another 
+<b><code>server-license-file</code></b> to the 
+configuration of this license manager daemon, or add your
+license data to one of the existing <b><code>server-license-files</code></b>.  
+In either case, you
+have to discover who owns the license manager daemon. The best
+way to do that is usually through the ownership of the
+<b><code>server-license-files</code></b> that it uses.  
+Use <b><code>ls -l</code></b> on
+each <b><code>server-license-file</code></b> to discover that, 
+or talk to your system administrator.
+<p>
+Adding another <b><code>server-license-file</code></b> to the 
+configuration of the license
+manager daemon is beyond the scope of this page.  If you want
+to do this, ask for <a href="#Need Help">help</a>.
+
+<h4 TOC="Edit License File"><a name="Edit License File"></a>Editing an Existing License Data File</h4>
+<p>
+Look through all of the listed license data files.
+If only one references <b><code>INTEL</code></b>,
+then select that one as the license data file to edit.
+If more than one contains references to <b><code>INTEL</code></b>,
+then pick the one that makes the most sense to you.
+Otherwise, just pick any one of the listed 
+<b><code>server-license-files</code></b>.
+<p>
+If the <b><code>SERVER</code></b> line from the <b><code>new-license-data</code></b>
+is EXACTLY the same as the existing <b><code>SERVER</code></b> line
+(except for the port number), then
+edit the selected license data file.  
+Place the <b><code>new-license-data</code></b> at the end of the file.  
+Comment out the <b><code>SERVER</code></b> 
+line from the <b><code>new-license-data</code></b> by adding 
+a <b><code>#</code></b> character to the front of the line.
+<p>
+If the <b><code>SERVER</code></b> lines are not comparable then you
+must add another <b><code>server-license-file</code></b> to the 
+configuration of the license manager daemon.
+
+<h4 TOC="Daemon Versions"><a name="Daemon Versions"></a>Ensuring the Daemons Are the Right Version</h4>
+<p>
+Recall the output from the 
+<b><code>./lmutil lmstat -c temporary.lic</code></b> command issued earlier:
+<pre><b>    Flexible License Manager status on ...
+
+    License server status: ...
+	License file(s) on &lt;server&gt;: &lt;server-license-file&gt;:
+
+	  &lt;server&gt;: license server UP (MASTER) v9.2
+
+    Vendor daemon status (on &lt;server&gt;):
+
+	INTEL: UP v9.2
+</b></pre>
+Check that:
+<ul>
+  <li>the license server is <b><code>UP</code></b>
+  <li>the license server is version <b><code>v9.2</code></b> or higher
+  <li><b><code>INTEL</code></b> is listed as a vendor daemon
+  <li><b><code>INTEL</code></b> is <b><code>UP</code></b>
+  <li><b><code>INTEL</code></b> is version <b><code>v9.2</code></b> or higher
+</ul>
+If the version number of the license server is too small,
+then the license server must be upgraded.  
+The <b><code>flexlm</code></b> subdirectory that contains the
+<b><code>./lmutil</code></b> command also has a v9.2 license
+server named: <b><code>lmgrd.intel</code></b>.  You have to
+locate the code that causes this license server to execute.
+Normally, your system manager is the person to ask, as
+the license servers are started automatically at boot time.
+<p>
+If <b><code>INTEL</code></b> is not listed as a vendor daemon
+then INTEL needs to be added to the available daemons.
+Edit the selected license data file (the one you just added
+the <b><code>new-license-data</code></b> to).
+The current version of <b><code>INTEL</code></b> resides in the 
+same directory as the <b><code>lmutil</code></b> command you have
+been using on the machine identified by the <b><code>SERVER</code></b> line.
+To the end of the <b><code>VENDOR</code></b> line for the license data
+you just added, append a blank, and then the full path to 
+<b><code>INTEL</code></b>.
+<p>
+If the version number of <b><code>INTEL</code></b> is too small, then
+the version of <b><code>INTEL</code></b> being run by the 
+license server must be updated.
+The current version of <b><code>INTEL</code></b> resides in the 
+same directory as the <b><code>lmutil</code></b> command you have
+been using on the machine identified by the <b><code>SERVER</code></b> line.
+Edit all <b><code>server-license-files</code></b> 
+that contain references to <b><code>INTEL</code></b>.
+Comment out all <b><code>VENDOR</code></b> and <b><code>DAEMON</code></b>
+lines that reference <b><code>INTEL</code></b> 
+except for the <b><code>VENDOR</code></b> line
+in the license data you just added. 
+(Any line beginning # character is treated as a comment.)
+To the end of the <b><code>VENDOR</code></b> line for the license data
+you just added, append a blank, and then the full path to 
+<b><code>INTEL</code></b>.
+
+<h4 TOC="Reset Daemons"><a name="Reset Daemons"></a>Resetting the License Daemons</h4>
+<p>
+If you did not upgrade the license server to a new version,
+then all you have to do is make the license server 
+reread the files you edited.
+Use the following command (execute once for each license file edited):
+<pre><b>    ./lmutil lmreread -c &lt;license-file-you-edited&gt;</b></pre>
+
+<h4 TOC="Restart Daemons"><a name="Restart Daemons"></a>Restarting the License Daemons</h4>
+<p>
+If you upgraded the license server, or are just a little 
+paranoid about on-the-fly restart capabilities, you should
+shut down the license server, and then start it up again.
+Use the following command to shut down the license server:
+
+<pre><b>    ./lmutil lmdown -c &lt;license-file-you-edited&gt;</b></pre>
+<p>
+Use the following command to start the license server (be sure to have a
+<b><code>-c xxx</code></b> option for each existing license file):
+
+<PRE><B>    &lt;server-install-dir&gt;/lmgrd.intel -c &lt;server-license-file&gt;</B></PRE>
+where <b><code>&lt;server-install-dir&gt;</code></b> is the full path to 
+the <b><code>flexlm</code></b> subdirectory containing the FLEXlm* daemons
+and utilities for the <b><code>SERVER</code></b> platform type.
+<p>
+Yes, it is a little annoying to use full paths for the previous command.
+You will find it useful if you ever have to track down where
+a license manager resides in the file system from the output of
+a <b><code>ps</code></b> command.
+<P>
+
+<h4 TOC="Status Check"><a name="Status Check"></a>Checking if the License Server is OK</h4>
+<p>
+Execute the command:
+<pre><b>    ./lmutil lmstat -c temporary.lic</b></pre>
+The output should be something like:
+<pre><b>    Flexible License Manager status on ...
+
+    License server status: ...
+	License file(s) on &lt;server&gt;: &lt;server-license-file&gt;:
+
+	  &lt;server&gt;: license server UP (MASTER) v9.2
+
+    Vendor daemon status (on &lt;server&gt;):
+
+	INTEL: UP v9.2
+</b></pre>
+Check:
+<ul>
+  <li>the license server is <b><code>UP</code></b>
+  <li>the license server is version <b><code>v9.2</code></b> or higher
+  <li><b><code>INTEL</code></b> is listed as a vendor daemon
+  <li><b><code>INTEL</code></b> is <b><code>UP</code></b>
+  <li><b><code>INTEL</code></b> is version <b><code>v9.2</code></b> or higher
+</ul>
+If these checks pass, then you have successfully added your
+license data to the existing license file.
+
+<!-- <a name="Help"></a> -->
+<h3 TOC="Need Help?"><a name="Need Help"></a>Need Help?</h3>
+<ul>
+  <li>talk to your local FLEXlm* guru
+  <li>FLEXlm* support web page at <a href="http://www.macrovision.com/solutions/esd/support/index.html">http://www.macrovision.com/solutions/esd/support/index.html</a>
+  <li>contact customer support at <a href="http://support.intel.com/support/performancetools/support.htm">http://support.intel.com/support/performancetools/support.htm.</a>
+</ul>
+
+
+
+<br><font size="4">&nbsp;<br></font>
+<br clear="all">
+<hr size="2" noshade>
+<center><font size="2">
+Copyright &copy; 1999-2004 by Intel Corporation.  All rights reserved.</a></a>
+<p>
+*Other brands and names are the property of their respective owners.
+</font></center>
+</body>
+</html>
