@@ -38,21 +38,25 @@ class license_check(object):
         if self.server_addr.startswith("/"):
             self.server_addr = file(self.server_addr, "r").read().strip().split()[0]
         self.server_port = kwargs.get("port", "1055")
-        if self.server_port.startswith("/"):
-            self.server_port = file(self.server_port, "r").read().strip().split()[0]
-        self.server_port = int(self.server_port)
+        if type(self.server_port) not in [int, long]:
+            if self.server_port.startswith("/"):
+                self.server_port = file(self.server_port, "r").read().strip().split()[0]
+            self.server_port = int(self.server_port)
+        self.log("license server at %s (port %d)" % (self.server_addr, self.server_port))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        what = u"[lc] %s" % (what)
         # not implementd, FIXME
         if self.log_com:
-            pass
+            self.log_com(log_level, what)
         else:
-            logging_tools.my_syslog()
+            logging_tools.my_syslog("[%d] %s" % (log_level, what))
     def call_external(self, com_line):
         popen = subprocess.Popen(com_line, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         ret_code = popen.wait()
         return ret_code, popen.stdout.read()
     def check(self):
         s_time = time.time()
+        self.log("starting check")
         ext_code, ext_lines = self.call_external("%s lmstat -a -c %d@%s" % (
             self.lmutil_path,
             self.server_port,
@@ -91,6 +95,7 @@ class license_check(object):
                     cur_lic = E.license(name=lparts[2][:-1],
                                         issued=lparts[5],
                                         used=lparts[10],
+                                        reserved="0",
                                         free="%d" % (int(lparts[5]) - int(lparts[10])))
                     ret_struct.find("licenses").append(cur_lic)
                 if cur_lic is not None:
@@ -104,13 +109,14 @@ class license_check(object):
                         if cur_lic_version is not None:
                             if lparts[0] == "floating":
                                 cur_lic_version.attrib["floating"] = "true"
-                            elif lparts[1] == "reservations":
+                            elif lparts[1].count("reservation"):
                                 if cur_lic_version.find("reservations") is None:
                                     cur_lic_version.append(E.reservations())
                                 cur_lic_version.find("reservations").append(E.reservation(
                                     num=lparts[0],
                                     target=" ".join(lparts[3:])
                                 ))
+                                cur_lic.attrib["reserved"] = "%d" % (int(cur_lic.attrib["reserved"]) + int(lparts[0]))
                             else:
                                 if cur_lic_version.find("usages") is None:
                                     cur_lic_version.append(E.usages())
@@ -136,6 +142,7 @@ class license_check(object):
                                 ))
         e_time = time.time()
         ret_struct.attrib["run_time"] = "%.3f" % (e_time - s_time)
+        self.log("done, %d lines in %s" % (line_num, logging_tools.get_diff_time_str(e_time - s_time)))
         return ret_struct
         
 def main():
