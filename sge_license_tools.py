@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005,2007,2008,2010 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005,2007,2008,2010,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -98,7 +98,7 @@ class sge_license(object):
             return "simple via server %s" % (self.get_lic_server_spec())
         else:
             return "compound [%s %s]" % (self.__operand,
-                                         ",".join(sorted(self.__source_licenses)))
+                                         ",".join(["%s (x%d)" % (key, self.__mult_dict[key]) for key in sorted(self.__source_licenses)]))
     def get_lic_server_spec(self):
         return ",".join(["%d@%s" % (port, host) for port, host in self.__lic_servers])
     def get_num_lic_servers(self):
@@ -128,7 +128,8 @@ class sge_license(object):
     def set_compound_operand(self, oper="none"):
         self.__operand = oper.lower()
     def set_source_licenses(self, src_lic=[]):
-        self.__source_licenses = src_lic
+        self.__source_licenses = set(src_lic)
+        self.__mult_dict = dict([(key, src_lic.count(key)) for key in self.__source_licenses])
     def handle_compound(self, lic_dict):
         log_lines = []
         # init to zero
@@ -136,8 +137,8 @@ class sge_license(object):
         if found_keys:
             if self.__operand == "add":
                 # only supported opperand
-                new_total = sum([lic_dict[key].get_total_num() for key in found_keys])
-                new_used = sum([lic_dict[key].get_used_num() for key in found_keys])
+                new_total = sum([lic_dict[key].get_total_num() * self.__mult_dict[key] for key in found_keys])
+                new_used  = sum([lic_dict[key].get_used_num()  * self.__mult_dict[key] for key in found_keys])
                 if new_total != self.get_total_num():
                     log_lines.append(("total for %s changed from %d to %d" % (self.__name,
                                                                               self.get_total_num(),

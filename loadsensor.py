@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005,2007,2008,2009,2010 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005,2007,2008,2009,2010,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -32,6 +32,8 @@ import re
 import sge_license_tools
 import logging_tools
 import process_tools
+import license_tool
+from lxml import etree
 
 EXT_WRITE_DIR  = "/tmp/.machvect_es"
 EXT_WRITE_NAME = "lic_ov"
@@ -60,15 +62,15 @@ class int_error(error):
 
 def raw_read(fd):
     ret_str = ""
-    while 1:
+    while True:
         in_byte = os.read(fd, 1)
         if len(in_byte):
             if ord(in_byte) == 10:
                 break
-            ret_str += in_byte
+            ret_str = "%s%s" % (ret_str, in_byte)
     return ret_str
 
-def parse_actual_license_usage(log_template, actual_licenses, act_conf):
+def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict):
     configured_lics = []
     if not os.path.isdir(act_conf["LM_UTIL_PATH"]):
         log_template.error("Error: LM_UTIL_PATH '%s' is not directory" % (act_conf["LM_UTIL_PATH"]))
@@ -79,45 +81,68 @@ def parse_actual_license_usage(log_template, actual_licenses, act_conf):
         #print "asa:", all_server_addrs
         q_s_time = time.time()
         for server_addr in all_server_addrs:
-            lmstat_options = "lmstat -a -c %s" % (server_addr)
-            lmstat_com = "%s/%s %s" % (act_conf["LM_UTIL_PATH"],
-                                       act_conf["LM_UTIL_COMMAND"],
-                                       lmstat_options)
-            c_stat, out = sge_license_tools.call_command(lmstat_com)
-            if not c_stat:
-                all_out_lines.extend([line.strip() for line in out.split("\n") if line.strip()])
-            else:
-                log_template.error("error calling %s (%d): %s" % (lmstat_com,
-                                                                  c_stat,
-                                                                  out))
+            if not server_addr in lc_dict:
+                lc_dict[server_addr] = license_tool.license_check(
+                    lmutil_path=os.path.join(
+                        act_conf["LM_UTIL_PATH"],
+                        act_conf["LM_UTIL_COMMAND"]),
+                    port=int(server_addr.split("@")[0]),
+                    server=server_addr.split("@")[1],
+                    log_com=log_template.log)
+            srv_result = lc_dict[server_addr].check()
+            #lmstat_options = "lmstat -a -c %s" % (server_addr)
+            #lmstat_com = "%s/%s %s" % (
+                                       #lmstat_options)
+            #c_stat, out = sge_license_tools.call_command(lmstat_com)
+            #if not c_stat:
+                #all_out_lines.extend([line.strip() for line in out.split("\n") if line.strip()])
+            #else:
+                #log_template.error("error calling %s (%d): %s" % (lmstat_com,
+                                                                  #c_stat,
+                                                                  #out))
         q_e_time = time.time()
         log_template.info("%s to query, took %s: %s" % (logging_tools.get_plural("license server", len(all_server_addrs)),
                                                         logging_tools.get_diff_time_str(q_e_time - q_s_time),
                                                         ", ".join(all_server_addrs)))
-        users_re = re.compile("^Users of (?P<attribute>\S+): .* of (?P<total>\d+) .* of (?P<used>\d+).*$")
-        license_re = re.compile("^(?P<user>\S+)\s+(?P<long_host_name>\S+)\s+(?P<short_host_name>\S+)\s+\((?P<version>[^\)]+)\)\s+(?P<info>[^\)]+)\),\s+(?P<start_date>.*)$")
-        for line in all_out_lines:
-            users_mo = users_re.match(line)
-            license_mo = license_re.match(line)
-            if users_mo:
-                attribute, total, used = (users_mo.group("attribute"),
-                                          int(users_mo.group("total")),
-                                          int(users_mo.group("used")))
-                name = attribute.lower()
-                act_lic = actual_licenses.get(name, None)
-                if act_lic and act_lic.get_is_used():
-                    configured_lics.append(name)
-                    act_lic.clean_hosts()
-                    if act_lic.get_used_num() != used:
-                        log_template.info("attribute %s: use_count changed from %d to %d" % (act_lic.get_attribute(),
-                                                                                             act_lic.get_used_num(),
-                                                                                             used))
-                        act_lic.set_used_num(int(used))
-                        act_lic.set_changed()
-            elif license_mo:
-                if act_lic:
-                    act_lic.add_host(license_mo.group("short_host_name").lower())
+        for cur_lic in srv_result.xpath(".//license[@name]"):
+            name = cur_lic.attrib["name"]
+            act_lic = actual_licenses.get(name, None)
+            if act_lic and act_lic.get_is_used():
+                configured_lics.append(name)
+                total, used = (int(cur_lic.attrib["issued"]),
+                               int(cur_lic.attrib["used"]) - int(cur_lic.attrib.get("reserved", "0")))
+                act_lic.clean_hosts()
+                if act_lic.get_used_num() != used:
+                    log_template.info("attribute %s: use_count changed from %d to %d" % (act_lic.get_attribute(),
+                                                                                         act_lic.get_used_num(),
+                                                                                         used))
+                    act_lic.set_used_num(int(used))
+                    act_lic.set_changed()
     return configured_lics
+        #users_re = re.compile("^Users of (?P<attribute>\S+): .* of (?P<total>\d+) .* of (?P<used>\d+).*$")
+        #license_re = re.compile("^(?P<user>\S+)\s+(?P<long_host_name>\S+)\s+(?P<short_host_name>\S+)\s+\((?P<version>[^\)]+)\)\s+(?P<info>[^\)]+)\),\s+(?P<start_date>.*)$")
+        #for line in all_out_lines:
+            #users_mo = users_re.match(line)
+            #license_mo = license_re.match(line)
+            #if users_mo:
+                #attribute, total, used = (users_mo.group("attribute"),
+                                          #int(users_mo.group("total")),
+                                          #int(users_mo.group("used")))
+                #name = attribute.lower()
+                #act_lic = actual_licenses.get(name, None)
+                #if act_lic and act_lic.get_is_used():
+                    #configured_lics.append(name)
+                    #act_lic.clean_hosts()
+                    #if act_lic.get_used_num() != used:
+                        #log_template.info("attribute %s: use_count changed from %d to %d" % (act_lic.get_attribute(),
+                                                                                             #act_lic.get_used_num(),
+                                                                                             #used))
+                        #act_lic.set_used_num(int(used))
+                        #act_lic.set_changed()
+            #elif license_mo:
+                #if act_lic:
+                    #act_lic.add_host(license_mo.group("short_host_name").lower())
+    #return configured_lics
 
 def calculate_compound_licenses(log_template, actual_licenses, configured_lics):
     comp_keys = [key for key, value in actual_licenses.iteritems() if value.get_is_used() and value.get_license_type() == "compound"]
@@ -248,6 +273,8 @@ def main():
     actual_licenses, lic_read_time = ([], time.time())
     # read node_grouping file
     ng_dict = sge_license_tools.read_ng_file(log_template)
+    # license_check_dict
+    lc_dict = {}
     # ok to write license statistics
     write_ext_ok = False
     try:
@@ -270,7 +297,7 @@ def main():
                         write_ext_ok = False
                     if not write_ext_ok:
                         write_ext_ok = init_ext_call(log_template, actual_licenses)
-                    configured_licenses = parse_actual_license_usage(log_template, actual_licenses, act_conf)
+                    configured_licenses = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
                     [cur_lic.handle_node_grouping() for cur_lic in actual_licenses.itervalues()]
                     calculate_compound_licenses(log_template, actual_licenses, configured_licenses)
                     sge_lines, rep_dict = build_sge_report_lines(log_template, configured_licenses, actual_licenses)
@@ -279,13 +306,14 @@ def main():
                     if write_ext_ok:
                         write_ext_data(log_template, actual_licenses)
                     end_time = time.time()
-                    log_template.info("%s defined, %d configured, %d in use%s, (%d simple, %d compound), took %s" % (logging_tools.get_plural("license", len(actual_licenses.keys())),
-                                                                                                                     len(configured_licenses),
-                                                                                                                     len(rep_dict["lics_in_use"]),
-                                                                                                                     rep_dict["lics_in_use"] and " (%s)" % (", ".join(rep_dict["lics_in_use"])) or "",
-                                                                                                                     rep_dict["simple_lics"],
-                                                                                                                     rep_dict["compound_lics"],
-                                                                                                                     logging_tools.get_diff_time_str(end_time - start_time)))
+                    log_template.info("%s defined, %d configured, %d in use%s, (%d simple, %d compound), took %s" % (
+                        logging_tools.get_plural("license", len(actual_licenses.keys())),
+                        len(configured_licenses),
+                        len(rep_dict["lics_in_use"]),
+                        rep_dict["lics_in_use"] and " (%s)" % (", ".join(rep_dict["lics_in_use"])) or "",
+                        rep_dict["simple_lics"],
+                        rep_dict["compound_lics"],
+                        logging_tools.get_diff_time_str(end_time - start_time)))
                 else:
                     log_template.warning("site_file for site %s not readable (base_dir is %s)" % (act_site, base_dir))
     except KeyboardInterrupt:
