@@ -1775,7 +1775,41 @@ class hugepageinfo_command(hm_classes.hm_command):
                         (logging_tools.get_size_str(hpage_info["nr_hugepages"] - hpage_info["free_hugepages"])).strip()))
             return ret_state, "hugepage info: %s" % (", ".join(info_field))
         else:
-            return limits.nag_STATE_CRITICAL, "hugepage problem: %s" % (ksm_info.text)
+            return limits.nag_STATE_CRITICAL, "hugepage problem: %s" % (hpage_info.text)
+
+class thugepageinfo_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        hpage_dir = "/sys/kernel/mm/transparent_hugepage"
+        if os.path.isdir(hpage_dir):
+            sub_dirs = ["khugepaged"]
+            srv_com["thpagef"] = dict([(entry, file(os.path.join(hpage_dir, entry), "r").read().strip()) for entry in os.listdir(hpage_dir) if entry not in sub_dirs])
+            srv_com["thpaged"] = dict([(entry, file(os.path.join(hpage_dir, sub_dirs[0], entry), "r").read().strip()) for entry in os.listdir(os.path.join(hpage_dir, sub_dirs[0]))])
+        else:
+            srv_com["thpagef"] = "not found"
+            srv_com["thpaged"] = "not found"
+    def interpret(self, srv_com, cur_ns):
+        thpage_f_info = srv_com["thpagef"]
+        thpage_d_info = srv_com["thpaged"]
+        if type(thpage_f_info) == dict:
+            enable_state = [entry[1:-1] for entry in thpage_f_info["enabled"].strip().split() if entry.startswith("[")][0]
+            defrag_state = [entry[1:-1] for entry in thpage_f_info["defrag"].strip().split() if entry.startswith("[")][0]
+            if enable_state in ["always", "madvise"]:
+                ret_state = limits.nag_STATE_OK
+                ret_str = "info: enable=%s, defrag=%s, full_scans=%d, pages_to_scan=%d, collapsed: %d (%s), alloc/scan time: %.2f/%.2f secs" % (
+                    enable_state,
+                    defrag_state,
+                    int(thpage_d_info["full_scans"]),
+                    int(thpage_d_info["pages_to_scan"]),
+                    int(thpage_d_info["pages_collapsed"]),
+                    logging_tools.get_size_str(int(thpage_d_info["pages_collapsed"]) * 2 * 1024 * 1024),
+                    float(thpage_d_info["alloc_sleep_millisecs"]) / 1000.,
+                    float(thpage_d_info["scan_sleep_millisecs"]) / 1000.,
+                )
+            else:
+                ret_state, ret_str = (limits.nag_STATE_WARNING, "warning: enable=%s, defrag=%s" % (enable_state, defrag_state))
+        else:
+            ret_state, ret_str = (limits.nag_STATE_CRITICAL, "problem: %s, %s" % (thpage_d_info.text, thpage_f_info.text))
+        return ret_state, "transparent hugepage %s" % (ret_str)
             
 class pciinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
