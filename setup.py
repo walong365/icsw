@@ -16,6 +16,6 @@ setup(name="initcore",
       version="1.1.1",
       package_dir={"initcore": "src/initcore"},
       packages=["initcore", "initcore.templatetags", "initcore.alfresco",
-                "initcore.management.commands"],
+                "initcore.management", "initcore.management.commands"],
       package_data={"initcore": ["templates/initcore/*.html", "templates/initcore/*.xml"] + static_files}
       )
