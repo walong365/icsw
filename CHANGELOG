@@ -1,3 +1,8 @@
+1.1.1
+-----
+
+* Added dumpdatafast with postgres_dump serializer
+
 1.1.0
 -----
 

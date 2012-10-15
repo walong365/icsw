@@ -15,6 +15,7 @@ for root, dirs, files in os.walk("src/initcore/static"):
 setup(name="initcore",
       version="1.1.0",
       package_dir={"initcore": "src/initcore"},
-      packages=["initcore", "initcore.templatetags", "initcore.alfresco"],
+      packages=["initcore", "initcore.templatetags", "initcore.alfresco",
+                "initcore.management.commands"],
       package_data={"initcore": ["templates/initcore/*.html", "templates/initcore/*.xml"] + static_files}
       )

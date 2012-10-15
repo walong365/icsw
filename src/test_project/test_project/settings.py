@@ -17,12 +17,12 @@ MANAGERS = ADMINS
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': 'initcore',                      # Or path to database file if using sqlite3.
-        'USER': 'initcore',                      # Not used with sqlite3.
-        'PASSWORD': 'initcore',                  # Not used with sqlite3.
-        'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
-        'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'initcore',
+        'USER': 'initcore',
+        'PASSWORD': 'initcore',
+        'HOST': '',
+        'PORT': '',
     }
 }
 
@@ -83,7 +83,7 @@ STATICFILES_DIRS = (
 STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-#    'django.contrib.staticfiles.finders.DefaultStorageFinder',
+    #'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
 # Make this unique, and don't share it with anybody.
@@ -93,7 +93,7 @@ SECRET_KEY = '-1qm&amp;26v)vkf0xjh%_wzhqf-+byey#b04_-__id9j02)v4t@u('
 TEMPLATE_LOADERS = (
     'django.template.loaders.filesystem.Loader',
     'django.template.loaders.app_directories.Loader',
-#     'django.template.loaders.eggs.Loader',
+    #'django.template.loaders.eggs.Loader',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -158,4 +158,8 @@ LOGGING = {
             'propagate': True,
         },
     }
+}
+
+SERIALIZATION_MODULES = {
+    "postgres_dump": "initcore.postgres_dump_serializer"
 }
