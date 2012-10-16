@@ -32,8 +32,10 @@ sql_dict = dict([(key[6:], value) for key, value in [
 for src_key ,dst_key in [("DATABASE", "NAME"),
                          ("USER"    , "USER"),
                          ("PASSWD"  , "PASSWORD"),
-                         ("HOST"    , "HOST")]:
-    DATABASES["default"][dst_key] = sql_dict[src_key]
+                         ("HOST"    , "HOST"),
+                         ("ENGINE"  , "ENGINE")]:
+    if src_key in sql_dict:
+        DATABASES["default"][dst_key] = sql_dict[src_key]
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 
