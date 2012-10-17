@@ -128,7 +128,7 @@ INSTALLED_APPS = (
     # 'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
-    'initcore',
+    'initat.core',
 )
 
 # A sample logging configuration. The only tangible logging
@@ -161,5 +161,5 @@ LOGGING = {
 }
 
 SERIALIZATION_MODULES = {
-    "postgres_dump": "initcore.postgres_dump_serializer"
+    "postgres_dump": "initat.core.postgres_dump_serializer"
 }

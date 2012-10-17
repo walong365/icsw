@@ -9,7 +9,7 @@ from lxml.builder import E
 from django.core.urlresolvers import reverse
 from django.conf import settings
 
-from initcore import logger
+from initat.core import logger
 
 
 COPY_ATTRIBUTES_SS = """<xsl:stylesheet
@@ -193,8 +193,9 @@ TRANS_TO_HTML_SS = """<xsl:stylesheet
 class local_resolver(etree.Resolver):
     def __init__(self, menu_obj):
         self.menu_obj = menu_obj
+        super(local_resolver, self).__init__()
 
-    def resolve(self, url, cur_id, context):
+    def resolve(self, url, cur_id, context):  # pylint: disable-msg=W0613
         full_path = os.path.join(self.menu_obj.root_dir, url)
         if os.path.exists(full_path):
             return self.resolve_filename(full_path, context)
@@ -285,7 +286,7 @@ class Menu(object):
                 if not href:
                     # If all registered resolvers found nothing, do standard resolving
                     href = reverse(node.attrib["ref"], args=[part.strip() for part in node.attrib.get("refargs", "").split(",") if part.strip()])
-            except Exception as e:
+            except Exception:  # pylint: disable-msg=W0703
                 logger.exception("Exception while resolving in menu")
                 href = reverse("initcore:menu_folder", args=[base64.b64encode(node.attrib["xpath"])])
             else:

@@ -5,9 +5,9 @@ from django.core.files import File
 from django.core.urlresolvers import reverse
 from django.conf import settings
 
-from initcore.alfresco import logger
-from initcore.alfresco.alfresco import get_uuid, alfresco_handler
-from initcore.models import AlfrescoDocument
+from initat.core.alfresco import logger
+from initat.core.alfresco.alfresco import get_uuid, alfresco_handler
+from initat.core.models import AlfrescoDocument
 
 
 class AlfrescoStorageError(Exception):

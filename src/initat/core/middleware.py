@@ -4,8 +4,8 @@ import codecs
 from django.core.urlresolvers import resolve
 from django.conf import settings
 
-from initcore import logger
-from initcore.menu import Menu
+from initat.core import logger
+from initat.core.menu import Menu
 
 
 reg_b = re.compile(

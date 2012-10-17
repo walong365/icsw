@@ -48,7 +48,7 @@ TEMP_DIR = "/tmp/xlsx_olim"
 def generate_md5_key(*args):
     new_key = hashlib.md5()  # pylint: disable-msg=E1101
     for cur_arg in args:
-        new_key.update(unicode(cur_arg))
+        new_key.update(unicode(cur_arg))  # pylint: disable-msg=E1101
     return new_key.hexdigest()
 
 
@@ -729,7 +729,7 @@ def mk_last_of_month(dt_datetime):
 
 
 def xlsx_export_response(request, xlsx_dict, name=None):
-    from initcore.alfresco.alfresco import alfresco_handler
+    from initat.core.alfresco.alfresco import alfresco_handler
 
     if not name:
         name = "xlsx_export"

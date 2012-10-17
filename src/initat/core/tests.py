@@ -1,10 +1,10 @@
 """
-The initcore testsuite
+The initat.core testsuite
 """
 import unittest
 from lxml import etree
 
-from initcore.testing import xml_equal
+from initat.core.testing import xml_equal
 
 
 class xml_equal_test(unittest.TestCase):

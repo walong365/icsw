@@ -6,8 +6,8 @@ import time
 from django.http import HttpResponseForbidden, HttpResponse
 from django.conf import settings
 
-from initcore.utils import (logging_pool, send_emergency_mail, xml_response,
-                            build_simple_xml)
+from initat.core.utils import (logging_pool, send_emergency_mail, xml_response,
+                               build_simple_xml)
 
 
 def require_POST_params(params):

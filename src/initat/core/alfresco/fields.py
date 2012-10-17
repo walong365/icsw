@@ -4,7 +4,7 @@ Provides model fields that don't have an equivalent in Django.
 
 from django.db import models
 
-from initcore.alfresco.storage import AlfrescoStorage
+from initat.core.alfresco.storage import AlfrescoStorage
 
 
 class AlfrescoFileField(models.FileField):

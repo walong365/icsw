@@ -7,8 +7,6 @@ that does all the work for us.
 
 import process_tools
 import cmislib
-# extensions, very important
-import cmislibalf
 import time
 import re
 import logging_tools
@@ -26,7 +24,7 @@ import suds.wsse
 from django.conf import settings
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 
-from initcore.utils import keyword_check
+from initat.core.utils import keyword_check
 
 ALFRESCO_WS_CML_NS = "http://www.alfresco.org/ws/cml/1.0"
 ALFRESCO_WS_MODEL_CONTENT_NS = "http://www.alfresco.org/ws/model/content/1.0"
@@ -95,6 +93,11 @@ class alfresco_handler(object):
         self.store_dict = None
         self.class_dict = None
         self.__cmis_client = None
+        self.__cmis_result = None
+        self.__error_list = []
+        self.__user_security = None
+        self.__admin_security = None
+        self._first_char = True
         self._init_errors()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -225,7 +228,7 @@ class alfresco_handler(object):
     def _node_exists(self, full_path, **kwargs):
         cmis_client = self.get_cmis_client()
         try:
-            cur_node = cmis_client.defaultRepository.getObjectByPath(self._safe_full_path(full_path))
+            cmis_client.defaultRepository.getObjectByPath(self._safe_full_path(full_path))
         except cmislib.exceptions.ObjectNotFoundException:
             return False
         else:
@@ -255,7 +258,6 @@ class alfresco_handler(object):
         def_repo = my_client.defaultRepository
         f_path, dir_name_ci = os.path.split(full_path)
         self.log("using cmislib for folder creation (%s beneath %s)" % (dir_name_ci, f_path))
-        check_for_existing = kwargs.get("check_for_existing", False)
         try:
             parent_node = def_repo.getObjectByPath(self._safe_full_path(f_path))
         except cmislib.exceptions.ObjectNotFoundException:
@@ -272,7 +274,7 @@ class alfresco_handler(object):
             pass
         if not self._get_errors():
             try:
-                cur_node = def_repo.getObjectByPath(self._safe_full_path(full_path))
+                def_repo.getObjectByPath(self._safe_full_path(full_path))
             except cmislib.exceptions.ObjectNotFoundException:
                 new_folder = parent_node.createFolder(self._safe_path(dir_name_ci))
                 self.set_properties(
@@ -297,7 +299,7 @@ class alfresco_handler(object):
         f_path, f_name_ci = os.path.split(full_path)
         # guess mimetype if not set
         if "mimetype" not in kwargs:
-            g_mimetype, g_encoding = mimetypes.guess_type(f_name)
+            g_mimetype, unused = mimetypes.guess_type(f_name)
             if g_mimetype:
                 kwargs["mimetype"] = g_mimetype
             else:
@@ -305,7 +307,6 @@ class alfresco_handler(object):
         my_cmis = self.get_cmis_client()
         parent_node = my_cmis.defaultRepository.getObjectByPath(self._safe_full_path(f_path))
         check_for_existing = kwargs.get("check_for_existing", False)
-        create_new_version_if_exists = kwargs.get("create_new_version_if_exists", False)
         if check_for_existing:
             try:
                 new_node = my_cmis.defaultRepository.getObjectByPath(self._safe_full_path(full_path))
@@ -361,7 +362,7 @@ class alfresco_handler(object):
                                           prop_list)
             try:
                 self("Repository", "update", cur_create)
-            except:
+            except Exception:  # pylint: disable-msg=W0703
                 self.log("update failed: %s" % (process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
 

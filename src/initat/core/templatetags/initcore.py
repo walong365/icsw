@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-initcore tags and filters for Django. Contains various
+initat.core tags and filters for Django. Contains various
 formatting helpers and the interface to get the menu.
 """
 
@@ -12,9 +12,7 @@ from django import template
 from django.utils.safestring import mark_safe
 from django.template.defaultfilters import stringfilter
 
-# We can't say from initcore import menu because this resolves initcore
-# to initcore.templatetags.initcore
-from .. import menu
+from initat.core import menu
 
 register = template.Library()
 

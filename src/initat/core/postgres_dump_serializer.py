@@ -6,7 +6,7 @@ A data serializer to postgres dumps
 # throughout your app
 
 #SERIALIZATION_MODULES = {
-#    "postgres_dump": "initcore.postgres_dump_serializer"
+#    "postgres_dump": "initat.core.postgres_dump_serializer"
 #}
 
 import datetime

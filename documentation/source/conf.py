@@ -45,8 +45,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'initcore'
-copyright = u'2012, init.at'
+project = u'initat.core'
+copyright = u'2012, init.at'  # pylint: disable-msg=W0622
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
