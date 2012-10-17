@@ -477,8 +477,8 @@ class init_base_object(object):
             for key in sorted(set_keys):
                 value = getattr(self.options, key)
                 self.log("%-20s : %-14s is %s" % (key,
-                                                 str(type(value)),
-                                                 str(getattr(self.options, key))))
+                                                  str(type(value)),
+                                                  str(getattr(self.options, key))))
 
     def __del__(self):
         if self.__logger:
