@@ -7,13 +7,13 @@ import os
 from django.core.urlresolvers import reverse
 from django.contrib.auth import authenticate, login, logout
 import pprint
-from init.cluster.backbone.models import user
+from initat.cluster.backbone.models import user
 from django.db.models import Q
 import random
-from init.cluster.frontend import render_tools
+from initat.cluster.frontend import render_tools
 from django.conf import settings
-from init.cluster.frontend.forms import authentication_form
-from init.cluster.frontend.helper_functions import init_logging
+from initat.cluster.frontend.forms import authentication_form
+from initat.cluster.frontend.helper_functions import init_logging
 
 # correct path to import session_handler
 if "cluster-backbone-sql" in __file__:
@@ -63,10 +63,10 @@ def sess_login(request):
             #session_handler.init_session(request, sess_id, db_user, {"session_id" : sess_id})
             #request.session["DB_SESSION_ID"] = sess_id
             # no need to use transfer_views
-            print "***"
             return HttpResponseRedirect(reverse("main:index"))
             #return HttpResponseRedirect(reverse("transfer:main", args=["index.py?SID=%s" % (sess_id)]))
     else:
         login_form = authentication_form()
     return render_tools.render_me(request, "login.html", {"login_form" : login_form,
                                                           "app_path"   : reverse("session:login")})()
+

@@ -1,8 +1,8 @@
 # rms views
 
 from django.http import HttpResponse
-from init.cluster.frontend import render_tools
-from init.cluster.frontend.helper_functions import init_logging, logging_pool
+from initat.cluster.frontend import render_tools
+from initat.cluster.frontend.helper_functions import init_logging, logging_pool
 from django.conf import settings
 import json
 import sge_tools

@@ -7,20 +7,20 @@ import sys
 # admin.autodiscover()
 
 transfer_patterns = patterns(
-    "init.cluster.transfer",
+    "initat.cluster.transfer",
     url(r"^$", "transfer_views.redirect_to_main"),
     url(r"transfer/"    , "transfer_views.transfer", name="main"),
     url(r"transfer/(.*)", "transfer_views.transfer", name="main")
 )
 
 session_patterns = patterns(
-    "init.cluster.frontend",
+    "initat.cluster.frontend",
     url(r"logout", "session_views.sess_logout", name="logout"),
     url(r"login" , "session_views.sess_login" , name="login" ),
 )
 
 rms_patterns = patterns(
-    "init.cluster.rms",
+    "initat.cluster.rms",
     url(r"overview"     , "rms_views.overview"         , name="overview"         ),
     url(r"get_node_xml" , "rms_views.get_node_xml"     , name="get_node_xml"     ),
     url(r"get_run_xml"  , "rms_views.get_run_jobs_xml" , name="get_run_jobs_xml" ),
@@ -28,7 +28,7 @@ rms_patterns = patterns(
 )
 
 config_patterns = patterns(
-    "init.cluster.frontend",
+    "initat.cluster.frontend",
     url("^config_types$"     , "config_views.show_config_type_options", name="config_types"      ),
     url("^show_config$"      , "config_views.show_configs"            , name="show_configs"      ),
     url("^get_configs_xml$"  , "config_views.get_configs"             , name="get_configs"       ),
@@ -45,12 +45,12 @@ config_patterns = patterns(
 )
 
 boot_patterns = patterns(
-    "init.cluster.frontend",
+    "initat.cluster.frontend",
     url("^show_boot$"   , "boot_views.show_boot", name="show_boot"),
 )
 
 device_patterns = patterns(
-    "init.cluster.frontend",
+    "initat.cluster.frontend",
     url("^device_tree$"       , "device_views.device_tree"        , name="tree"               ),
     url("^get_json_tree$"     , "device_views.get_json_tree"      , name="get_json_tree"      ), 
     url("^get_xml_tree$"      , "device_views.get_xml_tree"       , name="get_xml_tree"       ), 
@@ -65,7 +65,7 @@ device_patterns = patterns(
 )
 
 network_patterns = patterns(
-    "init.cluster.frontend",
+    "initat.cluster.frontend",
     url("^network$"           , "network_views.show_cluster_networks" , name="networks"           ),
     url("^netdevice_classes$" , "network_views.show_netdevice_classes", name="netdevice_classes"  ),
     url("^dev_network$"       , "network_views.device_network"        , name="network"            ),
@@ -82,13 +82,13 @@ network_patterns = patterns(
 )
 
 nagios_patterns = patterns(
-    "init.cluster.frontend",
+    "initat.cluster.frontend",
     url("^create_command$"   , "nagios_views.create_command"   , name="create_command"),
     url("^delete_command$"   , "nagios_views.delete_command"   , name="delete_command"),
 )
 
 main_patterns = patterns(
-    "init.cluster.frontend",
+    "initat.cluster.frontend",
     url(r"index$" , "main_views.index", name="index"),
 )
 

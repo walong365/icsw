@@ -12,9 +12,9 @@ import django.core.urlresolvers
 from django.utils.translation import ugettext_lazy as _
 from django.forms.util import ErrorList
 import datetime
-from init.cluster.backbone.models import user, network, network_type, network_device_type, \
+from initat.cluster.backbone.models import user, network, network_type, network_device_type, \
      device_class, device_location, config_type
-from init.cluster.frontend.widgets import simple_select_multiple
+from initat.cluster.frontend.widgets import simple_select_multiple
 import ipvx_tools
 import process_tools
 

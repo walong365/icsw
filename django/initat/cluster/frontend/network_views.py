@@ -7,16 +7,16 @@ import json
 import pprint
 import logging_tools
 import process_tools
-from init.cluster.frontend.helper_functions import init_logging
-from init.cluster.frontend.render_tools import render_me
+from initat.cluster.frontend.helper_functions import init_logging
+from initat.cluster.frontend.render_tools import render_me
 from django.contrib.auth.decorators import login_required
 from lxml import etree
 from lxml.builder import E
 from django.db.models import Q
 from django.core.exceptions import ValidationError
-from init.cluster.frontend.render_tools import render_me
-from init.cluster.frontend.forms import network_form, network_type_form, network_device_type_form
-from init.cluster.backbone.models import device, network, net_ip, \
+from initat.cluster.frontend.render_tools import render_me
+from initat.cluster.frontend.forms import network_form, network_type_form, network_device_type_form
+from initat.cluster.backbone.models import device, network, net_ip, \
      network_type, network_device_type, netdevice, peer_information, \
      netdevice_speed, device_variable, device_group
 from django.forms.models import modelformset_factory

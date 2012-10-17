@@ -5,13 +5,13 @@
 
 import logging_tools
 import process_tools
-from init.cluster.frontend.forms import config_type_form
-from init.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
+from initat.cluster.frontend.forms import config_type_form
+from initat.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      ng_check_command, ng_check_command_type, ng_service_templ
 from django.db.models import Q
-from init.cluster.frontend.helper_functions import init_logging
-from init.cluster.frontend.render_tools import render_me
+from initat.cluster.frontend.helper_functions import init_logging
+from initat.cluster.frontend.render_tools import render_me
 from django.contrib.auth.decorators import login_required
 from django.forms.models import modelformset_factory
 from lxml import etree
