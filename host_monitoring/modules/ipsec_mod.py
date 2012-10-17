@@ -90,7 +90,7 @@ class _general(hm_classes.hm_module):
                             port_num = "0"
                         con_key, port_num = (con_key[1:-1], int(port_num))
                         parts = [part.strip() for part in (" ".join(parts)).split(";") if part.strip()]
-                        con_dict[con_key]["sa_dict"].setdefault(("#%d" % (sa_key), port_num), []).extend(parts)
+                        con_dict[con_key]["sa_dict"].setdefault(("con_%d.%d" % (sa_key, port_num)), []).extend(parts)
         return con_dict
 
 class ipsec_status_command(hm_classes.hm_command):
