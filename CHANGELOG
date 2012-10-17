@@ -1,3 +1,9 @@
+1.2
+---
+
+* Moved to new namespace initat.core
+* Several PEP8 and pylint fixes
+
 1.1.1
 -----
 
