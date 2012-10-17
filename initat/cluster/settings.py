@@ -5,11 +5,15 @@ import sys
 
 ugettext = lambda s : s
 
-DEBUG = os.uname()[1] in ["slayer"]
+from django.core.exceptions import ImproperlyConfigured
+
+
+DEBUG = os.uname()[1] in ["slayer", "eddie"]
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
-    ("Andreas Lang-Nevyjel", "cluster@init.at"),
+    #("Andreas Lang-Nevyjel", "cluster@init.at"),
+    ("Andreas Lang-Nevyjel", "lang-nevyjel@init.at"),
 )
 
 MANAGERS = ADMINS
@@ -24,8 +28,17 @@ DATABASES = {
         "PORT"     : ""
     }
 }
-# read from /etc/sysconfig/cluster/mysql.cf
 
+OLD_CONF_FILE = "/etc/sysconfig/cluster/mysql.cf"
+
+if not os.path.isfile(OLD_CONF_FILE):
+    raise ImproperlyConfigured("config '%s' not found" % (OLD_CONF_FILE))
+else:
+    try:
+        file(OLD_CONF_FILE, "r").read()
+    except IOError:
+        raise ImproperlyConfigured("cannot read '%s', wrong permissions ?" % (OLD_CONF_FILE))
+    
 sql_dict = dict([(key[6:], value) for key, value in [
     line.strip().split("=", 1) for line in file("/etc/sysconfig/cluster/mysql.cf", "r").read().split("\n") if line.count("=") and line.startswith("MYSQL_")]])
 
@@ -42,7 +55,7 @@ FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 # compress settings
 COMPRESS = not DEBUG
 COMPRESS_ENABLED = COMPRESS
-COMPRESS_OFFLINE = True
+COMPRESS_OFFLINE = not DEBUG
 # rebuild once a day
 COMPRESS_REBUILD_TIMEOUT = 60 * 60 * 24
 
@@ -201,6 +214,14 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
         if add_app not in INSTALLED_APPS:
             INSTALLED_APPS.append(add_app)
 INSTALLED_APPS = tuple(INSTALLED_APPS)
+
+LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
+
+if os.path.isfile(LOCAL_CONFIG):
+    local_dir = os.path.dirname(LOCAL_CONFIG)
+    sys.path.append(local_dir)
+    from local_settings import *
+    sys.path.remove(local_dir)
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to

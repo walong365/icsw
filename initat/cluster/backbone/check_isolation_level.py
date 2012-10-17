@@ -3,7 +3,7 @@
 import os
 import sys
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "init.cluster.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
