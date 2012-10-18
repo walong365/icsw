@@ -29,7 +29,8 @@ class Serializer(base.Serializer):
         super(Serializer, self).__init__()
 
     def start_serialization(self):
-        pass
+        self.copy = None
+        self.m2ms = {}
 
     def end_serialization(self):
         pass
