@@ -833,8 +833,8 @@ def build_node_list(s_info, options):
                 cur_node.append(E.pe_list(shorten_list([",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name")))))) for act_q in act_q_list], empty_str="-")))
             if options.show_memory:
                 cur_node.extend([
-                    E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']")),
-                    E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']"))
+                    E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
+                    E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
                 ])
             cur_node.extend([
                 E.load("%.2f" % (_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']"))), **{"type" : "float", "format" : "%.2f"}),
@@ -863,7 +863,7 @@ def build_node_list(s_info, options):
                             acl_str = "%s and not (%s)" % (pos_list, neg_list)
                         acl_str_dict.setdefault(header_name, []).append(acl_str)
                 for header_name in ["userlists", "projects"]:
-                    cur_node.append(getattr(E, header_name)(shorten_list(acl_str_dict[header_name])))
+                    cur_node.append(getattr(E, header_name)(shorten_list(acl_str_dict.get(header_name, []))))
             job_list = []
             for q_name in q_list:
                 type_dict = job_host_pe_lut.get(s_name, {}).get(q_name, {})
@@ -922,8 +922,8 @@ def build_node_list(s_info, options):
                 cur_node.append(E.pe_list(",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))))))))
             if options.show_memory:
                 cur_node.extend([
-                    E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']")),
-                    E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']"))
+                    E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
+                    E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
                 ])
             cur_node.extend([
                 E.load("%.2f" % (_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
