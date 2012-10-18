@@ -19,7 +19,7 @@ from django.db import transaction
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
         make_option("-d", "--destination", dest="destination",
-                    default="default_dest", help="set destination file [%default]"),
+                    default=".", help="set destination file [%default]"),
         make_option("--miss-cache", dest="miss_cache",
                     default="/tmp/.global_miss_cache",
                     help="set name of global miss_cache [%default]")
@@ -67,7 +67,7 @@ class Command(BaseCommand):
 
         for cur_model in models_to_dump:
             cur_name = cur_model._meta.db_table
-            outfile = "%s.%s.%s.pg_dump.bz2" % (destination, cur_model._meta.app_label, cur_name)
+            outfile = os.path.join(destination, "%s.%s.pg_dump" % (cur_model._meta.app_label, cur_name))
             self.log("dumping model %s to %s" % (cur_name, outfile))
             if os.path.isfile(outfile):
                 os.unlink(outfile)
@@ -84,12 +84,14 @@ class Command(BaseCommand):
                 copy, m2ms = serializer.serialize(cur_model.objects.iterator())
                 if copy is not None:
                     self.log("Writing bz2 file %s" % outfile)
-                    with bz2.BZ2File(outfile, "w") as f:
+                    table_outfile = outfile + ".bz2"
+                    with bz2.BZ2File(table_outfile, "w") as f:
                         for line in copy.result():
                             f.write(line.encode("utf-8"))
 
                     self.log("Writing bz2 file m2m.%s" % outfile)
-                    with bz2.BZ2File("m2m.%s" % outfile, "w") as f:
+                    m2m_outfile = outfile + ".m2m.bz2"
+                    with bz2.BZ2File(m2m_outfile, "w") as f:
                         for m2m in m2ms.values():
                             for line in m2m.result():
                                 f.write(line.encode("utf-8"))
