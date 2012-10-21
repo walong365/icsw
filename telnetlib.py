@@ -1,5 +1,6 @@
 """TELNET client class.
 
+
 Based on RFC 854: TELNET Protocol Specification, by J. Postel and
 J. Reynolds
 
