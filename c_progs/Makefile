@@ -23,11 +23,13 @@ hoststatus: hoststatus.o
 	strip hoststatus
 
 tell_mother_zmq: tell_mother_zmq.o
-	$(comp) -L/opt/cluster/$(LIB_DIR)/ -lzmq tell_mother_zmq.o -o tell_mother_zmq
+	export LDFLAGS="-Xlinker -rpath=${PREFIX_CLUSTER}/$(LIB_DIR) "; \
+	$(comp) -L ${PREFIX_CLUSTER}/${LIB_DIR} -lzmq tell_mother_zmq.o -o tell_mother_zmq ; \
 	strip tell_mother_zmq
 
 hoststatus_zmq: hoststatus_zmq.o
-	$(comp) -L/opt/cluster/$(LIB_DIR)/ -lzmq hoststatus_zmq.o -o hoststatus_zmq
+	export LDFLAGS="-Xlinker -rpath=${PREFIX_CLUSTER}/$(LIB_DIR) "; \
+	$(comp) -L ${PREFIX_CLUSTER}/${LIB_DIR} -lzmq hoststatus_zmq.o -o hoststatus_zmq ; \
 	strip hoststatus_zmq
 
 %.o: %.c
