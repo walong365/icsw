@@ -1,4 +1,13 @@
-include ../Makefile.globals
+PREFIX_CLUSTER=/opt/cluster
+
+ifeq ($(shell getconf LONG_BIT), 64) 
+LIB_DIR=lib64
+else
+LIB_DIR=lib
+endif
+
+INSTALL=install
+INSTALLOPTS=-p
 
 .SUFFIXES:
 .SUFFIXES: .o .c
