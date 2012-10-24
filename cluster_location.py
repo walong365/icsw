@@ -35,7 +35,7 @@ import config_tools
 import types
 import pprint
 from django.db.models import Q
-from init.cluster.backbone.models import device_variable, config, device, config_blob, config_bool, \
+from initat.cluster.backbone.models import device_variable, config, device, config_blob, config_bool, \
      config_int, config_str, net_ip, log_source, log_status
 import netifaces
 

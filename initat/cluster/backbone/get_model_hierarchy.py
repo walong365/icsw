@@ -4,7 +4,7 @@ import os
 import sys
 import pprint
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "init.cluster.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.utils.datastructures import SortedDict
 from django.db.models import get_apps

@@ -5,9 +5,9 @@ import sys
 from django.contrib import admin
 admin.autodiscover()
 
-import init.cluster.sub_urls
+import initat.cluster.sub_urls
 
-urlpatterns = init.cluster.sub_urls.sub_patterns
+urlpatterns = initat.cluster.sub_urls.sub_patterns
 
 urlpatterns += patterns('',
     (r'^cluster/admin/', include(admin.site.urls)),

@@ -168,10 +168,10 @@ MIDDLEWARE_CLASSES = (
     "backbone.middleware.database_debug",
 )
 
-ROOT_URLCONF = "init.cluster.urls"
+ROOT_URLCONF = "initat.cluster.urls"
 
 # Python dotted path to the WSGI application used by Django's runserver.
-WSGI_APPLICATION = "init.cluster.wsgi.application"
+WSGI_APPLICATION = "initat.cluster.wsgi.application"
 
 TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
@@ -206,7 +206,7 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
         full_path = os.path.join(dir_name, sub_dir)
         if os.path.isdir(full_path):
             if any([entry.endswith("views.py") for entry in os.listdir(full_path)]):
-                add_app = "init.cluster.%s" % (sub_dir)
+                add_app = "initat.cluster.%s" % (sub_dir)
                 if add_app not in INSTALLED_APPS:
                     INSTALLED_APPS.append(add_app)
     for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:

@@ -2,11 +2,11 @@
 
 import sys
 import os
-import init.cluster.enable_debug
+import initat.cluster.enable_debug
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "init.cluster.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-from init.cluster.backbone.models import user, group, capability
+from initat.cluster.backbone.models import user, group, capability
 from django.contrib.auth.models import User, Group, Permission
 import logging_tools
 import django.contrib.auth.hashers
