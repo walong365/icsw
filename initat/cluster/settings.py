@@ -116,7 +116,7 @@ MEDIA_URL = "%s/frontend/media/" % (SITE_ROOT)
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
-#STATIC_URL = '/static/'
+STATIC_URL = "%s/" % (SITE_ROOT)
 
 # Session settings
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
@@ -148,7 +148,8 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     "django.core.context_processors.request",
     "django.core.context_processors.media",
     "django.core.context_processors.debug",
-    "backbone.context_processors.add_session",
+    "initat.core.context_processors.add_session",
+    "initat.core.context_processors.add_settings",
 )
 
 TEMPLATE_LOADERS = (
@@ -215,6 +216,7 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
         add_app = os.environ[add_app_key]
         if add_app not in INSTALLED_APPS:
             INSTALLED_APPS.append(add_app)
+    INSTALLED_APPS.append("initat.core")
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
