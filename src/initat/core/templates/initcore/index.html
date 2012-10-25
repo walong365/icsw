@@ -33,11 +33,11 @@
        Modernizr enables HTML5 elements & feature detects for optimal performance.
        Create your own custom Modernizr build: www.modernizr.com/download/ -->
   {% block modernizr %}
-  <script src="{{ settings.STATIC_URL }}initcore/js/libs/modernizr-2.5.3.min.js"></script>
+  <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/modernizr-2.5.3.min.js"></script>
   {% endblock %}
   {% block javascript %}
-  <script src="{{ settings.STATIC_URL }}initcore/js/plugins.js"></script>
-  <script src="{{ settings.STATIC_URL }}initcore/js/libs/jquery-1.7.2.min.js"></script>
+  <script src="{{ settings.STATIC_URL }}initat/core/static/js/plugins.js"></script>
+  <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery-1.7.2.min.js"></script>
   {% endblock %}
 </head>
 <body>
@@ -51,7 +51,7 @@
 
   {% block main %}
   {% endblock %}
-
+  {{ settings.STATIC_URL }}
   <footer>
   {% block footer %}
   {% endblock %}
