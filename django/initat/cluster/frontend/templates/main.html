@@ -1,16 +1,14 @@
-<!DOCTYPE html>
-{#  PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> #}
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+{% extends "initcore/index.html" %}
 
-<head>
+{% block meta_description %}
 <meta charset="utf-8" />
-{# IE8 render info #}
-<meta http-equiv="X-UA-Compatible" content="IE=9, IE=8" / >
 <meta http-equiv="Cache-Control" content="max-age=28800, must-revalidate" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+{% endblock %}
 
 {% load i18n extra_tags compress %}
 
+{% block stylesheets %}
 {% compress css %}
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/main.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/tablesorter.css" />
@@ -22,11 +20,20 @@
 {% endcompress %}
 
 <style type="text/css" media="screen">
-	.dataTables_info { padding-top: 0; }
-	.dataTables_paginate { padding-top: 0; }
-	.css_right { float: right; }
+    .dataTables_info { padding-top: 0; }
+    .dataTables_paginate { padding-top: 0; }
+    .css_right { float: right; }
 </style>
 
+{% block extra_stylesheets %}
+{% endblock %}
+
+{% block tab_js %}{% endblock %}
+{% block forms_media %}{% endblock %}
+
+{% endblock %}
+
+{% block javascript %}
 {% compress js %}
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery-1.8.0.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery-ui-1.8.22.custom.min.js"></script>
@@ -43,14 +50,12 @@
 
 {% include "init.js" %}
 
-{% block tab_js %}{% endblock %}
-{% block forms_media %}{% endblock %}
-{% block stylesheets %}{% endblock %}
+{% endblock %}
 
-<title>INIT {% block title %}{% trans "Main Page" %}{% endblock %}</title>
-</head>
+{% block title %}{% trans "Main Page" %}{% endblock %}
 
-<body bgcolor="#FFFFFF">
+{% block main %}
+
 {% block body %}
 {% if user.is_authenticated %}
 <div class="ui-layout-north ">
@@ -78,6 +83,9 @@
 </div>
 {% endblock %}
 
+{% endblock %}
+
+{% block footer %}
 <script type="text/javascript">
 
 var page_time="{% now "G:i:s" %}";
@@ -134,5 +142,4 @@ function update_time() {
 $(document).ready(add_handlers_main);
 
 </script>
-</body>
-</html>
+{% endblock %}

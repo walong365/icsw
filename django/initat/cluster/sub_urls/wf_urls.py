@@ -1,6 +1,7 @@
 from django.conf.urls import patterns, include, url
 from django.conf import settings
 import sys
+import process_tools
 
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
@@ -111,5 +112,6 @@ url_patterns = patterns(
     # hack for icons
     url(r"^%s/frontend/media/(?P<path>.*)$" % (settings.REL_SITE_ROOT), "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}, name="media"),
     url(r"icons-init/(?P<path>.*)$"                                   , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT[:-14] + "/icons"}),
+    url(r"^%s/initat/(?P<path>.*)$" % (settings.REL_SITE_ROOT)        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT[:-22]}),
     url(r"^%s/" % (settings.REL_SITE_ROOT)                            , include(my_url_patterns)),
 )

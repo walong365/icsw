@@ -19,7 +19,7 @@ from initat.cluster.frontend.helper_functions import init_logging
 if "cluster-backbone-sql" in __file__:
     # local run
     OLD_DIR = os.path.dirname(__file__).replace(
-        "/cluster-backbone-sql/init/cluster/frontend",
+        "/cluster-backbone-sql/initat/cluster/frontend",
         "/webfrontend/htdocs/python")
 else:
     OLD_DIR = "/srv/www/htdocs/python"

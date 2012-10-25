@@ -166,7 +166,7 @@ function build_device_table(xml) {
                     cur_tr.attr({
                         "id" : "dev__" + new_dg_tr.attr("id").split("__")[1] + "__" + cur_tr.attr("id").split("__")[2]
                     });
-                    update_device_group_info();
+                    update_device_group_info(xml);
                     // force unroll of device_groups
                     toggle_device(new_dg_tr.attr("id").split("__")[1], true);
                 })
@@ -194,7 +194,7 @@ function build_device_table(xml) {
                             success : function(xml) {
                                 if (parse_xml_response(xml)) {
                                     $(event.target).parents("tr:first").remove();
-                                    update_device_group_info();
+                                    update_device_group_info(xml);
                                 }
                             }
                         })
@@ -369,7 +369,7 @@ function build_device_table(xml) {
     ));
     new_table.append(new_tr);
     $("div#device_table").append(new_table);
-    update_device_group_info();
+    update_device_group_info(xml);
     new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
     new_table.find("input#new_device_name").focus();
 };
@@ -401,7 +401,12 @@ function recolor_device_group(dg_pk) {
     $("table#device_tree tr[id^='dev__" + dg_pk + "__']:odd").addClass("odd");
 };
 
-function update_device_group_info() {
+function update_device_group_info(xml) {
+    if ($(xml).find("device_group[is_cdg='0']").length == 0) {
+        $("table tr[id='new_dev']").hide();
+    } else {
+        $("table tr[id='new_dev']").show();
+    };
     $("table#device_tree tr[id^='devg__']").each(function() {
         var cur_tr = $(this);
         var dg_pk = cur_tr.attr("id").split("__")[1];
