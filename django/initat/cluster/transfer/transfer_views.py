@@ -9,7 +9,7 @@ from django.core.urlresolvers import reverse
 if "cluster-backbone-sql" in __file__:
     # local run
     OLD_DIR = os.path.dirname(__file__).replace(
-        "/cluster-backbone-sql/init/cluster/transfer",
+        "/cluster-backbone-sql/initat/cluster/transfer",
         "/webfrontend/htdocs/python")
 else:
     OLD_DIR = "/srv/www/htdocs/python"
@@ -22,7 +22,7 @@ import main
 import pprint
 import process_tools
 from django.contrib.auth.decorators import login_required
-from init.cluster.frontend.helper_functions import init_logging
+from initat.cluster.frontend.helper_functions import init_logging
 
 class request_object(object):
     def __init__(self, request, module_name):
