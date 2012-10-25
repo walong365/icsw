@@ -4,7 +4,7 @@ import sys
 import os
 
 cur_cwd = os.getcwd()
-if "/clustersoftware/build-extern/" in cur_cwd:
+if "/development/git/" in cur_cwd:
     while True:
         cwd_path, cwd_rest = os.path.split(cur_cwd)
         cur_cwd = cwd_path

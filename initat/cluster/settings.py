@@ -2,6 +2,7 @@
 
 import os
 import sys
+import pprint
 
 ugettext = lambda s : s
 
@@ -199,6 +200,7 @@ INSTALLED_APPS = (
 # add all applications, including backbone
 
 INSTALLED_APPS = list(INSTALLED_APPS)
+
 if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
     # add everything below cluster
     dir_name = os.path.dirname(__file__)
@@ -213,6 +215,7 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
         add_app = os.environ[add_app_key]
         if add_app not in INSTALLED_APPS:
             INSTALLED_APPS.append(add_app)
+
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
@@ -251,3 +254,4 @@ if os.path.isfile(LOCAL_CONFIG):
 ##        },
 ##    }
 ##}
+
