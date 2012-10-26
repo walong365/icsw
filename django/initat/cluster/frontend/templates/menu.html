@@ -28,6 +28,17 @@
             <li><a href="{% url session:logout %}">{% trans "Logout" %}</a></li>
         </ul>
     </li>
+    <li>
+        <a>test</a>
+        <ul>
+            <li>
+                <a>test2</a>
+                <ul>
+                    <li><a>sub3</a></li>
+                </ul>
+            </li>
+        </ul>
+    </li>
 </ul>
 
 <script type="text/javascript">
@@ -37,6 +48,8 @@ function init_menu() {
         speed : 1,
         delay : 500
     });
+    // new jquery implementation, wait for 1.10 ...
+    // $("#main_navigation").menu();
 };
 
 </script>

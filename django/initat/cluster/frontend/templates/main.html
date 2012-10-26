@@ -12,8 +12,9 @@
 {% compress css %}
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/main.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/tablesorter.css" />
+    {# can be removed as soon as jquery-UI is up to par #}
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/superfish.css" />
-    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/ui.dynatree.css" />
+    <link type="text/css" rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/js/libs/dynatree/skin/ui.dynatree.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/jquery.jnotify-alt.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/jquery.dataTables.css" />
 {% endcompress %}
@@ -39,8 +40,9 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.sprintf.js_8.txt"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.tablesorter.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.timers-1.2.js"></script>
+    {# can be removed as soon as jquery-UI is up to par #}
     <script type="text/javascript" src="{{ MEDIA_URL }}js/superfish.js"></script>
-    <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.dynatree.min.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/dynatree/jquery.dynatree.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.jnotify.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/underscore-min.js"></script>
 {% endcompress %}
