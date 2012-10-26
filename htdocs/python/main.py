@@ -46,11 +46,11 @@ else:
     import hotshot
     import hotshot.stats
 
-from init.cluster.frontend.render_tools import render_me
+from initat.cluster.frontend.render_tools import render_me
 from django.template.loader import render_to_string
 from django.core.urlresolvers import reverse
 from django.db.models import Q
-from init.cluster.backbone.models import device, device_variable, user, capability, config, device_config, \
+from initat.cluster.backbone.models import device, device_variable, user, capability, config, device_config, \
      net_ip,  hopcount, genstuff
 from django.http import HttpResponse, HttpResponseRedirect
 

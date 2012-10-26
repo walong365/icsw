@@ -1,5 +1,5 @@
 #!/usr/bin/python-init -Otv
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2012 Andreas Lang-Nevyjel, init.at
 #
@@ -26,7 +26,7 @@ import time
 import datetime
 from basic_defs import SESSION_TIMEOUT
 import process_tools
-from init.cluster.backbone.models import user, session_data, user_var
+from initat.cluster.backbone.models import user, session_data, user_var
 from django.db.models import Q
 
 class session_data_obj(object):
