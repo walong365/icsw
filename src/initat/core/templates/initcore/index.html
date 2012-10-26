@@ -35,9 +35,11 @@
   {% block modernizr %}
   <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/modernizr-2.5.3.min.js"></script>
   {% endblock %}
-  {% block javascript %}
+  {% block javascript_jquery %}
   <script src="{{ settings.STATIC_URL }}initat/core/static/js/plugins.js"></script>
-  <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery-1.7.2.min.js"></script>
+  <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery-1.8.2.min.js"></script>
+  {% endblock %}
+  {% block javascript %}
   {% endblock %}
 </head>
 <body>
