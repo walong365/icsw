@@ -23,9 +23,11 @@
 """ mother daemon """
 
 import sys
-import time
 import os
-import os.path
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+import time
 import threading
 import re
 import zmq
@@ -64,7 +66,7 @@ from django.db.models import Q
 import mother.kernel
 import mother.command
 import mother.control
-from init.cluster.backbone.models import network, status
+from initat.cluster.backbone.models import network, status
 
 SQL_ACCESS = "cluster_full_access"
 
@@ -2893,6 +2895,7 @@ class server_process(threading_tools.process_pool):
         self._check_status_entries()
         self.__msi_block = None#self._init_msi_block()
         self._init_subsys()
+        self.register_func("send_return", self._send_return)
         my_uuid = uuid_tools.get_uuid()
         self.log("cluster_device_uuid is '%s'" % (my_uuid.get_urn()))
         if self._init_network_sockets():
@@ -2986,12 +2989,33 @@ class server_process(threading_tools.process_pool):
             if data[0].endswith("syslog_scan"):
                 self.send_to_process("control", "syslog_line", data[1])
             else:
-                print data
-                zmq_sock.send_unicode(data[0], zmq.SNDMORE)
-                zmq_sock.send_unicode("ok")
+                print "**", data[1]
+                try:
+                    srv_com = server_command.srv_command(source=data[1])
+                except:
+                    self.log("cannot interpret '%s': %s" % (data[1][:40], process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                    zmq_sock.send_unicode("error interpreting")
+                else:
+                    cur_com = srv_com["command"].text
+                    srv_com.update_source()
+                    if cur_com == "status":
+                        self.send_to_process(
+                            "control",
+                            cur_com,
+                            data[0],
+                            unicode(srv_com))
+                    else:
+                        srv_com.set_result("unknown command '%s'" % (cur_com), server_command.SRV_REPLY_STATE_ERROR)
+                        zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                        zmq_sock.send_unicode(unicode(srv_com))
         else:
             self.log("wrong number of data chunks (%d != 2)" % (len(data)),
                      logging_tools.LOG_LEVEL_ERROR)
+    def _send_return(self, src_id, src_pid, zmq_id, srv_com, *args):
+        self.log("returning 0MQ message to %s (%s ...)" % (zmq_id, srv_com[0:10]))
+        self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
+        self.socket_dict["router"].send_unicode(unicode(srv_com))
     # utility calls
     def _prepare_directories(self):
         self.log("Checking directories ...")

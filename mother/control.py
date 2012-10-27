@@ -37,10 +37,12 @@ import shutil
 import stat
 import re
 import ipvx_tools
+from lxml import etree
 from django.db import connection
 from twisted.internet import reactor
 from twisted.python import log
-from init.cluster.backbone.models import kernel, device, hopcount, image, macbootlog, mac_ignore
+from twisted.internet.error import CannotListenError
+from initat.cluster.backbone.models import kernel, device, hopcount, image, macbootlog, mac_ignore
 from django.db.models import Q
 import process_tools
 from mother.command_tools import simple_command
@@ -77,6 +79,7 @@ class machine(object):
         machine.__lut = {}
         machine.__unique_keys = set()
         machine.__unique_names = set()
+        machine.ping_id = 0
     @staticmethod
     def get_all_names():
         return sorted(machine.__unique_names)
@@ -152,6 +155,62 @@ class machine(object):
                 getattr(cur_dev, com_name)(*args, **kwargs)
             else:
                 cur_dev.log("call '%s' not defined" % (com_name), logging_tools.LOG_LEVEL_WARN)
+    @staticmethod
+    def iterate_xml(srv_com, com_name, *args, **kwargs):
+        for cur_dev in srv_com.xpath(None, ".//ns:device[@pk]"):
+            pk = int(cur_dev.attrib["pk"])
+            cur_mach = machine.get_device(pk)
+            if cur_mach is None:
+                pass
+            else:
+                getattr(cur_mach, com_name)(cur_dev, *args, **kwargs)
+    @staticmethod
+    def ping(srv_com):
+        keys = set(map(lambda x: int(x), srv_com.xpath(None, ".//ns:device/@pk"))) & set(machine.__unique_keys)
+        cur_id = machine.ping_id
+        ping_list = srv_com.builder("ping_list")
+        for u_key in keys:
+            cur_dev = machine.get_device(u_key)
+            dev_node = srv_com.xpath(None, ".//ns:device[@pk='%d']" % (cur_dev.pk))[0]
+            dev_node.attrib.update({"tried"  : "%d" % (len(cur_dev.ip_dict)),
+                                    "ok"     : "0",
+                                    "failed" : "0"})
+            for ip in cur_dev.ip_dict.iterkeys():
+                cur_id_str = "mp_%d" % (cur_id)
+                cur_id += 1
+                machine.process.send_to_socket(machine.process.twisted_socket, ["ping", cur_id_str, ip, 4, 3.0])
+                ping_list.append(srv_com.builder("ping", cur_id_str, pk="%d" % (cur_dev.pk)))
+        srv_com["ping_list"] = ping_list
+        machine.ping_id = cur_id
+    @staticmethod
+    def interpret_result(srv_com, id_str, res_dict):
+        node = srv_com.xpath(None, ".//ns:ping[text() = '%s']" % (id_str))[0]
+        pk = int(node.attrib["pk"])
+        ping_list = node.getparent()
+        ping_list.remove(node)
+        if not len(ping_list):
+            pl_parent = ping_list.getparent()
+            pl_parent.remove(ping_list)
+            pl_parent.getparent().remove(pl_parent)
+        machine.get_device(pk).interpret_loc_result(srv_com, res_dict)
+        print srv_com.pretty_print()
+    def interpret_loc_result(self, srv_com, res_dict):
+        dev_node = srv_com.xpath(None, ".//ns:device[@pk='%d']" % (self.pk))[0]
+        ip_list = self.ip_dict.keys()
+        if res_dict["host"] in ip_list:
+            if res_dict["recv_ok"]:
+                dev_node.attrib["ok"] = "%d" % (int(dev_node.attrib["ok"]) + 1)
+                dev_node.attrib["ip"] = res_dict["host"]
+            else:
+                dev_node.attrib["failed"] = "%d" % (int(dev_node.attrib["failed"]) + 1)
+        else:
+            self.log("got unknown ip '%s'" % (res_dict["host"]), logging_tools.LOG_LEVEL_ERROR)
+    def add_ping_info(self, cur_dev):
+        print "***", etree.tostring(cur_dev)
+        cur_dev.attrib["network"] = "unknown"
+        cur_dev.attrib["network_state"] = "error"
+        for key, value in self.ip_dict.iteritems():
+            print key, value.network
     def set_ip_dict(self, in_dict):
         old_dict = self.ip_dict
         self.ip_dict = in_dict
@@ -252,7 +311,10 @@ class host(machine):
                     if cur_id == "b" and srv_ips:
                         self.set_maint_ip(cur_ip)
                     if cur_ip.ip not in ip_dict:
-                        ip_dict[cur_ip.ip] = ip_dict
+                        # definitely wrong, oh my...
+                        #ip_dict[cur_ip.ip] = ip_dict
+                        # not sure ...
+                        ip_dict[cur_ip.ip] = cur_ip
             self.log("found %s: %s" % (logging_tools.get_plural("IP-address", len(ip_dict)),
                                        ", ".join(sorted(ip_dict.keys()))))
             link_array = []
@@ -743,7 +805,7 @@ class host(machine):
         lines = cur_out.split("\n")
         error_str = ""
         for line in lines:
-            if line.lower().count("connection refused"):
+            if line.lower().count("connection refused") or line.lower().count("dhcpctl_connect: no more"):
                 self.log(line, logging_tools.LOG_LEVEL_ERROR)
                 error_str = "connection refused"
             if line.startswith(">"):
@@ -833,13 +895,14 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
             if seq_key in self.__seqno_dict:
                 del self.__seqno_dict[seq_key]
         del self.__work_dict[key]
-    def ping(self, seq_str, target, num_pings, timeout):
+    def ping(self, seq_str, target, num_pings, timeout, **kwargs):
         self.log("ping to %s (%d, %.2f) [%s]" % (target, num_pings, timeout, seq_str))
         cur_time = time.time()
         self[seq_str] = {"host"       : target,
                          "num"        : num_pings,
                          "timeout"    : timeout,
                          "start"      : cur_time,
+                         "id"         : kwargs.get("id", ""),
                          # time between pings
                          "slide_time" : 0.1,
                          "sent"       : 0,
@@ -882,7 +945,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
             # check for ping finish
             if value["error_list"] or (value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"]):
                 all_times = [value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) != None]
-                self.__twisted_process.send_ping_result(key, value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
+                self.__twisted_process.send_ping_result(key, value)#["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
                 del_keys.append(key)
         for del_key in del_keys:
             del self[del_key]
@@ -913,21 +976,29 @@ class twisted_process(threading_tools.process_obj):
         # clear flag for extra twisted thread
         self.__extra_twisted_threads = 0
         self.icmp_protocol = hm_icmp_protocol(self, self.__log_template)
-        reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
-        self.register_func("ping", self._ping)
-        self._ping("qweqwe", "127.0.0.1", 4, 5.0)
+        try:
+            reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
+        except CannotListenError:
+            self.log("cannot listen on ICMP socket: %s" % (process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+            self.send_pool_message("process_exception", process_tools.get_except_info())
+        else:
+            self.register_func("ping", self._ping)
+            self._ping("qweqwe", "127.0.0.1", 4, 5.0)
+        self.control_socket = self.connect_to_socket("control")
     def _ping(self, *args, **kwargs):
-        self.icmp_protocol.ping(*args)
+        self.icmp_protocol.ping(*args, **kwargs)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def send_result(self, src_id, srv_com, data):
         print "sr", src_id, srv_com, data
         #self.send_to_socket(self.__relayer_socket, ["twisted_result", src_id, srv_com, data])
     def send_ping_result(self, *args):
-        print args
+        self.send_to_socket(self.control_socket, ["ping_result"] + list(args))
         #self.send_to_socket(self.__relayer_socket, ["twisted_ping_result"] + list(args))
     def loop_post(self):
         self.twisted_observer.close()
+        self.control_socket.close()
         self.__log_template.close()
         #self.__relayer_socket.close()
 
@@ -960,27 +1031,53 @@ class node_control_process(threading_tools.process_obj):
         else:
             self.server_ip = None
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
+        # create connection to twisted process
+        self.twisted_socket = self.connect_to_socket("twisted")
         machine.setup(self)
         machine.sync()
         self.register_func("refresh", self._refresh)
         self.register_func("alter_macaddr", self.alter_macaddr)
+        self.register_func("ping_result", self._ping_result)
         self.register_timer(self._check_commands, 10)
         #self.kernel_dev = config_tools.server_check(server_type="kernel_server")
         self.register_func("syslog_line", self._syslog_line)
+        self.register_func("status", self._status)
         # build dhcp res
         self.__dhcp_res = {
             "discover" : re.compile("(?P<program>\S+): DHCPDISCOVER from (?P<macaddr>\S+) via .*$"),
             "offer"    : re.compile("^(?P<program>\S+): DHCPOFFER on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$"),
             "request"  : re.compile("^(?P<program>\S+): DHCPREQUEST for (?P<ip>\S+) .*from (?P<macaddr>\S+) via .*$"),
             "answer"   : re.compile("^(?P<program>\S+): DHCPACK on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")}
+        self.pending_list = []
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def _refresh(self, *args, **kwargs):
         # use kwargs to specify certain devices
         machine.iterate("refresh_target_kernel")
         machine.iterate("read_dot_files")
+    def _ping_result(self, id_str, res_dict, **kwargs):
+        new_pending = []
+        for cur_com in self.pending_list:
+            if len(cur_com.xpath(None, ".//ns:ping[text() = '%s']" % (id_str))):
+                machine.interpret_result(cur_com, id_str, res_dict)
+                if not cur_com.xpath(None, ".//ns:ping_list"):
+                    machine.iterate_xml(cur_com, "add_ping_info")
+                    self.send_pool_message("send_return", cur_com.xpath(None, ".//ns:command/@zmq_id")[0], unicode(cur_com))
+                else:
+                    new_pending.append(cur_com)
+            else:
+                new_pending.append(cur_com)
+        self.pending_list = new_pending
+    def _status(self, zmq_id, in_com, *args, **kwargs):
+        self.log("got status from id %s" % (zmq_id))
+        in_com = server_command.srv_command(source=in_com)
+        in_com["command"].attrib["zmq_id"] = zmq_id
+        machine.ping(in_com)
+        self.pending_list.append(in_com)
+        #self.send_pool_message("send_return", zmq_id, unicode(in_com))
     def loop_post(self):
         machine.shutdown()
+        self.twisted_socket.close()
         self.__log_template.close()
     def set_check_freq(self, cur_to):
         self.log("changing check_freq of check_commands to %d msecs" % (cur_to))

@@ -32,7 +32,7 @@ import time
 import subprocess
 from django.db import connection
 from django.db.models import Q
-from init.cluster.backbone.models import device, network
+from initat.cluster.backbone.models import device, network
 from mother.command_tools import simple_command
 import re
 

@@ -32,7 +32,7 @@ import os
 import config_tools
 from django.db import connection
 from kernel_sync_tools import kernel_helper
-from init.cluster.backbone.models import kernel
+from initat.cluster.backbone.models import kernel
 
 class kernel_sync_process(threading_tools.process_obj):
     def process_init(self):
