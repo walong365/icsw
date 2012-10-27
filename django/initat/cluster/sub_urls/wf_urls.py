@@ -47,7 +47,9 @@ config_patterns = patterns(
 
 boot_patterns = patterns(
     "initat.cluster.frontend",
-    url("^show_boot$"   , "boot_views.show_boot", name="show_boot"),
+    url("^show_boot$"      , "boot_views.show_boot"       , name="show_boot"),
+    url("^get_html_options", "boot_views.get_html_options", name="get_html_options"),
+    url("^get_boot_info$"  , "boot_views.get_boot_info"   , name="get_boot_info"),
 )
 
 device_patterns = patterns(

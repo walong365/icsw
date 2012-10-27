@@ -428,7 +428,8 @@ def generate_config(request):
     request.log("generating config for %s: %s" % (logging_tools.get_plural("device", len(dev_list)),
                                                   ", ".join([unicode(dev) for dev in dev_list])))
     srv_com = server_command.srv_command(command="build_config")
-    srv_com["devices"] = srv_com.builder("devices",
+    srv_com["devices"] = srv_com.builder(
+        "devices",
         *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
     result = net_tools.zmq_connection("config_webfrontend", timeout=5).add_connection("tcp://localhost:8005", srv_com)
     if not result:

@@ -54,6 +54,16 @@ span.error {
     text-decoration : none;
 }
 
+td.warn {
+    background-color: #ffff88;
+}
+td.error {
+    background-color: #ff8888;
+}
+td.ok {
+    background-color: #88ff88;
+}
+
 a.white, a.white:link, a.white:visited, a.white:focus, a.white:hover, a.white:active { 
     color:#FFFFFF;  
 } 

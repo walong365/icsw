@@ -9,27 +9,196 @@
 
 <h1 class="center">Boot settings</h1>
 
+<h3 id="options">
+</h3>
+
 <div id="boot">
 </div>
 
+<input type="button" value="update info" onClick="force_update_info();"/>
+
 <script type="text/javascript">
 
-// current device selection
+// current device selection (with groups)
 CUR_DEVICES = undefined;
+// current device selection (only devices)
+CUR_PURE_DEVICES = undefined;
+// current device XML
+DEVICES = undefined;
+// flag: pending update info
+UPDATE_PENDING = 0;
+// option dict
+OPTION_DICT = new Array();
 
-function load_table() {
-    console.log("load_boot", CUR_DEVICES);
+function load_device_table() {
+    load_devices(CUR_DEVICES);
+};
+
+function load_devices(sel_list) {
+    //console.log(sel_list);
+    $.ajax({
+        url     : "{% url device:get_group_tree %}",
+        error   : handle_ajax_error,
+        data    : {
+            "sel_list" : sel_list
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                DEVICES = $(xml).find("value[name='response']");
+                CUR_PURE_DEVICES = [];
+                $(xml).find("device[meta_device='0']").each(function() {
+                    CUR_PURE_DEVICES.push($(this).attr("name"));
+                });
+                draw_table();
+                // call update_device_info after table draw
+                update_device_info();
+            }
+        }
+    });
+};
+
+function draw_table() {
+    $("div#boot").children().remove();
+    b_table = $("<table>").attr({"id" : "boot"});
+    DEVICES.find("device_group").each(function() {
+        var cur_dg = $(this);
+        var new_tr = $("<tr>").attr({
+            "class" : "ui-widget ui-widget-header",
+            "btype" : "group"
+        });
+        new_tr.append($("<th>").attr({
+            "colspan" : "8"
+        }).text("device group " + cur_dg.attr("name")));
+        b_table.append(new_tr);
+        cur_dg.find("devices device[selected='selected'][meta_device='0']").each(function() {
+            var cur_dev = $(this);
+            b_table.append(draw_device(cur_dev));
+        });
+    });
+    $("div#boot").append(b_table);
+};
+
+function draw_device(d_el) {
+    var dummy_div = $("<div>");
+    var line_prefix = d_el.attr("key");
+    var new_tr = $("<tr>").attr({
+        "class" : "ui-widget ui-widget-header",
+        "id"    : line_prefix,
+        "btype" : "device"
+    });
+    new_tr.append($("<th>").attr({
+        "colspan" : "1"
+    }).text(d_el.text()))
+    .append($("<td>").attr({"id" : "recv_str"}).addClass("warn").text("waiting"))
+    .append($("<td>").attr({"id" : "req_str"}).addClass("warn").text("waiting"))
+    .append($("<td>").attr({"id" : "network"}).addClass("warn").text("waiting"));
+    
+    dummy_div.append(new_tr);
+    return dummy_div.children();
 };
 
 function use_devs(dt_div) {
     CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
         return(value.data.key);
     });
-    load_table();
+    load_device_table();
 };
 
+function force_update_info() {
+    UPDATE_PENDING = 0;
+    update_device_info();
+};
+
+function update_device_info() {
+    if (CUR_PURE_DEVICES.length && ! UPDATE_PENDING) {
+        UPDATE_PENDING = 1;
+        var send_data = {
+            "sel_list" : CUR_PURE_DEVICES
+        };
+        for (key in OPTION_DICT) {
+            send_data["opt_"+ key] = OPTION_DICT[key];
+        };
+        $.ajax({
+            url     : "{% url boot:get_boot_info %}",
+            error   : handle_ajax_error,
+            data    : send_data,
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    UPDATE_PENDING = 0;
+                    var b_table = $("table#boot");
+                    $(xml).find("device").each(function() {
+                        var cur_dev = $(this);
+                        var dev_tr = b_table.find("tr#" + cur_dev.attr("key"));
+                        dev_tr.find("td#recv_str").text(cur_dev.attr("recvstate"));
+                        dev_tr.find("td#req_str").text(cur_dev.attr("reqstate"));
+                        dev_tr.find("td#network").text(cur_dev.attr("network"));
+                        var net_state = cur_dev.attr("network_state");
+                        dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok", "error", "warn").addClass(net_state);
+                        if (OPTION_DICT["k"]) {
+                            console.log("kernel");
+                        };
+                    });
+                }
+            }
+        });
+    };
+};
+
+function change_option(event) {
+    var el = $(event.target);
+    var opt = el.attr("id").split("_")[1];
+    var checked = el.is(":checked");
+    OPTION_DICT[opt] = checked;
+    redraw_options(opt);
+};
+
+function redraw_options(opt) {
+    if (OPTION_DICT[opt]) {
+        // add lines
+        $("table#boot").find("tr[btype='device']").each(function() {
+            var dev_tr = $(this);
+            var new_tr = $("<tr>").attr({
+                "btype" : "opt_" + opt,
+                "id"    : dev_tr.attr("id")
+            });
+            dev_tr.after(new_tr);
+            new_tr.append($("<td>").text("kernel"));
+            force_update_info();
+        });
+    } else {
+        // remove lines
+        $("table#boot").find("tr[btype='opt_" + opt + "']").remove();
+    };
+};
+
+function install_options() {
+    $.ajax({
+        url     : "{% url boot:get_html_options %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                var opt_h3 = $("h3#options");
+                $(xml).find("option").each(function() {
+                    var opt = $(this);
+                    var opt_button = $("<input>").attr({
+                        "type" : "checkbox",
+                        "id"   : "opt_" + opt.attr("short")})
+                    opt_h3.append(opt_button);
+                    opt_h3.append(opt.text() + ", ");
+                    opt_button.bind("change", change_option);
+                });
+            }
+        }
+    });
+};
+    
+
 function add_config_handlers() {
+    install_options();
     install_devsel_link(use_devs, true);
+    $(document).everyTime(10000, "update_device_info", function(i) {
+        update_device_info();
+    });
 };
 
 $(document).ready(add_config_handlers);
