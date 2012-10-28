@@ -29,13 +29,14 @@ import threading
 import commands
 import stat
 import process_tools
+import datetime
 import logging_tools
 import pprint
 import server_command
 import gzip
 import hashlib
 import tempfile
-from init.cluster.backbone.models import kernel, kernel_build, kernel_log, device
+from initat.cluster.backbone.models import kernel, kernel_build, kernel_log, device, cluster_timezone
 from django.db.models import Q
 
 KNOWN_INITRD_FLAVOURS = ["lo", "cpio", "cramfs"]
@@ -251,11 +252,14 @@ class kernel_helper(object):
                     else:
                         self.check_md5_sums()
     def _update_kernel(self, **kwargs):
-        #print "X", kwargs
         if self.__db_kernel:
             if self.__db_kernel.master_server == self.__local_master_server.pk:
-                self.__dc.execute("UPDATE kernel SET %s WHERE kernel_idx=%d" % (set_str,
-                                                                                self.__db_idx), set_tuple)
+                for key, value in kwargs.iteritems():
+                    if not hasattr(self.__db_kernel, key):
+                        self.log("unknown attribute name %s" % (key), logging_tools.LOG_LEVEL_CRITICAL)
+                    else:
+                        setattr(self.__db_kernel, key, value)
+                        self.__db_kernel.save()
             else:
                 self.log("not master of kernel", logging_tools.LOG_LEVEL_WARN)
     def check_initrd(self):
@@ -267,7 +271,7 @@ class kernel_helper(object):
                 db_name = "stage2_present"
             else:
                 db_name = "stage1_%s_present" % (initrd_flavour)
-            present_flag = 1 if os.path.isfile(self.__initrd_paths[initrd_flavour]) else 0
+            present_flag = True if os.path.isfile(self.__initrd_paths[initrd_flavour]) else False
             present_dict[initrd_flavour] = True if present_flag else False
             self.__values[db_name] = present_flag
             self._update_kernel(**{db_name : present_flag})
@@ -278,7 +282,7 @@ class kernel_helper(object):
                                                          ", ".join(["%s (file %s)" % (key, os.path.basename(self.__initrd_paths[key])) for key in present_keys])),
                          db_write=True)
                 self.__checks.append("initrd")
-                initrd_built = os.stat(self.__initrd_paths[present_keys[0]])[stat.ST_MTIME]
+                initrd_built = cluster_timezone.localize(datetime.datetime.fromtimestamp(os.stat(self.__initrd_paths[present_keys[0]])[stat.ST_MTIME]))
                 #initrd_built = time.localtime(initrd_built)
                 self._update_kernel(initrd_built=initrd_built)
                 # temporary file and directory
@@ -530,7 +534,8 @@ class kernel_helper(object):
                 version=self.__values["version"],
                 release=self.__values["release"],
                 build_machine=self.__values["build_machine"],
-                device=self.__values["device"])
+                device=self.__values["device"],
+                enabled=True)
             new_kb.save()
             self.log("inserted kernel_build at idx %d" % (new_kb.pk))
         self.__option_dict["database"] = True

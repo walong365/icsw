@@ -39,10 +39,11 @@ import server_command
 import uuid_tools
 import config_tools
 import time
+import datetime
 import gzip
 import fnmatch
 from django.db.models import Q
-from init.cluster.backbone.models import kernel
+from initat.cluster.backbone.models import kernel
 
 MOD_REFUSE_LIST = ["3w-9xxx", "3w-xxxx", "af_packet", "ata_piix",
                    "autofs", "eata", "gdth",
@@ -914,7 +915,7 @@ def main_normal():
     if not my_args.kernel_dir:
         print "No kernel-dir given, exiting"
         sys.exit(1)
-    kernel_name = os.path.split(os.path.normpath(my_args.kernel_dir))
+    kernel_name = os.path.split(os.path.normpath(my_args.kernel_dir))[1]
     if not kernel_name:
         print "Cannot extract kernel_name from %s" % (my_args.kernel_dir)
         sys.exit(1)
@@ -934,7 +935,7 @@ def main_normal():
             print "Host '%s' is not a kernel_server, exiting ..." % (short_host_name)
             sys.exit(1)
     else:
-        #print ks_check.effective_device
+        kernel_server_idx = ks_check.effective_device.pk
 ##        kernel_server_idx = ks_check.server_device_idx
 ##        dc.execute("SELECT d.name, d.device_idx FROM device d INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx = dg.device WHERE d.device_group=dg.device_group_idx AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND c.name='mother_server'")
 ##        mother_servers = [x["name"] for x in dc.fetchall()]
@@ -967,16 +968,16 @@ def main_normal():
         my_kernel = None
     if my_kernel:
         print "Found kernel at path '%s' (%s at %s) in database (kernel_idx is %d)" % (my_args.kernel_dir, kernel_name, target_path, my_kernel.pk)
-        if kernel_stuff["xen_host_kernel"]:
+        if my_kernel.xen_host_kernel:
             print " - kernel for Xen-hosts"
-        if kernel_stuff["xen_guest_kernel"]:
+        if my_kernel.xen_guest_kernel:
             print " - kernel for Xen-guests"
         if kernel_server_idx:
-            if kernel_server_idx != kernel_stuff["master_server"]:
-                if loc_config["SET_MASTER_SERVER"]:
+            if kernel_server_idx != my_kernel.master_server:
+                if my_args.set_master_server:
                     print "setting master_server of kernel to local kernel_server_idx"
-                    dc.execute("UPDATE kernel SET master_server=%s WHERE kernel_idx=%s", (kernel_server_idx,
-                                                                                                kernel_idx))
+                    my_kernel.master_server = kernel_server_idx
+                    my_kernel.save()
                 else:
                     print "server_device_idx for kernel_server differs from master_server from DB, exiting (override with --set-master-server)"
                     sys.exit(0)
@@ -1102,8 +1103,8 @@ def main_normal():
         else:
             print "Saving module_list to database: %s, %s" % (logging_tools.get_plural("module", len(act_mods)),
                                                               ", ".join(act_mods))
-            dc.execute("UPDATE kernel SET target_module_list='%s' WHERE kernel_idx=%d" % (",".join(act_mods),
-                                                                                                kernel_idx))
+            my_kernel.target_module_list = ",".join(act_mods)
+            my_kernel.save()
     if act_mods:
         all_mods, del_mods, fw_files = get_module_dependencies(my_args.kernel_dir, act_mods)
         all_mods = [x for x in all_mods if x not in MOD_REFUSE_LIST]
@@ -1127,8 +1128,8 @@ def main_normal():
     if my_kernel:
         base_mods = [".".join(os.path.basename(x).split(".")[0:-1]) for x in all_mods]
         base_mods.sort()
-        if kernel_stuff["module_list"]:
-            last_base_mods = [x.strip() for x in kernel_stuff["module_list"].split(",")]
+        if my_kernel.module_list:
+            last_base_mods = map(lambda x: x.strip(), my_kernel.module_list.split(","))
         else:
             last_base_mods = []
         if last_base_mods == base_mods:
@@ -1136,8 +1137,9 @@ def main_normal():
         else:
             print "Updating database (modules changed from %s to %s)..." % (last_base_mods and ", ".join(last_base_mods) or "<None>",
                                                                             base_mods and ", ".join(base_mods) or "<None>"),
-        dc.execute("UPDATE kernel SET module_list='%s', initrd_built=NOW() WHERE kernel_idx=%d" % (",".join(base_mods),
-                                                                                                         kernel_idx))
+        my_kernel.module_list = ",".join(base_mods)
+        my_kernel.initrd_build = datetime.datetime.now()
+        my_kernel.save()
         print "ok"
     if my_args.root_dir != "/":
         loc_src, loc_dst = (script, os.path.normpath("%s/%s" % (my_args.root_dir, os.path.basename(local_script))))
@@ -1296,11 +1298,10 @@ def main_normal():
                                        get_size_str(n_sl_size),
                                        logging_tools.get_diff_time_str(e_time - s_time))
     if my_kernel:
-        dc.execute("UPDATE kernel SET stage1_lo_present=%s, stage1_cpio_present=%s, stage1_cramfs_present=%s, stage2_present=%s WHERE kernel_idx=%s", (1,
-                                                                                                                                                       1,
-                                                                                                                                                       1,
-                                                                                                                                                       1,
-                                                                                                                                                       kernel_idx))
+        for stage1_flav in ["lo", "cpio", "cramfs"]:
+            setattr(my_kernel, "stage1_%s_present" % (stage1_flav), True)
+        my_kernel.stage2_present = True
+        my_kernel.save()
     # cleaning up
     if my_args.root_dir != "/":
         os.unlink(loc_dst)
