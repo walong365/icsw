@@ -652,6 +652,7 @@ class image(models.Model):
     architecture = models.ForeignKey("architecture")
     full_build = models.BooleanField()
     date = models.DateTimeField(auto_now_add=True)
+    enabled = models.BooleanField()
     class Meta:
         db_table = u'image'
 
@@ -731,6 +732,12 @@ class kernel(models.Model):
     stage1_cramfs_present = models.BooleanField()
     stage2_present = models.BooleanField()
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.kernel(
+            pk="%d" % (self.pk),
+            key="kernel__%d" % (self.pk),
+            name=self.name
+        )
     def __unicode__(self):
         return self.name
     class Meta:
@@ -1390,6 +1397,7 @@ class partition_table(models.Model):
     idx = models.AutoField(db_column="partition_table_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     description = models.CharField(max_length=255, blank=True)
+    enabled = models.BooleanField()
     valid = models.BooleanField()
     modify_bootloader = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
