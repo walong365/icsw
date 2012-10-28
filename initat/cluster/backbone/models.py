@@ -12,9 +12,13 @@ import re
 import ipvx_tools
 import logging_tools
 import pprint
+import pytz
+from django.conf import settings
 
 def only_wf_perms(in_list):
     return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
+
+cluster_timezone = pytz.timezone(settings.TIME_ZONE)
 
 class apc_device(models.Model):
     idx = models.AutoField(db_column="idx", primary_key=True)
@@ -338,6 +342,18 @@ class device(models.Model):
             key="dev__%d" % (self.pk),
             device_type="%d" % (self.device_type_id),
             device_group="%d" % (self.device_group_id),
+            new_kernel_id="%d" % (self.new_kernel_id or 0),
+            act_kernel_id="%d" % (self.act_kernel_id or 0),
+            stage1_flavour=unicode(self.stage1_flavour),
+            kernel_append=unicode(self.kernel_append),
+            # target state
+            target_state="%d" % (self.new_state_id or 0),
+            full_target_state="%d__%d" % (self.new_state_id or 0,
+                                          self.prod_link_id or 0),
+            boot_dev_name="%s" % (self.bootnetdevice.devname if self.bootnetdevice else "---"), 
+            boot_dev_macaddr="%s" % (self.bootnetdevice.macaddr if self.bootnetdevice else ""),
+            boot_dev_driver="%s" % (self.bootnetdevice.driver if self.bootnetdevice else ""),
+            greedy_mode="0" if not self.dhcp_mac else "1",
         )
         if full:
             r_xml.extend([
@@ -1725,6 +1741,12 @@ class status(models.Model):
                                  ("ins", "do_install"),
                                  ("clean", "is_clean")] if getattr(self, attr_name)]),
                              "(*)" if self.allow_boolean_modify else "")
+    def get_xml(self, prod_net=None):
+        return E.status(
+            unicode(self) if prod_net is None else "%s into %s" % (unicode(self), unicode(prod_net)),
+            pk="%d" % (self.pk),
+            prod_net="%d" % (0 if prod_net is None else prod_net.pk),
+            key="status__%d" % (self.pk))
     class Meta:
         db_table = u'status'
 
