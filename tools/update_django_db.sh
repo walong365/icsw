@@ -1,6 +1,6 @@
 #!/bin/bash
 
-C_DIR="/opt/python-init/lib/python/site-packages/init/cluster/"
+C_DIR="/opt/python-init/lib/python/site-packages/initat/cluster/"
 MIG_DIR="${C_DIR}/backbone/migrations/"
 if [ -d ${MIG_DIR} ] ; then
     echo "migration schema, migration directory is ${MIG_DIR}"
