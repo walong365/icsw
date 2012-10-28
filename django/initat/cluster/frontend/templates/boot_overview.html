@@ -29,13 +29,14 @@ DEVICES = undefined;
 UPDATE_PENDING = 0;
 // option dict
 OPTION_DICT = new Array();
+// XMLs for kernel, image, partition
+XML_DICT = new Array();
 
 function load_device_table() {
     load_devices(CUR_DEVICES);
 };
 
 function load_devices(sel_list) {
-    //console.log(sel_list);
     $.ajax({
         url     : "{% url device:get_group_tree %}",
         error   : handle_ajax_error,
@@ -50,6 +51,10 @@ function load_devices(sel_list) {
                     CUR_PURE_DEVICES.push($(this).attr("name"));
                 });
                 draw_table();
+                // redraw options
+                redraw_options("t");
+                // redraw options
+                redraw_options("k");
                 // call update_device_info after table draw
                 update_device_info();
             }
@@ -129,13 +134,23 @@ function update_device_info() {
                     $(xml).find("device").each(function() {
                         var cur_dev = $(this);
                         var dev_tr = b_table.find("tr#" + cur_dev.attr("key"));
+                        var dev_id = dev_tr.attr("id");
                         dev_tr.find("td#recv_str").text(cur_dev.attr("recvstate"));
                         dev_tr.find("td#req_str").text(cur_dev.attr("reqstate"));
                         dev_tr.find("td#network").text(cur_dev.attr("network"));
                         var net_state = cur_dev.attr("network_state");
                         dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok", "error", "warn").addClass(net_state);
                         if (OPTION_DICT["k"]) {
-                            console.log("kernel");
+                            var kernel_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_k']");
+                            set_kernel_option(cur_dev, kernel_tr);
+                        };
+                        if (OPTION_DICT["t"]) {
+                            var target_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_t']");
+                            set_target_option(cur_dev, target_tr);
+                        };
+                        if (OPTION_DICT["b"]) {
+                            var boot_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_b']");
+                            set_boot_option(cur_dev, boot_tr);
                         };
                     });
                 }
@@ -144,12 +159,141 @@ function update_device_info() {
     };
 };
 
+function set_boot_option(dev_xml, boot_tr) {
+    var dev_id = boot_tr.attr("id");
+    if (boot_tr.find(":disabled").length) {
+        var boot_dev_name = boot_tr.find("span#" + dev_id + "__boot_dev_name");
+        var boot_dev_macaddr = boot_tr.find("input#" + dev_id + "__boot_dev_macaddr");
+        var boot_dev_driver = boot_tr.find("input#" + dev_id + "__boot_dev_driver");
+        var boot_dev_greedy_mode = boot_tr.find("input#" + dev_id + "__greedy_mode");
+        boot_dev_name.text(dev_xml.attr("boot_dev_name"));
+        boot_dev_macaddr.val(dev_xml.attr("boot_dev_macaddr"));
+        boot_dev_driver.val(dev_xml.attr("boot_dev_driver"));
+        if (dev_xml.attr("greedy_mode") == 1) {
+            boot_dev_greedy_mode.attr({"checked" : "checked"});
+        } else {
+            boot_dev_greedy_mode.removeAttr("checked");
+        };
+        boot_dev_macaddr.removeAttr("disabled");
+        boot_dev_driver.removeAttr("disabled");
+        boot_dev_greedy_mode.removeAttr("disabled");
+        boot_dev_macaddr.bind("change", change_boot);
+        boot_dev_driver.bind("change", change_boot);
+        boot_dev_greedy_mode.bind("change", change_boot);
+    };
+};
+
+function change_boot(event) {
+    var el = $(event.target);
+    var boot_tr = el.parents("tr:first");
+    var dev_id = boot_tr.attr("id");
+    $.ajax({
+        url     : "{% url boot:set_boot %}",
+        data    : {
+            "dev_id"      : dev_id,
+            "boot_mac"    : boot_tr.find("input#" + dev_id + "__boot_dev_macaddr").val(),
+            "boot_driver" : boot_tr.find("input#" + dev_id + "__boot_dev_driver").val(),
+            "greedy_mode" : boot_tr.find("input#" + dev_id + "__greedy_mode:checked").length ? "1" : "0"
+        },
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+            }
+        }
+    });
+};
+
+function set_target_option(dev_xml, target_tr) {
+    var dev_id = target_tr.attr("id");
+    if (target_tr.find(":disabled").length) {
+        var target_state = target_tr.find("select#" + dev_id + "__target_state");
+        target_state.val(dev_xml.attr("full_target_state"));
+        target_state.removeAttr("disabled");
+        target_state.bind("change", change_target_state);
+    };
+};
+
+
+function change_target_state(event) {
+    var el = $(event.target);
+    var target_tr = el.parents("tr:first");
+    var dev_id = target_tr.attr("id");
+    $.ajax({
+        url     : "{% url boot:set_target_state %}",
+        data    : {
+            "dev_id"       : dev_id,
+            "target_state" : target_tr.find("select#" + dev_id + "__target_state").val()
+        },
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+            }
+        }
+    });
+};
+
+function set_kernel_option(dev_xml, kernel_tr) {
+    var dev_id = kernel_tr.attr("id");
+    // copy info from kernel_tr to table
+    if (kernel_tr.find(":disabled").length) {
+        var new_kernel = kernel_tr.find("select#" + dev_id + "__new_kernel");
+        var act_kernel = kernel_tr.find("span#" + dev_id + "__act_kernel");
+        var stage1_flav = kernel_tr.find("select#" + dev_id + "__kernel_flavour");
+        var kernel_append = kernel_tr.find("input#" + dev_id + "__kernel_append");
+        new_kernel.val(dev_xml.attr("new_kernel_id"));
+        kernel_append.val(dev_xml.attr("new_append"));
+        stage1_flav.val(dev_xml.attr("stage1_flavour"));
+        new_kernel.removeAttr("disabled");
+        stage1_flav.removeAttr("disabled");
+        kernel_append.removeAttr("disabled");
+        new_kernel.bind("change", change_kernel);
+        stage1_flav.bind("change", change_kernel);
+        kernel_append.bind("change", change_kernel);
+    };
+};
+
+function change_kernel(event) {
+    var el = $(event.target);
+    var kernel_tr = el.parents("tr:first");
+    var dev_id = kernel_tr.attr("id");
+    $.ajax({
+        url     : "{% url boot:set_kernel %}",
+        data    : {
+            "dev_id"         : dev_id,
+            "new_kernel"     : kernel_tr.find("select#" + dev_id + "__new_kernel").val(),
+            "kernel_flavour" : kernel_tr.find("select#" + dev_id + "__kernel_flavour").val(),
+            "kernel_append"  : kernel_tr.find("input#" + dev_id + "__kernel_append").val()
+        },
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+            }
+        }
+    });
+};
+
 function change_option(event) {
     var el = $(event.target);
     var opt = el.attr("id").split("_")[1];
     var checked = el.is(":checked");
     OPTION_DICT[opt] = checked;
-    redraw_options(opt);
+    if (checked) {
+        $.ajax({
+            url     : "{% url boot:get_addon_info %}",
+            data    : {
+                "type" : opt
+            },
+            error   : handle_ajax_error,
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    XML_DICT[opt] = xml;
+                    redraw_options(opt);
+                }
+            }
+        });
+    } else {
+        redraw_options(opt);
+    };
 };
 
 function redraw_options(opt) {
@@ -157,12 +301,83 @@ function redraw_options(opt) {
         // add lines
         $("table#boot").find("tr[btype='device']").each(function() {
             var dev_tr = $(this);
+            var dev_id = dev_tr.attr("id");
             var new_tr = $("<tr>").attr({
                 "btype" : "opt_" + opt,
-                "id"    : dev_tr.attr("id")
+                "id"    : dev_id
             });
             dev_tr.after(new_tr);
-            new_tr.append($("<td>").text("kernel"));
+            first_td = $("<td>");
+            new_tr.append(first_td);
+            switch (opt) {
+                case "k":
+                    first_td.attr({"colspan" : "5"});
+                    first_td.append("kernel:");
+                    var kernel_sel = $("<select>").attr({
+                        "disabled" : "disabled",
+                        "id"       : dev_id + "__new_kernel"
+                    });
+                    kernel_sel.append($("<option>").attr({"value" : "0"}).text("not set"));
+                    $(XML_DICT["k"]).find("kernel").each(function() {
+                        var cur_kernel = $(this);
+                        kernel_sel.append($("<option>").attr({"value" : cur_kernel.attr("pk")}).text(cur_kernel.attr("name")));
+                    });
+                    first_td.append(kernel_sel);
+                    first_td.append(", actual kernel: ").append($("<span>").attr({
+                        "id" : dev_id + "__act_kernel"
+                    }));
+                    first_td.append(", stage 1 flavour : ");
+                    var stage1_flav = $("<select>").attr({
+                        "disabled" : "disabled",
+                        "id"       : dev_id + "__kernel_flavour"
+                    });
+                    stage1_flav.append($("<option>").attr({"value" : "none"}).text("not set"));
+                    stage1_flav.append($("<option>").attr({"value" : "cpio"}).text("CPIO"));
+                    stage1_flav.append($("<option>").attr({"value" : "cramfs"}).text("CramFS"));
+                    stage1_flav.append($("<option>").attr({"value" : "lo"}).text("ext2 via Loopback"));
+                    first_td.append(stage1_flav);
+                    first_td.append(", kernel append:");
+                    first_td.append($("<input>").attr({
+                        "type"     : "text",
+                        "id"       : dev_id + "__kernel_append",
+                        "disabled" : "disabled"}));
+                    break;
+                case "t":
+                    first_td.attr({"colspan" : "5"});
+                    first_td.append("target state:");
+                    var target_sel = $("<select>").attr({
+                        "disabled" : "disabled",
+                        "id"       : dev_id + "__target_state"
+                    });
+                    target_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
+                    $(XML_DICT["t"]).find("status").each(function() {
+                        var cur_tstate = $(this);
+                        target_sel.append($("<option>").attr({"value" : cur_tstate.attr("pk") + "__" + cur_tstate.attr("prod_net")}).text(cur_tstate.text()));
+                    });
+                    first_td.append(target_sel);
+                    break;
+                case "b":
+                    first_td.attr({"colspan" : "5"});
+                    first_td.append("MAC Address of bootdevice ");
+                    first_td.append($("<span>").attr({
+                        "id" : dev_id + "__boot_dev_name"}).text("---"));
+                    first_td.append(":");
+                    first_td.append($("<input>").attr({
+                        "id"       : dev_id + "__boot_dev_macaddr",
+                        "type"     : "text",
+                        "disabled" : "disabled"}));
+                    first_td.append(", driver: ");
+                    first_td.append($("<input>").attr({
+                        "id"       : dev_id + "__boot_dev_driver",
+                        "type"     : "text",
+                        "disabled" : "disabled"}));
+                    first_td.append(", greedy mode: ");
+                    first_td.append($("<input>").attr({
+                        "id"       : dev_id + "__greedy_mode",
+                        "type"     : "checkbox",
+                        "disabled" : "disabled"}));
+                    break;
+            };
             force_update_info();
         });
     } else {

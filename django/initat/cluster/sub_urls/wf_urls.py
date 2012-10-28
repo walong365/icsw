@@ -47,9 +47,13 @@ config_patterns = patterns(
 
 boot_patterns = patterns(
     "initat.cluster.frontend",
-    url("^show_boot$"      , "boot_views.show_boot"       , name="show_boot"),
-    url("^get_html_options", "boot_views.get_html_options", name="get_html_options"),
-    url("^get_boot_info$"  , "boot_views.get_boot_info"   , name="get_boot_info"),
+    url("^show_boot$"          , "boot_views.show_boot"       , name="show_boot"),
+    url("^xml/get_options"     , "boot_views.get_html_options", name="get_html_options"),
+    url("^xml/get_addon_info$" , "boot_views.get_addon_info"  , name="get_addon_info"),
+    url("^xml/get_boot_info$"  , "boot_views.get_boot_info"   , name="get_boot_info"),
+    url("^xml/set_kernel"      , "boot_views.set_kernel"      , name="set_kernel"),
+    url("^xml/set_target_state", "boot_views.set_target_state", name="set_target_state"),
+    url("^xml/set_boot"        , "boot_views.set_boot"        , name="set_boot"),
 )
 
 device_patterns = patterns(
