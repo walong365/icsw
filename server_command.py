@@ -307,6 +307,8 @@ class srv_command(object):
         return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)
     def __unicode__(self):
         return etree.tostring(self.__tree, encoding=unicode)
+    def tostring(self, **kwargs):
+        return etree.tostring(self.__tree, **kwargs)
     def __del__(self):
         srv_command.srvc_open -= 1
         

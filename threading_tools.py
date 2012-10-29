@@ -1114,6 +1114,7 @@ class process_pool(object):
         # internal exit-function for terminating processes
         self.register_func("process_exit", self._process_exit_zmq)
         self.register_func("process_start", self._process_start_zmq)
+        self.register_func("process_exception", self._process_exception)
         # flags for exiting / loop-control
         self.__flags = {"run_flag"                  : True,
                         "signal_handlers_installed" : False,
@@ -1123,6 +1124,9 @@ class process_pool(object):
         self.process_init()
         self.set_stack_size(kwargs.get("stack_size", DEFAULT_STACK_SIZE))
         self.__processes_stopped = set()
+    @property
+    def processes(self):
+        return self.__processes
     @property
     def loop_granularity(self):
         return self.__loop_granularity
@@ -1317,6 +1321,10 @@ class process_pool(object):
     def _process_start_zmq(self, t_name, t_pid, *args):
         self.log("process %s (%d) started" % (t_name, t_pid))
         self.process_start(t_name, t_pid)
+    def _process_exception(self, t_name, t_pid, *args):
+        self.log("process %s (pid %d) exception: %s" % (t_name, t_pid, unicode(args[0])),
+                 logging_tools.LOG_LEVEL_CRITICAL)
+        self["exit_requested"] = True
     def _process_exit(self, t_name, t_pid):
         self.__processes_running -= 1
         if t_pid:

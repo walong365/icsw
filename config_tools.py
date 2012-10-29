@@ -34,7 +34,7 @@ import configfile_old
 import array
 import process_tools
 import netifaces
-from init.cluster.backbone.models import config, device, net_ip, device_config, \
+from initat.cluster.backbone.models import config, device, net_ip, device_config, \
      hopcount, device_group
 from django.db.models import Q
 
