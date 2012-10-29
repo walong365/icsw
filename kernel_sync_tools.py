@@ -525,6 +525,7 @@ class kernel_helper(object):
             new_k = kernel()
             for key, value in self.__values.iteritems():
                 setattr(new_k, key, value)
+            new_k.enabled = True
             new_k.save()
             self.__db_kernel = new_k
             self.log("inserted new kernel at idx %d" % (self.__db_kernel.pk),
@@ -534,8 +535,7 @@ class kernel_helper(object):
                 version=self.__values["version"],
                 release=self.__values["release"],
                 build_machine=self.__values["build_machine"],
-                device=self.__values["device"],
-                enabled=True)
+                device=self.__values["device"])
             new_kb.save()
             self.log("inserted kernel_build at idx %d" % (new_kb.pk))
         self.__option_dict["database"] = True

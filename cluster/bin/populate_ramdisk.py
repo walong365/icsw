@@ -65,8 +65,8 @@ stage1_file_dict = {0 : ["inetd", "xinetd", "in.rshd", "tcpd", "in.rlogind", "wh
                          "tar", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "rm", "chmod", "basename",
                          "sed", "dmesg", "ping", "mknod", "true", "false", "logger", "modprobe", "bash", "load_firmware.sh",
                          "lsmod", "depmod", "insmod", "mkfs.ext2",
-                         "ifconfig", "pivot_root", "switch_root", "init", "tell_mother", "bzip2", "bunzip2", "cut", "tr", "chroot",
-                         "killall", "seq", "hoststatus", "chown", "ldconfig",
+                         "ifconfig", "pivot_root", "switch_root", "init", "tell_mother_zmq", "bzip2", "bunzip2", "cut", "tr", "chroot",
+                         "killall", "seq", "hoststatus_zmq", "chown", "ldconfig",
                          "df", "wc", "tftp", "mkfifo", "sleep", "reboot", "stty", "reset", "du", "tail", "lspci", "tee"]}
 
 stage2_dir_dict = {0 : ["sys",
@@ -81,7 +81,7 @@ stage2_file_dict = {0 : ["inetd", "xinetd", "mkfs.xfs", "rmmod.old", "lsmod.old"
                          "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
                          "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "udevadm",
                          "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
-                         "reboot", "halt", "shutdown", "init", "route", "tell_mother", "date", "tune2fs",
+                         "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
                          ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
                          "seq", "tcpd", "hoststatus", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
                          "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty", "reset", "id", "lspci"]}
@@ -98,7 +98,7 @@ stageloc_file_dict = {0 : ["inetd", "xinetd", "mkfs.xfs", "rmmod.old", "lsmod.ol
                            "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
                            "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "pivot_root",
                            "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
-                           "reboot", "halt", "shutdown", "init", "route", "tell_mother", "date", "tune2fs",
+                           "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
                            ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
                            "seq", "tcpd", "hoststatus", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
                            "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty", "reset", "id", "lspci"]}
@@ -279,6 +279,8 @@ def get_lib_list(in_f):
             new_lib = "/lib/%s" % (lib.split("/")[-1])
         elif lib.startswith("/lib64/tls"):
             new_lib = "/lib64/%s" % (lib.split("/")[-1])
+        elif lib.startswith("/opt/cluster/lib64/"):
+            new_lib = "/lib64/%s" % (lib.split("/")[-1])
         if new_lib:
             if new_lib not in lib_l:
                 lib_l += [new_lib]
@@ -286,12 +288,12 @@ def get_lib_list(in_f):
     lib_l2 = []
     for lib in lib_l:
         while os.path.islink(lib):
-            next = os.readlink(lib)
-            if not next.startswith("/"):
-                next = os.path.normpath("%s/%s" % (os.path.dirname(lib), next))
+            next_link = os.readlink(lib)
+            if not next_link.startswith("/"):
+                next_link = os.path.normpath("%s/%s" % (os.path.dirname(lib), next_link))
             if verbose > 1:
-                print "  following link from %s to %s" % (lib, next)
-            lib = next
+                print "  following link from %s to %s" % (lib, next_link)
+            lib = next_link
         lib_l2 += [lib]
     lib_l2 = [norm_path(x) for x in lib_l2]
     lib_l2.sort()
@@ -405,10 +407,11 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                 print "created directory %s (mode %o)" % (dir_name, dir_mode)
             os.mkdir(dir_name)
             os.chmod(dir_name, dir_mode)
-    for file_name, file_type, file_mode, major, minor, file_owner, file_group in [("/dev/ram0"   , "b", 0640, 1, 0, 0, 0),
-                                                                                  ("/dev/ram1"   , "b", 0640, 1, 1, 0, 0),
-                                                                                  ("/dev/ram2"   , "b", 0640, 1, 2, 0, 0),
-                                                                                  ("/dev/console", "c", 0600, 5, 1, 0, 0)]:
+    for file_name, file_type, file_mode, major, minor, file_owner, file_group in [
+        ("/dev/ram0"   , "b", 0640, 1, 0, 0, 0),
+        ("/dev/ram1"   , "b", 0640, 1, 1, 0, 0),
+        ("/dev/ram2"   , "b", 0640, 1, 2, 0, 0),
+        ("/dev/console", "c", 0600, 5, 1, 0, 0)]:
         if not os.path.exists(file_name):
             if file_type == "b":
                 os.mknod(file_name, file_mode | stat.S_IFBLK, os.makedev(major, minor))
@@ -416,22 +419,24 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                 os.mknod(file_name, file_mode | stat.S_IFCHR, os.makedev(major, minor))
             os.chown(file_name, file_owner, file_group)
             os.chmod(file_name, file_mode)
-            print "created %s device %s (mode %o, major.minor %d.%d, owner.group %d.%d)" % ("block" if file_type == "b" else "char",
-                                                                                            file_name,
-                                                                                            file_mode,
-                                                                                            major,
-                                                                                            minor,
-                                                                                            file_owner,
-                                                                                            file_group)
+            print "created %s device %s (mode %o, major.minor %d.%d, owner.group %d.%d)" % (
+                "block" if file_type == "b" else "char",
+                file_name,
+                file_mode,
+                major,
+                minor,
+                file_owner,
+                file_group)
             # check for block file
             
     for dev_file in ["console", "ram", "ram0", "ram1", "ram2", "null", "zero", "fd0", "xconsole", "ptmx"]:
         new_file_dict[os.path.normpath("/dev/%s" % (dev_file))] = "E"
     for etc_file in ["protocols", "host.conf", "login.defs"]:
         new_file_dict[os.path.normpath("/etc/%s" % (etc_file))] = "W"
-    print "Number of dirs / files / libraries: %d / %d / %d" % (len(dir_list),
-                                                                len(new_file_dict.keys()),
-                                                                len(new_libs))
+    print "Number of dirs / files / libraries: %d / %d / %d" % (
+        len(dir_list),
+        len(new_file_dict.keys()),
+        len(new_libs))
     print "Starting creating of directory-history under '%s' ..." % (temp_dir)
     for orig_dir in [norm_path("/%s" % (x)) for x in dir_list if x]:
         path_parts = [x for x in orig_dir.split("/") if x]
@@ -517,13 +522,16 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
 #                     os.chdir(act_pwd)
     new_libs = lib_dict.keys()
     new_libs.sort()
-    act_lib, num_libs = (0, len(new_libs))
+    num_libs = len(new_libs)
     if verbose:
         print "Copying libraries ..."
-    for lib_name in new_libs:
-        act_lib += 1
+    for act_lib, lib_name in enumerate(new_libs, start=1):
         if os.path.isfile(lib_name):
-            dest_file = norm_path("%s/%s" % (temp_dir, lib_name))
+            if lib_name.startswith("/opt/cluster"):
+                target_lib_name = "/%s" % (lib_name.split("/", 3)[3])
+            else:
+                target_lib_name = lib_name
+            dest_file = norm_path("%s/%s" % (temp_dir, target_lib_name))
             if os.path.islink(lib_name):
                 os.symlink(os.readlink(lib_name), eliminate_symlinks(temp_dir, dest_file))
             elif os.path.isfile(lib_name):
@@ -531,7 +539,13 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                     l_size = os.stat(lib_name)[stat.ST_SIZE]
                     free_stat = os.statvfs(temp_dir)
                     l_free = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
-                    print "%3d of %3d, %s, %s free, lib %s" % (act_lib, num_libs, get_size_str(l_size), get_size_str(l_free), lib_name)
+                    print "%3d of %3d, %s, %s free, lib %s%s" % (
+                        act_lib,
+                        num_libs,
+                        get_size_str(l_size),
+                        get_size_str(l_free),
+                        lib_name,
+                        " (map to %s)" % (target_lib_name) if target_lib_name != lib_name else "")
                 file_list.append(lib_name)
                 shutil.copy2(lib_name, eliminate_symlinks(temp_dir, dest_file))
                 if os.path.isfile(dest_file) and not os.path.islink(dest_file):
@@ -556,124 +570,127 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         if os.path.isfile(pci_f_name):
             break
     # generate special files
-    sfile_dict = {"/etc/passwd" : ["root::0:0:root:/root:%s" % (def_shell),
-                                   "bin::1:1:bin:/bin/:%s" % (def_shell),
-                                   "daemon::2:2:daemon:/sbin:%s" % (def_shell)],
-                  "/etc/shadow" : ["root:GobeG9LDR.gqU:12198:0:10000::::",
-                                   "bin:*:8902:0:10000::::"],
-                  "/etc/services" : ["nfs     2049/tcp",
-                                     "nfs     2049/udp",
-                                     "ntp      123/tcp",
-                                     "ntp      123/udp",
-                                     "time      37/tcp",
-                                     "time      37/udp",
-                                     "syslog   514/udp",
-                                     "shell    514/tcp",
-                                     "login    513/tcp",
-                                     "tftp      69/udp"],
-                  "/etc/group" : ["root:*:0:root",
-                                  "bin:*:1:root,bin,daemon",
-                                  "tty:*:5:",
-                                  "wheel:x:10:"],
-                  "/etc/nsswitch.conf" : ["passwd:     files",
-                                          "group:      files",
-                                          "hosts:      files",
-                                          "networks:   files",
-                                          "services:   files",
-                                          "protocols:  files",
-                                          "rpc:        files",
-                                          "ethers:     files",
-                                          "netmasks:   files",
-                                          "netgroup:   files",
-                                          "publickey:  files",
-                                          "bootparams: files",
-                                          "aliases:    files",
-                                          "shadow:     files"],
-                  "/etc/pam.d/other" : ["auth     required pam_permit.so",
-                                        "account  required pam_permit.so",
-                                        "password required pam_permit.so",
-                                        "session  required pam_permit.so"],
-                  "/etc/inetd.conf" : ["shell stream tcp nowait root /usr/sbin/tcpd in.rshd -L",
-                                       "login stream tcp nowait root /usr/sbin/tcpd in.rlogind"],
-                  "/etc/hosts.allow" : ["ALL: ALL"],
-                  "/etc/ld.so.conf" : ["/usr/x86_64-suse-linux/lib64",
-                                       "/usr/x86_64-suse-linux/lib",
-                                       "/usr/local/lib",
-                                       "/lib64",
-                                       "/lib",
-                                       "/lib64/tls",
-                                       "/lib/tls",
-                                       "/usr/lib64",
-                                       "/usr/lib",
-                                       "/usr/local/lib64"],
-                  "/etc/netconfig" : ['udp        tpi_clts      v     inet     udp     -       -',
-                                      'tcp        tpi_cots_ord  v     inet     tcp     -       -',
-                                      'udp6       tpi_clts      v     inet6    udp     -       -',
-                                      'tcp6       tpi_cots_ord  v     inet6    tcp     -       -',
-                                      'rawip      tpi_raw       -     inet      -      -       -',
-                                      'local      tpi_cots_ord  -     loopback  -      -       -',
-                                      'unix       tpi_cots_ord  -     loopback  -      -       -']}
+    sfile_dict = {
+        "/etc/passwd" : ["root::0:0:root:/root:%s" % (def_shell),
+                         "bin::1:1:bin:/bin/:%s" % (def_shell),
+                         "daemon::2:2:daemon:/sbin:%s" % (def_shell)],
+        "/etc/shadow" : ["root:GobeG9LDR.gqU:12198:0:10000::::",
+                         "bin:*:8902:0:10000::::"],
+        "/etc/services" : ["nfs     2049/tcp",
+                           "nfs     2049/udp",
+                           "ntp      123/tcp",
+                           "ntp      123/udp",
+                           "time      37/tcp",
+                           "time      37/udp",
+                           "syslog   514/udp",
+                           "shell    514/tcp",
+                           "login    513/tcp",
+                           "tftp      69/udp"],
+        "/etc/group" : ["root:*:0:root",
+                        "bin:*:1:root,bin,daemon",
+                        "tty:*:5:",
+                        "wheel:x:10:"],
+        "/etc/nsswitch.conf" : ["passwd:     files",
+                                "group:      files",
+                                "hosts:      files",
+                                "networks:   files",
+                                "services:   files",
+                                "protocols:  files",
+                                "rpc:        files",
+                                "ethers:     files",
+                                "netmasks:   files",
+                                "netgroup:   files",
+                                "publickey:  files",
+                                "bootparams: files",
+                                "aliases:    files",
+                                "shadow:     files"],
+        "/etc/pam.d/other" : ["auth     required pam_permit.so",
+                              "account  required pam_permit.so",
+                              "password required pam_permit.so",
+                              "session  required pam_permit.so"],
+        "/etc/inetd.conf" : ["shell stream tcp nowait root /usr/sbin/tcpd in.rshd -L",
+                             "login stream tcp nowait root /usr/sbin/tcpd in.rlogind"],
+        "/etc/hosts.allow" : ["ALL: ALL"],
+        "/etc/ld.so.conf" : ["/usr/x86_64-suse-linux/lib64",
+                             "/usr/x86_64-suse-linux/lib",
+                             "/usr/local/lib",
+                             "/lib64",
+                             "/lib",
+                             "/lib64/tls",
+                             "/lib/tls",
+                             "/usr/lib64",
+                             "/usr/lib",
+                             "/usr/local/lib64"],
+        "/etc/netconfig" : ['udp        tpi_clts      v     inet     udp     -       -',
+                            'tcp        tpi_cots_ord  v     inet     tcp     -       -',
+                            'udp6       tpi_clts      v     inet6    udp     -       -',
+                            'tcp6       tpi_cots_ord  v     inet6    tcp     -       -',
+                            'rawip      tpi_raw       -     inet      -      -       -',
+                            'local      tpi_cots_ord  -     loopback  -      -       -',
+                            'unix       tpi_cots_ord  -     loopback  -      -       -']}
     if os.path.isfile(pci_f_name):
         sfile_dict["/usr/share/pci.ids"] = file(pci_f_name, "r").read().split("\n")
-    sfile_dict["/etc/xinetd.conf"] = {1 : ["defaults",
-                                           "{",
-                                           "    instances       = 60",
-                                           "    log_type        = FILE /tmp/syslog_log",
-                                           "    cps             = 25 30",
-                                           "}",
-                                           "service login",
-                                           "{",
-                                           "    disable          = no",
-                                           "    socket_type      = stream",
-                                           "    protocol         = tcp",
-                                           "    wait             = no",
-                                           "    user             = root",
-                                           "    log_on_success  += USERID",
-                                           "    log_on_failure  += USERID",
-                                           "    server           = /usr/sbin/in.rlogind",
-                                           "}",
-                                           "service shell",
-                                           "{",
-                                           "    disable          = no",
-                                           "    socket_type      = stream",
-                                           "    protocol         = tcp",
-                                           "    wait             = no",
-                                           "    user             = root",
-                                           "    log_on_success  += USERID",
-                                           "    log_on_failure  += USERID",
-                                           "    server           = /usr/sbin/in.rshd",
-                                           "}"],
-                                       2 : ["defaults",
-                                           "{",
-                                           "    instances       = 60",
-                                           "    log_type        = SYSLOG authpriv",
-                                           "    log_on_success  = HOST PID",
-                                           "    log_on_failure  = HOST",
-                                           "    cps             = 25 30",
-                                           "}",
-                                           "service login",
-                                           "{",
-                                           "    disable          = no",
-                                           "    socket_type      = stream",
-                                           "    protocol         = tcp",
-                                           "    wait             = no",
-                                           "    user             = root",
-                                           "    log_on_success  += USERID",
-                                           "    log_on_failure  += USERID",
-                                           "    server           = /usr/sbin/in.rlogind",
-                                           "}",
-                                           "service shell",
-                                           "{",
-                                           "    disable          = no",
-                                           "    socket_type      = stream",
-                                           "    protocol         = tcp",
-                                           "    wait             = no",
-                                           "    user             = root",
-                                           "    log_on_success  += USERID",
-                                           "    log_on_failure  += USERID",
-                                           "    server           = /usr/sbin/in.rshd",
-                                           "}"],
-                                       3 : []}[stage_num]
+    sfile_dict["/etc/xinetd.conf"] = {
+        1 : [
+            "defaults",
+            "{",
+            "    instances       = 60",
+            "    log_type        = FILE /tmp/syslog_log",
+            "    cps             = 25 30",
+            "}",
+            "service login",
+            "{",
+            "    disable          = no",
+            "    socket_type      = stream",
+            "    protocol         = tcp",
+            "    wait             = no",
+            "    user             = root",
+            "    log_on_success  += USERID",
+            "    log_on_failure  += USERID",
+            "    server           = /usr/sbin/in.rlogind",
+            "}",
+            "service shell",
+            "{",
+            "    disable          = no",
+            "    socket_type      = stream",
+            "    protocol         = tcp",
+            "    wait             = no",
+            "    user             = root",
+            "    log_on_success  += USERID",
+            "    log_on_failure  += USERID",
+            "    server           = /usr/sbin/in.rshd",
+            "}"],
+        2 : ["defaults",
+             "{",
+             "    instances       = 60",
+             "    log_type        = SYSLOG authpriv",
+             "    log_on_success  = HOST PID",
+             "    log_on_failure  = HOST",
+             "    cps             = 25 30",
+             "}",
+             "service login",
+             "{",
+             "    disable          = no",
+             "    socket_type      = stream",
+             "    protocol         = tcp",
+             "    wait             = no",
+             "    user             = root",
+             "    log_on_success  += USERID",
+             "    log_on_failure  += USERID",
+             "    server           = /usr/sbin/in.rlogind",
+             "}",
+             "service shell",
+             "{",
+             "    disable          = no",
+             "    socket_type      = stream",
+             "    protocol         = tcp",
+             "    wait             = no",
+             "    user             = root",
+             "    log_on_success  += USERID",
+             "    log_on_failure  += USERID",
+             "    server           = /usr/sbin/in.rshd",
+             "}"],
+        3 : []}[stage_num]
     if add_modules:
         sfile_dict["/etc/add_modules"] = ["%s %s" % (mod_name, mod_option) for mod_name, mod_option in add_modules]
     for sfile_name, sfile_content in sfile_dict.iteritems():
