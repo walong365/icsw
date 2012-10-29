@@ -52,6 +52,8 @@ import threading_tools
 import net_tools
 import config_tools
 import kernel_sync_tools
+from lxml import etree
+from lxml.builder import E
 # SNMP imports
 import pkg_resources
 pkg_resources.require("pyasn1")
@@ -2886,7 +2888,7 @@ class server_process(threading_tools.process_pool):
         # prepare directories
         self._prepare_directories()
         # check netboot functionality
-        self._check_netboot_functionality()
+        init_ok = self._check_netboot_functionality()
         # check nfs exports
         self._check_nfs_exports()
         # modify syslog config
@@ -2917,6 +2919,8 @@ class server_process(threading_tools.process_pool):
             self.send_to_process("control", "alter_macaddr")
             #self.__log_queue.put(("delay_request", (self.get_own_queue(), "restart_hoststatus", 5)))
         else:
+            init_ok = False
+        if not init_ok:
             self._int_error("bind problem")
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
@@ -2989,7 +2993,6 @@ class server_process(threading_tools.process_pool):
             if data[0].endswith("syslog_scan"):
                 self.send_to_process("control", "syslog_line", data[1])
             else:
-                print "**", data[1]
                 try:
                     srv_com = server_command.srv_command(source=data[1])
                 except:
@@ -2997,18 +3000,36 @@ class server_process(threading_tools.process_pool):
                     zmq_sock.send_unicode(data[0], zmq.SNDMORE)
                     zmq_sock.send_unicode("error interpreting")
                 else:
-                    cur_com = srv_com["command"].text
-                    srv_com.update_source()
-                    if cur_com == "status":
-                        self.send_to_process(
-                            "control",
-                            cur_com,
-                            data[0],
-                            unicode(srv_com))
+                    try:
+                        cur_com = srv_com["command"].text
+                    except:
+                        if srv_com.tree.find("nodeinfo") is not None:
+                            node_text = srv_com.tree.findtext("nodeinfo")
+                            t_proc = "control"
+                            cur_com = "nodeinfo"
+                            self.log("got command %s, sending to %s process" % (cur_com, t_proc))
+                            self.send_to_process(
+                                t_proc,
+                                cur_com, 
+                                data[0],
+                                node_text)
+                        else:
+                            self.log("got command '%s' from %s, ignoring" % (etree.tostring(srv_com.tree), data[0]),
+                                     logging_tools.LOG_LEVEL_ERROR)
                     else:
-                        srv_com.set_result("unknown command '%s'" % (cur_com), server_command.SRV_REPLY_STATE_ERROR)
-                        zmq_sock.send_unicode(data[0], zmq.SNDMORE)
-                        zmq_sock.send_unicode(unicode(srv_com))
+                        srv_com.update_source()
+                        if cur_com in ["status", "refresh", "alter_macaddr"]:
+                            t_proc = "control"
+                            self.log("got command %s, sending to %s process" % (cur_com, t_proc))
+                            self.send_to_process(
+                                t_proc,
+                                cur_com,
+                                data[0],
+                                unicode(srv_com))
+                        else:
+                            srv_com.set_result("unknown command '%s'" % (cur_com), server_command.SRV_REPLY_STATE_ERROR)
+                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                            zmq_sock.send_unicode(unicode(srv_com))
         else:
             self.log("wrong number of data chunks (%d != 2)" % (len(data)),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -3270,6 +3291,7 @@ class server_process(threading_tools.process_pool):
             ("PXEBOOT", configfile.bool_c_var(False, source="default")),
             ("XENBOOT", configfile.bool_c_var(False, source="default"))])
         pxe_paths = ["%s/share/mother/syslinux/pxelinux.0" % (global_config["CLUSTER_DIR"])]
+        nb_ok = False
         for pxe_path in pxe_paths:
             if os.path.isfile(pxe_path):
                 try:
@@ -3281,9 +3303,12 @@ class server_process(threading_tools.process_pool):
                         ("PXEBOOT"   , configfile.bool_c_var(True, source="filesystem")),
                         ("PXELINUX_0", configfile.blob_c_var(pxelinux_0, source="filesystem"))])
                     self.log("Found pxelinux.0 in %s" % (pxe_path))
+                    nb_ok = True
                     break
             else:
                 self.log("Found no pxelinux.0 in %s" % (pxe_path), logging_tools.LOG_LEVEL_WARN)
+        if not nb_ok:
+            self.log("cannot provide netboot functionality", logging_tools.LOG_LEVEL_CRITICAL)
         mb32_paths = ["%s/share/mother/syslinux/mboot.c32" % (global_config["CLUSTER_DIR"])]
         for mb32_path in mb32_paths:
             if os.path.isfile(mb32_path):
@@ -3299,6 +3324,7 @@ class server_process(threading_tools.process_pool):
                     break
             else:
                 self.log("Found no mboot.c32 in %s" % (mb32_path), logging_tools.LOG_LEVEL_WARN)
+        return nb_ok
 
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, db_con, g_config, loc_config):

@@ -100,7 +100,7 @@ int main (int argc, char** argv) {
     host_b = (char*)malloc(HOSTB_SIZE);
     dest_host = (char*)malloc(HOSTB_SIZE);
     if (!host_b) exit(ENOMEM);
-    host_b[0] = 0;
+    dest_host[0] = 0;
     // get uts struct
     uname(&myuts);
     sprintf(dest_host, "localhost");
@@ -112,7 +112,7 @@ int main (int argc, char** argv) {
                 port = strtol(optarg, NULL, 10);
                 break;
             case 'm':
-                sprintf(host_b, "%s%s", host_b, optarg);
+                sprintf(dest_host, optarg);
                 //h = gethostbyname(optarg);
                 //if (!h) err_exit("Can't resolve hostname");
                 break;
@@ -131,7 +131,7 @@ int main (int argc, char** argv) {
             case 'h':
             case '?':
                 printf("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-w] [-q] command\n", basename(argv[0]));
-                printf("  defaults: port=%d, timeout=%d\n", port, timeout);
+                printf("  defaults: port=%d, timeout=%d, dest_host=%s\n", port, timeout, dest_host);
                 free(host_b);
                 exit(STATE_CRITICAL);
                 break;
@@ -147,6 +147,8 @@ int main (int argc, char** argv) {
         free(host_b);
         exit(ENOMEM);
     }
+    // mimic XML
+    sprintf(sendbuff, "<?xml version='1.0'?><ics_batch><nodeinfo>");
     for (i = optind; i < argc; i++) {
         // skip first space
         if (i > optind) sprintf(sendbuff, "%s ", sendbuff);
@@ -156,6 +158,7 @@ int main (int argc, char** argv) {
 //        while (*act_source) *act_pos++=*act_source++;
 //        *act_pos = 0;
     }
+    sprintf(sendbuff, "%s</nodeinfo></ics_batch>", sendbuff);
     sendbuff[SENDBUFF_SIZE] = '\0';/* terminate optarg for secure use of strlen() */
     if (!strlen(sendbuff)) err_exit("Nothing to send!\n");
     //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));
@@ -180,6 +183,10 @@ int main (int argc, char** argv) {
     if ((ret = sigaction(SIGALRM, (struct sigaction*)alrmsigact, NULL))<0) {
         retcode = err_exit("sigaction");
     } else {
+        if (verbose) {
+            printf("send buffer has %d bytes, nodename is '%s', servicename is '%s', identity_string is '%s', pid is %d\n", strlen(sendbuff), myuts.nodename, SERVICE_NAME, identity_str, getpid());
+            printf("target is '%s'\n", host_b);
+        };
         getitimer(ITIMER_REAL, &mytimer);
         mytimer.it_value.tv_sec = timeout;
         mytimer.it_value.tv_usec = 0;
@@ -187,9 +194,6 @@ int main (int argc, char** argv) {
         // send
         zmq_connect(requester, host_b);
         zmq_msg_t request;
-        if (verbose) {
-            printf("send buffer has %d bytes, nodename is '%s', servicename is '%s', identity_string is '%s', pid is %d\n", strlen(sendbuff), myuts.nodename, SERVICE_NAME, identity_str, getpid());
-        };
         zmq_msg_init_size (&request, strlen(sendbuff));
         memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
         zmq_send(requester, &request, 0);
@@ -204,6 +208,7 @@ int main (int argc, char** argv) {
         recv_buffer[reply_size] = 0;
         zmq_msg_close(&reply);
         printf("%s\n", recv_buffer);
+        retcode = STATE_OK;
     }
     zmq_close(requester);
     zmq_term(context);
