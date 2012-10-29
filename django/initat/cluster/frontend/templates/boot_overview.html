@@ -53,7 +53,7 @@ function load_devices(sel_list) {
                 draw_table();
                 // redraw options
                 redraw_options("t");
-                // redraw options
+                redraw_options("b");
                 redraw_options("k");
                 // call update_device_info after table draw
                 update_device_info();
@@ -161,12 +161,12 @@ function update_device_info() {
 
 function set_boot_option(dev_xml, boot_tr) {
     var dev_id = boot_tr.attr("id");
+    var boot_dev_name = boot_tr.find("span#" + dev_id + "__boot_dev_name");
+    var boot_dev_macaddr = boot_tr.find("input#" + dev_id + "__boot_dev_macaddr");
+    var boot_dev_driver = boot_tr.find("input#" + dev_id + "__boot_dev_driver");
+    var boot_dev_greedy_mode = boot_tr.find("input#" + dev_id + "__greedy_mode");
+    var boot_dev_dhcp = boot_tr.find("input#" + dev_id + "__write_dhcp");
     if (boot_tr.find(":disabled").length) {
-        var boot_dev_name = boot_tr.find("span#" + dev_id + "__boot_dev_name");
-        var boot_dev_macaddr = boot_tr.find("input#" + dev_id + "__boot_dev_macaddr");
-        var boot_dev_driver = boot_tr.find("input#" + dev_id + "__boot_dev_driver");
-        var boot_dev_greedy_mode = boot_tr.find("input#" + dev_id + "__greedy_mode");
-        boot_dev_name.text(dev_xml.attr("boot_dev_name"));
         boot_dev_macaddr.val(dev_xml.attr("boot_dev_macaddr"));
         boot_dev_driver.val(dev_xml.attr("boot_dev_driver"));
         if (dev_xml.attr("greedy_mode") == 1) {
@@ -174,13 +174,31 @@ function set_boot_option(dev_xml, boot_tr) {
         } else {
             boot_dev_greedy_mode.removeAttr("checked");
         };
+        if (dev_xml.attr("dhcp_write") == 1) {
+            boot_dev_dhcp.attr({"checked" : "checked"});
+        } else {
+            boot_dev_dhcp.removeAttr("checked");
+        };
         boot_dev_macaddr.removeAttr("disabled");
         boot_dev_driver.removeAttr("disabled");
         boot_dev_greedy_mode.removeAttr("disabled");
+        boot_dev_dhcp.removeAttr("disabled");
         boot_dev_macaddr.bind("change", change_boot);
         boot_dev_driver.bind("change", change_boot);
         boot_dev_greedy_mode.bind("change", change_boot);
+        boot_dev_dhcp.bind("change", change_boot);
+    } else {
+        if (dev_xml.attr("boot_dev_macaddr") != boot_dev_macaddr.val()) {
+            $.jnotify("MAC address changed to " + dev_xml.attr("boot_dev_macaddr"));
+            boot_dev_macaddr.val(dev_xml.attr("boot_dev_macaddr"));
+        };
+        if (dev_xml.attr("greedy_mode") == 0 && boot_dev_greedy_mode.is(":checked")) {
+            boot_dev_greedy_mode.removeAttr("checked");
+        } else if (dev_xml.attr("greedy_mode") == 1 && ! boot_dev_greedy_mode.is(":checked")) {
+            boot_dev_greedy_mode.attr("checked", "checked");
+        };
     };
+    boot_dev_name.text(dev_xml.attr("boot_dev_name"));
 };
 
 function change_boot(event) {
@@ -193,7 +211,8 @@ function change_boot(event) {
             "dev_id"      : dev_id,
             "boot_mac"    : boot_tr.find("input#" + dev_id + "__boot_dev_macaddr").val(),
             "boot_driver" : boot_tr.find("input#" + dev_id + "__boot_dev_driver").val(),
-            "greedy_mode" : boot_tr.find("input#" + dev_id + "__greedy_mode:checked").length ? "1" : "0"
+            "greedy_mode" : boot_tr.find("input#" + dev_id + "__greedy_mode:checked").length ? "1" : "0",
+            "dhcp_write"  : boot_tr.find("input#" + dev_id + "__write_dhcp:checked").length ? "1" : "0"
         },
         error   : handle_ajax_error,
         success : function(xml) {
@@ -365,6 +384,11 @@ function redraw_options(opt) {
                     first_td.append($("<input>").attr({
                         "id"       : dev_id + "__boot_dev_macaddr",
                         "type"     : "text",
+                        "disabled" : "disabled"}));
+                    first_td.append(", DHCP: ");
+                    first_td.append($("<input>").attr({
+                        "id"       : dev_id + "__write_dhcp",
+                        "type"     : "checkbox",
                         "disabled" : "disabled"}));
                     first_td.append(", driver: ");
                     first_td.append($("<input>").attr({

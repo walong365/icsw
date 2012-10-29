@@ -30,7 +30,7 @@ import html_tools
 import array
 import copy
 from django.db.models import Q
-from init.cluster.backbone.models import capability, only_wf_perms, user, group, config
+from initat.cluster.backbone.models import capability, only_wf_perms, user, group, config
 
 class user_var(object):
     def __init__(self, in_dict, source_is_db=False):

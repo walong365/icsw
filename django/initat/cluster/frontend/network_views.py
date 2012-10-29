@@ -76,6 +76,10 @@ def delete_netdevice(request):
                      int(dev_pk_key.split("__")[2]))
     removed_peers = peer_information.objects.filter(Q(s_netdevice=nd_pk) | Q(d_netdevice=nd_pk))
     request.xml_response["removed_peers"] = E.peers(*[rem_peer.get_xml() for rem_peer in removed_peers])
+    nd_dev = device.objects.get(Q(pk=dev_pk))
+    if nd_dev.bootnetdevice_id == nd_pk:
+        nd_dev.bootnetdevice = None
+        nd_dev.save()
     netdevice.objects.get(Q(pk=nd_pk) & Q(device=dev_pk)).delete()
     return request.xml_response.create_response()
 

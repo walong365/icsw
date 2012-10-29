@@ -14,6 +14,7 @@ from django.http import HttpResponse
 from initat.cluster.backbone.models import device_type, device_group, device, device_class
 from django.core.exceptions import ValidationError
 from lxml import etree
+import config_tools
 from lxml.builder import E
 from django.db.models import Q
 import re
@@ -71,27 +72,7 @@ def get_xml_tree(request):
     full_tree = device_group.objects.all().prefetch_related("device", "device_group").distinct().order_by("-cluster_device_group", "name")
     xml_resp = E.response()
     for cur_dg in full_tree:
-        dev_list = E.devices()
-        for cur_d in cur_dg.device_group.all():
-            d_el = E.device(
-                unicode(cur_d),
-                name=cur_d.name,
-                comment=cur_d.comment,
-                device_type="%d" % (cur_d.device_type_id),
-                device_group="%d" % (cur_d.device_group_id),
-                pk="%d" % (cur_d.pk),
-                key="dev__%d" % (cur_d.pk)
-            )
-            dev_list.append(d_el)
-        dg_el = E.device_group(
-            dev_list,
-            unicode(cur_dg),
-            name=cur_dg.name,
-            description=cur_dg.description,
-            key="devg__%d" % (cur_dg.pk),
-            pk="%d" % (cur_dg.pk),
-            is_cdg="1" if cur_dg.cluster_device_group else "0")
-        xml_resp.append(dg_el)
+        xml_resp.append(cur_dg.get_xml(with_devices=True))
     # add device type
     xml_resp.append(
         E.device_types(
@@ -99,6 +80,12 @@ def get_xml_tree(request):
                             identifier=cur_dt.identifier, pk="%d" % (cur_dt.pk))
               for cur_dt in device_type.objects.all()]
         )
+    )
+    # add mother server(s)
+    all_mothers = config_tools.device_with_config("mother").get("mother", [])
+    xml_resp.append(
+        E.mother_servers(
+            *[E.mother_server(pk="%d" % (mother_server.device.pk), name=mother_server.device.name) for mother_server in all_mothers])
     )
     request.xml_response["response"] = xml_resp
     #request.log("catastrophic error", logging_tools.LOG_LEVEL_ERROR, xml=True)

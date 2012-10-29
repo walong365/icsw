@@ -78,9 +78,11 @@ def set_boot(request):
     pprint.pprint(_post)
     boot_mac = _post["boot_mac"]
     boot_driver = _post["boot_driver"]
-    dhcp_mac = True if int(_post["greedy_mode"]) else False
+    dhcp_write = True if int(_post["dhcp_write"]) else False
+    dhcp_mac   = True if int(_post["greedy_mode"]) else False
     any_error = False
     cur_dev.dhcp_mac = dhcp_mac
+    cur_dev.dhcp_write = dhcp_write
     if cur_dev.bootnetdevice:
         bnd = cur_dev.bootnetdevice
         bnd.driver = boot_driver

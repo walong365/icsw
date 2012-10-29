@@ -78,6 +78,7 @@ function build_device_table(xml) {
             $(new_tr).find("input").last().attr("checked", "checked").attr("disabled", "disabled");
         };
         new_tr.append($("<th>").text(cur_dg.attr("is_cdg") == "1" ? "Cluster device group" : "device group"));
+        new_tr.append($("<th>").text("motherserver"));
         if (cur_dg.attr("is_cdg") == "1") {
             new_tr.append($("<th>"));
         } else {
@@ -152,7 +153,6 @@ function build_device_table(xml) {
                 };
                 new_tr.find("select").last().append(cur_opt);
             });
-            // device_group, cdg is not an option
             new_tr.append($("<td>").append(
                 $("<select>").attr({
                     "id"    : "dev__" + cur_d.attr("pk") + "__device_group",
@@ -179,6 +179,27 @@ function build_device_table(xml) {
                 };
                 new_tr.find("select").last().append(cur_opt);
             });
+            // mother server
+            new_tr.append($("<td>").append(
+                $("<select>").attr({
+                    "id"    : "dev__" + cur_d.attr("pk") + "__bootserver",
+                    "value" : cur_d.attr("bootserver")
+                }).bind("change", function(event) {
+                    submit_change($(event.target));
+                })
+            ));
+            var ms_select = new_tr.find("select[id$='__bootserver']");
+            ms_select.append($("<option>").text("not set"));
+            $(xml).find("response mother_servers mother_server").each(function() {
+                var cur_ms = $(this);
+                var cur_opt = $("<option>").attr({"value" : cur_ms.attr("pk")}).text(cur_ms.attr("name"));
+                console.log(cur_ms.attr("pk") + "::" + cur_d.attr("bootserver"));
+                if (cur_ms.attr("pk") == cur_d.attr("bootserver")) {
+                    cur_opt.attr("selected", "selected");
+                };
+                ms_select.append(cur_opt);
+            });
+            // device_group, cdg is not an option
             new_tr.append($("<td>").append(
                 $("<input>").attr({
                     "type"  : "button",

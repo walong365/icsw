@@ -26,7 +26,7 @@ import functions
 from basic_defs import SHOW_INDEX_PRI
 import html_tools
 import cdef_user
-from init.cluster.backbone.models import capability, only_wf_perms
+from initat.cluster.backbone.models import capability, only_wf_perms
 from django.db.models import Q
 from django.core.urlresolvers import reverse
 
