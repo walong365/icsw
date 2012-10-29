@@ -2939,6 +2939,7 @@ class server_process(threading_tools.process_pool):
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self._re_insert_config()
         self._log_config()
         self.__msi_block = self._init_msi_block()
         self._init_subsys()
@@ -2962,6 +2963,8 @@ class server_process(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+    def _re_insert_config(self):
+        cluster_location.write_config("config_server", global_config)
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -3028,24 +3031,49 @@ class server_process(threading_tools.process_pool):
             data.append(zmq_sock.recv_unicode())
         if len(data) == 2:
             c_uid, srv_com = (data[0], server_command.srv_command(source=data[1]))
-            srv_com.update_source()
-            cur_com = srv_com["command"].text
-            if cur_com == "register":
-                self._register_client(c_uid, srv_com)
-            else:
-                if c_uid.endswith("webfrontend"):
-                    # special command from webfrontend, FIXME
-                    self._handle_wfe_command(zmq_sock, c_uid, srv_com)
-                else:
-                    try:
-                        cur_client = None#client.get(c_uid)
-                    except KeyError:
-                        self.log("unknown uid %s, not known" % (c_uid),
-                                 logging_tools.LOG_LEVEL_CRITICAL)
+            try:
+                cur_com = srv_com["command"].text
+            except:
+                if srv_com.tree.find("nodeinfo") is not None:
+                    node_text = srv_com.tree.findtext("nodeinfo")
+                    src_id = data[0].split(":")[0]
+                    if not config_control.has_client(src_id):
+                        try:
+                            new_dev = device.objects.get(Q(uuid=src_id))
+                        except device.DoesNotExist:
+                            self.log("no device with UUID %s found in database" % (src_id),
+                                     logging_tools.LOG_LEVEL_ERROR)
+                            cur_c = None
+                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                            zmq_sock.send_unicode("error unknown UUID")
+                        else:
+                            cur_c = config_control.add_client(new_dev)
                     else:
-                        cur_client.new_command(srv_com)
+                        cur_c = config_control.get_client(src_id)
+                    if cur_c is not None:
+                        cur_c.handle_nodeinfo(data[0], node_text)
+                else:
+                    self.log("got command '%s' from %s, ignoring" % (etree.tostring(srv_com.tree), data[0]),
+                             logging_tools.LOG_LEVEL_ERROR)
+            else:
+                srv_com.update_source()
+                if cur_com == "register":
+                    self._register_client(c_uid, srv_com)
+                    
+                else:
+                    if c_uid.endswith("webfrontend"):
+                        # special command from webfrontend, FIXME
+                        self._handle_wfe_command(zmq_sock, c_uid, srv_com)
+                    else:
+                        try:
+                            cur_client = None#client.get(c_uid)
+                        except KeyError:
+                            self.log("unknown uid %s, not known" % (c_uid),
+                                     logging_tools.LOG_LEVEL_CRITICAL)
+                        else:
+                            cur_client.new_command(srv_com)
         else:
-            self.log("wrong number of data chunks (%d != 2)" % (len(data)),
+            self.log("wrong number of data chunks (%d != 2), data is '%s'" % (len(data), data[:20]),
                      logging_tools.LOG_LEVEL_ERROR)
     def _handle_wfe_command(self, zmq_sock, c_uid, srv_com):
         cur_com = srv_com["command"].text
@@ -3084,9 +3112,13 @@ class server_process(threading_tools.process_pool):
             del self.__pending_commands[run_idx]
     def _send_return(self, cur_com):
         print cur_com.pretty_print()
+        self._send_simple_return(cur_com["command"].attrib["uuid"], unicode(cur_com))
         send_sock = self.socket_dict["router"]
-        send_sock.send_unicode(cur_com["command"].attrib["uuid"], zmq.SNDMORE)
-        send_sock.send_unicode(unicode(cur_com))
+    def _send_simple_return(self, zmq_id, send_str):
+        send_sock = self.socket_dict["router"]
+        print zmq_id, send_str
+        send_sock.send_unicode(zmq_id, zmq.SNDMORE)
+        send_sock.send_unicode(unicode(send_str))
     def _client_update(self, *args, **kwargs):
         src_proc, src_id, upd_dict = args
         run_idx = upd_dict.get("run_idx", -1)
@@ -3103,20 +3135,213 @@ class server_process(threading_tools.process_pool):
             self.log("got client_update with unknown run_idx %d" % (upd_dict["run_idx"]),
                      logging_tools.LOG_LEVEL_ERROR)
 
+
+class simple_request(object):
+    def __init__(self, cc, zmq_id, node_text):
+        self.cc = cc
+        self.zmq_id = zmq_id
+        if zmq_id.count(":") == 2:
+            src_ip = zmq_id.split(":")[-1]
+        else:
+            src_ip = "0.0.0.0"
+        self.src_ip = src_ip
+        self.server_ip = "0.0.0.0"
+        self.node_text = node_text
+        self.command = node_text.strip().split()[0]
+        self.server_ip = None
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.cc.log(what, log_level)
+    def _find_best_server(self, conf_list):
+        dev_sc = config_tools.server_check(
+            short_host_name=self.cc.device.name,
+            server_type="node",
+            fetch_network_info=True)
+        bs_list = []
+        for cur_conf in conf_list:
+            srv_routing = cur_conf.get_route_to_other_device(
+                dev_sc,
+                filter_ip=self.src_ip,
+                allow_route_to_other_networks=False)
+            if srv_routing:
+                bs_list.append((srv_routing[0][0], cur_conf))
+        if bs_list:
+            return sorted(bs_list)[0][1]
+        else:
+            self.log("no result in find_best_server (%s)" % (logging_tools.get_plural("entry", len(conf_list))))
+            return None
+    def _get_valid_server_struct(self, s_list):
+        # list of boot-related config names
+        bsl_servers   = set(["kernel_server", "image_server", "mother_server"])
+        # list of config_types which has to be mapped to the mother-server
+        map_to_mother = set(["kernel_server", "image_server"])
+        for type_name in s_list:
+            conf_list = config_tools.device_with_config(type_name).get(type_name, [])
+            if conf_list:
+                if type_name in bsl_servers:
+                    # config name (from s_list) is in bsl_servers 
+                    valid_server_struct = None
+                    for srv_found in conf_list:
+                        # iterate over servers
+                        if srv_found.device and srv_found.device.pk == self.cc.device.bootserver_id:
+                            # found bootserver, match
+                            valid_server_struct = srv_found
+                            break
+                else:
+                    valid_server_struct = self._find_best_server(conf_list)
+            else:
+                # no config found
+                valid_server_struct = None
+            if valid_server_struct:
+                # exit if srv_struct found
+                break
+        if valid_server_struct and type_name in map_to_mother:
+            # remap to mother_server
+            valid_server_struct = config_tools.server_check(
+                server_type="mother_server",
+                short_host_name=valid_server_struct.short_host_name,
+                fetch_network_info=True)
+        if valid_server_struct:
+            dev_sc = config_tools.server_check(
+                short_host_name=self.cc.device.name,
+                server_type="node",
+                fetch_network_info=True)
+            # check if there is a route between us and server
+            srv_routing = valid_server_struct.get_route_to_other_device(
+                dev_sc,
+                filter_ip=self.src_ip,
+                allow_route_to_other_networks=False)
+            if not srv_routing:
+                valid_server_struct = None
+                self.log("found valid_server_struct %s but no route" % (
+                    valid_server_struct.server_info_str),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.server_ip = srv_routing[0][2][1][0]
+                self.log("found valid_server_struct %s (device %s) with ip %s" % (
+                    valid_server_struct.server_info_str,
+                    unicode(valid_server_struct.device),
+                    self.server_ip))
+        else:
+            self.log("no valid server_struct found (search list: %s)" % (", ".join(s_list)),
+                     logging_tools.LOG_LEVEL_ERROR)
+        return valid_server_struct
+    
+        
 class config_control(object):
-    def __init__(self, name):
+    def __init__(self, cur_dev):
         self.__log_template = None
+        self.device = cur_dev
         self.create_logger()
+        self.__com_dict = {
+            "get_kernel_name"   : self._handle_get_kernel,
+            "get_syslog_server" : self._handle_get_syslog_server
+        }
     def create_logger(self):
         if self.__log_template is None:
             self.__log_template = logging_tools.get_logger(
                 "%s.%s" % (global_config["LOG_NAME"],
-                           self.name.replace(".", r"\.")),
+                           self.device.name.replace(".", r"\.")),
                 global_config["LOG_DESTINATION"],
                 zmq=True,
                 context=config_control.srv_process.zmq_context,
                 init_logger=True)
             self.log("added client")
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def handle_nodeinfo(self, src_id, node_text):
+        s_time = time.time()
+        s_req = simple_request(self, src_id, node_text)
+        com_call = self.__com_dict.get(s_req.command, None)
+        if com_call:
+            ret_str = com_call(s_req)
+        else:
+            ret_str = "error unknown command '%s'" % (node_text)
+        e_time = time.time()
+        self.log("handled nodeinfo '%s' (src_ip %s) in %s, returning %s" % (
+            node_text,
+            s_req.src_ip,
+            logging_tools.get_diff_time_str(e_time - s_time),
+            ret_str))
+        config_control.srv_process._send_simple_return(src_id, ret_str)
+    # command snippets
+    def _handle_get_syslog_server(self, s_req):
+        vs_struct = s_req._get_valid_server_struct(["syslog_server"])
+        if vs_struct:
+            return "ok %s" % (s_req.server_ip)
+        else:
+            return "error no syslog-server defined"
+    def _handle_get_kernel(self, s_req):
+        dev_kernel = self.device.new_kernel
+        if dev_kernel:
+            vs_struct = s_req._get_valid_server_struct(["tftpboot_export", "kernel_server"])
+            if not vs_struct:
+                return "error no server found"
+            else:
+                vs_struct.fetch_config_vars()
+                if vs_struct.config_name.startswith("mother"):
+                    # is mother_server
+                    dir_key = "TFTP_DIR"
+                else:
+                    # is tftpboot_export
+                    dir_key = "EXPORT"
+                if vs_struct.has_key(dir_key):
+                    kernel_source_path = os.path.join(vs_struct[dir_key], "kernels")
+                    if s_req.command == "get_kernel":
+                        return "ok NEW %s %s/%s" % (
+                            s_req.server_ip,
+                            kernel_source_path,
+                            dev_kernel.name)
+                    else:
+                        return "ok NEW %s %s" % (
+                            s_req.server_ip,
+                            dev_kernel.name)
+                else:
+                    return "error key %s not found" % (dir_key)
+        else:
+            return "error no kernel set"
+        if False:
+            bsl_servers = ["kernel_server", "mother_server", "image_server"]
+            # list of config_types which has to be mapped to the mother-server
+            map_to_mother = ["kernel_server", "image_server"]
+            # iterates over type_list to find a valid server_struct
+            for type_name in type_list:
+                conf_list = config_tools.device_with_config(type_name, dc)
+                if conf_list:
+                    server_names = conf_list.keys()
+                    if type_name in bsl_servers:
+                        valid_server_struct = None
+                        # get only the server wich is the bootserver
+                        for server_name in server_names:
+                            if conf_list[server_name].device_idx == c_req["bootserver"]:
+                                valid_server_name, valid_server_struct = (server_name, conf_list[server_name])
+                                break
+                    else:
+                        # take the first server
+                        valid_server_name = c_req.find_best_server(conf_list, dc)
+                        valid_server_struct = conf_list[valid_server_name]
+                else:
+                    valid_server_name, valid_server_struct = ("", None)
+                if valid_server_struct:
+                    break
+            if valid_server_struct:
+                if type_name in map_to_mother:
+                    valid_server_struct = config_tools.server_check(dc=dc,
+                                                                    server_type="mother_server",
+                                                                    short_host_name=valid_server_name,
+                                                                    fetch_network_info=True)
+            if valid_server_struct:
+                c_req.log("found valid_server_struct %s (device %s)" % (valid_server_struct.server_info_str,
+                                                                        valid_server_struct.short_host_name))
+                # check connectivity to device
+                if c_req.find_route_to_server(valid_server_struct, dc):
+                    pass
+                else:
+                    valid_server_struct = None
+            else:
+                c_req.set_ret_str("error no valid server found")
+                c_req.log("found no valid server_struct (search list: %s)" % (", ".join(type_list)),
+                          logging_tools.LOG_LEVEL_ERROR)
+            return valid_server_struct
     def close(self):
         if self.__log_template is not None:
             self.__log_template.close()
@@ -3129,16 +3354,25 @@ class config_control(object):
         config_control.srv_process = srv_process
         config_control.cc_log("init config_control")
         config_control.__cc_dict = {}
+        config_control.__lut_dict = {}
     @staticmethod
     def cc_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         config_control.srv_process.log("[cc] %s" % (what), log_level)
     @staticmethod
-    def add_client(name):
-        if name not in config_control.__cc_dict:
-            new_c = config_control(name)
-            config_control.__cc_dict[name] = new_c
-            config_control.cc_log("added client %s" % (name))
-        return config_control.__cc_dict[name]
+    def has_client(search_spec):
+        return search_spec in config_control.__lut_dict
+    @staticmethod
+    def get_client(search_spec):
+        return config_control.__lut_dict.get(search_spec, None)
+    @staticmethod
+    def add_client(new_dev):
+        if new_dev.name not in config_control.__cc_dict:
+            new_c = config_control(new_dev)
+            config_control.__cc_dict[new_dev.name] = new_c
+            for key in ["pk", "name", "uuid"]:
+                config_control.__lut_dict[getattr(new_dev, key)] = new_c
+            config_control.cc_log("added client %s" % (unicode(new_dev)))
+        return config_control.__cc_dict[new_dev.name]
     
 class build_client(object):
     """ holds all the necessary data for a complex config request """
@@ -3405,6 +3639,9 @@ def main():
                                                positional_arguments=False)
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="config_server")
+    if not sql_info.effective_device:
+        print "not a config_server"
+        sys.exit(5)
     if global_config["CHECK"]:
         sys.exit(0)
     if global_config["KILL_RUNNING"]:
