@@ -35,9 +35,40 @@ import array
 import process_tools
 import netifaces
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
-     hopcount, device_group
+     hopcount, device_group, config_str, config_blob, config_int, config_bool
 from django.db.models import Q
 
+def get_config_var_list(config_obj, config_dev):
+    r_dict = {}
+    # dict of local vars without specified host
+    l_var_wo_host = {}
+    for short in ["str",
+                  "int",
+                  "blob",
+                  "bool"]:
+        src_sql_obj = globals()["config_%s" % (short)].objects
+        for db_rec in src_sql_obj.filter(
+            (Q(device=0) | Q(device=None) | Q(device=config_dev.pk)) &
+            (Q(config=config_obj)) &
+            (Q(config__device_config__device=config_dev))):
+            if db_rec.name.count(":"):
+                var_global = False
+                local_host_name, var_name = db_rec.name.split(":", 1)
+            else:
+                var_global = True
+                local_host_name, var_name = (config_dev.name, db_rec.name)
+            if type(db_rec.value) == type(array.array("b")):
+                new_val = configfile.str_c_var(db_rec.value.tostring(), source="%s_table" % (short))
+            elif short == "int":
+                new_val = configfile.int_c_var(int(db_rec.value), source="%s_table" % (short))
+            elif short == "bool":
+                new_val = configfile.bool_c_var(bool(db_rec.value), source="%s_table" % (short))
+            else:
+                new_val = configfile.str_c_var(db_rec.value, source="%s_table" % (short))
+            new_val.is_global = var_global
+            r_dict[var_name.upper()] = new_val
+    return r_dict
+        
 class server_check(object):
     """ is called server_check, but can also be used for nodes """
     def __init__(self, **kwargs):
@@ -126,6 +157,8 @@ class server_check(object):
             # fetch ip_info
             self._fetch_network_info()
             self._db_check_ip()
+    def fetch_config_vars(self):
+        self.__config_vars.update(get_config_var_list(self.config, self.effective_device))
     # FIXME, deprecated due to circular import problem
 ##    def fetch_config_vars(self, dc):
 ##        if self.config_idx:
@@ -170,15 +203,15 @@ class server_check(object):
     def keys(self):
         return self.__config_vars.keys()
     def is_fixed(self, var_name):
-        return self.__config_vars[var_name].is_fixed()
+        return self.__config_vars[var_name].fixed
     def copy_flag(self, var_name, new_var):
         self.__config_vars[var_name].set_is_global(new_var.is_global())
     def get_source(self, var_name):
-        return self.__config_vars[var_name].get_source()
+        return self.__config_vars[var_name].source
     def __setitem__(self, var_name, var_value):
         self.__config_vars[var_name] = var_value
     def __getitem__(self, var_name):
-        return self.__config_vars[var_name].get_value()
+        return self.__config_vars[var_name].value
     def _set_srv_info(self, sdsc, s_info_str):
         self.server_origin = sdsc
         self.server_info_str = "%s '%s'-server via %s" % (self.server_origin,
@@ -255,10 +288,10 @@ class server_check(object):
                 # dicts identifier -> ips
                 source_ip_lut, dest_ip_lut = ({}, {})
                 for s_ip in self.netdevice_ip_lut[db_rec[0]]:
-                    source_ip_lut.setdefault(self.ip_identifier_lut[s_ip], []).append(s_ip)
+                    source_ip_lut.setdefault(self.ip_identifier_lut[unicode(s_ip)], []).append(unicode(s_ip))
                 for d_ip in other.netdevice_ip_lut[db_rec[1]]:
-                    dest_ip_lut.setdefault(other.ip_identifier_lut[d_ip], []).append(d_ip)
-                common_identifiers = [key for key in source_ip_lut.keys() if key in dest_ip_lut]
+                    dest_ip_lut.setdefault(other.ip_identifier_lut[unicode(d_ip)], []).append(unicode(d_ip))
+                common_identifiers = set(source_ip_lut.keys()) & set(dest_ip_lut.keys())
                 if common_identifiers:
                     for act_id in common_identifiers:
                         add_actual = True
@@ -317,7 +350,18 @@ class device_with_config(dict):
         # right now we are fetching a little bit too much ...
         #print "*** %s=%s" % (self.__match_str, self.__m_config_name)
         exp_group = set()
-        direct_list = device_config.objects.filter(Q(**{"config__%s" % (self.__match_str) : self.__m_config_name})).select_related("device", "config", "device__device_group", "device__device_type").values_list("config__name", "config", "device__name", "device", "device__device_group", "device__device_type__identifier", "device__device_type__identifier")
+        direct_list = device_config.objects.filter(
+            Q(**{"config__%s" % (self.__match_str) : self.__m_config_name})).select_related(
+                "device",
+                "config",
+                "device__device_group",
+                "device__device_type").values_list(
+                    "config__name",
+                    "config",
+                    "device__name",
+                    "device",
+                    "device__device_group",
+                    "device__device_type__identifier", "device__device_type__identifier")
         exp_group = set([cur_entry[4] for cur_entry in direct_list if cur_entry[5] == "MD"])
         conf_pks = set([cur_entry[1] for cur_entry in direct_list])
         # expand device groups
