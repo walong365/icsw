@@ -83,7 +83,7 @@ int main (int argc, char** argv) {
     int ret, num, inlen, file, i/*, time*/, port, rchar, verbose, quiet, retcode, write_file, timeout;
     struct in_addr sia;
     struct hostent *h;
-    char *iobuff, *sendbuff, *host_b, *act_pos, *act_source, *act_bp, *dest_host, *uuid_buffer;
+    char *iobuff, *sendbuff, *host_b, *act_pos, *act_source, *act_bp, *dest_host, *src_ip, *uuid_buffer;
     struct itimerval mytimer;
     struct sigaction *alrmsigact;
     struct utsname myuts;
@@ -99,13 +99,14 @@ int main (int argc, char** argv) {
     h = NULL;
     host_b = (char*)malloc(HOSTB_SIZE);
     dest_host = (char*)malloc(HOSTB_SIZE);
-    if (!host_b) exit(ENOMEM);
+    src_ip = (char*)malloc(HOSTB_SIZE);
     dest_host[0] = 0;
+    src_ip[0] = 0;
     // get uts struct
     uname(&myuts);
     sprintf(dest_host, "localhost");
     while (1) {
-        rchar = getopt(argc, argv, "+vm:p:ht:wq");
+        rchar = getopt(argc, argv, "+vm:p:ht:wqi:");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
             case 'p':
@@ -122,6 +123,9 @@ int main (int argc, char** argv) {
             case 'v':
                 verbose = 1;
                 break;
+            case 'i':
+                sprintf(src_ip, optarg);
+                break;
             case 'q':
                 quiet = 1;
                 break;
@@ -130,7 +134,7 @@ int main (int argc, char** argv) {
                 break;
             case 'h':
             case '?':
-                printf("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-w] [-q] command\n", basename(argv[0]));
+                printf("Usage: %s [-t TIMEOUT] [-m HOST] [-i SRC_IP] [-p PORT] [-h] [-v] [-w] [-q] command\n", basename(argv[0]));
                 printf("  defaults: port=%d, timeout=%d, dest_host=%s\n", port, timeout, dest_host);
                 free(host_b);
                 exit(STATE_CRITICAL);
@@ -171,7 +175,7 @@ int main (int argc, char** argv) {
     }
     void *context = zmq_init(1);
     void *requester = zmq_socket(context, ZMQ_DEALER);
-    char* identity_str = parse_uuid();
+    char* identity_str = parse_uuid(src_ip);
     zmq_setsockopt(requester, ZMQ_IDENTITY, identity_str, strlen(identity_str));
     alrmsigact = (struct sigaction*)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
@@ -215,5 +219,6 @@ int main (int argc, char** argv) {
     free(sendbuff);
     free(host_b);
     free(dest_host);
+    free(src_ip);
     exit(retcode);
 }

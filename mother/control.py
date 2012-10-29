@@ -1044,7 +1044,7 @@ class node_control_process(threading_tools.process_obj):
         # close database connection
         connection.close()
         simple_command.setup(self)
-        self.sc = config_tools.server_check(server_type="mother")
+        self.sc = config_tools.server_check(server_type="mother_server")
         if "b" in self.sc.identifier_ip_lut:
             self.server_ip = self.sc.identifier_ip_lut["b"][0].ip
             self.log("IP address in boot-net is %s" % (self.server_ip))

@@ -83,16 +83,18 @@ int main (int argc, char** argv) {
     struct in_addr sia;
     struct hostent *h;
     size_t hn_len;
-    char *fbuff, *inbuff, *filebuff, *cp, *retbuff;
+    char *fbuff, *inbuff, *filebuff, *cp, *retbuff, *src_ip;
 
     int verbose = 0;
     int daemon = 1;
+    src_ip = (char*)malloc(HOSTB_SIZE);
+    src_ip[0] = 0;
     while (1) {
         ret = getopt(argc, argv, "vhd");
         if (ret < 0) break;
         switch (ret) {
             case 'h':
-                printf("Usage: %s [ -h ] [ -v ] [-d]\n", basename(argv[0]));
+                printf("Usage: %s [ -h ] [ -v ] [-d] [-i SRC_IP]\n", basename(argv[0]));
                 printf("  where -d specifies non-daemon mode\n");
                 exit(-1);
                 break;
@@ -101,6 +103,9 @@ int main (int argc, char** argv) {
                 break;
             case 'd':
                 daemon = 0;
+                break;
+            case 'i':
+                sprintf(src_ip, optarg);
                 break;
         }
     }
@@ -141,7 +146,7 @@ int main (int argc, char** argv) {
     if (!fbuff) exit(ENOMEM);
     void *context = zmq_init(1);
     void *responder = zmq_socket(context, ZMQ_ROUTER);
-    char* identity_str = parse_uuid();
+    char* identity_str = parse_uuid(src_ip);
     zmq_setsockopt(responder, ZMQ_IDENTITY, identity_str, strlen(identity_str));
     char bind_address[100];
     sprintf(bind_address, "tcp://*:%d", PORT);

@@ -2885,6 +2885,7 @@ class server_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # log config
         self._log_config()
+        self._re_insert_config()
         # prepare directories
         self._prepare_directories()
         # check netboot functionality
@@ -2936,6 +2937,9 @@ class server_process(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+    def _re_insert_config(self):
+        self.log("re-insert config")
+        cluster_location.write_config("mother_server", global_config)
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -3031,7 +3035,7 @@ class server_process(threading_tools.process_pool):
                             zmq_sock.send_unicode(data[0], zmq.SNDMORE)
                             zmq_sock.send_unicode(unicode(srv_com))
         else:
-            self.log("wrong number of data chunks (%d != 2)" % (len(data)),
+            self.log("wrong number of data chunks (%d != 2), data is '%s'" % (len(data), data[:20]),
                      logging_tools.LOG_LEVEL_ERROR)
     def _send_return(self, src_id, src_pid, zmq_id, srv_com, *args):
         self.log("returning 0MQ message to %s (%s ...)" % (zmq_id, srv_com[0:10]))
@@ -3416,7 +3420,7 @@ class server_thread_pool(threading_tools.thread_pool):
 ##            self.__msi_block.save_block()
     def _re_insert_config(self, dc):
         self.log("re-insert config")
-        configfile.write_config(dc, "mother_server", self.__glob_config)
+        configfile.write_config("mother_server", global_config)
 ##    def _restart_hoststatus(self):
 ##        if os.path.isfile("/etc/init.d/hoststatus"):
 ##            self.log("restart hoststatus (child)")
@@ -3535,17 +3539,22 @@ def main():
     ])
     global_config.parse_file()
     VERSION_STRING = "???"
-    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
-                                                                                  VERSION_STRING),
-                                               add_writeback_option=True,
-                                               positional_arguments=False)
+    options = global_config.handle_commandline(
+        description="%s, version is %s" % (
+            prog_name,
+            VERSION_STRING),
+        add_writeback_option=True,
+        positional_arguments=False)
     global_config.write_file()
-    sql_info = config_tools.server_check(server_type="mother")
+    sql_info = config_tools.server_check(server_type="mother_server")
+    if not sql_info.effective_device:
+        print "not a mother_server"
+        sys.exit(5)
     if global_config["CHECK"]:
         sys.exit(0)
     if global_config["KILL_RUNNING"]:
         log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
-    cluster_location.read_config_from_db(global_config, "mother", [
+    cluster_location.read_config_from_db(global_config, "mother_server", [
         ("TFTP_LINK"                 , configfile.str_c_var("/tftpboot")),
         ("TFTP_DIR"                  , configfile.str_c_var("/usr/local/share/cluster/tftpboot")),
         ("CLUSTER_DIR"               , configfile.str_c_var("/opt/cluster")),
