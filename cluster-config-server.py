@@ -24,7 +24,7 @@
 import sys
 import os
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "init.cluster.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import re
 import shutil
@@ -48,7 +48,7 @@ import zmq
 from django.db import connection
 from lxml import etree
 from lxml.builder import E
-from init.cluster.backbone.models import device, network, config, device_variable, net_ip, hopcount, \
+from initat.cluster.backbone.models import device, network, config, device_variable, net_ip, hopcount, \
      partition, sys_partition, wc_files, tree_node
 from django.db.models import Q
 
