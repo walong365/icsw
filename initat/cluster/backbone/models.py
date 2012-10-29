@@ -338,6 +338,7 @@ class device(models.Model):
         r_xml = E.device(
             unicode(self),
             name=self.name,
+            comment=self.comment,
             pk="%d" % (self.pk),
             key="dev__%d" % (self.pk),
             device_type="%d" % (self.device_type_id),
@@ -354,6 +355,8 @@ class device(models.Model):
             boot_dev_macaddr="%s" % (self.bootnetdevice.macaddr if self.bootnetdevice else ""),
             boot_dev_driver="%s" % (self.bootnetdevice.driver if self.bootnetdevice else ""),
             greedy_mode="0" if not self.dhcp_mac else "1",
+            bootserver="%d" % (self.bootserver_id or 0),
+            dhcp_write="1" if self.dhcp_write else "0"
         )
         if full:
             r_xml.extend([
@@ -436,15 +439,20 @@ class device_group(models.Model):
         return new_md
     def get_metadevice_name(self):
         return "METADEV_%s" % (self.name)
-    def get_xml(self, full=True):
-        return E.device_group(
+    def get_xml(self, full=True, with_devices=True):
+        cur_xml = E.device_group(
             unicode(self),
-            E.devices(*[cur_dev.get_xml(full=full) for cur_dev in self.device_group.all()]),
             pk="%d" % (self.pk),
             key="devg__%d" % (self.pk),
             name=self.name,
-            description=self.description or ""
+            description=self.description or "",
+            is_cdg="1" if self.cluster_device_group else "0"
         )
+        if with_devices:
+            cur_xml.append(
+                E.devices(*[cur_dev.get_xml(full=full) for cur_dev in self.device_group.all()])
+            )
+        return cur_xml
     class Meta:
         db_table = u'device_group'
     def __unicode__(self):
@@ -2112,6 +2120,16 @@ def device_pre_save(sender, **kwargs):
         if not kwargs["instance"].name:
             raise ValidationError("name can not be zero")
 
+@receiver(signals.pre_delete, sender=netdevice)
+def netdevice_pre_delete(sender, **kwargs):
+    # too late here, handled by delete_netdevice in network_views
+    pass
+    #if "instance" in kwargs:
+        #cur_inst = kwargs["instance"]
+        #for cur_dev in device.objects.filter(Q(bootnetdevice=cur_inst.pk)):
+            #cur_dev.bootnetdevice = None
+            #cur_dev.save(update_fields=["bootnetdevice"])
+       
 @receiver(signals.pre_save, sender=netdevice)
 def netdevice_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -2171,6 +2189,10 @@ def net_ip_pre_save(sender, **kwargs):
         all_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
         if cur_inst.ip in all_ips:
             raise ValidationError("Adress already used")
+        if cur_inst.network.network_type.identifier == "b":
+            # set boot netdevice
+            cur_inst.netdevice.device.bootnetdevice = cur_inst.netdevice
+            cur_inst.netdevice.device.save()
 
 @receiver(signals.pre_save, sender=peer_information)
 def peer_information_pre_save(sender, **kwargs):
