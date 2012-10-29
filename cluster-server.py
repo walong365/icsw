@@ -22,7 +22,7 @@
 import os
 import os.path
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "init.cluster.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import sys
 import socket
@@ -53,8 +53,8 @@ from twisted.internet import reactor
 from twisted.python import log
 from twisted.web import server, resource, wsgi
 from django.core.handlers.wsgi import WSGIHandler
-from init.cluster.backbone.models import device, device_variable
-from init.cluster.backbone.middleware import show_database_calls
+from initat.cluster.backbone.models import device, device_variable
+from initat.cluster.backbone.middleware import show_database_calls
 
 try:
     from cluster_server_version import VERSION_STRING
@@ -268,7 +268,7 @@ class twisted_webserver(threading_tools.process_obj):
                                                          zmq=True,
                                                          context=self.zmq_context)
         log.startLoggingWithObserver(my_observer, setStdout=False)
-        os.environ["DJANGO_SETTINGS_MODULE"] = "init.cluster.settings"
+        os.environ["DJANGO_SETTINGS_MODULE"] = "initat.cluster.settings"
         self.twisted_observer = my_observer
         wsgi_resource = wsgi.WSGIResource(reactor, reactor.getThreadPool(), WSGIHandler())
         resource = http_wsgi(wsgi_resource)
@@ -1050,9 +1050,9 @@ class socket_server_thread(threading_tools.thread_obj):
 # --------- connection objects ------------------------------------
 
 class server_process(threading_tools.process_pool):
-    def __init__(self, db_con, options):
+    def __init__(self, options):
         self.__log_cache, self.__log_template = ([], None)
-        self.__db_con = db_con
+        #self.__db_con = db_con
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__run_command = True if global_config["COMMAND"].strip() else False
         if self.__run_command:
@@ -1119,13 +1119,11 @@ class server_process(threading_tools.process_pool):
             "quota"      : quota_stuff(self),
             "dummy"      : dummy_stuff(self)}
         self.__cap_list = []
-        dc = self.__db_con.get_connection(SQL_ACCESS)
         for key, value in self.__server_cap_dict.iteritems():
-            sql_info = config_tools.server_check(dc=dc, server_type=key)
+            sql_info = config_tools.server_check(server_type=key)
             if key == "dummy":
                 self.__cap_list.append(key)
             self.log("capability %s: %s" % (key, "enabled" if key in self.__cap_list else "disabled"))
-        dc.release()
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
@@ -1149,9 +1147,9 @@ class server_process(threading_tools.process_pool):
             self.log("running command, skipping re-insert of config", logging_tools.LOG_LEVEL_WARN)
         else:
             self.log("re-insert config")
-            dc = self.__db_con.get_connection(SQL_ACCESS)
-            cluster_location.write_config("server", global_config, dc=dc)
-            dc.release()
+            #dc = self.__db_con.get_connection(SQL_ACCESS)
+            cluster_location.write_config("server", global_config)
+            #dc.release()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
@@ -1169,18 +1167,16 @@ class server_process(threading_tools.process_pool):
         return msi_block
     def _check_uuid(self):
         self.log("uuid checking")
-        dc = self.__db_con.get_connection(SQL_ACCESS)
         self.log(" - cluster_device_uuid is '%s'" % (uuid_tools.get_uuid().get_urn()))
         uuid_var = cluster_location.db_device_variable(global_config["SERVER_IDX"], "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
         # recognize for which devices i am responsible
-        dev_r = cluster_location.device_recognition(dc=dc)
+        dev_r = cluster_location.device_recognition()
         if dev_r.device_dict:
             self.log(" - i am also host for %s: %s" % (logging_tools.get_plural("virtual device", len(dev_r.device_dict.keys())),
                                                        ", ".join(sorted([cur_dev.name for cur_dev in dev_r.device_dict.itervalues()]))))
             for cur_dev in dev_r.device_dict.itervalues():
                 cluster_location.db_device_variable(cur_dev, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
                 cluster_location.db_device_variable(cur_dev, "is_virtual", description="Flag set for Virtual Machines", value=1)
-        dc.release()
     def loop_end(self):
         if self.com_socket:
             self.log("closing socket")
@@ -1247,8 +1243,15 @@ class server_process(threading_tools.process_pool):
         cur_com = server_command.srv_command(command=global_config["COMMAND"])
         cur_com["command"].attrib["via_comline"] = "1"
         for keyval in self.__options.OPTION_KEYS:
-            key, value = keyval.split(":", 1)
-            cur_com["server_key:%s" % (key)] = value
+            try:
+                key, value = keyval.split(":", 1)
+            except:
+                self.log("error parsing option_key from '%s': %s" % (
+                    keyval,
+                    process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                cur_com["server_key:%s" % (key)] = value
         self._process_command(cur_com)
         self["return_value"] = int(cur_com["result"].attrib["state"])
         self["exit_requested"] = True
@@ -1263,9 +1266,8 @@ class server_process(threading_tools.process_pool):
             "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)})
         if com_name in cluster_server.command_dict:
             com_obj = cluster_server.command_dict[com_name]
-            dc = self.__db_con.get_connection(SQL_ACCESS)
             # check config status
-            do_it, srv_origin, err_str = com_obj.check_config(dc, global_config, global_config["FORCE"])
+            do_it, srv_origin, err_str = com_obj.check_config(global_config, global_config["FORCE"])
             self.log("checking the config gave: %s (%s) %s" % (str(do_it),
                                                                srv_origin,
                                                                err_str))
@@ -1287,7 +1289,6 @@ class server_process(threading_tools.process_pool):
                             })
                     else:
                         com_obj.srv_com = srv_com
-                        com_obj.dc = dc
                         com_obj.global_config = global_config
                         # salt com_obj with some settings
                         com_obj.server_idx = global_config["SERVER_IDX"]
@@ -1309,14 +1310,12 @@ class server_process(threading_tools.process_pool):
                                          logging_tools.LOG_LEVEL_ERROR)
                         com_obj.write_end_log()
                         del com_obj.global_config
-                        del com_obj.dc
                         del com_obj.srv_com
             else:
                 srv_com["result"].attrib.update({
                     "reply" : "error %s" % (err_str),
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
                     })
-            dc.release()
         else:
             srv_com["result"].attrib.update({
                 "reply" : "command %s not known" % (com_name),
@@ -1333,6 +1332,8 @@ class server_process(threading_tools.process_pool):
         self.vector_socket.send_unicode(unicode(drop_com))
     def send_broadcast(self, bc_com):
         self.log("init broadcast command '%s'" % (bc_com))
+        # FIXME
+        return
         dc = self.__db_con.get_connection(SQL_ACCESS)
         dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE n.device=%d" % (global_config["SERVER_IDX"]))
         my_netdev_idxs = [db_rec["netdevice_idx"] for db_rec in dc.fetchall()]
@@ -1516,13 +1517,13 @@ def main():
                                                add_writeback_option=True,
                                                positional_arguments=False)
     global_config.write_file()
-    db_con = mysql_tools.dbcon_container()
-    try:
-        dc = db_con.get_connection("cluster_full_access")
-    except MySQLdb.OperationalError:
-        sys.stderr.write(" Cannot connect to SQL-Server ")
-        sys.exit(1)
-    sql_info = config_tools.server_check(dc=dc, server_type="server")
+    #db_con = mysql_tools.dbcon_container()
+    #try:
+        #dc = db_con.get_connection("cluster_full_access")
+    #except MySQLdb.OperationalError:
+        #sys.stderr.write(" Cannot connect to SQL-Server ")
+        #sys.exit(1)
+    sql_info = config_tools.server_check(server_type="server")
     ret_state = 256
     if sql_info.device:
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False))])
@@ -1541,7 +1542,7 @@ def main():
     global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.create_log_source_entry(global_config["SERVER_IDX"], "cluster-server", "Cluster Server", return_pk=True)))])
     if not global_config["LOG_SOURCE_IDX"]:
         print "Too many log_source with my id present, exiting..."
-        dc.release()
+        #dc.release()
         sys.exit(5)
     if global_config["KILL_RUNNING"] and not global_config["COMMAND"]:
         log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
@@ -1560,8 +1561,7 @@ def main():
         ("USER_MAIL_SEND_TIME"   , configfile.int_c_var(3600, info="time in seconds between to mails")),
         ("SERVER_FULL_NAME"      , configfile.str_c_var(long_host_name, database=False)),
         ("SERVER_SHORT_NAME"     , configfile.str_c_var(mach_name, database=False)),
-    ], dc=dc)
-    dc.release()
+    ])
     if not global_config["DEBUG"] and not global_config["COMMAND"]:
         process_tools.become_daemon()
         process_tools.set_handles({"out" : (1, "cluster-server.out"),
@@ -1569,7 +1569,7 @@ def main():
     else:
         if global_config["DEBUG"]:
             print "Debugging cluster-server on %s" % (long_host_name)
-    ret_state = server_process(db_con, options).loop()
+    ret_state = server_process(options).loop()
     if global_config["DEBUG"]:
         show_database_calls()
     sys.exit(ret_state)

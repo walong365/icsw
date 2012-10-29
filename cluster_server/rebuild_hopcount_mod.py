@@ -28,7 +28,7 @@ import pytz
 import server_command
 from django.db.models import Q
 from django.conf import settings
-from init.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group, \
+from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group, \
      peer_information
 
 HOPCOUNT_REBUILT_VAR_NAME = "hopcount_table_build_time"
@@ -233,7 +233,6 @@ class rebuild_hopcount(cs_base_class.server_com):
         needed_configs = ["rebuild_hopcount"]
         restartable = True
     def _call(self):
-        my_dc = self.dc
         # check for cluster-device-group
         try:
             cdg_dev = device.objects.get(Q(device_group__cluster_device_group=True))

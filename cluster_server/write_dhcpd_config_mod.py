@@ -27,7 +27,7 @@ import server_command
 import config_tools
 import pprint
 from django.db.models import Q
-from init.cluster.backbone.models import net_ip, \
+from initat.cluster.backbone.models import net_ip, \
      network
 
 class write_dhcpd_config(cs_base_class.server_com):

@@ -97,12 +97,12 @@ class server_com(object):
         self.process_pool = process_pool
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.process_pool.log("[com] %s" % (what), log_level)
-    def check_config(self, dc, loc_config, force=False):
+    def check_config(self, loc_config, force=False):
         self.server_idx, self.act_config_name = (0, "")
         doit, srv_origin, err_str = (False, "---", "OK")
         if self.Meta.needed_configs:
             for act_c in self.Meta.needed_configs:
-                sql_info = config_tools.server_check(dc=dc, server_type="%s" % (act_c))
+                sql_info = config_tools.server_check(server_type="%s" % (act_c))
                 if sql_info.effective_device:
                     doit, srv_origin = (True, sql_info.server_origin)
                     if not self.server_idx:

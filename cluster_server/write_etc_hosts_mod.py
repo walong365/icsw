@@ -29,7 +29,7 @@ import logging_tools
 import server_command
 import cluster_location
 from django.db.models import Q
-from init.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group
+from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME       = "/etc/hosts"

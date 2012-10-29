@@ -27,7 +27,7 @@ import pprint
 import partition_tools
 import process_tools
 from django.db.models import Q
-from init.cluster.backbone.models import device, partition, partition_disc, partition_table, partition_fs, \
+from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, partition_fs, \
      lvm_lv, lvm_vg, sys_partition
 
 class fetch_partition_info(cs_base_class.server_com):
