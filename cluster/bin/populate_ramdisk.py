@@ -23,7 +23,9 @@
 
 import sys
 import os
-import os.path
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
 import argparse
 import commands
 import re
@@ -44,6 +46,7 @@ import gzip
 import fnmatch
 from django.db.models import Q
 from initat.cluster.backbone.models import kernel
+import module_dependency_tools
 
 MOD_REFUSE_LIST = ["3w-9xxx", "3w-xxxx", "af_packet", "ata_piix",
                    "autofs", "eata", "gdth",
@@ -1111,8 +1114,8 @@ def main_normal():
     # get kernel-module dependencies
     if my_kernel:
         if take_modules_from_db:
-            if kernel_stuff["target_module_list"]:
-                act_mods = [line.strip() for line in kernel_stuff["target_module_list"].split(",") if line.strip() not in MOD_REFUSE_LIST]
+            if my_kernel.target_module_list:
+                act_mods = [line.strip() for line in my_kernel.target_module_list.split(",") if line.strip() not in MOD_REFUSE_LIST]
             else:
                 act_mods = []
             print "Using module_list from database: %s, %s" % (logging_tools.get_plural("module", len(act_mods)),
@@ -1123,16 +1126,22 @@ def main_normal():
             my_kernel.target_module_list = ",".join(act_mods)
             my_kernel.save()
     if act_mods:
-        all_mods, del_mods, fw_files = get_module_dependencies(my_args.kernel_dir, act_mods)
+        dep_h = module_dependency_tools.dependency_handler(my_args.kernel_dir)
+        dep_h.resolve(act_mods, verbose=verbose)
+        all_mods, del_mods, fw_files = (
+            dep_h.module_list,
+            dep_h.error_list,
+            dep_h.firmware_list)
         all_mods = [x for x in all_mods if x not in MOD_REFUSE_LIST]
         act_mods.sort()
         all_mods.sort()
         del_mods.sort()
         if not my_args.quiet:
-            print "  %s given: %s; %s not found, %s have to be installed" % (logging_tools.get_plural("kernel module", len(act_mods)),
-                                                                             ", ".join(act_mods),
-                                                                             logging_tools.get_plural("module", len(del_mods)),
-                                                                             logging_tools.get_plural("module", len(all_mods)))
+            print "  %s given: %s; %s not found, %s have to be installed" % (
+                logging_tools.get_plural("kernel module", len(act_mods)),
+                ", ".join(act_mods),
+                logging_tools.get_plural("module", len(del_mods)),
+                logging_tools.get_plural("module", len(all_mods)))
         if my_args.verbose and not my_args.quiet:
             for mod in del_mods:
                 print " - (not found) : %s" % (mod)

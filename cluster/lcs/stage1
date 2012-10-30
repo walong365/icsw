@@ -71,25 +71,25 @@ t_mother () {
     if [ ${motherserver:-0} = "0" ] ; then
         echo ${echo_opt} "Server not set, can't connect to mother"
     else
-        tell_mother_zmq -m $motherserver -p 8000 $@ || echo ${echo_opt} "Connection problem with mother"
+        tell_mother_zmq -i $ipaddr -m $motherserver -p 8000 $@ || echo ${echo_opt} "Connection problem with mother"
     fi
 }
 send_info () {
     if [ ${motherserver:-0} = "0" ] ; then
         echo ${echo_opt} "Server not set, can't connect to mother"
     else
-        tell_mother_zmq -m $motherserver -p 8000 -w "*$@" || echo ${echo_opt} "Connection problem with mother"
+        tell_mother_zmq -i $ipaddr -m $motherserver -p 8000 -w "*$@" || echo ${echo_opt} "Connection problem with mother"
     fi
 }
 
 get_conf_str () {
     num_retries=1
     while true ; do 
-    ret=`tell_mother_zmq -m $motherserver -p 8006 $1 2>&1`  && {
+    ret=`tell_mother_zmq -i $ipaddr -m $motherserver -p 8005 $1 2>&1`  && {
         state=`echo $ret | cut -d " " -f 1`
         [ "$state" = "ok" ] && break
     }
-    echo ${echo_opt} >&2 "${RED}error (server $motherserver, port 8006, command $1, $ret), will sleep for 10 seconds${OFF}"
+    echo ${echo_opt} >&2 "${RED}error (server $motherserver, port 8005, command $1, $ret), will sleep for 10 seconds${OFF}"
     num_retries=$(($num_retries + 1))
     sleep 10
     done
@@ -241,7 +241,7 @@ export PATH=/sbin:/bin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/cl
 
 depmod -ae || depmod -ave
 
-echo ${echo_opt} "${GREEN}${BOLD}init.at ClusterNetInstall stage1 (c) 2001-2008 init.at (lang-nevyjel@init.at)${OFF}"
+echo ${echo_opt} "${GREEN}${BOLD}init.at ClusterNetInstall stage1 (c) 2001-2012 init.at (lang-nevyjel@init.at)${OFF}"
 
 echo ${echo_opt} "mounting /proc and /sys for stage1 "
 [ ! -d /proc ] && mkdir /proc
@@ -347,10 +347,16 @@ initrd_mods=""
 # start load_firmware.sh
 /usr/bin/load_firmware.sh &
 
+depmod -ae || depmod -ave
+
 [ -n "$net_driver" ] &&  { 
     echo ${echo_opt} " probing network kernel module $net_driver (options '$net_options')"
     modprobe $net_driver $net_options 2>&1 | sed s/^/\ -\ /g ; 
     initrd_mods="$initrd_mods $net_driver "; 
+    if [ "$net_driver" = "virtio_net" ] ; then
+        modprobe virtio_pci 2>&1 
+        initrd_mods="$initrd_mods virtio_pci"
+    fi
 }
 
 [ -r /proc/net/dev ] && {
@@ -360,15 +366,16 @@ initrd_mods=""
 }
 
 
-[ -z "$avail_nets" ] && {
+if [ -z "$avail_nets" ] ; then
     echo -n "No available netdevices found, rebooting in 10 seconds"
     /sbin/lspci
     for i in $(seq 10) ; do 
-    echo -n "."
-    sleep 1
+        echo -n "."
+        sleep 1
     done
     /sbin/reboot -f
-}
+fi
+
 if echo $avail_nets | grep "${nbd}" > /dev/null 2>&1
 then
     avail_nets=$(echo "${nbd} $(echo $nbd | sed -e "s/${nbd}//")")
@@ -394,7 +401,7 @@ while true ; do
             sleep $(($wait_time + 1)) ;
         }
         ping -c $PING_PACKETS -w $PING_TIMEOUT -I ${net} $motherserver >/dev/null && {
-            tell_mother_zmq -t 18 -m $motherserver -p 8000 "mother connection test" && {
+            tell_mother_zmq -i $ipaddr -t 18 -m $motherserver -p 8000 "mother connection test" && {
                 echo ${echo_opt} "${GREEN}Server $motherserver reachable via ping and hoststatus over $net${OFF}" ;
                 valid_net=$net ;
             } || {
@@ -548,6 +555,10 @@ if [ "$check_ram_fill" = "1" ] ; then
 
     [ $ram_fill -gt 98 ] && { err_exit "not enough space left in stage2: $ram_fill % full" ; }
 fi
+
+# copy UUID to stage2
+mkdir -p /stage2/etc/sysconfig/cluster
+cp -a /etc/sysconfig/cluster/.cluster_device_uuid /stage2/etc/sysconfig/cluster
 
 chroot /stage2 /linuxrc
 
