@@ -49,8 +49,9 @@ from django.db import connection
 from lxml import etree
 from lxml.builder import E
 from initat.cluster.backbone.models import device, network, config, device_variable, net_ip, hopcount, \
-     partition, sys_partition, wc_files, tree_node
+     partition, sys_partition, wc_files, tree_node, config_str
 from django.db.models import Q
+import module_dependency_tools
 
 try:
     from cluster_config_server_version import VERSION_STRING
@@ -2076,30 +2077,31 @@ class config_thread(threading_tools.thread_obj):
         # clear queue dict
         self.__queue_dict = {}
         # handler for simple commands
-        self.__command_handler_dict = {"get_target_sn"           : self._handle_get_target_sn,
-                                       "get_partition"           : self._handle_get_partition,
-                                       "get_image"               : self._handle_get_image,
-                                       "get_kernel"              : self._handle_get_kernel,
-                                       "get_kernel_name"         : self._handle_get_kernel,
-                                       "set_kernel"              : self._handle_set_kernel,
-                                       "create_config"           : self._handle_create_config,
-                                       "ack_config"              : self._handle_ack_config,
-                                       "get_syslog_server"       : self._handle_get_syslog_server,
-                                       "get_package_server"      : self._handle_get_package_server,
-                                       "get_init_mods"           : self._handle_get_init_mods,
-                                       "get_start_scripts"       : self._handle_get_start_scripts,
-                                       "get_stop_scripts"        : self._handle_get_stop_scripts,
-                                       "hello"                   : self._handle_hello,
-                                       "get_root_passwd"         : self._handle_get_root_passwd,
-                                       "locate_module"           : self._handle_locate_module,
-                                       "get_add_group"           : self._handle_get_add_group,
-                                       "get_add_user"            : self._handle_get_add_user,
-                                       "get_del_group"           : self._handle_get_del_group,
-                                       "get_del_user"            : self._handle_get_del_user,
-                                       "get_additional_packages" : self._handle_get_additional_packages,
-                                       "get_install_ep"          : self._handle_get_install_ep,
-                                       "get_upgrade_ep"          : self._handle_get_upgrade_ep,
-                                       "modify_bootloader"       : self._handle_modify_bootloader}
+        self.__command_handler_dict = {
+            #"get_target_sn"           : self._handle_get_target_sn,
+            "get_partition"           : self._handle_get_partition,
+            "get_image"               : self._handle_get_image,
+            #"get_kernel"              : self._handle_get_kernel,
+            #"get_kernel_name"         : self._handle_get_kernel,
+            "set_kernel"              : self._handle_set_kernel,
+            "create_config"           : self._handle_create_config,
+            "ack_config"              : self._handle_ack_config,
+            "get_syslog_server"       : self._handle_get_syslog_server,
+            "get_package_server"      : self._handle_get_package_server,
+            #"get_init_mods"           : self._handle_get_init_mods,
+            "get_start_scripts"       : self._handle_get_start_scripts,
+            "get_stop_scripts"        : self._handle_get_stop_scripts,
+            #"hello"                   : self._handle_hello,
+            "get_root_passwd"         : self._handle_get_root_passwd,
+            #"locate_module"           : self._handle_locate_module,
+            "get_add_group"           : self._handle_get_add_group,
+            "get_add_user"            : self._handle_get_add_user,
+            "get_del_group"           : self._handle_get_del_group,
+            "get_del_user"            : self._handle_get_del_user,
+            "get_additional_packages" : self._handle_get_additional_packages,
+            "get_install_ep"          : self._handle_get_install_ep,
+            "get_upgrade_ep"          : self._handle_get_upgrade_ep,
+            "modify_bootloader"       : self._handle_modify_bootloader}
         # list of simple commands
         self.__simple_commands = self.__command_handler_dict.keys()
         # wait_for_build dict
@@ -2285,99 +2287,6 @@ class config_thread(threading_tools.thread_obj):
         else:
             return os.path.normpath("%s/%s" % (base_path,
                                                mod_path)).replace("//", "/")
-    def _handle_locate_module(self, c_req, dc):
-        kernel_str = c_req.get_kernel_info_str(dc).split()[0]
-        # build module dict
-        mod_dict = dict([(key, None) for key in [key.endswith(".ko") and key[:-3] or (key.endswith(".o") and key[:-2] or key) for key in c_req.data_parts]])
-        kernel_dir = "%s/kernels/%s" % (self.__glob_config["TFTP_DIR"],
-                                        kernel_str)
-        # walk the kernel dir
-        mod_list = ["%s.o" % (key) for key in mod_dict.keys()] + ["%s.ko" % (key) for key in mod_dict.keys()]
-        for dir_name, dir_names, file_names in os.walk(kernel_dir):
-            for file_name in file_names:
-                if file_name in mod_list:
-                    # module is needed
-                    mod_name = file_name.endswith(".ko") and file_name[:-3] or (file_name.endswith(".o") and file_name[:-2] or file_name)
-                    mod_dict[mod_name] = os.path.normpath("%s/%s" % (dir_name, file_name))
-        required_modules, auto_modules = ([mod_loc for mod_loc in mod_dict.values() if mod_loc],
-                                          [])
-        # handle dependencies
-        dep_base_path = "%s/lib/modules/" % (kernel_dir)
-        c_req.log("kernel_dir is %s, dep_base_path is %s" % (kernel_dir,
-                                                        dep_base_path))
-        if os.path.isdir(dep_base_path):
-            dep_file = "%s/%s/modules.dep" % (dep_base_path, os.listdir(dep_base_path)[0])
-            dep_base_path = "%s/%s" % (dep_base_path,
-                                       os.listdir(dep_base_path)[0])
-            c_req.log("dep_base_path is %s, dep_file is %s" % (dep_base_path,
-                                                              dep_file))
-        else:
-            self.log("kernel_dir %s not found, strange" % (dep_base_path),
-                    logging_tools.LOG_LEVEL_ERROR)
-            dep_file = dep_base_path
-            c_req.log("dep_file is %s" % (dep_file))
-        if os.path.isfile(dep_file):
-            # read dependency file
-            dep_dict = {}
-            actual_line = ""
-            for dep_line in [line.replace("\t", " ").strip() for line in file(dep_file, "r").read().split("\n") if line.strip()]:
-                dep_line = dep_line.replace("//", "/")
-                if dep_line.endswith("\\"):
-                    actual_line = "%s %s" % (actual_line, dep_line[:-1])
-                else:
-                    actual_line = "%s %s" % (actual_line, dep_line)
-                    key, value = actual_line.strip().split(":", 1)
-                    dep_dict[self._get_module_path(kernel_dir, dep_base_path, key)] = [self._get_module_path(kernel_dir, dep_base_path, mod_path) for mod_path in value.split()]
-                    actual_line = ""
-            #pprint.pprint(dep_dict)
-            # iterate over auto_modules until all modules are resolved
-            while True:
-                some_added = False
-                for mod_name in required_modules + auto_modules:
-                    for new_mod in dep_dict.get(mod_name, []):
-                        if new_mod not in auto_modules and new_mod not in required_modules:
-                            some_added = True
-                            auto_modules.append(new_mod)
-                if not some_added:
-                    break
-        for key, value in mod_dict.iteritems():
-            c_req.log("kmod mapping: %20s -> %s" % (key, value))
-        for value in auto_modules:
-            c_req.log("dependencies: %20s    %s" % ("", value))
-        c_req.set_ret_str("ok %s" % (" ".join([mod_name[len(self.__glob_config["TFTP_DIR"]) : ] for mod_name in required_modules + auto_modules])))
-    def _handle_get_target_sn(self, c_req, dc):
-        # get prod_net info
-        prod_net = "none"
-        if c_req["prod_link"]:
-            dc.execute("SELECT nw.identifier, nw.name FROM network nw WHERE nw.network_idx=%s", (c_req["prod_link"]))
-            if dc.rowcount:
-                prod_net = dc.fetchone()["identifier"]
-            else:
-                c_req.log("Error fetching prod_net info (index %d)" % (c_req["prod_link"]),
-                          logging_tools.LOG_LEVEL_ERROR)
-        else:
-            c_req.log("not prod_link set", logging_tools.LOG_LEVEL_ERROR)
-        vs_struct = self._get_valid_server_struct(c_req, dc, ["tftpboot_export", "mother_server"])
-        if vs_struct:
-            # routing ok, get export directory
-            if vs_struct.config_name.startswith("mother"):
-                # is mother_server
-                dir_key = "TFTP_DIR"
-            else:
-                # is tftpboot_export
-                dir_key = "EXPORT"
-            vs_struct.fetch_config_vars(dc)
-            if vs_struct.has_key(dir_key):
-                kernel_source_path = "%s/kernels/" % (vs_struct[dir_key])
-                c_req.set_ret_str("ok %s %s %d %d %s %s %s" % (c_req["status"],
-                                                               prod_net,
-                                                               c_req["rsync"],
-                                                               c_req["rsync_compressed"],
-                                                               c_req["name"],
-                                                               c_req.server_ip,
-                                                               "%s/%s" % (vs_struct[dir_key], "config")))
-            else:
-                c_req.set_ret_str("error key %s not found" % (dir_key))
     def _handle_get_partition(self, c_req, dc):
         c_req._handle_get_partition(dc)
     def _handle_create_config(self, c_req, dc):
@@ -2703,12 +2612,19 @@ class build_process(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True)
         self.register_func("generate_config", self._generate_config)
+        # for requests from config_control
+        self.register_func("complex_request", self._complex_request)
         build_client.init(self)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
         build_client.close_clients()
         self.__log_template.close()
+    def _complex_request(self, queue_id, dev_name, req_name, **kwargs):
+        self.log("got request '%s' for '%s' (%d)" % (req_name, dev_name, queue_id))
+        cur_c = build_client.get_client(name=dev_name)
+        success = getattr(cur_c, req_name)()
+        self.send_pool_message("complex_result", queue_id, success)
     def _generate_config(self, attr_dict, **kwargs):
         if global_config["DEBUG"]:
             cur_query_count = len(connection.queries)
@@ -2946,6 +2862,7 @@ class server_process(threading_tools.process_pool):
         self._init_network_sockets()
         self.add_process(build_process("build"), start=True)
         self.register_func("client_update", self._client_update)
+        self.register_func("complex_result", self._complex_result)
         self.__run_idx = 0
         self.__pending_commands = {}
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -3016,7 +2933,7 @@ class server_process(threading_tools.process_pool):
             except zmq.core.error.ZMQError:
                 self.log("error binding to %s{%d}: %s" % (
                     conn_str,
-                    sock_type, 
+                    sock_type,
                     process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_CRITICAL)
                 client.close()
@@ -3134,7 +3051,8 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("got client_update with unknown run_idx %d" % (upd_dict["run_idx"]),
                      logging_tools.LOG_LEVEL_ERROR)
-
+    def _complex_result(self, src_proc, src_id, queue_id, result, **kwargs):
+        config_control.complex_result(queue_id, result)
 
 class simple_request(object):
     def __init__(self, cc, zmq_id, node_text):
@@ -3148,6 +3066,7 @@ class simple_request(object):
         self.server_ip = "0.0.0.0"
         self.node_text = node_text
         self.command = node_text.strip().split()[0]
+        self.data = " ".join(node_text.strip().split()[1:])
         self.server_ip = None
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.cc.log(what, log_level)
@@ -3169,6 +3088,19 @@ class simple_request(object):
         else:
             self.log("no result in find_best_server (%s)" % (logging_tools.get_plural("entry", len(conf_list))))
             return None
+    def _get_config_str_vars(self, cs_name):
+        config_pks = config.objects.filter(
+            Q(device_config__device=self.cc.device) | 
+            (Q(device_config__device__device_group=self.cc.device.device_group_id) & 
+             Q(device_config__device__device_type__identifier="MD"))). \
+            order_by("priority", "name").distinct().values_list("pk", flat=True)
+        c_vars = config_str.objects.filter(Q(config__in=config_pks) & Q(name=cs_name))
+        ent_list = []
+        for c_var in c_vars:
+            for act_val in [part.strip() for part in c_var.value.strip().split() if part.strip()]:
+                if act_val not in ent_list:
+                    ent_list.append(act_val)#
+        return ent_list
     def _get_valid_server_struct(self, s_list):
         # list of boot-related config names
         bsl_servers   = set(["kernel_server", "image_server", "mother_server"])
@@ -3225,16 +3157,28 @@ class simple_request(object):
             self.log("no valid server_struct found (search list: %s)" % (", ".join(s_list)),
                      logging_tools.LOG_LEVEL_ERROR)
         return valid_server_struct
-    
+    def create_config_dir(self):
+        # link to build client
+        self.cc.complex_config_request(self, "create_config_dir")
+    def create_config_dir_result(self, result):
+        if result:
+            return "ok created config dir"
+        else:
+            return "error cannot create config dir"
         
 class config_control(object):
+    """  struct to handle simple config requests """
     def __init__(self, cur_dev):
         self.__log_template = None
         self.device = cur_dev
         self.create_logger()
         self.__com_dict = {
-            "get_kernel_name"   : self._handle_get_kernel,
-            "get_syslog_server" : self._handle_get_syslog_server
+            "get_kernel_name"         : self._handle_get_kernel,
+            "get_syslog_server"       : self._handle_get_syslog_server,
+            "hello"                   : self._handle_hello,
+            "get_init_mods"           : self._handle_get_init_mods,
+            "locate_module"           : self._handle_locate_module,
+            "get_target_sn"           : self._handle_get_target_sn,
         }
     def create_logger(self):
         if self.__log_template is None:
@@ -3248,6 +3192,23 @@ class config_control(object):
             self.log("added client")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+    def complex_config_request(self, s_req, req_name):
+        self.log("routing config_request '%s'" % (req_name))
+        q_id = config_control.queue(self, s_req, req_name)
+        config_control.srv_process.send_to_process(
+            "build",
+            "complex_request",
+            q_id,
+            self.device.name,
+            req_name)
+    def complex_config_result(self, s_req, req_name, result):
+        ret_str = getattr(s_req, "%s_result" % (req_name))(result)
+        self.log("handled delayed '%s' (src_ip %s), returning %s" % (
+            s_req.node_text,
+            s_req.src_ip,
+            ret_str))
+        config_control.srv_process._send_simple_return(s_req.zmq_id, ret_str)
+        del s_req
     def handle_nodeinfo(self, src_id, node_text):
         s_time = time.time()
         s_req = simple_request(self, src_id, node_text)
@@ -3256,14 +3217,76 @@ class config_control(object):
             ret_str = com_call(s_req)
         else:
             ret_str = "error unknown command '%s'" % (node_text)
-        e_time = time.time()
-        self.log("handled nodeinfo '%s' (src_ip %s) in %s, returning %s" % (
-            node_text,
-            s_req.src_ip,
-            logging_tools.get_diff_time_str(e_time - s_time),
-            ret_str))
-        config_control.srv_process._send_simple_return(src_id, ret_str)
+        if ret_str is None:
+            self.log("waiting for answer")
+        else:
+            e_time = time.time()
+            self.log("handled nodeinfo '%s' (src_ip %s) in %s, returning %s" % (
+                s_req.node_text,
+                s_req.src_ip,
+                logging_tools.get_diff_time_str(e_time - s_time),
+                ret_str))
+            config_control.srv_process._send_simple_return(s_req.zmq_id, ret_str)
+            del s_req
     # command snippets
+    def _handle_get_target_sn(self, s_req):
+        # get prod_net info
+        prod_net = self.device.prod_link
+        if not prod_net:
+            self.log("no prod_link set", logging_tools.LOG_LEVEL_ERROR)
+        vs_struct = s_req._get_valid_server_struct(["tftpboot_export", "mother_server"])
+        if vs_struct:
+            # routing ok, get export directory
+            if vs_struct.config_name.startswith("mother"):
+                # is mother_server
+                dir_key = "TFTP_DIR"
+            else:
+                # is tftpboot_export
+                dir_key = "EXPORT"
+            vs_struct.fetch_config_vars()
+            if vs_struct.has_key(dir_key):
+                kernel_source_path = "%s/kernels/" % (vs_struct[dir_key])
+                return "ok %s %s %d %d %s %s %s" % (
+                    self.device.new_state.status,
+                    prod_net.identifier,
+                    self.device.rsync,
+                    self.device.rsync_compressed,
+                    self.device.name,
+                    s_req.server_ip,
+                    "%s/%s" % (vs_struct[dir_key], "config"))
+            else:
+                return "error key %s not found" % (dir_key)
+        else:
+            return "error resolving server"
+    def _handle_locate_module(self, s_req):
+        dev_kernel = self.device.new_kernel
+        if dev_kernel:
+            kernel_name = dev_kernel.name
+            # build module dict
+            #mod_dict = dict([(key, None) for key in [key.endswith(".ko") and key[:-3] or (key.endswith(".o") and key[:-2] or key) for key in s_req.data]])
+            kernel_dir = os.path.join(global_config["TFTP_DIR"],
+                                      "kernels",
+                                      kernel_name)
+            dep_h = module_dependency_tools.dependency_handler(kernel_dir, log_com=self.log)
+            dep_h.resolve(s_req.data.split(), firmware=False, resolve_module_dict=True)
+            for key, value in dep_h.module_dict.iteritems():
+                self.log("kmod mapping: %20s -> %s" % (key, value))
+            for value in dep_h.auto_modules:
+                self.log("dependencies: %20s    %s" % ("", value))
+            # walk the kernel dir
+            #mod_list = ["%s.o" % (key) for key in mod_dict.keys()] + ["%s.ko" % (key) for key in mod_dict.keys()]
+            return "ok %s" % (" ".join([mod_name[len(global_config["TFTP_DIR"]) : ] for mod_name in dep_h.module_dict.itervalues()]))
+        else:
+            return "error no kernel set"
+    def _handle_get_init_mods(self, s_req):
+        db_mod_list = s_req._get_config_str_vars("INIT_MODS")
+        return "ok %s" % (" ".join(db_mod_list))
+        # add modules which depends to the used partition type
+        # not implemented, FIXME
+        #dc.execute("SELECT DISTINCT ps.name FROM partition_table pt INNER JOIN device d LEFT JOIN partition_disc pd ON pd.partition_table=pt.partition_table_idx LEFT JOIN partition p ON p.partition_disc=pd.partition_disc_idx LEFT JOIN partition_fs ps ON ps.partition_fs_idx=p.partition_fs WHERE d.device_idx=%s AND d.partition_table=pt.partition_table_idx AND ps.identifier='f'", c_req["device_idx"])
+        #db_mod_list.extend([db_rec["name"] for db_rec in dc.fetchall() if db_rec["name"] and db_rec["name"] not in db_mod_list])
+    def _handle_hello(self, s_req):
+        return s_req.create_config_dir()
     def _handle_get_syslog_server(self, s_req):
         vs_struct = s_req._get_valid_server_struct(["syslog_server"])
         if vs_struct:
@@ -3355,6 +3378,18 @@ class config_control(object):
         config_control.cc_log("init config_control")
         config_control.__cc_dict = {}
         config_control.__lut_dict = {}
+        config_control.__queue_dict = {}
+        config_control.__queue_num = 0
+    @staticmethod
+    def queue(cc_obj, s_req, req_name):
+        config_control.__queue_num += 1
+        config_control.__queue_dict[config_control.__queue_num] = (cc_obj, s_req, req_name)
+        return config_control.__queue_num
+    @staticmethod
+    def complex_result(queue_id, result):
+        cc_obj, s_req, req_name = config_control.__queue_dict[queue_id]
+        del config_control.__queue_dict[queue_id]
+        cc_obj.complex_config_result(s_req, req_name, result)
     @staticmethod
     def cc_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         config_control.srv_process.log("[cc] %s" % (what), log_level)
@@ -3588,10 +3623,6 @@ class server_thread_pool(threading_tools.thread_pool):
         self.log("Found %d valid config-lines:" % (len(conf_info)))
         for conf in conf_info:
             self.log("Config : %s" % (conf))
-    def _re_insert_config(self):
-        dc = None#self.__db_con.get_connection(SQL_ACCESS)
-        configfile.write_config(dc, "config_server", self.__glob_config)
-        dc.release()
     def _new_pid(self, new_pid):
         self.log("received new_pid message")
         process_tools.append_pids(self.__loc_config["PID_NAME"], new_pid)
