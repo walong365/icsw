@@ -535,7 +535,7 @@ class host(machine):
                     stage_dest  ="%s/%s" % (kern_dst_dir, stage_name)
                     if not os.path.isfile(stage_source):
                         self.log("Error, cannot find %s_source '%s'..." % (stage_name, stage_source))
-                    elif not os.path.isfile(stage_dest) or (os.path.isfile(stage_dest) and os.stat(stage_source)[stat.ST_MTIME] > os.stat(stage_dest)[stat.ST_MTIME]):
+                    elif not os.path.isfile(stage_dest) or (os.path.isfile(stage_dest) and (os.stat(stage_source)[stat.ST_MTIME] > os.stat(stage_dest)[stat.ST_MTIME]) or os.stat(stage_source)[stat.ST_SIZE] != os.stat(stage_dest)[stat.ST_SIZE]):
                         self.log("Copying %s from %s to %s ..." % (stage_name, stage_source, stage_dest))
                         open(stage_dest, "w").write(open(stage_source, "r").read())
                 #print kernel_stuff
