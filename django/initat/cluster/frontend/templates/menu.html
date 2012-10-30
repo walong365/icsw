@@ -20,12 +20,15 @@
         <a>{% trans "Operation" %}</a>
         <ul>
             <li><a href="{% url boot:show_boot %}">{% trans "Node boot" %}</a></li>
+            <li><a href="{% url setup:partition_overview %}">{% trans "Partition overview" %}</a></li>
         </ul>
+    </li>
     <li>
         <a>{% trans "RMS" %}</a>
         <ul>
             <li><a href="{% url rms:overview %}">{% trans "RMS overview" %}</a></li>
         </ul>
+    </li>
     <li>
         <a>{% trans "Session" %}</a>
         <ul>

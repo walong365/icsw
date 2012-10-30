@@ -1,0 +1,267 @@
+{% extends "main.html" %}
+
+{% load i18n extra_tags %}
+
+{% block title %}{% trans "Partition Overview" %}{% endblock %}
+
+{% block content %}
+
+<h1 class="center">Partitions (<span id="num_partitions">???</span> defined)</h1>
+<div id="partition_list"></div>
+
+<div id="partition_table"></div>
+
+<script type="text/javascript">
+
+// all partitions
+ALL_PARTITIONS = undefined;
+// all partition_fs
+ALL_FS = undefined;
+
+function load_partition_tables() {
+    $.ajax({
+        url     : "{% url setup:get_all_partitions %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                ALL_PARTITIONS = $(xml).find("partitions");
+                init_xml_change(ALL_PARTITIONS);
+                ALL_FS = $(xml).find("partition_fs_list");
+                show_all_partitions();
+            }
+        }
+    });
+};
+
+function load_partition_tables_and_redraw(pt_pk) {
+    $.ajax({
+        url     : "{% url setup:get_all_partitions %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                ALL_PARTITIONS = $(xml).find("partitions");
+                redraw_partition_table(pt_pk);
+            }
+        }
+    });
+};
+
+function show_all_partitions() {
+    $("span#num_partitions").text(ALL_PARTITIONS.find("partition_table").length);
+    var new_part_list = $("<select>").attr({
+        "id"        : "all_partitions",
+        "size"      : 5}).bind("change", choose_partition_table);
+    ALL_PARTITIONS.find("partition_table").each(function() {
+        var cur_pt = $(this);
+        cur_opt = $("<option>").attr({
+            "value" : cur_pt.attr("pk")
+        }).text(cur_pt.attr("name") + " (" + cur_pt.find("partition_disc").length + " discs)");
+        new_part_list.append(cur_opt);
+    });
+    $("div#partition_table").children().remove();
+    $("div#partition_list").children().remove();
+    if (new_part_list.find("option").length) {
+        $("div#partition_list").append(new_part_list);
+    };
+    $("div#partition_list").append($("<input>").attr({
+        "type"   : "button",
+        "id"     : "add_partition_table",
+        "value"  : "add partition"}).bind("click", add_new_partition));
+};
+
+function add_new_partition() {
+    $("input#add_partition_table").attr("disabled", "disabled");
+    var answer = prompt("name of new partition table");
+    $.ajax({
+        url     : "{% url setup:create_new_partition_table %}",
+        error   : handle_ajax_error,
+        data    : {
+            "name" : answer
+        },
+        success : function(xml) {
+            $("input#add_partition_table").removeAttr("disabled");
+            if (parse_xml_response(xml)) {
+                load_partition_tables();
+            }
+        }
+    });
+};
+
+function choose_partition_table(event) {
+    var pt_sel = $(event.target);
+    var cur_pt_pk = pt_sel.val();
+    if (parseInt(cur_pt_pk)) {
+        redraw_partition_table(cur_pt_pk);
+    };
+};
+
+function redraw_partition_table(pt_pk) {
+    $("div#partition_table").children().remove();
+    $("div#partition_table").append(get_partition_table(pt_pk));
+};
+  
+function create_delete_disc(event) {
+    var cur_el = $(event.target);
+    var cur_pt_pk = cur_el.attr("id").split("__")[1];
+    var cur_pt = ALL_PARTITIONS.find("partition_table[pk='" + cur_pt_pk + "']");
+    if (cur_el.attr("value").match(/^creat/)) {
+        $.ajax({
+            url     : "{% url setup:create_part_disc %}",
+            error   : handle_ajax_error,
+            data    : {
+                "pt_pk" : cur_pt_pk,
+                "disc"  : cur_el.parents("tr:first").find("input[id$='__disc']").val()
+            },
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    load_partition_tables_and_redraw(cur_pt_pk);
+                }
+            }
+        });
+    } else {
+        $.ajax({
+            url     : "{% url setup:delete_part_disc %}",
+            error   : handle_ajax_error,
+            data    : {
+                "pt_pk" : cur_pt_pk,
+                "pd_pk" : cur_el.attr("id").split("__")[3]
+            },
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    load_partition_tables_and_redraw(cur_pt_pk);
+                }
+            }
+        });
+    };
+};
+
+function create_delete_partition(event) {
+    var cur_el = $(event.target);
+    var cur_pt_pk = cur_el.attr("id").split("__")[1];
+    var cur_pd_pk = cur_el.attr("id").split("__")[3];
+    var part_tr = cur_el.parents("tr:first");
+    if (cur_el.attr("value").match(/^creat/)) {
+        $.ajax({
+            url     : "{% url setup:create_partition %}",
+            error   : handle_ajax_error,
+            data    : {
+                "pt_pk"  : cur_pt_pk,
+                "pd_pk"  : cur_pd_pk,
+                "fstype" : part_tr.find("select[id$='__partition_fs']").val(),
+                "pnum"   : part_tr.find("input[id$='__pnum']").val()
+            },
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    load_partition_tables_and_redraw(cur_pt_pk);
+                }
+            }
+        });
+    } else {
+        $.ajax({
+            url     : "{% url setup:delete_partition %}",
+            error   : handle_ajax_error,
+            data    : {
+                "part_pk" : cur_el.attr("id").split("__")[5]
+            },
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    load_partition_tables_and_redraw(cur_pt_pk);
+                }
+            }
+        });
+    };
+};
+
+function create_part_line(line_prefix, pt_xml, pd_xml, part_xml) {
+    var dummy_div = $("<div>");
+    if (part_xml === undefined) {
+        var part_pk = "new";
+    } else {
+        var part_pk = part_xml.attr("pk");
+    };
+    var line_prefix = line_prefix + "__part__" + part_pk;
+    var part_tr = $("<tr>");
+    var first_td = $("<td>");
+    part_tr.append(first_td);
+    first_td.append(
+        create_input_el(part_xml, "pnum", line_prefix, {"label" : "Partition id"})
+    );
+    if (part_xml) {
+        first_td.append(
+            create_input_el(part_xml, "size", line_prefix, {"label" : "Size", number : true})
+        ).append(
+            create_input_el(part_xml, "mountpoint", line_prefix, {"label" : "mountpoint"})
+        ).append(
+            create_input_el(part_xml, "mount_options", line_prefix, {"label" : "options"})
+        );
+    };
+    part_tr.append($("<td>").append(
+        create_input_el(part_xml, "partition_fs", line_prefix, {
+            label         : "fstype",
+            select_source : ALL_FS.find("partition_fs")
+        })
+    ));
+    part_tr.append($("<td>").append(
+        $("<input>").attr({
+            "type"    : "button",
+            "value"   : part_xml ? "delete" : "create",
+            "id"      : line_prefix
+        }).bind("click", create_delete_partition)
+    ));
+    dummy_div.append(part_tr);
+    return dummy_div;
+};
+
+function create_disc_line(line_prefix, pt_xml, pd_xml) {
+    var dummy_div = $("<div>");
+    if (pd_xml === undefined) {
+        var pd_pk = "new";
+    } else {
+        var pd_pk = pd_xml.attr("pk");
+    };
+    var line_prefix = line_prefix + "__pdisc__" + pd_pk;
+    var disc_tr = $("<tr>").append($("<td>").append(
+        create_input_el(pd_xml, "disc", line_prefix, {"label" : "Disc name"})
+    ).append(
+        $("<input>").attr({
+            "type"    : "button",
+            "value"   : pd_xml ? "delete" : "create",
+            "id"      : line_prefix
+        }).bind("click", create_delete_disc)
+    ));
+    dummy_div.append(disc_tr);
+    // partitions
+    if (pd_xml) {
+        pd_xml.find("partitions partition").each(function() {
+            var part_xml = $(this);
+            dummy_div.append(create_part_line(line_prefix, pt_xml, pd_xml, part_xml).children());
+        });
+        dummy_div.append(create_part_line(line_prefix, pt_xml, pd_xml, undefined).children());
+    };
+    return dummy_div;
+};
+
+function get_partition_table(pt_pk) {
+    // returns valid HTML for given pt
+    var pt_xml = ALL_PARTITIONS.find("partition_table[pk='" + pt_pk + "']");
+    var dummy_div = $("<div>");
+    var line_prefix = "ptable__" + pt_pk;
+    var part_table = $("<table>").attr({
+        "id" : line_prefix
+    });
+    pt_xml.find("partition_discs partition_disc").each(function() {
+        var pd_xml = $(this);
+        part_table.append(create_disc_line(line_prefix, pt_xml, pd_xml).children());
+    });
+    part_table.append(create_disc_line(line_prefix, pt_xml, undefined).children());
+    return part_table;
+};
+
+function addHandlers() {
+    load_partition_tables(true);
+};
+
+$(document).ready(addHandlers);
+</script>
+
+{% endblock %}

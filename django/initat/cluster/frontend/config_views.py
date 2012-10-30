@@ -9,7 +9,7 @@ from initat.cluster.frontend.forms import config_type_form
 from initat.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      ng_check_command, ng_check_command_type, ng_service_templ, config_script, device_config, \
-     tree_node, wc_files
+     tree_node, wc_files, partition_disc, partition
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.cluster.frontend.render_tools import render_me
@@ -79,6 +79,7 @@ def get_configs(request):
 @init_logging
 def change_xml_entry(request):
     _post = request.POST
+    #pprint.pprint(_post)
     try:
         if _post["id"].count("__") == 2:
             # old version:
@@ -90,13 +91,16 @@ def change_xml_entry(request):
             # format object_type, mother_id, object_id, attr_name, used in device_network
             object_type, mother_id, object_id, attr_name = _post["id"].split("__", 3)
         elif _post["id"].count("__") == 4:
-            # format mother_type, mother_id, object_type, object_id, attr_name, used in config_overview
+            # format mother_type, mother_id, object_type, object_id, attr_name, used in config_overview and part_overview
             mother_type, mother_id, object_type, object_id, attr_name = _post["id"].split("__", 4)
         elif _post["id"].count("__") == 5:
             # format mother object_type, dev_id, mother_id, object_type, object_id, attr_name, used in device_network for IPs
             m_object_type, dev_id, mother_id, object_type, object_id, attr_name = _post["id"].split("__", 5)
+        elif _post["id"].count("__") == 6:
+            # format mother object_type, dev_id, mother_id, object_type, object_id, attr_name, used in partition setup
+            gm_object_type, m_object_type, dev_id, mother_id, object_type, object_id, attr_name = _post["id"].split("__", 6)
         else:
-            request.log("cannot parse", logging_tools.LOG_LEVEL_ERROR, xml=True)
+            request.log("cannot parse '%s'" % (_post["id"]), logging_tools.LOG_LEVEL_ERROR, xml=True)
     except:
         request.log("cannot parse", logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
@@ -112,6 +116,8 @@ def change_xml_entry(request):
                    "varblob" : config_blob,
                    "cscript" : config_script,
                    "ngcc"    : ng_check_command,
+                   "pdisc"   : partition_disc,
+                   "part"    : partition
                    }.get(object_type, None)
         if not mod_obj:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
