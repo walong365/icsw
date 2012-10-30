@@ -294,8 +294,9 @@ class device(models.Model):
     act_kernel_build = models.IntegerField(null=True, blank=True)
     kernelversion = models.CharField(max_length=192, blank=True)
     stage1_flavour = models.CharField(max_length=48, blank=True)
-    dom0_memory = models.IntegerField(null=True, blank=True)
-    xen_guest = models.BooleanField()
+    # removed 20121030 by AL
+##    dom0_memory = models.IntegerField(null=True, blank=True)
+##    xen_guest = models.BooleanField()
     newimage = models.CharField(max_length=765, blank=True)
     new_image = models.ForeignKey("image", null=True, related_name="new_image")
     actimage = models.CharField(max_length=765, blank=True)
@@ -1384,28 +1385,95 @@ class partition(models.Model):
     partition_disc = models.ForeignKey("partition_disc")
     mountpoint = models.CharField(max_length=192)
     partition_hex = models.CharField(max_length=6, blank=True)
-    size = models.IntegerField(null=True, blank=True)
-    mount_options = models.CharField(max_length=255, blank=True)
+    size = models.IntegerField(null=True, blank=True, default=100)
+    mount_options = models.CharField(max_length=255, blank=True, default="defaults")
     pnum = models.IntegerField()
-    bootable = models.BooleanField()
-    fs_freq = models.IntegerField(null=True, blank=True)
-    fs_passno = models.IntegerField(null=True, blank=True)
+    bootable = models.BooleanField(default=False)
+    fs_freq = models.IntegerField(null=True, blank=True, default=0)
+    fs_passno = models.IntegerField(null=True, blank=True, default=0)
     partition_fs = models.ForeignKey("partition_fs")
     lut_blob = models.TextField(blank=True, null=True)
     warn_threshold = models.IntegerField(null=True, blank=True)
     crit_threshold = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        p_xml = E.partition(
+            pk="%d" % (self.pk),
+            key="part__%d" % (self.pk),
+            mountpoint=self.mountpoint or "",
+            mount_options=self.mount_options or "",
+            pnum="%d" % (self.pnum or 0),
+            partition_fs="%d" % (self.partition_fs_id),
+            size="%d" % (self.size if type(self.size) == int else 0),
+        )
+        return p_xml
     class Meta:
         db_table = u'partition'
+        ordering = ("pnum",)
+
+@receiver(signals.pre_save, sender=partition)
+def partition_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        p_num = cur_inst.pnum
+        try:
+            p_num = int(p_num)
+        except:
+            raise ValidationError("partition number not parseable")
+        if p_num < 1 or p_num > 9:
+            raise ValidationError("partition number out of bounds [1, 9]")
+        all_part_nums = partition.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_disc=cur_inst.partition_disc)).values_list("pnum", flat=True)
+        if p_num in all_part_nums:
+            raise ValidationError("partition number already used")
+        size = cur_inst.size
+        try:
+            size = int(size)
+        except:
+            raise ValidationError("size is not a number")
+        if size < 0:
+            raise ValidationError("size must be >= 0")
+        if cur_inst.mountpoint.strip() and not cur_inst.mountpoint.startswith("/"):
+            raise ValidationError("mountpoint must start with '/'")
+        cur_inst.pnum = p_num
 
 class partition_disc(models.Model):
     idx = models.AutoField(db_column="partition_disc_idx", primary_key=True)
     partition_table = models.ForeignKey("partition_table")
     disc = models.CharField(max_length=192)
-    priority = models.IntegerField(null=True, blank=True)
+    priority = models.IntegerField(null=True, default=0)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        pd_xml = E.partition_disc(
+            self.disc,
+            E.partitions(
+                *[sub_part.get_xml() for sub_part in self.partition_set.all()]
+                ),
+            pk="%d" % (self.pk),
+            key="pdisc__%d" % (self.pk),
+            priority="%d" % (self.priority),
+            disc=self.disc,
+        )
+        return pd_xml
     class Meta:
         db_table = u'partition_disc'
+        ordering = ("priority", "disc",)
+    def __unicode__(self):
+        return self.disc
+
+@receiver(signals.pre_save, sender=partition_disc)
+def partition_disc_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        disc_re = re.compile("^/dev/[shv]d[a-d]$")
+        cur_inst = kwargs["instance"]
+        d_name = cur_inst.disc.strip().lower()
+        if not d_name:
+            raise ValidationError("name must not be zero")
+        if not disc_re.match(d_name):
+            raise ValidationError("illegal name")
+        all_discs = partition_disc.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_table=cur_inst.partition_table)).values_list("disc", flat=True)
+        if d_name in all_discs:
+            raise ValidationError("name already used")
+        cur_inst.disc = d_name
 
 class partition_fs(models.Model):
     idx = models.AutoField(db_column="partition_fs_idx", primary_key=True)
@@ -1414,20 +1482,53 @@ class partition_fs(models.Model):
     descr = models.CharField(max_length=765, blank=True)
     hexid = models.CharField(max_length=6)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.partition_fs(
+            self.name,
+            pk="%d" % (self.pk),
+            key="partfs__%d" % (self.pk),
+            identifier=self.identifier,
+            descr=self.descr,
+            hexid=self.hexid,
+        )
+    def __unicode__(self):
+        return self.descr
     class Meta:
         db_table = u'partition_fs'
+        ordering = ("name", )
 
 class partition_table(models.Model):
     idx = models.AutoField(db_column="partition_table_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
-    description = models.CharField(max_length=255, blank=True)
-    enabled = models.BooleanField()
-    valid = models.BooleanField()
-    modify_bootloader = models.IntegerField(null=True, blank=True)
+    description = models.CharField(max_length=255, blank=True, default="")
+    enabled = models.BooleanField(default=True)
+    valid = models.BooleanField(default=False)
+    modify_bootloader = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        pt_xml = E.partition_table(
+            self.name,
+            E.partition_discs(
+                *[sub_disc.get_xml() for sub_disc in self.partition_disc_set.all()]
+                ),
+            name=self.name,
+            pk="%d" % (self.pk),
+            key="ptable__%d" % (self.pk),
+            description=unicode(self.description),
+            valid="1" if self.valid else "0",
+            enabled="1" if self.enabled else "0",
+        )
+        return pt_xml
     class Meta:
         db_table = u'partition_table'
 
+@receiver(signals.pre_save, sender=partition_table)
+def partition_table_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name.strip():
+            raise ValidationError("name must not be zero")
+        
 class pci_entry(models.Model):
     idx = models.AutoField(db_column="pci_entry_idx", primary_key=True)
     device_idx = models.ForeignKey("device")
@@ -2070,33 +2171,33 @@ class wc_files(models.Model):
     class Meta:
         db_table = u'wc_files'
 
-class xen_device(models.Model):
-    idx = models.AutoField(db_column="xen_device_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    memory = models.IntegerField()
-    max_memory = models.IntegerField()
-    builder = models.CharField(max_length=15, blank=True)
-    cmdline = models.CharField(max_length=765, blank=True)
-    vcpus = models.IntegerField()
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'xen_device'
-
-class xen_vbd(models.Model):
-    idx = models.AutoField(db_column="xen_vbd_idx", primary_key=True)
-    xen_device = models.ForeignKey("xen_device")
-    vbd_type = models.CharField(max_length=15, blank=True)
-    sarg0 = models.CharField(max_length=765, blank=True)
-    sarg1 = models.CharField(max_length=765, blank=True)
-    sarg2 = models.CharField(max_length=765, blank=True)
-    sarg3 = models.CharField(max_length=765, blank=True)
-    iarg0 = models.IntegerField(null=True, blank=True)
-    iarg1 = models.IntegerField(null=True, blank=True)
-    iarg2 = models.IntegerField(null=True, blank=True)
-    iarg3 = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'xen_vbd'
+##class xen_device(models.Model):
+##    idx = models.AutoField(db_column="xen_device_idx", primary_key=True)
+##    device = models.ForeignKey("device")
+##    memory = models.IntegerField()
+##    max_memory = models.IntegerField()
+##    builder = models.CharField(max_length=15, blank=True)
+##    cmdline = models.CharField(max_length=765, blank=True)
+##    vcpus = models.IntegerField()
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'xen_device'
+##
+##class xen_vbd(models.Model):
+##    idx = models.AutoField(db_column="xen_vbd_idx", primary_key=True)
+##    xen_device = models.ForeignKey("xen_device")
+##    vbd_type = models.CharField(max_length=15, blank=True)
+##    sarg0 = models.CharField(max_length=765, blank=True)
+##    sarg1 = models.CharField(max_length=765, blank=True)
+##    sarg2 = models.CharField(max_length=765, blank=True)
+##    sarg3 = models.CharField(max_length=765, blank=True)
+##    iarg0 = models.IntegerField(null=True, blank=True)
+##    iarg1 = models.IntegerField(null=True, blank=True)
+##    iarg2 = models.IntegerField(null=True, blank=True)
+##    iarg3 = models.IntegerField(null=True, blank=True)
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'xen_vbd'
 
 # signals
 @receiver(signals.post_save, sender=device_group)
