@@ -357,7 +357,9 @@ class device(models.Model):
             boot_dev_driver="%s" % (self.bootnetdevice.driver if self.bootnetdevice else ""),
             greedy_mode="0" if not self.dhcp_mac else "1",
             bootserver="%d" % (self.bootserver_id or 0),
-            dhcp_write="1" if self.dhcp_write else "0"
+            dhcp_write="1" if self.dhcp_write else "0",
+            partition_table_id="%d" % (self.partition_table_id if self.partition_table_id else 0),
+            act_partition_table_id="%d" % (self.act_partition_table_id if self.act_partition_table_id else 0),
         )
         if full:
             r_xml.extend([
@@ -824,7 +826,7 @@ class lvm_lv(models.Model):
     partition_table = models.ForeignKey("partition_table")
     lvm_vg = models.ForeignKey("lvm_vg")
     size = models.BigIntegerField(null=True, blank=True)
-    mountpoint = models.CharField(max_length=192)
+    mountpoint = models.CharField(max_length=192, default="/")
     mount_options = models.CharField(max_length=384, blank=True)
     fs_freq = models.IntegerField(null=True, blank=True)
     fs_passno = models.IntegerField(null=True, blank=True)
@@ -1383,7 +1385,7 @@ class package_set(models.Model):
 class partition(models.Model):
     idx = models.AutoField(db_column="partition_idx", primary_key=True)
     partition_disc = models.ForeignKey("partition_disc")
-    mountpoint = models.CharField(max_length=192)
+    mountpoint = models.CharField(max_length=192, default="/")
     partition_hex = models.CharField(max_length=6, blank=True)
     size = models.IntegerField(null=True, blank=True, default=100)
     mount_options = models.CharField(max_length=255, blank=True, default="defaults")
@@ -1404,9 +1406,33 @@ class partition(models.Model):
             mount_options=self.mount_options or "",
             pnum="%d" % (self.pnum or 0),
             partition_fs="%d" % (self.partition_fs_id),
-            size="%d" % (self.size if type(self.size) == int else 0),
+            size="%d" % (self.size if type(self.size) in [long, int] else 0),
+            bootable="%d" % (1 if self.bootable else 0),
+            fs_freq="%d" % (self.fs_freq),
+            fs_passno="%d" % (self.fs_passno),
         )
+        if hasattr(self, "problems"):
+            p_xml.append(
+                E.problems(
+                    *[E.problem(what, level="%d" % (log_level)) for log_level, what, is_global in self.problems if is_global is False]
+                )
+            )
         return p_xml
+    def _validate(self, p_disc):
+        p_list = []
+        p_name = "%s%d" % (p_disc, self.pnum)
+        if not self.partition_fs:
+            p_list.append((logging_tools.LOG_LEVEL_ERROR, "no partition_fs set (%s)" % (p_name), False))
+        else:
+            if self.partition_fs.need_mountpoint():
+                if not self.mountpoint.startswith("/"):
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mountpoint defined for %s" % (p_name), False))
+                if not self.mount_options.strip():
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mount_options given for %s" % (p_name), False))
+                   
+        self.problems = p_list
+    def _get_problems(self):
+        return self.problems
     class Meta:
         db_table = u'partition'
         ordering = ("pnum",)
@@ -1425,16 +1451,34 @@ def partition_pre_save(sender, **kwargs):
         all_part_nums = partition.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_disc=cur_inst.partition_disc)).values_list("pnum", flat=True)
         if p_num in all_part_nums:
             raise ValidationError("partition number already used")
-        size = cur_inst.size
+        cur_inst.pnum = p_num
+        # size
         try:
-            size = int(size)
+            size = int(cur_inst.size)
         except:
             raise ValidationError("size is not a number")
         if size < 0:
             raise ValidationError("size must be >= 0")
+        cur_inst.size = size
+        # mountpoint
         if cur_inst.mountpoint.strip() and not cur_inst.mountpoint.startswith("/"):
             raise ValidationError("mountpoint must start with '/'")
-        cur_inst.pnum = p_num
+        # fs_freq
+        try:
+            fs_freq = int(cur_inst.fs_freq)
+        except:
+            raise ValidationError("fs_freq must be a number")
+        if fs_freq < 0 or fs_freq > 1:
+            raise ValidationError("fs_freq out of bounds [0, 1]")
+        cur_inst.fs_freq = fs_freq
+        # fs_passno
+        try:
+            fs_passno = int(cur_inst.fs_passno)
+        except:
+            raise ValidationError("fs_passno must be a number")
+        if fs_passno < 0 or fs_passno > 2:
+            raise ValidationError("fs_passno out of bounds [0, 2]")
+        cur_inst.fs_passno = fs_passno
 
 class partition_disc(models.Model):
     idx = models.AutoField(db_column="partition_disc_idx", primary_key=True)
@@ -1453,7 +1497,20 @@ class partition_disc(models.Model):
             priority="%d" % (self.priority),
             disc=self.disc,
         )
+        if hasattr(self, "problems"):
+            pd_xml.append(
+                E.problems(
+                    *[E.problem(what, level="%d" % (log_level)) for log_level, what, is_global in self.problems if not is_global]
+                )
+            )
         return pd_xml
+    def _validate(self):
+        p_list = []
+        self.problems = []#(logging_tools.LOG_LEVEL_ERROR, "test", True)]
+        for part in self.partition_set.all():
+            part._validate(self)
+    def _get_problems(self):
+        return self.problems + sum([cur_part._get_problems() for cur_part in self.partition_set.all()], [])
     class Meta:
         db_table = u'partition_disc'
         ordering = ("priority", "disc",)
@@ -1476,6 +1533,7 @@ def partition_disc_pre_save(sender, **kwargs):
         cur_inst.disc = d_name
 
 class partition_fs(models.Model):
+    # mix of partition and fs info, not perfect ...
     idx = models.AutoField(db_column="partition_fs_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=48)
     identifier = models.CharField(max_length=3)
@@ -1491,6 +1549,8 @@ class partition_fs(models.Model):
             descr=self.descr,
             hexid=self.hexid,
         )
+    def need_mountpoint(self):
+        return True if self.hexid in ["83"] else False
     def __unicode__(self):
         return self.descr
     class Meta:
@@ -1503,9 +1563,21 @@ class partition_table(models.Model):
     description = models.CharField(max_length=255, blank=True, default="")
     enabled = models.BooleanField(default=True)
     valid = models.BooleanField(default=False)
-    modify_bootloader = models.BooleanField(default=False)
+    modify_bootloader = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
+    def get_xml(self, **kwargs):
+        _validate = kwargs.get("validate", False)
+        if _validate:
+            prob_list = self._validate()
+            new_valid = not any([log_level in [
+                logging_tools.LOG_LEVEL_ERROR,
+                logging_tools.LOG_LEVEL_CRITICAL] for log_level, what, is_global in prob_list])
+            print new_valid
+            pprint.pprint(prob_list)
+            # validate 
+            if new_valid != self.valid:
+                self.valid = new_valid
+                self.save()
         pt_xml = E.partition_table(
             self.name,
             E.partition_discs(
@@ -1518,7 +1590,22 @@ class partition_table(models.Model):
             valid="1" if self.valid else "0",
             enabled="1" if self.enabled else "0",
         )
+        if _validate:
+            pt_xml.append(
+                E.problems(
+                    *[E.problem(what, level="%d" % (log_level)) for log_level, what, is_global in prob_list if is_global]
+                )
+            )
         return pt_xml
+    def _validate(self):
+        # problem list, format is level, problem, global (always True for partition_table)
+        p_list = []
+        if not self.partition_disc_set.all():
+            p_list.append((logging_tools.LOG_LEVEL_ERROR, "no discs defined", True))
+        for p_disc in self.partition_disc_set.all():
+            p_disc._validate()
+        self.problems = p_list
+        return self.problems + sum([cur_disc._get_problems() for cur_disc in self.partition_disc_set.all()], [])
     class Meta:
         db_table = u'partition_table'
 
@@ -1863,7 +1950,7 @@ class sys_partition(models.Model):
     idx = models.AutoField(db_column="sys_partition_idx", primary_key=True)
     partition_table = models.ForeignKey("partition_table")
     name = models.CharField(max_length=192)
-    mountpoint = models.CharField(max_length=192)
+    mountpoint = models.CharField(max_length=192, default="/")
     mount_options = models.CharField(max_length=255, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
