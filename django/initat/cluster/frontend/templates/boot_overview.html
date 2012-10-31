@@ -55,6 +55,7 @@ function load_devices(sel_list) {
                 redraw_options("t");
                 redraw_options("b");
                 redraw_options("k");
+                redraw_options("p");
                 // call update_device_info after table draw
                 update_device_info();
             }
@@ -152,6 +153,10 @@ function update_device_info() {
                             var boot_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_b']");
                             set_boot_option(cur_dev, boot_tr);
                         };
+                        if (OPTION_DICT["p"]) {
+                            var part_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_p']");
+                            set_part_option(cur_dev, part_tr);
+                        };
                     });
                 }
             }
@@ -199,6 +204,35 @@ function set_boot_option(dev_xml, boot_tr) {
         };
     };
     boot_dev_name.text(dev_xml.attr("boot_dev_name"));
+};
+
+function set_part_option(dev_xml, part_tr) {
+    var dev_id = part_tr.attr("id");
+    var new_part = part_tr.find("select#" + dev_id + "__new_part");
+    if (part_tr.find(":disabled").length) {
+        new_part.val(dev_xml.attr("partition_table_id"));
+        new_part.removeAttr("disabled");
+        new_part.bind("change", change_part);
+    } else {
+    };
+};
+
+function change_part(boot) {
+    var el = $(event.target);
+    var part_tr = el.parents("tr:first");
+    var dev_id = part_tr.attr("id");
+    $.ajax({
+        url     : "{% url boot:set_partition %}",
+        data    : {
+            "dev_id"      : dev_id,
+            "new_part" : part_tr.find("select#" + dev_id + "__new_part").val()
+        },
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+            }
+        }
+    });
 };
 
 function change_boot(event) {
@@ -400,6 +434,22 @@ function redraw_options(opt) {
                         "id"       : dev_id + "__greedy_mode",
                         "type"     : "checkbox",
                         "disabled" : "disabled"}));
+                    break;
+                case "p":
+                    first_td.attr({"colspan" : "5"});
+                    first_td.append("Partition ");
+                    var part_sel = $("<select>").attr({
+                        "disabled" : "disabled",
+                        "id"       : dev_id + "__new_part"
+                    });
+                    part_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
+                    $(XML_DICT["p"]).find("partition_table").each(function() {
+                        var cur_part = $(this);
+                        var part_opt = $("<option>").attr({"value" : cur_part.attr("pk")}).text(cur_part.attr("name"));
+                        if (cur_part.attr("valid") == 0) part_opt.attr("disabled", "disabled");
+                        part_sel.append(part_opt);
+                    });
+                    first_td.append(part_sel);
                     break;
             };
             force_update_info();

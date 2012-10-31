@@ -25,8 +25,10 @@ def get_all_partitions(request):
     part_list = E.partitions()
     for cur_part in partition_table.objects.all().prefetch_related(
         "partition_disc_set",
-        "partition_disc_set__partition_set").order_by("name"):
-        part_list.append(cur_part.get_xml())
+        "partition_disc_set__partition_set",
+        "partition_disc_set__partition_set__partition_fs",
+        ).order_by("name"):
+        part_list.append(cur_part.get_xml(validate=True))
     xml_resp.append(part_list)
     xml_resp.append(
         E.partition_fs_list(

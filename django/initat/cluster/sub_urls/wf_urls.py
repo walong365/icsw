@@ -65,6 +65,7 @@ boot_patterns = patterns(
     url("^xml/set_kernel"      , "boot_views.set_kernel"      , name="set_kernel"),
     url("^xml/set_target_state", "boot_views.set_target_state", name="set_target_state"),
     url("^xml/set_boot"        , "boot_views.set_boot"        , name="set_boot"),
+    url("^xml/set_part"        , "boot_views.set_partition"   , name="set_partition"),
 )
 
 device_patterns = patterns(

@@ -171,12 +171,21 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
                 "id"    : id_prefix + "__" + attr_name
             }).text(xml_el === undefined ? (kwargs.new_default || "") : xml_el.attr(attr_name));
         } else {
+            
             // text input style
             var new_el = $("<input>").attr({
                 "type"  : kwargs.number ? "number" : "text",
                 "id"    : id_prefix + "__" + attr_name,
                 "value" : xml_el === undefined ? (kwargs.new_default || (kwargs.number ? "0" : "")) : xml_el.attr(attr_name)
             });
+        };
+        // copy attributes
+        var attr_list = ["size", "min", "max"];
+        for (idx=0 ; idx < attr_list.length; idx ++) {
+            var attr_name = attr_list[idx];
+            if (kwargs.hasOwnProperty(attr_name)) {
+                new_el.attr(attr_name, kwargs[attr_name]);
+            };
         }
     } else {
         // select input

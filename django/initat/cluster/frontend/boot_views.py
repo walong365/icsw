@@ -11,7 +11,8 @@ from initat.cluster.frontend.helper_functions import init_logging
 from initat.cluster.frontend.render_tools import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from initat.cluster.backbone.models import device_type, device_group, device, device_class, kernel, image, partition_table, status, network
+from initat.cluster.backbone.models import device_type, device_group, device, \
+     device_class, kernel, image, partition_table, status, network
 from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
@@ -34,7 +35,7 @@ OPTION_LIST = [("t", "target state", None),
                ("k", "kernel"      , kernel),
                ("i", "image"       , image),
                ("b", "bootdevice"  , None),
-               ("p", "partition"   , partition_table)]
+               ("p", "partition"   , None)]
 
 @login_required
 @init_logging
@@ -65,6 +66,13 @@ def get_addon_info(request):
         for prod_net in prod_nets:
             for t_state in status.objects.filter(Q(prod_link=True)):
                 addon_list.append(t_state.get_xml(prod_net))
+    if addon_type == "p":
+        for cur_part in partition_table.objects.filter(Q(enabled=True)).prefetch_related(
+            "partition_disc_set",
+            "partition_disc_set__partition_set",
+            "partition_disc_set__partition_set__partition_fs",
+            ).order_by("name"):
+            addon_list.append(cur_part.get_xml(validate=True))
     request.log("returning %s" % (logging_tools.get_plural("object", len(addon_list))))
     request.xml_response["response"] = addon_list
     return request.xml_response.create_response()
@@ -75,7 +83,6 @@ def get_addon_info(request):
 def set_boot(request):
     _post = request.POST
     cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
-    pprint.pprint(_post)
     boot_mac = _post["boot_mac"]
     boot_driver = _post["boot_driver"]
     dhcp_write = True if int(_post["dhcp_write"]) else False
@@ -101,6 +108,15 @@ def set_boot(request):
         "devices",
         srv_com.builder("device", name=cur_dev.name, pk="%d" % (cur_dev.pk)))
     net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def set_partition(request):
+    _post = request.POST
+    cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
+    cur_dev.partition_table = partition_table.objects.get(Q(pk=_post["new_part"]))
+    cur_dev.save()
     return request.xml_response.create_response()
 
 @transaction.commit_manually
