@@ -33,12 +33,12 @@ hoststatus: hoststatus.o
 
 tell_mother_zmq: tell_mother_zmq.o
 	export LDFLAGS="-Xlinker -rpath=${PREFIX_CLUSTER}/$(LIB_DIR) "; \
-	$(comp) -L ${PREFIX_CLUSTER}/${LIB_DIR} -lzmq tell_mother_zmq.o -o tell_mother_zmq ; \
+	$(comp) tell_mother_zmq.o -o tell_mother_zmq -L ${PREFIX_CLUSTER}/${LIB_DIR} -lzmq;  \
 	strip tell_mother_zmq
 
 hoststatus_zmq: hoststatus_zmq.o
 	export LDFLAGS="-Xlinker -rpath=${PREFIX_CLUSTER}/$(LIB_DIR) "; \
-	$(comp) -L ${PREFIX_CLUSTER}/${LIB_DIR} -lzmq hoststatus_zmq.o -o hoststatus_zmq ; \
+	$(comp) hoststatus_zmq.o -o hoststatus_zmq -L ${PREFIX_CLUSTER}/${LIB_DIR} -lzmq ; \
 	strip hoststatus_zmq
 
 %.o: %.c
