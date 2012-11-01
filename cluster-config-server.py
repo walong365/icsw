@@ -1184,24 +1184,28 @@ class partition_setup(object):
                 fs_name = cur_part.partition_fs.name
                 disc_dict.setdefault(act_disc, {})
                 if act_pnum:
-                    disc_dict[act_disc][act_pnum] = db_rec
+                    disc_dict[act_disc][act_pnum] = cur_part
                 # generate sfdisk-entry
                 while old_pnum < act_pnum-1:
                     old_pnum += 1
                     sfdisk.append(",0, ")
                 if cur_part and fs_name != "ext":
-                    upper_size += cur_part.size
+                    if cur_part.size:
+                        upper_size += cur_part.size
+                    else:
+                        # to be replaced by stage2 by actual upper size
+                        upper_size = 0
                 else:
                     upper_size = 0
                 parted.append("mkpart %s %s %s %s" % (
-                    db_rec[fs_name] == "ext" and "extended" or (act_pnum < 5 and "primary" or "logical"),
+                    fs_name == "ext" and "extended" or (act_pnum < 5 and "primary" or "logical"),
                     {"ext3" : "ext2",
                      "ext4" : "ext2",
                      "swap" : "linux-swap",
                      "lvm"  : "ext2",
                      "ext"  : ""}.get(fs_name, fs_name),
                     "%d" % (lower_size),
-                    fs_name == "ext" and "_" or (upper_size and "%d" % (upper_size) or "_")
+                    fs_name == "ext" and "_" or ("%d" % (upper_size) if upper_size else "_")
                 ))
                 if fs_name == "lvm":
                     parted.append("set %d lvm on" % (act_pnum))
@@ -1214,7 +1218,7 @@ class partition_setup(object):
                 else:
                     sfdisk.append(",,0x%s" % (cur_part.partition_hex))
                 fs = fs_name or "auto"
-                if cur_part.ountpoint or fs == "swap":
+                if cur_part.mountpoint or fs == "swap":
                     act_part = "%s%s%d" % (act_disc, part_pf, act_pnum)
                     mp = cur_part.mountpoint if cur_part.mountpoint else fs
                     if mp == "/":
@@ -1232,7 +1236,7 @@ class partition_setup(object):
                 old_pnum = act_pnum
             print "  creating partition info for partition_table '%s' (root_device %s, partition postfix is '%s')" % (pt_name, root_dev, part_pf)
             if part_valid:
-                for sys_part in sys_partition.objects.filter(Q(partition=conf.conf_dict["device"].act_partition_table)):
+                for sys_part in sys_partition.objects.filter(Q(partition_table=conf.conf_dict["device"].act_partition_table)):
                     fstab.append("%-20s %-10s %-10s %-10s %d %d" % (
                         sys_part.name,
                         sys_part.mountpoint,
@@ -1249,7 +1253,8 @@ class partition_setup(object):
                     parted)
                 # logging
                 for what, name in [(fstab , "fstab "),
-                                   (sfdisk, "sfdisk")]:
+                                   (sfdisk, "sfdisk"),
+                                   (parted, "parted")]:
                     print "Content of %s (%s):" % (name, logging_tools.get_plural("line", len(what)))
                     for line_num, line in zip(xrange(len(what)), what):
                         print " - %3d %s" % (line_num + 1, line)
@@ -1257,16 +1262,16 @@ class partition_setup(object):
                 raise ValueError, "Partition-table %s is not valid" % (pt_name)
         else:
             raise ValueError, "Found no partition-info"
-    def create_part_files(self, c_req):
+    def create_part_files(self, pinfo_dir):
         if self.fspart_dict:
             for pn, pp in self.fspart_dict.iteritems():
-                file("%s/%sparts" % (c_req.pinfo_dir, pn), "w").write("\n".join(pp + [""]))
+                file("%s/%sparts" % (pinfo_dir, pn), "w").write("\n".join(pp + [""]))
             for file_name, content in [("rootpart"    , self.root_part),
                                        ("rootparttype", self.root_part_type),
                                        ("fstab"       , "\n".join(self.fstab)),
                                        ("sfdisk"      , "\n".join(self.sfdisk)),
                                        ("parted"      , "\n".join(self.parted))]:
-                file("%s/%s" % (c_req.pinfo_dir, file_name), "w").write("%s\n" % (content))
+                file("%s/%s" % (pinfo_dir, file_name), "w").write("%s\n" % (content))
 
 # generate /etc/hosts for nodes, including routing-info
 def do_etc_hosts(conf):
@@ -2079,29 +2084,22 @@ class config_thread(threading_tools.thread_obj):
         # handler for simple commands
         self.__command_handler_dict = {
             #"get_target_sn"           : self._handle_get_target_sn,
-            "get_partition"           : self._handle_get_partition,
-            "get_image"               : self._handle_get_image,
+            #"get_partition"           : self._handle_get_partition,
+            #"get_image"               : self._handle_get_image,
             #"get_kernel"              : self._handle_get_kernel,
             #"get_kernel_name"         : self._handle_get_kernel,
-            "set_kernel"              : self._handle_set_kernel,
-            "create_config"           : self._handle_create_config,
-            "ack_config"              : self._handle_ack_config,
-            "get_syslog_server"       : self._handle_get_syslog_server,
-            "get_package_server"      : self._handle_get_package_server,
+            #"set_kernel"              : self._handle_set_kernel,
+            #"create_config"           : self._handle_create_config,
+            #"ack_config"              : self._handle_ack_config,
+            #"get_syslog_server"       : self._handle_get_syslog_server,
             #"get_init_mods"           : self._handle_get_init_mods,
-            "get_start_scripts"       : self._handle_get_start_scripts,
-            "get_stop_scripts"        : self._handle_get_stop_scripts,
             #"hello"                   : self._handle_hello,
-            "get_root_passwd"         : self._handle_get_root_passwd,
             #"locate_module"           : self._handle_locate_module,
-            "get_add_group"           : self._handle_get_add_group,
-            "get_add_user"            : self._handle_get_add_user,
-            "get_del_group"           : self._handle_get_del_group,
-            "get_del_user"            : self._handle_get_del_user,
-            "get_additional_packages" : self._handle_get_additional_packages,
+            #"get_additional_packages" : self._handle_get_additional_packages,
             "get_install_ep"          : self._handle_get_install_ep,
             "get_upgrade_ep"          : self._handle_get_upgrade_ep,
-            "modify_bootloader"       : self._handle_modify_bootloader}
+            #"modify_bootloader"       : self._handle_modify_bootloader
+        }
         # list of simple commands
         self.__simple_commands = self.__command_handler_dict.keys()
         # wait_for_build dict
@@ -2252,22 +2250,6 @@ class config_thread(threading_tools.thread_obj):
             c_req.set_ret_str("ok %s" % (c_req.server_ip))
     def _handle_hello(self, c_req, dc):
         c_req.set_ret_str(c_req.create_config_dir())
-    def _handle_get_root_passwd(self, c_req, dc):
-        c_req.set_ret_str("ok %s" % (c_req["root_passwd"]))
-    def _handle_get_start_scripts(self, c_req, dc):
-        c_req.set_ret_str("ok %s" % (" ".join(c_req.get_config_str_vars(dc, "START_SCRIPTS"))))
-    def _handle_get_stop_scripts(self, c_req, dc):
-        c_req.set_ret_str("ok %s" % (" ".join(c_req.get_config_str_vars(dc, "STOP_SCRIPTS"))))
-    def _handle_get_add_user(self, c_req, dc):
-        c_req.set_ret_str("ok %s" % (" ".join(c_req.get_config_str_vars(dc, "ADD_USER"))))
-    def _handle_get_add_group(self, c_req, dc):
-        c_req.set_ret_str("ok %s" % (" ".join(c_req.get_config_str_vars(dc, "ADD_GROUP"))))
-    def _handle_get_del_user(self, c_req, dc):
-        c_req.set_ret_str("ok %s" % (" ".join(c_req.get_config_str_vars(dc, "DEL_USER"))))
-    def _handle_get_del_group(self, c_req, dc):
-        c_req.set_ret_str("ok %s" % (" ".join(c_req.get_config_str_vars(dc, "DEL_GROUP"))))
-    def _handle_get_additional_packages(self, c_req, dc):
-        c_req.set_ret_str("ok %s" % (" ".join(c_req.get_config_str_vars(dc, "ADDITIONAL_PACKAGES"))))
     def _handle_modify_bootloader(self, c_req, dc):
         dc.execute("SELECT pt.modify_bootloader FROM partition_table pt, device d WHERE d.device_idx=%s AND d.partition_table=pt.partition_table_idx", (c_req["device_idx"]))
         modify_bl = dc.fetchone()["modify_bootloader"]
@@ -2287,8 +2269,8 @@ class config_thread(threading_tools.thread_obj):
         else:
             return os.path.normpath("%s/%s" % (base_path,
                                                mod_path)).replace("//", "/")
-    def _handle_get_partition(self, c_req, dc):
-        c_req._handle_get_partition(dc)
+##    def _handle_get_partition(self, c_req, dc):
+##        c_req._handle_get_partition(dc)
     def _handle_create_config(self, c_req, dc):
         if c_req["name"] in self.__wait_for_build_dict.keys():
             c_req.set_ret_str("ok request already pending")
@@ -2620,10 +2602,10 @@ class build_process(threading_tools.process_obj):
     def loop_post(self):
         build_client.close_clients()
         self.__log_template.close()
-    def _complex_request(self, queue_id, dev_name, req_name, **kwargs):
+    def _complex_request(self, queue_id, dev_name, req_name, *args, **kwargs):
         self.log("got request '%s' for '%s' (%d)" % (req_name, dev_name, queue_id))
         cur_c = build_client.get_client(name=dev_name)
-        success = getattr(cur_c, req_name)()
+        success = getattr(cur_c, req_name)(*args)
         self.send_pool_message("complex_result", queue_id, success)
     def _generate_config(self, attr_dict, **kwargs):
         if global_config["DEBUG"]:
@@ -2699,7 +2681,7 @@ class build_process(threading_tools.process_obj):
         cur_c.log("built took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
-            cur_c.log("queries issued: %d" % (tot_query_count - cur_query_count))
+            cur_c.log("queries issued: %d" % (tot_query_count))
             for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
                 cur_c.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
         self.send_pool_message("client_update", cur_c.get_send_dict())
@@ -2980,6 +2962,7 @@ class server_process(threading_tools.process_pool):
                 else:
                     if c_uid.endswith("webfrontend"):
                         # special command from webfrontend, FIXME
+                        srv_com["command"].attrib["source"] = "external"
                         self._handle_wfe_command(zmq_sock, c_uid, srv_com)
                     else:
                         try:
@@ -3012,6 +2995,15 @@ class server_process(threading_tools.process_pool):
             cur_dev.text = unicode(dev_dict[int(cur_dev.attrib["pk"])])
             cur_dev.attrib["name"] = dev_dict[int(cur_dev.attrib["pk"])].name
         self._handle_command(self.__run_idx)
+    def create_config(self, queue_id, s_req):
+        # create a build_config request
+        cur_com = server_command.srv_command(command="build_config")
+        cur_com["devices"] = cur_com.builder(
+            "devices",
+            cur_com.builder("device", pk="%d" % (s_req.cc.device.pk))
+        )
+        cur_com["command"].attrib["source"] = "config_control"
+        self._handle_wfe_command(None, str(queue_id), cur_com)
     def _handle_command(self, run_idx):
         cur_com = self.__pending_commands[run_idx]
         for cur_dev in cur_com["devices:devices"]:
@@ -3028,9 +3020,10 @@ class server_process(threading_tools.process_pool):
             self._send_return(cur_com)
             del self.__pending_commands[run_idx]
     def _send_return(self, cur_com):
-        print cur_com.pretty_print()
-        self._send_simple_return(cur_com["command"].attrib["uuid"], unicode(cur_com))
-        send_sock = self.socket_dict["router"]
+        if cur_com["command"].attrib["source"] == "external":
+            self._send_simple_return(cur_com["command"].attrib["uuid"], unicode(cur_com))
+        else:
+            config_control.complex_result(int(cur_com["command"].attrib["uuid"]), unicode(cur_com))
     def _send_simple_return(self, zmq_id, send_str):
         send_sock = self.socket_dict["router"]
         print zmq_id, send_str
@@ -3160,11 +3153,27 @@ class simple_request(object):
     def create_config_dir(self):
         # link to build client
         self.cc.complex_config_request(self, "create_config_dir")
+    def get_partition(self):
+        # link to build client
+        self.cc.complex_config_request(self, "get_partition")
     def create_config_dir_result(self, result):
         if result:
             return "ok created config dir"
         else:
             return "error cannot create config dir"
+    def get_partition_result(self, result):
+        if result:
+            return "ok created partition info"
+        else:
+            return "error cannot create partition info"
+    def build_config_result(self, result):
+        xml_result = server_command.srv_command(source=result)
+        res_node = xml_result.xpath(None, ".//ns:device[@pk='%d']" % (self.cc.device.pk))[0]
+        self.log("result node has %s:" % (logging_tools.get_plural("attribute", len(res_node.attrib))))
+        for key, value in res_node.attrib.iteritems():
+            self.log("   %-10s: %s" % (key, value))
+        del self.cc.pending_config_requests[self.cc.device.name]
+        self.cc.done_config_requests[self.cc.device.name] = "ok config built" if int(res_node.attrib["state_level"]) in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN] else "error building config"
         
 class config_control(object):
     """  struct to handle simple config requests """
@@ -3173,13 +3182,31 @@ class config_control(object):
         self.device = cur_dev
         self.create_logger()
         self.__com_dict = {
+            "get_kernel"              : self._handle_get_kernel,
             "get_kernel_name"         : self._handle_get_kernel,
             "get_syslog_server"       : self._handle_get_syslog_server,
+            "get_package_server"      : self._handle_get_package_server,
             "hello"                   : self._handle_hello,
             "get_init_mods"           : self._handle_get_init_mods,
             "locate_module"           : self._handle_locate_module,
             "get_target_sn"           : self._handle_get_target_sn,
+            "get_partition"           : self._handle_get_partition,
+            "get_image"               : self._handle_get_image,
+            "create_config"           : self._handle_create_config,
+            "ack_config"              : self._handle_ack_config,
+            "get_add_group"           : self._handle_get_add_group,
+            "get_add_user"            : self._handle_get_add_user,
+            "get_del_group"           : self._handle_get_del_group,
+            "get_del_user"            : self._handle_get_del_user,
+            "get_start_scripts"       : self._handle_get_start_scripts,
+            "get_stop_scripts"        : self._handle_get_stop_scripts,
+            "get_root_passwd"         : self._handle_get_root_passwd,
+            "get_additional_packages" : self._handle_get_additional_packages,
+            "set_kernel"              : self._handle_set_kernel,
+            "modify_bootloader"       : self._handle_modify_bootloader,
         }
+    def refresh(self):
+        self.device = device.objects.get(Q(pk=self.device.pk))
     def create_logger(self):
         if self.__log_template is None:
             self.__log_template = logging_tools.get_logger(
@@ -3200,14 +3227,20 @@ class config_control(object):
             "complex_request",
             q_id,
             self.device.name,
-            req_name)
+            req_name,
+            s_req.data)
     def complex_config_result(self, s_req, req_name, result):
         ret_str = getattr(s_req, "%s_result" % (req_name))(result)
-        self.log("handled delayed '%s' (src_ip %s), returning %s" % (
-            s_req.node_text,
-            s_req.src_ip,
-            ret_str))
-        config_control.srv_process._send_simple_return(s_req.zmq_id, ret_str)
+        if ret_str is not None:
+            self.log("handled delayed '%s' (src_ip %s), returning %s" % (
+                s_req.node_text,
+                s_req.src_ip,
+                ret_str))
+            config_control.srv_process._send_simple_return(s_req.zmq_id, ret_str)
+        else:
+            self.log("got result for delayed '%s' (src_ip %s)" % (
+                s_req.node_text,
+                s_req.src_ip))
         del s_req
     def handle_nodeinfo(self, src_id, node_text):
         s_time = time.time()
@@ -3229,6 +3262,70 @@ class config_control(object):
             config_control.srv_process._send_simple_return(s_req.zmq_id, ret_str)
             del s_req
     # command snippets
+    def _handle_get_add_user(self, s_req):
+        return "ok %s" % (" ".join(s_req._get_config_str_vars("ADD_USER")))
+    def _handle_get_add_group(self, s_req):
+        return "ok %s" % (" ".join(s_req._get_config_str_vars("ADD_GROUP")))
+    def _handle_get_del_user(self, s_req):
+        return "ok %s" % (" ".join(s_req._get_config_str_vars("DEL_USER")))
+    def _handle_get_del_group(self, s_req):
+        return "ok %s" % (" ".join(s_req._get_config_str_vars("DEL_GROUP")))
+    def _handle_get_start_scripts(self, s_req):
+        return "ok %s" % (" ".join(s_req._get_config_str_vars("START_SCRIPTS")))
+    def _handle_get_stop_scripts(self, s_req):
+        return "ok %s" % (" ".join(s_req._get_config_str_vars("STOP_SCRIPTS")))
+    def _handle_get_root_passwd(self, s_req):
+        return "ok %s" % (self.device.root_passwd)
+    def _handle_get_additional_packages(self, s_req):
+        return "ok %s" % (" ".join(s_req._get_config_str_vars("ADDITIONAL_PACKAGES")))
+    def _handle_ack_config(self, s_req):
+        if self.device.name in config_control.done_config_requests:
+            ret_str = config_control.done_config_requests[self.device.name]
+            del config_control.done_config_requests[self.device.name]
+            return ret_str
+        if not self.device.name in config_control.pending_config_requests:
+            self.log("strange, got ack but not in done nor pending list", logging_tools.LOG_LEVEL_ERROR)
+            return self._handle_create_config(s_req)
+        else:
+            return "warn waiting for config"
+    def _handle_create_config(self, s_req):
+        if self.device.name in config_control.pending_config_requests:
+            return "warn already in pending list"
+        else:
+            config_control.pending_config_requests[self.device.name] = True
+            q_id = config_control.queue(self, s_req, "build_config")
+            config_control.srv_process.create_config(q_id, s_req)
+            return "warn started building config"
+    def _handle_modify_bootloader(self, s_req):
+        return "ok %s" % ("yes" if self.device.act_partition_table.modify_bootloader else "no")
+    def _handle_get_image(self, s_req):
+        cur_img = self.device.new_image
+        if not cur_img:
+            return "error no image set"
+        else:
+            if cur_img.build_lock:
+                return "error image is locked"
+            else:
+                vs_struct = s_req._get_valid_server_struct(["tftpboot_export", "image_server"])
+                if vs_struct:
+                    if vs_struct.config_name.startswith("mother"):
+                        # is mother_server
+                        dir_key = "TFTP_DIR"
+                    else:
+                        # is tftpboot_export
+                        dir_key = "EXPORT"
+                    vs_struct.fetch_config_vars()
+                    if vs_struct.has_key(dir_key):
+                        return "ok %s %s %s %s %s" % (
+                            s_req.server_ip,
+                            os.path.join(vs_struct[dir_key], "images", cur_img.name),
+                            cur_img.version,
+                            cur_img.release,
+                            cur_img.builds)
+                    else:
+                        return "error key %s not found" % (dir_key)
+                else:
+                    return "error resolving server"
     def _handle_get_target_sn(self, s_req):
         # get prod_net info
         prod_net = self.device.prod_link
@@ -3287,12 +3384,20 @@ class config_control(object):
         #db_mod_list.extend([db_rec["name"] for db_rec in dc.fetchall() if db_rec["name"] and db_rec["name"] not in db_mod_list])
     def _handle_hello(self, s_req):
         return s_req.create_config_dir()
+    def _handle_get_partition(self, s_req):
+        return s_req.get_partition()
     def _handle_get_syslog_server(self, s_req):
         vs_struct = s_req._get_valid_server_struct(["syslog_server"])
         if vs_struct:
             return "ok %s" % (s_req.server_ip)
         else:
             return "error no syslog-server defined"
+    def _handle_get_package_server(self, s_req):
+        vs_struct = s_req._get_valid_server_struct(["package_server"])
+        if vs_struct:
+            return "ok %s" % (s_req.server_ip)
+        else:
+            return "error no package-server defined"
     def _handle_get_kernel(self, s_req):
         dev_kernel = self.device.new_kernel
         if dev_kernel:
@@ -3365,6 +3470,9 @@ class config_control(object):
                 c_req.log("found no valid server_struct (search list: %s)" % (", ".join(type_list)),
                           logging_tools.LOG_LEVEL_ERROR)
             return valid_server_struct
+    def _handle_set_kernel(self, s_req):
+        # maybe we can do something better here
+        return "ok got it but better fixme :-)"
     def close(self):
         if self.__log_template is not None:
             self.__log_template.close()
@@ -3380,6 +3488,8 @@ class config_control(object):
         config_control.__lut_dict = {}
         config_control.__queue_dict = {}
         config_control.__queue_num = 0
+        config_control.pending_config_requests = {}
+        config_control.done_config_requests = {}
     @staticmethod
     def queue(cc_obj, s_req, req_name):
         config_control.__queue_num += 1
@@ -3398,7 +3508,9 @@ class config_control(object):
         return search_spec in config_control.__lut_dict
     @staticmethod
     def get_client(search_spec):
-        return config_control.__lut_dict.get(search_spec, None)
+        loc_cc = config_control.__lut_dict.get(search_spec, None)
+        loc_cc.refresh()
+        return loc_cc
     @staticmethod
     def add_client(new_dev):
         if new_dev.name not in config_control.__cc_dict:
@@ -3441,10 +3553,11 @@ class build_client(object):
             log_keys = [key for key in self.set_keys if key not in self.logged_keys]
         else:
             log_keys = self.set_keys
-        self.log("%s defined, %d new%s:" % (
-            logging_tools.get_plural("attribute", len(self.set_keys)),
-            len(log_keys),
-            ", %s" % (info_str) if info_str else ""))
+        if len(self.set_keys):
+            self.log("%s defined, %d new%s:" % (
+                logging_tools.get_plural("attribute", len(self.set_keys)),
+                len(log_keys),
+                ", %s" % (info_str) if info_str else ""))
         for key in sorted(log_keys):
             self.log(" %-24s : %s" % (key, getattr(self, key)))
         self.logged_keys = self.set_keys
@@ -3460,7 +3573,7 @@ class build_client(object):
             zmq=True,
             context=build_client.srv_process.zmq_context,
             init_logger=True)
-        self.log("added client (%s/%d)" % (self.name, self.pk))
+        self.log("added client (%s [%d])" % (self.name, self.pk))
     def close(self):
         if self.__log_template is not None:
             self.__log_template.close()
@@ -3498,7 +3611,46 @@ class build_client(object):
         new_c.set_kwargs(**kwargs)
         return new_c
     # config-related calls
-    def create_config_dir(self):
+    def get_partition(self, *args):
+        part_name = args[0]
+        loc_tree = generated_tree()
+        loc_dev = device.objects.get(Q(pk=self.pk))
+        self.log("set act_partition_table and partdev to %s" % (part_name))
+        loc_dev.act_partition_table = loc_dev.partition_table
+        loc_dev.partdev = part_name
+        loc_dev.save()
+        success = False
+        dummy_cont = build_container(self, {}, {"device" : loc_dev}, loc_tree)
+        try:
+            loc_ps = partition_setup(dummy_cont)
+        except:
+            self.log("cannot generate partition info: %s" % (process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+        else:
+            base_dir = os.path.join(global_config["CONFIG_DIR"], loc_dev.name)
+            pinfo_dir = os.path.join(base_dir, "pinfo")
+            if not os.path.isdir(pinfo_dir):
+                try:
+                    os.mkdir(pinfo_dir)
+                except OSError:
+                    self.log("cannot create pinfo_directory %s: %s" % (pinfo_dir,
+                                                                       process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("created pinfo directory %s" % (pinfo_dir))
+            if os.path.isdir(pinfo_dir):
+                for file_name in os.listdir(pinfo_dir):
+                    try:
+                        os.unlink("%s/%s" % (pinfo_dir, file_name))
+                    except:
+                        self.log("error removing %s in %s: %s" % (file_name,
+                                                                  pinfo_dir,
+                                                                  process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                loc_ps.create_part_files(pinfo_dir)
+                success = True
+        return success
+    def create_config_dir(self, *args):
         base_dir = global_config["CONFIG_DIR"]
         # FIXME
         self.__source_host = self.name
