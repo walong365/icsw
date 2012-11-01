@@ -397,7 +397,8 @@ def alter_config_cb(request):
     return request.xml_response.create_response()
 
 class tree_struct(object):
-    def __init__(self, node_list, node=None, depth=0, wcf_dict={}):
+    def __init__(self, cur_dev, node_list, node=None, depth=0, wcf_dict={}):
+        self.dev_pk = cur_dev.pk
         self.depth = depth
         if not node:
             self.node = [entry for entry in node_list if not entry.parent_id][0]
@@ -405,7 +406,12 @@ class tree_struct(object):
         else:
             self.node = node
         self.wc_file = wcf_dict.get(self.node.pk, None)
-        self.childs = [tree_struct(node_list, node=cur_node, depth=self.depth + 1, wcf_dict=wcf_dict) for cur_node in node_list if cur_node.parent_id == self.node.pk]
+        self.childs = [tree_struct(
+            cur_dev,
+            node_list,
+            node=cur_node,
+            depth=self.depth + 1,
+            wcf_dict=wcf_dict) for cur_node in node_list if cur_node.parent_id == self.node.pk]
     def get_name(self):
         return "%s%s" % (self.wc_file.dest,
                          "/" if self.node.is_dir else "")
@@ -419,9 +425,11 @@ class tree_struct(object):
             ["%s" % (unicode(sub_entry)) for sub_entry in self.childs])
     def get_xml(self):
         return E.tree(
+            self.wc_file.get_xml(),
             *[sub_node.get_xml() for sub_node in self.childs],
             name=self.get_name(),
-            depth="%d" % (self.depth)
+            depth="%d" % (self.depth),
+            node_id="%d_%d" % (self.dev_pk, self.node.pk)
         )
         
 @login_required
@@ -447,7 +455,7 @@ def generate_config(request):
             if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK:
                 cur_dev = dev_dict[int(dev_node.attrib["pk"])]
                 # build tree
-                cur_tree = tree_struct(tree_node.objects.filter(Q(device=cur_dev)))
+                cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)))
                 print unicode(cur_tree)
                 print etree.tostring(cur_tree.get_xml(), pretty_print=True)
                 res_node.append(cur_tree.get_xml())

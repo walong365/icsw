@@ -3,7 +3,6 @@
 <input type="button" id="generate_button" value="generate" onClick="generate_configs();"/><span id="generate_info"></span>
 
 <div id="generated_config">
-gcdd
 </div>
 
 <script type="text/javascript">
@@ -11,7 +10,22 @@ gcdd
 TREE_XML = undefined;
 
 function iterate_tree(nest_lev, top_node) {
-    var cur_node = $("<li>").text(nest_lev.attr("name"))
+    var content = nest_lev.find("content:first");
+    var node_str = nest_lev.attr("name") + " (";
+    var attr_list = ["uid", "gid", "mode"];
+    for (idx=0 ; idx < attr_list.length; idx ++) {
+        var attr_name = attr_list[idx];
+        if (content.attr(attr_name) !== undefined) {
+            attr_value = content.attr(attr_name);
+            if (attr_name == "mode") {
+                var attr_value = parseInt(attr_value).toString(8);
+            };
+            var node_str = node_str + attr_name + "=" + attr_value + ", ";
+        }
+    };
+    var node_str = node_str + "lvl=" + nest_lev.attr("depth");
+    var node_str = node_str + ")";
+    var cur_node = $("<li>").attr({"id" : nest_lev.attr("node_id")}).text(node_str);
     top_node.append(cur_node);
     var sub_nodes = nest_lev.find("tree[depth='" + (parseInt(nest_lev.attr("depth")) + 1) + "']");
     if (sub_nodes.length) {
@@ -44,11 +58,23 @@ function draw_tree_xml() {
         var tree_div = $("<div>").attr({
             "id" : "tree__dev__" + cur_dev.attr("pk")
         });
+        var content_div = $("<div>").attr({
+            "id" : "cont__dev__" + cur_dev.attr("pk")
+        });
         var top_node = $("<ul>");
         new_td.append(tree_div);
+        new_td.append(content_div);
         tree_div.append(top_node);
         iterate_tree(cur_dev.find("tree[depth='0']"), top_node);
-        tree_div.dynatree();
+        tree_div.dynatree({
+            onActivate : function(dtnode) {
+                if (! dtnode.hasChildren()) {
+                    var c_node = TREE_XML.find("tree[node_id='" + dtnode.data.key + "']");
+                    content_div.html(c_node.find("content").text().replace(/\n/g, "<br>"));
+                };
+            },
+            debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
+        });
         top_div.append(new_td);
     });
     $("div#generated_config").children().remove();
