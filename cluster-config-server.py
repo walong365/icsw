@@ -63,8 +63,6 @@ SERVER_PULL_PORT  = 8006
 NCS_PORT          = 8010
 GATEWAY_THRESHOLD = 1000
 
-CONFIG_NAME = "/etc/sysconfig/cluster/cluster_config_server_clients.xml"
-
 def pretty_print(name, obj, offset):
     lines = []
     off_str = " " * offset
@@ -451,7 +449,8 @@ class tree_node_g(object):
         cur_wc = wc_files(
             device=cur_bc.conf_dict["device"],
             dest=self.path,
-            tree_node=cur_tn)
+            tree_node=cur_tn,
+            content="\n".join(self.content_node.content))
         cur_wc.save()
         if self.is_dir:
             num_nodes += sum([cur_child.write_node(cur_c, cur_bc, parent=cur_tn) for cur_child in self.childs.itervalues()])
@@ -1402,116 +1401,6 @@ def get_sys_dict(dc, im_name):
         mes_str = "found no image with this name, using %s-%d.%d as vendor-id-string ..." % (sys_dict["vendor"], sys_dict["version"], sys_dict["release"])
     return sys_dict, mes_str
 
-class old_network_tree(object):
-    def __init__(self, c_req, dc):
-        self.__c_req = c_req
-        nw_nf  = ["identifier", "network_idx", "name", "postfix", "network", "netmask", "broadcast", "gateway", "gw_pri"]
-        nw_sec_fields = ["sec_%s" % (x) for x in nw_nf]
-        nw_ids = ["p", "l", "b"]
-        # production dictionaries
-        prod_dict = {}
-        net_dict = {}
-        dc.execute("SELECT %s, nt.identifier as prim_id, %s, t2.identifier AS sec_id FROM network nw INNER JOIN network_type nt LEFT JOIN network s ON s.master_network=nw.network_idx LEFT JOIN " % (", ".join(["nw.%s" % (x) for x in nw_nf]),
-                                                                                                                                                                                                      ", ".join(["s.%s AS %s" % (x, y) for x, y in zip(nw_nf, nw_sec_fields)]))+ \
-                       "network_type t2 ON t2.network_type_idx=s.network_type WHERE nw.network_type=nt.network_type_idx AND (%s)" % (" OR ".join(["nt.identifier='%s'" % (x) for x in nw_ids])))
-        bootnet_idxs, loopback_idx = ([], 0)
-        for db_rec in dc.fetchall():
-            if not db_rec["identifier"] in net_dict.keys():
-                if db_rec["prim_id"] == "l":
-                    loopback_idx = db_rec["network_idx"]
-                else:
-                    net_dict[db_rec["identifier"]] = dict([(key, value) for key, value in db_rec.iteritems() if key not in ["sec_id"] + nw_sec_fields])
-                    if db_rec["prim_id"] == "b":
-                        # bootnetwork indices
-                        bootnet_idxs.append(db_rec["network_idx"])
-                    else:
-                        prod_dict[db_rec["identifier"]] = {"net"    : net_dict[db_rec["identifier"]],
-                                                           "slaves" : [],
-                                                           "idxs"   : [db_rec["network_idx"]]}
-            if db_rec["prim_id"] == "p" and db_rec["sec_id"] == "s":
-                # slave network
-                prod_dict[db_rec["identifier"]]["slaves"].append(dict([(key, db_rec[sec_key]) for key, sec_key in zip(nw_nf, nw_sec_fields)]))
-                prod_dict[db_rec["identifier"]]["idxs"].append(db_rec["sec_network_idx"])
-        # add loopback_idx to idxs
-        if loopback_idx:
-            for pd_key, pd_stuff in prod_dict.iteritems():
-                pd_stuff["idxs"].append(loopback_idx)
-        self.production_dict = prod_dict
-        self.bootnet_idxs, self.loopback_idx = (bootnet_idxs, loopback_idx)
-##    def log_network(self, c_req, pd_id):
-##        net_stuff = self.production_dict[pd_id]
-##        log_str = "  %sProduction network %s has %s%s" % ("active" if net_stuff["net"]["network_idx"] == c_req["prod_link"] else "",
-##                                                          pd_id,
-##                                                          logging_tools.get_plural("slave network", len(net_stuff["slaves"])),
-##                                                          net_stuff["slaves"] and ": %s" % (", ".join([x["identifier"] for x in net_stuff["slaves"]])) or "")
-##        c_req.log(log_str)
-        
-class build_thread(threading_tools.thread_obj):
-    """ handles build_requests for the complete config """
-    def __init__(self, log_queue, db_con, glob_config, loc_config):
-        self.__log_queue = log_queue
-        self.__db_con = db_con
-        self.__glob_config = glob_config
-        self.__loc_config = loc_config
-        threading_tools.thread_obj.__init__(self, "build", queue_size=100)
-        self.register_func("set_queue_dict", self._set_queue_dict)
-        self.register_func("build_config"  , self._build_config)
-        self.register_func("set_net_server", self._set_net_server)
-        self.register_func("srv_send_ok"    , self._srv_send_ok)
-        self.register_func("srv_send_error" , self._srv_send_error)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK, node_name=""):
-        self.__log_queue.put(("log", (what, lev, self.name, node_name)))
-    def thread_running(self):
-        self.send_pool_message(("new_pid", self.pid))
-        # clear queue dict
-        self.__queue_dict = {}
-        # clear net_server
-        self.__net_server = None
-    def _set_net_server(self, ns):
-        self.log("Netserver set")
-        self.__net_server = ns
-    def _set_queue_dict(self, q_dict):
-        self.__queue_dict = q_dict
-    def _build_config(self, dev_name):
-        dc = None#self.__db_con.get_connection(SQL_ACCESS)
-        c_req = config_request(self, self.__glob_config, self.__loc_config, "build_config", "build_config", dev_name=dev_name)
-        c_req.create_base_structs(dc)
-        if c_req.pending:
-            c_req.create_config(dc)
-        c_req.log_ret_str()
-        self.__queue_dict["config"].put(("build_done", (dev_name, c_req.get_ret_str())))
-        del c_req
-        dc.release()
-        self._send_message_to_nagios_server(dev_name)
-    def _send_message_to_nagios_server(self, dev_name):
-        if self.__loc_config["NAGIOS_IP"]:
-            self.log("sending 'host_config_done' to %s (device %s)" % (self.__loc_config["NAGIOS_IP"],
-                                                                       dev_name))
-            self.__net_server.add_object(net_tools.tcp_con_object(self._new_nagios_server_connection,
-                                                                  connect_state_call=self._ncs_connect_state_call,
-                                                                  connect_timeout_call=self._ncs_connect_timeout,
-                                                                  timeout=10,
-                                                                  bind_retries=1,
-                                                                  rebind_wait_time=1,
-                                                                  target_port=self.__glob_config["NAGIOS_PORT"],
-                                                                  target_host=self.__loc_config["NAGIOS_IP"],
-                                                                  add_data=(server_command.server_command(command="host_config_done", nodes=[dev_name]), self.__loc_config["NAGIOS_IP"])))
-    def _new_nagios_server_connection(self, sock):
-        #return connection_to_nagios_server(sock.get_add_data(), self.get_thread_queue())
-        return None
-    def _ncs_connect_timeout(self, sock):
-        self.get_thread_queue().put(("srv_send_error", (sock.get_add_data(), "connect timeout")))
-        sock.close()
-    def _ncs_connect_state_call(self, **args):
-        if args["state"] == "error":
-            self.get_thread_queue().put(("srv_send_error", (args["socket"].get_add_data(), "connection error")))
-    def _srv_send_error(self, ((srv_com, srv_name), why)):
-        self.log("Error sending server_command %s to server %s: %s" % (srv_com.get_command(), srv_name, why), logging_tools.LOG_LEVEL_ERROR)
-    def _srv_send_ok(self, ((srv_com, srv_name), result)):
-        self.log("Sent server_command %s to server %s (got %s)" % (srv_com.get_command(),
-                                                                   srv_name,
-                                                                   server_command.server_reply(result).get_result()))
-        
 class config_request(object):
     """ to hold all the necessary data for a simple config request """
     def __init__(self, sc_thread, glob_config, loc_config, command, src_data, **args):
@@ -2562,16 +2451,6 @@ class command_thread(threading_tools.thread_obj):
     def _node_error(self, error_str):
         self.log("node_error: %s" % (error_str), logging_tools.LOG_LEVEL_ERROR)
         
-class error(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return self.value
-
-class config_error(error):
-    def __init__(self, what = "UNKNOWN"):
-        error.__init__(self, what)
-    
 class network_tree(dict):
     def __init__(self):
         all_nets = network.objects.all().select_related("network_type")
@@ -3427,49 +3306,6 @@ class config_control(object):
                     return "error key %s not found" % (dir_key)
         else:
             return "error no kernel set"
-        if False:
-            bsl_servers = ["kernel_server", "mother_server", "image_server"]
-            # list of config_types which has to be mapped to the mother-server
-            map_to_mother = ["kernel_server", "image_server"]
-            # iterates over type_list to find a valid server_struct
-            for type_name in type_list:
-                conf_list = config_tools.device_with_config(type_name, dc)
-                if conf_list:
-                    server_names = conf_list.keys()
-                    if type_name in bsl_servers:
-                        valid_server_struct = None
-                        # get only the server wich is the bootserver
-                        for server_name in server_names:
-                            if conf_list[server_name].device_idx == c_req["bootserver"]:
-                                valid_server_name, valid_server_struct = (server_name, conf_list[server_name])
-                                break
-                    else:
-                        # take the first server
-                        valid_server_name = c_req.find_best_server(conf_list, dc)
-                        valid_server_struct = conf_list[valid_server_name]
-                else:
-                    valid_server_name, valid_server_struct = ("", None)
-                if valid_server_struct:
-                    break
-            if valid_server_struct:
-                if type_name in map_to_mother:
-                    valid_server_struct = config_tools.server_check(dc=dc,
-                                                                    server_type="mother_server",
-                                                                    short_host_name=valid_server_name,
-                                                                    fetch_network_info=True)
-            if valid_server_struct:
-                c_req.log("found valid_server_struct %s (device %s)" % (valid_server_struct.server_info_str,
-                                                                        valid_server_struct.short_host_name))
-                # check connectivity to device
-                if c_req.find_route_to_server(valid_server_struct, dc):
-                    pass
-                else:
-                    valid_server_struct = None
-            else:
-                c_req.set_ret_str("error no valid server found")
-                c_req.log("found no valid server_struct (search list: %s)" % (", ".join(type_list)),
-                          logging_tools.LOG_LEVEL_ERROR)
-            return valid_server_struct
     def _handle_set_kernel(self, s_req):
         # maybe we can do something better here
         return "ok got it but better fixme :-)"
@@ -3732,66 +3568,6 @@ class build_client(object):
         else:
             self.log("config on disk for key '%s' was empty" % (prod_key))
                 
-class server_thread_pool(threading_tools.thread_pool):
-    def __init__(self, db_con, glob_config, loc_config, log_lines):
-        self.__log_buffer = []
-        self.__log_queue = None
-        self.__glob_config = glob_config
-        self.__loc_config = loc_config
-        self.__db_con = db_con
-        threading_tools.thread_pool.__init__(self, "main_thread", blocking_loop=False)
-        self.register_exception("int_error", self._int_error)
-        self.register_exception("term_error", self._int_error)
-        self.register_func("new_pid", self._new_pid)
-        # msi_block
-        self.__msi_block = self._init_msi_block(self.__loc_config["DAEMON"])
-        # log thread
-        #self.__log_queue = self.add_thread(logging_thread(self.__glob_config), start_thread=True).get_thread_queue()
-        for what, lev in log_lines:
-            self.log(what, lev)
-        self._log_config()
-        self._re_insert_config()
-        self.__ns = net_tools.network_server(timeout=1, log_hook=self.log, poll_verbose=False)
-        self.__bind_states = {}
-        self.__ns.add_object(net_tools.tcp_bind(self._new_command_con, port=self.__glob_config["COMMAND_PORT"], bind_retries=self.__loc_config["N_RETRY"], bind_state_call=self._bind_state_call, timeout=60))
-        self.__ns.add_object(net_tools.tcp_bind(self._new_node_con, port=self.__glob_config["NODE_PORT"], bind_retries=self.__loc_config["N_RETRY"], bind_state_call=self._bind_state_call, timeout=60))
-        self.__command_queue = self.add_thread(command_thread(self.__log_queue, self.__db_con, self.__glob_config, self.__loc_config), start_thread=True).get_thread_queue()
-        self.__config_queue = self.add_thread(config_thread(self.__log_queue, self.__db_con, self.__glob_config, self.__loc_config), start_thread=True).get_thread_queue()
-        self.__build_queue = self.add_thread(build_thread(self.__log_queue, self.__db_con, self.__glob_config, self.__loc_config), start_thread=True).get_thread_queue()
-        self.__queue_dict = {"command" : self.__command_queue,
-                             "config"  : self.__config_queue,
-                             "build"   : self.__build_queue}
-        self.__command_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__config_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__build_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__command_queue.put(("set_net_server", self.__ns))
-        self.__build_queue.put(("set_net_server", self.__ns))
-        self._log_nagios_status()
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in self.__glob_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = self.__glob_config.get_config_info()
-        self.log("Found %d valid config-lines:" % (len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : %s" % (conf))
-    def _new_pid(self, new_pid):
-        self.log("received new_pid message")
-        process_tools.append_pids(self.__loc_config["PID_NAME"], new_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(new_pid)
-            self.__msi_block.save_block()
-    def _log_nagios_status(self):
-        if self.__loc_config["NAGIOS_IP"]:
-            # queue for comsend_ thread
-            self.log("Nagios_master-host found at ip %s, enabling sending of hc_done requests" % (self.__loc_config["NAGIOS_IP"]))
-        else:
-            self.log("No Nagios_master-host found, disabling sending of hc_done requests", logging_tools.LOG_LEVEL_WARN)
-    def _new_node_con(self, sock, src):
-        return None#connection_from_node(src, self.__command_queue)
-    def _new_command_con(self, sock, src):
-        return None#connection_for_command(src, self.__command_queue)
-
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 def main():
