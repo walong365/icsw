@@ -2269,6 +2269,13 @@ class wc_files(models.Model):
     # content, defaults to the empty string
     content = models.TextField(blank=True, default="")
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.content(
+            self.content,
+            run_number="%d" % (self.run_number),
+            uid="%d" % (self.uid),
+            gid="%d" % (self.gid),
+            mode="%d" % (self.mode))
     class Meta:
         db_table = u'wc_files'
 
