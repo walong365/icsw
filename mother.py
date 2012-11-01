@@ -31,7 +31,6 @@ import time
 import threading
 import re
 import zmq
-import shutil
 # transition fix
 import configfile
 import cluster_location
@@ -55,7 +54,6 @@ import kernel_sync_tools
 from lxml import etree
 from lxml.builder import E
 # SNMP imports
-import pkg_resources
 pkg_resources.require("pyasn1")
 import pyasn1.codec.ber
 from pysnmp.entity.rfc3413.oneliner import cmdgen
@@ -2065,12 +2063,6 @@ class command_class(object):
                 ret_queue.put(("result_ready", (self.srv_com, srv_reply)))
             # delete myself
             del self
-    def _new_tcp_con(self, sock):
-        return node_con_obj(self, sock.get_target_host(), sock.get_add_data())
-    def set_needed_sql_fields(self, field=[]):
-        if type(field) != type([]):
-            field = [field]
-        self.__needed_sql_fields = field
     def get_name(self):
         return self.com_name
     def add_dev_mapping(self, dev_id, dev_name, ip_list):
@@ -3346,7 +3338,6 @@ class server_thread_pool(threading_tools.thread_pool):
         # enable syslog config
         dc = self.__db_con.get_connection(SQL_ACCESS)
         # re-insert config
-        self._re_insert_config(dc)
         self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=self.__loc_config["VERBOSE"] > 1)
         self.__icmp_obj = net_tools.icmp_bind()
         self.__ns.add_object(self.__icmp_obj)
@@ -3405,29 +3396,6 @@ class server_thread_pool(threading_tools.thread_pool):
                                                                            option_dict={"SIGNAL_MAIN_THREAD" : "macaddrs_written"})))
         # init apc-update-timestmamp
         self.__last_apc_update = None
-##    def _int_error(self, err_cause):
-##        if self["exit_requested"]:
-##            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
-##        else:
-##            self.log("exit requested", logging_tools.LOG_LEVEL_WARN)
-##            self._disable_syslog_config()
-##            self["exit_requested"] = True
-##    def _new_pid(self, (thread_name, new_pid)):
-##        self.log("received new_pid message from thread %s" % (thread_name))
-##        process_tools.append_pids(self.__loc_config["PID_NAME"], new_pid)
-##        if self.__msi_block:
-##            self.__msi_block.add_actual_pid(new_pid)
-##            self.__msi_block.save_block()
-    def _re_insert_config(self, dc):
-        self.log("re-insert config")
-        configfile.write_config("mother_server", global_config)
-##    def _restart_hoststatus(self):
-##        if os.path.isfile("/etc/init.d/hoststatus"):
-##            self.log("restart hoststatus (child)")
-##            c_stat, out_f = process_tools.submit_at_command("/etc/init.d/hoststatus restart", 0)
-##            self.log("restarting /etc/init.d/hoststatus gave %d:" % (c_stat))
-##            for line in out_f:
-##                self.log(line)
     def _macaddrs_written(self):
         self.log("all macaddresses refreshed from db, restarting dhcpd server")
         dhcp_init_file = "/etc/init.d/dhcpd"
@@ -3441,30 +3409,6 @@ class server_thread_pool(threading_tools.thread_pool):
         else:
             self.log("no %s found" % (dhcp_init_file),
                      logging_tools.LOG_LEVEL_ERROR)
-##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-##        if self.__log_queue:
-##            if self.__log_cache:
-##                for c_what, c_lev in self.__log_cache:
-##                    self.__log_queue.put(("log", (self.name, "(delayed) %s" % (c_what), c_lev)))
-##                self.__log_cache = []
-##            self.__log_queue.put(("log", (self.name, what, lev)))
-##        else:
-##            self.__log_cache.append((what, lev))
-##    def _check_global_network_stuff(self, dc):
-##        self.log("Checking global network settings")
-##        dc.execute("SELECT i.ip,n.netdevice_idx,nw.network_idx FROM netdevice n, netip i, network nw WHERE n.device=%d AND i.netdevice=n.netdevice_idx AND i.network=nw.network_idx" % (self.__loc_config["MOTHER_SERVER_IDX"]))
-##        glob_net_devices = {}
-##        for net_rec in dc.fetchall():
-##            n_d, n_i, n_w = (net_rec["netdevice_idx"],
-##                             net_rec["ip"],
-##                             net_rec["network_idx"])
-##            if not glob_net_devices.has_key(n_d):
-##                glob_net_devices[n_d] = []
-##            glob_net_devices[n_d].append((n_i, n_w))
-##        # get all network_device_types
-##        dc.execute("SELECT * FROM network_device_type")
-##        self.__loc_config["GLOBAL_NET_DEVICES"] = glob_net_devices
-##        self.__loc_config["GLOBAL_NET_DEVICE_DICT"] = dict([(x["identifier"], x["network_device_type_idx"]) for x in dc.fetchall()])
     def _init_msi_block(self):
         process_tools.save_pid(self.__loc_config["PID_NAME"])
         if self.__loc_config["DAEMON"]:
@@ -3478,20 +3422,6 @@ class server_thread_pool(threading_tools.thread_pool):
         else:
             msi_block = None
         return msi_block
-    def _new_ud_out_recv(self, data, src):
-        self.__log_queue.put(("syslog_dhcp", data))
-    def _new_tcp_command_con(self, sock, src):
-        return new_tcp_con("com", sock, src, self.__com_queue, self.__log_queue)
-    def _new_tcp_node_con(self, sock, src):
-        return new_tcp_con("node", sock, src, self.__control_queue, self.__log_queue)
-    def _bind_state_call(self, **args):
-        if args["state"].count("ok"):
-            self.log("Bind to %s (type %s) sucessfull" % (args["port"], args["type"]))
-        else:
-            self.log("Bind to %s (type %s) NOT sucessfull" % (args["port"], args["type"]), logging_tools.LOG_LEVEL_CRITICAL)
-            self.log("unable to bind to all ports, exiting", logging_tools.LOG_LEVEL_ERROR)
-            self._int_error("bind problem")
-        #self.__bind_state[id_str] = args["state"]
     def loop_function(self):
         self.__ns.step()
         if self.__loc_config["VERBOSE"]:
