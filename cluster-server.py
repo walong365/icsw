@@ -1147,9 +1147,7 @@ class server_process(threading_tools.process_pool):
             self.log("running command, skipping re-insert of config", logging_tools.LOG_LEVEL_WARN)
         else:
             self.log("re-insert config")
-            #dc = self.__db_con.get_connection(SQL_ACCESS)
             cluster_location.write_config("server", global_config)
-            #dc.release()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
