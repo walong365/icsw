@@ -66,7 +66,7 @@ class application(models.Model):
 
 class architecture(models.Model):
     idx = models.AutoField(db_column="architecture_idx", primary_key=True)
-    architecture = models.TextField()
+    architecture = models.TextField(default="", unique=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'architecture'
@@ -346,6 +346,8 @@ class device(models.Model):
             device_group="%d" % (self.device_group_id),
             new_kernel_id="%d" % (self.new_kernel_id or 0),
             act_kernel_id="%d" % (self.act_kernel_id or 0),
+            new_image_id="%d" % (self.new_image_id or 0),
+            act_image_id="%d" % (self.act_image_id or 0),
             stage1_flavour=unicode(self.stage1_flavour),
             kernel_append=unicode(self.kernel_append),
             # target state
@@ -661,27 +663,39 @@ class ibc_device(models.Model):
 
 class image(models.Model):
     idx = models.AutoField(db_column="image_idx", primary_key=True)
-    name = models.CharField(max_length=192, blank=True)
+    name = models.CharField(max_length=192, blank=True, unique=True)
     source = models.CharField(max_length=384, blank=True)
-    version = models.IntegerField(null=True, blank=True)
-    release = models.IntegerField(null=True, blank=True)
-    builds = models.IntegerField(null=True, blank=True)
-    build_machine = models.CharField(max_length=192, blank=True)
+    version = models.IntegerField(null=True, blank=True, default=1)
+    release = models.IntegerField(null=True, blank=True, default=0)
+    builds = models.IntegerField(null=True, blank=True, default=0)
+    build_machine = models.CharField(max_length=192, blank=True, default="")
     # not a foreign key to break cyclic dependencies
     #device = models.ForeignKey("device", null=True)
     device = models.IntegerField(null=True)
-    build_lock = models.BooleanField()
-    size_string = models.TextField(blank=True)
+    build_lock = models.BooleanField(default=False)
+    size_string = models.TextField(blank=True, default="")
     sys_vendor = models.CharField(max_length=192, blank=True)
     sys_version = models.CharField(max_length=192, blank=True)
     sys_release = models.CharField(max_length=192, blank=True)
     bitcount = models.IntegerField(null=True, blank=True)
     architecture = models.ForeignKey("architecture")
-    full_build = models.BooleanField()
+    full_build = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-    enabled = models.BooleanField()
+    enabled = models.BooleanField(default=True)
+    def get_xml(self):
+        cur_img = E.image(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="image__%d" % (self.pk),
+            name="%s" % (self.name),
+        )
+        return cur_img
+    def __unicode__(self):
+        return "%s (arch %s)" % (self.name,
+                                 unicode(self.architecture))
     class Meta:
         db_table = u'image'
+        ordering = ("name", )
 
 class image_excl(models.Model):
     idx = models.AutoField(db_column="image_excl_idx", primary_key=True)
