@@ -30,13 +30,17 @@ rms_patterns = patterns(
 
 setup_patterns = patterns(
     "initat.cluster.setup",
-    url(r"p_overview"      , "setup_views.partition_overview"        , name="partition_overview"),
-    url(r"xml/get_parts"   , "setup_views.get_all_partitions"        , name="get_all_partitions"),
-    url(r"xml/create_newpt", "setup_views.create_new_partition_table", name="create_new_partition_table"),
-    url(r"xml/create_newd" , "setup_views.create_part_disc"          , name="create_part_disc"),
-    url(r"xml/delete_disc" , "setup_views.delete_part_disc"          , name="delete_part_disc"),
-    url(r"xml/create_part" , "setup_views.create_partition"          , name="create_partition"),
-    url(r"xml/delete_part" , "setup_views.delete_partition"          , name="delete_partition"),
+    url(r"p_overview"         , "setup_views.partition_overview"        , name="partition_overview"),
+    url(r"xml/get_parts"      , "setup_views.get_all_partitions"        , name="get_all_partitions"),
+    url(r"xml/create_newpt"   , "setup_views.create_new_partition_table", name="create_new_partition_table"),
+    url(r"xml/create_newd"    , "setup_views.create_part_disc"          , name="create_part_disc"),
+    url(r"xml/delete_disc"    , "setup_views.delete_part_disc"          , name="delete_part_disc"),
+    url(r"xml/create_part"    , "setup_views.create_partition"          , name="create_partition"),
+    url(r"xml/delete_part"    , "setup_views.delete_partition"          , name="delete_partition"),
+    url(r"i_overview"         , "setup_views.image_overview"            , name="image_overview"),
+    url(r"xml/get_images"     , "setup_views.get_all_images"            , name="get_all_images"),
+    url(r"xml/scan_for_images", "setup_views.scan_for_images"           , name="scan_for_images"),
+    url(r"xml/take_image"     , "setup_views.take_image"                , name="take_image"),
 )
 
 config_patterns = patterns(
@@ -66,6 +70,7 @@ boot_patterns = patterns(
     url("^xml/set_target_state", "boot_views.set_target_state", name="set_target_state"),
     url("^xml/set_boot"        , "boot_views.set_boot"        , name="set_boot"),
     url("^xml/set_part"        , "boot_views.set_partition"   , name="set_partition"),
+    url("^xml/set_iamge"       , "boot_views.set_image"       , name="set_image"),
 )
 
 device_patterns = patterns(

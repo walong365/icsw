@@ -1,6 +1,6 @@
 # main views
 
-from initat.cluster.frontend import render_tools
+from initat.core.render import render_me
 
 def index(request):
-    return render_tools.render_me(request, "index.html")()
+    return render_me(request, "index.html")()

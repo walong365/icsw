@@ -2,99 +2,123 @@
 
 {% load i18n extra_tags %}
 
-{% block title %}{% trans "Partition Overview" %}{% endblock %}
+{% block title %}{% trans "Image Overview" %}{% endblock %}
 
 {% block content %}
 
-<h1 class="center">Partitions (<span id="num_partitions">???</span> defined)</h1>
-<div id="partition_list"></div>
+<h1 class="center">Images (<span id="num_images">???</span> defined)</h1>
+<div id="image_list"></div>
 
-<div id="partition_table"></div>
+<div id="found_images"></div>
+
+<div id="image_detail"></div>
 
 <script type="text/javascript">
 
-// all partitions
-ALL_PARTITIONS = undefined;
-// all partition_fs
-ALL_FS = undefined;
+// all images
+ALL_IMAGES = undefined;
 
-function load_partition_tables() {
+function load_images() {
     $.ajax({
-        url     : "{% url setup:get_all_partitions %}",
+        url     : "{% url setup:get_all_images %}",
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                ALL_PARTITIONS = $(xml).find("partitions");
-                init_xml_change(ALL_PARTITIONS);
-                ALL_FS = $(xml).find("partition_fs_list");
-                show_all_partitions();
+                ALL_IMAGES = $(xml).find("images");
+                init_xml_change(ALL_IMAGES);
+                show_all_images();
             }
         }
     });
 };
 
-function load_partition_tables_and_redraw(pt_pk) {
-    $.ajax({
-        url     : "{% url setup:get_all_partitions %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                ALL_PARTITIONS = $(xml).find("partitions");
-                redraw_partition_table(pt_pk);
-            }
-        }
-    });
-};
-
-function show_all_partitions() {
-    $("span#num_partitions").text(ALL_PARTITIONS.find("partition_table").length);
-    var new_part_list = $("<select>").attr({
-        "id"        : "all_partitions",
-        "size"      : 5}).bind("change", choose_partition_table);
-    ALL_PARTITIONS.find("partition_table").each(function() {
-        var cur_pt = $(this);
+function show_all_images() {
+    $("span#num_images").text(ALL_IMAGES.find("image").length);
+    var new_img_list = $("<select>").attr({
+        "id"        : "all_images",
+        "size"      : 5}).bind("change", choose_image);
+    ALL_IMAGES.find("image").each(function() {
+        var cur_img = $(this);
         cur_opt = $("<option>").attr({
-            "value" : cur_pt.attr("pk")
+            "value" : cur_img.attr("pk")
         });
-        var opt_str = cur_pt.attr("name") + " (" + cur_pt.find("partition_disc").length + " discs";
-        if (cur_pt.attr("valid") == 0) var opt_str = opt_str + ", not valid";
+        var opt_str = cur_img.attr("name") + " (";
+        if (cur_img.attr("enabled") == 0) var opt_str = opt_str + ", not enabled";
         var opt_str = opt_str + ")";
         cur_opt.text(opt_str);
-        new_part_list.append(cur_opt);
+        new_img_list.append(cur_opt);
     });
-    $("div#partition_table").children().remove();
-    $("div#partition_list").children().remove();
-    if (new_part_list.find("option").length) {
-        $("div#partition_list").append(new_part_list);
+    $("div#image_detail").children().remove();
+    $("div#image_list").children().remove();
+    if (new_img_list.find("option").length) {
+        $("div#image_list").append(new_img_list);
     };
-    $("div#partition_list").append($("<input>").attr({
+    $("div#image_list").append($("<input>").attr({
         "type"   : "button",
-        "id"     : "add_partition_table",
-        "value"  : "add partition"}).bind("click", add_new_partition));
+        "id"     : "scan_for_images",
+        "value"  : "scan for images"}).bind("click", scan_for_images));
 };
 
-function add_new_partition() {
-    $("input#add_partition_table").attr("disabled", "disabled");
-    var answer = prompt("name of new partition table");
+function scan_for_images() {
+    $("div#found_images").children().remove();
+    var scan_button = $("intput#scan_for_images");
+    scan_button.attr("disabled", "disabled");
     $.ajax({
-        url     : "{% url setup:create_new_partition_table %}",
+        url     : "{% url setup:scan_for_images %}",
         error   : handle_ajax_error,
-        data    : {
-            "name" : answer
-        },
         success : function(xml) {
-            $("input#add_partition_table").removeAttr("disabled");
+            scan_button.removeAttr("disabled");
             if (parse_xml_response(xml)) {
-                load_partition_tables();
+                var found_table = $("<table>").attr({
+                    "id" : "found_images"
+                });
+                $(xml).find("found_image").each(function() {
+                    var cur_fi = $(this);
+                    var fi_tr = $("<tr>");
+                    fi_tr.append($("<th>").append(cur_fi.text() + " (at " + $(xml).find("images").attr("src") + ")"));
+                    fi_tr.append($("<td>").append(cur_fi.attr("vendor")));
+                    fi_tr.append($("<td>").append(cur_fi.attr("version")));
+                    fi_tr.append($("<td>").append(cur_fi.attr("arch")));
+                    fi_tr.append($("<td>").append(cur_fi.attr("bitcount")));
+                    if (cur_fi.attr("present") == "1") {
+                        fi_tr.append($("<td>").text("already present"));
+                    } else {
+                        fi_tr.append($("<td>").append($("<input>").attr({
+                            "type"  : "button",
+                            "value" : "take",
+                            "id"    : "image__" + cur_fi.text()}).bind("click", take_image)));
+                    };
+                    found_table.append(fi_tr);
+                });
+                $("div#found_images").append(found_table);
             }
         }
     });
 };
 
-function choose_partition_table(event) {
-    var pt_sel = $(event.target);
-    var cur_pt_pk = pt_sel.val();
-    if (parseInt(cur_pt_pk)) {
+function take_image(event) {
+    var button_el = $(event.target);
+    var take_id = button_el.attr("id");
+    button_el.attr("disabled", "disabled");
+    $.ajax({
+        url     : "{% url setup:take_image %}",
+        data    : {
+            "take_id" : take_id
+        },
+        error   : handle_ajax_error,
+        success : function(xml) {
+            button_el.removeAttr("disabled");
+            if (parse_xml_response(xml)) {
+                button_el.parents("tr:first").remove();
+            }
+        }
+    });
+};
+
+function choose_image(event) {
+    var img_sel = $(event.target);
+    var cur_img_pk = img_sel.val();
+    if (parseInt(cur_img_pk)) {
         redraw_partition_table(cur_pt_pk);
     };
 };
@@ -323,7 +347,7 @@ function get_partition_table(pt_pk) {
 };
 
 function addHandlers() {
-    load_partition_tables();
+    load_images();
 };
 
 $(document).ready(addHandlers);

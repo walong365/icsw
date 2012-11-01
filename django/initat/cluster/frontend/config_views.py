@@ -12,7 +12,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      tree_node, wc_files, partition_disc, partition
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
-from initat.cluster.frontend.render_tools import render_me
+from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from django.forms.models import modelformset_factory
 from lxml import etree

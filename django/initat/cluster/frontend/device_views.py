@@ -8,7 +8,7 @@ import pprint
 import logging_tools
 import process_tools
 from initat.cluster.frontend.helper_functions import init_logging
-from initat.cluster.frontend.render_tools import render_me
+from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from initat.cluster.backbone.models import device_type, device_group, device, device_class

@@ -56,6 +56,7 @@ function load_devices(sel_list) {
                 redraw_options("b");
                 redraw_options("k");
                 redraw_options("p");
+                redraw_options("i");
                 // call update_device_info after table draw
                 update_device_info();
             }
@@ -157,6 +158,10 @@ function update_device_info() {
                             var part_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_p']");
                             set_part_option(cur_dev, part_tr);
                         };
+                        if (OPTION_DICT["i"]) {
+                            var img_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_i']");
+                            set_img_option(cur_dev, img_tr);
+                        };
                     });
                 }
             }
@@ -217,6 +222,35 @@ function set_part_option(dev_xml, part_tr) {
     };
 };
 
+function set_img_option(dev_xml, img_tr) {
+    var dev_id = img_tr.attr("id");
+    var new_img = img_tr.find("select#" + dev_id + "__new_image");
+    if (img_tr.find(":disabled").length) {
+        new_img.val(dev_xml.attr("new_image_id"));
+        new_img.removeAttr("disabled");
+        new_img.bind("change", change_image);
+    } else {
+    };
+};
+
+function change_image(boot) {
+    var el = $(event.target);
+    var img_tr = el.parents("tr:first");
+    var dev_id = img_tr.attr("id");
+    $.ajax({
+        url     : "{% url boot:set_image %}",
+        data    : {
+            "dev_id"    : dev_id,
+            "new_image" : img_tr.find("select#" + dev_id + "__new_image").val()
+        },
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+            }
+        }
+    });
+};
+
 function change_part(boot) {
     var el = $(event.target);
     var part_tr = el.parents("tr:first");
@@ -224,7 +258,7 @@ function change_part(boot) {
     $.ajax({
         url     : "{% url boot:set_partition %}",
         data    : {
-            "dev_id"      : dev_id,
+            "dev_id"   : dev_id,
             "new_part" : part_tr.find("select#" + dev_id + "__new_part").val()
         },
         error   : handle_ajax_error,
@@ -450,6 +484,22 @@ function redraw_options(opt) {
                         part_sel.append(part_opt);
                     });
                     first_td.append(part_sel);
+                    break;
+                case "i":
+                    first_td.attr({"colspan" : "5"});
+                    first_td.append("Image ");
+                    var img_sel = $("<select>").attr({
+                        "disabled" : "disabled",
+                        "id"       : dev_id + "__new_image"
+                    });
+                    img_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
+                    $(XML_DICT["i"]).find("image").each(function() {
+                        var cur_img = $(this);
+                        var img_opt = $("<option>").attr({"value" : cur_img.attr("pk")}).text(cur_img.attr("name"));
+                        if (cur_img.attr("valid") == 0) part_opt.attr("disabled", "disabled");
+                        img_sel.append(img_opt);
+                    });
+                    first_td.append(img_sel);
                     break;
             };
             force_update_info();

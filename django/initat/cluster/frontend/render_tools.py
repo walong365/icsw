@@ -11,7 +11,7 @@ class render_me(object):
     def __init__(self, request, template, *args, **kwargs):
         self.request  = request
         self.template = template
-        self.my_dict  = {"hide_sidebar" : False}
+        self.my_dict  = {}
         for add_dict in args:
             self.my_dict.update(add_dict)
         for key, value in kwargs.iteritems():

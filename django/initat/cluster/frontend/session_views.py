@@ -1,16 +1,16 @@
 # session views
 
 import sys
+import os
+import pprint
+import random
 from django.shortcuts import render_to_response
 from django.http import HttpResponse, HttpResponseRedirect
-import os
 from django.core.urlresolvers import reverse
 from django.contrib.auth import authenticate, login, logout
-import pprint
 from initat.cluster.backbone.models import user
 from django.db.models import Q
-import random
-from initat.cluster.frontend import render_tools
+from initat.core.render import render_me
 from django.conf import settings
 from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import init_logging
@@ -37,9 +37,9 @@ def sess_logout(request):
 ##        pass
     logout(request)
     login_form = authentication_form()
-    return render_tools.render_me(request, "login.html", {"login_form"  : login_form,
-                                                          "from_logout" : True,
-                                                          "app_path"    : reverse("session:login")})()
+    return render_me(request, "login.html", {"login_form"  : login_form,
+                                             "from_logout" : True,
+                                             "app_path"    : reverse("session:login")})()
 
 @init_logging
 def sess_login(request):
@@ -67,6 +67,6 @@ def sess_login(request):
             #return HttpResponseRedirect(reverse("transfer:main", args=["index.py?SID=%s" % (sess_id)]))
     else:
         login_form = authentication_form()
-    return render_tools.render_me(request, "login.html", {"login_form" : login_form,
-                                                          "app_path"   : reverse("session:login")})()
+    return render_me(request, "login.html", {"login_form" : login_form,
+                                             "app_path"   : reverse("session:login")})()
 

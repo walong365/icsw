@@ -1,7 +1,7 @@
 # rms views
 
 from django.http import HttpResponse
-from initat.cluster.frontend import render_tools
+from initat.core.render import render_me
 from initat.cluster.frontend.helper_functions import init_logging, logging_pool
 from django.conf import settings
 import json
@@ -41,7 +41,7 @@ def get_node_options(request):
 
 @init_logging
 def overview(request):
-    return render_tools.render_me(request, "rms_overview.html", {
+    return render_me(request, "rms_overview.html", {
         "run_job_headers"  : sge_tools.get_running_headers(get_job_options(request)),
         "wait_job_headers" : sge_tools.get_waiting_headers(get_job_options(request)),
         "node_headers"     : sge_tools.get_node_headers(get_node_options(request))

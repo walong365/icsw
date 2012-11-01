@@ -8,7 +8,7 @@ import pprint
 import logging_tools
 import process_tools
 from initat.cluster.frontend.helper_functions import init_logging
-from initat.cluster.frontend.render_tools import render_me
+from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from initat.cluster.backbone.models import device_type, device_group, device, \
@@ -116,6 +116,15 @@ def set_partition(request):
     _post = request.POST
     cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
     cur_dev.partition_table = partition_table.objects.get(Q(pk=_post["new_part"]))
+    cur_dev.save()
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def set_image(request):
+    _post = request.POST
+    cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
+    cur_dev.new_image = image.objects.get(Q(pk=_post["new_image"]))
     cur_dev.save()
     return request.xml_response.create_response()
 
