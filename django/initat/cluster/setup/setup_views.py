@@ -21,7 +21,7 @@ import net_tools
 @login_required
 @init_logging
 def partition_overview(request):
-    return render_tools.render_me(request, "part_overview.html", {})()
+    return render_me(request, "part_overview.html", {})()
 
 @init_logging
 def get_all_partitions(request):
@@ -40,7 +40,7 @@ def get_all_partitions(request):
         )
     )
     request.xml_response["response"] = xml_resp
-    #print etree.tostring(xml_resp, pretty_print=True)
+    print etree.tostring(xml_resp, pretty_print=True)
     return request.xml_response.create_response()
 
 @login_required
@@ -111,7 +111,7 @@ def delete_partition(request):
 @login_required
 @init_logging
 def image_overview(request):
-    return render_tools.render_me(request, "image_overview.html", {})()
+    return render_me(request, "image_overview.html", {})()
 
 @init_logging
 def get_all_images(request):

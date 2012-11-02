@@ -3,7 +3,6 @@
 
 """ boot views """
 
-import json
 import pprint
 import logging_tools
 import process_tools
@@ -21,7 +20,6 @@ import server_command
 import re
 import time
 import net_tools
-from django.core.urlresolvers import reverse
 from django.db import transaction
 
 @login_required
