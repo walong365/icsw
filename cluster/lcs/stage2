@@ -1,4 +1,5 @@
 #!/bin/bash
+# -*-  indent-tabs-mode:nil;  -*- 
 #
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel
 #
@@ -181,10 +182,10 @@ function make_nsswitch_local() {
 function restore_nsswitch() {
     echo -e "restoring nsswitch.conf"
     if [ -x /bin/mv ] ; then
-    mv /$basedir/etc/.nsswitch.conf.orig /$basedir/etc/nsswitch.conf
+        mv /$basedir/etc/.nsswitch.conf.orig /$basedir/etc/nsswitch.conf
     else
-    cp -a /$basedir/etc/.nsswitch.conf.orig /$basedir/etc/nsswitch.conf
-    rm -f /$basedir/etc/.nsswitch.conf.orig
+        cp -a /$basedir/etc/.nsswitch.conf.orig /$basedir/etc/nsswitch.conf
+        rm -f /$basedir/etc/.nsswitch.conf.orig
     fi
 }
 
@@ -311,11 +312,15 @@ function do_sfdisk_call() {
         # new parted (starting with at least 1.6.24): report as <LOWER> - <UPPER>GB
         # new version as of 31.1.2006 (Novartis): rewrite \ -\ to - via sed
         # debian_etch parted reports as Disk <disk>: <size>GB, sigh ...
+        # new version with parted -m (machine-printable output)
         # pre-debian version
-        size=$(parted -s $dev print | grep Disk\ geo | sed s/\ -\ /-/g | cut -d "-" -f 2 | sed s/^\ //g | cut -d " " -f 1 | cut -d "." -f 1)
+        size=0
+        if [ "${size:-0}" = "0" ] ; then
+            size=$(parted -s $dev print | grep Disk\ geo | sed s/\ -\ /-/g | cut -d "-" -f 2 | sed s/^\ //g | cut -d " " -f 1 | cut -d "." -f 1)
+        fi
         if [ "${size:-0}" = "0" ] ; then
             # try with-debian version
-        size=$(parted -s $dev print | grep Disk | tr " " "\n" | grep -e "GB\|MB" )
+            size=$(parted -s $dev print | grep Disk | tr " " "\n" | grep -e "GB\|MB" )
         fi
         echo "***$size"
         echo $size | grep GB > /dev/null && {
@@ -342,10 +347,10 @@ function do_sfdisk_call() {
             done < /parted
             parted -s $dev print > /conf/.output/parted_after
         fi
-        else
+    else
         set_hoststat "${PART_MESG} using sfdisk"
         cat /conf/pinfo/sfdisk | sfdisk --force -L -uM $dev > /conf/.output/sfdisk 2>&1 || { err_exit "$PART_MESG (code=$?)" ; }
-        fi
+    fi
 }
 
 function copy_config() {
@@ -361,70 +366,70 @@ function copy_config() {
     send_info "got config for net $1 after $tot_req request(s)"
     set_hoststat "${COPY_CONF} $1 net"
     if [ -f /conf/.config_files -a "$2" = "0" ] ; then
-    while read file ; do
-        rm -f /$basedir/$file ;
-    done < /conf/.config_files
+        while read file ; do
+            rm -f /$basedir/$file ;
+        done < /conf/.config_files
     fi
     rm -f /conf/.config_files
     if [ -f /conf/config_dirs_${1} ] ; then
     echo -e "Generating directory for config $1 from server"
-    while read num dir ; do
-        num_w=`echo $dir | wc -w`
-        if [ "${num_w}" -ge "4" ] ; then
-        uid=`echo $dir | cut -d " " -f 1`
-        gid=`echo $dir | cut -d " " -f 2`
-        mode=`echo $dir | cut -d " " -f 3`
-        dir=`echo $dir | cut -d " " -f 4-`
-        else
-        uid=0
-        gid=0
-        mode="0755"
-        fi
-        echo -e "Generating directory ${dir}"
-        mkdir -p "/$basedir/$dir"
-        chown ${uid}:${gid} "/$basedir/$dir"
-        chmod ${mode} "/$basedir/$dir"
-    done < /conf/config_dirs_${1}
+        while read num dir ; do
+            num_w=`echo $dir | wc -w`
+            if [ "${num_w}" -ge "4" ] ; then
+                uid=`echo $dir | cut -d " " -f 1`
+                gid=`echo $dir | cut -d " " -f 2`
+                mode=`echo $dir | cut -d " " -f 3`
+                dir=`echo $dir | cut -d " " -f 4-`
+            else
+                uid=0
+                gid=0
+                mode="0755"
+            fi
+            echo -e "Generating directory ${dir}"
+            mkdir -p "/$basedir/$dir"
+            chown ${uid}:${gid} "/$basedir/$dir"
+            chmod ${mode} "/$basedir/$dir"
+        done < /conf/config_dirs_${1}
     fi
     if [ -f /conf/config_delete_${1} ] ; then
-    echo -e "Deleting files for config $1 from server"
-    while read recursive file ; do
-        echo -e "Deleting $file"
-        if [ "${recursive}" == "1" ] ; then
-        rm -rf /$basedir/$file
-        else
-        rm -f /$basedir/$file
-        fi
-    done < /conf/config_delete_${1}
+        echo -e "Deleting files for config $1 from server"
+        while read recursive file ; do
+            echo -e "Deleting $file"
+            if [ "${recursive}" == "1" ] ; then
+                rm -rf /$basedir/$file
+            else
+                rm -f /$basedir/$file
+            fi
+        done < /conf/config_delete_${1}
     fi
     if [ -f /conf/config_files_${1} ] ; then
-    echo -e "Installing config files for config $1 from server"
-    while read num uid gid mode file ; do
-        echo -e "Installing $file"
-        filedir=`dirname /$basedir/$file`
-        echo "$file" >> /conf/.config_files
-        [ ! -d "$filedir" ] && mkdir -p "$filedir"
-        [ -d "$filedir" ] && {
-        cp -a /conf/content_${1}/$num /$basedir/$file ;
-        chown ${uid}:${gid} /$basedir/$file ;
-        chmod ${mode} /$basedir/$file ;
-        }
-    done < /conf/config_files_${1}
+        echo -e "Installing config files for config $1 from server"
+        while read num uid gid mode file ; do
+            echo -e "Installing $file"
+            filedir=`dirname /$basedir/$file`
+            echo "$file" >> /conf/.config_files
+            [ ! -d "$filedir" ] && mkdir -p "$filedir"
+            [ -d "$filedir" ] && {
+                cp -a /conf/content_${1}/$num /$basedir/$file ;
+                chown ${uid}:${gid} /$basedir/$file ;
+                chmod ${mode} /$basedir/$file ;
+            }
+        done < /conf/config_files_${1}
     fi
     if [ -f /conf/config_links_${1} ] ; then
-    echo -e "Linking files config $1 from server"
-    while read dest src ; do
-        echo -e "Linking from $src to $dest"
-        chroot /$basedir [ -L $src ] && rm -f /${basedir}/$src
-        chroot /$basedir /bin/ln -sf $dest $src
-        echo $src >> /conf/.config_files
-    done < /conf/config_links_${1}
+        echo -e "Linking files config $1 from server"
+        while read dest src ; do
+            echo -e "Linking from $src to $dest"
+            chroot /$basedir [ -L $src ] && rm -f /${basedir}/$src
+            chroot /$basedir /bin/ln -sf $dest $src
+            echo $src >> /conf/.config_files
+        done < /conf/config_links_${1}
     fi
     if [ -f /conf/config_${1}.rc ] ; then
-    echo -e "Installing rc.config for config $1 from server"
-    file="etc/rc.config"
-    echo "$file" >> /conf/.config_files
-    cp -a /conf/config_${1}.rc /$basedir/$file
+        echo -e "Installing rc.config for config $1 from server"
+        file="etc/rc.config"
+        echo "$file" >> /conf/.config_files
+        cp -a /conf/config_${1}.rc /$basedir/$file
     fi
 #start_shell
     return 0;
@@ -439,13 +444,13 @@ function err_exit() {
     mount -n -t devpts -o mode=0620,gid=5 devpts /dev/pts 
     if [ -x /usr/sbin/xinetd ] ; then
         logger -s "starting /usr/sbin/xinetd"
-    /usr/sbin/xinetd & 
+        /usr/sbin/xinetd & 
     elif [ -x /usr/sbin/inetd ] ; then
         logger -s "starting /usr/sbin/inetd"
-    /usr/sbin/inetd &
+        /usr/sbin/inetd &
     else
-    logger "no inetd or xinetd found "
-    echo -e "${RED}No inetd found, skipping${OFF}"
+        logger "no inetd or xinetd found "
+        echo -e "${RED}No inetd found, skipping${OFF}"
     fi
     start_shell
 #  exit -1
@@ -459,15 +464,15 @@ function install_kernel() {
     num=`echo $conf_str| cut -d " " -f 1`
     if [ "$(echo $conf_str | cut -d ' ' -f 3)" == "NEW" ] ; then
     # new_version
-    kernel_server=`echo $conf_str | cut -d " " -f 4`
-    full_newkernel=`echo $conf_str | cut -d " " -f 5`
-    new_version=`echo $conf_str | cut -d " " -f 6`
-    new_release=`echo $conf_str | cut -d " " -f 7`
+        kernel_server=`echo $conf_str | cut -d " " -f 4`
+        full_newkernel=`echo $conf_str | cut -d " " -f 5`
+        new_version=`echo $conf_str | cut -d " " -f 6`
+        new_release=`echo $conf_str | cut -d " " -f 7`
     else
-    kernel_server=$motherserver
-    full_newkernel=`echo $conf_str | cut -d " " -f 3`
-    new_version=`echo $conf_str | cut -d " " -f 4`
-    new_release=`echo $conf_str | cut -d " " -f 5`
+        kernel_server=$motherserver
+        full_newkernel=`echo $conf_str | cut -d " " -f 3`
+        new_version=`echo $conf_str | cut -d " " -f 4`
+        new_release=`echo $conf_str | cut -d " " -f 5`
     fi
     newkernel_dir=$(dirname $full_newkernel)
     newkernel=$(basename $full_newkernel)
@@ -477,65 +482,65 @@ function install_kernel() {
     mkdir /kernel
     mount_it "kernel" ${kernel_server}:${newkernel_dir}/${newkernel} /kernel "${RO_MOUNTOPTS}"
     if [ "$new_version" = "?" ] ; then
-    if [ -s /kernel/.version ] ; then
-        newkversion=`cat /kernel/.version | grep -E "^VERSION" | cut -d "=" -f 2`
-    fi
+        if [ -s /kernel/.version ] ; then
+            newkversion=`cat /kernel/.version | grep -E "^VERSION" | cut -d "=" -f 2`
+        fi
     else
-    newkversion="$new_version.$new_release"
+        newkversion="$new_version.$new_release"
     fi
     if [ -s /conf/.kernel ] ; then
-    oldkernel=`cat /conf/.kernel`
+        oldkernel=`cat /conf/.kernel`
     else
-    oldkernel="?"
+        oldkernel="?"
     fi
     oldkversion="?"
     if [ -s /conf/.kversion ] ; then
-    oldkversion=`cat /conf/.kversion`
+        oldkversion=`cat /conf/.kversion`
     fi
         #echo $oldkernel"*"$newkernel"*"$oldkversion"*"$newkversion
     if [ "$oldkernel" = "$newkernel" -a "$oldkversion" = "$newkversion" ] ; then
-    inst=0
+        inst=0
     else
-    inst=1
+        inst=1
     fi
     gen_initrd=0
     #echo $oldkernel $newkernel $olkversion $newkversion $inst
     if [ $inst -eq 1 ] ; then
-    gen_initrd=1
-    initrd_cause="new kernel"
-    get_conf_str "set_kernel $newkernel $newkversion"
-    set_hoststat "${INSTALL_KERNEL} $newkernel ($newkversion)"
-    [ -s /kernel/.version ] && cp -a /kernel/.version /$basedir/.kversion
-    [ -s /kernel/.config ] && cp -a /kernel/.config /$basedir/boot/.config
-    [ -s /kernel/.comment ] && cp -a /kernel/.comment /$basedir/boot/.comment
-    echo -e "Installing kernel $newkernel , version $newkversion"
-    echo $newkernel > /conf/.kernel
-    echo $newkversion > /conf/.kversion
-    cp -a /kernel/System.map /$basedir/boot/System.map
-    cp -a /kernel/bzImage /$basedir/boot/vmlinuz
-    rm -rf /$basedir/lib/modules/*
-    if [ -f /kernel/modules.tar.bz2 ] ; then
-        tar xjf /kernel/modules.tar.bz2 -C /$basedir/ 2>&1 | grep -v "s in the future"
+        gen_initrd=1
+        initrd_cause="new kernel"
+        get_conf_str "set_kernel $newkernel $newkversion"
+        set_hoststat "${INSTALL_KERNEL} $newkernel ($newkversion)"
+        [ -s /kernel/.version ] && cp -a /kernel/.version /$basedir/.kversion
+        [ -s /kernel/.config ] && cp -a /kernel/.config /$basedir/boot/.config
+        [ -s /kernel/.comment ] && cp -a /kernel/.comment /$basedir/boot/.comment
+        echo -e "Installing kernel $newkernel , version $newkversion"
+        echo $newkernel > /conf/.kernel
+        echo $newkversion > /conf/.kversion
+        cp -a /kernel/System.map /$basedir/boot/System.map
+        cp -a /kernel/bzImage /$basedir/boot/vmlinuz
+        rm -rf /$basedir/lib/modules/*
+        if [ -f /kernel/modules.tar.bz2 ] ; then
+            tar xjf /kernel/modules.tar.bz2 -C /$basedir/ 2>&1 | grep -v "s in the future"
+        else
+            echo -e "${YELLOW}No modules.tar.bz2 file found for actual kernel${OFF}"
+        fi
     else
-        echo -e "${YELLOW}No modules.tar.bz2 file found for actual kernel${OFF}"
-    fi
-    else
-    echo $oldkernel > /conf/.kernel
-    echo $oldkversion > /conf/.kversion
+        echo $oldkernel > /conf/.kernel
+        echo $oldkversion > /conf/.kversion
     fi
     [ -h /$basedir/boot/initrd ]  && rm -f  /$basedir/boot/initrd
     [ ! -f /$basedir/boot/initrd ] && { gen_initrd=1 ; initrd_cause="no initrd found"; }
     if [ ! -f /$basedir/boot/.mods ] ; then
-    gen_initrd=1
-    initrd_cause="no .mods-file found"
+        gen_initrd=1
+        initrd_cause="no .mods-file found"
     elif [ "`cat /$basedir/boot/.mods`" != "$*" ] ; then
-    gen_initrd=1
-    initrd_cause="modules differ"
+        gen_initrd=1
+        initrd_cause="modules differ"
     fi
     if [ $gen_initrd -eq 1 ] ; then
     # create inital ramdisk
-    send_info "${GENERATE_INITRD} for $newkernel ($newkversion), $initrd_cause, modules $*"
-    echo "$*" > /$basedir/boot/.mods
+        send_info "${GENERATE_INITRD} for $newkernel ($newkversion), $initrd_cause, modules $*"
+        echo "$*" > /$basedir/boot/.mods
     #if [ -f /$basedir/etc/redhat-release ] ; then
     #    chroot /$basedir mkinitrd -v -f --with "$*" /boot/initrd $newkernel
     #else 
@@ -568,18 +573,18 @@ function install_grub() {
     # is /boot located on a separate partition or below / ?
     boot_pnum=$(( `df /$basedir/boot | grep dev | tr -s " " | cut -d " " -f 1 | sed s.$1..g` - 1 ))
     if [ "$(df /$basedir/boot | grep dev | tr -s " " | cut -d " " -f 6 )" = "/$basedir" ] ; then
-    boot_dir=/boot
+        boot_dir=/boot
     else
-    boot_dir=""
+        boot_dir=""
     fi
     echo "title Linux" >> $grubf
     echo "  kernel (hd0,$boot_pnum)$boot_dir/vmlinuz root=$2 " >> $grubf
     if [ -f /$basedir/boot/initrd ]  ; then
-    echo "  initrd (hd0,$boot_pnum)$boot_dir/initrd " >> $grubf
-    initrd_str="with initrd"
+        echo "  initrd (hd0,$boot_pnum)$boot_dir/initrd " >> $grubf
+        initrd_str="with initrd"
     else
-    echo "no initrd found or needed"
-    initrd_str="without initrd"
+        echo "no initrd found or needed"
+        initrd_str="without initrd"
     fi
     send_info "${GRUB_MSG}, boot=$1, root=$2, $netboot_str, $initrd_str"
     echo "(hd0) $1" > /$basedir/boot/grub/device.map
@@ -601,22 +606,22 @@ function install_lilo() {
     echo "timeout=30" >> $lilof
 # lilo for netboot
     if [ -f /conf/netboot_lilo ] ; then
-    cp -a /conf/netboot_lilo /$basedir/boot/netboot
-    echo "image = /boot/netboot" >> $lilof
-    echo "  label = netboot " >> $lilof
-    netboot_str="with netboot"
+        cp -a /conf/netboot_lilo /$basedir/boot/netboot
+        echo "image = /boot/netboot" >> $lilof
+        echo "  label = netboot " >> $lilof
+        netboot_str="with netboot"
     else
-    echo "Can't find netboot_lilo-file"
-    netboot_str="without netboot"
+        echo "Can't find netboot_lilo-file"
+        netboot_str="without netboot"
     fi
     echo "image = /boot/vmlinuz" >> $lilof
     echo "  label = linux" >> $lilof
     if [ -f /$basedir/boot/initrd ]  ; then
-    echo "  initrd = /boot/initrd " >> $lilof
-    initrd_str="with initrd"
+        echo "  initrd = /boot/initrd " >> $lilof
+        initrd_str="with initrd"
     else
-    echo "no initrd found or needed"
-    initrd_str="without initrd"
+        echo "no initrd found or needed"
+        initrd_str="without initrd"
     fi
     echo "  root = $2" >> $lilof 
     send_info "${LILO_MSG}, boot=$1, root=$2, $netboot_str, $initrd_str"
@@ -625,45 +630,45 @@ function install_lilo() {
 
 function mount_partitions () {
     mounted=$(
-    cat /conf/pinfo/fstab | grep -v -E "(^$|#)" | while read dev mp typ opt rest ; do
+        cat /conf/pinfo/fstab | grep -v -E "(^$|#)" | while read dev mp typ opt rest ; do
         #do not mount the root partition nor swap:
-        [ "$mp" = "swap" -o "$mp" = "/" -o "$typ" = "proc" -o "$typ" = "sysfs" -o "$typ" = "devpts" -o "$typ" = "usbdevfs" -o "$typ" = "usbfs" ] && continue
+            [ "$mp" = "swap" -o "$mp" = "/" -o "$typ" = "proc" -o "$typ" = "sysfs" -o "$typ" = "devpts" -o "$typ" = "usbdevfs" -o "$typ" = "usbfs" ] && continue
 
-    opt=$(echo $opt | sed -e "s/defaults//g" -e "s/,[\,]*/,/g")
-    opt=$(echo $opt | sed -e "s/^[,]*//g")
-    [ ".$opt" != "." ] && opt=$(echo \-o\ $opt)
-    mp="/${basedir}${mp}"
-    echo -e "Mounting $dev type $typ to $mp" >&2
-    [ ! -d "$mp" ] && { mkdir -p "$mp" || err_exit "cannot create mountpoint '$mp' (code=$?)" ; }
-        echo "mount -t $typ $opt $dev $mp" >&2
-    mount -t $typ $opt $dev $mp
+            opt=$(echo $opt | sed -e "s/defaults//g" -e "s/,[\,]*/,/g")
+            opt=$(echo $opt | sed -e "s/^[,]*//g")
+            [ ".$opt" != "." ] && opt=$(echo \-o\ $opt)
+            mp="/${basedir}${mp}"
+            echo -e "Mounting $dev type $typ to $mp" >&2
+            [ ! -d "$mp" ] && { mkdir -p "$mp" || err_exit "cannot create mountpoint '$mp' (code=$?)" ; }
+            echo "mount -t $typ $opt $dev $mp" >&2
+            mount -t $typ $opt $dev $mp
 # || { err_exit "cannot mount $dev type $typ to $mp (code=$?)" ; }
-    echo -n "$mp "
-done
-)
-echo $mounted
+            echo -n "$mp "
+        done
+    )
+    echo $mounted
 }
 
 function get_conf_str() {
     num_retries=1
     while true ; do 
-    ret=`tell_mother_zmq -i $ipaddr -m $motherserver -p 8005 $@ 2>&1`  && {
-        state=`echo $ret| cut -d " " -f 1`
-        [ "$state" = "ok" ] && break
-    } || {
-        state="error" ;
-    }
-    if [ "$state" = "wait" ] ; then
-        echo >&2 -e "${YELLOW}warning (server $motherserver, port 8005, command $@, $ret), will sleep for 10 seconds${OFF}"
-    else
-        echo >&2 -e "${RED}error (server $motherserver, port 8005, command $@, $ret), will sleep for 10 seconds${OFF}"
-    fi
-    num_retries=$(($num_retries + 1))
-    for i in $(seq 10) ; do 
-        sleep 1
-        echo >&2 -n "."
-    done
-    echo
+        ret=`tell_mother_zmq -i $ipaddr -m $motherserver -p 8005 $@ 2>&1`  && {
+            state=`echo $ret| cut -d " " -f 1`
+            [ "$state" = "ok" ] && break
+        } || {
+            state="error" ;
+        }
+        if [ "$state" = "wait" ] ; then
+            echo >&2 -e "${YELLOW}warning (server $motherserver, port 8005, command $@, $ret), will sleep for 10 seconds${OFF}"
+        else
+            echo >&2 -e "${RED}error (server $motherserver, port 8005, command $@, $ret), will sleep for 10 seconds${OFF}"
+        fi
+        num_retries=$(($num_retries + 1))
+        for i in $(seq 10) ; do 
+            sleep 1
+            echo >&2 -n "."
+        done
+        echo
     done
     echo "$num_retries $ret"
 }
@@ -672,59 +677,59 @@ function generate_devicefiles() {
     mknod /dev/tty c 5 0
     mknod -m 0644 /dev/urandom c 1 9
     for dsk in hda:3:0 hdb:3:64 hdc:22:0 hdd:22:64 hde:33:0 hdf:33:64 hdg:34:0 hdh:34:64 ; do
-    bname=/dev/`echo $dsk | cut -d ":" -f 1`
-    major=`echo $dsk | cut -d ":" -f 2`
-    minor=`echo $dsk | cut -d ":" -f 3`
-    mknod -m 0600 $bname b $major $minor
-    for i in $(seq 31) ; do
-        minor=$(( $minor + 1 ))
-        mknod -m 0600 $bname$i b $major $minor
-    done
+        bname=/dev/`echo $dsk | cut -d ":" -f 1`
+        major=`echo $dsk | cut -d ":" -f 2`
+        minor=`echo $dsk | cut -d ":" -f 3`
+        mknod -m 0600 $bname b $major $minor
+        for i in $(seq 31) ; do
+            minor=$(( $minor + 1 ))
+            mknod -m 0600 $bname$i b $major $minor
+        done
     done
     major=8
     minor=0
     for dsk in a b c d e f g h i j k l m n o p ; do
-    bname=/dev/sd$dsk
-    mknod -m 0600 $bname b $major $minor
-    for i in $(seq 15) ; do
+        bname=/dev/sd$dsk
+        mknod -m 0600 $bname b $major $minor
+        for i in $(seq 15) ; do
+            minor=$(( $minor + 1 ))
+            mknod -m 0600 $bname$i b $major $minor
+        done
         minor=$(( $minor + 1 ))
-        mknod -m 0600 $bname$i b $major $minor
-    done
-    minor=$(( $minor + 1 ))
     done
     cpq=/dev/cciss
     mkdir $cpq
     major=104
     for cac in 0 1 ; do
-    minor=0
-    bname=${cpq}/c${cac}
-    for dsk in $(seq 0 4) ; do 
-        dname=${bname}d${dsk}
-        mknod -m 0600 $dname b $major $minor
-        minor=$(( $minor + 1 ))
-        for i in $(seq 15) ; do
-        mknod -m 0600 ${dname}p$i b $major $minor
-        minor=$(( $minor + 1 ))
+        minor=0
+        bname=${cpq}/c${cac}
+        for dsk in $(seq 0 4) ; do 
+            dname=${bname}d${dsk}
+            mknod -m 0600 $dname b $major $minor
+            minor=$(( $minor + 1 ))
+            for i in $(seq 15) ; do
+                mknod -m 0600 ${dname}p$i b $major $minor
+                minor=$(( $minor + 1 ))
+            done
         done
-    done
-    major=$(( $major + 1 ))
+        major=$(( $major + 1 ))
     done
     cpq=/dev/ida
     mkdir $cpq
     major=72
     for cac in 0 1 ; do
-    minor=0
-    bname=${cpq}/c${cac}
-    for dsk in $(seq 0 4) ; do
-        dname=${bname}d${dsk}
-        mknod -m 0600 $dname b $major $minor
-        minor=$(( $minor + 1 ))
-        for i in $(seq 15) ; do
-        mknod -m 0600 ${dname}p$i b $major $minor
-        minor=$(( $minor + 1 ))
+        minor=0
+        bname=${cpq}/c${cac}
+        for dsk in $(seq 0 4) ; do
+            dname=${bname}d${dsk}
+            mknod -m 0600 $dname b $major $minor
+            minor=$(( $minor + 1 ))
+            for i in $(seq 15) ; do
+                mknod -m 0600 ${dname}p$i b $major $minor
+                minor=$(( $minor + 1 ))
+            done
         done
-    done
-    major=$(( $major + 1 ))
+        major=$(( $major + 1 ))
     done
 }
 
@@ -736,25 +741,25 @@ function mount_it() {
     opts=$4
     iter=1
     while true ; do
-    logger -s "trying: mount from ${src} (opt ${opts})"
-    mount ${opts} ${src} ${dst} && { 
-        break ; 
-    } || {
-        mc=$?;
-        log_str="cannot mount $what for $device_name ($ipaddr) from "$(echo $src| cut -d ":" -f 1)" (code=$mc, $iter of $MOUNT_RETRIES)"
-        logger $log_str
-        echo -e "${RED}${log_str}${OFF}"
-        if [ $iter -eq $MOUNT_RETRIES ] ; then
-        echo
-        err_exit "max MOUNT_RETRIES $MOUNT_RETRIES reached, exiting..." ; 
-        else
-        log_str=", retrying in $MOUNT_SLEEP seconds"
-        logger -s $log_str
-        echo -e "${RED}${log_str}${OFF}"
-        sleep $MOUNT_SLEEP
-        fi
-        iter=$(($iter + 1))
-    }
+        logger -s "trying: mount from ${src} (opt ${opts})"
+        mount ${opts} ${src} ${dst} && { 
+            break ; 
+        } || {
+            mc=$?;
+            log_str="cannot mount $what for $device_name ($ipaddr) from "$(echo $src| cut -d ":" -f 1)" (code=$mc, $iter of $MOUNT_RETRIES)"
+            logger $log_str
+            echo -e "${RED}${log_str}${OFF}"
+            if [ $iter -eq $MOUNT_RETRIES ] ; then
+                echo
+                err_exit "max MOUNT_RETRIES $MOUNT_RETRIES reached, exiting..." ; 
+            else
+                log_str=", retrying in $MOUNT_SLEEP seconds"
+                logger -s $log_str
+                echo -e "${RED}${log_str}${OFF}"
+                sleep $MOUNT_SLEEP
+            fi
+            iter=$(($iter + 1))
+        }
     done
     logger -s "successfull mount after $iter retries"
 }
@@ -835,9 +840,9 @@ depmod -ae || depmod -ave
 intrd_mods=`cat /.initrd_mods`
 for i in ${mods} ; do
     test -n "$i" && {
-    newmod=`echo $i | cut -d "." -f 1` ; 
-    modprobe $newmod
-    initrd_mods="$initrd_mods $newmod ";
+        newmod=`echo $i | cut -d "." -f 1` ; 
+        modprobe $newmod
+        initrd_mods="$initrd_mods $newmod ";
     } || continue
 done
 
@@ -947,9 +952,9 @@ if [ "$tstate" = "boot_rescue" ] ; then
     set_hoststat ${JT_RESCUE}
 
     if [ -f /usr/bin/chroot ] ; then
-    exec /usr/bin/chroot . /sbin/init 3 <dev/console >dev/console 2>&1
+        exec /usr/bin/chroot . /sbin/init 3 <dev/console >dev/console 2>&1
     else
-    exec /usr/sbin/chroot . /sbin/init 3 <dev/console >dev/console 2>&1
+        exec /usr/sbin/chroot . /sbin/init 3 <dev/console >dev/console 2>&1
     fi
 
 elif [ "$do_mount" = "1" ] ; then
@@ -968,266 +973,269 @@ elif [ "$do_mount" = "1" ] ; then
     echo -e "Root-device is $rpart ($rparttype)"
 
     [ -r /proc/partitions ] && {
-    cat /proc/partitions > /conf/.output/partitions
+        cat /proc/partitions > /conf/.output/partitions
     } || {
-    [ -d /sys/block ] &&
-    for i in $(cd /sys/block;ls -1d * | egrep -v "^(ram|loop|fd)") ; do
-        (cd $i && echo */ | sed -e "s/(device|queue)\///g")
-    done > /conf/.output/partitions
+        [ -d /sys/block ] &&
+        for i in $(cd /sys/block;ls -1d * | egrep -v "^(ram|loop|fd)") ; do
+            (cd $i && echo */ | sed -e "s/(device|queue)\///g")
+        done > /conf/.output/partitions
     }
-
+    
     mkdir /$basedir
     if [ "$do_install" = "1" ] ; then
-    echo -e "Using partition $pinfo for $PART_MESG disk $fdev"
-
-    do_sfdisk_call $fdev
-    echo ${pinfo} > /conf/.parttype
-    set_hoststat ${FORM_MESG} $fdev
-    for type in swap ext2 reiserfs ext3 ; do
-        rm -f /conf/.output/format_${type}
-    done
-    rm -f /conf/.output/format_swap /conf/.output/format_ext2 /conf/.output/format_ext3 /conf/.output/format_reiserfs
-    if [ -f /conf/pinfo/swapparts ] ; then
-        swapp=`cat /conf/pinfo/swapparts | tr "\n" " "`
-        echo -e "Generating swap-devices on partitions $swapp"
-        for p in $swapp ; do
-        set_hoststat ${FORM_MESG} swap $p
-        dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
-        mkswap $p 2>&1 >>/conf/.output/format_swap
+        echo -e "Using partition $pinfo for $PART_MESG disk $fdev"
+        
+        do_sfdisk_call $fdev
+        echo ${pinfo} > /conf/.parttype
+        set_hoststat ${FORM_MESG} $fdev
+        for type in swap ext2 reiserfs ext3 ext4 ; do
+            rm -f /conf/.output/format_${type}
         done
-    else
-        echo -e "No swap-devices defined"
-    fi
-
-    if [ -f /conf/pinfo/ext2parts ]; then
-        ext2p=`cat /conf/pinfo/ext2parts | tr "\n" " "`
-        echo -e "$FORM_MESG ext2 partitions $ext2p"
-        for p in $ext2p ; do
-        set_hoststat ${FORM_MESG} ext2 $p
-        dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
-        mkfs.ext2 -q $p >>/conf/.output/format_ext2 2>&1 || { set_hoststat "error $FORM_MESG ext2 partition '$p'" ; }
-        tune2fs -T now $p
-        done
-    fi
-
-    if [ -f /conf/pinfo/reiserfsparts ]; then
-        reiserfsp=`cat /conf/pinfo/reiserfsparts | tr "\n" " "`
-        echo -e "$FORM_MESG reiserfs partitions $reiserfsp"
-        for p in $reiserfsp ; do
-        set_hoststat ${FORM_MESG} reiserfs $p
-        dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
-        echo y | mkfs.reiserfs --format 3.6 $p >>/conf/.output/format_reiserfs 2>&1 || { set_hoststat "error $FORM_MESG reiserfs partition '$p'" ; }
-        done
-    fi
-
-    if [ -f /conf/pinfo/ext3parts ]; then
-        ext3p=`cat /conf/pinfo/ext3parts | tr "\n" " "`
-        echo -e "$FORM_MESG ext3 partitions $ext3p"
-        for p in $ext3p ; do
-        set_hoststat ${FORM_MESG} ext3 $p
-        dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
-        mkfs.ext3 -j -O sparse_super -q $p >>/conf/.output/format_ext3 2>&1 || { set_hoststat "error $FORM_MESG ext3 partition '$p'" ; }
-        tune2fs -T now $p
-        done
-    fi
-
-    if [ -f /conf/pinfo/ext4parts ]; then
-        ext4p=`cat /conf/pinfo/ext4parts | tr "\n" " "`
-        echo -e "$FORM_MESG ext4 partitions $ext4p"
-        for p in $ext4p ; do
-            set_hoststat ${FORM_MESG} ext4 $p
-            dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
-            mkfs.ext4 -j -O sparse_super -q $p >>/conf/.output/format_ext4 2>&1 || { set_hoststat "error $FORM_MESG ext4 partition '$p'" ; }
-            tune2fs -T now $p
-        done
-    fi
-
-    mkdir /images
+        rm -f /conf/.output/format_*
+        if [ -f /conf/pinfo/swapparts ] ; then
+            swapp=`cat /conf/pinfo/swapparts | tr "\n" " "`
+            echo -e "Generating swap-devices on partitions $swapp"
+            for p in $swapp ; do
+                set_hoststat ${FORM_MESG} swap $p
+                dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
+                mkswap $p 2>&1 >>/conf/.output/format_swap
+            done
+        else
+            echo -e "No swap-devices defined"
+        fi
+        
+        if [ -f /conf/pinfo/ext2parts ]; then
+            ext2p=`cat /conf/pinfo/ext2parts | tr "\n" " "`
+            echo -e "$FORM_MESG ext2 partitions $ext2p"
+            for p in $ext2p ; do
+                set_hoststat ${FORM_MESG} ext2 $p
+                dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
+                mkfs.ext2 -q $p >>/conf/.output/format_ext2 2>&1 || { set_hoststat "error $FORM_MESG ext2 partition '$p'" ; }
+                tune2fs -T now $p
+            done
+        fi
+        
+        if [ -f /conf/pinfo/reiserfsparts ]; then
+            reiserfsp=`cat /conf/pinfo/reiserfsparts | tr "\n" " "`
+            echo -e "$FORM_MESG reiserfs partitions $reiserfsp"
+            for p in $reiserfsp ; do
+                set_hoststat ${FORM_MESG} reiserfs $p
+                dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
+                echo y | mkfs.reiserfs --format 3.6 $p >>/conf/.output/format_reiserfs 2>&1 || { set_hoststat "error $FORM_MESG reiserfs partition '$p'" ; }
+            done
+        fi
+        
+        if [ -f /conf/pinfo/ext3parts ]; then
+            ext3p=`cat /conf/pinfo/ext3parts | tr "\n" " "`
+            echo -e "$FORM_MESG ext3 partitions $ext3p"
+            for p in $ext3p ; do
+                set_hoststat ${FORM_MESG} ext3 $p
+                dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
+                mkfs.ext3 -j -O sparse_super -q $p >>/conf/.output/format_ext3 2>&1 || { set_hoststat "error $FORM_MESG ext3 partition '$p'" ; }
+                tune2fs -T now $p
+            done
+        fi
+        
+        if [ -f /conf/pinfo/ext4parts ]; then
+            ext4p=`cat /conf/pinfo/ext4parts | tr "\n" " "`
+            echo -e "$FORM_MESG ext4 partitions $ext4p"
+            for p in $ext4p ; do
+                set_hoststat ${FORM_MESG} ext4 $p
+                dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
+                mkfs.ext4 -j -O sparse_super -q $p >>/conf/.output/format_ext4 2>&1 || { set_hoststat "error $FORM_MESG ext4 partition '$p'" ; }
+                tune2fs -T now $p
+            done
+        fi
+        
+        mkdir /images
         # get partition
-    echo -e "Creating mountpoints"
-
-    mount -t $rparttype $rpart /$basedir >/tmp/mount_out 2>&1 || { err_code=$? ; cat /tmp/mount_out | logger -s ; err_exit "cannot mount root-partition $rpart (type $rparttype) to /$basedir (code=$err_code)" ; }
-
-    set_hoststat ${MP_MESG}
-    rm -rf /$basedir/*
-    cd /$basedir
-
-    [ ! -d sys  ] && mkdir sys
-    [ ! -d proc ] && mkdir proc
-    [ ! -d tmp  ] && mkdir tmp
-    [ ! -d dev/shm  ] && mkdir -p dev/shm
-    chmod 666 proc
-
+        echo -e "Creating mountpoints"
+        
+        mount -t $rparttype $rpart /$basedir >/tmp/mount_out 2>&1 || { err_code=$? ; cat /tmp/mount_out | logger -s ; err_exit "cannot mount root-partition $rpart (type $rparttype) to /$basedir (code=$err_code)" ; } || { echo "mounted root-partition $rpart (type $rparttype) to /$basedir" ; }
+        
+        set_hoststat ${MP_MESG}
+        rm -rf /$basedir/*
+        cd /$basedir
+        
+        [ ! -d sys  ] && mkdir sys
+        [ ! -d proc ] && mkdir proc
+        [ ! -d tmp  ] && mkdir tmp
+        [ ! -d dev/shm  ] && mkdir -p dev/shm
+        chmod 666 proc
+        
 # mount partitions and generate main directories
-    mounts="`mount_partitions`"
-    umounts=""
-    for i in $mounts; do
-        umounts="$i $umounts";
-    done
+        mounts="`mount_partitions`"
+        umounts=""
+        for i in $mounts; do
+            umounts="$i $umounts";
+        done
 # unpack images
-    set_hoststat "Requesting image"
-    conf_str=`get_conf_str "get_image"`
-    num=`echo $conf_str| cut -d " " -f 1`
-    if [ $(echo $conf_str | wc -w) -eq 6 ] ; then
+        set_hoststat "Requesting image"
+        conf_str=`get_conf_str "get_image"`
+        num=`echo $conf_str| cut -d " " -f 1`
+        if [ $(echo $conf_str | wc -w) -eq 6 ] ; then
         # old version
-        image_server=$motherserver
-        full_image=`echo $conf_str | cut -d " " -f 3`
-        image=$(basename $full_image)
-        image_dir=$(dirname $full_image)
-        image_version=`echo $conf_str | cut -d " " -f 4`
-        image_release=`echo $conf_str | cut -d " " -f 5`
-        image_builds=`echo $conf_str | cut -d " " -f 6`
-    else
+            image_server=$motherserver
+            full_image=`echo $conf_str | cut -d " " -f 3`
+            image=$(basename $full_image)
+            image_dir=$(dirname $full_image)
+            image_version=`echo $conf_str | cut -d " " -f 4`
+            image_release=`echo $conf_str | cut -d " " -f 5`
+            image_builds=`echo $conf_str | cut -d " " -f 6`
+        else
         # new version with image_server_ip
-        image_server=`echo $conf_str | cut -d " " -f 3`
-        full_image=`echo $conf_str | cut -d " " -f 4`
-        image=$(basename $full_image)
-        image_dir=$(dirname $full_image)
-        image_version=`echo $conf_str | cut -d " " -f 5`
-        image_release=`echo $conf_str | cut -d " " -f 6`
-        image_builds=`echo $conf_str | cut -d " " -f 7`
-    fi
-    send_info "got image $image after $num request(s)"
-    date
-    echo -ne "Installing image $image (dir $image_dir, ${image_version}.${image_release}, ${image_builds} builds)"
-    if [ "$rsync_flag" = "0" ] ; then
-        echo " via tar.gz/bz2"
-
-    set_hoststat ${INS_MESG}
-    mount_it "image" $image_server:$image_dir/$image /images "${RO_MOUNTOPTS}"
-    if [ -f /images/sbin.tar.gz ] ; then
-    imtype=gz
-    tar_flags="-xzf"
-    else
-    imtype=bz2
-    tar_flags="-xjf"
-    fi
-    dirperm_file=.tdir.tar.${imtype}
-    for file in /images/*.${imtype} ; do
-    basen=`basename $file`
-    if [ "$basen" != "$dirperm_file" ] ; then
-        set_hoststat -q "${UNP_MESG} $basen"
-        echo -e "Unpacking $basen ($(ls -sh $file | cut -d'/' -f1 | tr -d " "))"
-        (tar ${tar_flags} $file || { err_exit "unpacking $basen" ; }) 2>&1 | grep -v "s in the future"
-    fi
-    done
-    set_hoststat "${FIX_MESG}"
+            image_server=`echo $conf_str | cut -d " " -f 3`
+            full_image=`echo $conf_str | cut -d " " -f 4`
+            image=$(basename $full_image)
+            image_dir=$(dirname $full_image)
+            image_version=`echo $conf_str | cut -d " " -f 5`
+            image_release=`echo $conf_str | cut -d " " -f 6`
+            image_builds=`echo $conf_str | cut -d " " -f 7`
+        fi
+        send_info "got image $image after $num request(s)"
+        date
+        echo -ne "Installing image $image (dir $image_dir, ${image_version}.${image_release}, ${image_builds} builds)"
+        if [ "$rsync_flag" = "0" ] ; then
+            echo " via tar.gz/bz2"
+            
+            set_hoststat ${INS_MESG}
+            mount_it "image" $image_server:$image_dir/$image /images "${RO_MOUNTOPTS}"
+            if [ -f /images/sbin.tar.gz ] ; then
+                imtype=gz
+                tar_flags="-xzf"
+            elif [ -f /images/sbin.tar.xz ] ; then
+                imtype=xz
+                tar_flags="-xJf"
+            else
+                imtype=bz2
+                tar_flags="-xjf"
+            fi
+            dirperm_file=.tdir.tar.${imtype}
+            for file in /images/*.${imtype} ; do
+                basen=`basename $file`
+                if [ "$basen" != "$dirperm_file" ] ; then
+                    set_hoststat -q "${UNP_MESG} $basen"
+                    echo -e "Unpacking $basen ($(ls -sh $file | cut -d'/' -f1 | tr -d " "))"
+                    (tar ${tar_flags} $file || { err_exit "unpacking $basen" ; }) 2>&1 | grep -v "s in the future"
+                fi
+            done
+            set_hoststat "${FIX_MESG}"
 # set permissions
-    if [ -f /images/${dirperm_file} ] ; then
-    mkdir /tdir
-    tar ${tar_flags} /images/${dirperm_file} -C /tdir 2>&1 | grep -v "s in the future"
-    for dir in /tdir/* ; do
-        rd=`basename $dir`
-        [ ! -d ${rd} ] && mkdir -p ${rd}
-        echo -n "$rd "
-        chmod --reference=/tdir/${rd} ${rd}
-        chown --reference=/tdir/${rd} ${rd}
-    done
-    echo
-    rm -rf /tdir
-    else
-    echo -e "Can't find dirperm-file ${dirperm_file}, using default"
-#start_shell
-    chmod 1777 /$basedir/tmp
-    chmod 0700 /$basedir/root
-    fi
-
-    umount /images
-    rmdir /images
-
-    else
-        echo " via rsync"
-
-    set_hoststat ${RSYNC_MESG}
-    rm -f /tmp/.rsync_exclude
-    echo -e "Getting exlucde-paths for install"
-    get_conf_str "get_install_ep" | cut -d " " -f 3- | tr " " "\n" > /tmp/.rsync_exclude
-    echo "contents of exclude-list:"
-    cat /tmp/.rsync_exclude | sed s/^/\ -\ /g
-    echo -e "starting rsync from server $motherserver, image is $image"
-    rsync ${rsync_flags} --exclude-from=/tmp/.rsync_exclude --stats ${motherserver}::${image} /${basedir} || err_exit "doing rsync-call"
+            if [ -f /images/${dirperm_file} ] ; then
+                mkdir /tdir
+                tar ${tar_flags} /images/${dirperm_file} -C /tdir 2>&1 | grep -v "s in the future"
+                for dir in /tdir/* ; do
+                    rd=`basename $dir`
+                    [ ! -d ${rd} ] && mkdir -p ${rd}
+                    echo -n "$rd "
+                    chmod --reference=/tdir/${rd} ${rd}
+                    chown --reference=/tdir/${rd} ${rd}
+                done
+                echo
+                rm -rf /tdir
+            else
+                echo -e "Can't find dirperm-file ${dirperm_file}, using default"
+                #start_shell
+                chmod 1777 /$basedir/tmp
+                chmod 0700 /$basedir/root
+            fi
+            
+            umount /images
+            rmdir /images
+            
+        else
+            echo " via rsync"
+            
+            set_hoststat ${RSYNC_MESG}
+            rm -f /tmp/.rsync_exclude
+            echo -e "Getting exlucde-paths for install"
+            get_conf_str "get_install_ep" | cut -d " " -f 3- | tr " " "\n" > /tmp/.rsync_exclude
+            echo "contents of exclude-list:"
+            cat /tmp/.rsync_exclude | sed s/^/\ -\ /g
+            echo -e "starting rsync from server $motherserver, image is $image"
+            rsync ${rsync_flags} --exclude-from=/tmp/.rsync_exclude --stats ${motherserver}::${image} /${basedir} || err_exit "doing rsync-call"
     #start_shell
     #sleep 6000
-fi
+        fi
 # check for global /lost+found dir
-    [ ! -d /${basedir}/lost+found ] && mkdir /${basedir}/lost+found
+        [ ! -d /${basedir}/lost+found ] && mkdir /${basedir}/lost+found
 # image version
-    echo -e "Renewing image info."
-    echo "${image}" > /conf/.imagename
-    echo "${image_version}.${image_release}" > /conf/.version
-    echo "IMAGE_NAME=${image}" > /${basedir}/.imageinfo
-    echo "IMAGE_VERSION=${image_version}.${image_release}" >> /${basedir}/.imageinfo
+        echo -e "Renewing image info."
+        echo "${image}" > /conf/.imagename
+        echo "${image_version}.${image_release}" > /conf/.version
+        echo "IMAGE_NAME=${image}" > /${basedir}/.imageinfo
+        echo "IMAGE_VERSION=${image_version}.${image_release}" >> /${basedir}/.imageinfo
 # fixing fstab
-    rm -f /$basedir/etc/fstab /$basedir/etc/mtab
-    cat /conf/pinfo/fstab > /$basedir/etc/fstab
-    touch /$basedir/etc/mtab
+        rm -f /$basedir/etc/fstab /$basedir/etc/mtab
+        cat /conf/pinfo/fstab > /$basedir/etc/fstab
+        touch /$basedir/etc/mtab
 # force kernel install
-    rm -f /conf/.kernel /conf/.kversion
+        rm -f /conf/.kernel /conf/.kversion
     # go back to root-dir
-    cd /
+        cd /
     else
 #XXXXXXX
-    echo -e "mount -t $rparttype $rpart /$basedir" >&2
-    mount -t $rparttype $rpart /$basedir
+        echo -e "mount -t $rparttype $rpart /$basedir" >&2
+        mount -t $rparttype $rpart /$basedir
 # mount partitions
-    mounts="`mount_partitions`"
-    umounts=""
+        mounts="`mount_partitions`"
+        umounts=""
         for i in $mounts; do umounts="$i $umounts" ; done
-    if [ "$rsync_flag" = "2" ] ; then
-        echo " refreshing image via rsync"
-
-    set_hoststat "Requesting image name"
-    conf_str=`get_conf_str "get_image"`
-    num=`echo $conf_str| cut -d " " -f 1`
-    full_image=`echo $conf_str | cut -d " " -f 3`
-    image=$(basename $full_image)
-    image_dir=$(dirname $full_image)
-
-    set_hoststat ${RSYNC_REFRESH_MESG}
-    rm -f /tmp/.rsync_exclude
-    echo -e "Getting exlucde-paths for refresh"
-    get_conf_str "get_install_ep" | cut -d " " -f 3- | tr " " "\n" > /tmp/.rsync_exclude
-    echo "contents of exclude-list:"
-    cat /tmp/.rsync_exclude | sed s/^/\ -\ /g
-    echo -e "starting rsync from server $motherserver, image is $image"
-    rsync ${rsync_flags} --exclude-from=/tmp/.rsync_exclude --stats ${motherserver}::${image} /${basedir} || err_exit "doing rsync-call"
+        if [ "$rsync_flag" = "2" ] ; then
+            echo " refreshing image via rsync"
+            
+            set_hoststat "Requesting image name"
+            conf_str=`get_conf_str "get_image"`
+            num=`echo $conf_str| cut -d " " -f 1`
+            full_image=`echo $conf_str | cut -d " " -f 3`
+            image=$(basename $full_image)
+            image_dir=$(dirname $full_image)
+            
+            set_hoststat ${RSYNC_REFRESH_MESG}
+            rm -f /tmp/.rsync_exclude
+            echo -e "Getting exlucde-paths for refresh"
+            get_conf_str "get_install_ep" | cut -d " " -f 3- | tr " " "\n" > /tmp/.rsync_exclude
+            echo "contents of exclude-list:"
+            cat /tmp/.rsync_exclude | sed s/^/\ -\ /g
+            echo -e "starting rsync from server $motherserver, image is $image"
+            rsync ${rsync_flags} --exclude-from=/tmp/.rsync_exclude --stats ${motherserver}::${image} /${basedir} || err_exit "doing rsync-call"
     # we have to request the fstab again (otherwise /etc/fstab will be overwritten)
-    echo -e "Requesting partition type"
-    conf_str=`get_conf_str "get_partition $fdev"`
-    num=`echo $conf_str| cut -d " " -f 1`
-    pinfo=`echo $conf_str | cut -d " " -f 3`
-    send_info "got partition $pinfo after $num request(s)"
-    echo -e "Partition type is $pinfo"
-    rm -f /$basedir/etc/fstab /$basedir/etc/mtab
-    cat /conf/pinfo/fstab > /$basedir/etc/fstab
-    touch /$basedir/etc/mtab
-
-    fi
+            echo -e "Requesting partition type"
+            conf_str=`get_conf_str "get_partition $fdev"`
+            num=`echo $conf_str| cut -d " " -f 1`
+            pinfo=`echo $conf_str | cut -d " " -f 3`
+            send_info "got partition $pinfo after $num request(s)"
+            echo -e "Partition type is $pinfo"
+            rm -f /$basedir/etc/fstab /$basedir/etc/mtab
+            cat /conf/pinfo/fstab > /$basedir/etc/fstab
+            touch /$basedir/etc/mtab
+            
+        fi
     fi
     if [ "$rsync_flag" = "1" -o "$rsync_flag" = "2" ] ; then
-    echo -e "Getting exlucde-paths for upgrade"
-    get_conf_str "get_upgrade_ep" | cut -d " " -f 3- | tr " " "\n" > /${basedir}/tmp/.rsync_exclude
+        echo -e "Getting exlucde-paths for upgrade"
+        get_conf_str "get_upgrade_ep" | cut -d " " -f 3- | tr " " "\n" > /${basedir}/tmp/.rsync_exclude
     fi
 # copy config
     if [ "$we_are_clean" = "0" ] ; then
 # copy location of source config dir
-    echo ${config_dir} > /$basedir/.config_dir
-    copy_config ${prod_net} "$do_install"
+        echo ${config_dir} > /$basedir/.config_dir
+        copy_config ${prod_net} "$do_install"
         cleanup_udev
         make_nsswitch_local
-    copy_static_files
+        copy_static_files
         add_groups_and_users
-    handle_runlevel_links
-    set_root_passwd
-    prepare_for_yp
-    install_packages
+        handle_runlevel_links
+        set_root_passwd
+        prepare_for_yp
+        install_packages
         restore_nsswitch
     fi
     copy_chroot_exec
 # check for new kernel
     if [ "$we_are_clean" = "0" ] ; then
         install_kernel $initrd_mods
-    if [ "$(get_conf_str 'modify_bootloader')" = "yes" ] ; then
+        if [ "$(get_conf_str 'modify_bootloader')" = "yes" ] ; then
         echo -e "Modifying bootloader ..."
     # grub call
         if [ -x /$basedir/sbin/grub -o -x /$basedir/usr/sbin/grub ] ; then
@@ -1238,9 +1246,9 @@ fi
         else
         echo -e "Neither grub nor lilo found"
         fi
-    else
+        else
         echo -e "No modification of bootloader requested"
-    fi
+        fi
     fi
 # unmount partitions
     echo -e "Unmounting partitions $umounts"
