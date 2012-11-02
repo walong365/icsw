@@ -70,6 +70,8 @@ class architecture(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'architecture'
+    def __unicode__(self):
+        return self.architecture
 
 class ccl_dgroup_con(models.Model):
     idx = models.AutoField(db_column="ccl_dgroup_con_idx", primary_key=True)
@@ -1438,6 +1440,8 @@ class partition(models.Model):
         if not self.partition_fs:
             p_list.append((logging_tools.LOG_LEVEL_ERROR, "no partition_fs set (%s)" % (p_name), False))
         else:
+            if self.partition_fs.hexid == "0" and self.partition_fs.name == "empty":
+                p_list.append((logging_tools.LOG_LEVEL_ERROR, "empty partitionf_fs (%s)" % (p_name), False))
             if self.partition_fs.need_mountpoint():
                 if not self.mountpoint.startswith("/"):
                     p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mountpoint defined for %s" % (p_name), False))
@@ -1520,9 +1524,30 @@ class partition_disc(models.Model):
         return pd_xml
     def _validate(self):
         p_list = []
-        self.problems = []#(logging_tools.LOG_LEVEL_ERROR, "test", True)]
         for part in self.partition_set.all():
             part._validate(self)
+        my_parts = self.partition_set.all()
+        all_mps = [cur_mp.mountpoint for cur_mp in my_parts if cur_mp.mountpoint.strip()]
+        if len(all_mps) != len(set(all_mps)):
+            p_list.append((logging_tools.LOG_LEVEL_ERROR, "mountpoints not unque", False))
+        if all_mps:
+            if "/" not in all_mps:
+                p_list.append((logging_tools.LOG_LEVEL_ERROR, "/ missing from mountpoints", False))
+            if "/usr" in all_mps:
+                p_list.append((logging_tools.LOG_LEVEL_ERROR, "cannot boot when /usr is on a separate partition", False))
+        ext_parts = [cur_p for cur_p in my_parts if cur_p.partition_fs.name == "ext"]
+        if my_parts:
+            max_pnum = max([cur_p.pnum for cur_p in my_parts])
+            if len(ext_parts) == 0:
+                if  max_pnum > 4:
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many partitions (%d), only 4 without ext allowed" % (max_pnum), False))
+            elif len(ext_parts) > 1:
+                p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many ext partitions (%d) defined" % (len(ext_parts)), False))
+            else:
+                ext_part = ext_parts[0]
+                if ext_part.pnum != 4:
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "extended partition must have pnum 4", False))
+        self.problems = p_list
     def _get_problems(self):
         return self.problems + sum([cur_part._get_problems() for cur_part in self.partition_set.all()], [])
     class Meta:
