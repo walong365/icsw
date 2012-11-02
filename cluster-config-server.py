@@ -45,6 +45,7 @@ import threading_tools
 import net_tools
 import uuid_tools
 import zmq
+import crypt
 from django.db import connection
 from lxml import etree
 from lxml.builder import E
@@ -1198,11 +1199,12 @@ class partition_setup(object):
                     upper_size = 0
                 parted.append("mkpart %s %s %s %s" % (
                     fs_name == "ext" and "extended" or (act_pnum < 5 and "primary" or "logical"),
-                    {"ext3" : "ext2",
-                     "ext4" : "ext2",
-                     "swap" : "linux-swap",
-                     "lvm"  : "ext2",
-                     "ext"  : ""}.get(fs_name, fs_name),
+                    {"ext3"  : "ext2",
+                     "ext4"  : "ext2",
+                     "btrfs" : "ext2",
+                     "swap"  : "linux-swap",
+                     "lvm"   : "ext2",
+                     "ext"   : ""}.get(fs_name, fs_name),
                     "%d" % (lower_size),
                     fs_name == "ext" and "_" or ("%d" % (upper_size) if upper_size else "_")
                 ))
@@ -1217,7 +1219,7 @@ class partition_setup(object):
                 else:
                     sfdisk.append(",,0x%s" % (cur_part.partition_hex))
                 fs = fs_name or "auto"
-                if cur_part.mountpoint or fs == "swap":
+                if (cur_part.mountpoint and fs_name != "ext") or fs_name == "swap":
                     act_part = "%s%s%d" % (act_disc, part_pf, act_pnum)
                     mp = cur_part.mountpoint if cur_part.mountpoint else fs
                     if mp == "/":
@@ -3154,7 +3156,8 @@ class config_control(object):
     def _handle_get_stop_scripts(self, s_req):
         return "ok %s" % (" ".join(s_req._get_config_str_vars("STOP_SCRIPTS")))
     def _handle_get_root_passwd(self, s_req):
-        return "ok %s" % (self.device.root_passwd)
+        # not very save, FIXME
+        return "ok %s" % (self.device.root_passwd.strip() or crypt.crypt("init4u", process_tools.get_machine_name()))
     def _handle_get_additional_packages(self, s_req):
         return "ok %s" % (" ".join(s_req._get_config_str_vars("ADDITIONAL_PACKAGES")))
     def _handle_ack_config(self, s_req):
@@ -3170,11 +3173,13 @@ class config_control(object):
     def _handle_create_config(self, s_req):
         if self.device.name in config_control.pending_config_requests:
             return "warn already in pending list"
+        elif self.device.name in config_control.done_config_requests:
+            return "ok config already built"
         else:
             config_control.pending_config_requests[self.device.name] = True
             q_id = config_control.queue(self, s_req, "build_config")
             config_control.srv_process.create_config(q_id, s_req)
-            return "warn started building config"
+            return "ok started building config"
     def _handle_modify_bootloader(self, s_req):
         return "ok %s" % ("yes" if self.device.act_partition_table.modify_bootloader else "no")
     def _handle_get_image(self, s_req):
