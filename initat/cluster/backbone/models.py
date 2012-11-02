@@ -681,7 +681,7 @@ class image(models.Model):
     architecture = models.ForeignKey("architecture")
     full_build = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-    enabled = models.BooleanField(default=True)
+    #enabled = models.BooleanField(default=True)
     def get_xml(self):
         cur_img = E.image(
             unicode(self),
