@@ -1522,6 +1522,9 @@ def main():
         #sys.stderr.write(" Cannot connect to SQL-Server ")
         #sys.exit(1)
     sql_info = config_tools.server_check(server_type="server")
+    if not sql_info.effective_device:
+        print "not a server"
+        sys.exit(5)
     ret_state = 256
     if sql_info.device:
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False))])
