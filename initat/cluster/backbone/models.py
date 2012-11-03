@@ -8,6 +8,7 @@ from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
+from django.utils.functional import memoize
 import re
 import ipvx_tools
 import logging_tools
@@ -19,6 +20,9 @@ def only_wf_perms(in_list):
     return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
 
 cluster_timezone = pytz.timezone(settings.TIME_ZONE)
+
+# cluster_log_source
+cluster_log_source = None
 
 class apc_device(models.Model):
     idx = models.AutoField(db_column="idx", primary_key=True)
@@ -549,6 +553,16 @@ class devicelog(models.Model):
     log_status = models.ForeignKey("log_status", null=True)
     text = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    @staticmethod
+    def new_log(cur_dev, log_src, log_stat, text, **kwargs):
+        cur_log = devicelog(
+            device=cur_dev,
+            log_source=log_src or cluster_log_source,
+            user=kwargs.get("user", None),
+            log_status=log_stat,
+            text=text)
+        cur_log.save()
+        return cur_log
     class Meta:
         db_table = u'devicelog'
 
@@ -820,11 +834,41 @@ class kernel_log(models.Model):
 
 class log_source(models.Model):
     idx = models.AutoField(db_column="log_source_idx", primary_key=True)
+    # server_type or user
     identifier = models.CharField(max_length=192)
+    # name (Cluster Server, webfrontend, ...)
     name = models.CharField(max_length=192)
+    # link to device or None
     device = models.ForeignKey("device", null=True)
+    # long description
     description = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    @staticmethod
+    def create_log_source_entry(identifier, name, description, **kwargs):
+        ls_dev = kwargs.get("device", None)
+        sources = log_source.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
+        if len(sources) > 1:
+            print "Too many log_source_entries present (%s), exiting" % (", ".join([identifier, name]))
+            cur_source = None
+        elif not len(sources):
+            if ls_dev is not None:
+                new_source = log_source(
+                    identifier=identifier,
+                    name=name,
+                    description=u"%s on %s" % (name, unicode(ls_dev)),
+                    device=kwargs["device"]
+                )
+                new_source.save()
+            else:
+                new_source = log_source(
+                    identifier=identifier,
+                    name=name,
+                    description=kwargs.get("description", "%s (id %s)" % (name, identifier))
+                )
+                new_source.save()
+        else:
+            cur_source = sources[0]
+        return cur_source
     class Meta:
         db_table = u'log_source'
 
@@ -837,6 +881,14 @@ class log_status(models.Model):
     class Meta:
         db_table = u'log_status'
 
+cached_log_status = memoize(log_status_lookup, {}, 1)
+
+def log_status_lookup(key):
+    if type(key) in [str, unicode]:
+        return log_status.objects.get(Q(identifier=key))
+    else:
+        return log_status.objects.get(Q(log_level=key))
+        
 class lvm_lv(models.Model):
     idx = models.AutoField(db_column="lvm_lv_idx", primary_key=True)
     partition_table = models.ForeignKey("partition_table")

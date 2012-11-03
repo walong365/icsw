@@ -318,27 +318,28 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
     else:
         return num_servers, server_idx
 
-def create_log_source_entry(cur_dev, server_type, descr, ext_descr="", **kwargs):
-    sources = log_source.objects.filter(Q(identifier=server_type) & Q(device=cur_dev or None))
-    if len(sources) > 1:
-        print "Too many log_sources with my id present, exiting..."
-        cur_source = None
-    elif not sources:
-        if cur_dev:
-            if type(cur_dev) in [int, long]:
-                cur_dev = device.objects.get(Q(pk=cur_dev))
-            cur_source = log_source(
-                identifier=server_type,
-                name=descr,
-                device=cur_dev,
-                description="%s on %s" % (descr, process_tools.get_machine_name()))
-            cur_source.save()
-        else:
-            cur_source = log_source(
-                identifier=server_type,
-                name=descr,
-                description=ext_descr)
-            cur_source.save()
-    else:
-        cur_source= sources[0]
-    return cur_source if not kwargs.get("return_pk", False) else (cur_source.pk if cur_source else 0)
+# now staticmethod in log_source (models.py)
+##def create_log_source_entry(cur_dev, server_type, descr, ext_descr="", **kwargs):
+##    sources = log_source.objects.filter(Q(identifier=server_type) & Q(device=cur_dev or None))
+##    if len(sources) > 1:
+##        print "Too many log_sources with my id present, exiting..."
+##        cur_source = None
+##    elif not sources:
+##        if cur_dev:
+##            if type(cur_dev) in [int, long]:
+##                cur_dev = device.objects.get(Q(pk=cur_dev))
+##            cur_source = log_source(
+##                identifier=server_type,
+##                name=descr,
+##                device=cur_dev,
+##                description="%s on %s" % (descr, process_tools.get_machine_name()))
+##            cur_source.save()
+##        else:
+##            cur_source = log_source(
+##                identifier=server_type,
+##                name=descr,
+##                description=ext_descr)
+##            cur_source.save()
+##    else:
+##        cur_source= sources[0]
+##    return cur_source if not kwargs.get("return_pk", False) else (cur_source.pk if cur_source else 0)
