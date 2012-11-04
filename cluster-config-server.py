@@ -50,7 +50,8 @@ from django.db import connection
 from lxml import etree
 from lxml.builder import E
 from initat.cluster.backbone.models import device, network, config, device_variable, net_ip, hopcount, \
-     partition, sys_partition, wc_files, tree_node, config_str
+     partition, sys_partition, wc_files, tree_node, config_str, \
+     cached_log_status, cached_log_source, log_source, devicelog
 from django.db.models import Q
 import module_dependency_tools
 
@@ -441,6 +442,7 @@ class tree_node_g(object):
         return "\n".join(ret_f)
     def write_node(self, cur_c, cur_bc, **kwargs):
         num_nodes = 1
+        #node_list = []
         cur_tn = tree_node(
             device=cur_bc.conf_dict["device"],
             is_dir=self.is_dir,
@@ -455,6 +457,8 @@ class tree_node_g(object):
         cur_wc.save()
         if self.is_dir:
             num_nodes += sum([cur_child.write_node(cur_c, cur_bc, parent=cur_tn) for cur_child in self.childs.itervalues()])
+            #node_list.extend(sum([cur_child.write_node(cur_c, cur_bc, parent=cur_tn) for cur_child in self.childs.itervalues()], []))
+        #return node_list
         return num_nodes
         
 class generated_tree(tree_node_g):
@@ -464,6 +468,11 @@ class generated_tree(tree_node_g):
         cur_c.log("creating tree")
         tree_node.objects.filter(Q(device=cur_bc.conf_dict["device"])).delete()
         nodes_written = self.write_node(cur_c, cur_bc)
+        #write_list = self.write_node(cur_c, cur_bc)
+        #nodes_written = len(write_list)
+        #tree_node.objects.bulk_create([cur_tn for cur_tn, cur_wc in write_list])
+        #wc_files.objects.bulk_create([cur_wc for cur_tn, cur_wc in write_list])
+        #print write_list
         cur_c.log("wrote %s" % (logging_tools.get_plural("node", nodes_written)))
         
 class build_container(object):
@@ -2455,7 +2464,7 @@ class command_thread(threading_tools.thread_obj):
         
 class network_tree(dict):
     def __init__(self):
-        all_nets = network.objects.all().select_related("network_type")
+        all_nets = network.objects.all().select_related("network_type", "master_network")
         for cur_net in all_nets:
             self[cur_net.pk] = cur_net
             self.setdefault(cur_net.network_type.identifier, {})[cur_net.pk] = cur_net
@@ -2474,6 +2483,9 @@ class build_process(threading_tools.process_obj):
             zmq=True,
             context=self.zmq_context,
             init_logger=True)
+        # close database connection
+        connection.close()
+        self.config_src = log_source.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         self.register_func("generate_config", self._generate_config)
         # for requests from config_control
         self.register_func("complex_request", self._complex_request)
@@ -2495,6 +2507,7 @@ class build_process(threading_tools.process_obj):
         cur_c = build_client.get_client(**attr_dict)
         cur_c.log("starting config build")
         s_time = time.time()
+        dev_sc = None
         # get device by name
         try:
             b_dev = device.objects.select_related("device_type", "device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(Q(name=cur_c.name))
@@ -2559,6 +2572,8 @@ class build_process(threading_tools.process_obj):
         # done (yeah ?)
         # send result
         e_time = time.time()
+        if dev_sc:
+            dev_sc.device.add_log(self.config_src, cached_log_status(int(cur_c.state_level)), "built config in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
         cur_c.log("built took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
@@ -3366,7 +3381,7 @@ class build_client(object):
     """ holds all the necessary data for a complex config request """
     def __init__(self, **kwargs):
         self.name = kwargs["name"]
-        self.pk = int(kwargs.get("pk", device.objects.get(Q(name=self.name)).pk))
+        self.pk = int(kwargs.get("pk", device.objects.values("pk").get(Q(name=self.name))["pk"]))
         self.create_logger()
         self.set_keys, self.logged_keys = ([], [])
     def cleanup(self):
@@ -3622,6 +3637,7 @@ def main():
         ("CONFIG_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
         ("IMAGE_DIR"  , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "images"))),
         ("KERNEL_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
+    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("config-server", "Cluster ConfigServer", device=sql_info.effective_device).pk))])
 ##    loc_config["SERVER_IDX"] = sql_info.server_device_idx
 ##    log_lines = []
 ##    loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, sql_info.server_device_idx, "config_server", "Cluster config Server")
