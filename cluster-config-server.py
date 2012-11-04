@@ -106,11 +106,23 @@ class new_config_object(object):
         self.c_type = c_type
         self.content = []
         self.source_configs = set()
+        self.source = kwargs.get("source", "")
         self.uid, self.gid = (0, 0)
+        if self.c_type not in ["i", "?"]:
+            # use keyword arg if present, otherwise take global CONFIG
+            cur_config = kwargs.get("config", globals()["CONFIG"])
+            self.mode = cur_config.dir_mode if self.c_type == "d" else (cur_config.link_mode if self.c_type == "l" else cur_config.file_mode)
+            if "config" not in kwargs:
+                cur_config._add_object(self)
         for key, value in kwargs.iteritems():
             setattr(self, key, value)
-    def set_source(self, sp):
-        self.source = sp
+    def get_effective_type(self):
+        return self.c_type
+    def __eq__(self, other):
+        if self.dest == other.dest and self.c_type == other.c_type:
+            return True
+        else:
+            return False
     def set_config(self, conf):
         self.add_config(conf.get_name())
     def add_config(self, conf):
@@ -120,7 +132,7 @@ class new_config_object(object):
         self.mode = mode
     def _set_mode(self, mode):
         if type(mode) == type(""):
-            self.__mode = int(mode)
+            self.__mode = int(mode, 8)
         else:
             self.__mode = mode
     def _get_mode(self):
@@ -132,7 +144,7 @@ class new_config_object(object):
         if type(line) in [str, unicode]:
             self.content.append("%s\n" % (line))
         elif type(line) == type([]):
-            self.content.extend(["%s\n" % (x) for x in line])
+            self.content.extend(["%s\n" % (s_line) for s_line in line])
         elif type(line) == dict:
             for key, value in line.iteritems():
                 self.content.append("%s='%s'\n" % (key, value))
@@ -144,6 +156,8 @@ class new_config_object(object):
             self.content.append(bytes.tostring())
         else:
             self.content.append(bytes)
+    def write_object(self, t_file):
+        return "__override__ write_object (%s)" % (t_file)
 
 class internal_object(new_config_object):
     def __init__(self, destination):
@@ -153,22 +167,24 @@ class internal_object(new_config_object):
         self.mode = ref_config.mode
         self.uid = ref_config.uid
         self.gid = ref_config.gid
-    def write_object(self, dest, disk_int):
-        ret_state, ret_str = (0, "")
-        sql_tuples = (0,
-                      ", ".join(self.source_configs),
-                      self.get_uid(),
-                      self.get_gid(),
-                      int(self.get_mode()),
-                      self.get_type(),
-                      "",
-                      self.dest,
-                      self.get_error_flag(),
-                      "")
-        return ret_state, ret_str, sql_tuples
+    def write_object(self, t_file):
+        return ""
+##    def write_object(self, dest, disk_int):
+##        ret_state, ret_str = (0, "")
+##        sql_tuples = (0,
+##                      ", ".join(self.source_configs),
+##                      self.get_uid(),
+##                      self.get_gid(),
+##                      int(self.get_mode()),
+##                      self.get_type(),
+##                      "",
+##                      self.dest,
+##                      self.get_error_flag(),
+##                      "")
+##        return ret_state, ret_str, sql_tuples
             
 class file_object(new_config_object):
-    def __init__(self, destination, **args):
+    def __init__(self, destination, **kwargs):
         """ example from ba/ca:
         a=config.add_file_object("/etc/services", from_image=True,dev_dict=dev_dict)
         new_content = []
@@ -177,10 +193,10 @@ class file_object(new_config_object):
             if line.lstrip().startswith("mult"):
                 print line
         """
-        new_config_object.__init__(self, destination, "f")
+        new_config_object.__init__(self, destination, "f", **kwargs)
         self.set_mode("0644")
-        if args.get("from_image", False):
-            s_dir = args["dev_dict"]["image"].get("source", None)
+        if kwargs.get("from_image", False):
+            s_dir = kwargs["dev_dict"]["image"].get("source", None)
             if s_dir:
                 s_content = file("%s/%s" % (s_dir, destination), "r").read()
                 self += s_content.split("\n")
@@ -189,194 +205,159 @@ class file_object(new_config_object):
         self.set_mode(ref_config.get_file_mode())
         self.set_uid(ref_config.get_uid())
         self.set_gid(ref_config.get_gid())
-    def write_object(self, dest, disk_int):
-        content = "".join(self.content)
-        file(dest, "w").write(content)
-        os.chmod(dest, 0644)
-        ret_state, ret_str = (0, "%d %d %d %s %s" % (disk_int, self.get_uid(), self.get_gid(), self.mode, self.dest))
-        sql_tuples = (disk_int,
-                      ", ".join(self.source_configs),
-                      self.get_uid(),
-                      self.get_gid(),
-                      int(self.get_mode()),
-                      self.get_type(),
-                      "",
-                      self.dest,
-                      self.get_error_flag(),
-                      content)
-        return ret_state, ret_str, sql_tuples
+    def write_object(self, t_file):
+        file(t_file, "w").write("".join(self.content))
+        return "%d %d %s %s" % (self.uid,
+                                self.gid,
+                                oct(self.mode),
+                                self.dest)
+##    def write_object(self, dest, disk_int):
+##        content = "".join(self.content)
+##        file(dest, "w").write(content)
+##        os.chmod(dest, 0644)
+##        ret_state, ret_str = (0, "%d %d %d %s %s" % (disk_int, self.get_uid(), self.get_gid(), self.mode, self.dest))
+##        sql_tuples = (disk_int,
+##                      ", ".join(self.source_configs),
+##                      self.get_uid(),
+##                      self.get_gid(),
+##                      int(self.get_mode()),
+##                      self.get_type(),
+##                      "",
+##                      self.dest,
+##                      self.get_error_flag(),
+##                      content)
+##        return ret_state, ret_str, sql_tuples
 
 class link_object(new_config_object):
-    def __init__(self, destination):
-        new_config_object.__init__(self, destination, "l")
-        self.set_mode("0644")
+    def __init__(self, destination, source, **kwargs):
+        new_config_object.__init__(self, destination, "l", source=source, **kwargs)
     def set_config(self, ref_config):
         new_config_object.set_config(self, ref_config)
         self.set_mode(ref_config.get_file_mode())
         self.set_uid(ref_config.get_uid())
         self.set_gid(ref_config.get_gid())
-    def set_source(self, sp):
-        self.source = sp
-    def write_object(self, dest, disk_int):
-        ret_state, ret_str = (0, "%s %s" % (self.dest, self.source))
-        sql_tuples = (disk_int,
-                      ", ".join(self.source_configs),
-                      self.get_uid(),
-                      self.get_gid(),
-                      int(self.get_mode()),
-                      self.get_type(),
-                      self.source,
-                      self.dest,
-                      self.get_error_flag(),
-                      "")
-        return ret_state, ret_str, sql_tuples
+    def write_object(self, t_file):
+        return "%s %s" % (self.dest, self.source)
+##        file(t_file, "w").write("".join(self.content))
+##    def write_object(self, dest, disk_int):
+##        ret_state, ret_str = (0, "%s %s" % (self.dest, self.source))
+##        sql_tuples = (disk_int,
+##                      ", ".join(self.source_configs),
+##                      self.get_uid(),
+##                      self.get_gid(),
+##                      int(self.get_mode()),
+##                      self.get_type(),
+##                      self.source,
+##                      self.dest,
+##                      self.get_error_flag(),
+##                      "")
+##        return ret_state, ret_str, sql_tuples
 
 class dir_object(new_config_object):
-    def __init__(self, destination):
-        new_config_object.__init__(self, destination, "d")
-        self.set_mode("0755")
+    def __init__(self, destination, **kwargs):
+        new_config_object.__init__(self, destination, "d", **kwargs)
     def set_config(self, ref_config):
         new_config_object.set_config(self, ref_config)
         self.set_mode(ref_config.get_dir_mode())
         self.set_uid(ref_config.get_uid())
         self.set_gid(ref_config.get_gid())
-    def write_object(self, dest, disk_int):
-        ret_state, ret_str = (0, "%d %d %d %s %s" % (disk_int, self.get_uid(), self.get_gid(), self.mode, self.dest))
-        sql_tuples = (disk_int,
-                      ", ".join(self.source_configs),
-                      self.get_uid(),
-                      self.get_gid(),
-                      int(self.get_mode()),
-                      self.get_type(),
-                      "",
-                      self.dest,
-                      self.get_error_flag(),
-                      "")
-        return ret_state, ret_str, sql_tuples
+    def write_object(self, t_file):
+        return "%d %d %s %s" % (self.uid,
+                                self.gid,
+                                oct(self.mode),
+                                self.dest)
+##    def write_object(self, dest, disk_int):
+##        ret_state, ret_str = (0, "%d %d %d %s %s" % (disk_int, self.get_uid(), self.get_gid(), self.mode, self.dest))
+##        sql_tuples = (disk_int,
+##                      ", ".join(self.source_configs),
+##                      self.get_uid(),
+##                      self.get_gid(),
+##                      int(self.get_mode()),
+##                      self.get_type(),
+##                      "",
+##                      self.dest,
+##                      self.get_error_flag(),
+##                      "")
+##        return ret_state, ret_str, sql_tuples
 
 class delete_object(new_config_object):
-    def __init__(self, destination, recursive=0):
-        new_config_object.__init__(self, destination, "e")
-        self.recursive = recursive
+    def __init__(self, destination, **kwargs):
+        new_config_object.__init__(self, destination, "e", **kwargs)
+        self.recursive = kwargs.get("recursive", False)
     def set_config(self, ref_config):
         new_config_object.set_config(self, ref_config)
-    def write_object(self, dest, disk_int):
-        ret_state, ret_str = (0, "%d %s" % (self.recursive, self.dest))
-        sql_tuples = (disk_int,
-                      ", ".join(self.source_configs),
-                      0,
-                      0,
-                      self.recursive,
-                      self.get_type(),
-                      "",
-                      self.dest,
-                      self.get_error_flag(),
-                      "")
-        return ret_state, ret_str, sql_tuples
+    def write_object(self, t_file):
+        return "%d %s" % (self.recursive, self.dest)
+##    def write_object(self, dest, disk_int):
+##        ret_state, ret_str = (0, "%d %s" % (self.recursive, self.dest))
+##        sql_tuples = (disk_int,
+##                      ", ".join(self.source_configs),
+##                      0,
+##                      0,
+##                      self.recursive,
+##                      self.get_type(),
+##                      "",
+##                      self.dest,
+##                      self.get_error_flag(),
+##                      "")
+##        return ret_state, ret_str, sql_tuples
 
 class copy_object(new_config_object):
-    def __init__(self, destination):
-        new_config_object.__init__(self, destination, "c")
-        self.set_mode("0755")
+    def __init__(self, destination, source, **kwargs):
+        new_config_object.__init__(self, destination, "c", source=source, **kwargs)
+        self.content = [file(self.source, "r").read()]
+        orig_stat = os.stat(self.source)
+        self.uid, self.gid, self.mode = (orig_stat[stat.ST_UID],
+                                         orig_stat[stat.ST_GID],
+                                         stat.S_IMODE(orig_stat[stat.ST_MODE]))
+    def get_effective_type(self):
+        return "f"
     def set_config(self, ref_config):
         new_config_object.set_config(self, ref_config)
         self.set_mode(ref_config.get_dir_mode())
         self.set_uid(ref_config.get_uid())
         self.set_gid(ref_config.get_gid())
-    def set_source(self, sp):
-        self.source = sp
-    def write_object(self, dest, disk_int):
-        ret_state, ret_str = (1, "<UNKNOWN ERROR>")
-        if os.path.isfile(self.source):
-            orig_stat = os.stat(self.source)
-            o_uid, o_gid, o_mode = (orig_stat[stat.ST_UID] or self.get_uid(),
-                                    orig_stat[stat.ST_GID] or self.get_gid(),
-                                    stat.S_IMODE(orig_stat[stat.ST_MODE]))
-            try:
-                shutil.copyfile(self.source, dest)
-            except IOError:
-                ret_state, ret_str = (1, "*** cannot read sourcefile '%s'" % (self.source))
-            else:
-                os.chmod(dest, 0644)
-                ret_state, ret_str = (0, "%d %d %d %s %s" % (disk_int, o_uid, o_gid, oct(o_mode), self.dest))
-        else:
-            if self.show_error:
-                ret_state, ret_str = (1, "*** Sourcefile '%s' not found, skipping..." % (self.source))
-            else:
-                ret_state, ret_str = (1, "")
-        sql_tuples = (disk_int,
-                      ", ".join(self.source_configs),
-                      self.get_uid(),
-                      self.get_gid(),
-                      int(self.get_mode()),
-                      self.get_type(),
-                      self.source,
-                      self.dest,
-                      self.get_error_flag(),
-                      "")
-        return ret_state, ret_str, sql_tuples
-        
-##class pseudo_config(object):
-##    # used for fetching variables
-##    def __init__(self, db_rec, c_req):#name, idx, pri, descr, identifier, node_name, log_queue, conf_dict):
-##        self.is_pseudo = True
-##        self.__db_rec = db_rec
-##        self.__c_req = c_req
-##        #self.name = name
-##        #self.pri = pri
-##        #self.idx = idx
-##        #self.descr = descr
-##        #self.identifier = identifier
-##        #self.log_queue = log_queue
-##        #self.set_node_name(node_name)
-##        self.__allowed_var_types = ["int", "str", "blob"]
-##        self.var_dict, self.var_types, self.script_dict = ({},
-##                                                           dict([(x, []) for x in self.__allowed_var_types]),
-##                                                           {})
-##        self.all_scripts = []
-##    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-##        self.__c_req.log(what, level)
-##    def add_variable(self, var_type, var):
-##        if var_type in self.__allowed_var_types:
-##            self.var_dict[var["name"].lower()] = var
-##            self.var_types[var_type].append(var["name"].lower())
-##            added = True
+    def write_object(self, t_file):
+        file(t_file, "w").write("".join(self.content))
+        os.chmod(t_file, 0644)
+        return "%d %d %s %s" % (self.uid,
+                                self.gid,
+                                oct(self.mode),
+                                self.dest)
+##    def write_object(self, dest, disk_int):
+##        ret_state, ret_str = (1, "<UNKNOWN ERROR>")
+##        if os.path.isfile(self.source):
+##            orig_stat = os.stat(self.source)
+##            o_uid, o_gid, o_mode = (orig_stat[stat.ST_UID] or self.get_uid(),
+##                                    orig_stat[stat.ST_GID] or self.get_gid(),
+##                                    stat.S_IMODE(orig_stat[stat.ST_MODE]))
+##            try:
+##                shutil.copyfile(self.source, dest)
+##            except IOError:
+##                ret_state, ret_str = (1, "*** cannot read sourcefile '%s'" % (self.source))
+##            else:
+##                os.chmod(dest, 0644)
+##                ret_state, ret_str = (0, "%d %d %d %s %s" % (disk_int, o_uid, o_gid, oct(o_mode), self.dest))
 ##        else:
-##            added = False
-##        return added
-##    def show_variables(self):
-##        self.var_dict["IDENTIFIER".lower()] = {"name"   : "identifier",
-##                                               "descr"  : "internal_variable",
-##                                               "config" : self.__db_rec["new_config_idx"],
-##                                               "value"  : self.get_name()}
-##        self.var_types["str"].append("IDENTIFIER".lower())
-##        self.log(" - pseudo config %-20s (priority %4d): %s" % (self.get_name(),
-##                                                                self.get_pri(),
-##                                                                ", ".join([logging_tools.get_plural(var_type, len(self.var_types[var_type])) for var_type in self.__allowed_var_types])))
-##        if self.__c_req.get_loc_config()["VERBOSE"]:
-##            for var_type in self.__allowed_var_types:
-##                for name in self.var_types[var_type]:
-##                    if var_type == "str":
-##                        val_str = "'%s'" % (str(self.var_dict[name]["value"]))
-##                    elif var_type == "int":
-##                        val_str = "%d" % (self.var_dict[name]["value"])
-##                    elif var_type == "blob":
-##                        val_str = "len %s" % (logging_tools.get_plural("byte", len(self.var_dict[name]["value"])))
-##                    else:
-##                        val_str = "pri %d with %s" % (self.var_dict[name]["priority"], logging_tools.get_plural("line", len(self.var_dict[name]["value"].split("\n"))))
-##                    self.log("    %8s %-24s: %s" % (var_type, name, val_str))
-##    def get_pri(self):
-##        return self.__db_rec["priority"]
-##    def get_identifier(self):
-##        return self.__db_rec["identifier"]
-##    def get_name(self):
-##        return self.__db_rec["name"]
-##    def get_node_name(self):
-##        return self.__c_req["name"]
-
+##            if self.show_error:
+##                ret_state, ret_str = (1, "*** Sourcefile '%s' not found, skipping..." % (self.source))
+##            else:
+##                ret_state, ret_str = (1, "")
+##        sql_tuples = (disk_int,
+##                      ", ".join(self.source_configs),
+##                      self.get_uid(),
+##                      self.get_gid(),
+##                      int(self.get_mode()),
+##                      self.get_type(),
+##                      self.source,
+##                      self.dest,
+##                      self.get_error_flag(),
+##                      "")
+##        return ret_state, ret_str, sql_tuples
+        
 class tree_node_g(object):
     """ tree node representation for intermediate creation of tree_node structure """
-    def __init__(self, path="", is_dir=True, parent=None):
+    def __init__(self, path="", c_node=None, is_dir=True, parent=None, intermediate=False):
         self.path = path
         if parent:
             self.nest_level = parent.nest_level + 1
@@ -384,6 +365,8 @@ class tree_node_g(object):
             self.nest_level = 0
         self.parent = parent
         self.is_dir = is_dir
+        # intermediate node
+        self.intermediate = True
         # link related stuff
         self.is_link = False
         self.link_source = ""
@@ -393,7 +376,10 @@ class tree_node_g(object):
         self.error_flag = False
         if self.is_dir:
             self.childs = {}
-        self.content_node = new_config_object(self.path, "?", mode="0755")
+        if c_node is None:
+            self.content_node = new_config_object(self.path, "?", mode="0755")
+        else:
+            self.content_node = c_node
     def add_config(self, c_pk):
         self.used_config_pks.add(c_pk)
     def get_path(self):
@@ -401,13 +387,18 @@ class tree_node_g(object):
             return "%s/%s" % (self.parent.get_path(), self.path)
         else:
             return "%s" % (self.path)
-    def get_node(self, path, dir_node=False):
+    def get_node(self, path, c_node, dir_node=False):
         if self.root_node:
             # normalize path at top level
             path = os.path.normpath(path)
         if path == self.path:
             if self.is_dir == dir_node:
+                if self.content_node != c_node:
+                    raise ValueError, "content node already set but with different type"
                 # match, return myself
+                if self.content_node.c_type == "l":
+                    self.is_link = True
+                self.intermediate = False
                 return self
             else:
                 raise ValueError, "request node (%s, %s) is a %s" % (
@@ -420,19 +411,22 @@ class tree_node_g(object):
                 raise KeyError, "path mismatch: %s != %s" % (path_list[0], self.path)
             if path_list[1] not in self.childs:
                 if len(path_list) == 2 and not dir_node:
-                    self.childs[path_list[1]] = tree_node_g(path_list[1], parent=self, is_dir=False)
+                    # add content node
+                    self.childs[path_list[1]] = tree_node_g(path_list[1], c_node, parent=self, is_dir=False)
                 else:
-                    self.childs[path_list[1]] = tree_node_g(path_list[1], parent=self)
-            return self.childs[path_list[1]].get_node(os.path.join(*path_list[1:]), dir_node=dir_node)
+                    # add dir node
+                    self.childs[path_list[1]] = tree_node_g(path_list[1], c_node, parent=self, intermediate=True)
+            return self.childs[path_list[1]].get_node(os.path.join(*path_list[1:]), c_node, dir_node=dir_node)
     def get_type_str(self):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
     def __unicode__(self):
         sep_str = "  " * self.nest_level
-        ret_f = ["%s%s (%s) %s%s    :: %d/%d/%d" % (
+        ret_f = ["%s%s%s (%s) %s%s    :: %d/%d/%o" % (
+            "[I]" if self.intermediate else "   ",
             "[E]" if self.error_flag else "   ",
             sep_str,
             self.get_type_str(),
-            "%s -> %s" % (self.path, self.link_source) if self.is_link else self.path,
+            "%s -> %s" % (self.path, self.content_node.source) if self.is_link else self.path,
             "/" if self.is_dir else "",
         self.content_node.uid,
         self.content_node.gid,
@@ -441,25 +435,31 @@ class tree_node_g(object):
             ret_f.extend([unicode(cur_c) for cur_c in self.childs.itervalues()])
         return "\n".join(ret_f)
     def write_node(self, cur_c, cur_bc, **kwargs):
-        num_nodes = 1
-        #node_list = []
+        node_list = []
         cur_tn = tree_node(
             device=cur_bc.conf_dict["device"],
             is_dir=self.is_dir,
             is_link=self.is_link,
+            intermediate=self.intermediate,
             parent=kwargs.get("parent", None))
         cur_tn.save()
+        cur_tn.node = self
         cur_wc = wc_files(
             device=cur_bc.conf_dict["device"],
             dest=self.path,
             tree_node=cur_tn,
-            content="\n".join(self.content_node.content))
+            error_flag=self.error_flag,
+            mode=self.content_node.mode,
+            uid=self.content_node.uid,
+            gid=self.content_node.gid,
+            dest_type=self.content_node.c_type,
+            source=self.content_node.source,
+            content="".join(self.content_node.content))
         cur_wc.save()
+        node_list.append((cur_tn, cur_wc))
         if self.is_dir:
-            num_nodes += sum([cur_child.write_node(cur_c, cur_bc, parent=cur_tn) for cur_child in self.childs.itervalues()])
-            #node_list.extend(sum([cur_child.write_node(cur_c, cur_bc, parent=cur_tn) for cur_child in self.childs.itervalues()], []))
-        #return node_list
-        return num_nodes
+            node_list.extend(sum([cur_child.write_node(cur_c, cur_bc, parent=cur_tn) for cur_child in self.childs.itervalues()], []))
+        return node_list
         
 class generated_tree(tree_node_g):
     def __init__(self):
@@ -467,12 +467,45 @@ class generated_tree(tree_node_g):
     def write_config(self, cur_c, cur_bc):
         cur_c.log("creating tree")
         tree_node.objects.filter(Q(device=cur_bc.conf_dict["device"])).delete()
-        nodes_written = self.write_node(cur_c, cur_bc)
-        #write_list = self.write_node(cur_c, cur_bc)
-        #nodes_written = len(write_list)
+        write_list = self.write_node(cur_c, cur_bc)
+        nodes_written = len(write_list)
         #tree_node.objects.bulk_create([cur_tn for cur_tn, cur_wc in write_list])
         #wc_files.objects.bulk_create([cur_wc for cur_tn, cur_wc in write_list])
         #print write_list
+        active_identifier = cur_bc.conf_dict["net"].identifier
+        cur_c.log("writing config files for %s to %s" % (
+            active_identifier,
+            cur_c.node_dir))
+        config_dir = os.path.join(cur_c.node_dir, "content_%s" % (active_identifier))
+        if not os.path.isdir(config_dir):
+            cur_c.log("creating directory %s" % (config_dir))
+            os.mkdir(config_dir)
+        config_dict = {
+            "f" : "%s/config_files_%s" % (cur_c.node_dir, active_identifier),
+            "l" : "%s/config_links_%s" % (cur_c.node_dir, active_identifier),
+            "d" : "%s/config_dirs_%s" % (cur_c.node_dir, active_identifier),
+            "e" : "%s/config_delete_%s" % (cur_c.node_dir, active_identifier)}
+        handle_dict = {}
+        num_dict = dict([(key, 0) for key in config_dict.iterkeys()])
+        for cur_tn, cur_wc in write_list:
+            if cur_wc.dest_type not in ["i", "?"] and not cur_tn.intermediate:
+                eff_type = cur_tn.node.content_node.get_effective_type()
+                handle = handle_dict.setdefault(eff_type, file(config_dict[eff_type], "w"))
+                num_dict[eff_type] += 1
+                out_name = os.path.join(config_dir, "%d" % (num_dict[eff_type]))
+                try:
+                    add_line = cur_tn.node.content_node.write_object(out_name)
+                except:
+                    cur_c.log("error creating node %s: %s" % (
+                        cur_tn.node.content_node.dest,
+                        process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                else:
+                    handle.write("%d %s\n" % (num_dict[eff_type], add_line))
+        cur_c.log("closing %s" % (logging_tools.get_plural("handle", len(handle_dict.keys()))))
+        [handle.close() for handle in handle_dict.itervalues()]
+        #print cur_c.node_dir, dir(cur_c)
+        #print cur_bc.conf_dict["net"]
+        #pprint.pprint(cur_bc.conf_dict)
         cur_c.log("wrote %s" % (logging_tools.get_plural("node", nodes_written)))
         
 class build_container(object):
@@ -484,6 +517,7 @@ class build_container(object):
         self.conf_dict = conf_dict
         self.g_tree = g_tree
         self.__s_time = time.time()
+        self.file_mode, self.dir_mode, self.link_mode = ("0644", "0755", "0644")
         self.log("init build continer")
     def log(self, what, level=logging_tools.LOG_LEVEL_OK, **kwargs):
         self.b_client.log("[bc] %s" % (what), level, **kwargs)
@@ -492,23 +526,65 @@ class build_container(object):
         del self.b_client
         del self.config_dict
         del self.g_tree
+    def _set_dir_mode(self, mode):
+        self.__dir_mode = mode
+    def _get_dir_mode(self):
+        return self.__dir_mode
+    dir_mode = property(_get_dir_mode, _set_dir_mode)
+    def _set_file_mode(self, mode):
+        self.__file_mode = mode
+    def _get_file_mode(self):
+        return self.__file_mode
+    file_mode = property(_get_file_mode, _set_file_mode)
+    def _set_link_mode(self, mode):
+        self.__link_mode = mode
+    def _get_link_mode(self):
+        return self.__link_mode
+    link_mode = property(_get_link_mode, _set_link_mode)
+    def _add_object(self, new_obj):
+        return getattr(self, "_add_%s_object" % ({
+            "l" : "link",
+            "e" : "delete",
+            "f" : "file",
+            "c" : "copy",
+            "d" : "dir"}[new_obj.c_type]))(new_obj)
+    def add_copy_object(self, fon, source, **kwargs):
+        return self._add_copy_object(copy_object(fon, config=self, source=source, **kwargs))
+    def _add_copy_object(self, c_obj):
+        cur_node = self.g_tree.get_node(c_obj.dest, c_obj)
+        if not cur_node in self.__touched_objects:
+            self.__touched_objects.append(cur_node)
+        cur_node.add_config(self.cur_conf.pk)
+        return cur_node.content_node
     def add_file_object(self, fon, **kwargs):
-        cur_node = self.g_tree.get_node(fon)
+        return self._add_file_object(file_object(fon, config=self, **kwargs))
+    def _add_file_object(self, f_obj):
+        cur_node = self.g_tree.get_node(f_obj.dest, f_obj)
         if not cur_node in self.__touched_objects:
             self.__touched_objects.append(cur_node)
         cur_node.add_config(self.cur_conf.pk)
         return cur_node.content_node
     def add_dir_object(self, don, **kwargs):
-        cur_node = self.g_tree.get_node(don, dir_node=True)
+        return self._add_dir_object(dir_object(fon, config=self, **kwargs))
+    def _add_dir_object(self, d_obj):
+        cur_node = self.g_tree.get_node(d_obj.dest, d_obj, dir_node=True)
         if not cur_node in self.__touched_objects:
             self.__touched_objects.append(cur_node)
         cur_node.add_config(self.cur_conf.pk)
         return cur_node.content_node
-    def add_link_object(self, lon, source):
-        cur_node = self.g_tree.get_node(lon)
-        cur_node.is_link = True
-        cur_node.link_source = source
-        if lon not in self.__touched_links:
+    def add_delete_object(self, don, **kwargs):
+        return self._add_delete_object(delete_object(don, config=self, **kwargs))
+    def _add_delete_object(self, d_obj):
+        cur_node = self.g_tree.get_node(d_obj.dest, d_obj)
+        if not cur_node in self.__deleted_files:
+            self.__deleted_files.append(cur_node)
+        cur_node.add_config(self.cur_conf.pk)
+        return None
+    def add_link_object(self, fon, source, **kwargs):
+        return self._add_link_object(link_object(fon, config=self, source=source, **kwargs))
+    def _add_link_object(self, l_obj):
+        cur_node = self.g_tree.get_node(l_obj.dest, l_obj)
+        if not cur_node in self.__touched_links:
             self.__touched_links.append(cur_node)
         cur_node.add_config(self.cur_conf.pk)
         return cur_node.content_node
@@ -540,7 +616,7 @@ class build_container(object):
                     "<script %s>" % (cur_script.name),
                     "exec")
             except:
-                exc_info = process_tools.get_except_info()
+                exc_info = process_tools.exception_info()
                 self.log("error during compile of %s (%s)" % (
                     cur_script.name,
                     logging_tools.get_diff_time_str(time.time() - start_c_time)),
@@ -557,6 +633,9 @@ class build_container(object):
                 sys.stdout, sys.stderr = (stdout_c  , stderr_c  )
                 self.__touched_objects, self.__touched_links, self.__deleted_files = ([], [], [])
                 try:
+                    # FIXME, not threadsafe (thread safety needed here ?)
+                    global CONFIG
+                    CONFIG = self
                     ret_code = eval(code_obj, {}, {
                         # old version
                         "dev_dict"        : conf_dict,
@@ -622,9 +701,10 @@ class build_container(object):
                         ret_code))
                     self._show_logs(stdout_c, stderr_c, register_error=True, pre_str="%s wrote something to stderr" % (cur_conf.name))
                 finally:
+                    del CONFIG
                     sys.stdout, sys.stderr = (old_stdout, old_stderr)
                     code_obj = None
-                    print unicode(self.g_tree)
+        print unicode(self.g_tree)
         # remove local vars
         for key in local_vars.iterkeys():
             del conf_dict[key]
@@ -690,67 +770,67 @@ class new_config(object):
                     self.log("    %8s %-24s: %s" % (var_type, name, val_str))
     def __del__(self):
         pass
-    def get_config_request(self):
-        return self.__c_req
-    def set_uid(self, uid):
-        self.uid = uid
-    def set_gid(self, gid):
-        self.gid = gid
-    def get_uid(self):
-        return self.uid
-    def get_gid(self):
-        return self.gid
-    def set_file_mode(self, mode):
-        self.file_mode = mode
-    def get_file_mode(self):
-        return self.file_mode
-    def set_dir_mode(self, mode):
-        self.dir_mode = mode
-    def get_dir_mode(self):
-        return self.dir_mode
-    def get_node_name(self):
-        return self.__c_req["name"]
-    def get_pri(self):
-        return self.__db_rec["priority"]
-    def get_identifier(self):
-        return self.__db_rec["identifier"]
-    def get_name(self):
-        return self.__db_rec["name"]
-    def add_dir_object(self, don):
-        if not self.__c_req.conf_dict.has_key(don):
-            self.__c_req.conf_dict[don] = dir_object(don)
-            self.__c_req.conf_dict[don].set_config(self)
-        if don not in self.__touched_objects:
-            self.__touched_objects.append(don)
-        return self.__c_req.conf_dict[don]
-    def add_delete_object(self, eon):
-        if not self.__c_req.erase_dict.has_key(eon):
-            self.__c_req.erase_dict[eon] = delete_object(eon)
-            self.__c_req.erase_dict[eon].set_config(self)
-        return self.__c_req.erase_dict[eon]
-    def add_copy_object(self, con, source):
-        if not self.__c_req.conf_dict.has_key(con):
-            self.__c_req.conf_dict[con] = copy_object(con)
-            self.__c_req.conf_dict[con].set_config(self)
-            self.__c_req.conf_dict[con].set_source(source)
-        if con not in self.__touched_objects:
-            self.__touched_objects.append(con)
-        return self.__c_req.conf_dict[con]
-    def add_file_object(self, fon, **kwargs):
-        if not self.__c_req.conf_dict.has_key(fon):
-            self.__c_req.conf_dict[fon] = file_object(fon, **kwargs)
-            self.__c_req.conf_dict[fon].set_config(self)
-        if fon not in self.__touched_objects:
-            self.__touched_objects.append(fon)
-        return self.__c_req.conf_dict[fon]
-    def add_link_object(self, lon, source):
-        if not self.__c_req.link_dict.has_key(lon):
-            self.__c_req.link_dict[lon] = link_object(lon)
-            self.__c_req.link_dict[lon].set_config(self)
-            self.__c_req.link_dict[lon].set_source(source)
-        if lon not in self.__touched_links:
-            self.__touched_links.append(lon)
-        return self.__c_req.link_dict[lon]
+##    def get_config_request(self):
+##        return self.__c_req
+##    def set_uid(self, uid):
+##        self.uid = uid
+##    def set_gid(self, gid):
+##        self.gid = gid
+##    def get_uid(self):
+##        return self.uid
+##    def get_gid(self):
+##        return self.gid
+##    def set_file_mode(self, mode):
+##        self.file_mode = mode
+##    def get_file_mode(self):
+##        return self.file_mode
+##    def set_dir_mode(self, mode):
+##        self.dir_mode = mode
+##    def get_dir_mode(self):
+##        return self.dir_mode
+##    def get_node_name(self):
+##        return self.__c_req["name"]
+##    def get_pri(self):
+##        return self.__db_rec["priority"]
+##    def get_identifier(self):
+##        return self.__db_rec["identifier"]
+##    def get_name(self):
+##        return self.__db_rec["name"]
+##    def add_dir_object(self, don):
+##        if not self.__c_req.conf_dict.has_key(don):
+##            self.__c_req.conf_dict[don] = dir_object(don)
+##            self.__c_req.conf_dict[don].set_config(self)
+##        if don not in self.__touched_objects:
+##            self.__touched_objects.append(don)
+##        return self.__c_req.conf_dict[don]
+##    def add_delete_object(self, eon):
+##        if not self.__c_req.erase_dict.has_key(eon):
+##            self.__c_req.erase_dict[eon] = delete_object(eon)
+##            self.__c_req.erase_dict[eon].set_config(self)
+##        return self.__c_req.erase_dict[eon]
+##    def add_copy_object(self, con, source):
+##        if not self.__c_req.conf_dict.has_key(con):
+##            self.__c_req.conf_dict[con] = copy_object(con)
+##            self.__c_req.conf_dict[con].set_config(self)
+##            self.__c_req.conf_dict[con].set_source(source)
+##        if con not in self.__touched_objects:
+##            self.__touched_objects.append(con)
+##        return self.__c_req.conf_dict[con]
+##    def add_file_object(self, fon, **kwargs):
+##        if not self.__c_req.conf_dict.has_key(fon):
+##            self.__c_req.conf_dict[fon] = file_object(fon, **kwargs)
+##            self.__c_req.conf_dict[fon].set_config(self)
+##        if fon not in self.__touched_objects:
+##            self.__touched_objects.append(fon)
+##        return self.__c_req.conf_dict[fon]
+##    def add_link_object(self, lon, source):
+##        if not self.__c_req.link_dict.has_key(lon):
+##            self.__c_req.link_dict[lon] = link_object(lon)
+##            self.__c_req.link_dict[lon].set_config(self)
+##            self.__c_req.link_dict[lon].set_source(source)
+##        if lon not in self.__touched_links:
+##            self.__touched_links.append(lon)
+##        return self.__c_req.link_dict[lon]
     def del_config(self, cn):
         if self.__c_req.conf_dict.has_key(cn):
             del self.__c_req.conf_dict[cn]
@@ -3182,7 +3262,8 @@ class config_control(object):
             return ret_str
         if not self.device.name in config_control.pending_config_requests:
             self.log("strange, got ack but not in done nor pending list", logging_tools.LOG_LEVEL_ERROR)
-            return self._handle_create_config(s_req)
+            self._handle_create_config(s_req)
+            return "warn waiting for config"
         else:
             return "warn waiting for config"
     def _handle_create_config(self, s_req):
@@ -3514,6 +3595,7 @@ class build_client(object):
             os.path.join(base_dir, self.__source_host),
             os.path.join(base_dir, self.name))
         self.set_kwargs(node_dir=node_dir)
+        self.node_dir = node_dir
         success = True
         if not os.path.isdir(node_dir):
             try:
@@ -3556,7 +3638,11 @@ class build_client(object):
         dir_list = ["%s/configdir_%s" % (self.node_dir, prod_key),
                     "%s/config_dir_%s" % (self.node_dir, prod_key),
                     "%s/content_%s" % (self.node_dir, prod_key)]
-        file_list = ["%s/config_%s" % (self.node_dir, prod_key),
+        file_list = ["%s/config_files_%s" % (self.node_dir, prod_key),
+                     "%s/config_dirs_%s" % (self.node_dir, prod_key),
+                     "%s/config_links_%s" % (self.node_dir, prod_key),
+                     "%s/config_delete_%s" % (self.node_dir, prod_key),
+                     "%s/config_%s" % (self.node_dir, prod_key),
                      "%s/configl_%s" % (self.node_dir, prod_key),
                      "%s/config_d%s" % (self.node_dir, prod_key)]
         for old_name in dir_list:
