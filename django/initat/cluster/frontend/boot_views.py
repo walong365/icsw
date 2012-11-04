@@ -11,7 +11,7 @@ from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from initat.cluster.backbone.models import device_type, device_group, device, \
-     device_class, kernel, image, partition_table, status, network
+     device_class, kernel, image, partition_table, status, network, devicelog
 from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
@@ -33,7 +33,8 @@ OPTION_LIST = [("t", "target state", None),
                ("k", "kernel"      , kernel),
                ("i", "image"       , image),
                ("b", "bootdevice"  , None),
-               ("p", "partition"   , None)]
+               ("p", "partition"   , None),
+               ("l", "devicelog"   , None)]
 
 @login_required
 @init_logging
@@ -198,8 +199,10 @@ def get_boot_info(request):
     xml_resp = E.boot_info()
     def_dict = {"network"       : "unknown",
                 "network_state" : "error"}
+    dev_lut = {}
     for cur_dev in dev_result:
         dev_info = cur_dev.get_xml(full=False)
+        dev_lut[cur_dev.pk] = dev_info
         for cur_info in ["recvstate", "reqstate"]:
             dev_info.attrib[cur_info] = getattr(cur_dev, cur_info)
         if result is not None:
@@ -216,6 +219,11 @@ def get_boot_info(request):
         else:
             dev_info.attrib.update(def_dict)
         xml_resp.append(dev_info)
+    if option_dict.get("l", False):
+        dev_logs = devicelog.objects.filter(Q(device__in=dev_result)).select_related("log_source", "log_status", "user")
+        for dev_log in dev_logs:
+            dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
     # add option-dict related stuff
+    print etree.tostring(xml_resp, pretty_print=True)
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()

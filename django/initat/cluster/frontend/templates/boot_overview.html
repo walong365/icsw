@@ -57,6 +57,7 @@ function load_devices(sel_list) {
                 redraw_options("k");
                 redraw_options("p");
                 redraw_options("i");
+                redraw_options("l");
                 // call update_device_info after table draw
                 update_device_info();
             }
@@ -162,6 +163,10 @@ function update_device_info() {
                             var img_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_i']");
                             set_img_option(cur_dev, img_tr);
                         };
+                        if (OPTION_DICT["l"]) {
+                            var devlog_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_l']");
+                            set_devlog_option(cur_dev, devlog_tr);
+                        };
                     });
                 }
             }
@@ -220,6 +225,21 @@ function set_part_option(dev_xml, part_tr) {
         new_part.bind("change", change_part);
     } else {
     };
+};
+
+function set_devlog_option(dev_xml, devlog_tr) {
+    var dev_id = devlog_tr.attr("id");
+    var log_sel = devlog_tr.find("select#" + dev_id + "__device_log");
+    if (devlog_tr.find(":disabled").length) {
+        log_sel.removeAttr("disabled");
+        log_sel.attr("multiple", "6");
+    };
+    log_sel.children().remove();
+    dev_xml.find("devicelogs devicelog").each(function() {
+        var cur_log = $(this);
+        var new_opt = $("<option>").text(cur_log.attr("date") + " :: " + cur_log.attr("text"));
+        log_sel.prepend(new_opt);
+    });
 };
 
 function set_img_option(dev_xml, img_tr) {
@@ -500,6 +520,15 @@ function redraw_options(opt) {
                         img_sel.append(img_opt);
                     });
                     first_td.append(img_sel);
+                    break;
+                case "l":
+                    first_td.attr({"colspan" : "5"});
+                    first_td.append("Device log ");
+                    var dev_sel = $("<select>").attr({
+                        "id"       : dev_id + "__device_log",
+                        "disabled" : "disabled"
+                    });
+                    first_td.append(dev_sel);
                     break;
             };
             force_update_info();
