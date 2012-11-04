@@ -53,7 +53,7 @@ from twisted.internet import reactor
 from twisted.python import log
 from twisted.web import server, resource, wsgi
 from django.core.handlers.wsgi import WSGIHandler
-from initat.cluster.backbone.models import device, device_variable
+from initat.cluster.backbone.models import device, device_variable, log_source
 from initat.cluster.backbone.middleware import show_database_calls
 
 try:
@@ -1540,7 +1540,7 @@ def main():
             global_config["SERVER_IDX"] = dc.fetchone()["device_idx"]
     if global_config["CHECK"]:
         sys.exit(0)
-    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.create_log_source_entry(global_config["SERVER_IDX"], "cluster-server", "Cluster Server", return_pk=True)))])
+    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("cluster-server", "Cluster Server", device=sql_info.effective_device).pk))])
     if not global_config["LOG_SOURCE_IDX"]:
         print "Too many log_source with my id present, exiting..."
         #dc.release()
