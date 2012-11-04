@@ -107,7 +107,7 @@
     <object pk="3" model="backbone.partition_fs">
         <field type="CharField" name="name">btrfs</field>
         <field type="CharField" name="identifier">f</field>
-        <field type="CharField" name="descr">BTRFS Fililesystem</field>
+        <field type="CharField" name="descr">BTRFS Filesystem</field>
         <field type="CharField" name="hexid">83</field>
         <field type="DateTimeField" name="date">2012-10-30T07:44:27+00:00</field>
     </object>

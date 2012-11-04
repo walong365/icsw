@@ -341,9 +341,12 @@ class device(models.Model):
     # machine uuid
     uuid = models.TextField(default="", max_length=64)
     date = models.DateTimeField(auto_now_add=True)
+    def add_log(self, log_src, log_stat, text, **kwargs):
+        return devicelog.new_log(self, log_src, log_stat, text, **kwargs)
     def get_xml(self, full=True):
         r_xml = E.device(
             unicode(self),
+            E.devicelogs(),
             name=self.name,
             comment=self.comment,
             pk="%d" % (self.pk),
@@ -548,9 +551,9 @@ class device_variable(models.Model):
 class devicelog(models.Model):
     idx = models.AutoField(db_column="devicelog_idx", primary_key=True)
     device = models.ForeignKey("device", null=True, blank=True)
-    log_source = models.ForeignKey("log_source", null=True)
+    log_source = models.ForeignKey("log_source")
     user = models.ForeignKey("user", null=True)
-    log_status = models.ForeignKey("log_status", null=True)
+    log_status = models.ForeignKey("log_status")
     text = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     @staticmethod
@@ -563,8 +566,24 @@ class devicelog(models.Model):
             text=text)
         cur_log.save()
         return cur_log
+    def get_xml(self):
+        return E.devicelog(
+            pk="%d" % (self.pk),
+            key="devlog__%d" % (self.pk),
+            log_source_name=unicode(self.log_source.name),
+            log_status_name=unicode(self.log_status.name),
+            text=unicode(self.text),
+            date=unicode(self.date)
+        )
+    def __unicode__(self):
+        return u"%s (%s, %s:%d)" % (
+            self.text,
+            self.log_source.name,
+            self.log_status.identifier,
+            self.log_status.log_level)
     class Meta:
         db_table = u'devicelog'
+        ordering = ("date",)
 
 class distribution(models.Model):
     idx = models.AutoField(db_column="distribution_idx", primary_key=True)
@@ -844,7 +863,7 @@ class log_source(models.Model):
     description = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     @staticmethod
-    def create_log_source_entry(identifier, name, description, **kwargs):
+    def create_log_source_entry(identifier, name, **kwargs):
         ls_dev = kwargs.get("device", None)
         sources = log_source.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
         if len(sources) > 1:
@@ -866,11 +885,21 @@ class log_source(models.Model):
                     description=kwargs.get("description", "%s (id %s)" % (name, identifier))
                 )
                 new_source.save()
+            cur_source = new_source
         else:
             cur_source = sources[0]
         return cur_source
+    def __unicode__(self):
+        return "ls %s (%s), %s" % (self.name,
+                                   self.identifier,
+                                   self.description)
     class Meta:
         db_table = u'log_source'
+
+def log_source_lookup(identifier, log_dev):
+    return log_source.objects.get(Q(identifier=identifier) & Q(device=log_dev))
+
+cached_log_source = memoize(log_source_lookup, {}, 2)
 
 class log_status(models.Model):
     idx = models.AutoField(db_column="log_status_idx", primary_key=True)
@@ -881,14 +910,18 @@ class log_status(models.Model):
     class Meta:
         db_table = u'log_status'
 
-cached_log_status = memoize(log_status_lookup, {}, 1)
-
 def log_status_lookup(key):
     if type(key) in [str, unicode]:
         return log_status.objects.get(Q(identifier=key))
     else:
-        return log_status.objects.get(Q(log_level=key))
+        return log_status.objects.get(Q(log_level={
+            logging_tools.LOG_LEVEL_OK       : 0,
+            logging_tools.LOG_LEVEL_WARN     : 50,
+            logging_tools.LOG_LEVEL_ERROR    : 100,
+            logging_tools.LOG_LEVEL_CRITICAL : 200}[key]))
         
+cached_log_status = memoize(log_status_lookup, {}, 1)
+
 class lvm_lv(models.Model):
     idx = models.AutoField(db_column="lvm_lv_idx", primary_key=True)
     partition_table = models.ForeignKey("partition_table")
