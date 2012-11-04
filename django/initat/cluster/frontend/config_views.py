@@ -429,6 +429,8 @@ class tree_struct(object):
             *[sub_node.get_xml() for sub_node in self.childs],
             name=self.get_name(),
             depth="%d" % (self.depth),
+            is_dir="1" if self.node.is_dir else "0",
+            is_link="1" if self.node.is_link else "0",
             node_id="%d_%d" % (self.dev_pk, self.node.pk)
         )
         
@@ -452,13 +454,13 @@ def generate_config(request):
         request.xml_response["result"] = E.devices()
         for dev_node in result.xpath(None, ".//ns:device"):
             res_node = E.device(dev_node.text, **dev_node.attrib)
-            if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK:
-                cur_dev = dev_dict[int(dev_node.attrib["pk"])]
-                # build tree
-                cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)))
-                print unicode(cur_tree)
-                print etree.tostring(cur_tree.get_xml(), pretty_print=True)
-                res_node.append(cur_tree.get_xml())
+            #if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
+            cur_dev = dev_dict[int(dev_node.attrib["pk"])]
+            # build tree
+            cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)))
+            print unicode(cur_tree)
+            print etree.tostring(cur_tree.get_xml(), pretty_print=True)
+            res_node.append(cur_tree.get_xml())
             request.xml_response["result"].append(res_node)
         request.log("build done", xml=True)
     print etree.tostring(request.xml_response.build_response(), pretty_print=True)

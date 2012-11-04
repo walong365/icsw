@@ -24,11 +24,14 @@ function iterate_tree(nest_lev, top_node) {
         }
     };
     var node_str = node_str + "lvl=" + nest_lev.attr("depth");
+    if (content.attr("error_flag") == "1") {
+        var node_str = node_str + ", E";
+    };
     var node_str = node_str + ")";
     var cur_node = $("<li>").attr({"id" : nest_lev.attr("node_id")}).text(node_str);
     top_node.append(cur_node);
-    var sub_nodes = nest_lev.find("tree[depth='" + (parseInt(nest_lev.attr("depth")) + 1) + "']");
-    if (sub_nodes.length) {
+    if (nest_lev.attr("is_dir") == "1") {
+        var sub_nodes = nest_lev.find("tree[depth='" + (parseInt(nest_lev.attr("depth")) + 1) + "']");
         cur_node.addClass("folder");
         var sub_ul = $("<ul>");
         cur_node.append(sub_ul);
@@ -52,8 +55,11 @@ function draw_tree_xml() {
     });
     TREE_XML.find("devices device").each(function() {
         var cur_dev = $(this);
-        var new_td = $("<div>").attr({
+        var new_div = $("<div>").attr({
             "id" : "dev__" + cur_dev.attr("pk")
+        });
+        var error_div = $("<div>").attr({
+            "id" : "dev__" + cur_dev.attr("pk") + "__error"
         });
         var tree_div = $("<div>").attr({
             "id" : "tree__dev__" + cur_dev.attr("pk")
@@ -62,8 +68,10 @@ function draw_tree_xml() {
             "id" : "cont__dev__" + cur_dev.attr("pk")
         });
         var top_node = $("<ul>");
-        new_td.append(tree_div);
-        new_td.append(content_div);
+        error_div.text(cur_dev.attr("info_str"));
+        new_div.append(error_div);
+        new_div.append(tree_div);
+        new_div.append(content_div);
         tree_div.append(top_node);
         iterate_tree(cur_dev.find("tree[depth='0']"), top_node);
         tree_div.dynatree({
@@ -75,7 +83,7 @@ function draw_tree_xml() {
             },
             debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
         });
-        top_div.append(new_td);
+        top_div.append(new_div);
     });
     $("div#generated_config").children().remove();
     $("div#generated_config").append(top_div);
