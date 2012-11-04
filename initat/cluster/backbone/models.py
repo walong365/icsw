@@ -2346,6 +2346,8 @@ class tree_node(models.Model):
     is_dir = models.BooleanField(default=False)
     is_link = models.BooleanField(default=False)
     parent = models.ForeignKey("tree_node", null=True, default=None)
+    # is an intermediate node is has not to be created
+    intermediate = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     def get_type_str(self):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
@@ -2385,7 +2387,9 @@ class wc_files(models.Model):
             run_number="%d" % (self.run_number),
             uid="%d" % (self.uid),
             gid="%d" % (self.gid),
-            mode="%d" % (self.mode))
+            mode="%d" % (self.mode),
+            error_flag="1" if self.error_flag else "0"
+        )
     class Meta:
         db_table = u'wc_files'
 
