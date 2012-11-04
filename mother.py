@@ -3506,6 +3506,10 @@ def main():
 ##        print "Database error for host %s (mother_server): too many entries found (%d)" % (loc_config["SERVER_SHORT_NAME"], num_servers)
 ##        dc.release()
 ##    else:
+    global_config.add_config_entries([
+        ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("mother", "Mother Server", device=sql_info.effective_device).pk)),
+        ("NODE_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("node", "Clusternode").pk)),
+    ])
 ##        loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, loc_config["MOTHER_SERVER_IDX"], "mother", "Mother Server")
 ##        if not loc_config["LOG_SOURCE_IDX"]:
 ##            print "Too many log_sources with my id present, exiting..."

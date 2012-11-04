@@ -42,7 +42,8 @@ from django.db import connection
 from twisted.internet import reactor
 from twisted.python import log
 from twisted.internet.error import CannotListenError
-from initat.cluster.backbone.models import kernel, device, hopcount, image, macbootlog, mac_ignore
+from initat.cluster.backbone.models import kernel, device, hopcount, image, macbootlog, mac_ignore, \
+     cached_log_status, cached_log_source, log_source, devicelog
 from django.db.models import Q
 import process_tools
 from mother.command_tools import simple_command
@@ -862,12 +863,11 @@ class host(machine):
             self.bootnetdevice.save(update_fields=["macaddr"])
             self.device.dhcp_mac = False
             self.device.save(update_fields=["dhcp_mac"])
-            # FIXME, devicelog
-    ##        dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (dev_name))
-    ##        didx = dc.fetchone()["device_idx"]
-    ##        sql_str, sql_tuple = mysql_tools.get_device_log_entry_part(didx, self.__loc_config["NODE_SOURCE_IDX"], 0, self.__loc_config["LOG_STATUS"]["i"]["log_status_idx"], mac)
-    ##        dc.execute("INSERT INTO devicelog VALUES(%s)" % (sql_str), sql_tuple)
-    ##        self.get_thread_queue().put(("server_com", server_command.server_command(command="alter_macadr", nodes=[dev_name])))
+            devicelog.new_log(
+                self.device,
+                machine.process.node_src,
+                cached_log_status("i"),
+                "set macaddr of %s to %s" % (self.bootnetdevice.devname, in_dict["macaddr"]))
             macbootlog(
                 device=self.device,
                 macaddr=in_dict["macaddr"],
@@ -882,12 +882,11 @@ class host(machine):
                 self.log("clearing dhcp_mac")
                 self.device.dhcp_mac = False
                 change_fields.add("dhcp_mac")
-            # FIXME, devicelog
-##            mach.device_log_entry(5,
-##                                  "i",
-##                                  "got ipaddr (%s)" % (sm_type),
-##                                  self.__queue_dict["sql_queue"],
-##                                  self.__loc_config["LOG_SOURCE_IDX"])
+            devicelog.new_log(
+                self.device,
+                machine.process.node_src,
+                cached_log_status("i"),
+                "DHCP / %s (%s)" % (in_dict["key"], in_dict["ip"]))
             self.device.recvstate = "got IP-Address via DHCP"
             change_fields.add("recvstate")
             if change_fields:
@@ -1041,6 +1040,8 @@ class node_control_process(threading_tools.process_obj):
             zmq=True,
             context=self.zmq_context,
             init_logger=True)
+        self.node_src = cached_log_source("node", None)
+        self.mother_src = log_source.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         # close database connection
         connection.close()
         simple_command.setup(self)
