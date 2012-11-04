@@ -70,7 +70,7 @@ class application(models.Model):
 
 class architecture(models.Model):
     idx = models.AutoField(db_column="architecture_idx", primary_key=True)
-    architecture = models.TextField(default="", unique=True)
+    architecture = models.CharField(default="", unique=True, max_length=128)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'architecture'
@@ -551,9 +551,9 @@ class device_variable(models.Model):
 class devicelog(models.Model):
     idx = models.AutoField(db_column="devicelog_idx", primary_key=True)
     device = models.ForeignKey("device", null=True, blank=True)
-    log_source = models.ForeignKey("log_source")
+    log_source = models.ForeignKey("log_source", null=True)
     user = models.ForeignKey("user", null=True)
-    log_status = models.ForeignKey("log_status")
+    log_status = models.ForeignKey("log_status", null=True)
     text = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     @staticmethod
