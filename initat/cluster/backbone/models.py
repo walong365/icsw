@@ -285,8 +285,8 @@ class device(models.Model):
     # better suited in a n:m model, removed
     #switch = models.ForeignKey("device", null=True, related_name="switch_device")
     #switchport = models.IntegerField(null=True, blank=True)
-    ng_device_templ = models.ForeignKey("ng_device_templ", null=True)
-    ng_ext_host = models.IntegerField(null=True, blank=True)
+    mon_device_templ = models.ForeignKey("mon_device_templ", null=True)
+    mon_ext_host = models.IntegerField(null=True, blank=True)
     device_location = models.ForeignKey("device_location", null=True)
     device_class = models.ForeignKey("device_class")
     rrd_class = models.ForeignKey("rrd_class", null=True)
@@ -1235,7 +1235,7 @@ class config(models.Model):
             r_xml.extend([
                 E.config_vars(*[cur_var.get_xml() for cur_var in list(self.config_str_set.all()) + \
                                 list(self.config_int_set.all()) + list(self.config_bool_set.all()) + list(self.config_blob_set.all())]),
-                E.ng_check_commands(*[cur_ngc.get_xml() for cur_ngc in list(self.ng_check_command_set.all())]),
+                E.mon_check_commands(*[cur_ngc.get_xml() for cur_ngc in list(self.mon_check_command_set.all())]),
                 E.config_scripts(*[cur_cs.get_xml() for cur_cs in list(self.config_script_set.all())])
             ])
         return r_xml
@@ -1287,28 +1287,28 @@ class new_rrd_data(models.Model):
     class Meta:
         db_table = u'new_rrd_data'
 
-class ng_ccgroup(models.Model):
+class mon_ccgroup(models.Model):
     idx = models.AutoField(db_column="ng_ccgroup_idx", primary_key=True)
-    ng_contact = models.ForeignKey("ng_contact")
-    ng_contactgroup = models.ForeignKey("ng_contactgroup")
+    mon_contact = models.ForeignKey("mon_contact")
+    mon_contactgroup = models.ForeignKey("mon_contactgroup")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_ccgroup'
 
-class ng_cgservicet(models.Model):
+class mon_cgservicet(models.Model):
     idx = models.AutoField(db_column="ng_cgservicet_idx", primary_key=True)
-    ng_contactgroup = models.ForeignKey("ng_contactgroup")
-    ng_service_templ = models.ForeignKey("ng_service_templ")
+    mon_contactgroup = models.ForeignKey("mon_contactgroup")
+    mon_service_templ = models.ForeignKey("mon_service_templ")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_cgservicet'
 
-class ng_check_command(models.Model):
+class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
-    ng_check_command_type = models.ForeignKey("ng_check_command_type")
-    ng_service_templ = models.ForeignKey("ng_service_templ")
+    mon_check_command_type = models.ForeignKey("mon_check_command_type")
+    mon_service_templ = models.ForeignKey("mon_service_templ")
     # only unique per config
     name = models.CharField(max_length=192)#, unique=True)
     command_line = models.CharField(max_length=765)
@@ -1316,13 +1316,13 @@ class ng_check_command(models.Model):
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
-        return E.ng_check_command(
+        return E.mon_check_command(
             self.name,
             pk="%d" % (self.pk),
-            key="ngcc__%d" % (self.pk),
+            key="moncc__%d" % (self.pk),
             config="%d" % (self.config_id),
-            ng_check_command_type="%d" % (self.ng_check_command_type_id),
-            ng_service_templ="%d" % (self.ng_service_templ_id),
+            mon_check_command_type="%d" % (self.mon_check_command_type_id),
+            mon_service_templ="%d" % (self.mon_service_templ_id),
             name=self.name or "",
             command_line=self.command_line or "",
             description=self.description or ""
@@ -1330,12 +1330,12 @@ class ng_check_command(models.Model):
     class Meta:
         db_table = u'ng_check_command'
 
-class ng_check_command_type(models.Model):
+class mon_check_command_type(models.Model):
     idx = models.AutoField(db_column="ng_check_command_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
-        return E.ng_check_command_type(
+        return E.mon_check_command_type(
             self.name,
             pk="%d" % (self.pk),
             key="ngcct__%d" % (self.pk),
@@ -1344,7 +1344,7 @@ class ng_check_command_type(models.Model):
     class Meta:
         db_table = u'ng_check_command_type'
 
-class ng_contact(models.Model):
+class mon_contact(models.Model):
     idx = models.AutoField(db_column="ng_contact_idx", primary_key=True)
     user = models.ForeignKey("user")
     snperiod = models.BooleanField()
@@ -1362,7 +1362,7 @@ class ng_contact(models.Model):
     class Meta:
         db_table = u'ng_contact'
 
-class ng_contactgroup(models.Model):
+class mon_contactgroup(models.Model):
     idx = models.AutoField(db_column="ng_contactgroup_idx", primary_key=True)
     name = models.CharField(max_length=192)
     alias = models.CharField(max_length=255, blank=True)
@@ -1370,22 +1370,22 @@ class ng_contactgroup(models.Model):
     class Meta:
         db_table = u'ng_contactgroup'
 
-class ng_device_contact(models.Model):
+class mon_device_contact(models.Model):
     idx = models.AutoField(db_column="ng_device_contact_idx", primary_key=True)
     device_group = models.ForeignKey("device_group")
-    ng_contactgroup = models.ForeignKey("ng_contactgroup")
+    mon_contactgroup = models.ForeignKey("mon_contactgroup")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'ng_device_contact'
 
-class ng_device_templ(models.Model):
+class mon_device_templ(models.Model):
     idx = models.AutoField(db_column="ng_device_templ_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
-    ng_service_templ = models.ForeignKey("ng_service_templ")
+    mon_service_templ = models.ForeignKey("mon_service_templ")
     ccommand = models.CharField(max_length=192, blank=True)
     max_attempts = models.IntegerField(null=True, blank=True)
     ninterval = models.IntegerField(null=True, blank=True)
-    ng_period = models.IntegerField(null=True, blank=True)
+    mon_period = models.IntegerField(null=True, blank=True)
     nrecovery = models.BooleanField()
     ndown = models.BooleanField()
     nunreachable = models.BooleanField()
@@ -1394,7 +1394,7 @@ class ng_device_templ(models.Model):
     class Meta:
         db_table = u'ng_device_templ'
 
-class ng_ext_host(models.Model):
+class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     icon_image = models.CharField(max_length=192, blank=True)
@@ -1405,7 +1405,7 @@ class ng_ext_host(models.Model):
     class Meta:
         db_table = u'ng_ext_host'
 
-class ng_period(models.Model):
+class mon_period(models.Model):
     idx = models.AutoField(db_column="ng_period_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     alias = models.CharField(max_length=255, blank=True)
@@ -1420,7 +1420,7 @@ class ng_period(models.Model):
     class Meta:
         db_table = u'ng_period'
 
-class ng_service(models.Model):
+class mon_service(models.Model):
     idx = models.AutoField(db_column="ng_service_idx", primary_key=True)
     name = models.CharField(max_length=192)
     alias = models.CharField(max_length=192, blank=True)
@@ -1433,7 +1433,7 @@ class ng_service(models.Model):
     class Meta:
         db_table = u'ng_service'
 
-class ng_service_templ(models.Model):
+class mon_service_templ(models.Model):
     idx = models.AutoField(db_column="ng_service_templ_idx", primary_key=True)
     name = models.CharField(max_length=192, unique=True)
     volatile = models.BooleanField(default=False)
@@ -1449,7 +1449,7 @@ class ng_service_templ(models.Model):
     nunknown = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
-        return E.ng_service_templ(
+        return E.mon_service_templ(
             self.name,
             pk="%d" % (self.pk),
             key="ngst__%d" % (self.pk),
@@ -2605,15 +2605,15 @@ def config_blob_pre_save(sender, **kwargs):
         if cur_inst.name in all_var_names:
             raise ValidationError("name already used")
 
-@receiver(signals.pre_save, sender=ng_check_command)
-def ng_check_command_pre_save(sender, **kwargs):
+@receiver(signals.pre_save, sender=mon_check_command)
+def mon_check_command_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if not cur_inst.name:
             raise ValidationError("name is empty")
         if not cur_inst.command_line:
             raise ValidationError("command_line is empty")
-        if cur_inst.name in cur_inst.config.ng_check_command_set.objects.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
+        if cur_inst.name in cur_inst.config.mon_check_command_set.objects.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
             raise ValidationError("name already used")
 
 @receiver(signals.pre_save, sender=config_script)
