@@ -1,5 +1,9 @@
 <script type="text/javascript">
 
+String.prototype.toTitle = function () {
+    return this.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
+};
+
 $.ajaxSetup({
     type     : "POST",
     timeout  : 50000,
@@ -94,10 +98,19 @@ function create_dict(top_el, id_prefix) {
     var in_list = top_el.find("input[id^='" + id_prefix + "'], select[id^='" + id_prefix + "'], textarea[id^='" + id_prefix + "']");
     var out_dict = {};
     in_list.each(function(idx, value) {
-        if ($(this).prop("tagName") == "TEXTAREA") {
-            out_dict[$(this).attr("id")] = $(this).text();
+        var cur_el = $(this);
+        if (cur_el.prop("tagName") == "TEXTAREA") {
+            out_dict[cur_el.attr("id")] = cur_el.text();
+        } else if (cur_el.is(":checkbox")) {
+            out_dict[cur_el.attr("id")] = cur_el.is(":checked") ? "1" : "0";
+        } else if (cur_el.prop("tagName") == "SELECT" && cur_el.attr("multiple")) {
+            var sel_field = [];
+            cur_el.find("option:selected").each(function(idx) {
+                sel_field.push($(this).attr("value"));
+            });
+            out_dict[cur_el.attr("id")] = sel_field.join("::");
         } else {
-            out_dict[$(this).attr("id")] = $(this).attr("value");
+            out_dict[cur_el.attr("id")] = cur_el.attr("value");
         };
     });
     return out_dict;
@@ -125,6 +138,12 @@ function submit_change(cur_el, callback) {
     } else if (cur_el.prop("tagName") == "TEXTAREA") {
         var is_textarea = true;
         var el_value = cur_el.text();
+    } else if (cur_el.prop("tagName") == "SELECT" && cur_el.attr("multiple")) {
+        var sel_field = [];
+        cur_el.find("option:selected").each(function(idx) {
+            sel_field.push($(this).attr("value"));
+        });
+        var el_value = sel_field.join("::");
     } else {
         var el_value = cur_el.attr("value");
     };
@@ -171,7 +190,6 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
                 "id"    : id_prefix + "__" + attr_name
             }).text(xml_el === undefined ? (kwargs.new_default || "") : xml_el.attr(attr_name));
         } else {
-            
             // text input style
             var new_el = $("<input>").attr({
                 "type"  : kwargs.number ? "number" : "text",
@@ -189,16 +207,37 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
         }
     } else {
         // select input
-        var sel_val = xml_el === undefined ? "0" : xml_el.attr(attr_name);
-        if (kwargs.select_source.length) {
+        if (typeof(kwargs.select_source) == "string") {
+            var sel_source = MASTER_XML.find(kwargs.select_source);
+        } else {
+            var sel_source = kwargs.select_source;
+        };
+        if (sel_source.length) {
             var new_el = $("<select>").attr({
-                "id"    : id_prefix + "__" + attr_name,
-                "value" : sel_val
+                "id"    : id_prefix + "__" + attr_name
             });
-            kwargs.select_source.each(function() {
+            if (kwargs.manytomany) {
+                var temp_sel_val = xml_el === undefined ? [] : xml_el.attr(attr_name).split("::");
+                var sel_val = {};
+                for (idx=0; idx < temp_sel_val.length; idx++) {
+                    sel_val[temp_sel_val[idx]] = "";
+                };
+                new_el.attr({
+                    "multiple" : "multiple",
+                    "size"     : 5
+                });
+            } else {
+                var sel_val = xml_el === undefined ? "0" : xml_el.attr(attr_name);
+                new_el.attr("value", sel_val);
+            };
+            sel_source.each(function() {
                 var cur_ns = $(this);
                 var new_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text());
-                if (cur_ns.attr("pk") == sel_val) new_opt.attr("selected", "selected");
+                if (kwargs.manytomany) {
+                    if (cur_ns.attr("pk") in sel_val) new_opt.attr("selected", "selected");
+                } else {
+                    if (cur_ns.attr("pk") == sel_val) new_opt.attr("selected", "selected");
+                };
                 new_el.append(new_opt);
             });
         } else {

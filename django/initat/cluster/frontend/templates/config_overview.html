@@ -218,15 +218,15 @@ function remove_config_var_line(cur_el) {
     update_expand_info();
 };
 
-function inject_nagios_command_line(new_nc) {
+function inject_monitoring_command_line(new_nc) {
     var header_tr = $("table#config tr[id$='conf__" + new_nc.attr("config") + "__ngcc_new']");
     var cur_config = CONFIGS.find("config[pk='" + new_nc.attr("config") + "']");
     header_tr.find("input[id$='__name']").attr("value", "")
-    header_tr.after(add_nagios_line(cur_config, "conf__" + new_nc.attr("config"), new_nc).show());
+    header_tr.after(add_monitoring_line(cur_config, "conf__" + new_nc.attr("config"), new_nc).show());
     update_expand_info();
 };
 
-function remove_nagios_command_line(cur_el) {
+function remove_monitoring_command_line(cur_el) {
     var nc_line = $("table#config tr[id^='" + cur_el.attr("id") + "']");
     nc_line.remove();
     update_expand_info();
@@ -283,7 +283,7 @@ function create_delete_config_script(event) {
     };
 };
 
-function create_delete_nagios_command(event) {
+function create_delete_monitoring_command(event) {
     var cur_el = $(event.target);
 <!--    var cur_conf = CONFIGS.find("config[pk='" + cur_el.attr("id").split("__")[1] + "']");-->
 <!--    console.log(cur_conf);-->
@@ -291,12 +291,12 @@ function create_delete_nagios_command(event) {
     if (cur_el.attr("id").match(/new$/)) {
         // create element
         $.ajax({
-            url  : "{% url nagios:create_command %}",
+            url  : "{% url mon:create_command %}",
             data : create_dict($("table#config"), cur_el.attr("id")),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
-                    var new_nc = $(xml).find("value[name='new_nagios_command']").children();
-                    inject_nagios_command_line(new_nc);
+                    var new_nc = $(xml).find("value[name='new_monitoring_command']").children();
+                    inject_monitoring_command_line(new_nc);
                 };
                 unlock_elements(lock_list);
             }
@@ -304,11 +304,11 @@ function create_delete_nagios_command(event) {
     } else {
         // delete
         $.ajax({
-            url  : "{% url nagios:delete_command %}",
+            url  : "{% url mon:delete_command %}",
             data : create_dict($("table#config"), cur_el.attr("id")),
             success : function(xml) {
                 if (parse_xml_response(xml)) {
-                    remove_nagios_command_line(cur_el);
+                    remove_monitoring_command_line(cur_el);
                 };
                 unlock_elements(lock_list);
             }
@@ -409,7 +409,7 @@ function add_config_var_line(c_el, line_prefix, c_var) {
     return cv_tr;
 };
 
-function add_nagios_line(c_el, line_prefix, n_com) {
+function add_monitoring_line(c_el, line_prefix, n_com) {
     if (n_com === undefined) {
         var nc_key = "ngcc_new";
     } else {
@@ -428,16 +428,16 @@ function add_nagios_line(c_el, line_prefix, n_com) {
     ).append(
         create_input_el(n_com, "description", line_prefix)
     ).append(
-        create_input_el(n_com, "ng_check_command_type", line_prefix, {select_source : CONFIGS.find("ng_check_command_types ng_check_command_type")})
+        create_input_el(n_com, "mon_check_command_type", line_prefix, {select_source : CONFIGS.find("mon_check_command_types mon_check_command_type")})
     ).append(
-        create_input_el(n_com, "ng_service_templ", line_prefix, {select_source : CONFIGS.find("ng_service_templates ng_service_templ")})
+        create_input_el(n_com, "mon_service_templ", line_prefix, {select_source : CONFIGS.find("mon_service_templates mon_service_templ")})
     );
     nc_tr.append($("<td>").append(
         $("<input>").attr({
             "type"  : "button",
             "value" : n_com ? "delete" : "create",
             "id"    : line_prefix
-        }).bind("click", create_delete_nagios_command)
+        }).bind("click", create_delete_monitoring_command)
         )
     );
     return nc_tr;
@@ -531,10 +531,10 @@ function draw_config(c_el) {
         c_el.find("config_vars").children().each(function() {
             dummy_div.append(add_config_var_line(c_el, line_prefix, $(this)));
         });
-        // add nagios commands
-        dummy_div.append(add_nagios_line(c_el, line_prefix));
-        c_el.find("ng_check_commands").children().each(function() {
-            dummy_div.append(add_nagios_line(c_el, line_prefix, $(this)));
+        // add monitoring commands
+        dummy_div.append(add_monitoring_line(c_el, line_prefix));
+        c_el.find("mon_check_commands").children().each(function() {
+            dummy_div.append(add_monitoring_line(c_el, line_prefix, $(this)));
         });
         // add config scripts
         dummy_div.append(add_config_script_line(c_el, line_prefix));

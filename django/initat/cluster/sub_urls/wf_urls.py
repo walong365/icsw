@@ -105,10 +105,14 @@ network_patterns = patterns(
     url("^trigger_hc_rebuild$", "network_views.rebuild_hopcount"      , name="rebuild_hopcount"   ),
 )
 
-nagios_patterns = patterns(
+monitoring_patterns = patterns(
     "initat.cluster.frontend",
-    url("^create_command$"   , "nagios_views.create_command"   , name="create_command"),
-    url("^delete_command$"   , "nagios_views.delete_command"   , name="delete_command"),
+    url("^setup$"            , "monitoring_views.setup"            , name="setup"),
+    url("^xml/get_config"    , "monitoring_views.get_config"       , name="get_config"),
+    url("^create_command$"   , "monitoring_views.create_command"   , name="create_command"),
+    url("^delete_command$"   , "monitoring_views.delete_command"   , name="delete_command"),
+    url("^xml/create_object/(?P<obj_name>.*)$", "monitoring_views.create_object", name="create_object"),
+    url("^xml/delete_object/(?P<obj_name>.*)$", "monitoring_views.delete_object", name="delete_object"),
 )
 
 main_patterns = patterns(
@@ -119,16 +123,16 @@ main_patterns = patterns(
 my_url_patterns = patterns(
     "",
     url(r"static/(?P<path>.*)$"        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
-    url(r"^"          , include(transfer_patterns, namespace="transfer")),
-    url(r"^session/"  , include(session_patterns , namespace="session" )),
-    url(r"^config/"   , include(config_patterns  , namespace="config"  )),
-    url(r"^rms/"      , include(rms_patterns     , namespace="rms"     )),
-    url(r"^main/"     , include(main_patterns    , namespace="main"    )),
-    url(r"^device/"   , include(device_patterns  , namespace="device"  )),
-    url(r"^network/"  , include(network_patterns , namespace="network" )),
-    url(r"^nagios/"   , include(nagios_patterns  , namespace="nagios"  )),
-    url(r"^boot/"     , include(boot_patterns    , namespace="boot"    )),
-    url(r"^setup/"    , include(setup_patterns   , namespace="setup"   )),
+    url(r"^"          , include(transfer_patterns  , namespace="transfer")),
+    url(r"^session/"  , include(session_patterns   , namespace="session" )),
+    url(r"^config/"   , include(config_patterns    , namespace="config"  )),
+    url(r"^rms/"      , include(rms_patterns       , namespace="rms"     )),
+    url(r"^main/"     , include(main_patterns      , namespace="main"    )),
+    url(r"^device/"   , include(device_patterns    , namespace="device"  )),
+    url(r"^network/"  , include(network_patterns   , namespace="network" )),
+    url(r"^nagios/"   , include(monitoring_patterns, namespace="mon"     )),
+    url(r"^boot/"     , include(boot_patterns      , namespace="boot"    )),
+    url(r"^setup/"    , include(setup_patterns     , namespace="setup"   )),
 )
 
 url_patterns = patterns(

@@ -8,8 +8,9 @@ import process_tools
 from initat.cluster.frontend.forms import config_type_form
 from initat.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
-     ng_check_command, ng_check_command_type, ng_service_templ, config_script, device_config, \
-     tree_node, wc_files, partition_disc, partition
+     mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
+     tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
+     mon_contactgroup
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -53,7 +54,7 @@ def get_configs(request):
     full_mode = mode == "full"
     request.log("get configs, mode is %s" % (mode))
     if full_mode:
-        all_configs = config.objects.all().select_related("config_type").prefetch_related("config_int_set", "config_str_set", "config_bool_set", "config_blob_set", "ng_check_command_set", "config_script_set").order_by("name")
+        all_configs = config.objects.all().select_related("config_type").prefetch_related("config_int_set", "config_str_set", "config_bool_set", "config_blob_set", "mon_check_command_set", "config_script_set").order_by("name")
     else:
         all_configs = config.objects.all().select_related("config_type").order_by("name")
     xml_resp = E.response(
@@ -65,11 +66,11 @@ def get_configs(request):
         xml_resp.append(E.config_types(
             *[cur_ct.get_xml() for cur_ct in config_type.objects.all().order_by("name")]
         ))
-        xml_resp.append(E.ng_check_command_types(
-            *[cur_ct.get_xml() for cur_ct in ng_check_command_type.objects.all().order_by("name")]
+        xml_resp.append(E.mon_check_command_types(
+            *[cur_ct.get_xml() for cur_ct in mon_check_command_type.objects.all().order_by("name")]
         ))
-        xml_resp.append(E.ng_service_templates(
-            *[cur_st.get_xml() for cur_st in ng_service_templ.objects.all().order_by("name")]
+        xml_resp.append(E.mon_service_templates(
+            *[cur_st.get_xml() for cur_st in mon_service_templ.objects.all().order_by("name")]
         ))
     #print etree.tostring(xml_resp, pretty_print=True)
     request.xml_response["response"] = xml_resp
@@ -115,9 +116,13 @@ def change_xml_entry(request):
                    "varbool" : config_bool,
                    "varblob" : config_blob,
                    "cscript" : config_script,
-                   "ngcc"    : ng_check_command,
+                   "moncc"   : mon_check_command,
+                   "moncon"  : mon_contact,
                    "pdisc"   : partition_disc,
-                   "part"    : partition
+                   "part"    : partition,
+                   "monper"  : mon_period,
+                   "monst"   : mon_service_templ,
+                   "moncg"   : mon_contactgroup
                    }.get(object_type, None)
         if not mod_obj:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
@@ -143,30 +148,43 @@ def change_xml_entry(request):
                     new_value = _post["value"]
                     if _post["checkbox"] == "true":
                         new_value = bool(int(new_value))
-                    old_value = getattr(cur_obj, attr_name)
-                    try:
-                        if cur_obj._meta.get_field(attr_name).get_internal_type() == "ForeignKey":
-                            # follow foreign key the django way
-                            new_value = cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=new_value)
-                    except:
-                        # in case of meta-fields like ethtool_autoneg,speed,duplex
-                        pass
-                    setattr(cur_obj, attr_name, new_value)
-                    try:
-                        cur_obj.save()
-                    except ValidationError, what:
-                        request.log("error modifying: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
-                        request.xml_response["original_value"] = old_value
-                    except IntegrityError, what:
-                        request.log("error modifying (%d): %s" % (what[0], unicode(what[1])), logging_tools.LOG_LEVEL_ERROR, xml=True)
-                        request.xml_response["original_value"] = old_value
-                    except:
-                        raise
+                    if cur_obj._meta.get_field(attr_name).get_internal_type() == "ManyToManyField":
+                        # handle many to many
+                        new_value = set([int(val) for val in new_value.split("::") if val.strip()])
+                        m2m_rel = getattr(cur_obj, attr_name)
+                        old_value = set(m2m_rel.all().values_list("pk", flat=True))
+                        rem_values = old_value - new_value
+                        add_values = new_value - old_value
+                        for rem_value in rem_values:
+                            m2m_rel.remove(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=rem_value))
+                        for add_value in add_values:
+                            m2m_rel.add(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=add_value))
+                        request.log("added %d, removed %d" % (len(add_values), len(rem_values)), xml=True)
                     else:
-                        # reread new_value (in case of pre/post-save corrections)
-                        new_value = getattr(cur_obj, attr_name)
-                        request.xml_response["object"] = cur_obj.get_xml()
-                        request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
+                        old_value = getattr(cur_obj, attr_name)
+                        try:
+                            if cur_obj._meta.get_field(attr_name).get_internal_type() == "ForeignKey":
+                                # follow foreign key the django way
+                                new_value = cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=new_value)
+                        except:
+                            # in case of meta-fields like ethtool_autoneg,speed,duplex
+                            pass
+                        setattr(cur_obj, attr_name, new_value)
+                        try:
+                            cur_obj.save()
+                        except ValidationError, what:
+                            request.log("error modifying: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
+                            request.xml_response["original_value"] = old_value
+                        except IntegrityError, what:
+                            request.log("error modifying (%d): %s" % (what[0], unicode(what[1])), logging_tools.LOG_LEVEL_ERROR, xml=True)
+                            request.xml_response["original_value"] = old_value
+                        except:
+                            raise
+                        else:
+                            # reread new_value (in case of pre/post-save corrections)
+                            new_value = getattr(cur_obj, attr_name)
+                            request.xml_response["object"] = cur_obj.get_xml()
+                            request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
     return request.xml_response.create_response()
 
 @login_required
@@ -401,20 +419,30 @@ class tree_struct(object):
         self.dev_pk = cur_dev.pk
         self.depth = depth
         if not node:
-            self.node = [entry for entry in node_list if not entry.parent_id][0]
-            wcf_dict = dict([(cur_wc.tree_node_id, cur_wc) for cur_wc in wc_files.objects.filter(Q(device=self.node.device_id))])
+            if node_list:
+                self.node = [entry for entry in node_list if not entry.parent_id][0]
+                wcf_dict = dict([(cur_wc.tree_node_id, cur_wc) for cur_wc in wc_files.objects.filter(Q(device=self.node.device_id))])
+            else:
+                self.node = None
         else:
             self.node = node
-        self.wc_file = wcf_dict.get(self.node.pk, None)
-        self.childs = [tree_struct(
-            cur_dev,
-            node_list,
-            node=cur_node,
-            depth=self.depth + 1,
-            wcf_dict=wcf_dict) for cur_node in node_list if cur_node.parent_id == self.node.pk]
+        if self.node is not None:
+            self.wc_file = wcf_dict.get(self.node.pk, None)
+            self.childs = [tree_struct(
+                cur_dev,
+                node_list,
+                node=cur_node,
+                depth=self.depth + 1,
+                wcf_dict=wcf_dict) for cur_node in node_list if cur_node.parent_id == self.node.pk]
+        else:
+            self.wc_file = None
+            self.childs = []
     def get_name(self):
-        return "%s%s" % (self.wc_file.dest,
-                         "/" if self.node.is_dir else "")
+        if self.node:
+            return "%s%s" % (self.wc_file.dest,
+                             "/" if self.node.is_dir else "")
+        else:
+            return "empty"
     def __unicode__(self):
         return "\n".join([
             "%s%s (%d), %s" % ("  " * self.depth,
