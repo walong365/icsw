@@ -63,6 +63,7 @@ from pysnmp.proto import rfc1902
 from pysnmp.proto import api
 from mother.config import global_config
 from django.db.models import Q
+from django.db import connection
 import mother.kernel
 import mother.command
 import mother.control
@@ -2898,6 +2899,7 @@ class server_process(threading_tools.process_pool):
             self.add_process(mother.command.external_command_process("command"), start=True)
             self.add_process(mother.control.node_control_process("control"), start=True)
             self.add_process(mother.control.twisted_process("twisted"), twisted=True, start=True)
+            connection.close()
             #self.add_process(build_process("build"), start=True)
             #self.register_func("client_update", self._client_update)
             # send initial commands

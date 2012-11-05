@@ -1040,10 +1040,10 @@ class node_control_process(threading_tools.process_obj):
             zmq=True,
             context=self.zmq_context,
             init_logger=True)
+        connection.close()
         self.node_src = cached_log_source("node", None)
         self.mother_src = log_source.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         # close database connection
-        connection.close()
         simple_command.setup(self)
         self.sc = config_tools.server_check(server_type="mother_server")
         if "b" in self.sc.identifier_ip_lut:
