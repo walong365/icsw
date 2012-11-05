@@ -1287,21 +1287,32 @@ class new_rrd_data(models.Model):
     class Meta:
         db_table = u'new_rrd_data'
 
-class mon_ccgroup(models.Model):
-    idx = models.AutoField(db_column="ng_ccgroup_idx", primary_key=True)
-    mon_contact = models.ForeignKey("mon_contact")
-    mon_contactgroup = models.ForeignKey("mon_contactgroup")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ng_ccgroup'
+# now a manytomany in mon_contactgroup
+##class mon_ccgroup(models.Model):
+##    idx = models.AutoField(db_column="ng_ccgroup_idx", primary_key=True)
+##    mon_contact = models.ForeignKey("mon_contact")
+##    mon_contactgroup = models.ForeignKey("mon_contactgroup")
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'ng_ccgroup'
 
-class mon_cgservicet(models.Model):
-    idx = models.AutoField(db_column="ng_cgservicet_idx", primary_key=True)
-    mon_contactgroup = models.ForeignKey("mon_contactgroup")
-    mon_service_templ = models.ForeignKey("mon_service_templ")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ng_cgservicet'
+# now a manytomany in mon_contactgroup
+##class mon_cgservicet(models.Model):
+##    idx = models.AutoField(db_column="ng_cgservicet_idx", primary_key=True)
+##    mon_contactgroup = models.ForeignKey("mon_contactgroup")
+##    mon_service_templ = models.ForeignKey("mon_service_templ")
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'ng_cgservicet'
+
+# now a manytomany in mon_contactgroup
+##class mon_device_contact(models.Model):
+##    idx = models.AutoField(db_column="ng_device_contact_idx", primary_key=True)
+##    device_group = models.ForeignKey("device_group")
+##    mon_contactgroup = models.ForeignKey("mon_contactgroup")
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'ng_device_contact'
 
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
@@ -1347,8 +1358,8 @@ class mon_check_command_type(models.Model):
 class mon_contact(models.Model):
     idx = models.AutoField(db_column="ng_contact_idx", primary_key=True)
     user = models.ForeignKey("user")
-    snperiod = models.BooleanField()
-    hnperiod = models.BooleanField()
+    snperiod = models.ForeignKey("mon_period", related_name="service_n_period")
+    hnperiod = models.ForeignKey("mon_period", related_name="host_n_period")
     snrecovery = models.BooleanField()
     sncritical = models.BooleanField()
     snwarning = models.BooleanField()
@@ -1359,24 +1370,56 @@ class mon_contact(models.Model):
     sncommand = models.CharField(max_length=192, blank=True)
     hncommand = models.CharField(max_length=192, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        ret_xml = E.mon_contact(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="moncon__%d" % (self.pk),
+            user_id="%d" % (self.user_id or 0),
+            snperiod_id="%d" % (self.snperiod_id or 0),
+            hnperiod_id="%d" % (self.hnperiod_id or 0),
+            sncommand = self.sncommand,
+            hncommand = self.hncommand,
+        )
+        for bf in ["snrecovery", "sncritical", "snunknown",
+                   "hnrecovery", "hndown", "hnunreachable"]:
+            ret_xml.attrib[bf] = "1" if getattr(self, bf) else "0"
+        return ret_xml
+    def __unicode__(self):
+        return unicode(self.user)
     class Meta:
         db_table = u'ng_contact'
 
 class mon_contactgroup(models.Model):
     idx = models.AutoField(db_column="ng_contactgroup_idx", primary_key=True)
-    name = models.CharField(max_length=192)
-    alias = models.CharField(max_length=255, blank=True)
+    name = models.CharField(max_length=192, unique=True)
+    alias = models.CharField(max_length=255, blank=True, default="")
     date = models.DateTimeField(auto_now_add=True)
+    device_groups = models.ManyToManyField("device_group")
+    members = models.ManyToManyField("mon_contact")
+    service_templates = models.ManyToManyField("mon_service_templ")
+    def get_xml(self):
+        return E.mon_contactgroup(
+            unicode(self),
+            members="::".join(["%d" % (cur_pk) for cur_pk in self.members.all().values_list("pk", flat=True)]),
+            device_groups="::".join(["%d" % (cur_pk) for cur_pk in self.device_groups.all().values_list("pk", flat=True)]),
+            service_templates="::".join(["%d" % (cur_pk) for cur_pk in self.service_templates.all().values_list("pk", flat=True)]),
+            pk="%d" % (self.pk),
+            key="moncg__%d" % (self.pk),
+            name=self.name,
+            alias=self.alias,
+        )
+    def __unicode__(self):
+        return self.name
     class Meta:
         db_table = u'ng_contactgroup'
 
-class mon_device_contact(models.Model):
-    idx = models.AutoField(db_column="ng_device_contact_idx", primary_key=True)
-    device_group = models.ForeignKey("device_group")
-    mon_contactgroup = models.ForeignKey("mon_contactgroup")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ng_device_contact'
+@receiver(signals.pre_save, sender=mon_contactgroup)
+def mon_contactgroup_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name.strip():
+            raise ValidationError("name is empty")
 
 class mon_device_templ(models.Model):
     idx = models.AutoField(db_column="ng_device_templ_idx", primary_key=True)
@@ -1407,18 +1450,54 @@ class mon_ext_host(models.Model):
 
 class mon_period(models.Model):
     idx = models.AutoField(db_column="ng_period_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    alias = models.CharField(max_length=255, blank=True)
-    sunrange = models.CharField(max_length=48, blank=True)
-    monrange = models.CharField(max_length=48, blank=True)
-    tuerange = models.CharField(max_length=48, blank=True)
-    wedrange = models.CharField(max_length=48, blank=True)
-    thurange = models.CharField(max_length=48, blank=True)
-    frirange = models.CharField(max_length=48, blank=True)
-    satrange = models.CharField(max_length=48, blank=True)
+    name = models.CharField(unique=True, max_length=192, default="")
+    alias = models.CharField(max_length=255, blank=True, unique=True, default="")
+    sun_range = models.CharField(max_length=48, blank=True, db_column="sunrange")
+    mon_range = models.CharField(max_length=48, blank=True, db_column="monrange")
+    tue_range = models.CharField(max_length=48, blank=True, db_column="tuerange")
+    wed_range = models.CharField(max_length=48, blank=True, db_column="wedrange")
+    thu_range = models.CharField(max_length=48, blank=True, db_column="thurange")
+    fri_range = models.CharField(max_length=48, blank=True, db_column="frirange")
+    sat_range = models.CharField(max_length=48, blank=True, db_column="satrange")
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        ret_xml = E.mon_period(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="monper__%d" % (self.pk),
+            name=unicode(self.name),
+            alias=unicode(self.alias),
+        )
+        for day in ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]:
+            ret_xml.attrib["%s_range" % (day)] = getattr(self, "%s_range" % (day))
+        return ret_xml
+    def __unicode__(self):
+        return self.name
     class Meta:
         db_table = u'ng_period'
+
+@receiver(signals.pre_save, sender=mon_period)
+def mon_period_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name.strip():
+            raise ValidationError("name is empty")
+        range_re = re.compile("^[0-9]{1,2}:[0-9]{1,2}-[0-9]{1,2}:[0-9]{1,2}$")
+        for day in ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]:
+            r_name = "%s_range" % (day)
+            cur_val = getattr(cur_inst, r_name)
+            if not range_re.match(cur_val):
+                raise ValidationError("range for %s not correct" % (day))
+            else:
+                new_val = []
+                for cur_time in cur_val.split("-"):
+                    hours, minutes = [int(val) for val in cur_time.split(":")]
+                    if (hours, minutes) in [(24, 0)]:
+                        pass
+                    elif hours < 0 or hours > 23 or minutes < 0 or minutes > 60:
+                        raise ValidationError("illegal time %s (%s)" % (cur_time, day))
+                    new_val.append("%02d:%02d" % (hours, minutes))
+                setattr(cur_inst, r_name, "-".join(new_val))
 
 class mon_service(models.Model):
     idx = models.AutoField(db_column="ng_service_idx", primary_key=True)
@@ -1437,12 +1516,12 @@ class mon_service_templ(models.Model):
     idx = models.AutoField(db_column="ng_service_templ_idx", primary_key=True)
     name = models.CharField(max_length=192, unique=True)
     volatile = models.BooleanField(default=False)
-    nsc_period = models.IntegerField(default=1)
+    nsc_period = models.ForeignKey("mon_period", related_name="service_check_period")
     max_attempts = models.IntegerField(default=1)
     check_interval = models.IntegerField(default=5)
     retry_interval = models.IntegerField(default=10)
     ninterval = models.IntegerField(default=5)
-    nsn_period = models.IntegerField(default=1)
+    nsn_period = models.ForeignKey("mon_period", related_name="service_notify_period")
     nrecovery = models.BooleanField(default=False)
     ncritical = models.BooleanField(default=False)
     nwarning = models.BooleanField(default=False)
@@ -1450,13 +1529,52 @@ class mon_service_templ(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.mon_service_templ(
-            self.name,
+            unicode(self),
             pk="%d" % (self.pk),
-            key="ngst__%d" % (self.pk),
-            name=self.name
+            key="monst__%d" % (self.pk),
+            name=self.name,
+            volatile="1" if self.volatile else "0",
+            max_attempts="%d" % (self.max_attempts),
+            nsc_period_id="%d" % (self.nsc_period_id or 0),
+            check_interval="%d" % (self.check_interval),
+            retry_interval="%d" % (self.retry_interval),
+            nsn_period_id="%d" % (self.nsn_period_id or 0),
+            ninterval="%d" % (self.ninterval),
+            nrecovery="%d" % (1 if self.nrecovery else 0),
+            ncritical="%d" % (1 if self.ncritical else 0),
+            nwarning="%d" % (1 if self.nwarning else 0),
+            nunknown="%d" % (1 if self.nunknown else 0),
         )
+    def __unicode__(self):
+        return self.name
     class Meta:
         db_table = u'ng_service_templ'
+
+@receiver(signals.pre_save, sender=mon_service_templ)
+def mon_service_templ_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name.strip():
+            raise ValidationError("name must not be zero")
+        for attr_name, min_val, max_val in [
+            ("max_attempts", 1, 10),
+            ("check_interval", 1, 60),
+            ("retry_interval", 1, 60),
+            ("ninterval", 0, 60)]:
+            cur_val = getattr(cur_inst, attr_name)
+            try:
+                cur_val = int(cur_val)
+            except:
+                raise ValidationError("%s is not an integer" % (attr_name))
+            else:
+                if cur_val < min_val or cur_val > max_val:
+                    raise ValidationError("%s %d is out of bounds [%d, %d]" % (
+                        attr_name,
+                        cur_val,
+                        min_val,
+                        max_val))
+                else:
+                    setattr(cur_inst, attr_name, cur_val)
 
 class package(models.Model):
     idx = models.AutoField(db_column="package_idx", primary_key=True)
@@ -2140,6 +2258,12 @@ class user(models.Model):
         self.secondary_groups = []
         self.sge_servers = {}
         self.login_serers = {}
+    def get_xml(self):
+        return E.user(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="user__%d" % (self.pk),
+        )
     def create_django_user(self):
         new_du = User(
             username=self.login,
