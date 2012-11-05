@@ -2819,6 +2819,7 @@ class server_process(threading_tools.process_pool):
         self._init_subsys()
         self._init_network_sockets()
         self.add_process(build_process("build"), start=True)
+        connection.close()
         self.register_func("client_update", self._client_update)
         self.register_func("complex_result", self._complex_result)
         self.__run_idx = 0
