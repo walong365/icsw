@@ -90,19 +90,20 @@ device_patterns = patterns(
 
 network_patterns = patterns(
     "initat.cluster.frontend",
-    url("^network$"           , "network_views.show_cluster_networks" , name="networks"           ),
-    url("^netdevice_classes$" , "network_views.show_netdevice_classes", name="netdevice_classes"  ),
-    url("^dev_network$"       , "network_views.device_network"        , name="network"            ),
-    url("^get_network_tree$"  , "network_views.get_network_tree"      , name="get_network_tree"   ), 
-    url("^create_netdevice$"  , "network_views.create_netdevice"      , name="create_netdevice"   ),
-    url("^delete_netdevice$"  , "network_views.delete_netdevice"      , name="delete_netdevice"   ),
-    url("^create_net_ip$"     , "network_views.create_net_ip"         , name="create_net_ip"      ),
-    url("^delete_net_ip$"     , "network_views.delete_net_ip"         , name="delete_net_ip"      ),
-    url("^create_new_peer$"   , "network_views.create_new_peer"       , name="create_new_peer"    ),
-    url("^delete_peer$"       , "network_views.delete_peer"           , name="delete_peer"        ),
-    url("^get_valid_peers$"   , "network_views.get_valid_peers"       , name="get_valid_peers"    ),
-    url("^get_hopcount_state$", "network_views.get_hopcount_state"    , name="get_hopcount_state" ),
-    url("^trigger_hc_rebuild$", "network_views.rebuild_hopcount"      , name="rebuild_hopcount"   ),
+    url("^network$"           , "network_views.show_cluster_networks" , name="networks"             ),
+    url("^netw_t_dt$"         , "network_views.show_network_d_types"  , name="show_network_d_types" ),
+    url("^xml/get_nw_types"   , "network_views.get_network_d_types"   , name="get_network_d_types"  ),
+    url("^dev_network$"       , "network_views.device_network"        , name="network"              ),
+    url("^get_network_tree$"  , "network_views.get_network_tree"      , name="get_network_tree"     ), 
+    url("^create_netdevice$"  , "network_views.create_netdevice"      , name="create_netdevice"     ),
+    url("^delete_netdevice$"  , "network_views.delete_netdevice"      , name="delete_netdevice"     ),
+    url("^create_net_ip$"     , "network_views.create_net_ip"         , name="create_net_ip"        ),
+    url("^delete_net_ip$"     , "network_views.delete_net_ip"         , name="delete_net_ip"        ),
+    url("^create_new_peer$"   , "network_views.create_new_peer"       , name="create_new_peer"      ),
+    url("^delete_peer$"       , "network_views.delete_peer"           , name="delete_peer"          ),
+    url("^get_valid_peers$"   , "network_views.get_valid_peers"       , name="get_valid_peers"      ),
+    url("^get_hopcount_state$", "network_views.get_hopcount_state"    , name="get_hopcount_state"   ),
+    url("^trigger_hc_rebuild$", "network_views.rebuild_hopcount"      , name="rebuild_hopcount"     ),
 )
 
 monitoring_patterns = patterns(

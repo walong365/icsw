@@ -6,48 +6,64 @@
 
 {% block content %}
 
-<form action="{% url network:netdevice_classes %}" method=post >
-{{ network_type_formset.management_form }}
-<table>
-    <tbody>
-    {% for cur_form in network_type_formset %}
-        {{ cur_form.idx }}
-        <tr><td colspan="3">{{ cur_form.non_field_errors }}</td></tr>
-        <tr>
-            <td>
-                {{ cur_form.identifier.label }}{{ cur_form.identifier }}{{ cur_form.identifier.errors }}
-            </td>
-            <td>
-                {{ cur_form.description.label }}{{ cur_form.description }}{{ cur_form.description.errors }}
-            </td>
-            <td>{% if cur_form.can_be_deleted %}del:{{ cur_form.DELETE }}{% endif %}</td>
-        </tr>
-    {% endfor %}
-    <tbody>
-</table>
+<h1>Network types</h1>
 
-{{ network_devtype_formset.management_form }}
-<table>
-    <tbody>
-    {% for cur_form in network_devtype_formset %}
-        {{ cur_form.idx }}
-        <tr><td colspan="3">{{ cur_form.non_field_errors }}</td></tr>
-        <tr>
-            <td>
-                {{ cur_form.identifier.label }}{{ cur_form.identifier }}{{ cur_form.identifier.errors }}
-            </td>
-            <td>
-                {{ cur_form.description.label }}{{ cur_form.description }}{{ cur_form.description.errors }}
-            </td>
-            <td>
-                {{ cur_form.mac_bytes.label }}{{ cur_form.mac_bytes }}{{ cur_form.mac_bytes.errors }}
-            </td>
-            <td>{% if cur_form.can_be_deleted %}del:{{ cur_form.DELETE }}{% endif %}</td>
-        </tr>
-    {% endfor %}
-    <tbody>
-</table>
-<input type="submit" action="submit"/>
-</form>
+<div id="nwt_tables"></div>
+
+<script type="text/javascript">
+
+// nwt XML
+NETWORK_TYPES = undefined;
+
+var draw_array = {
+    "nwt" : [
+        new draw_info("identifier", {select_source : "network_type_choices network_type_choice"} ), 
+        new draw_info("description")
+    ],
+    "nwdt" : [
+        new draw_info("identifier"),
+        new draw_info("description"),
+        new draw_info("mac_bytes", {label : "MAC size", min : 6, max : 18, number : 1, default : 6})
+    ]
+}
+
+var master_array = {
+    "nwt" : new draw_setup("NetworkType", "nwt", "network_type",
+        "{% url mon:create_object 'network_type' %}",
+        "{% url mon:delete_object 'network_type' %}"),
+    "nwdt" : new draw_setup("NetworkDevicetype", "nwdt", "network_device_type",
+        "{% url mon:create_object 'network_device_type' %}",
+        "{% url mon:delete_object 'network_device_type' %}"),
+};   
+
+function load_nwts() {
+    $.ajax({
+        url     : "{% url network:get_network_d_types %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                NETWORK_TYPES = $(xml).find("value[name='response']");
+                init_xml_change(NETWORK_TYPES);
+                draw_tables();
+            }
+        }
+    });
+}
+
+function draw_tables() {
+    var t_div = $("div#nwt_tables");
+    t_div.children().remove();
+    for (var key in master_array) {
+        t_div.append(master_array[key].draw_table());
+    };
+};
+
+function add_config_handlers() {
+    load_nwts();
+};
+
+$(document).ready(add_config_handlers);
+
+</script>
 
 {% endblock %}

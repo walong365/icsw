@@ -10,7 +10,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
      tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
-     mon_contactgroup
+     mon_contactgroup, get_related_models, network_device_type, network_type
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -122,7 +122,9 @@ def change_xml_entry(request):
                    "part"    : partition,
                    "monper"  : mon_period,
                    "monst"   : mon_service_templ,
-                   "moncg"   : mon_contactgroup
+                   "moncg"   : mon_contactgroup,
+                   "nwdt"    : network_device_type,
+                   "nwt"     : network_type
                    }.get(object_type, None)
         if not mod_obj:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
@@ -212,11 +214,21 @@ def create_config(request):
 def delete_config(request):
     _post = request.POST
     val_dict = dict([(key.split("__", 1)[1], value) for key, value in _post.iteritems() if key.count("__") > 0])
-    del_pk = int(val_dict.keys()[0].split("__")[0])
-    request.log("deleting config %d" % (del_pk))
-    config.objects.get(Q(pk=del_pk)).delete()
+    del_obj = config.objects.get(Q(pk=int(val_dict.keys()[0].split("__")[0])))
+    delete_object(request, del_obj)
     return request.xml_response.create_response()
 
+def delete_object(request, del_obj):
+    num_ref = get_related_models(del_obj)
+    if num_ref:
+        request.log("cannot delete %s '%s': %s" % (
+            del_obj._meta.object_name,
+            unicode(del_obj),
+            logging_tools.get_plural("reference", num_ref)), logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        del_obj.delete()
+        request.log("deleted %s" % (del_obj._meta.object_name), xml=True)
+    
 @login_required
 @init_logging
 def create_var(request):
@@ -255,7 +267,8 @@ def delete_var(request):
                "bool" : config_bool,
                "blob" : config_blob}[var_type[3:]]
     request.log("remove config_%s with pk %s" % (var_type[3:], var_pk))
-    del_obj.objects.get(Q(pk=var_pk)).delete()
+    del_obj = del_obj.objects.get(Q(pk=var_pk))
+    delete_object(request, del_obj)
     return request.xml_response.create_response()
 
 @login_required
@@ -282,8 +295,8 @@ def delete_script(request):
     _post = request.POST
     val_dict = dict([(key.split("__", 1)[1], value) for key, value in _post.iteritems() if key.count("__") > 0])
     del_cs = int(val_dict.keys()[0].split("__")[2])
-    request.log("deleting config_script %d" % (del_cs))
-    config_script.objects.get(Q(pk=del_cs)).delete()
+    del_cs = config_script.objects.get(Q(pk=del_cs))
+    delete_object(request, del_cs)
     return request.xml_response.create_response()
 
 @login_required

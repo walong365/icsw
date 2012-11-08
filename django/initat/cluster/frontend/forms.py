@@ -163,30 +163,6 @@ class network_form(django.forms.ModelForm):
     class Meta:
         model = network
 
-class network_type_form(django.forms.ModelForm):
-    identifier = CharField(required=True)
-    description = CharField(required=True)
-    def can_be_deleted(self):
-        if self.instance.pk:
-            return False if self.instance.network_set.all().count() else True
-        else:
-            # new network, can never be deleted
-            return False
-    class Meta:
-        model = network_type
-
-class network_device_type_form(django.forms.ModelForm):
-    identifier = CharField(required=True)
-    description = CharField(required=True)
-    def can_be_deleted(self):
-        if self.instance.pk:
-            return False if (self.instance.network_set.all().count() or self.instance.netdevice_set.all().count()) else True
-        else:
-            # new network, can never be deleted
-            return False
-    class Meta:
-        model = network_device_type
-        
 class device_location_form(django.forms.ModelForm):
     def can_be_deleted(self):
         if self.instance.pk:

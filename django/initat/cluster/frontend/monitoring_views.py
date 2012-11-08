@@ -9,7 +9,7 @@ from initat.cluster.frontend.forms import config_type_form
 from initat.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, mon_period, mon_contact, user, \
-     mon_contactgroup
+     mon_contactgroup, get_related_models, network_type, network_device_type
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -133,10 +133,18 @@ def delete_object(request, *args, **kwargs):
     del_pk = int(key_pf.split("__")[1])
     request.log("removing item with pk %d" % (del_pk))
     try:
-        del_obj_class.objects.get(Q(pk=del_pk)).delete()
+        del_obj = del_obj_class.objects.get(Q(pk=del_pk))
     except:
-        request.log("cannot delete: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR, xml=True)
+        request.log("object not found for deletion: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
-        request.log("deleted entry", xml=True)
+        num_ref = get_related_models(del_obj)
+        if num_ref:
+            request.log("cannot delete %s '%s': %s" % (
+                del_obj._meta.object_name,
+                unicode(del_obj),
+                logging_tools.get_plural("reference", num_ref)), logging_tools.LOG_LEVEL_ERROR, xml=True)
+        else:
+            del_obj.delete()
+            request.log("deleted %s" % (del_obj._meta.object_name), xml=True)
     return request.xml_response.create_response()
     
