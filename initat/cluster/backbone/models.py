@@ -1183,6 +1183,15 @@ class network_device_type(models.Model):
     description = models.CharField(max_length=192)
     mac_bytes = models.PositiveIntegerField(default=6)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.network_device_type(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="nwdt__%d" % (self.pk),
+            identifier=self.identifier,
+            description=self.description,
+            mac_bytes="%d" % (self.mac_bytes)
+        )
     class Meta:
         db_table = u'network_device_type'
     def __unicode__(self):
@@ -1190,6 +1199,20 @@ class network_device_type(models.Model):
             self.identifier,
             self.description,
             self.mac_bytes)
+
+@receiver(signals.pre_save, sender=network_device_type)
+def network_device_type_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not(cur_inst.identifier.strip()):
+            raise ValidationError("identifer must not be empty")
+        try:
+            cur_mb = int(cur_inst.mac_bytes)
+        except:
+            raise ValidationError("mac_bytes must be an integer")
+        if cur_mb < 6 or cur_mb > 24:
+            raise ValidationError("mac_bytes must be in range [6, 24]")
+        cur_inst.mac_bytes = cur_mb
     
 class network_network_device_type(models.Model):
     idx = models.AutoField(db_column="network_network_device_type_idx", primary_key=True)
@@ -1209,11 +1232,25 @@ class network_type(models.Model):
                                            ("l", "local")))
     description = models.CharField(max_length=192)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.network_type(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="nwt__%d" % (self.pk),
+            identifier=self.identifier,
+            description=self.description)
     class Meta:
         db_table = u'network_type'
     def __unicode__(self):
         return u"%s (%s)" % (self.description,
                              self.identifier)
+
+@receiver(signals.pre_save, sender=network_type)
+def network_type_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not(cur_inst.identifier.strip()):
+            raise ValidationError("identifer must not be empty")
 
 class config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
@@ -2755,3 +2792,9 @@ def config_script_pre_save(sender, **kwargs):
         except:
             raise ValidationError("priority must be an integer")
             
+def get_related_models(in_obj):
+    used_objs = 0
+    for rel_obj in in_obj._meta.get_all_related_objects():
+        rel_field_name = rel_obj.field.name
+        used_objs += rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})).count()
+    return used_objs
