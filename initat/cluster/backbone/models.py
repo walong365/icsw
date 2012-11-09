@@ -389,9 +389,29 @@ class device_class(models.Model):
     classname = models.CharField(max_length=192, blank=False, unique=True)
     priority = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.device_class(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="dc__%d" % (self.pk),
+            classname=unicode(self.classname),
+            priority="%d" % (self.priority)
+        )
+    def __unicode__(self):
+        return u"%s (%d)" % (self.classname, self.priority)
     class Meta:
         db_table = u'device_class'
 
+@receiver(signals.pre_save, sender=device_class)
+def device_class_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        try:
+            new_pri = int(cur_inst.priority)
+        except:
+            raise ValidationError("Priority must be an integer")
+        cur_inst.priority = new_pri
+        
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)
     device = models.ForeignKey("device")
@@ -480,6 +500,15 @@ class device_location(models.Model):
     idx = models.AutoField(db_column="device_location_idx", primary_key=True)
     location = models.CharField(max_length=192, blank=False, unique=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.device_location(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="dl__%d" % (self.pk),
+            location=unicode(self.location)
+        )
+    def __unicode__(self):
+        return self.location
     class Meta:
         db_table = u'device_location'
 
@@ -1152,10 +1181,21 @@ class network(models.Model):
             unicode(self),
             pk="%d" % (self.pk),
             key="nw_%d" % (self.pk),
+            penalty="%d" % (self.penalty),
             identifier=self.identifier,
+            network_type="%d" % (self.network_type_id),
+            master_network="%d" % (self.master_network_id or 0),
             name=self.name,
+            postfix=self.postfix or "",
             network=self.network,
-            netmask=self.netmask)
+            netmask=self.netmask,
+            broadcast=self.broadcast,
+            gateway=self.gateway,
+            short_names="1" if self.short_names else "0",
+            write_bind_config="1" if self.write_bind_config else "0",
+            write_other_network_config="1" if self.write_other_network_config else "0",
+            network_device_type="::".join(["%d" % (cur_pk) for cur_pk in self.network_device_type.all().values_list("pk", flat=True)]),
+       )
     class Meta:
         db_table = u'network'
     def get_full_postfix(self):
@@ -1176,6 +1216,64 @@ class network(models.Model):
             self.network,
             self.network_type.identifier
         )
+
+@receiver(signals.pre_save, sender=network)
+def network_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        master_change = getattr(cur_inst, "master_change", None)
+        print "***", master_change
+        try:
+            new_pen = int(cur_inst.penalty)
+        except:
+            raise ValidationError("penalty must be an integer")
+        if new_pen < -100 or new_pen > 100:
+            raise ValidationError("penalty must be in [-100, 100]")
+        cur_inst.penalty = new_pen
+        nw_type = cur_inst.network_type.identifier
+        if nw_type != "s" and cur_inst.master_network_id:
+            raise ValidationError("only slave networks can have a master")
+        if nw_type == "s" and cur_inst.master_network_id:
+            if cur_inst.master_network.network_type.identifier != "p":
+                raise ValidationError("master network must be a production network")
+        # validate IP
+        ip_dict = dict([(key, None) for key in ["network", "netmask", "broadcast", "gateway"]])
+        for key in ip_dict.keys():
+            try:
+                ip_dict[key] = ipvx_tools.ipv4(getattr(cur_inst, key))
+            except:
+                raise ValidationError("%s is not an IPv4 address" % (key))
+        # missing: validation code from forms.py, FIXME
+        #if in_data["identifier"]:
+            ## full validate only if identifier is set
+            #if all([key in in_data for key in ["network", "netmask", "broadcast", "gateway"]]): 
+                #network, netmask, broadcast, gateway = (
+                    #ipvx_tools.ipv4(in_data["network"]),
+                    #ipvx_tools.ipv4(in_data["netmask"]),
+                    #ipvx_tools.ipv4(in_data["broadcast"]),
+                    #ipvx_tools.ipv4(in_data["gateway"]))
+                #if network & netmask != network:
+                    #raise ValidationError("netmask / network error")
+                #if network | (~netmask) != broadcast:
+                    #raise ValidationError("broadcast error")
+                #if in_data["gateway"] != "0.0.0.0" and gateway & netmask != network:
+                    #raise ValidationError("gateway error")
+            #if all([key in in_data for key in ["start_range", "end_range", "network", "netmask"]]):
+                #network, netmask, s_range, e_range = (
+                    #ipvx_tools.ipv4(in_data["network"]),
+                    #ipvx_tools.ipv4(in_data["netmask"]),
+                    #ipvx_tools.ipv4(in_data["start_range"]),
+                    #ipvx_tools.ipv4(in_data["end_range"]))
+                #if in_data["start_range"] != "0.0.0.0":
+                    #if s_range & network != network:
+                        #raise ValidationError("start_range not in network")
+                    #if e_range < s_range:
+                        #raise ValidationError("start_range > end_range")
+                #if in_data["end_range"] != "0.0.0.0":
+                    #if e_range & network != network:
+                        #raise ValidationError("end_range not in network")
+                    #if e_range < s_range:
+                        #raise ValidationError("start_range > end_range")
 
 class network_device_type(models.Model):
     idx = models.AutoField(db_column="network_device_type_idx", primary_key=True)
@@ -1572,10 +1670,10 @@ class mon_service_templ(models.Model):
             name=self.name,
             volatile="1" if self.volatile else "0",
             max_attempts="%d" % (self.max_attempts),
-            nsc_period_id="%d" % (self.nsc_period_id or 0),
+            nsc_period="%d" % (self.nsc_period_id or 0),
             check_interval="%d" % (self.check_interval),
             retry_interval="%d" % (self.retry_interval),
-            nsn_period_id="%d" % (self.nsn_period_id or 0),
+            nsn_period="%d" % (self.nsn_period_id or 0),
             ninterval="%d" % (self.ninterval),
             nrecovery="%d" % (1 if self.nrecovery else 0),
             ncritical="%d" % (1 if self.ncritical else 0),
