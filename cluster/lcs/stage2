@@ -393,7 +393,7 @@ function copy_config() {
     fi
     if [ -f /conf/config_delete_${1} ] ; then
         echo -e "Deleting files for config $1 from server"
-        while read recursive file ; do
+        while read num recursive file ; do
             echo -e "Deleting $file"
             if [ "${recursive}" == "1" ] ; then
                 rm -rf /$basedir/$file
@@ -418,7 +418,7 @@ function copy_config() {
     fi
     if [ -f /conf/config_links_${1} ] ; then
         echo -e "Linking files config $1 from server"
-        while read dest src ; do
+        while read num dest src ; do
             echo -e "Linking from $src to $dest"
             chroot /$basedir [ -L $src ] && rm -f /${basedir}/$src
             chroot /$basedir /bin/ln -sf $dest $src
@@ -654,16 +654,16 @@ function get_conf_str() {
     while true ; do 
         ret=`tell_mother_zmq -i $ipaddr -m $motherserver -p 8005 $@ 2>&1`  && {
             state=`echo $ret| cut -d " " -f 1`
-            [ "$state" = "ok" ] && break
+            [ "$state" = "ok" ] && { echo >&2 -e "${GREEN}got $ret ($state) as answer for $@ ${OFF}" ; break ; }
         } || {
             state="error" ;
         }
-        if [ "$state" = "wait" ] ; then
+        if [ "$state" = "wait" -o "$state" = "warn" ] ; then
             echo >&2 -e "${YELLOW}warning (server $motherserver, port 8005, command $@, $ret), will sleep for 10 seconds${OFF}"
         else
             echo >&2 -e "${RED}error (server $motherserver, port 8005, command $@, $ret), will sleep for 10 seconds${OFF}"
         fi
-        num_retries=$(($num_retries + 1))
+        num_retries=$(( $num_retries + 1))
         for i in $(seq 10) ; do 
             sleep 1
             echo >&2 -n "."
