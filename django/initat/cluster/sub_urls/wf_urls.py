@@ -28,6 +28,13 @@ rms_patterns = patterns(
     url(r"get_wait_xml" , "rms_views.get_wait_jobs_xml", name="get_wait_jobs_xml"),
 )
 
+base_patterns = patterns(
+    "initat.cluster.setup",
+    url("^change_xml_entry$"                  , "base_views.change_xml_entry", name="change_xml_entry"  ),
+    url("^xml/create_object/(?P<obj_name>.*)$", "base_views.create_object"   , name="create_object"),
+    url("^xml/delete_object/(?P<obj_name>.*)$", "base_views.delete_object"   , name="delete_object"),
+)
+
 setup_patterns = patterns(
     "initat.cluster.setup",
     url(r"p_overview"         , "setup_views.partition_overview"        , name="partition_overview"),
@@ -41,15 +48,15 @@ setup_patterns = patterns(
     url(r"xml/get_images"     , "setup_views.get_all_images"            , name="get_all_images"),
     url(r"xml/scan_for_images", "setup_views.scan_for_images"           , name="scan_for_images"),
     url(r"xml/take_image"     , "setup_views.take_image"                , name="take_image"),
+    url(r"xml/show_devloccl"  , "setup_views.show_device_class_location", name="show_device_class_location"),
 )
 
 config_patterns = patterns(
     "initat.cluster.frontend",
-    url("^config_types$"     , "config_views.show_config_type_options", name="config_types"      ),
+    url("^config_types$"     , "config_views.show_config_types"       , name="show_config_types" ),
     url("^show_config$"      , "config_views.show_configs"            , name="show_configs"      ),
     url("^get_configs_xml$"  , "config_views.get_configs"             , name="get_configs"       ),
     url("^get_dev_confs_xml$", "config_views.get_device_configs"      , name="get_device_configs"),
-    url("^change_xml_entry$" , "config_views.change_xml_entry"        , name="change_xml_entry"  ),
     url("^create_config$"    , "config_views.create_config"           , name="create_config"     ),
     url("^delete_config$"    , "config_views.delete_config"           , name="delete_config"     ),
     url("^create_var$"       , "config_views.create_var"              , name="create_var"        ),
@@ -90,9 +97,8 @@ device_patterns = patterns(
 
 network_patterns = patterns(
     "initat.cluster.frontend",
-    url("^network$"           , "network_views.show_cluster_networks" , name="networks"             ),
+    url("^network$"           , "network_views.show_cluster_networks" , name="show_networks"        ),
     url("^netw_t_dt$"         , "network_views.show_network_d_types"  , name="show_network_d_types" ),
-    url("^xml/get_nw_types"   , "network_views.get_network_d_types"   , name="get_network_d_types"  ),
     url("^dev_network$"       , "network_views.device_network"        , name="network"              ),
     url("^get_network_tree$"  , "network_views.get_network_tree"      , name="get_network_tree"     ), 
     url("^create_netdevice$"  , "network_views.create_netdevice"      , name="create_netdevice"     ),
@@ -112,8 +118,6 @@ monitoring_patterns = patterns(
     url("^xml/get_config"    , "monitoring_views.get_config"       , name="get_config"),
     url("^create_command$"   , "monitoring_views.create_command"   , name="create_command"),
     url("^delete_command$"   , "monitoring_views.delete_command"   , name="delete_command"),
-    url("^xml/create_object/(?P<obj_name>.*)$", "monitoring_views.create_object", name="create_object"),
-    url("^xml/delete_object/(?P<obj_name>.*)$", "monitoring_views.delete_object", name="delete_object"),
 )
 
 main_patterns = patterns(
@@ -125,6 +129,7 @@ my_url_patterns = patterns(
     "",
     url(r"static/(?P<path>.*)$"        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
     url(r"^"          , include(transfer_patterns  , namespace="transfer")),
+    url(r"^base/"     , include(base_patterns      , namespace="base"    )),
     url(r"^session/"  , include(session_patterns   , namespace="session" )),
     url(r"^config/"   , include(config_patterns    , namespace="config"  )),
     url(r"^rms/"      , include(rms_patterns       , namespace="rms"     )),

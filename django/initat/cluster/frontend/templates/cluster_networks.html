@@ -6,67 +6,66 @@
 
 {% block content %}
 
-<form action="{% url network:networks %}" method=post >
-{{ network_formset.management_form }}
-<table>
-    <tbody>
-    {% for cur_form in network_formset %}
-        {{ cur_form.idx }}
-        <tr><td colspan="3">{{ cur_form.non_field_errors }}</td></tr>
-        <tr>
-            <td rowspan="5">{{ cur_form.identifier.label }}{{ cur_form.identifier }}{{ cur_form.identifier.errors }}</td>
-            <td>
-                {{ cur_form.network_type.label }}{{ cur_form.network_type }}{{ cur_form.network_type.errors }}
-                {{ cur_form.master_network.label }}{{ cur_form.master_network }}{{ cur_form.master_network.errors }}
-                {{ cur_form.penalty.label }}{{ cur_form.penalty }}{{ cur_form.penalty.errors }}
-                {{ cur_form.gw_pri.label }}{{ cur_form.gw_pri }}{{ cur_form.gw_pri.errors }}
-            </td>
-            <td rowspan="5">{% if cur_form.can_be_deleted %}del:{{ cur_form.DELETE }}{% endif %}</td>
-        </tr>
-        <tr>
-            <td>
-                {{ cur_form.postfix.label }}{{ cur_form.postfix }}{{ cur_form.postfix.errors }}
-                {{ cur_form.name.label }}{{ cur_form.name }}{{ cur_form.name.errors }}
-                {{ cur_form.info.label }}{{ cur_form.info }}{{ cur_form.info.errors }}
-                {{ cur_form.short_names.label }}{{ cur_form.short_names }}{{ cur_form.short_names.errors }}
-                {{ cur_form.write_bind_config.label }}{{ cur_form.write_bind_config }}
-                {{ cur_form.write_other_network_config.label }}{{ cur_form.write_other_network_config }}
-            </td>
-        </tr>
-        <tr>
-            <td>
-                {{ cur_form.network.label }}{{ cur_form.network }}{{ cur_form.network.errors }}
-                {{ cur_form.netmask.label }}{{ cur_form.netmask }}{{ cur_form.netmask.errors }}
-                {{ cur_form.broadcast.label }}{{ cur_form.broadcast }}{{ cur_form.broadcast.errors }}
-                {{ cur_form.gateway.label }}{{ cur_form.gateway }}{{ cur_form.gateway.errors }}
-            </td>
-        </tr>
-        <tr>
-            <td>
-                {{ cur_form.start_range.label }}{{ cur_form.start_range }}{{ cur_form.start_range.errors }} - {{ cur_form.end_range.label }}{{ cur_form.end_range }}{{ cur_form.end_range.errors }}
-            </td>
-        </tr>
-        <tr>
-            <td>
-                {% for nd_form in cur_form.network_device_type %}
-                    {{ nd_form }}
-                {% endfor %}
-                {{ cur_form.network_device_type.errors }}
-            </td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
-<input type="submit" action="submit"/>
+<h1>Networks</h1>
 
-</form>
+<div id="nw_tables"></div>
 
 <script type="text/javascript">
 
-function add_cn_handlers() {
+// nwt XML
+NETWORK_XML = undefined;
+
+var master_array = {
+    "nw" : new draw_setup("Network", "nw", "network",
+        "{% url base:create_object 'network' %}",
+        "{% url base:delete_object 'network' %}",
+        [
+            new draw_info("identifier"),
+            new draw_info("penalty", {number : 1, min : -100, max : 100, default : 1}),
+            new draw_info("postfix", {default : "", size : 3}),
+            new draw_info("name"),
+            new draw_info("network_type", {select_source : "network_types network_type"} ),
+            new draw_info("master_network", {select_source : "networks network", add_null_entry : "not set"} ),
+            new draw_info("short_names", {boolean : 1, label : "SNames / Named / Other", span : 3}),
+            new draw_info("write_bind_config", {boolean : 1}),
+            new draw_info("write_other_network_config", {boolean : 1}),
+            new draw_info("network_device_type", {select_source : "network_device_types network_device_type", manytomany : 1, newline : 1, cspan : 2, show_label : true, label : "Device type :"}),
+            new draw_info("network", {default : "192.168.1.0", size : 16, cspan : 2, label : "NW", show_label : true, group : "network"}),
+            new draw_info("netmask", {default : "255.255.255.0", size : 16, label : "NM", show_label : true, group : "network"}),
+            new draw_info("broadcast", {default : "192.168.1.255", size : 16, label : "BC", show_label : true, group : "network"}),
+            new draw_info("gateway", {default : "192.168.1.1", size : 16, cspan : 2, label : "GW", show_label : true, group : "network"})
+        ],
+        {"lock_div" : "nw_tables"})
+};   
+
+function load_networks() {
+    $.ajax({
+        url     : "{% url network:show_networks %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                NETWORK_XML = $(xml).find("value[name='response']");
+                init_xml_change(NETWORK_XML);
+                draw_tables();
+            }
+        }
+    });
+}
+
+function draw_tables() {
+    var t_div = $("div#nw_tables");
+    t_div.children().remove();
+    for (var key in master_array) {
+        t_div.append(master_array[key].draw_table());
+    };
 };
 
-$(document).ready(add_cn_handlers);
+function add_config_handlers() {
+    load_networks();
+};
+
+$(document).ready(add_config_handlers);
 
 </script>
+
 {% endblock %}

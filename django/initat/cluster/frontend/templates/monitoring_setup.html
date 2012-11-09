@@ -16,72 +16,78 @@
 // monitoring XML
 MON = undefined;
 
-var draw_array = {
-    "monper" : [
-        new draw_info("name"), 
-        new draw_info("alias"),
-        new draw_info("sun_range", {label : "Sun", size : 14, default : "00:00-24:00"}),
-        new draw_info("mon_range", {label : "Mon", size : 14, default : "00:00-24:00"}),
-        new draw_info("tue_range", {label : "Tue", size : 14, default : "00:00-24:00"}),
-        new draw_info("wed_range", {label : "Wed", size : 14, default : "00:00-24:00"}),
-        new draw_info("thu_range", {label : "Thu", size : 14, default : "00:00-24:00"}),
-        new draw_info("fri_range", {label : "Fri", size : 14, default : "00:00-24:00"}),
-        new draw_info("sat_range", {label : "Sat", size : 14, default : "00:00-24:00"})
-    ],
-    "moncon" : [
-        new draw_info("user", {select_source : "users user"}),
-        new draw_info("snperiod", {select_source : "mon_periods mon_period", label : "Service Notify"}),
-        new draw_info("snrecovery", {boolean : 1, label : "Recov / Crit / Warn / Unknown", span : 4}),
-        new draw_info("sncritical", {boolean : 1}),
-        new draw_info("snwarning", {boolean : 1}),
-        new draw_info("snunknown", {boolean : 1}),
-        new draw_info("hnperiod", {select_source : "mon_periods mon_period", label : "Host Notify"}),
-        new draw_info("hnrecovery", {boolean : 1, label : "Recov / Down / Unreach", span : 3}),
-        new draw_info("hndown", {boolean : 1}),
-        new draw_info("hnunreachable", {boolean : 1})
-    ],
-    "monst" : [
-        new draw_info("name"),
-        new draw_info("volatile", {boolean : 1}),
-        new draw_info("nsc_period", {select_source : "mon_periods mon_period", label : "Check period"}),
-        new draw_info("max_attempts", {min : 1, max : 5, number : 1, default : 1, label : "max attempts"}),
-        new draw_info("check_interval", {min : 1, max : 60, number : 1, default : 5, label : "Check IV"}),
-        new draw_info("retry_interval", {min : 1, max : 60, number : 1, default : 10, label : "Retry IV"}),
-        new draw_info("nsn_period", {select_source : "mon_periods mon_period", label : "Notify period"}),
-        new draw_info("ninterval", {min : 0, max: 60, number : 1, default : 5, label : "Notif IV"}),
-        new draw_info("nrecovery", {boolean : 1, label : "Recov / Crit / Warn / Unknown", span : 4}),
-        new draw_info("ncritical", {boolean : 1}),
-        new draw_info("nwarning", {boolean : 1}),
-        new draw_info("nunknown", {boolean : 1}),
-    ],
-    "moncg" : [
-        new draw_info("name"),
-        new draw_info("alias"),
-        new draw_info("members", {select_source : "mon_contacts mon_contact", label : "Members", manytomany : 1}),
-        new draw_info("device_groups", {select_source : "device_groups device_group", label : "Device Group", manytomany : 1}),
-        new draw_info("service_templates", {select_source : "mon_service_templs mon_service_templ", label : "ServiceTemplates", manytomany : 1})
-    ]
-};
-
 var master_array = {
     "monper" : new draw_setup("MonPeriod", "monper", "mon_period",
-        "{% url mon:create_object 'mon_period' %}",
-        "{% url mon:delete_object 'mon_period' %}"),
+        "{% url base:create_object 'mon_period' %}",
+        "{% url base:delete_object 'mon_period' %}",
+        [
+            new draw_info("name"), 
+            new draw_info("alias"),
+            new draw_info("sun_range", {label : "Sun", size : 14, default : "00:00-24:00"}),
+            new draw_info("mon_range", {label : "Mon", size : 14, default : "00:00-24:00"}),
+            new draw_info("tue_range", {label : "Tue", size : 14, default : "00:00-24:00"}),
+            new draw_info("wed_range", {label : "Wed", size : 14, default : "00:00-24:00"}),
+            new draw_info("thu_range", {label : "Thu", size : 14, default : "00:00-24:00"}),
+            new draw_info("fri_range", {label : "Fri", size : 14, default : "00:00-24:00"}),
+            new draw_info("sat_range", {label : "Sat", size : 14, default : "00:00-24:00"})
+        ], {
+            lock_div : "mon_tables"
+        }
+    ),
     "moncon" : new draw_setup("Contact", "moncon", "mon_contact",
-        "{% url mon:create_object 'mon_contact' %}",
-        "{% url mon:delete_object 'mon_contact' %}", {
-            "required_xml" : ["monper", "user"]
-        }),
+        "{% url base:create_object 'mon_contact' %}",
+        "{% url base:delete_object 'mon_contact' %}",
+        [
+            new draw_info("user", {select_source : "users user"}),
+            new draw_info("snperiod", {select_source : "mon_periods mon_period", label : "Service Notify"}),
+            new draw_info("snrecovery", {boolean : 1, label : "Recov / Crit / Warn / Unknown", span : 4}),
+            new draw_info("sncritical", {boolean : 1}),
+            new draw_info("snwarning", {boolean : 1}),
+            new draw_info("snunknown", {boolean : 1}),
+            new draw_info("hnperiod", {select_source : "mon_periods mon_period", label : "Host Notify"}),
+            new draw_info("hnrecovery", {boolean : 1, label : "Recov / Down / Unreach", span : 3}),
+            new draw_info("hndown", {boolean : 1}),
+            new draw_info("hnunreachable", {boolean : 1})
+        ], {
+            "required_xml" : ["monper", "user"],
+            "lock_div"     : "mon_tables"
+        }
+    ),
     "monst" : new draw_setup("Service Template", "monst", "mon_service_templ",
-        "{% url mon:create_object 'mon_service_templ' %}",
-        "{% url mon:delete_object 'mon_service_templ' %}", {
-            "required_xml" : ["monper"]
-        }),
+        "{% url base:create_object 'mon_service_templ' %}",
+        "{% url base:delete_object 'mon_service_templ' %}",
+        [
+            new draw_info("name"),
+            new draw_info("volatile", {boolean : 1}),
+            new draw_info("nsc_period", {select_source : "mon_periods mon_period", label : "Check period"}),
+            new draw_info("max_attempts", {min : 1, max : 5, number : 1, default : 1, label : "max attempts"}),
+            new draw_info("check_interval", {min : 1, max : 60, number : 1, default : 5, label : "Check IV"}),
+            new draw_info("retry_interval", {min : 1, max : 60, number : 1, default : 10, label : "Retry IV"}),
+            new draw_info("nsn_period", {select_source : "mon_periods mon_period", label : "Notify period"}),
+            new draw_info("ninterval", {min : 0, max: 60, number : 1, default : 5, label : "Notif IV"}),
+            new draw_info("nrecovery", {boolean : 1, label : "Recov / Crit / Warn / Unknown", span : 4}),
+            new draw_info("ncritical", {boolean : 1}),
+            new draw_info("nwarning", {boolean : 1}),
+            new draw_info("nunknown", {boolean : 1}),
+        ], {
+            "required_xml" : ["monper"],
+            "lock_div"     : "mon_tables"
+        }
+    ),
     "moncg" : new draw_setup("Contact Group", "moncg", "mon_contactgroup",
-        "{% url mon:create_object 'mon_contactgroup' %}",
-        "{% url mon:delete_object 'mon_contactgroup' %}", {
-            "required_xml" : ["monper", "moncon", "monst"]
-        })
+        "{% url base:create_object 'mon_contactgroup' %}",
+        "{% url base:delete_object 'mon_contactgroup' %}",
+        [
+            new draw_info("name"),
+            new draw_info("alias"),
+            new draw_info("members", {select_source : "mon_contacts mon_contact", label : "Members", manytomany : 1}),
+            new draw_info("device_groups", {select_source : "device_groups device_group", label : "Device Group",   manytomany : 1}),
+            new draw_info("service_templates", {select_source : "mon_service_templs mon_service_templ", label : "ServiceTemplates", manytomany : 1})
+        ], {
+            "required_xml" : ["monper", "moncon", "monst"],
+            "lock_div"     : "mon_tables"
+        }
+    )
 };
 
 function draw_tables() {

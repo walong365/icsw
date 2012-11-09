@@ -15,30 +15,29 @@
 // nwt XML
 NETWORK_TYPES = undefined;
 
-var draw_array = {
-    "nwt" : [
-        new draw_info("identifier", {select_source : "network_type_choices network_type_choice"} ), 
-        new draw_info("description")
-    ],
-    "nwdt" : [
-        new draw_info("identifier"),
-        new draw_info("description"),
-        new draw_info("mac_bytes", {label : "MAC size", min : 6, max : 18, number : 1, default : 6})
-    ]
-}
-
 var master_array = {
     "nwt" : new draw_setup("NetworkType", "nwt", "network_type",
-        "{% url mon:create_object 'network_type' %}",
-        "{% url mon:delete_object 'network_type' %}"),
+        "{% url base:create_object 'network_type' %}",
+        "{% url base:delete_object 'network_type' %}",
+        [
+            new draw_info("identifier", {select_source : "network_type_choices network_type_choice"} ), 
+            new draw_info("description")
+        ],
+        {"lock_div" : "nwt_tables"}),
     "nwdt" : new draw_setup("NetworkDevicetype", "nwdt", "network_device_type",
-        "{% url mon:create_object 'network_device_type' %}",
-        "{% url mon:delete_object 'network_device_type' %}"),
+        "{% url base:create_object 'network_device_type' %}",
+        "{% url base:delete_object 'network_device_type' %}",
+        [
+            new draw_info("identifier"),
+            new draw_info("description"),
+            new draw_info("mac_bytes", {label : "MAC size", min : 6, max : 20, number : 1, default : 6})
+        ],
+        {"lock_div" : "nwt_tables"}),
 };   
 
 function load_nwts() {
     $.ajax({
-        url     : "{% url network:get_network_d_types %}",
+        url     : "{% url network:show_network_d_types %}",
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {

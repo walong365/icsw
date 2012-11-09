@@ -11,15 +11,21 @@ $.ajaxSetup({
 });
 
 
-function draw_setup(name, postfix, xml_name, create_url, delete_url, kwargs) {
+function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array, kwargs) {
     this.name = name;
     this.postfix = postfix;
     this.xml_name = xml_name;
-    this.xml_name_plural = this.xml_name + "s";
+    // plural, plural(s) = ses and not ss (!)
+    this.xml_name_plural = this.xml_name.match(/s$/) ? this.xml_name + "es" : this.xml_name + "s";
     this.create_url = create_url;
     this.delete_url = delete_url;
     this.required_xml = kwargs && (kwargs.required_xml || []) || [];
+    this.lock_div = kwargs && (kwargs.lock_div || "") || "";
     this.drawn = false;
+    this.draw_array = draw_array;
+    for (var idx=0; idx < draw_array.length ; idx++) {
+        draw_array[idx].draw_setup = this;
+    };
     this.table_div = undefined;
     function draw_table() {
         if (this.table_div) {
@@ -55,8 +61,8 @@ function draw_setup(name, postfix, xml_name, create_url, delete_url, kwargs) {
                     var cur_tr = $(this);
                     cur_tr.find("select").each(function() {
                         var cur_sel = $(this);
-                        for (idx=0 ; idx < draw_array[cur_ds.postfix].length; idx++) {
-                            var cur_di = draw_array[cur_ds.postfix][idx];
+                        for (idx=0 ; idx < cur_ds.draw_array.length; idx++) {
+                            var cur_di = cur_ds.draw_array[idx];
                             var cur_re = new RegExp(cur_di.name + "$");
                             if (cur_sel.attr("id").match(cur_re)) {
                                 if (cur_di.select_source) {
@@ -94,7 +100,8 @@ function draw_info(name, kwargs) {
     this.name = name;
     this.label = kwargs && (kwargs.label || name.toTitle()) || name.toTitle();
     this.span = kwargs && (kwargs.span || 1) || 1;
-    var attr_list = ["size", "default", "select_source", "boolean", "min", "max", "number", "manytomany"];
+    var attr_list = ["size", "default", "select_source", "boolean", "min", "max",
+        "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group"];
     for (idx=0 ; idx < attr_list.length; idx ++) {
         var attr_name = attr_list[idx];
         if (kwargs && kwargs.hasOwnProperty(attr_name)) {
@@ -105,14 +112,35 @@ function draw_info(name, kwargs) {
     };
     this.size = kwargs && kwargs.size || undefined;
     function get_kwargs() {
-        var attr_list = ["size", "select_source", "boolean", "min", "max", "number", "manytomany"];
+        var attr_list = ["size", "select_source", "boolean", "min", "max",
+            "number", "manytomany", "add_null_entry"];
         var kwargs = {new_default : this.default};
         for (idx=0 ; idx < attr_list.length; idx ++) {
             var attr_name = attr_list[idx];
             kwargs[attr_name] = this[attr_name];
         };
+        if (this.show_label) {
+            kwargs["label"] = this["label"];
+        };
+        if (this.group) {
+            kwargs.modify_data_dict = this["modify_data_dict"];
+            kwargs.modify_data_dict_opts = this;
+        };
+        
         return kwargs;
     };
+    function modify_data_dict(in_dict, cur_di) {
+        var other_list = [];
+        for (idx = 0; idx < cur_di.draw_setup.draw_array.length; idx++) {
+            var other_di = cur_di.draw_setup.draw_array[idx];
+            if (other_di.group == cur_di.group && other_di.name != cur_di.name) {
+                other_list.push(other_di.element.attr("id"));
+                in_dict[other_di.element.attr("id")] = get_value(other_di.element);
+            };
+        };
+        in_dict["other_list"] = other_list.join("::");
+    };
+    this.modify_data_dict = modify_data_dict;
     this.get_kwargs = get_kwargs;
 };
 
@@ -125,10 +153,11 @@ function draw_line(cur_ds, xml_el) {
         var head_line = $("<tr>").attr({
             "class" : "ui-widget-header ui-widget"
         });
-        var cur_array = draw_array[cur_ds.postfix];
+        var cur_array = cur_ds.draw_array;
         var cur_span = 1;
         for (var idx=0; idx < cur_array.length ; idx++) {
             var cur_di = cur_array[idx];
+            if (cur_di.newline) break;
             cur_span--;
             if (! cur_span) {
                 var new_td = $("<th>").attr({"colspan" : cur_di.span}).text(cur_di.label);
@@ -146,14 +175,26 @@ function draw_line(cur_ds, xml_el) {
         "id"    : line_prefix,
         "class" : "ui-widget"
     });
-    var cur_array = draw_array[cur_ds.postfix];
+    dummy_div.append(n_line);
+    var cur_array = cur_ds.draw_array;
+    var cur_line = n_line;
     for (var idx=0; idx < cur_array.length ; idx++) {
         var cur_di = cur_array[idx];
+        if (cur_di.newline) {
+            var cur_line = $("<tr>").attr({
+                "id"    : line_prefix,
+                "class" : "ui-widget"
+            });
+            dummy_div.append(cur_line);
+        };
         var new_td = $("<td>");
-        n_line.append(new_td);
-        new_td.append(
-            create_input_el(xml_el, cur_di.name, line_prefix, cur_di.get_kwargs())
-        );
+        if (cur_di.cspan) {
+            new_td.attr({"colspan" : cur_di.cspan});
+        };
+        cur_line.append(new_td);
+        var new_els = create_input_el(xml_el, cur_di.name, line_prefix, cur_di.get_kwargs());
+        cur_di.element = new_els.last();
+        new_td.append(new_els);
     };
     n_line.append(
         $("<td>").append($("<input>").attr({
@@ -162,7 +203,6 @@ function draw_line(cur_ds, xml_el) {
             "id"    : line_prefix
         }).bind("click", function(event) { create_delete_element(event, cur_ds); })
     ));
-    dummy_div.append(n_line);
     return dummy_div.children();
 };
 
@@ -194,7 +234,11 @@ function delete_line(cur_el) {
 function create_delete_element(event, cur_ds) {
     var cur_el = $(event.target);
     var el_id = cur_el.attr("id");
-    var lock_list = lock_elements($("div#mon_tables"));
+    if (cur_ds.lock_div) {
+        var lock_list = lock_elements($("div#" + cur_ds.lock_div));
+    } else {
+        var lock_list = [];
+    };
     if (el_id.match(/new$/)) {
         $.ajax({
             url  : cur_ds.create_url,
@@ -360,8 +404,7 @@ function replace_xml_element(xml) {
     });
 };
 
-function submit_change(cur_el, callback) {
-    var is_textarea = false;
+function get_value(cur_el) {
     if (cur_el.is(":checkbox")) {
         var el_value = cur_el.is(":checked") ? "1" : "0";
     } else if (cur_el.prop("tagName") == "TEXTAREA") {
@@ -376,17 +419,32 @@ function submit_change(cur_el, callback) {
     } else {
         var el_value = cur_el.attr("value");
     };
+    return el_value;
+};
+
+function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts) {
+    var is_textarea = false;
+    var el_value = get_value(cur_el);
+    var data_field = {
+        "id"       : cur_el.attr("id"),
+        "checkbox" : cur_el.is(":checkbox"),
+        "value"    : el_value
+    };
+    if (modify_data_dict !== undefined) {
+        modify_data_dict(data_field, modify_data_dict_opts);
+    };
     $.ajax({
-        url  : "{% url config:change_xml_entry %}",
-        data : {
-            "id"       : cur_el.attr("id"),
-            "checkbox" : cur_el.is(":checkbox"),
-            "value"    : el_value
-        },
+        url  : "{% url base:change_xml_entry %}",
+        data : data_field,
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 replace_xml_element($(xml));
-                if (callback != undefined && typeof callback == "function") callback(cur_el);
+                if (callback != undefined && typeof callback == "function") {
+                    callback(cur_el);
+                } else {
+                    // set values
+                    console.log(data_field["id"]);
+                };
             } else {
                 <!-- set back to previous value -->
                 if (is_textarea) {
@@ -470,11 +528,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
                 "id"    : id_prefix + "__" + attr_name
             });
             if (kwargs.manytomany) {
-                var temp_sel_val = xml_el === undefined ? [] : xml_el.attr(attr_name).split("::");
-                var sel_val = {};
-                for (idx=0; idx < temp_sel_val.length; idx++) {
-                    sel_val[temp_sel_val[idx]] = "";
-                };
+                var sel_val = xml_el === undefined ? [] : xml_el.attr(attr_name).split("::");
                 new_el.attr({
                     "multiple" : "multiple",
                     "size"     : 5
@@ -483,11 +537,14 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
                 var sel_val = xml_el === undefined ? "0" : xml_el.attr(attr_name);
                 new_el.attr("value", sel_val);
             };
+            if (kwargs.add_null_entry) {
+                new_el.append($("<option>").attr({"value" : "0"}).text(kwargs.add_null_entry));
+            };
             sel_source.each(function() {
                 var cur_ns = $(this);
                 var new_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text());
                 if (kwargs.manytomany) {
-                    if (cur_ns.attr("pk") in sel_val) new_opt.attr("selected", "selected");
+                    if (in_array(sel_val, cur_ns.attr("pk"))) new_opt.attr("selected", "selected");
                 } else {
                     if (cur_ns.attr("pk") == sel_val) new_opt.attr("selected", "selected");
                 };
@@ -499,7 +556,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
     };
     if (xml_el !== undefined) {
         new_el.bind("change", function(event) {
-            submit_change($(event.target), kwargs.callback);
+            submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.modify_data_dict_opts);
         })
     };
     return (dummy_div.append(new_el)).children();

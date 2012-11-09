@@ -6,31 +6,55 @@
 
 {% block content %}
 
-<form action="{% url config:config_types %}" method=post >
+<h1>Config types</h1>
 
-{{ config_type_formset.management_form }}
-<table>
-    <tbody>
-    {% for cur_form in config_type_formset %}
-        {{ cur_form.idx }}
-        <tr><td colspan="4">{{ cur_form.non_field_errors }}</td></tr>
-        <tr>
-            <td>
-                {{ cur_form.name.label }}{{ cur_form.name }}{{ cur_form.name.errors }}
-            </td>
-            <td>
-                {{ cur_form.identifier.label }}{{ cur_form.identifier }}{{ cur_form.identifier.errors }}
-            </td>
-            <td>
-                {{ cur_form.description.label }}{{ cur_form.description }}{{ cur_form.description.errors }}
-            </td>
-            <td>{% if cur_form.can_be_deleted %}del:{{ cur_form.DELETE }}{% endif %}</td>
-        </tr>
-    {% endfor %}
-    <tbody>
-</table>
+<div id="ct_tables"></div>
 
-<input type="submit" action="submit"/>
-</form>
+<script type="text/javascript">
+
+// config type location class XML
+CT_XML = undefined;
+
+var master_array = {
+    "ctype" : new draw_setup("Config Type", "ctype", "config_type",
+        "{% url base:create_object 'config_type' %}",
+        "{% url base:delete_object 'config_type' %}",
+        [
+            new draw_info("name"),
+            new draw_info("description")
+        ],
+        {lock_div : "ct_tables"}
+    )
+};   
+
+function load_cts() {
+    $.ajax({
+        url     : "{% url config:show_config_types %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                CT_XML = $(xml).find("value[name='response']");
+                init_xml_change(CT_XML);
+                draw_tables();
+            }
+        }
+    });
+}
+
+function draw_tables() {
+    var t_div = $("div#ct_tables");
+    t_div.children().remove();
+    for (var key in master_array) {
+        t_div.append(master_array[key].draw_table());
+    };
+};
+
+function add_config_handlers() {
+    load_cts();
+};
+
+$(document).ready(add_config_handlers);
+
+</script>
 
 {% endblock %}

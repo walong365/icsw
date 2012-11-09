@@ -14,11 +14,9 @@ from lxml import etree
 from lxml.builder import E
 from django.db.models import Q
 from django.core.exceptions import ValidationError
-from initat.cluster.frontend.forms import network_form
 from initat.cluster.backbone.models import device, network, net_ip, \
      network_type, network_device_type, netdevice, peer_information, \
      netdevice_speed, device_variable, device_group
-from django.forms.models import modelformset_factory
 import server_command
 import net_tools
 
@@ -32,53 +30,38 @@ def device_network(request):
 @init_logging
 @login_required
 def show_network_d_types(request):
-    return render_me(request, "cluster_network_types.html")()
-
-@init_logging
-@login_required
-def get_network_d_types(request):
-    xml_resp = E.response()
-    request.xml_response["response"] = xml_resp
-    xml_resp.append(E.network_types(
-        *[cur_nwt.get_xml() for cur_nwt in network_type.objects.all()]))
-    xml_resp.append(E.network_device_types(
-        *[cur_nwdt.get_xml() for cur_nwdt in network_device_type.objects.all()]))
-    xml_resp.append(E.network_type_choices(
-        *[E.network_type_choice(long_info, pk="%s" % (short_info)) for short_info, long_info in network_type._meta.get_field_by_name("identifier")[0].choices]))
-    return request.xml_response.create_response()
-
-##    network_type_formset = modelformset_factory(network_type, form=network_type_form, can_delete=True, extra=1)
-##    network_dt_formset   = modelformset_factory(network_device_type, form=network_device_type_form, can_delete=True, extra=1)
-##    if request.method == "POST" and "ds" not in request.POST:
-##        cur_type_fs = network_type_formset(request.POST, request.FILES, prefix="type")
-##        if cur_type_fs.is_valid():
-##            if cur_type_fs.save() or cur_type_fs.deleted_forms:
-##                cur_type_fs = network_type_formset(prefix="type")
-##        cur_dt_fs = network_dt_formset(request.POST, request.FILES, prefix="devtype")
-##        if cur_dt_fs.is_valid():
-##            if cur_dt_fs.save() or cur_dt_fs.deleted_forms:
-##                cur_dt_fs = network_dt_formset(prefix="devtype")
-##    else:
-##        cur_type_fs = network_type_formset(prefix="type")
-##        cur_dt_fs   = network_dt_formset(prefix="devtype")
-##    return render_me(request, "cluster_network_types.html", {
-##        "network_type_formset"    : cur_type_fs,
-##        "network_devtype_formset" : cur_dt_fs})()
+    if request.method == "GET":
+        return render_me(request, "cluster_network_types.html")()
+    else:
+        xml_resp = E.response()
+        request.xml_response["response"] = xml_resp
+        xml_resp.append(E.network_types(
+            *[cur_nwt.get_xml() for cur_nwt in network_type.objects.all()]))
+        xml_resp.append(E.network_device_types(
+            *[cur_nwdt.get_xml() for cur_nwdt in network_device_type.objects.all()]))
+        xml_resp.append(E.network_type_choices(
+            *[E.network_type_choice(long_info, pk="%s" % (short_info)) for short_info, long_info in network_type._meta.get_field_by_name("identifier")[0].choices]))
+        return request.xml_response.create_response()
 
 @init_logging
 @login_required
 def show_cluster_networks(request):
-    network_formset = modelformset_factory(network, form=network_form, can_delete=True, extra=1)
-    if request.method == "POST" and "ds" not in request.POST:
-        cur_fs = network_formset(request.POST, request.FILES)
-        if cur_fs.is_valid():
-            if cur_fs.save() or cur_fs.deleted_forms:
-                # re-read formsets after successfull save or delete
-                cur_fs = network_formset()
+    if request.method == "GET":
+        return render_me(request, "cluster_networks.html")()
     else:
-        cur_fs = network_formset()
-    return render_me(request, "cluster_networks.html", {
-        "network_formset" : cur_fs})()
+        xml_resp = E.response(
+            E.networks(
+                *[cur_nw.get_xml() for cur_nw in network.objects.all()]
+                ),
+            E.network_types(
+                *[cur_nwt.get_xml() for cur_nwt in network_type.objects.all()]
+                ),
+            E.network_device_types(
+                *[cur_nwdt.get_xml() for cur_nwdt in network_device_type.objects.all()]
+            )
+        )
+        request.xml_response["response"] = xml_resp
+        return request.xml_response.create_response()
 
 @login_required
 @init_logging

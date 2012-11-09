@@ -14,7 +14,7 @@ import pprint
 from lxml.builder import E
 import process_tools
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
-     partition_fs, image, architecture
+     partition_fs, image, architecture, device_class, device_location
 import server_command
 import net_tools
 
@@ -197,4 +197,18 @@ def take_image(request):
     else:
         request.log("image already exists", logging_tools.LOG_LEVEL_ERROR, xml=True)
     return request.xml_response.create_response()
+    
+@login_required
+@init_logging
+def show_device_class_location(request):
+    if request.method == "GET":
+        return render_me(request, "cluster_device_class_location.html")()
+    else:
+        xml_resp = E.response()
+        request.xml_response["response"] = xml_resp
+        xml_resp.append(E.device_classes(
+            *[cur_dcl.get_xml() for cur_dcl in device_class.objects.all()]))
+        xml_resp.append(E.device_locations(
+            *[cur_dcl.get_xml() for cur_dcl in device_location.objects.all()]))
+        return request.xml_response.create_response()
     
