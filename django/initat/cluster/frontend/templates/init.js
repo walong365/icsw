@@ -27,6 +27,7 @@ function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array,
         draw_array[idx].draw_setup = this;
     };
     this.table_div = undefined;
+    this.element_info = {};
     function draw_table() {
         if (this.table_div) {
             var table_div = this.table_div;
@@ -96,6 +97,7 @@ function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array,
     this.draw_table = draw_table;
 };
 
+// info how to render a given XML-attribute
 function draw_info(name, kwargs) {
     this.name = name;
     this.label = kwargs && (kwargs.label || name.toTitle()) || name.toTitle();
@@ -131,17 +133,30 @@ function draw_info(name, kwargs) {
     };
     function modify_data_dict(in_dict, cur_di) {
         var other_list = [];
+        var lock_list = ["#" + in_dict["id"]];
+        var xml_pk = in_dict["id"].split("__");
+        var xml_pk = xml_pk[xml_pk.length - 2];
+        var element_info = cur_di.draw_setup.element_info[xml_pk];
         for (idx = 0; idx < cur_di.draw_setup.draw_array.length; idx++) {
-            var other_di = cur_di.draw_setup.draw_array[idx];
-            if (other_di.group == cur_di.group && other_di.name != cur_di.name) {
-                other_list.push(other_di.element.attr("id"));
-                in_dict[other_di.element.attr("id")] = get_value(other_di.element);
+            var other_dr = element_info[idx];
+            if (other_dr.group == cur_di.group && other_dr.name != cur_di.name) {
+                other_list.push(other_dr.element.attr("id"));
+                lock_list.push("#" + other_dr.element.attr("id"));
+                in_dict[other_dr.element.attr("id")] = get_value(other_dr.element);
             };
         };
         in_dict["other_list"] = other_list.join("::");
+        in_dict["lock_list"] = lock_list;
     };
     this.modify_data_dict = modify_data_dict;
     this.get_kwargs = get_kwargs;
+};
+
+// storage node for rendered element
+function draw_result(name, group, element) {
+    this.name = name;
+    this.group = group;
+    this.element = element;
 };
 
 function draw_line(cur_ds, xml_el) {
@@ -175,6 +190,7 @@ function draw_line(cur_ds, xml_el) {
         "id"    : line_prefix,
         "class" : "ui-widget"
     });
+    var el_list = [];
     dummy_div.append(n_line);
     var cur_array = cur_ds.draw_array;
     var cur_line = n_line;
@@ -193,9 +209,10 @@ function draw_line(cur_ds, xml_el) {
         };
         cur_line.append(new_td);
         var new_els = create_input_el(xml_el, cur_di.name, line_prefix, cur_di.get_kwargs());
-        cur_di.element = new_els.last();
+        el_list.push(new draw_result(cur_di.name, cur_di.group, new_els.last()));
         new_td.append(new_els);
     };
+    cur_ds.element_info[xml_pk] = el_list;
     n_line.append(
         $("<td>").append($("<input>").attr({
             "type"  : "button",
@@ -422,6 +439,11 @@ function get_value(cur_el) {
     return el_value;
 };
 
+function set_value(el_id, el_value) {
+    var cur_el = $("#" + el_id);
+    cur_el.val(el_value);
+};
+
 function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts) {
     var is_textarea = false;
     var el_value = get_value(cur_el);
@@ -433,6 +455,11 @@ function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts
     if (modify_data_dict !== undefined) {
         modify_data_dict(data_field, modify_data_dict_opts);
     };
+    if (data_field.lock_list) {
+        lock_list = $(data_field.lock_list.join(", ")).attr("disabled", "disabled");
+    } else {
+        lock_list = undefined;
+    };
     $.ajax({
         url  : "{% url base:change_xml_entry %}",
         data : data_field,
@@ -443,7 +470,10 @@ function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts
                     callback(cur_el);
                 } else {
                     // set values
-                    console.log(data_field["id"]);
+                    $(xml).find("changes change").each(function() {
+                        var cur_os = $(this);
+                        set_value(cur_os.attr("id"), cur_os.text());
+                    });
                 };
             } else {
                 <!-- set back to previous value -->
@@ -453,6 +483,7 @@ function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts
                     $(cur_el).attr("value", get_xml_value(xml, "original_value"));
                 };
             };
+            if (lock_list) unlock_elements(lock_list);
         }
     })
 };

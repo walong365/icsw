@@ -103,6 +103,8 @@ def change_xml_entry(request):
                         request.log("%s found in request: %s" % (
                             logging_tools.get_plural("other", len(other_list)),
                             ", ".join(other_list)))
+                    else:
+                        other_list = None
                     new_value = _post["value"]
                     if cur_obj._meta.get_field(attr_name).get_internal_type() == "ManyToManyField":
                         if other_list:
@@ -134,7 +136,7 @@ def change_xml_entry(request):
                         except:
                             # in case of meta-fields like ethtool_autoneg,speed,duplex
                             pass
-                        cur_obj.master_change = attr_name
+                        cur_obj.change_attribute = attr_name
                         setattr(cur_obj, attr_name, new_value)
                         try:
                             cur_obj.save()
@@ -151,6 +153,14 @@ def change_xml_entry(request):
                             new_value = getattr(cur_obj, attr_name)
                             request.xml_response["object"] = cur_obj.get_xml()
                             request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
+                        # handle others
+                        if other_list:
+                            other_change = E.changes(
+                                E.change(unicode(getattr(cur_obj, attr_name)), id=_post["id"], name=attr_name))
+                            for other in other_list:
+                                name = other.split("__")[-1]
+                                other_change.append(E.change(unicode(getattr(cur_obj, name)), id=other, name=name))
+                            request.xml_response["changes"] = other_change
     return request.xml_response.create_response()
 
 @init_logging
