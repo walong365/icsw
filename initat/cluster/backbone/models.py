@@ -1221,8 +1221,8 @@ class network(models.Model):
 def network_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        master_change = getattr(cur_inst, "master_change", None)
-        print "***", master_change
+        # what was the changed attribute
+        change_attr = getattr(cur_inst, "change_attribute", None)
         try:
             new_pen = int(cur_inst.penalty)
         except:
@@ -1243,37 +1243,18 @@ def network_pre_save(sender, **kwargs):
                 ip_dict[key] = ipvx_tools.ipv4(getattr(cur_inst, key))
             except:
                 raise ValidationError("%s is not an IPv4 address" % (key))
-        # missing: validation code from forms.py, FIXME
-        #if in_data["identifier"]:
-            ## full validate only if identifier is set
-            #if all([key in in_data for key in ["network", "netmask", "broadcast", "gateway"]]): 
-                #network, netmask, broadcast, gateway = (
-                    #ipvx_tools.ipv4(in_data["network"]),
-                    #ipvx_tools.ipv4(in_data["netmask"]),
-                    #ipvx_tools.ipv4(in_data["broadcast"]),
-                    #ipvx_tools.ipv4(in_data["gateway"]))
-                #if network & netmask != network:
-                    #raise ValidationError("netmask / network error")
-                #if network | (~netmask) != broadcast:
-                    #raise ValidationError("broadcast error")
-                #if in_data["gateway"] != "0.0.0.0" and gateway & netmask != network:
-                    #raise ValidationError("gateway error")
-            #if all([key in in_data for key in ["start_range", "end_range", "network", "netmask"]]):
-                #network, netmask, s_range, e_range = (
-                    #ipvx_tools.ipv4(in_data["network"]),
-                    #ipvx_tools.ipv4(in_data["netmask"]),
-                    #ipvx_tools.ipv4(in_data["start_range"]),
-                    #ipvx_tools.ipv4(in_data["end_range"]))
-                #if in_data["start_range"] != "0.0.0.0":
-                    #if s_range & network != network:
-                        #raise ValidationError("start_range not in network")
-                    #if e_range < s_range:
-                        #raise ValidationError("start_range > end_range")
-                #if in_data["end_range"] != "0.0.0.0":
-                    #if e_range & network != network:
-                        #raise ValidationError("end_range not in network")
-                    #if e_range < s_range:
-                        #raise ValidationError("start_range > end_range")
+        if change_attr in  ["network", "netmask"]:
+            ip_dict["broadcast"] = ~ ip_dict["netmask"] | (ip_dict["network"] & ip_dict["netmask"])
+        elif change_attr == "broadcast":
+            ip_dict["netmask"] = ~ (ip_dict["broadcast"] & ~ ip_dict["network"])
+        elif change_attr == "gateway":
+            # do nothing
+            pass
+        # always correct gateway
+        ip_dict["gateway"] = (ip_dict["gateway"] & ~ ip_dict["netmask"]) | ip_dict["network"]
+        # set values
+        for key, value in ip_dict.iteritems():
+            setattr(cur_inst, key, unicode(value))
 
 class network_device_type(models.Model):
     idx = models.AutoField(db_column="network_device_type_idx", primary_key=True)
