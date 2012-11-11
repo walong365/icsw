@@ -10,7 +10,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
      tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
      mon_contactgroup, get_related_models, network_device_type, network_type, device_class, \
-     device_location, network
+     device_location, network, mon_device_templ
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -68,6 +68,7 @@ def change_xml_entry(request):
                    "pdisc"   : partition_disc,
                    "part"    : partition,
                    "monper"  : mon_period,
+                   "mondt"   : mon_device_templ,
                    "monst"   : mon_service_templ,
                    "moncg"   : mon_contactgroup,
                    "nwdt"    : network_device_type,

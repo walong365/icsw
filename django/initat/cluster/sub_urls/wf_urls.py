@@ -118,6 +118,7 @@ monitoring_patterns = patterns(
     url("^xml/get_config"    , "monitoring_views.get_config"       , name="get_config"),
     url("^create_command$"   , "monitoring_views.create_command"   , name="create_command"),
     url("^delete_command$"   , "monitoring_views.delete_command"   , name="delete_command"),
+    url("xml/dev_config$"    , "monitoring_views.device_config"    , name="device_config"),
 )
 
 main_patterns = patterns(

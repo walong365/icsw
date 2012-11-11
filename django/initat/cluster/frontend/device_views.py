@@ -11,7 +11,8 @@ from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from initat.cluster.backbone.models import device_type, device_group, device, device_class
+from initat.cluster.backbone.models import device_type, device_group, device, device_class, \
+     mon_device_templ
 from django.core.exceptions import ValidationError
 from lxml import etree
 import config_tools
@@ -252,6 +253,14 @@ def get_group_tree(request):
                 any_sel = True
         if any_sel:
             xml_resp.append(cur_xml)
+    for extra_key in [key for key in _post.keys() if key.startswith("extra_")]:
+        extra_name = _post[extra_key]
+        request.log("adding extra data %s" % (extra_name))
+        extra_obj = globals()[extra_name]
+        extra_list = getattr(E, "%ss" % (extra_name))(
+            *[cur_obj.get_xml() for cur_obj in extra_obj.objects.all()]
+        )
+        xml_resp.append(extra_list)
     request.xml_response["response"] = xml_resp
     #print etree.tostring(xml_resp, pretty_print=True)
     return request.xml_response.create_response()

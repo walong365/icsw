@@ -87,6 +87,23 @@ var master_array = {
             "required_xml" : ["monper", "moncon", "monst"],
             "lock_div"     : "mon_tables"
         }
+    ),
+    "mondt" : new draw_setup("Device Template", "mondt", "mon_device_templ",
+        "{% url base:create_object 'mon_device_templ' %}",
+        "{% url base:delete_object 'mon_device_templ' %}",
+        [
+            new draw_info("name"),
+            new draw_info("mon_service_templ", {select_source : "mon_service_templs mon_service_templ", label : "ServiceTemplate"}),
+            new draw_info("max_attempts", {min : 1, max : 5, number : 1, default : 1, label : "max attempts"}),
+            new draw_info("ninterval", {min : 0, max: 60, number : 1, default : 5, label : "Notif IV"}),
+            new draw_info("mon_period", {select_source : "mon_periods mon_period", label : "Mon period"}),
+            new draw_info("nrecovery", {boolean : 1, label : "Recov / Down / Unreach", span : 3}),
+            new draw_info("ndown", {boolean : 1}),
+            new draw_info("nunreachable", {boolean : 1})
+        ], {
+            "required_xml" : ["monper", "monst"],
+            "lock_div"     : "mon_tables"
+        }
     )
 };
 

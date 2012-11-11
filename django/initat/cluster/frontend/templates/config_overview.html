@@ -81,7 +81,6 @@ function update_expand_info() {
 
 function toggle_config_line(line_prefix, state, line_spec, conf_line) {
     if (conf_line === undefined) {
-        console.log("get");
         var conf_line = $("table#config tr[id='" + line_prefix + "']");
     };
     var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
@@ -160,7 +159,7 @@ function apply_filter() {
         $("table#config").find("tr td span[id*='__expand_'].ui-icon-triangle-1-s").each(function() {
             var cur_tr = $(this).parents("tr:first");
             toggle_config_line(cur_tr.attr("id"), false, "var", cur_tr);
-            toggle_config_line(cur_tr.attr("id"), false, "ngcc", cur_tr);
+            toggle_config_line(cur_tr.attr("id"), false, "moncc", cur_tr);
             toggle_config_line(cur_tr.attr("id"), false, "cscript", cur_tr);
         });
         // we start at -1 because of the new config
@@ -219,7 +218,7 @@ function remove_config_var_line(cur_el) {
 };
 
 function inject_monitoring_command_line(new_nc) {
-    var header_tr = $("table#config tr[id$='conf__" + new_nc.attr("config") + "__ngcc_new']");
+    var header_tr = $("table#config tr[id$='conf__" + new_nc.attr("config") + "__moncc_new']");
     var cur_config = CONFIGS.find("config[pk='" + new_nc.attr("config") + "']");
     header_tr.find("input[id$='__name']").attr("value", "")
     header_tr.after(add_monitoring_line(cur_config, "conf__" + new_nc.attr("config"), new_nc).show());
@@ -411,7 +410,7 @@ function add_config_var_line(c_el, line_prefix, c_var) {
 
 function add_monitoring_line(c_el, line_prefix, n_com) {
     if (n_com === undefined) {
-        var nc_key = "ngcc_new";
+        var nc_key = "moncc_new";
     } else {
         var nc_key = n_com.attr("key");
     };
@@ -511,7 +510,7 @@ function draw_config(c_el) {
     ));
     if (c_el) {
         c_line.append(get_expand_td(line_prefix, "var"));
-        c_line.append(get_expand_td(line_prefix, "ngcc"));
+        c_line.append(get_expand_td(line_prefix, "moncc"));
         c_line.append(get_expand_td(line_prefix, "cscript"));
     } else {
         c_line.append($("<td>").attr({"colspan" : "3"}));

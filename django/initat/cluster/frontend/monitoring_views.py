@@ -8,7 +8,7 @@ import process_tools
 from initat.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, mon_period, mon_contact, user, \
-     mon_contactgroup, get_related_models, network_type, network_device_type
+     mon_contactgroup, get_related_models, network_type, network_device_type, mon_device_templ
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -63,6 +63,13 @@ def setup(request):
 
 @init_logging
 @login_required
+def device_config(request):
+    return render_me(
+        request, "monitoring_device.html",
+    )()
+
+@init_logging
+@login_required
 def get_config(request):
     xml_resp = E.response()
     request.xml_response["response"] = xml_resp
@@ -72,4 +79,5 @@ def get_config(request):
     xml_resp.append(E.mon_contacts(*[cur_c.get_xml() for cur_c in mon_contact.objects.all()]))
     xml_resp.append(E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]))
     xml_resp.append(E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]))
+    xml_resp.append(E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]))
     return request.xml_response.create_response()
