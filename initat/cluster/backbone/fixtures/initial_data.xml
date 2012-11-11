@@ -365,5 +365,49 @@
     <field type="CharField" name="description">local network</field>
     <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
   </object>
+    <object pk="1" model="backbone.mon_check_command_type">
+    <field type="CharField" name="name">services</field>
+    <field type="DateTimeField" name="date">2006-06-16T07:14:54+00:00</field>
+  </object>
+  <object pk="2" model="backbone.mon_check_command_type">
+    <field type="CharField" name="name">hw/temp</field>
+    <field type="DateTimeField" name="date">2006-06-16T07:14:54+00:00</field>
+  </object>
+  <object pk="3" model="backbone.mon_check_command_type">
+    <field type="CharField" name="name">hw/fan</field>
+    <field type="DateTimeField" name="date">2006-06-16T07:14:54+00:00</field>
+  </object>
+  <object pk="4" model="backbone.mon_check_command_type">
+    <field type="CharField" name="name">network</field>
+    <field type="DateTimeField" name="date">2006-06-16T07:14:54+00:00</field>
+  </object>
+  <object pk="5" model="backbone.mon_check_command_type">
+    <field type="CharField" name="name">memory</field>
+    <field type="DateTimeField" name="date">2006-06-16T07:14:54+00:00</field>
+  </object>
+  <object pk="6" model="backbone.mon_check_command_type">
+    <field type="CharField" name="name">disk/df</field>
+    <field type="DateTimeField" name="date">2006-06-16T07:14:54+00:00</field>
+  </object>
+  <object pk="7" model="backbone.mon_check_command_type">
+    <field type="CharField" name="name">disk/hw</field>
+    <field type="DateTimeField" name="date">2006-06-16T07:14:54+00:00</field>
+  </object>
+  <object pk="8" model="backbone.mon_check_command_type">
+    <field type="CharField" name="name">other</field>
+    <field type="DateTimeField" name="date">2006-06-16T07:14:54+00:00</field>
+  </object>
+  <object pk="9" model="backbone.mon_check_command_type">
+    <field type="CharField" name="name">cpu/mb</field>
+    <field type="DateTimeField" name="date">2006-06-16T07:14:54+00:00</field>
+  </object>
+  <object pk="10" model="backbone.mon_check_command_type">
+    <field type="CharField" name="name">load</field>
+    <field type="DateTimeField" name="date">2006-06-16T07:14:54+00:00</field>
+  </object>
+  <object pk="11" model="backbone.mon_check_command_type">
+    <field type="CharField" name="name">uptime</field>
+    <field type="DateTimeField" name="date">2008-04-14T13:40:20+00:00</field>
+  </object>
 </django-objects>
 

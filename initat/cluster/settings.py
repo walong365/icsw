@@ -43,6 +43,9 @@ else:
 sql_dict = dict([(key[6:], value) for key, value in [
     line.strip().split("=", 1) for line in file("/etc/sysconfig/cluster/mysql.cf", "r").read().split("\n") if line.count("=") and line.startswith("MYSQL_")]])
 
+mon_dict = dict([(key[7:], value) for key, value in [
+    line.strip().split("=", 1) for line in file("/etc/sysconfig/cluster/mysql.cf", "r").read().split("\n") if line.count("=") and line.startswith("NAGIOS_")]])
+
 for src_key ,dst_key in [("DATABASE", "NAME"),
                          ("USER"    , "USER"),
                          ("PASSWD"  , "PASSWORD"),
@@ -50,6 +53,16 @@ for src_key ,dst_key in [("DATABASE", "NAME"),
                          ("ENGINE"  , "ENGINE")]:
     if src_key in sql_dict:
         DATABASES["default"][dst_key] = sql_dict[src_key]
+
+if mon_dict:
+    DATABASES["monitor"] = dict([(key, value) for key, value in DATABASES["default"].iteritems()])
+    for src_key ,dst_key in [("DATABASE", "NAME"),
+                             ("USER"    , "USER"),
+                             ("PASSWD"  , "PASSWORD"),
+                             ("HOST"    , "HOST"),
+                             ("ENGINE"  , "ENGINE")]:
+        if src_key in mon_dict:
+            DATABASES["monitor"][dst_key] = mon_dict[src_key]
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 

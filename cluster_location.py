@@ -114,7 +114,7 @@ class db_device_variable(object):
         else:
             self.__device = cur_dev
         self.__var_name = var_name
-        self.__var_type, self.__description = (None, "not set")
+        self.__var_type, self.__description = (None, kwargs.get("description", "not set"))
         try:
             act_dv = device_variable.objects.get(Q(name=var_name) & Q(device=self.__device))
         except device_variable.DoesNotExist:

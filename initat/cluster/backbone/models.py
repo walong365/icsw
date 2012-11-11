@@ -36,37 +36,37 @@ class apc_device(models.Model):
     class Meta:
         db_table = u'apc_device'
 
-class app_config_con(models.Model):
-    idx = models.AutoField(db_column="app_config_con_idx", primary_key=True)
-    application = models.ForeignKey("application")
-    config = models.ForeignKey("config")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'app_config_con'
-
-class app_devgroup_con(models.Model):
-    idx = models.AutoField(db_column="app_devgroup_con_idx", primary_key=True)
-    application = models.ForeignKey("application")
-    device_group = models.ForeignKey("device_group")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'app_devgroup_con'
-
-class app_instpack_con(models.Model):
-    idx = models.AutoField(db_column="app_instpack_con_idx", primary_key=True)
-    application = models.ForeignKey("application")
-    inst_package = models.ForeignKey("inst_package")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'app_instpack_con'
-
-class application(models.Model):
-    idx = models.AutoField(db_column="application_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=255)
-    description = models.TextField()
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'application'
+##class app_config_con(models.Model):
+##    idx = models.AutoField(db_column="app_config_con_idx", primary_key=True)
+##    application = models.ForeignKey("application")
+##    config = models.ForeignKey("config")
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'app_config_con'
+##
+##class app_devgroup_con(models.Model):
+##    idx = models.AutoField(db_column="app_devgroup_con_idx", primary_key=True)
+##    application = models.ForeignKey("application")
+##    device_group = models.ForeignKey("device_group")
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'app_devgroup_con'
+##
+##class app_instpack_con(models.Model):
+##    idx = models.AutoField(db_column="app_instpack_con_idx", primary_key=True)
+##    application = models.ForeignKey("application")
+##    inst_package = models.ForeignKey("inst_package")
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'app_instpack_con'
+##
+##class application(models.Model):
+##    idx = models.AutoField(db_column="application_idx", primary_key=True)
+##    name = models.CharField(unique=True, max_length=255)
+##    description = models.TextField()
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'application'
 
 class architecture(models.Model):
     idx = models.AutoField(db_column="architecture_idx", primary_key=True)
@@ -286,7 +286,7 @@ class device(models.Model):
     #switch = models.ForeignKey("device", null=True, related_name="switch_device")
     #switchport = models.IntegerField(null=True, blank=True)
     mon_device_templ = models.ForeignKey("mon_device_templ", null=True)
-    mon_ext_host = models.IntegerField(null=True, blank=True)
+    mon_ext_host = models.ForeignKey("mon_ext_host", null=True, blank=True)
     device_location = models.ForeignKey("device_location", null=True)
     device_class = models.ForeignKey("device_class")
     rrd_class = models.ForeignKey("rrd_class", null=True)
@@ -334,7 +334,7 @@ class device(models.Model):
     # remove, no longer needed
     #device_mode = models.BooleanField()
     relay_device = models.ForeignKey("device", null=True)
-    nagios_checks = models.BooleanField(default=True)
+    monitor_checks = models.BooleanField(default=True, db_column="nagios_checks")
     show_in_bootcontrol = models.BooleanField()
     # not so clever here, better in extra table, FIXME
     #cpu_info = models.TextField(blank=True, null=True)
@@ -371,6 +371,8 @@ class device(models.Model):
             dhcp_write="1" if self.dhcp_write else "0",
             partition_table_id="%d" % (self.partition_table_id if self.partition_table_id else 0),
             act_partition_table_id="%d" % (self.act_partition_table_id if self.act_partition_table_id else 0),
+            mon_device_templ="%d" % (self.mon_device_templ_id or 0),
+            monitor_checks="1" if self.monitor_checks else "0",
         )
         if full:
             r_xml.extend([
@@ -1463,11 +1465,13 @@ class mon_check_command_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.mon_check_command_type(
-            self.name,
+            unicode(self),
             pk="%d" % (self.pk),
             key="ngcct__%d" % (self.pk),
             name=self.name or ""
         )
+    def __unicode__(self):
+        return self.name
     class Meta:
         db_table = u'ng_check_command_type'
 
@@ -1483,8 +1487,8 @@ class mon_contact(models.Model):
     hnrecovery = models.BooleanField()
     hndown = models.BooleanField()
     hnunreachable = models.BooleanField()
-    sncommand = models.CharField(max_length=192, blank=True)
-    hncommand = models.CharField(max_length=192, blank=True)
+    sncommand = models.CharField(max_length=192, blank=True, default="notify-by-email")
+    hncommand = models.CharField(max_length=192, blank=True, default="host-notify-by-email")
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         ret_xml = E.mon_contact(
@@ -1541,18 +1545,59 @@ class mon_device_templ(models.Model):
     idx = models.AutoField(db_column="ng_device_templ_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     mon_service_templ = models.ForeignKey("mon_service_templ")
-    ccommand = models.CharField(max_length=192, blank=True)
-    max_attempts = models.IntegerField(null=True, blank=True)
-    ninterval = models.IntegerField(null=True, blank=True)
-    mon_period = models.IntegerField(null=True, blank=True)
+    ccommand = models.CharField(max_length=192, blank=True, default="check-host-alive")
+    max_attempts = models.IntegerField(null=True, blank=True, default=1)
+    ninterval = models.IntegerField(null=True, blank=True, default=1)
+    mon_period = models.ForeignKey("mon_period", null=True, blank=True)
     nrecovery = models.BooleanField()
     ndown = models.BooleanField()
     nunreachable = models.BooleanField()
     is_default = models.BooleanField()
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        print self.mon_period
+        return E.mon_device_templ(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="mondt__%d" % (self.pk),
+            name=self.name,
+            mon_service_templ="%d" % (self.mon_service_templ_id or 0),
+            max_attempts="%d" % (self.max_attempts or 0),
+            ninterval="%d" % (self.ninterval or 0),
+            mon_period="%d" % (self.mon_period_id or 0),
+            nrecovery="%d" % (1 if self.nrecovery else 0),
+            ndown="%d" % (1 if self.ndown else 0),
+            nunreachable="%d" % (1 if self.nunreachable else 0),
+        )
+    def __unicode__(self):
+        return self.name
     class Meta:
         db_table = u'ng_device_templ'
 
+@receiver(signals.pre_save, sender=mon_device_templ)
+def mon_device_templ_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name.strip():
+            raise ValidationError("name must not be zero")
+        for attr_name, min_val, max_val in [
+            ("max_attempts", 1, 10),
+            ("ninterval", 0, 60)]:
+            cur_val = getattr(cur_inst, attr_name)
+            try:
+                cur_val = int(cur_val)
+            except:
+                raise ValidationError("%s is not an integer" % (attr_name))
+            else:
+                if cur_val < min_val or cur_val > max_val:
+                    raise ValidationError("%s %d is out of bounds [%d, %d]" % (
+                        attr_name,
+                        cur_val,
+                        min_val,
+                        max_val))
+                else:
+                    setattr(cur_inst, attr_name, cur_val)
+                    
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
@@ -2853,7 +2898,7 @@ def mon_check_command_pre_save(sender, **kwargs):
             raise ValidationError("name is empty")
         if not cur_inst.command_line:
             raise ValidationError("command_line is empty")
-        if cur_inst.name in cur_inst.config.mon_check_command_set.objects.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
+        if cur_inst.name in cur_inst.config.mon_check_command_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
             raise ValidationError("name already used")
 
 @receiver(signals.pre_save, sender=config_script)
