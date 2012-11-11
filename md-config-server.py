@@ -21,10 +21,12 @@
 #
 """ server to configure the nagios or icinga monitoring daemon, now for 0MQ clients """
 
-import pkg_resources
-pkg_resources.require("MySQL_python")
+import sys
+import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
 import zmq
-import MySQLdb
 import sys
 import os
 import re
@@ -36,15 +38,21 @@ import commands
 import pprint
 import logging_tools
 import process_tools
+import cluster_location
 import mysql_tools
 import server_command
 import threading_tools
 import config_tools
-from md_config_server import special_commands
+from initat.md_config_server import special_commands
 try:
     from md_config_server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
+from django.db.models import Q
+from django.db import connection, connections
+from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
+     mon_service, mon_ext_host, mon_check_command, mon_check_command_type, mon_period, mon_contact, \
+     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, hopcount
 
 # nagios constants
 NAG_HOST_UNKNOWN     = -1
@@ -125,17 +133,27 @@ class main_config(object):
             return False
         else:
             return True
-    def refresh(self, dc):
+    def refresh(self):
         # refreshes host- and contactgroup definition
-        self["contactgroup"].refresh(dc, self)
-        self["hostgroup"].refresh(dc, self)
+        self["contactgroup"].refresh(self)
+        self["hostgroup"].refresh(self)
     def has_key(self, key):
         return self.__dict.has_key(key)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__build_process.log("[mc] %s" % (what), level)
     def _create_directories(self):
-        self.__dir_dict = dict([(dir_name, os.path.normpath("%s/%s" % (self.__main_dir, dir_name))) for dir_name in
-                                ["", "etc", "var", "share", "archives", "ssl", "bin", "lib"]])
+        self.__dir_dict = dict([(dir_name, os.path.normpath("%s/%s" % (self.__main_dir, dir_name))) for dir_name in [
+            "",
+            "etc",
+            "var",
+            "share",
+            "archives",
+            "ssl",
+            "bin",
+            "lib",
+            "lib64",
+            "var/spool",
+            "var/spool/checkresults"]])
         for dir_name, full_path in self.__dir_dict.iteritems():
             if not os.path.exists(full_path):
                 self.log("Creating directory %s" % (full_path))
@@ -260,7 +278,7 @@ class main_config(object):
                                                                                              self.__dir_dict["etc"],
                                                                                              NDOMOD_NAME)))
         else:
-            main_values.append(("broker_module" , "%s/idomod.so config_file=%s/%s.cfg" % (self.__dir_dict["lib"],
+            main_values.append(("broker_module" , "%s/idomod.so config_file=%s/%s.cfg" % (self.__dir_dict["lib64"],
                                                                                           self.__dir_dict["etc"],
                                                                                           NDOMOD_NAME)))
         if global_config["MD_VERSION"] >= 3:
@@ -406,11 +424,11 @@ class base_config(object):
         self.act_content = c_lines
         
 class nag_config(object):
-    def __init__(self, name, **args):
+    def __init__(self, name, **kwargs):
         self.__name = name
         self.entries = {}
         self.keys = []
-        for key, value in args.iteritems():
+        for key, value in kwargs.iteritems():
             self[key] = value
     def __setitem__(self, key, value):
         if key in self.keys:
@@ -555,22 +573,22 @@ class host_type_config(object):
         return my_idx
     
 class time_periods(host_type_config):
-    def __init__(self, dc, gen_conf, build_proc):
+    def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
         self.__obj_list, self.__dict = ([], {})
-        self._add_time_periods_from_db(dc)
+        self._add_time_periods_from_db()
     def get_name(self):
         return "timeperiod"
-    def _add_time_periods_from_db(self, dc):
-        dc.execute("SELECT * FROM ng_period")
-        for db_rec in dc.fetchall():
-            nag_conf = nag_config(db_rec["name"],
-                                  timeperiod_name=db_rec["name"],
-                                  alias=db_rec["alias"])
-            for short_s, long_s in [("mon", "monday"), ("tue", "tuesday" ), ("wed", "wednesday"), ("thu", "thursday"),
-                                    ("fri", "friday"), ("sat", "saturday"), ("sun", "sunday"   )]:
-                nag_conf[long_s] = db_rec["%srange" % (short_s)]
-            self.__dict[db_rec["ng_period_idx"]] = nag_conf
+    def _add_time_periods_from_db(self):
+        for cur_per in mon_period.objects.all():
+            nag_conf = nag_config(cur_per.name,
+                                  timeperiod_name=cur_per.name,
+                                  alias=cur_per.alias or "-")
+            for short_s, long_s in [
+                ("mon", "monday"), ("tue", "tuesday" ), ("wed", "wednesday"), ("thu", "thursday"),
+                ("fri", "friday"), ("sat", "saturday"), ("sun", "sunday"   )]:
+                nag_conf[long_s] = getattr(cur_per, "%s_range" % (short_s))
+            self.__dict[cur_per.pk] = nag_conf
             self.__obj_list.append(nag_conf)
     def __getitem__(self, key):
         return self.__dict[key]
@@ -580,22 +598,21 @@ class time_periods(host_type_config):
         return self.__dict.values()
         
 class all_servicegroups(host_type_config):
-    def __init__(self, dc, gen_conf, build_proc):
+    def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
         self.__obj_list, self.__dict = ([], {})
         # dict : which host has which service_group defined
         self.__host_srv_lut = {}
-        self._add_servicegroups_from_db(dc)
+        self._add_servicegroups_from_db()
     def get_name(self):
         return "servicegroup"
-    def _add_servicegroups_from_db(self, dc):
-        dc.execute("SELECT * FROM ng_check_command_type")
-        for db_rec in dc.fetchall():
-            nag_conf = nag_config(db_rec["name"],
-                                  servicegroup_name=db_rec["name"],
-                                  alias="%s group" % (db_rec["name"]))
-            self.__host_srv_lut[db_rec["name"]] = set()
-            self.__dict[db_rec["ng_check_command_type_idx"]] = nag_conf
+    def _add_servicegroups_from_db(self):
+        for cur_cct in mon_check_command_type.objects.all():
+            nag_conf = nag_config(cur_cct.name,
+                                  servicegroup_name=cur_cct.name,
+                                  alias="%s group" % (cur_cct.name))
+            self.__host_srv_lut[cur_cct.name] = set()
+            self.__dict[cur_cct.pk] = nag_conf
             self.__obj_list.append(nag_conf)
     def clear_host(self, host_name):
         for key, value in self.__host_srv_lut.iteritems():
@@ -609,26 +626,24 @@ class all_servicegroups(host_type_config):
         return self.__dict.values()
     
 class all_commands(host_type_config):
-    def __init__(self, dc, gen_conf, build_proc):
+    def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
         self.__obj_list, self.__dict = ([], {})
-        self._add_notify_commands(dc)
-        self._add_commands_from_db(dc)
+        self._add_notify_commands()
+        self._add_commands_from_db()
     def get_name(self):
         return "command"
-    def _add_notify_commands(self, dc):
-        dc.execute("SELECT d.device_idx FROM device d, device_group dg WHERE d.device_group=dg.device_group_idx AND dg.cluster_device_group")
-        if dc.rowcount:
-            cd_idx = dc.fetchone()["device_idx"]
-            self.log("ClusterDeviceGroup idx is %d" % (cd_idx))
-            dv = configfile.device_variable(dc, cd_idx, "CLUSTER_NAME")
-            if not dv.is_set():
-                dv.set_stuff(description="Name of the Cluster")
-                dv.set_value("new_cluster")
-                dv.update(dc)
-            cluster_name = dv.get_value()
-        else:
+    def _add_notify_commands(self):
+        try:
+            cdg = device.objects.get(Q(device_group__cluster_device_group=True))
+        except device.DoesNotExist:
             cluster_name = "N/A"
+        else:
+            dv = cluster_location.db_device_variable(cdg, "CLUSTER_NAME", description="name of the cluster")
+            if not dv.is_set():
+                dv.set_value("new_cluster")
+                dv.update()
+            cluster_name = dv.get_value()
         md_vers = global_config["MD_VERSION_STRING"]
         md_type = global_config["MD_TYPE"]
         if os.path.isfile("/usr/local/sbin/send_mail.py"):
@@ -665,34 +680,38 @@ class all_commands(host_type_config):
                               command_name="host-notify-by-sms",
                               command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '$HOSTSTATE$ alert for $HOSTNAME$ ($HOSTADDRESS$)'")
         self.__obj_list.append(nag_conf)
-    def _add_commands_from_db(self, dc):
+    def _add_commands_from_db(self):
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
-        dc.execute("SELECT ng.*, cs.name AS st_name, ngt.name AS servicegroup_name FROM ng_check_command_type ngt, ng_check_command ng LEFT JOIN ng_service_templ cs ON ng.ng_service_templ=cs.ng_service_templ_idx WHERE " + \
-                       "ngt.ng_check_command_type_idx=ng.ng_check_command_type")
-        for ngc in [db_rec for db_rec in dc.fetchall()] + \
-                [{"name"                 : "check-host-alive",
-                  "command_line"         : "$USER2$ -m localhost ping $HOSTADDRESS$ %d %.2f" % (global_config["CHECK_HOST_ALIVE_PINGS"],
-                                                                                                global_config["CHECK_HOST_ALIVE_TIMEOUT"]),
-                  "description"          : "Check-host-alive command via ping",
-                  "device"               : 0,
-                  "st_name"              : None,
-                  "new_config"           : None},
-                 {"name"                 : "check-host-alive-2",
-                  "command_line"         : "$USER2$ -m $HOSTADDRESS$ version",
-                  "description"          : "Check-host-alive command via collserver",
-                  "device"               : 0,
-                  "st_name"              : None,
-                  "new_config"           : None}]:
+        check_coms = list(mon_check_command.objects.all().select_related("mon_check_command_type",
+                                                                         "mon_service_templ"))
+        for ngc in check_coms + [
+            mon_check_command(
+                name="check-host-alive",
+                command_line="$USER2$ -m localhost ping $HOSTADDRESS$ %d %.2f" % (
+                    global_config["CHECK_HOST_ALIVE_PINGS"],
+                    global_config["CHECK_HOST_ALIVE_TIMEOUT"]),
+                description="Check-host-alive command via ping",
+                ),
+            mon_check_command(
+                name="check-host-alive-2",
+                command_line="$USER2$ -m $HOSTADDRESS$ version",
+                description="Check-host-alive command via collserver")]:
             #pprint.pprint(ngc)
             # build / extract ngc_name
-            re1m = ngc_re1.match(ngc["name"])
+            re1m = ngc_re1.match(ngc.name)
             if re1m:
                 ngc_name, special = (re1m.group("comname"), re1m.group("special"))
             else:
-                ngc_name, special = (ngc["name"], None)
-            if ngc.has_key("ng_check_command_idx"):
-                ngc_name = "%s_%d" % (ngc_name, ngc["ng_check_command_idx"])
-            cc_s = check_command(ngc_name, ngc["command_line"], ngc["new_config"], ngc["st_name"], ngc["description"], ngc["device"], special, servicegroup_name=ngc.get("servicegroup_name", "other"))
+                ngc_name, special = (ngc.name, None)
+            if ngc.pk:
+                ngc_name = "%s_%d" % (ngc_name, ngc.pk)
+            cc_s = check_command(ngc_name, ngc.command_line,
+                                 ngc.config.name if ngc.config_id else None,
+                                 ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
+                                 ngc.description,
+                                 ngc.device_id,
+                                 special,
+                                 servicegroup_name=ngc.mon_check_command_type.name if ngc.mon_check_command_type_id else "other")
             nag_conf = cc_s.get_nag_config()
             self.__obj_list.append(nag_conf)
             self.__dict[nag_conf["command_name"]] = cc_s
@@ -702,45 +721,45 @@ class all_commands(host_type_config):
         return self.__dict.values()
     
 class all_contacts(host_type_config):
-    def __init__(self, dc, gen_conf, build_proc):
+    def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
         self.__obj_list, self.__dict = ([], {})
-        self._add_contacts_from_db(dc, gen_conf)
+        self._add_contacts_from_db(gen_conf)
     def get_name(self):
         return "contact"
-    def _add_contacts_from_db(self, dc, gen_conf):
-        dc.execute("SELECT * FROM ng_contact ng, user u WHERE ng.user = u.user_idx")
-        for contact in dc.fetchall():
-            full_name = ("%s %s" % (contact["uservname"], contact["usernname"])).strip().replace(" ", "_")
+    def _add_contacts_from_db(self, gen_conf):
+        for contact in mon_contact.objects.all().select_related("user"):
+            full_name = ("%s %s" % (contact.user.uservname, contact.user.usernname)).strip().replace(" ", "_")
             if not full_name:
-                full_name = contact["login"]
-            hn_command = contact["hncommand"]
-            sn_command = contact["sncommand"]
-            if len(contact["userpager"]) > 5:
+                full_name = contact.user.login
+            hn_command = contact.hncommand
+            sn_command = contact.sncommand
+            if len(contact.user.userpager) > 5:
                 # check for pager number
                 hn_command = "%s,host-notify-by-sms" % (hn_command)
                 sn_command = "%s,notify-by-sms" % (sn_command)
             nag_conf = nag_config(full_name,
                                   contact_name=full_name,
-                                  host_notification_period=gen_conf["timeperiod"][contact["hnperiod"]]["name"],
-                                  service_notification_period=gen_conf["timeperiod"][contact["snperiod"]]["name"],
+                                  host_notification_period=gen_conf["timeperiod"][contact.hnperiod_id]["name"],
+                                  service_notification_period=gen_conf["timeperiod"][contact.snperiod_id]["name"],
                                   host_notification_commands=hn_command,
                                   service_notification_commands=sn_command,
-                                  alias=contact["usercom"] or full_name)
-            for targ_opt, pairs in [("host_notification_options"   , [("hnrecovery", "r"), ("hndown"    , "d"), ("hnunreachable", "u")]),
-                                    ("service_notification_options", [("snrecovery", "r"), ("sncritical", "c"), ("snwarning"    , "w"), ("snunknown", "u")])]:
+                                  alias=contact.user.usercom or full_name)
+            for targ_opt, pairs in [
+                ("host_notification_options"   , [("hnrecovery", "r"), ("hndown"    , "d"), ("hnunreachable", "u")]),
+                ("service_notification_options", [("snrecovery", "r"), ("sncritical", "c"), ("snwarning"    , "w"), ("snunknown", "u")])]:
                 act_a = []
                 for long_s, short_s in pairs:
-                    if contact[long_s]:
+                    if getattr(contact, long_s):
                         act_a.append(short_s)
                 if not act_a:
                     act_a = ["n"]
                 nag_conf[targ_opt] = ",".join(act_a)
-            u_mail = contact["useremail"] or "root@localhost"
+            u_mail = contact.user.useremail or "root@localhost"
             nag_conf["email"] = u_mail
-            nag_conf["pager"] = contact["userpager"] or "----"
+            nag_conf["pager"] = contact.user.userpager or "----"
             self.__obj_list.append(nag_conf)
-            self.__dict[contact["ng_contact_idx"]] = nag_conf
+            self.__dict[contact.pk] = nag_conf
     def __getitem__(self, key):
         return self.__dict[key]
     def get_object_list(self):
@@ -749,38 +768,27 @@ class all_contacts(host_type_config):
         return self.__dict.values()
         
 class all_contact_groups(host_type_config):
-    def __init__(self, dc, gen_conf, build_proc):
+    def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
-        self.refresh(dc, gen_conf)
-    def refresh(self, dc, gen_conf):
+        self.refresh(gen_conf)
+    def refresh(self, gen_conf):
         self.__obj_list, self.__dict = ([], {})
-        self._add_contact_groups_from_db(dc, gen_conf)
+        self._add_contact_groups_from_db(gen_conf)
     def get_name(self):
         return "contactgroup"
-    def _add_contact_groups_from_db(self, dc, gen_conf):
+    def _add_contact_groups_from_db(self, gen_conf):
         # none group
         self.__dict[0] = nag_config(global_config["NONE_CONTACT_GROUP"],
                                     contactgroup_name=global_config["NONE_CONTACT_GROUP"],
                                     alias="None group")
-        dc.execute("SELECT * FROM ng_contactgroup ng LEFT JOIN ng_ccgroup ngc ON ngc.ng_contactgroup = ng.ng_contactgroup_idx ORDER BY ng.ng_contactgroup_idx")
-        nag_conf = None
-        for cg_group in dc.fetchall():
-            print "*", cg_group
-            if not self.__dict.has_key(cg_group["ng_contactgroup_idx"]):
-                ## new nag_conf, check last one
-                #if nag_conf:
-                #    if nag_conf["members"] != "-":
-                #        self.__obj_list.append(nag_conf)
-                nag_conf = nag_config(cg_group["name"],
-                                      contactgroup_name=cg_group["name"],
-                                      alias=cg_group["alias"])
-                self.__dict[cg_group["ng_contactgroup_idx"]] = nag_conf
-            if cg_group["ng_contact"]:
-                nag_conf["members"] = gen_conf["contact"][cg_group["ng_contact"]]["name"]
+        for cg_group in mon_contactgroup.objects.all().prefetch_related("members"):
+            nag_conf = nag_config(cg_group.name,
+                                  contactgroup_name=cg_group.name,
+                                  alias=cg_group.alias)
+            self.__dict[cg_group.pk] = nag_conf
+            for member in cg_group.members.all():
+                nag_conf["members"] = gen_conf["contact"][member.pk]["name"]
         self.__obj_list = self.__dict.values()
-        #if nag_conf:
-        #    if nag_conf["members"] != "-":
-        #        self.__obj_list.append(nag_conf)
     def has_key(self, key):
         return self.__dict.has_key(key)
     def keys(self):
@@ -793,32 +801,30 @@ class all_contact_groups(host_type_config):
         return self.__dict.values()
         
 class all_host_groups(host_type_config):
-    def __init__(self, dc, gen_conf, build_proc):
+    def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
-        self.refresh(dc, gen_conf)
-    def refresh(self, dc, gen_conf):
+        self.refresh(gen_conf)
+    def refresh(self, gen_conf):
         self.__obj_list, self.__dict = ([], {})
-        self._add_host_groups_from_db(dc, gen_conf)
+        self._add_host_groups_from_db(gen_conf)
     def get_name(self):
         return "hostgroup"
-    def _add_host_groups_from_db(self, dc, gen_conf):
+    def _add_host_groups_from_db(self, gen_conf):
         if gen_conf.has_key("host"):
             all_hosts_written = gen_conf["host"].keys()
-            sql_add_str = " OR ".join(["d.name='%s'" % (x) for x in all_hosts_written])
+            filter_obj = Q(name__in=all_hosts_written)
+            print filter_obj
+            #sql_add_str = " OR ".join(["d.name='%s'" % (x) for x in all_hosts_written])
             # hostgroups
-            if sql_add_str:
-                sql_str = "SELECT dg.*, d.name FROM device_group dg, device d WHERE d.device_group = dg.device_group_idx AND (%s) ORDER BY dg.device_group_idx" % (sql_add_str)
-                dc.execute(sql_str)
-                for h_group in dc.fetchall():
-                    if not self.__dict.has_key(h_group["device_group_idx"]):
-                        nag_conf = nag_config(h_group["name"],
-                                              hostgroup_name=h_group["name"],
-                                              alias=h_group["description"] or h_group["name"],
-                                              members="-")
-                        self.__dict[h_group["device_group_idx"]] = nag_conf
-                        self.__obj_list.append(nag_conf)
-                    if h_group["d.name"]:
-                        nag_conf["members"] = h_group["d.name"]
+            if all_hosts_written:
+                for h_group in device_group.objects.filter(Q(device_group__name__in=all_hosts_written)).prefetch_related("device_group"):
+                    nag_conf = nag_config(h_group.name,
+                                          hostgroup_name=h_group.name,
+                                          alias=h_group.description or h_group.name,
+                                          members="-")
+                    self.__dict[h_group.pk] = nag_conf
+                    self.__obj_list.append(nag_conf)
+                    nag_conf["members"] = ",".join(h_group.device_group.filter(Q(name__in=all_hosts_written)).values_list("name", flat=True))
             else:
                 self.log("empty SQL-Str for in _add_host_groups_from_db()",
                          logging_tools.LOG_LEVEL_ERROR)
@@ -833,12 +839,12 @@ class all_host_groups(host_type_config):
         return self.__dict.values()
         
 class all_hosts(host_type_config):
-    def __init__(self, dc, gen_conf, build_proc):
+    def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
-        self.refresh(dc, gen_conf)
-    def refresh(self, dc, gen_conf):
+        self.refresh(gen_conf)
+    def refresh(self, gen_conf):
         self.__obj_list, self.__dict = ([], {})
-        self._add_hosts_from_db(dc, gen_conf)
+        self._add_hosts_from_db(gen_conf)
     def get_name(self):
         return "host"
     def get_object_list(self):
@@ -855,16 +861,16 @@ class all_hosts(host_type_config):
         return self.__dict.has_key(key)
     def keys(self):
         return self.__dict.keys()
-    def _add_hosts_from_db(self, dc, gen_conf):
+    def _add_hosts_from_db(self, gen_conf):
         pass
     
 class all_hosts_extinfo(host_type_config):
-    def __init__(self, dc, gen_conf, build_proc):
+    def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
-        self.refresh(dc, gen_conf)
-    def refresh(self, dc, gen_conf):
+        self.refresh(gen_conf)
+    def refresh(self, gen_conf):
         self.__obj_list, self.__dict = ([], {})
-        self._add_hosts_from_db(dc, gen_conf)
+        self._add_hosts_from_db(gen_conf)
     def get_name(self):
         return "hostextinfo"
     def get_object_list(self):
@@ -881,16 +887,16 @@ class all_hosts_extinfo(host_type_config):
         return self.__dict.has_key(key)
     def keys(self):
         return self.__dict.keys()
-    def _add_hosts_from_db(self, dc, gen_conf):
+    def _add_hosts_from_db(self, gen_conf):
         pass
     
 class all_services(host_type_config):
-    def __init__(self, dc, gen_conf, build_proc):
+    def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
-        self.refresh(dc, gen_conf)
-    def refresh(self, dc, gen_conf):
+        self.refresh(gen_conf)
+    def refresh(self, gen_conf):
         self.__obj_list, self.__dict = ([], {})
-        self._add_services_from_db(dc, gen_conf)
+        self._add_services_from_db(gen_conf)
     def get_name(self):
         return "service"
     def get_object_list(self):
@@ -901,17 +907,17 @@ class all_services(host_type_config):
         return self.__obj_list
     def remove_host(self, host_obj):
         self.__obj_list.remove(host_obj)
-    def _add_services_from_db(self, dc, gen_conf):
+    def _add_services_from_db(self, gen_conf):
         pass
     
 class check_command(object):
-    def __init__(self, name, com_line, config, template, descr, device=0, special=None, **args):
+    def __init__(self, name, com_line, config, template, descr, device=0, special=None, **kwargs):
         self.__name = name
         self.__com_line = com_line
         self.config = config
         self.template = template
         self.device = device
-        self.servicegroup_name = args.get("servicegroup_name", "other")
+        self.servicegroup_name = kwargs.get("servicegroup_name", "other")
         self.__descr = descr.replace(",", ".")
         self.__special = special
         self._generate_md_com_line()
@@ -983,24 +989,23 @@ class check_command(object):
     def __repr__(self):
         return "%s (%s)" % (self.__name, self.__com_line)
         
-class device_templates(object):
-    def __init__(self, dc, build_proc):
+class device_templates(dict):
+    def __init__(self, build_proc):
+        dict.__init__(self)
         self.__build_proc = build_proc
-        self.__default = 0
-        self.__dict = {}
-        dc.execute("SELECT * FROM ng_device_templ")
-        for db_rec in dc.fetchall():
-            self.__dict[db_rec["ng_device_templ_idx"]] = db_rec
-            if db_rec["is_default"]:
-                self.__default = db_rec["ng_device_templ_idx"]
-        self.log("Found %s (%s)" % (logging_tools.get_plural("device_template", len(self.__dict.keys())),
-                                    ", ".join([x["name"] for x in self.__dict.values()])))
+        self.__default = None
+        for dev_templ in mon_device_templ.objects.all():
+            self[dev_templ.pk] = dev_templ
+            if dev_templ.is_default:
+                self.__default = dev_templ
+        self.log("Found %s (%s)" % (logging_tools.get_plural("device_template", len(self.keys())),
+                                    ", ".join([cur_dt.name for cur_dt in self.itervalues()])))
         if self.__default:
-            self.log("Found default device_template named '%s'" % (self[self.__default]["name"]))
+            self.log("Found default device_template named '%s'" % (self.__default.name))
         else:
-            if self.__dict:
-                self.__default = self.__dict.keys()[0]
-                self.log("No default device_template found, using '%s'" % (self[self.__default]["name"]),
+            if self.keys():
+                self.__default = self.values()[0]
+                self.log("No default device_template found, using '%s'" % (self.__default.name),
                          logging_tools.LOG_LEVEL_WARN)
             else:
                 self.log("No device_template founds, skipping configuration....",
@@ -1010,51 +1015,57 @@ class device_templates(object):
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__build_proc.log("[device_templates] %s" % (what), level)
     def __getitem__(self, key):
-        act_key = key or self.__default
-        if not self.__dict.has_key(act_key):
-            self.log("key %d not known, using default %d" % (act_key, self.__default),
+        act_key = key or self.__default.pk
+        if not self.has_key(act_key):
+            self.log("key %s not known, using default %s (%d)" % (
+                str(act_key),
+                unicode(self.__default),
+                self.__default.pk),
                      logging_tools.LOG_LEVEL_ERROR)
-            act_key = self.__default
-        return self.__dict[act_key]
+            act_key = self.__default.pk
+        return super(device_templates, self).__getitem__(act_key)
 
-class service_templates(object):
-    def __init__(self, dc, build_proc):
+class service_templates(dict):
+    def __init__(self, build_proc):
+        dict.__init__(self)
         self.__build_proc = build_proc
         self.__default = 0
-        self.__dict = {}
-        dc.execute("SELECT ng.*, nc.name AS ncname FROM ng_service_templ ng LEFT JOIN ng_cgservicet ngc ON ngc.ng_service_templ=ng.ng_service_templ_idx LEFT JOIN ng_contactgroup nc ON ngc.ng_contactgroup=nc.ng_contactgroup_idx")
-        for db_rec in dc.fetchall():
-            if not self.__dict.has_key(db_rec["ng_service_templ_idx"]):
-                db_rec["contact_groups"] = set()
-                # generate notification options
-                not_options = []
-                for long_name, short_name in [("nrecovery", "r"), ("ncritical", "c"), ("nwarning", "w"), ("nunknown", "u")]:
-                    if db_rec[long_name]:
-                        not_options.append(short_name)
-                if not not_options:
-                    not_options.append("n")
-                db_rec["notification_options"] = not_options
-                self.__dict[db_rec["ng_service_templ_idx"]] = db_rec
-                self.__dict[db_rec["name"]] = db_rec
-            if db_rec["ncname"]:
-                self[db_rec["ng_service_templ_idx"]]["contact_groups"].add(db_rec["ncname"])
-        if self.__dict:
-            self.__default = self.__dict.keys()[0]
-        self.log("Found %s (%s)" % (logging_tools.get_plural("device_template", len(self.__dict.keys())),
-                                    ", ".join([x["name"] for x in self.__dict.values()])))
+        #dc.execute("SELECT ng.*, nc.name AS ncname FROM ng_service_templ ng LEFT JOIN ng_cgservicet ngc ON ngc.ng_service_templ=ng.ng_service_templ_idx LEFT JOIN ng_contactgroup nc ON ngc.ng_contactgroup=nc.ng_contactgroup_idx")
+        for srv_templ in mon_service_templ.objects.all().prefetch_related(
+            "mon_device_templ_set",
+            "mon_contactgroup_set"):
+            #db_rec["contact_groups"] = set()
+            # generate notification options
+            not_options = []
+            for long_name, short_name in [("nrecovery", "r"), ("ncritical", "c"), ("nwarning", "w"), ("nunknown", "u")]:
+                if getattr(srv_templ, long_name):
+                    not_options.append(short_name)
+            if not not_options:
+                not_options.append("n")
+            srv_templ.notification_options = not_options
+            self[srv_templ.pk]   = srv_templ
+            self[srv_templ.name] = srv_templ
+            srv_templ.contact_groups = set(srv_templ.mon_contactgroup_set.all().values_list("name", flat=True))
+##            if db_rec["ncname"]:
+##                self[db_rec["ng_service_templ_idx"]]["contact_groups"].add(db_rec["ncname"])
+        if self.keys():
+            self.__default = self.keys()[0]
+        self.log("Found %s (%s)" % (logging_tools.get_plural("device_template", len(self.keys())),
+                                    ", ".join([cur_v.name for cur_v in self.values()])))
     def is_valid(self):
         return True
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__build_proc.log("[service_templates] %s" % (what), level)
     def __getitem__(self, key):
-        act_key = key or self.__default
-        if not self.__dict.has_key(act_key):
-            self.log("key %d not known, using default %d" % (act_key, self.__default),
+        act_key = key or self.__default.pk
+        if not self.has_key(act_key):
+            self.log("key %d not known, using default %s (%d)" % (
+                str(act_key),
+                unicode(self.__default),
+                self.__default.pk),
                      logging_tools.LOG_LEVEL_ERROR)
-            act_key = self.__default
-        return self.__dict[act_key]
-    def has_key(self, key):
-        return self.__dict.has_key(key)
+            act_key = self.__default.pk
+        return super(service_templates, self).__getitem__(act_key)
 
 ##        
 ##class logging_thread(threading_tools.thread_obj):
@@ -1263,19 +1274,21 @@ class build_process(threading_tools.process_obj):
     def _rebuild_config(self, *args, **kwargs):
         h_list = args[0] if len(args) else []
         rebuild_it = True
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        dc.execute("SELECT d.device_idx FROM device d, device_group dg WHERE d.device_group=dg.device_group_idx AND dg.cluster_device_group")
-        if dc.rowcount:
-            cdg_idx = dc.fetchone()["device_idx"]
-            dc.execute("SELECT * FROM device_variable WHERE name='hopcount_rebuild_in_progress' AND device=%d" % (cdg_idx))
-            if dc.rowcount:
+        try:
+            cdg = device.objects.get(Q(device_group__cluster_device_group=True))
+        except device.DoesNotExist:
+            self.log("no cluster_device_group, unable to check validity of hopcount_table", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            try:
+                reb_var = device_variable.objects.get(Q(device=cdg) & Q(name="hopcount_rebuild_in_progress"))
+            except device_variable.DoesNotExist:
+                pass
+            else:
                 self.log("hopcount_rebuild in progress, delaying request", logging_tools.LOG_LEVEL_WARN)
                 # delay request
                 self.__log_queue.put(("delay_request", (self.get_thread_queue(), ("rebuild_config", h_list), global_config["MAIN_LOOP_TIMEOUT"] / 2)))
                 # no rebuild
                 rebuild_it = False
-        else:
-            self.log("no cluster_device_group, unable to check validity of hopcount_table", logging_tools.LOG_LEVEL_ERROR)
         if rebuild_it:
             rebuild_gen_config = False
             if global_config["ALL_HOSTS_NAME"] in h_list:
@@ -1287,63 +1300,61 @@ class build_process(threading_tools.process_obj):
             if not self.__gen_config:
                 rebuild_gen_config = True
             if rebuild_gen_config:
-                self._create_general_config(dc)
+                self._create_general_config()
                 h_list = []
             bc_valid = self.__gen_config.is_valid()
             if bc_valid:
                 # get device templates
-                dev_templates = device_templates(dc, self)
+                dev_templates = device_templates(self)
                 # get serivce templates
-                serv_templates = service_templates(dc, self)
+                serv_templates = service_templates(self)
                 if dev_templates.is_valid() and serv_templates.is_valid():
                     pass
                 else:
                     bc_valid = False
             if bc_valid:
-                self._create_host_config_files(dc, h_list, dev_templates, serv_templates)
+                self._create_host_config_files(h_list, dev_templates, serv_templates)
                 # refresh implies _write_entries
-                self.__gen_config.refresh(dc)
+                self.__gen_config.refresh()
             cfgs_written = self.__gen_config._write_entries()
             if bc_valid and (cfgs_written or rebuild_gen_config):
                 self._reload_nagios()
             # FIXME
             #self.__queue_dict["command_queue"].put(("config_rebuilt", h_list or [global_config["ALL_HOSTS_NAME"]]))
-        dc.release()
-    def _create_general_config(self, dc):
+    def _create_general_config(self):
         start_time = time.time()
-        self._check_image_maps(dc)
-        self._create_gen_config_files(dc)
+        self._check_image_maps()
+        self._create_gen_config_files()
         end_time = time.time()
         self.log("creating the total general config took %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
-    def _create_gen_config_files(self, dc):
+    def _create_gen_config_files(self):
         start_time = time.time()
         # misc commands (sending of mails)
-        self.__gen_config.add_config(all_commands(dc, self.__gen_config, self))
+        self.__gen_config.add_config(all_commands(self.__gen_config, self))
         # servicegroups
-        self.__gen_config.add_config(all_servicegroups(dc, self.__gen_config, self))
+        self.__gen_config.add_config(all_servicegroups(self.__gen_config, self))
         # timeperiods
-        self.__gen_config.add_config(time_periods(dc, self.__gen_config, self))
+        self.__gen_config.add_config(time_periods(self.__gen_config, self))
         # contacts
-        self.__gen_config.add_config(all_contacts(dc, self.__gen_config, self))
+        self.__gen_config.add_config(all_contacts(self.__gen_config, self))
         # contactgroups
-        self.__gen_config.add_config(all_contact_groups(dc, self.__gen_config, self))
+        self.__gen_config.add_config(all_contact_groups(self.__gen_config, self))
         # hostgroups
-        self.__gen_config.add_config(all_host_groups(dc, self.__gen_config, self))
+        self.__gen_config.add_config(all_host_groups(self.__gen_config, self))
         # hosts
-        self.__gen_config.add_config(all_hosts(dc, self.__gen_config, self))
+        self.__gen_config.add_config(all_hosts(self.__gen_config, self))
         # hosts_extinfo
-        self.__gen_config.add_config(all_hosts_extinfo(dc, self.__gen_config, self))
+        self.__gen_config.add_config(all_hosts_extinfo(self.__gen_config, self))
         # services
-        self.__gen_config.add_config(all_services(dc, self.__gen_config, self))
+        self.__gen_config.add_config(all_services(self.__gen_config, self))
         end_time = time.time()
         self.log("created host_configs in %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
-    def _get_ng_ext_hosts(self, dc):
-        dc.execute("SELECT * FROM ng_ext_host")
-        all_image_stuff = dict([(x["ng_ext_host_idx"], x) for x in dc.fetchall()])
-        return all_image_stuff
-    def _check_image_maps(self, dc):
+    def _get_ng_ext_hosts(self):
+        all_ext_hosts = dict([(cur_ext.pk, cur_ext) for cur_ext in mon_ext_host.objects.all()])
+        return all_ext_hosts
+    def _check_image_maps(self):
         min_width, max_width, min_height, max_height = (16, 64, 16, 64)
-        all_image_stuff = self._get_ng_ext_hosts(dc)
+        all_image_stuff = self._get_ng_ext_hosts()
         self.log("Found %s" % (logging_tools.get_plural("ext_host entry", len(all_image_stuff.keys()))))
         logos_dir = "%s/share/images/logos" % (global_config["MD_BASEDIR"])
         base_names = []
@@ -1364,15 +1375,17 @@ class build_process(threading_tools.process_obj):
                         width, height = [int(x.strip()) for x in logo_data[1].split("x")]
                         if min_width <= width and width <= max_width and min_height <= height and height <= max_height:
                             base_names.append(logo_name[:-4])
-        all_images_present = [x["name"] for x in all_image_stuff.values()]
-        all_images_present_lower = [x.lower() for x in all_images_present]
-        base_names_lower = [x.lower() for x in base_names]
-        new_images = [x for x in base_names if x.lower() not in all_images_present_lower]
-        del_images = [x for x in all_images_present if x.lower() not in base_names_lower]
+        all_images_present = set([eh.name for eh in all_image_stuff.values()])
+        all_images_present_lower = set([name.lower() for name in all_images_present])
+        base_names_lower = set([name.lower() for name in base_names])
+        new_images = base_names_lower - all_images_present_lower
+        del_images = all_images_present_lower - base_names_lower
         for new_image in new_images:
-            dc.execute("INSERT INTO ng_ext_host VALUES(0, '%s', '%s.png', '', '', '%s.gd2',null)" % (new_image, new_image, new_image))
-        for del_image in del_images:
-            dc.execute("DELETE FROM ng_ext_host WHERE name='%s'" % (del_image))
+            mon_ext_host(name=new_image,
+                         icon_image="%s.png" % (new_image),
+                         statusmap_image="%s.gd2" % (new_image)).save()
+        if del_images:
+            mon_ext_host.objects.filter(Q(name__in=del_images)).delete()
         self.log("Inserted %s, deleted %s" % (logging_tools.get_plural("new ext_host_entry", len(new_images)),
                                               logging_tools.get_plural("ext_host_entry", len(del_images))))
     def _get_int_str(self, i_val, size=3):
@@ -1380,189 +1393,195 @@ class build_process(threading_tools.process_obj):
             return ("%%%dd" % (size)) % (i_val)
         else:
             return ("%%%ds" % (size)) % ("-")
-    def _get_my_net_idxs(self, dc, server_idxs):
-        dc.execute("SELECT nd.netdevice_idx FROM netdevice nd WHERE (%s)" % (" OR ".join(["nd.device=%d" % (x) for x in server_idxs])))
-        my_net_idxs = [x.values()[0] for x in dc.fetchall()]
-        return my_net_idxs
-    def _create_host_config_files(self, dc, hosts, dev_templates, serv_templates):
+    def _create_host_config_files(self, hosts, dev_templates, serv_templates):
         start_time = time.time()
         server_idxs = [global_config["SERVER_IDX"]]
         # get additional idx if host is virtual server
-        sql_info = config_tools.server_check(dc=dc, server_type="nagios_master")
-        if sql_info.server_device_idx and sql_info.server_device_idx != global_config["SERVER_IDX"]:
+        sql_info = config_tools.server_check(server_type="monitor_server")
+        if sql_info.effective_device.pk and sql_info.effective_device.pk != global_config["SERVER_IDX"]:
             server_idxs.append(sql_info.server_device_idx)
         # get netip-idxs of own host
-        my_net_idxs = self._get_my_net_idxs(dc, server_idxs)
+        my_net_idxs = set(netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True))
         main_dir = global_config["MD_BASEDIR"]
         etc_dir = os.path.normpath("%s/etc" % (main_dir))
         # get ext_hosts stuff
-        ng_ext_hosts = self._get_ng_ext_hosts(dc)
+        ng_ext_hosts = self._get_ng_ext_hosts()
         # all hosts
-        dc.execute("SELECT d.device_idx, d.name, dt.identifier, d.bootserver FROM device d, device_type dt WHERE dt.device_type_idx=d.device_type")
-        all_hosts_dict = dict([(x["device_idx"], x) for x in dc.fetchall()])
+        all_hosts_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.all().select_related("device_type")])
         # check_hosts
         if hosts:
-            sel_str, host_info_str = ("(%s)" % (" OR ".join(["d.name='%s'" % (x) for x in hosts])), "%d" % (len(hosts)))
+            h_filter = Q(name__in=hosts)
         else:
-            sel_str, host_info_str = (" 1 ", "all")
-        dc.execute("SELECT d.*, dt.identifier FROM device d, device_type dt WHERE dt.device_type_idx=d.device_type AND %s" % (sel_str))
-        #host_cfg_dict=
-        check_hosts = dict([(x["device_idx"], x) for x in dc.fetchall()])
-        # get config variables
-        sql_str = "SELECT d.name, dc.new_config FROM new_config c INNER JOIN device d INNER JOIN device_group dg INNER JOIN device_config dc LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND dc.new_config=c.new_config_idx AND %s ORDER BY d.name" % (sel_str)
-        dc.execute(sql_str)
+            h_filter = Q()
+        check_hosts = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(h_filter)])
+        meta_devices = dict([(md.device_group.pk, md) for md in device.objects.filter(Q(device_type__identifier='MD')).prefetch_related("device_config_set", "device_config_set__config").select_related("device_group")])
         all_configs = {}
-        for db_rec in dc.fetchall():
-            all_configs.setdefault(db_rec["name"], []).append(db_rec["new_config"])
+        for cur_dev in device.objects.filter(h_filter).prefetch_related("device_config_set", "device_config_set__config"):
+            loc_config = [cur_dc.config for cur_dc in cur_dev.device_config_set.all()]
+            if cur_dev.device_group_id in meta_devices:
+                loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
+            all_configs[cur_dev.name] = loc_config
+        # get config variables
+##        sql_str = "SELECT d.name, dc.new_config FROM new_config c INNER JOIN device d INNER JOIN device_group dg INNER JOIN device_config dc LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND dc.new_config=c.new_config_idx AND %s ORDER BY d.name" % (sel_str)
+##        dc.execute(sql_str)
+##        all_configs = {}
+##        for db_rec in dc.fetchall():
+##            all_configs.setdefault(db_rec["name"], []).append(db_rec["new_config"])
         first_contactgroup_name = self.__gen_config["contactgroup"][self.__gen_config["contactgroup"].keys()[0]]["name"]
         contact_group_dict = {}
         # get contact groups
-        sql_str = "SELECT ndc.ng_contactgroup, d.name FROM device d, ng_contactgroup nc, device_group dg LEFT JOIN ng_device_contact ndc ON ndc.device_group=dg.device_group_idx WHERE d.device_group = dg.device_group_idx AND ndc.ng_contactgroup=nc.ng_contactgroup_idx AND (%s) ORDER BY dg.device_group_idx" % (sel_str)
-        dc.execute(sql_str)
-        for db_rec in dc.fetchall():
-            if self.__gen_config["contactgroup"].has_key(db_rec["ng_contactgroup"]):
-                cg_name = self.__gen_config["contactgroup"][db_rec["ng_contactgroup"]]["name"]
+        if hosts:
+            host_info_str = logging_tools.get_plural("host", len(hosts))
+            ct_groups = mon_contactgroup.objects.filter(Q(device_groups__device__name__in=hosts))
+        else:
+            host_info_str = "all"
+            ct_groups = mon_contactgroup.objects.all().prefetch_related("device_groups", "device_groups__device")
+        #sql_str = "SELECT ndc.ng_contactgroup, d.name FROM device d, ng_contactgroup nc, device_group dg LEFT JOIN ng_device_contact ndc ON ndc.device_group=dg.device_group_idx WHERE d.device_group = dg.device_group_idx AND ndc.ng_contactgroup=nc.ng_contactgroup_idx AND (%s) ORDER BY dg.device_group_idx" % (sel_str)
+        #dc.execute(sql_str)
+        for ct_group in ct_groups:
+            if self.__gen_config["contactgroup"].has_key(ct_group.pk):
+                cg_name = self.__gen_config["contactgroup"][ct_group.pk]["name"]
             else:
-                self.log("contagroup_idx %s for device %s not found, using first from contactgroups (%s)" % (str(db_rec["ng_contactgroup"]),
-                                                                                                             db_rec["name"],
-                                                                                                             first_contactgroup_name),
+                self.log("contagroup_idx %s for device %s not found, using first from contactgroups (%s)" % (
+                    unicode(ct_group),
+                    ct_group.name,
+                    first_contactgroup_name),
                          logging_tools.LOG_LEVEL_ERROR)
                 cg_name = first_contactgroup_name
-            contact_group_dict.setdefault(db_rec["name"], []).append(cg_name)
+            for h_name in ct_group.device_groups.all().values_list("device_group__name", flat=True):
+                contact_group_dict.setdefault(h_name, []).append(ct_group.name)
         # get valid and invalid network types
-        dc.execute("SELECT nt.identifier FROM network_type nt WHERE (%s)" % (" OR ".join(["nt.identifier='%s'" % (x) for x in ["p", "o"]])))
-        valid_nwt_list = [x.values()[0] for x in dc.fetchall()]
-        dc.execute("SELECT nt.identifier FROM network_type nt WHERE (%s)" % (" AND ".join(["nt.identifier!='%s'" % (x) for x in ["p", "o"]])))
-        invalid_nwt_list = [x.values()[0] for x in dc.fetchall()]
+        valid_nwt_list = set(network_type.objects.filter(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
+        invalid_nwt_list = set(network_type.objects.exclude(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
         # get all network devices (needed for relaying)
-        dc.execute("SELECT i.ip, d.name, n.netdevice_idx, nt.identifier FROM device d, netdevice n, netip i, network nw, network_type nt WHERE n.device=d.device_idx AND i.netdevice=n.netdevice_idx AND nw.network_type=nt.network_type_idx AND i.network = nw.network_idx")
         all_net_devices = {"i" : {},
                            "v" : {}}
-        for db_rec in dc.fetchall():
-            n_t, n_n, n_d, n_i = (db_rec["identifier"], db_rec["name"], db_rec["netdevice_idx"], db_rec["ip"])
-            if n_t in valid_nwt_list:
-                n_t = "v"
-            else:
-                n_t = "i"
-            if not all_net_devices[n_t].has_key(n_n):
-                all_net_devices[n_t][n_n] = {}
-            if not all_net_devices[n_t][n_n].has_key(n_d):
-                all_net_devices[n_t][n_n][n_d] = []
-            all_net_devices[n_t][n_n][n_d].append(n_i)
+        for n_i, n_n, n_t, n_d in net_ip.objects.all().values_list("ip", "netdevice__device__name", "network__network_type__identifier", "netdevice__pk"):
+            n_t = "v" if n_t in valid_nwt_list else "i"
+            all_net_devices.setdefault(n_t, {}).setdefault(n_n, {}).setdefault(n_d, []).append(n_i)
         #pprint.pprint(all_net_devices)
-        # get all masterswitch connections
-        dc.execute("SELECT d.device_idx, ms.device FROM device d, msoutlet ms WHERE ms.slave_device = d.device_idx")
+        # get all masterswitch connections, FIXME
+        #dc.execute("SELECT d.device_idx, ms.device FROM device d, msoutlet ms WHERE ms.slave_device = d.device_idx")
         all_ms_connections = {}
-        for db_rec in dc.fetchall():
-            all_ms_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
+        #for db_rec in dc.fetchall():
+        #    all_ms_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
         # get all device relationships
         all_dev_relationships = {}
-        dc.execute("SELECT * FROM device_relationship")
-        for db_rec in dc.fetchall():
-            all_dev_relationships[db_rec["domain_device"]] = db_rec
+        # FIXME
+        #dc.execute("SELECT * FROM device_relationship")
+        #for db_rec in dc.fetchall():
+        #    all_dev_relationships[db_rec["domain_device"]] = db_rec
         # get all ibm bladecenter connections
-        dc.execute("SELECT d.device_idx, ib.device FROM device d, ibc_connection ib WHERE ib.slave_device = d.device_idx")
+        # FIXME
+        #dc.execute("SELECT d.device_idx, ib.device FROM device d, ibc_connection ib WHERE #ib.slave_device = d.device_idx")
         all_ib_connections = {}
-        for db_rec in dc.fetchall():
-            all_ib_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
+        #for db_rec in dc.fetchall():
+        #    all_ib_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
         #print all_net_devices
         host_nc, service_nc  = (self.__gen_config["host"], self.__gen_config["service"])
         hostext_nc = self.__gen_config["hostextinfo"]
         # delete host if already present in host_table
-        for host_idx, host in check_hosts.iteritems():
-            del_list = [x for x in host_nc.values() if x["name"] == host["name"]]
+        for host_pk, host in check_hosts.iteritems():
+            del_list = set([cur_dev for cur_dev in host_nc.values() if cur_dev.name == host.name])
             for del_h in del_list:
-                del_list_2 = [x for x in service_nc.values() if x["host_name"] == del_h["name"]]
+                del_list_2 = [cur_dev for cur_dev in service_nc.values() if cur_dev["host_name"] == del_h.name]
                 for del_h_2 in del_list_2:
                     service_nc.remove_host(del_h_2)
                 # delete hostextinfo for nagios V1.x
-                if hostext_nc.has_key(del_h["name"]):
-                    del hostext_nc[del_h["name"]]
-                del host_nc[del_h["name"]]
+                if hostext_nc.has_key(del_h.name):
+                    del hostext_nc[del_h.name]
+                del host_nc[del_h.name]
         # build lookup-table
-        host_lut = dict([[check_hosts[k]["name"], k] for k in check_hosts.keys()])
+        host_lut = dict([(cur_dev.name, cur_dev.pk) for cur_dev in check_hosts.itervalues()])
         host_names = sorted(host_lut.keys())
         for host_name in host_names:
             start_time = time.time()
-            host_idx = host_lut[host_name]
-            host = check_hosts[host_idx]
-            self.__cached_mach_name = host["name"]
-            glob_log_str = "Starting build of config for device %20s" % (host["name"])
-            self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host["name"])
+            host_pk = host_lut[host_name]
+            print host_name, host_pk
+            host = check_hosts[host_pk]
+            self.__cached_mach_name = host.name
+            glob_log_str = "Starting build of config for device %20s" % (host.name)
+            self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.name)
             num_ok, num_warning, num_error = (0, 0, 0)
             #print "%s : %s" % (host["name"], host["identifier"])
-            if all_net_devices["v"].has_key(host["name"]):
-                net_devices = all_net_devices["v"][host["name"]]
-            elif all_net_devices["i"].has_key(host["name"]):
-                self.mach_log("Device %s has no valid netdevices associated, using invalid ones..." % (host["name"]),
-                                      logging_tools.LOG_LEVEL_WARN)
-                net_devices = all_net_devices["i"][host["name"]]
+            if host.name in all_net_devices["v"]:
+                net_devices = all_net_devices["v"][host.name]
+            elif host.name in all_net_devices["i"]:
+                self.mach_log("Device %s has no valid netdevices associated, using invalid ones..." % (host.name),
+                              logging_tools.LOG_LEVEL_WARN)
+                net_devices = all_net_devices["i"][host.name]
             else:
-                self.mach_log("Device %s has no netdevices associated, skipping..." % (host["name"]),
+                self.mach_log("Device %s has no netdevices associated, skipping..." % (host.name),
                                       logging_tools.LOG_LEVEL_ERROR)
                 num_error += 1
                 net_devices = []
             if net_devices:
                 #print mni_str_s, mni_str_d, dev_str_s, dev_str_d
                 # get correct netdevice for host
-                if host["name"] == global_config["SERVER_SHORT_NAME"]:
-                    valid_ips, traces, relay_ip = (["127.0.0.1"], [host_idx], "")
+                if host.name == global_config["SERVER_SHORT_NAME"]:
+                    valid_ips, traces, relay_ip = (["127.0.0.1"], [host_pk], "")
                 else:
-                    valid_ips, traces, relay_ip = self._get_target_ip_info(dc, my_net_idxs, all_net_devices, net_devices, host_idx, all_hosts_dict, check_hosts)
+                    valid_ips, traces, relay_ip = self._get_target_ip_info(my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts)
                     if not valid_ips:
                         num_error += 1
-                act_def_dev = dev_templates[host["ng_device_templ"]]
+                act_def_dev = dev_templates[host.mon_device_templ_id or 0]
                 if valid_ips and act_def_dev:
                     valid_ip = valid_ips[0]
-                    self.mach_log("Found %s for host %s : %s, using %s" % (logging_tools.get_plural("target ip", len(valid_ips)),
-                                                                           host["name"],
-                                                                           ", ".join(valid_ips),
-                                                                           valid_ip))
+                    self.mach_log("Found %s for host %s : %s, using %s" % (
+                        logging_tools.get_plural("target ip", len(valid_ips)),
+                        host.name,
+                        ", ".join(valid_ips),
+                        valid_ip))
                     if relay_ip:
                         self.mach_log(" - contact via relay-ip %s" % (relay_ip))
-                    if not serv_templates.has_key(act_def_dev["ng_service_templ"]):
+                    if not serv_templates.has_key(act_def_dev.mon_service_templ_id):
                         self.log("Default service_template not found in service_templates", logging_tools.LOG_LEVEL_WARN)
                     else:
-                        act_def_serv = serv_templates[act_def_dev["ng_service_templ"]]
+                        act_def_serv = serv_templates[act_def_dev.mon_service_templ_id]
                         # tricky part: check the actual service_template for the various services
-                        self.mach_log("Using default device_template '%s' and service_template '%s' for host %s" % (act_def_dev["name"], act_def_serv["name"], host["name"]))
+                        self.mach_log("Using default device_template '%s' and service_template '%s' for host %s" % (
+                            act_def_dev.name,
+                            act_def_serv.name,
+                            host.name))
                         # get device variables
                         dev_variables = {}
-                        sql_str = "SELECT v.name, v.var_type, v.val_str, v.val_int, v.val_blob, v.val_date, v.val_time FROM device_variable v WHERE v.device=%d" % (host_idx)
-                        dc.execute(sql_str)
-                        for db_rec in dc.fetchall():
-                            var_name = db_rec["name"]
-                            if db_rec["var_type"] == "s":
-                                dev_variables[var_name] = db_rec["val_str"]
-                            elif db_rec["var_type"] == "i":
-                                dev_variables[var_name] = str(db_rec["val_int"])
-                            elif db_rec["var_type"] == "b":
-                                dev_variables[var_name] = str(db_rec["val_blob"])
+                        for cur_var in device_variable.objects.filter(Q(device=host)):
+                            var_name = cur_var.name
+                            dev_variables[var_name] = cur_var
+##                        sql_str = "SELECT v.name, v.var_type, v.val_str, v.val_int, v.val_blob, v.val_date, v.val_time FROM device_variable v WHERE v.device=%d" % (host_idx)
+##                        dc.execute(sql_str)
+##                        for db_rec in dc.fetchall():
+##                            var_name = db_rec["name"]
+##                            if db_rec["var_type"] == "s":
+##                                dev_variables[var_name] = db_rec["val_str"]
+##                            elif db_rec["var_type"] == "i":
+##                                dev_variables[var_name] = str(db_rec["val_int"])
+##                            elif db_rec["var_type"] == "b":
+##                                dev_variables[var_name] = str(db_rec["val_blob"])
                         # get snmp related variables
-                        sql_str = "SELECT sc.* FROM snmp_class sc WHERE sc.snmp_class_idx=%d" % (host["snmp_class"])
-                        dc.execute(sql_str)
-                        if dc.rowcount:
-                            db_rec = dc.fetchone()
-                            dev_variables["SNMP_VERSION"] = "%d" % (db_rec["snmp_version"])
-                            dev_variables["SNMP_COMMUNITY"] = db_rec["read_community"]
-                        self.mach_log("device has %s" % (logging_tools.get_plural("device_variable", len(dev_variables.keys()))))
+                        # FIXME
+                        #sql_str = "SELECT sc.* FROM snmp_class sc WHERE sc.snmp_class_idx=%d" % (host["snmp_class"])
+                        #dc.execute(sql_str)
+                        #if dc.rowcount:
+                        #    db_rec = dc.fetchone()
+                        #    dev_variables["SNMP_VERSION"] = "%d" % (db_rec["snmp_version"])
+                        #    dev_variables["SNMP_COMMUNITY"] = db_rec["read_community"]
+                        self.mach_log("device has %s" % (
+                            logging_tools.get_plural("device_variable", len(dev_variables.keys()))))
                         # now we have the device- and service template
-                        act_host = nag_config(host["name"])
-                        act_host["host_name"] = host["name"]
+                        act_host = nag_config(host.name)
+                        act_host["host_name"] = host.name
                         # set alias
-                        if host["alias"]:
-                            act_host["alias"] = host["alias"]
-                        else:
-                            act_host["alias"] = host["name"]
+                        act_host["alias"] = host.alias or host.name
                         act_host["address"] = relay_ip and "%s:%s" % (relay_ip, valid_ip) or valid_ip
                         # check for parents
                         parents = []
                         # rule 1: APC Masterswitches have their bootserver set as parent
-                        if host["identifier"] in ["AM", "IBC"] and host["bootserver"]:
-                            parents.append(all_hosts_dict[host["bootserver"]]["name"])
+                        if host.device_type.identifier in ["AM", "IBC"] and host.bootserver_id:
+                            parents.append(all_hosts_dict[host.bootserver_id].name)
                         # rule 2: Devices connected to an apc have this apc set as parent
-                        elif all_ms_connections.has_key(host_idx):
-                            for pd in all_ms_connections[host_idx]:
+                        elif all_ms_connections.has_key(host_pk):
+                            for pd in all_ms_connections[host_pk]:
                                 if all_hosts_dict[pd]["name"] not in parents:
                                     # disable circular references
                                     if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
@@ -1570,8 +1589,8 @@ class build_process(threading_tools.process_obj):
                                     else:
                                         parents.append(all_hosts_dict[pd]["name"])
                         # rule 3: Devices connected to an ibc have this ibc set as parent
-                        elif all_ib_connections.has_key(host_idx):
-                            for pd in all_ib_connections[host_idx]:
+                        elif all_ib_connections.has_key(host_pk):
+                            for pd in all_ib_connections[host_pk]:
                                 if all_hosts_dict[pd]["name"] not in parents:
                                     # disable circular references
                                     if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
@@ -1579,8 +1598,8 @@ class build_process(threading_tools.process_obj):
                                     else:
                                         parents.append(all_hosts_dict[pd]["name"])
                         # rule 4: Devices have their xen/vmware-parent set as parent
-                        elif all_dev_relationships.has_key(host_idx) and all_hosts_dict.has_key(all_dev_relationships[host_idx]["host_device"]):
-                            act_rel = all_dev_relationships[host_idx]
+                        elif all_dev_relationships.has_key(host_pk) and all_hosts_dict.has_key(all_dev_relationships[host_pk]["host_device"]):
+                            act_rel = all_dev_relationships[host_pk]
                             # disable circular references
                             if host["identifier"] == "H" and host["name"] == global_config["SERVER_SHORT_NAME"]:
                                 self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[act_rel["host_device"]]["name"]))
@@ -1589,40 +1608,39 @@ class build_process(threading_tools.process_obj):
                         # rule 5: Check routing
                         else:
                             self.mach_log("No direct parent(s) found, registering trace")
-                            if host["bootserver"] != host_idx and host["bootserver"]:
-                                traces.append(host_idx)
+                            if host.bootserver_id != host_pk and host.bootserver_id:
+                                traces.append(host_pk)
                             if len(traces) > 1:
                                 act_host["possible_parents"] = traces
                                 #print traces, host["name"], all_hosts_dict[traces[1]]["name"]
                                 #parents += [all_hosts_dict[traces[1]]["name"]]
                             #print "No parent set for %s" % (host["name"])
                         if parents:
-                            self.mach_log("settings %s: %s" % (logging_tools.get_plural("parent", len(parents)),
-                                                                       ", ".join(sorted(parents))))
+                            self.mach_log("settings %s: %s" % (
+                                logging_tools.get_plural("parent", len(parents)),
+                                ", ".join(sorted(parents))))
                             act_host["parents"] = ",".join(parents)
                         act_host["retain_status_information"] = global_config["RETAIN_HOST_STATUS"]
-                        act_host["max_check_attempts"]        = act_def_dev["max_attempts"]
-                        act_host["notification_interval"]     = act_def_dev["ninterval"]
-                        act_host["notification_period"]       = self.__gen_config["timeperiod"][act_def_dev["ng_period"]]["name"]
+                        act_host["max_check_attempts"]        = act_def_dev.max_attempts
+                        act_host["notification_interval"]     = act_def_dev.ninterval
+                        act_host["notification_period"]       = self.__gen_config["timeperiod"][act_def_dev.mon_period_id]["name"]
                         act_host["checks_enabled"]            = 1
-                        host_groups = set(contact_group_dict.get(host["name"], []))
-                        if host_groups:
-                            act_host["contact_groups"] = ",".join(host_groups)
-                        else:
-                            act_host["contact_groups"] = global_config["NONE_CONTACT_GROUP"]
-                        self.mach_log("contact groups for host: %s" % (", ".join(sorted(host_groups)) or "none"))
-                        if host["nagios_checks"]:
-                            act_host["check_command"]             = act_def_dev["ccommand"]
+                        host_groups = set(contact_group_dict.get(host.name, []))
+                        act_host["contact_groups"] = ",".join(host_groups) if host_groups else global_config["NONE_CONTACT_GROUP"]
+                        self.mach_log("contact groups for host: %s" % (
+                            ", ".join(sorted(host_groups)) or "none"))
+                        if host.monitor_checks:
+                            act_host["check_command"]             = act_def_dev.ccommand
                             # check for notification options
                             not_a = []
                             for what, shortcut in [("nrecovery", "r"), ("ndown", "d"), ("nunreachable", "u")]:
-                                if act_def_dev[what]:
+                                if getattr(act_def_dev, what):
                                     not_a.append(shortcut)
                             if not not_a:
                                 not_a.append("n")
                             act_host["notification_options"] = ",".join(not_a)
                             # check for hostextinfo
-                            if host["ng_ext_host"] and ng_ext_hosts.has_key(host["ng_ext_host"]):
+                            if host.mon_ext_host_id and ng_ext_hosts.has_key(host.mon_ext_host_id):
                                 if (global_config["MD_TYPE"] == "nagios" and global_config["MD_VERSION"] > 1) or (global_config["MD_TYPE"] == "icinga"):
                                     # handle for nagios 2
                                     act_hostext_info = nag_config(host["name"])
@@ -1637,8 +1655,9 @@ class build_process(threading_tools.process_obj):
                             # clear host from servicegroups
                             self.__gen_config["servicegroup"].clear_host(host_name)
                             # get check_commands and templates
-                            conf_names = all_configs.get(host["name"], [])
-                            conf_dict = dict([(x["command_name"], x) for x in self.__gen_config["command"].values() if x.get_config() in conf_names and (x.get_device() == 0 or x.get_device() == host["device_idx"])])
+                            conf_names = all_configs.get(host.name, [])
+                            # build lut
+                            conf_dict = dict([(cur_c["command_name"], cur_c) for cur_c in self.__gen_config["command"].values() if cur_c.get_config() in conf_names and (not(cur_c.get_device()) or cur_c.get_device() == host.pk)])
                             # old code, use only_ping config
                             #if host["identifier"] == "NB" or host["identifier"] == "AM" or host["identifier"] == "S":
                             #    # set config-dict for netbotzes, APC Masterswitches and switches to ping
@@ -1652,7 +1671,9 @@ class build_process(threading_tools.process_obj):
                             for conf_name in conf_names:
                                 s_check = conf_dict[conf_name]
                                 if s_check.get_description() in used_checks:
-                                    self.mach_log("Check %s (%s) already used, ignoring .... (CHECK CONFIG !)" % (s_check.get_description(), s_check["command_name"]), logging_tools.LOG_LEVEL_WARN)
+                                    self.mach_log("Check %s (%s) already used, ignoring .... (CHECK CONFIG !)" % (
+                                        s_check.get_description(),
+                                        s_check["command_name"]), logging_tools.LOG_LEVEL_WARN)
                                     num_warning += 1
                                 else:
                                     used_checks.append(s_check.get_description())
@@ -1682,23 +1703,25 @@ class build_process(threading_tools.process_obj):
                                     else:
                                         sc_array = [(s_check.get_description(), [])]
                                         # contact_group is only written if contact_group is responsible for the host and the service_template
-                                    serv_temp = serv_templates[s_check.get_template(act_def_serv["name"])]
-                                    serv_cgs = set(serv_temp["contact_groups"]).intersection(host_groups)
-                                    self.mach_log("  adding check %-30s (%2d p), template %s, %s" % (s_check["command_name"], len(sc_array),
-                                                                                                     s_check.get_template(act_def_serv["name"]),
-                                                                                                     "cg: %s" % (", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs"))
+                                    serv_temp = serv_templates[s_check.get_template(act_def_serv.name)]
+                                    serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                    self.mach_log("  adding check %-30s (%2d p), template %s, %s" % (
+                                        s_check["command_name"],
+                                        len(sc_array),
+                                        s_check.get_template(act_def_serv.name),
+                                        "cg: %s" % (", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs"))
                                     for sc_name, sc in sc_array:
                                         act_serv = nag_config(sc_name)
                                         act_serv["service_description"]   = sc_name.replace("(", "[").replace(")", "]")
-                                        act_serv["host_name"]             = host["name"]
-                                        act_serv["is_volatile"]           = serv_temp["volatile"]
-                                        act_serv["check_period"]          = self.__gen_config["timeperiod"][serv_temp["nsc_period"]]["name"]
-                                        act_serv["max_check_attempts"]    = serv_temp["max_attempts"]
-                                        act_serv["normal_check_interval"] = serv_temp["check_interval"]
-                                        act_serv["retry_check_interval"]  = serv_temp["retry_interval"]
-                                        act_serv["notification_interval"] = serv_temp["ninterval"]
-                                        act_serv["notification_options"]  = ",".join(serv_temp["notification_options"])
-                                        act_serv["notification_period"]   = self.__gen_config["timeperiod"][serv_temp["nsn_period"]]["name"]
+                                        act_serv["host_name"]             = host.name
+                                        act_serv["is_volatile"]           = serv_temp.volatile
+                                        act_serv["check_period"]          = self.__gen_config["timeperiod"][serv_temp.nsc_period_id]["name"]
+                                        act_serv["max_check_attempts"]    = serv_temp.max_attempts
+                                        act_serv["normal_check_interval"] = serv_temp.check_interval
+                                        act_serv["retry_check_interval"]  = serv_temp.retry_interval
+                                        act_serv["notification_interval"] = serv_temp.ninterval
+                                        act_serv["notification_options"]  = ",".join(serv_temp.notification_options)
+                                        act_serv["notification_period"]   = self.__gen_config["timeperiod"][serv_temp.nsn_period_id]["name"]
                                         if serv_cgs:
                                             act_serv["contact_groups"] = ",".join(serv_cgs)
                                         else:
@@ -1714,7 +1737,7 @@ class build_process(threading_tools.process_obj):
                                             service_nc.append(act_serv)
                             host_nc[act_host["name"]] = act_host
                         else:
-                            self.mach_log("Host %s is disabled" % (host["name"]))
+                            self.mach_log("Host %s is disabled" % (host.name))
                 else:
                     self.mach_log("No valid IPs found or no default_device_template found", logging_tools.LOG_LEVEL_ERROR)
             info_str = "finished with %s warnings and %s errors (%3d ok) in %s" % (self._get_int_str(num_warning),
@@ -1729,7 +1752,7 @@ class build_process(threading_tools.process_obj):
             if host.has_key("possible_parents"):
                 p_parents = host["possible_parents"]
                 for parent_idx in p_parents:
-                    parent = all_hosts_dict[parent_idx]["name"]
+                    parent = all_hosts_dict[parent_idx].name
                     if parent in host_names and parent != host["name"]:
                         host["parents"] = ",".join([parent])
                         self.mach_log("Setting parent to %s" % (parent), logging_tools.LOG_LEVEL_OK, host["name"])
@@ -1738,33 +1761,36 @@ class build_process(threading_tools.process_obj):
         end_time = time.time()
         self.log("created configs for %s hosts in %s" % (host_info_str,
                                                          logging_tools.get_diff_time_str(end_time - start_time)))
-    def _get_target_ip_info(self, dc, my_net_idxs, all_net_devices, net_devices, host_idx, all_hosts_dict, check_hosts):
-        mni_str_s = " OR ".join(["h.s_netdevice=%d" % (x) for x in my_net_idxs])
+    def _get_target_ip_info(self, my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts):
+        host = all_hosts_dict[host_pk]
         traces, relay_ip = ([], "")
-        host = all_hosts_dict[host_idx]
-        dev_str_d = " OR ".join(["h.d_netdevice=%d" % (x) for x in net_devices.keys()])
-        dc.execute("SELECT h.s_netdevice, h.d_netdevice, h.trace, h.value FROM hopcount h WHERE (%s) AND (%s) ORDER BY h.value" % (mni_str_s, dev_str_d))
+##        mni_str_s = " OR ".join(["h.s_netdevice=%d" % (x) for x in my_net_idxs])
+##        dev_str_d = " OR ".join(["h.d_netdevice=%d" % (x) for x in net_devices.keys()])
+##        dc.execute("SELECT h.s_netdevice, h.d_netdevice, h.trace, h.value FROM hopcount h WHERE (%s) AND (%s) ORDER BY h.value" % (mni_str_s, dev_str_d))
         #targ_netdev_ds = dc.fetchone()
         targ_netdev_idxs = None
-        for targ_netdev_ds in dc.fetchall():
-            targ_netdev_idxs = [targ_netdev_ds[k] for k in ["s_netdevice", "d_netdevice"] if targ_netdev_ds[k] not in my_net_idxs]
+        for targ_netdev_ds in hopcount.objects.filter(Q(s_netdevice__in=my_net_idxs) & Q(d_netdevice__in=net_devices.keys())):
+            targ_netdev_idxs = [getattr(targ_netdev_ds, key) for key in ["s_netdevice_id", "d_netdevice_id"] if getattr(targ_netdev_ds, key) not in my_net_idxs]
             if not targ_netdev_idxs:
                 # special case: peers defined but only local netdevices found, maybe alias ?
-                targ_netdev_idxs = [targ_netdev_ds["s_netdevice"]]
-            if len([True for x in targ_netdev_idxs if net_devices.has_key(x)]):
-                if targ_netdev_ds["trace"]:
-                    traces = [int(x) for x in targ_netdev_ds["trace"].split(":")]
-                    if traces[0] != host_idx:
+                targ_netdev_idxs = [targ_netdev_ds.s_netdevice_id]
+            print targ_netdev_idxs
+            if any([net_devices.has_key(key) for key in targ_netdev_idxs]):
+                if targ_netdev_ds.trace:
+                    traces = [int(val) for val in targ_netdev_ds.trace.split(":")]
+                    if traces[0] != host_pk:
                         traces.reverse()
                 break
             else:
                 targ_netdev_idxs = None
         if not targ_netdev_idxs:
-            self.mach_log("Cannot reach host %s (check peer_information)" % (host["name"]), logging_tools.LOG_LEVEL_ERROR)
+            self.mach_log("Cannot reach host %s (check peer_information)" % (host.name), logging_tools.LOG_LEVEL_ERROR)
             valid_ips = []
         else:
             valid_ips = (",".join([",".join([y for y in net_devices[x]]) for x in targ_netdev_idxs])).split(",")
-            r_dev_idx = check_hosts[host_idx]["relay_device"]
+            # FIXME, for relaying
+            r_dev_idx = 0
+            #r_dev_idx = check_hosts[host_idx]["relay_device"]
             if r_dev_idx:
                 relay_host = all_hosts_dict[r_dev_idx]
                 if all_net_devices["v"].has_key(relay_host["name"]):
@@ -1927,28 +1953,25 @@ class db_verify_process(threading_tools.process_obj):
         self.__log_template.close()
         
 class server_process(threading_tools.process_pool):
-    def __init__(self, db_con):
+    def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
-        self.__db_con = db_con
         self.__pid_name = global_config["PID_NAME"]
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
+        connection.close()
         #self.register_func("new_pid", self._new_pid)
         #self.register_func("remove_pid", self._remove_pid)
         # prepare directories
         #self._prepare_directories()
-        dc = self.__db_con.get_connection(SQL_ACCESS)
         # re-insert config
-        self._re_insert_config(dc)
+        self._re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
-        self._check_nagios_version(dc)
-        self._check_relay_version(dc)
+        self._check_nagios_version()
+        self._check_relay_version()
         self._log_config()
-        self._check_nagios_db(dc)
-        dc.release()
         self._init_network_sockets()
         self.add_process(db_verify_process("db_verify"), start=True)
         self.add_process(build_process("build"), start=True)
@@ -1977,39 +2000,39 @@ class server_process(threading_tools.process_pool):
                 init_ok = True
         self.__em_ok = init_ok
     def _update(self):
-        dc = self.__db_con.get_connection(SQL_ACCESS)
+        #dc = self.__db_con.get_connection(SQL_ACCESS)
         sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM nagiosdb.%s_hoststatus nhs, nagiosdb.%s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (
             global_config["MD_TYPE"],
             global_config["MD_TYPE"])
-        nag_suc = dc.execute(sql_str)
-        if nag_suc:
-            nag_dict = dict([(db_rec["host_name"], db_rec["host_status"]) for db_rec in dc.fetchall()])
-            num_tot, num_up, num_down = (len(nag_dict.keys()),
-                                         nag_dict.values().count(NAG_HOST_UP),
-                                         nag_dict.values().count(NAG_HOST_DOWN))
-            num_unknown = num_tot - (num_up + num_down)
-            self.log("%s status is: %d up, %d down, %d unknown (%d total)" % (global_config["MD_TYPE"],
-                                                                              num_up,
-                                                                              num_down,
-                                                                              num_unknown,
-                                                                              num_tot))
-            if not self.__em_ok:
-                self._init_em()
-            if self.__em_ok:
-                ofile = "%s/%s.mvv" % (self.__esd, self.__nvn)
-                try:
-                    file(ofile, "w").write("\n".join(["nag.tot:i:%d" % (num_tot),
-                                                      "nag.up:i:%d" % (num_up),
-                                                      "nag.down:i:%d" % (num_down),
-                                                      "nag.unknown:i:%d" % (num_unknown),
-                                                      ""]))
-                except:
-                    self.log("cannot write to file %s: %s" % (ofile,
-                                                              process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    pass
-        dc.release()
+        cursor = connections["monitor"].cursor()
+        nag_suc = cursor.execute(sql_str)
+        nag_dict = dict([(db_rec[1], db_rec[0]) for db_rec in cursor.fetchall()])
+        num_tot, num_up, num_down = (len(nag_dict.keys()),
+                                     nag_dict.values().count(NAG_HOST_UP),
+                                     nag_dict.values().count(NAG_HOST_DOWN))
+        num_unknown = num_tot - (num_up + num_down)
+        self.log("%s status is: %d up, %d down, %d unknown (%d total)" % (global_config["MD_TYPE"],
+                                                                          num_up,
+                                                                          num_down,
+                                                                          num_unknown,
+                                                                          num_tot))
+        if not self.__em_ok:
+            self._init_em()
+        if self.__em_ok:
+            ofile = "%s/%s.mvv" % (self.__esd, self.__nvn)
+            try:
+                file(ofile, "w").write("\n".join(["nag.tot:i:%d" % (num_tot),
+                                                  "nag.up:i:%d" % (num_up),
+                                                  "nag.down:i:%d" % (num_down),
+                                                  "nag.unknown:i:%d" % (num_unknown),
+                                                  ""]))
+            except:
+                self.log("cannot write to file %s: %s" % (ofile,
+                                                          process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                pass
+        cursor.close()
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -2018,11 +2041,9 @@ class server_process(threading_tools.process_pool):
         self.log("Found %d valid global config-lines:" % (len(conf_info)))
         for conf in conf_info:
             self.log("Config : %s" % (conf))
-    def _re_insert_config(self, dc):
-        self.log("re-insert config")
-        # FIXME, not implemented, AL 20120319
-        #configfile.write_config(dc, "nagios_master", global_config)
-    def _check_nagios_version(self, dc):
+    def _re_insert_config(self):
+        cluster_location.write_config("monitor_server", global_config)
+    def _check_nagios_version(self):
         start_time = time.time()
         md_version, md_type = ("unknown", "unknown")
         for t_daemon in ["icinga", "nagios"]:
@@ -2061,22 +2082,19 @@ class server_process(threading_tools.process_pool):
                 ("MD_LOCK_FILE"     , configfile.str_c_var("%s.lock" % (md_type))),
             ])
         # device_variable local to the server
-        dv = configfile.device_variable(dc, global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon RPM", value=md_version)
-        if dv.is_set():
-            dv.set_value(md_version)
-            dv.update(dc)
-        dc.execute("SELECT d.device_idx FROM device d, device_group dg WHERE d.device_group=dg.device_group_idx AND dg.cluster_device_group")
-        if dc.rowcount:
-            cdg_idx = dc.fetchone()["device_idx"]
-            dv = configfile.device_variable(dc, cdg_idx, "md_version", description="Version of the Monitor-daemon RPM", value=md_version, force_update=True)
-            dv = configfile.device_variable(dc, cdg_idx, "md_type", description="Type of the Monitor-daemon RPM", value=md_type, force_update=True)
+        dv = cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon RPM", value=md_version)
+##        if dv.is_set():
+##            dv.set_value(md_version)
+##            dv.update(dc)
+        cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon RPM", value=md_version, force_update=True)
+        cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_type", description="Type of the Monitor-daemon RPM", value=md_type, force_update=True)
         if md_version == "unknown":
             self.log("No installed monitor-daemon found (version set to %s)" % (md_version), logging_tools.LOG_LEVEL_WARN)
         else:
             self.log("Discovered installed monitor-daemon %s, version %s" % (md_type, md_version))
         end_time = time.time()
         self.log("monitor-daemon version discovery took %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
-    def _check_relay_version(self, dc):
+    def _check_relay_version(self):
         start_time = time.time()
         relay_version = "unknown"
         if os.path.isfile("/etc/debian_version"):
@@ -2107,7 +2125,7 @@ class server_process(threading_tools.process_pool):
             if has_snmp_relayer:
                 global_config.add_config_entries([("HAS_SNMP_RELAYER", configfile.bool_c_var(True))])
                 self.log("host-relay package has snmp-relayer, rewriting database entries for nagios")
-                self._rewrite_nagios_snmp(dc)
+                self._rewrite_nagios_snmp()
         # device_variable local to the server
         if relay_version == "unknown":
             self.log("No installed host-relay found", logging_tools.LOG_LEVEL_WARN)
@@ -2115,7 +2133,8 @@ class server_process(threading_tools.process_pool):
             self.log("Discovered installed host-relay version %s" % (relay_version))
         end_time = time.time()
         self.log("host-relay version discovery took %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
-    def _rewrite_nagios_snmp(self, dc):
+    def _rewrite_nagios_snmp(self):
+        return
         # step 1: host-relay to snmp-relay
         dc.execute("SELECT * FROM ng_check_command")
         for db_rec in dc.fetchall():
@@ -2139,19 +2158,6 @@ class server_process(threading_tools.process_pool):
                 self.log("rewriting comline for %s (step 2)" % (db_rec["name"]))
                 dc.execute("UPDATE ng_check_command SET command_line=%s WHERE ng_check_command_idx=%s", (new_comline,
                                                                                                          db_rec["ng_check_command_idx"]))
-    def _check_nagios_db(self, dc):
-        # add keys for hostname and stuff
-        if global_config["MD_TYPE"] == "nagios" and global_config["MD_VERSION"] == 1:
-            self.log("Checking Nagios DB (for Nagios 1.x) ...")
-            table_dict = {"hoststatus"    : ["host_name"],
-                          "servicestatus" : ["host_name", "service_status"]}
-            for db_name, db_stuff in table_dict.iteritems():
-                dc.execute("DESCRIBE nagiosdb.%s" % (db_name))
-                db_dict = dict([(x["Field"], x) for x in dc.fetchall()])
-                for name, stuff in db_dict.iteritems():
-                    if name in db_stuff and not stuff["Key"]:
-                        dc.execute("ALTER TABLE nagiosdb.%s ADD KEY %s(%s)" % (db_name, name, name))
-                        self.log("  added key %s to table %s" % (name, db_name))
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -2291,41 +2297,30 @@ def main():
                                                add_writeback_option=True,
                                                positional_arguments=False)
     global_config.write_file()
-    db_con = mysql_tools.dbcon_container()
-    try:
-        dc = db_con.get_connection("cluster_full_access")
-    except MySQLdb.OperationalError:
-        sys.stderr.write(" Cannot connect to SQL-Server ")
-        sys.exit(1)
-    sql_info = config_tools.server_check(dc=dc, server_type="nagios_master")
-    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.server_device_idx))])
-    ret_state = 256
-    if not global_config["SERVER_IDX"]:
-        sys.stderr.write(" %s is no md-config-server, exiting..." % (long_host_name))
+    sql_info = config_tools.server_check(server_type="monitor_server")
+    if not sql_info.effective_device:
+        print "not a monitor_server"
         sys.exit(5)
+    else:
+        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
     if global_config["CHECK"]:
         sys.exit(0)
-    if sql_info.num_servers > 1:
-        print "Database error for host %s (nagios_config): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
-        dc.release()
-        sys.exit(5)
-    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(process_tools.create_log_source_entry(dc, global_config["SERVER_IDX"], "nagios_master", "Nagios / Icinga Monitor")))])
-    if not global_config["LOG_SOURCE_IDX"]:
-        print "Too many log_source with my id present, exiting..."
-        dc.release()
-        sys.exit(5)
     if global_config["KILL_RUNNING"]:
-        log_lines = process_tools.kill_running_processes(prog_name, ignore_names=["nagios", "icinga"],
-                                                         exclude=configfile.get_manager_pid())
-    configfile.read_config_from_db(global_config, dc, "nagios_master", [
-        ("COM_PORT"                    , configfile.int_c_var(8010)),
+        log_lines = process_tools.kill_running_processes(
+            prog_name + ".py",
+            ignore_names=["nagios", "icinga"],
+            exclude=configfile.get_manager_pid())
+
+    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("mon-server", "Cluster MonitoringServer", device=sql_info.effective_device).pk))])
+
+    cluster_location.read_config_from_db(global_config, "monitor_server", [
+        ("COM_PORT"                    , configfile.int_c_var(SERVER_COM_PORT)),
         ("NETSPEED_WARN_MULT"          , configfile.float_c_var(0.85)),
         ("NETSPEED_CRITICAL_MULT"      , configfile.float_c_var(0.95)),
         ("NETSPEED_DEFAULT_VALUE"      , configfile.int_c_var(10000000)),
         ("CHECK_HOST_ALIVE_PINGS"      , configfile.int_c_var(3)),
         ("CHECK_HOST_ALIVE_TIMEOUT"    , configfile.float_c_var(5.0)),
         ("NONE_CONTACT_GROUP"          , configfile.str_c_var("none_group")),
-        ("LOG_DIR"                     , configfile.str_c_var("/var/log/cluster/md-config-server")),
         ("FROM_ADDR"                   , configfile.str_c_var(long_host_name)),
         ("MAIN_LOOP_TIMEOUT"           , configfile.int_c_var(30)),
         ("RETAIN_HOST_STATUS"          , configfile.int_c_var(1)),
@@ -2339,7 +2334,7 @@ def main():
         ("ALL_HOSTS_NAME"              , configfile.str_c_var("***ALL***")),
         ("SERVER_SHORT_NAME"           , configfile.str_c_var(mach_name)),
     ])
-    dc.release()
+    process_tools.renice()
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
         process_tools.become_daemon()
@@ -2347,7 +2342,7 @@ def main():
                                    "err" : (0, "/var/lib/logging-server/py_err")})
     else:
         print "Debugging md-config-server on %s" % (long_host_name)
-    ret_state = server_process(db_con).loop()
+    ret_state = server_process().loop()
     sys.exit(ret_state)
 
 if __name__  == "__main__":
