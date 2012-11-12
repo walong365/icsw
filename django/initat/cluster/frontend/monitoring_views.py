@@ -8,7 +8,8 @@ import process_tools
 from initat.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, mon_period, mon_contact, user, \
-     mon_contactgroup, get_related_models, network_type, network_device_type, mon_device_templ
+     mon_contactgroup, get_related_models, network_type, network_device_type, mon_device_templ, \
+     mon_ext_host
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me

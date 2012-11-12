@@ -35,10 +35,11 @@ def sess_logout(request):
 ##        #sess_data = session_handler.read_session(request, request.session["DB_SESSION_ID"])
 ##        #session_handler.delete_session(sess_data)
 ##        pass
+    from_logout = request.user.is_authenticated()
     logout(request)
     login_form = authentication_form()
     return render_me(request, "login.html", {"login_form"  : login_form,
-                                             "from_logout" : True,
+                                             "from_logout" : from_logout,
                                              "app_path"    : reverse("session:login")})()
 
 @init_logging

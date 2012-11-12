@@ -43,7 +43,8 @@ function load_devices(sel_list) {
         error   : handle_ajax_error,
         data    : {
             "sel_list" : sel_list,
-            "extra_t0" : "mon_device_templ"
+            "extra_t0" : "mon_device_templ",
+            "extra_t1" : "mon_ext_host"
         },
         success : function(xml) {
             if (parse_xml_response(xml)) {
@@ -110,6 +111,13 @@ function draw_device(d_el) {
         $("<td>").append(
             create_input_el(d_el, "monitor_checks", line_prefix, {
                 boolean : 1
+            })
+        )
+    ).append(
+        $("<td>").append(
+            create_input_el(d_el, "mon_ext_host", line_prefix, {
+                select_source  : "mon_ext_hosts mon_ext_host",
+                add_null_entry : "not set"
             })
         )
     );
@@ -185,6 +193,7 @@ function draw_tables() {
         });
     });
     $("div#mon_tables").append(c_table);
+    c_table.find("select").msDropdown();
 };
 
 function add_dcon_handlers() {

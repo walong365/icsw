@@ -4,10 +4,35 @@ String.prototype.toTitle = function () {
     return this.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
 };
 
+AJAX_UUID = 0;
+AJAX_DICT = new Object();
+
 $.ajaxSetup({
-    type     : "POST",
-    timeout  : 50000,
-    dataType : "xml"
+    type       : "POST",
+    timeout    : 50000,
+    dataType   : "xml",
+    beforeSend : function(xhr, settings) {
+        xhr.inituuid = AJAX_UUID;
+        AJAX_UUID++;
+        AJAX_DICT[xhr.inituuid] = {
+            "state" : "pending",
+            "start" : new Date()
+        };
+        var ai_div = $("div#ajax_info");
+        if (! ai_div.find("ul").length) {
+            ai_div.append($("<ul>"));
+        };
+        ai_ul = ai_div.find("ul");
+        ai_ul.append($("<li>").attr({
+            "id" : xhr.inituuid
+        }).text("pending..."));
+    },
+    complete   : function(xhr, textstatus) {
+        AJAX_DICT[xhr.inituuid]["state"] = "done";
+        AJAX_DICT[xhr.inituuid]["runtime"] = new Date() - AJAX_DICT[xhr.inituuid]["start"];
+        var ai_div = $("div#ajax_info");
+        ai_div.find("li#" + xhr.inituuid).remove();
+    }
 });
 
 
@@ -566,7 +591,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
                 });
             } else {
                 var sel_val = xml_el === undefined ? "0" : xml_el.attr(attr_name);
-                new_el.attr("value", sel_val);
+                new_el.val(sel_val);//attr("value", sel_val);
             };
             if (kwargs.add_null_entry) {
                 new_el.append($("<option>").attr({"value" : "0"}).text(kwargs.add_null_entry));
@@ -581,6 +606,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
                 };
                 new_el.append(new_opt);
             });
+            //new_el.msDropdown();
         } else {
             var new_el = $("<span>").addClass("error").text("no " + attr_name + " defined");
         };

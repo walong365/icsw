@@ -12,7 +12,7 @@ from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from initat.cluster.backbone.models import device_type, device_group, device, device_class, \
-     mon_device_templ
+     mon_device_templ, mon_ext_host
 from django.core.exceptions import ValidationError
 from lxml import etree
 import config_tools

@@ -28,14 +28,14 @@
                     <td align="right"><input type="submit" value="login"/></td>
                 </tr>
             </table>
-            {% if from_logout %}
-                <div class="loginerrors">
-                    <h1 class="center" style="font-size:20px;">{% trans "Thank you for using the Clustersoftware" %}</h1>
-                </div>
-            {% endif %}
+        </div>
+        {% if from_logout %}
             <div class="loginerrors">
-                {% if login_form.non_field_errors %}<p>{% trans "Please enter a valid username and password!" %}</p>{% endif %}		
+                <h1 class="center" style="font-size:20px;">{% trans "Thank you for using the Clustersoftware" %}</h1>
             </div>
+        {% endif %}
+        <div class="loginerrors">
+            {% if login_form.non_field_errors %}<p>{% trans "Please enter a valid username and password!" %}</p>{% endif %}		
         </div>
     </center>
 <!--    <input type="hidden" name="next" value="{{ next }}"/>-->
