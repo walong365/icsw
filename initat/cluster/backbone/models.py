@@ -373,6 +373,7 @@ class device(models.Model):
             act_partition_table_id="%d" % (self.act_partition_table_id if self.act_partition_table_id else 0),
             mon_device_templ="%d" % (self.mon_device_templ_id or 0),
             monitor_checks="1" if self.monitor_checks else "0",
+            mon_ext_host="%d" % (self.mon_ext_host_id or 0),
         )
         if full:
             r_xml.extend([
@@ -1555,7 +1556,6 @@ class mon_device_templ(models.Model):
     is_default = models.BooleanField()
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
-        print self.mon_period
         return E.mon_device_templ(
             unicode(self),
             pk="%d" % (self.pk),
@@ -1606,7 +1606,18 @@ class mon_ext_host(models.Model):
     vrml_image = models.CharField(max_length=192, blank=True)
     statusmap_image = models.CharField(max_length=192, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.mon_ext_host(
+            unicode(self),
+            name=self.name,
+            pk="%d" % (self.pk),
+            key="mext__%d" % (self.pk),
+            icon_image="%s" % (self.icon_image)
+        )
+    def __unicode__(self):
+        return self.name
     class Meta:
+        ordering = ("name", )
         db_table = u'ng_ext_host'
 
 class mon_period(models.Model):
