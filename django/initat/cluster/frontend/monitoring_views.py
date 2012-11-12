@@ -18,6 +18,8 @@ from lxml.builder import E
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
 import pprint
+import server_command
+import net_tools
 
 @init_logging
 @login_required
@@ -80,4 +82,23 @@ def get_config(request):
     xml_resp.append(E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]))
     xml_resp.append(E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]))
     xml_resp.append(E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]))
+    return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def create_config(request):
+    srv_com = server_command.srv_command(command="rebuild_host_config")
+    #srv_com["devices"] = srv_com.builder(
+    #    "devices",
+    #    *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
+    result = net_tools.zmq_connection("config_webfrontend", timeout=5).add_connection("tcp://localhost:8010", srv_com)
+    if not result:
+        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        res_node = result.xpath(None, ".//ns:result")[0]
+        request.log(res_node.attrib["reply"],
+                    int(res_node.attrib["state"]),
+                    xml=True)
+        request.xml_response["result"] = E.devices()
+    print etree.tostring(request.xml_response.build_response(), pretty_print=True)
     return request.xml_response.create_response()

@@ -11,7 +11,20 @@
 
 <div id="mon_tables"></div>
 
+<input type="button" onClick="create_config();" value="generate config"/>
+
 <script type="text/javascript">
+
+function create_config() {
+    $.ajax({
+        url     : "{% url mon:create_config %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+            }
+        }
+    });
+};
 
 // monitoring XML
 MON = undefined;
