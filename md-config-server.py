@@ -303,7 +303,7 @@ class main_config(object):
         for th_descr, th in [("low_service", 5.0), ("high_service", 20.0),
                              ("low_host"   , 5.0), ("high_host"   , 20.0)]:
             main_cfg["%s_flap_threshold" % (th_descr)] = th
-        def_user = "nagiosadmin"
+        def_user = "%sadmin" % (global_config["MD_TYPE"])
         cgi_config = base_config("cgi",
                                  is_host_file=True,
                                  values=[("main_config_file"         , "%s/%s.cfg" % (self.__dir_dict["etc"], global_config["MAIN_CONFIG_NAME"])),
@@ -813,7 +813,6 @@ class all_host_groups(host_type_config):
         if gen_conf.has_key("host"):
             all_hosts_written = gen_conf["host"].keys()
             filter_obj = Q(name__in=all_hosts_written)
-            print filter_obj
             #sql_add_str = " OR ".join(["d.name='%s'" % (x) for x in all_hosts_written])
             # hostgroups
             if all_hosts_written:
@@ -1171,6 +1170,7 @@ class build_process(threading_tools.process_obj):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
         self.__nagios_lock_file_name = "%s/var/%s" % (global_config["MD_BASEDIR"], global_config["MD_LOCK_FILE"])
+        connection.close()
         self.__mach_loggers = {}
         self.__db_con = mysql_tools.dbcon_container()
         self.__gen_config = main_config(self)
@@ -1272,6 +1272,8 @@ class build_process(threading_tools.process_obj):
             for log_line in log_lines:
                 self.log(log_line)
     def _rebuild_config(self, *args, **kwargs):
+        if global_config["DEBUG"]:
+            cur_query_count = len(connection.queries)
         h_list = args[0] if len(args) else []
         rebuild_it = True
         try:
@@ -1321,6 +1323,11 @@ class build_process(threading_tools.process_obj):
                 self._reload_nagios()
             # FIXME
             #self.__queue_dict["command_queue"].put(("config_rebuilt", h_list or [global_config["ALL_HOSTS_NAME"]]))
+        if global_config["DEBUG"]:
+            tot_query_count = len(connection.queries) - cur_query_count
+            self.log("queries issued: %d" % (tot_query_count))
+            for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
+                self.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
     def _create_general_config(self):
         start_time = time.time()
         self._check_image_maps()
@@ -1435,7 +1442,8 @@ class build_process(threading_tools.process_obj):
             ct_groups = mon_contactgroup.objects.filter(Q(device_groups__device__name__in=hosts))
         else:
             host_info_str = "all"
-            ct_groups = mon_contactgroup.objects.all().prefetch_related("device_groups", "device_groups__device")
+            ct_groups = mon_contactgroup.objects.all()
+        ct_group = ct_groups.prefetch_related("device_groups", "device_groups__device")
         #sql_str = "SELECT ndc.ng_contactgroup, d.name FROM device d, ng_contactgroup nc, device_group dg LEFT JOIN ng_device_contact ndc ON ndc.device_group=dg.device_group_idx WHERE d.device_group = dg.device_group_idx AND ndc.ng_contactgroup=nc.ng_contactgroup_idx AND (%s) ORDER BY dg.device_group_idx" % (sel_str)
         #dc.execute(sql_str)
         for ct_group in ct_groups:
@@ -1497,7 +1505,6 @@ class build_process(threading_tools.process_obj):
         for host_name in host_names:
             start_time = time.time()
             host_pk = host_lut[host_name]
-            print host_name, host_pk
             host = check_hosts[host_pk]
             self.__cached_mach_name = host.name
             glob_log_str = "Starting build of config for device %20s" % (host.name)
@@ -1774,7 +1781,6 @@ class build_process(threading_tools.process_obj):
             if not targ_netdev_idxs:
                 # special case: peers defined but only local netdevices found, maybe alias ?
                 targ_netdev_idxs = [targ_netdev_ds.s_netdevice_id]
-            print targ_netdev_idxs
             if any([net_devices.has_key(key) for key in targ_netdev_idxs]):
                 if targ_netdev_ds.trace:
                     traces = [int(val) for val in targ_netdev_ds.trace.split(":")]
@@ -1936,6 +1942,7 @@ class db_verify_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
         self.register_func("validate", self._validate_db)
+        connection.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def _validate_db(self, **kwargs):
@@ -1973,7 +1980,7 @@ class server_process(threading_tools.process_pool):
         self._check_relay_version()
         self._log_config()
         self._init_network_sockets()
-        self.add_process(db_verify_process("db_verify"), start=True)
+        #self.add_process(db_verify_process("db_verify"), start=True)
         self.add_process(build_process("build"), start=True)
         self._init_em()
         self.register_timer(self._check_db, 3600, instant=True)
@@ -2001,7 +2008,10 @@ class server_process(threading_tools.process_pool):
         self.__em_ok = init_ok
     def _update(self):
         #dc = self.__db_con.get_connection(SQL_ACCESS)
-        sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM nagiosdb.%s_hoststatus nhs, nagiosdb.%s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (
+        #sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM nagiosdb.%s_hoststatus #nhs, nagiosdb.%s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (	
+        #    global_config["MD_TYPE"],
+        #    global_config["MD_TYPE"])
+        sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM %s_hoststatus nhs, %s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (	
             global_config["MD_TYPE"],
             global_config["MD_TYPE"])
         cursor = connections["monitor"].cursor()
@@ -2034,7 +2044,7 @@ class server_process(threading_tools.process_pool):
                 pass
         cursor.close()
     def _log_config(self):
-        self.log("Config info:")
+        self.log("Config info:")	
         for line, log_level in global_config.get_log(clear=True):
             self.log(" - clf: [%d] %s" % (log_level, line))
         conf_info = global_config.get_config_info()
