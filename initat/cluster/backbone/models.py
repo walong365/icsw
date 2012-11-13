@@ -340,6 +340,8 @@ class device(models.Model):
     #cpu_info = models.TextField(blank=True, null=True)
     # machine uuid
     uuid = models.TextField(default="", max_length=64)
+    # cluster url
+    curl = models.CharField(default="ssh://", max_length=512)
     date = models.DateTimeField(auto_now_add=True)
     def add_log(self, log_src, log_stat, text, **kwargs):
         return devicelog.new_log(self, log_src, log_stat, text, **kwargs)
