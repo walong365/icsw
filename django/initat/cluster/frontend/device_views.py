@@ -234,6 +234,7 @@ def show_configs(request):
 @init_logging
 def get_group_tree(request):
     _post = request.POST
+    ignore_md = True if int(_post.get("ignore_meta_devices", 0)) else False
     # also possible via _post.getlist("sel_list", []) ?
     sel_list = _post.getlist("sel_list[]", [])#request.session.get("sel_list", [])
     xml_resp = E.device_groups()
@@ -247,18 +248,22 @@ def get_group_tree(request):
 ##            cur_xml.attrib["selected"] = "selected"
 ##            any_sel = True
         for cur_dev in cur_xml.find("devices"):
-            cur_dev.attrib["meta_device"] = "1" if int(cur_dev.attrib["device_type"]) == meta_dev_type_id else "0"
-            if cur_dev.attrib["key"] in sel_list or cur_xml.attrib["key"] in sel_list:
-                cur_dev.attrib["selected"] = "selected"
-                any_sel = True
+            if ignore_md and int(cur_dev.attrib["device_type"]) == meta_dev_type_id:
+                cur_dev.getparent().remove(cur_dev)
+            else:
+                cur_dev.attrib["meta_device"] = "1" if int(cur_dev.attrib["device_type"]) == meta_dev_type_id else "0"
+                if cur_dev.attrib["key"] in sel_list or cur_xml.attrib["key"] in sel_list:
+                    cur_dev.attrib["selected"] = "selected"
+                    any_sel = True
         if any_sel:
             xml_resp.append(cur_xml)
     for extra_key in [key for key in _post.keys() if key.startswith("extra_")]:
         extra_name = _post[extra_key]
+        kwargs = {"mon_ext_host" : {"with_images" : True}}.get(extra_name, {})
         request.log("adding extra data %s" % (extra_name))
         extra_obj = globals()[extra_name]
         extra_list = getattr(E, "%ss" % (extra_name))(
-            *[cur_obj.get_xml() for cur_obj in extra_obj.objects.all()]
+            *[cur_obj.get_xml(**kwargs) for cur_obj in extra_obj.objects.all()]
         )
         xml_resp.append(extra_list)
     request.xml_response["response"] = xml_resp

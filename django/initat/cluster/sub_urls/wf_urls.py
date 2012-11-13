@@ -149,5 +149,6 @@ url_patterns = patterns(
     url(r"^%s/frontend/media/(?P<path>.*)$" % (settings.REL_SITE_ROOT), "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}, name="media"),
     url(r"icons-init/(?P<path>.*)$"                                   , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT[:-14] + "/icons"}),
     url(r"^%s/initat/(?P<path>.*)$" % (settings.REL_SITE_ROOT)        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT[:-22]}),
+    url(r"^%s/icinga/(?P<path>.*)$" % (settings.REL_SITE_ROOT)        , "django.views.static.serve", {"document_root" : "/opt/icinga"}),
     url(r"^%s/" % (settings.REL_SITE_ROOT)                            , include(my_url_patterns)),
 )

@@ -128,7 +128,8 @@ function draw_info(name, kwargs) {
     this.label = kwargs && (kwargs.label || name.toTitle()) || name.toTitle();
     this.span = kwargs && (kwargs.span || 1) || 1;
     var attr_list = ["size", "default", "select_source", "boolean", "min", "max",
-        "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group"];
+        "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group",
+        "css"];
     for (idx=0 ; idx < attr_list.length; idx ++) {
         var attr_name = attr_list[idx];
         if (kwargs && kwargs.hasOwnProperty(attr_name)) {
@@ -140,7 +141,7 @@ function draw_info(name, kwargs) {
     this.size = kwargs && kwargs.size || undefined;
     function get_kwargs() {
         var attr_list = ["size", "select_source", "boolean", "min", "max",
-            "number", "manytomany", "add_null_entry"];
+            "number", "manytomany", "add_null_entry", "css"];
         var kwargs = {new_default : this.default};
         for (idx=0 ; idx < attr_list.length; idx ++) {
             var attr_name = attr_list[idx];
@@ -583,6 +584,11 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
             var new_el = $("<select>").attr({
                 "id"    : id_prefix + "__" + attr_name
             });
+            if (kwargs["css"]) {
+                $.each(kwargs["css"], function(key, value) {
+                    new_el.css(key, value);
+                });
+            };
             if (kwargs.manytomany) {
                 var sel_val = xml_el === undefined ? [] : xml_el.attr(attr_name).split("::");
                 new_el.attr({
@@ -603,6 +609,9 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
                     if (in_array(sel_val, cur_ns.attr("pk"))) new_opt.attr("selected", "selected");
                 } else {
                     if (cur_ns.attr("pk") == sel_val) new_opt.attr("selected", "selected");
+                };
+                if (cur_ns.attr("data-image")) {
+                    new_opt.attr("data-image", cur_ns.attr("data-image"));
                 };
                 new_el.append(new_opt);
             });
