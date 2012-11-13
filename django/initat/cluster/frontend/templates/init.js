@@ -129,7 +129,7 @@ function draw_info(name, kwargs) {
     this.span = kwargs && (kwargs.span || 1) || 1;
     var attr_list = ["size", "default", "select_source", "boolean", "min", "max",
         "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group",
-        "css"];
+        "css". "select_source_attribute"];
     for (idx=0 ; idx < attr_list.length; idx ++) {
         var attr_name = attr_list[idx];
         if (kwargs && kwargs.hasOwnProperty(attr_name)) {
@@ -141,7 +141,7 @@ function draw_info(name, kwargs) {
     this.size = kwargs && kwargs.size || undefined;
     function get_kwargs() {
         var attr_list = ["size", "select_source", "boolean", "min", "max",
-            "number", "manytomany", "add_null_entry", "css"];
+            "number", "manytomany", "add_null_entry", "css", "select_source_attribute"];
         var kwargs = {new_default : this.default};
         for (idx=0 ; idx < attr_list.length; idx ++) {
             var attr_name = attr_list[idx];
