@@ -1650,11 +1650,11 @@ class build_process(threading_tools.process_obj):
                             if host.mon_ext_host_id and ng_ext_hosts.has_key(host.mon_ext_host_id):
                                 if (global_config["MD_TYPE"] == "nagios" and global_config["MD_VERSION"] > 1) or (global_config["MD_TYPE"] == "icinga"):
                                     # handle for nagios 2
-                                    act_hostext_info = nag_config(host["name"])
-                                    act_hostext_info["host_name"] = host["name"]
+                                    act_hostext_info = nag_config(host.name)
+                                    act_hostext_info["host_name"] = host.name
                                     for key in ["icon_image", "statusmap_image"]:
-                                        act_hostext_info[key] = ng_ext_hosts[host["ng_ext_host"]][key]
-                                    hostext_nc[host["name"]] = act_hostext_info
+                                        act_hostext_info[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
+                                    hostext_nc[host.name] = act_hostext_info
                                 else:
                                     self.log("don't know how to handle hostextinfo for %s_version %d" % (global_config["MD_TYPE"],
                                                                                                          global_config["MD_VERSION"]),
