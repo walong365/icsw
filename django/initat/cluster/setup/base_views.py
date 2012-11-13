@@ -22,6 +22,7 @@ from django.db.utils import IntegrityError
 import pprint
 import net_tools
 import server_command
+import re
 
 @login_required
 @init_logging
@@ -174,6 +175,7 @@ def create_object(request, *args, **kwargs):
     key_pf = min([(len(key), key) for key in _post.iterkeys() if key.count("__new")])[1]
     set_dict = {}
     m2m_dict = {}
+    request.log("key_prefix is '%s'" % (key_pf))
     for key, value in _post.iteritems():
         if key.startswith(key_pf) and key != key_pf:
             s_key = key[len(key_pf) + 2:]
@@ -182,7 +184,10 @@ def create_object(request, *args, **kwargs):
             if int_type.lower() in ["booleanfield", "nullbooleanfield"]:
                 d_value = True if int(value) else False
             elif int_type.lower() in ["foreignkey"]:
-                d_value = new_obj_class._meta.get_field(s_key).rel.to.objects.get(pk=value)
+                if int(value) == 0:
+                    d_value = None
+                else:
+                    d_value = new_obj_class._meta.get_field(s_key).rel.to.objects.get(pk=value)
             elif int_type.lower() in ["integerfield"]:
                 d_value = int(value)
             elif int_type.lower() in ["manytomanyfield"]:
@@ -193,21 +198,50 @@ def create_object(request, *args, **kwargs):
             request.log("key '%s' is '%s' -> '%s' (%s)" % (s_key, value, unicode(d_value), type(d_value)))
             if not skip:
                 set_dict[s_key] = d_value
-    new_obj = new_obj_class(**set_dict)
-    try:
-        new_obj.save()
-    except ValidationError, what:
-        request.log("error creating: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
-    except:
-        request.log("error creating: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
-        # add m2m entries
-        for key, value in m2m_dict.iteritems():
-            request.log("added %s for %s" % (logging_tools.get_plural("m2m entry", len(value)), key))
-            for sub_value in value:
-                getattr(new_obj, key).add(new_obj_class._meta.get_field(key).rel.to.objects.get(Q(pk=sub_value)))
-        request.log("created new %s" % (new_obj._meta.object_name), xml=True)
-        request.xml_response["new_entry"] = new_obj.get_xml()
+    create_list = [(None, None)]
+    for range_attr, range_re in {"device" : [
+        ("name", re.compile("^(?P<name>.+)\[(?P<start>\d+)-(?P<end>\d+)\](?P<post>.*)$"))]}.get(obj_name, []):
+        range_m = range_re.match(set_dict[range_attr])
+        if range_m:
+            num_dig = max(len(range_m.group("start")),
+                          len(range_m.group("end")))
+            start_idx, end_idx = (int(range_m.group("start")),
+                                  int(range_m.group("end")))
+            start_idx, end_idx = (min(start_idx, end_idx),
+                                  max(start_idx, end_idx))
+            start_idx, end_idx = (min(max(start_idx, 1), 1000),
+                                  min(max(end_idx, 1), 1000))
+            request.log("range has %s (%d -> %d)" % (logging_tools.get_plural("digit", num_dig),
+                                                     start_idx,
+                                                     end_idx))
+            form_str = "%s%%0%dd%s" % (range_m.group("name"),
+                                       num_dig,
+                                       range_m.group("post"))
+            create_list = [(range_attr, form_str % (cur_idx)) for cur_idx in xrange(start_idx, end_idx + 1)]
+    for change_key, change_value in create_list:
+        new_obj = new_obj_class(**set_dict)
+        if change_key:
+            print change_key, change_value
+            setattr(new_obj, change_key, change_value)
+        # add defaults
+        for add_field, value in {"device" : [("device_class", device_class.objects.get(Q(pk=1)))]}.get(obj_name, []):
+            setattr(new_obj, add_field, value)
+        try:
+            new_obj.save()
+        except ValidationError, what:
+            request.log("error creating: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
+        except:
+            request.log("error creating: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR, xml=True)
+        else:
+            # add m2m entries
+            for key, value in m2m_dict.iteritems():
+                request.log("added %s for %s" % (logging_tools.get_plural("m2m entry", len(value)), key))
+                for sub_value in value:
+                    getattr(new_obj, key).add(new_obj_class._meta.get_field(key).rel.to.objects.get(Q(pk=sub_value)))
+            request.xml_response["new_entry"] = new_obj.get_xml()
+    request.log("created %s new %s" % (
+        " %d" % (len(create_list)) if len(create_list) > 1 else "",
+        new_obj._meta.object_name), xml=True)
     return request.xml_response.create_response()
 
 @init_logging
@@ -225,14 +259,20 @@ def delete_object(request, *args, **kwargs):
     except:
         request.log("object not found for deletion: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
+        min_ref = 0
+        if obj_name == "device_group":
+            # remove associated meta_device
+            if del_obj.device_id:
+                min_ref = 1
         num_ref = get_related_models(del_obj)
-        if num_ref:
+        if num_ref > min_ref:
             request.log("cannot delete %s '%s': %s" % (
                 del_obj._meta.object_name,
                 unicode(del_obj),
                 logging_tools.get_plural("reference", num_ref)), logging_tools.LOG_LEVEL_ERROR, xml=True)
         else:
+            del_info = unicode(del_obj)
             del_obj.delete()
-            request.log("deleted %s" % (del_obj._meta.object_name), xml=True)
+            request.log("deleted %s '%s'" % (del_obj._meta.object_name, del_info), xml=True)
     return request.xml_response.create_response()
 

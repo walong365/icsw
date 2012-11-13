@@ -580,7 +580,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
         } else {
             var sel_source = kwargs.select_source;
         };
-        if (sel_source.length) {
+        if (sel_source.length || kwargs.add_null_entry || kwargs.add_extra_entry) {
             var new_el = $("<select>").attr({
                 "id"    : id_prefix + "__" + attr_name
             });
@@ -602,9 +602,17 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
             if (kwargs.add_null_entry) {
                 new_el.append($("<option>").attr({"value" : "0"}).text(kwargs.add_null_entry));
             };
+            if (kwargs.add_extra_entry) {
+                new_el.append($("<option>").attr({"value" : kwargs.extra_entry_id || "-1"}).text(kwargs.add_extra_entry));
+            };
             sel_source.each(function() {
                 var cur_ns = $(this);
-                var new_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text());
+                var new_opt = $("<option>").attr({"value" : cur_ns.attr("pk")});
+                if (kwargs.select_source_attribute === undefined) {
+                    new_opt.text(cur_ns.text());
+                } else {
+                    new_opt.text(cur_ns.attr(kwargs.select_source_attribute));
+                };
                 if (kwargs.manytomany) {
                     if (in_array(sel_val, cur_ns.attr("pk"))) new_opt.attr("selected", "selected");
                 } else {
@@ -620,10 +628,16 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
             var new_el = $("<span>").addClass("error").text("no " + attr_name + " defined");
         };
     };
-    if (xml_el !== undefined) {
-        new_el.bind("change", function(event) {
-            submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.modify_data_dict_opts);
-        })
+    if (xml_el !== undefined && (kwargs.bind === undefined || kwargs.bind)) {
+        if (kwargs.change_cb) {
+            new_el.bind("change", kwargs.change_cb);
+        } else {
+            new_el.bind("change", function(event) {
+                submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.modify_data_dict_opts);
+            })
+        };
+    } else if (kwargs.change_cb) {
+        new_el.bind("change", kwargs.change_cb);
     };
     return (dummy_div.append(new_el)).children();
 };

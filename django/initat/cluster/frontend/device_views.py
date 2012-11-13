@@ -83,103 +83,15 @@ def get_xml_tree(request):
         )
     )
     # add mother server(s)
-    all_mothers = config_tools.device_with_config("mother").get("mother", [])
+    all_mothers = config_tools.device_with_config("mother_server").get("mother_server", [])
     xml_resp.append(
         E.mother_servers(
-            *[E.mother_server(pk="%d" % (mother_server.device.pk), name=mother_server.device.name) for mother_server in all_mothers])
+            *[E.mother_server(unicode(mother_server.effective_device), pk="%d" % (mother_server.effective_device.pk)) for mother_server in all_mothers])
     )
     request.xml_response["response"] = xml_resp
     #request.log("catastrophic error", logging_tools.LOG_LEVEL_ERROR, xml=True)
     return request.xml_response.create_response()
 
-@login_required
-@init_logging
-def create_device_group(request):
-    _post = request.POST
-    name = _post["name"]
-    try:
-        new_dg = device_group(name=name,
-                              description=_post["description"])
-        if not device_group.objects.count():
-            new_dg.cluster_device_group = True
-        new_dg.save()
-    except:
-        request.log("cannot create device_group %s" % (name),
-                    logging_tools.LOG_LEVEL_ERROR,
-                    xml=True)
-        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-    else:
-        new_dg.add_meta_device()
-    return request.xml_response.create_response()
-
-@login_required
-@init_logging
-def delete_device_group(request):
-    pk = request.POST["pk"]
-    try:
-        device_group.objects.get(Q(pk=pk)).delete()
-    except:
-        request.log("cannot delete device_group",
-                    logging_tools.LOG_LEVEL_ERROR,
-                    xml=True)
-        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-    return request.xml_response.create_response()
-
-@login_required
-@init_logging
-def create_device(request):
-    _post = request.POST
-    range_re = re.compile("^(?P<name>.+)\[(?P<start>\d+)-(?P<end>\d+)\](?P<post>.*)$")
-    name = request.POST["name"]
-    range_m = range_re.match(name)
-    if range_m is None:
-        create_list = [name]
-    else:
-        num_dig = max(len(range_m.group("start")),
-                      len(range_m.group("end")))
-        start_idx, end_idx = (int(range_m.group("start")),
-                              int(range_m.group("end")))
-        start_idx, end_idx = (min(start_idx, end_idx),
-                              max(start_idx, end_idx))
-        start_idx, end_idx = (min(max(start_idx, 1), 1000),
-                              min(max(end_idx, 1), 1000))
-        request.log("range has %s (%d -> %d)" % (logging_tools.get_plural("digit", num_dig),
-                                                 start_idx,
-                                                 end_idx))
-        form_str = "%s%%0%dd%s" % (range_m.group("name"),
-                                   num_dig,
-                                   range_m.group("post"))
-        create_list = [form_str % (cur_idx) for cur_idx in xrange(start_idx, end_idx + 1)]
-    for create_dev in sorted(create_list):
-        try:
-            new_dev = device(name=create_dev,
-                             device_group=device_group.objects.get(Q(pk=_post["group"])),
-                             comment=_post["comment"],
-                             device_type=device_type.objects.get(Q(pk=_post["type"])),
-                             device_class=device_class.objects.get(Q(pk=1)))
-            new_dev.save()
-        except ValidationError, what:
-            request.log("error creating: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
-            break
-        else:
-            pass
-    return request.xml_response.create_response()
-
-@login_required
-@init_logging
-def delete_device(request):
-    pk = request.POST["pk"]
-    try:
-        device.objects.get(Q(pk=pk)).delete()
-    except:
-        request.log("cannot delete device",
-                    logging_tools.LOG_LEVEL_ERROR,
-                    xml=True)
-        request.log(" - %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-    else:
-        request.log("deleted device", xml=True)
-    return request.xml_response.create_response()
-    
 @login_required
 @init_logging
 def clear_selection(request):
