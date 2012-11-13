@@ -376,6 +376,7 @@ class device(models.Model):
             mon_device_templ="%d" % (self.mon_device_templ_id or 0),
             monitor_checks="1" if self.monitor_checks else "0",
             mon_ext_host="%d" % (self.mon_ext_host_id or 0),
+            curl=unicode(self.curl),
         )
         if full:
             r_xml.extend([
@@ -467,7 +468,7 @@ class device_group(models.Model):
     # flag
     cluster_device_group = models.BooleanField()
     date = models.DateTimeField(auto_now_add=True)
-    def add_meta_device(self):
+    def _add_meta_device(self):
         new_md = device(name=self.get_metadevice_name(),
                         device_group=self,
                         device_class=device_class.objects.get(Q(pk=1)),
@@ -500,6 +501,29 @@ class device_group(models.Model):
             " (%s)" % (self.description) if self.description else "",
             "[*]" if self.cluster_device_group else ""
         )
+
+@receiver(signals.pre_save, sender=device_group)
+def device_group_pre_save(sender, **kwargs):
+    print "dgps0"
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name:
+            raise ValidationError("name can not be zero")
+
+@receiver(signals.post_save, sender=device_group)
+def device_group_post_save(sender, **kwargs):
+    if not kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        # first is always cdg
+        if device_group.objects.count() == 1:
+            cur_inst.cluster_device_group = True
+            cur_inst.save()
+        # meta_device is always created
+        if not cur_inst.device_id:
+            cur_inst._add_meta_device()
+        if cur_inst.device_id and cur_inst.device.name != cur_inst.get_metadevice_name():
+            cur_inst.device.name = cur_inst.get_metadevice_name()
+            cur_inst.device.save()
 
 class device_location(models.Model):
     idx = models.AutoField(db_column="device_location_idx", primary_key=True)
@@ -2725,21 +2749,6 @@ class wc_files(models.Model):
 ##        db_table = u'xen_vbd'
 
 # signals
-@receiver(signals.post_save, sender=device_group)
-def device_group_post_save(sender, **kwargs):
-    if not kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if cur_inst.device_id and cur_inst.device.name != cur_inst.get_metadevice_name():
-            cur_inst.device.name = cur_inst.get_metadevice_name()
-            cur_inst.device.save()
-
-@receiver(signals.pre_save, sender=device_group)
-def device_group_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if not cur_inst.name:
-            raise ValidationError("name can not be zero")
-
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
     if "instance" in kwargs:
