@@ -244,6 +244,7 @@ def create_object(request, *args, **kwargs):
         new_obj._meta.object_name), xml=True)
     return request.xml_response.create_response()
 
+
 @init_logging
 @login_required
 def delete_object(request, *args, **kwargs):
