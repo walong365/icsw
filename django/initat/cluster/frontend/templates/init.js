@@ -122,7 +122,7 @@ function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array,
     this.draw_table = draw_table;
 };
 
-// info how to render a given XML-attribute 
+// info how to render a given XML-attribute
 function draw_info(name, kwargs) {
     this.name = name;
     this.label = kwargs && (kwargs.label || name.toTitle()) || name.toTitle();
