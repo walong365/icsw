@@ -534,16 +534,16 @@ class device_rsync_config(models.Model):
     class Meta:
         db_table = u'device_rsync_config'
 
-class device_shape(models.Model):
-    idx = models.AutoField(db_column="device_shape_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    description = models.CharField(max_length=192)
-    x_dim = models.FloatField(null=True, blank=True)
-    y_dim = models.FloatField(null=True, blank=True)
-    z_dim = models.FloatField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'device_shape'
+#class device_shape(models.Model):
+    #idx = models.AutoField(db_column="device_shape_idx", primary_key=True)
+    #name = models.CharField(unique=True, max_length=192)
+    #description = models.CharField(max_length=192)
+    #x_dim = models.FloatField(null=True, blank=True)
+    #y_dim = models.FloatField(null=True, blank=True)
+    #z_dim = models.FloatField(null=True, blank=True)
+    #date = models.DateTimeField(auto_now_add=True)
+    #class Meta:
+        #db_table = u'device_shape'
 
 class device_type(models.Model):
     idx = models.AutoField(db_column="device_type_idx", primary_key=True)
@@ -1606,14 +1606,19 @@ class mon_ext_host(models.Model):
     vrml_image = models.CharField(max_length=192, blank=True)
     statusmap_image = models.CharField(max_length=192, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.mon_ext_host(
+    def get_xml(self, with_images=False):
+        cur_xml = E.mon_ext_host(
             unicode(self),
             name=self.name,
             pk="%d" % (self.pk),
             key="mext__%d" % (self.pk),
             icon_image="%s" % (self.icon_image)
         )
+        if with_images:
+            cur_xml.attrib["data-image"] = "/%s/icinga/share/images/logos/%s" % (
+                settings.REL_SITE_ROOT,
+                self.icon_image)
+        return cur_xml
     def __unicode__(self):
         return self.name
     class Meta:
