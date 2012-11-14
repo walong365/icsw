@@ -1,0 +1,127 @@
+{% extends "main.html" %}
+
+{% load i18n compress %}
+
+{% block title %}{% trans "Device connections" %}{% endblock %}
+
+
+{% block content %}
+
+<h1 class="center">Device connections</h1>
+
+<div id="dcon_tables"></div>
+
+<script type="text/javascript">
+
+// device connection XML
+DCON = undefined;
+
+function use_devs(dt_div) {
+    CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
+        return(value.data.key);
+    });
+    load_devices(CUR_DEVICES);
+};
+
+function load_devices(sel_list) {
+    //console.log(sel_list);
+    $.ajax({
+        url     : "{% url device:get_group_tree %}",
+        error   : handle_ajax_error,
+        data    : {
+            "sel_list"            : sel_list,
+            "extra_t0"            : "device_type",
+            "ignore_meta_devices" : 1
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                DCON = $(xml).find("value[name='response']");
+                init_xml_change(DCON);
+                draw_tables();
+            }
+        }
+    });
+};
+
+function node_dropped(event, ui) {
+    var cur_drag = ui.draggable;
+    var target_div   = $(event.target);
+    var target_table = target_div.parents("table:first");
+    $.ajax({
+        url   : "{% url device:create_connection %}",
+        error : handle_ajax_error,
+        data  : {
+            "target" : target_table.attr("id"),
+            "target_type" : target_div.attr("id"),
+            "drag_id"     : cur_drag.attr("id")
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                cur_drag.remove();
+            }
+        }
+    });
+};
+
+function draw_target_dev(dev_el) {
+    var res_table = $("<table>").attr({
+        "id" : "dev__" + dev_el.attr("pk")
+    });
+    var header = $("<tr>").attr({
+        "class" : "ui-widget-header ui-widget"
+    }).append($("<th>").attr({
+        "colspan" : "3"
+    }).text(dev_el.text()));
+    var data_tr = $("<tr>").attr({
+        "class" : "ui-widget"
+    });
+    data_tr.append($("<td>").append($("<div>").attr({"id" : "master"}).text("MASTER")));
+    data_tr.append($("<td>").text("<-->"));
+    data_tr.append($("<td>").append($("<div>").attr({"id" : "slave"}).text("SLAVE")));
+    res_table.append(header).append(data_tr);
+    data_tr.find("div").css({
+        "padding" : "10px",
+        "border"  : "1pt dashed black"
+    });
+    return res_table;
+};
+
+function draw_tables() {
+    $("div#dcon_tables").children().remove();
+    // CD id
+    var cd_id = DCON.find("device_types device_type[identifier='CD']").attr("pk");
+    // draggable
+    cd_ul_d = $("<div>").attr({"id" : "cdul_d"});
+    DCON.find("device[device_type!='" + cd_id + "']").each(function() {
+        var cur_cd = $(this);
+        var cd_li = $("<div>").css({
+            "border" : "2pt solid black",
+            "float"  : "left",
+            }).attr({
+            "id" : "dev__" + cur_cd.attr("pk")
+        }).text(cur_cd.text());
+        cd_ul_d.append(cd_li);
+    });
+    cd_ul_d.find("div").draggable({revert : "valid"});
+    $("div#dcon_tables").append(cd_ul_d);
+    cd_ul_nd = $("<div>").attr({"id" : "cdul_nd"});
+    DCON.find("device[device_type='" + cd_id + "']").each(function() {
+        cd_ul_nd.append(draw_target_dev($(this)));
+    });
+    $("div#dcon_tables").append(cd_ul_nd);
+    cd_ul_nd.find("div").droppable({
+        activeClass : "ui-state-hover",
+        hoverClass  : "ui-state-active",
+        drop        : node_dropped
+    });
+};
+
+function add_dcon_handlers() {
+    install_devsel_link(use_devs, true);
+};
+
+$(document).ready(add_dcon_handlers);
+
+</script>
+
+{% endblock %}

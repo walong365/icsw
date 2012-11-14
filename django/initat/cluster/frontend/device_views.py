@@ -181,3 +181,18 @@ def get_group_tree(request):
     request.xml_response["response"] = xml_resp
     #print etree.tostring(xml_resp, pretty_print=True)
     return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def connections(request):
+    if request.method == "GET":
+        return render_me(request, "device_connections.html")()
+    else:
+        return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def create_connection(request):
+    _post = request.POST
+    pprint.pprint(_post)
+    return request.xml_response.create_response()
