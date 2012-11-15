@@ -11,6 +11,15 @@
 
 <div id="dcon_tables"></div>
 
+<div id="manual" style="padding: 5px;">
+Set <input type="text" id="manual_source"/> (Host) as
+<input type="radio" name="manual_mode" value="master" checked="checked">Master</input>
+<input type="radio" name="manual_mode" value="slave">Slave</input>
+for <input type="text" id="manual_target"/> (Controlling Device),
+<input type="submit" value="submit" onClick="submit_manual();"/>.<br>
+Example: 'node##' as Slave for 'ipmi##' (2 digits).
+</div>
+
 <script type="text/javascript">
 
 // device connection XML
@@ -31,6 +40,7 @@ function load_devices(sel_list) {
         data    : {
             "sel_list"            : sel_list,
             "extra_t0"            : "device_type",
+            "extra_t1"            : "cd_connection",
             "ignore_meta_devices" : 1
         },
         success : function(xml) {
@@ -41,6 +51,28 @@ function load_devices(sel_list) {
             }
         }
     });
+};
+
+function submit_manual() {
+    var man_source = $("input#manual_source").val();
+    var man_target = $("input#manual_target").val();
+    if (man_source && man_target) {
+        $.ajax({
+            url   : "{% url device:manual_connection %}",
+            error : handle_ajax_error,
+            data  : {
+                "source" : man_source,
+                "target" : man_target,
+                "mode"   : $("input[name='manual_mode']:checked").val()
+            },
+            success : function(xml) {
+                if (parse_xml_response(xml, 30)) {
+                    $("input[id^='manual_']").val("");
+                    load_devices(CUR_DEVICES);
+                }
+            }
+        })
+    };
 };
 
 function node_dropped(event, ui) {
@@ -57,7 +89,9 @@ function node_dropped(event, ui) {
         },
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                cur_drag.remove();
+                var new_node = $(xml).find("value[name='new_connection'] cd_connection");
+                add_node(new_node, "master");
+                add_node(new_node, "slave");
             }
         }
     });
@@ -66,24 +100,84 @@ function node_dropped(event, ui) {
 function draw_target_dev(dev_el) {
     var res_table = $("<table>").attr({
         "id" : "dev__" + dev_el.attr("pk")
+    }).css({
+        "border" : "1pt solid green",
+        "margin" : "2px"
     });
     var header = $("<tr>").attr({
         "class" : "ui-widget-header ui-widget"
     }).append($("<th>").attr({
         "colspan" : "3"
     }).text(dev_el.text()));
-    var data_tr = $("<tr>").attr({
+    var drop_tr = $("<tr>").attr({
         "class" : "ui-widget"
     });
-    data_tr.append($("<td>").append($("<div>").attr({"id" : "master"}).text("MASTER")));
-    data_tr.append($("<td>").text("<-->"));
-    data_tr.append($("<td>").append($("<div>").attr({"id" : "slave"}).text("SLAVE")));
-    res_table.append(header).append(data_tr);
-    data_tr.find("div").css({
+    drop_tr.append($("<td>").append($("<div>").attr({"id" : "master"}).text("is MASTER for")));
+    drop_tr.append($("<td>").text("/"));
+    drop_tr.append($("<td>").append($("<div>").attr({"id" : "slave"}).text("is SLAVE of")));
+    drop_tr.find("div").css({
         "padding" : "10px",
         "border"  : "1pt dashed black"
     });
+    data_tr = $("<tr>").append(
+        $("<td>").attr({"id" : "master"}).append($("<ul>"))
+    ).append(
+        $("<td>")
+    ).append(
+        $("<td>").attr({"id" : "slave"}).append($("<ul>"))
+    );
+    data_tr.find("ul").css({
+        "padding-left" : "20px",
+        "margin"       : "1px"
+    });
+    res_table.append(header).append(drop_tr).append(data_tr);
     return res_table;
+};
+
+function delete_cd(event) {
+    var dc_li = $(event.target).parent();
+    var dc_id = dc_li.attr("id");
+    $.ajax({
+        url     : "{% url device:delete_connection %}",
+        error   : handle_ajax_error,
+        data    : {
+            "pk" : dc_id
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                dc_li.remove();
+            }
+        }
+    });
+};
+
+function add_node(cd_node, type) {
+    var parent_pk = cd_node.attr(type == "master" ? "parent" : "child");
+    var child_pk = cd_node.attr(type == "master" ? "child" : "parent");
+    var add_table = $("table#dev__" + parent_pk);
+    var add_ul = add_table.find("td#" + type + " ul");
+    add_ul.append($("<li>").attr({
+        "id" : cd_node.attr("pk")
+    }).append(
+        $("<input>").attr({
+            "type"  : "button",
+            "value" : "del"
+        }).bind("click", delete_cd)).append($("<span>").text(cd_node.attr(type == "master" ? "child_name" : "parent_name")))
+    );
+};
+
+function draw_node(cur_node) {
+    var node_div = $("<div>").css({
+        "border"  : "2pt solid black",
+        "padding" : "6px",
+        "margin"  : "3px",
+        "float"   : "left",
+    }).attr({
+        "id" : "dev__" + cur_node.attr("pk")
+    });
+    var node_str = cur_node.text() + " (" + DCON.find("device_types device_type[pk='" + cur_node.attr("device_type") + "']").text() + ")";
+    node_div.text(node_str);
+    return node_div;
 };
 
 function draw_tables() {
@@ -91,24 +185,30 @@ function draw_tables() {
     // CD id
     var cd_id = DCON.find("device_types device_type[identifier='CD']").attr("pk");
     // draggable
-    cd_ul_d = $("<div>").attr({"id" : "cdul_d"});
-    DCON.find("device[device_type!='" + cd_id + "']").each(function() {
-        var cur_cd = $(this);
-        var cd_li = $("<div>").css({
-            "border" : "2pt solid black",
-            "float"  : "left",
-            }).attr({
-            "id" : "dev__" + cur_cd.attr("pk")
-        }).text(cur_cd.text());
-        cd_ul_d.append(cd_li);
+    cd_ul_d = $("<div>").attr({
+        "id" : "cdul_d"
+    }).css({
+        "clear" : "both"
+    });
+    DCON.find("device[device_type!='" + cd_id + "'][selected='selected']").each(function() {
+        cd_ul_d.append(draw_node($(this)));
     });
     cd_ul_d.find("div").draggable({revert : "valid"});
     $("div#dcon_tables").append(cd_ul_d);
-    cd_ul_nd = $("<div>").attr({"id" : "cdul_nd"});
-    DCON.find("device[device_type='" + cd_id + "']").each(function() {
+    cd_ul_nd = $("<div>").attr({
+        "id" : "cdul_nd"
+    }).css({
+        "clear" : "both"
+    });
+    DCON.find("device[device_type='" + cd_id + "'][selected='selected']").each(function() {
         cd_ul_nd.append(draw_target_dev($(this)));
     });
     $("div#dcon_tables").append(cd_ul_nd);
+    DCON.find("cd_connections cd_connection").each(function() {
+        var cur_cd = $(this);
+        add_node(cur_cd, "master");
+        add_node(cur_cd, "slave");
+    });
     cd_ul_nd.find("div").droppable({
         activeClass : "ui-state-hover",
         hoverClass  : "ui-state-active",

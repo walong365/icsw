@@ -12,7 +12,7 @@ from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from initat.cluster.backbone.models import device_type, device_group, device, device_class, \
-     mon_device_templ, mon_ext_host
+     mon_device_templ, mon_ext_host, cd_connection
 from django.core.exceptions import ValidationError
 from lxml import etree
 import config_tools
@@ -172,10 +172,11 @@ def get_group_tree(request):
     for extra_key in [key for key in _post.keys() if key.startswith("extra_")]:
         extra_name = _post[extra_key]
         kwargs = {"mon_ext_host" : {"with_images" : True}}.get(extra_name, {})
+        select_rel_dict = {"cd_connection" : ["parent", "child"]}
         request.log("adding extra data %s" % (extra_name))
         extra_obj = globals()[extra_name]
         extra_list = getattr(E, "%ss" % (extra_name))(
-            *[cur_obj.get_xml(**kwargs) for cur_obj in extra_obj.objects.all()]
+            *[cur_obj.get_xml(**kwargs) for cur_obj in extra_obj.objects.all().select_related(*select_rel_dict.get(extra_name, []))]
         )
         xml_resp.append(extra_list)
     request.xml_response["response"] = xml_resp
@@ -194,5 +195,99 @@ def connections(request):
 @login_required
 def create_connection(request):
     _post = request.POST
-    pprint.pprint(_post)
+    drag_dev, target_dev = (
+        device.objects.get(Q(pk=_post["drag_id"].split("__")[1])),
+        device.objects.get(Q(pk=_post["target"].split("__")[1])))
+    t_type = _post["target_type"]
+    request.log("dragged '%s' over '%s' (field %s)" % (
+        unicode(drag_dev),
+        unicode(target_dev),
+        t_type))
+    new_cd = cd_connection(
+        parent=target_dev if t_type == "master" else drag_dev,
+        child=drag_dev if t_type=="master" else target_dev,
+        created_by=request.session["db_user"],
+        connection_info="webfrontend")
+    try:
+        new_cd.save()
+    except ValidationError, what:
+        request.log("error creating: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        request.log("added connection", xml=True)
+        request.xml_response["new_connection"] = new_cd.get_xml()
+    return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def delete_connection(request):
+    _post = request.POST
+    del_pk = _post["pk"]
+    del_con = cd_connection.objects.get(Q(pk=del_pk))
+    request.log("removing %s" % (unicode(del_con)), xml=True)
+    del_con.delete()
+    return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def manual_connection(request):
+    _post = request.POST
+    re_dict = {"drag"   : _post["source"],
+               "target" : _post["target"]}
+    t_type = _post["mode"]
+    request.log("mode is '%s', drag_str is '%s', target_str is '%s'" % (
+        t_type,
+        re_dict["drag"],
+        re_dict["target"]))
+    # # (hash) is our magic sign for \d
+    for key in re_dict.keys():
+        val = re_dict[key]
+        if val.count("#"):
+            parts = val.split("#")
+            val = "(%s)(%s)(%s)" % (parts[0], "#" * (len(parts) - 1), parts[-1])
+            val = val.replace("#", "\d")
+            print val
+        re_dict[key] = re.compile("^%s$" % (val))
+    # all cd / non-cd devices
+    cd_devices = device.objects.filter(Q(device_type__identifier='CD'))
+    non_cd_devices = device.objects.exclude(Q(device_type__identifier='CD'))
+    # iterate over non-cd-device
+    pprint.pprint(re_dict)
+    match_dict = {}
+    for key, dev_list in [("drag", non_cd_devices),
+                          ("target", cd_devices)]:
+        match_dict[key] = {}
+        for cur_dev in dev_list:
+            cur_m = re_dict[key].match(cur_dev.name)
+            if cur_m and cur_m.groups():
+                d_key = cur_m.groups()[1]
+                if d_key.isdigit():
+                    d_key = int(d_key)
+                match_dict[key][d_key] = (cur_m.groups(), cur_dev)
+    # matching keys
+    m_keys = set(match_dict["drag"].keys()) & set(match_dict["target"].keys())
+    request.log("%s: %s" % (logging_tools.get_plural("matching key", len(m_keys)),
+                            ", ".join(sorted([str(key) for key in m_keys]))))
+    created_cons = []
+    for m_key in m_keys:
+        new_cd = cd_connection(
+            parent=match_dict["target" if t_type == "slave" else "drag"][m_key][1],
+            child=match_dict["drag" if t_type == "slave" else "target"][m_key][1],
+            created_by=request.session["db_user"],
+            connection_info="manual")
+        try:
+            new_cd.save()
+        except ValidationError, what:
+            request.log("error creating: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
+            for del_cd in created_cons:
+                del_cd.delete()
+        else:
+            created_cons.append(new_cd)
+    if m_keys:
+        request.log("created %s" % (logging_tools.get_plural("connection", len(m_keys))), xml=True)
+    else:
+        request.log("found no matching devices", logging_tools.LOG_LEVEL_WARN, xml=True)
+    #print drag_str.replace("#", "\d")
+    #drag_re = re.compile(re_fstr % (drag_str.replace("#", "\d")))
+    #target_re = re.compile(re_fstr % (target_str.replace("#", "\d")))
+    #pprint.pprint(_post)
     return request.xml_response.create_response()

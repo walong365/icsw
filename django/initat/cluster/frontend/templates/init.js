@@ -319,15 +319,15 @@ function create_delete_element(event, cur_ds) {
     };
 };
 
-parse_xml_response = function(xml) {
+parse_xml_response = function(xml, min_level) {
     var success = false;
     // parse xml response from server
     if ($(xml).find("response header").length) {
         var ret_state = $(xml).find("response header").attr("code");
-        if (parseInt(ret_state) < 40) {
+        if (parseInt(ret_state) < (min_level ? min_level : 40)) {
             // return true if we can parse the header and ret_code <= 40 (less than error)
             success = true;
-        }
+        };
         $(xml).find("response header messages message").each(function() {
             var cur_mes = $(this);
             var cur_level = parseInt($(cur_mes).attr("log_level"));

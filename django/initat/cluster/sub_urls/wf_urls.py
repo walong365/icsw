@@ -91,6 +91,8 @@ device_patterns = patterns(
     url("^get_group_tree$"    , "device_views.get_group_tree"     , name="get_group_tree"     ),
     url("^connections"        , "device_views.connections"        , name="connections"        ),
     url("^xml/create_connect" , "device_views.create_connection"  , name="create_connection"  ),
+    url("^xml/delete_connect" , "device_views.delete_connection"  , name="delete_connection"  ),
+    url("manual_connection"   , "device_views.manual_connection"  , name="manual_connection"  ),
 )
 
 network_patterns = patterns(

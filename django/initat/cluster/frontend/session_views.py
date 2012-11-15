@@ -58,6 +58,7 @@ def sess_login(request):
             else:
                 pass
             login(request, django_user)
+            request.session["db_user"] = db_user
             #print db_user
             #sess_id = "".join([chr(random.randint(97, 122)) for x in range(16)])
             #sess_dict = {"session_id" : sess_id}
