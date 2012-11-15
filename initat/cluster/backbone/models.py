@@ -343,6 +343,8 @@ class device(models.Model):
     # cluster url
     curl = models.CharField(default="ssh://", max_length=512)
     date = models.DateTimeField(auto_now_add=True)
+    # slaves
+    master_connections = models.ManyToManyField("self", through="cd_connection", symmetrical=False, related_name="slave_connections")
     def add_log(self, log_src, log_stat, text, **kwargs):
         return devicelog.new_log(self, log_src, log_stat, text, **kwargs)
     def get_xml(self, full=True):
@@ -433,14 +435,45 @@ class device_config(models.Model):
     class Meta:
         db_table = u'device_config'
 
-class device_connection(models.Model):
-    idx = models.AutoField(db_column="device_connection_idx", primary_key=True)
+class cd_connection(models.Model):
+    # controlling_device connection
+    idx = models.AutoField(primary_key=True)
     parent = models.ForeignKey("device", related_name="parent_device")
     child = models.ForeignKey("device", related_name="child_device")
+    created_by = models.ForeignKey("user", null=True)
+    connection_info = models.CharField(max_length=256, default="not set")
     date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'device_connection'
+    def get_xml(self):
+        return E.cd_connection(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="cd_connection__%d" % (self.pk),
+            parent="%d" % (self.parent_id),
+            parent_name=unicode(self.parent),
+            child="%d" % (self.child_id),
+            child_name=unicode(self.child),
+            created_by="%d" % (self.created_by_id or 0),
+            connection_info=self.connection_info
+            )
+    def __unicode__(self):
+        return "%d (%s) %d" % (
+            self.parent_id,
+            self.connection_info,
+            self.child_id)
 
+@receiver(signals.pre_save, sender=cd_connection)
+def cd_connection_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        try:
+            cd_connection.objects.get(Q(parent=cur_inst.parent_id) & Q(child=cur_inst.child_id))
+        except cd_connection.DoesNotExist:
+            pass
+        except cd_connection.MultipleObjectsReturned:
+            raise ValidationError("connections already exist")
+        else:
+            raise ValidationError("connection already exists")
+        
 class device_selection(models.Model):
     idx = models.AutoField(db_column="device_selection_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
