@@ -583,16 +583,16 @@ def device_group_pre_save(sender, **kwargs):
 def device_group_post_save(sender, **kwargs):
     if not kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        # first is always cdg
-        if device_group.objects.count() == 1 and not cur_inst.cluster_device_group:
-            cur_inst.cluster_device_group = True
-            cur_inst.save()
         # meta_device is always created
         if not cur_inst.device_id:
             cur_inst._add_meta_device()
         if cur_inst.device_id and cur_inst.device.name != cur_inst.get_metadevice_name():
             cur_inst.device.name = cur_inst.get_metadevice_name()
             cur_inst.device.save()
+        # first is always cdg
+        if device_group.objects.count() == 1 and not cur_inst.cluster_device_group:
+            cur_inst.cluster_device_group = True
+            cur_inst.save()
 
 class device_location(models.Model):
     idx = models.AutoField(db_column="device_location_idx", primary_key=True)
