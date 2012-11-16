@@ -14,6 +14,7 @@ import ipvx_tools
 import logging_tools
 import pprint
 import pytz
+import process_tools
 from django.conf import settings
 
 def only_wf_perms(in_list):
@@ -24,6 +25,46 @@ cluster_timezone = pytz.timezone(settings.TIME_ZONE)
 # cluster_log_source
 cluster_log_source = None
 
+# helper functions
+def _check_integer(inst, attr_name, **kwargs):
+    cur_val = getattr(inst, attr_name)
+    min_val, max_val = (kwargs.get("min_val", None),
+                        kwargs.get("max_val", None))
+    if cur_val is None and kwargs.get("none_to_zero", False):
+        cur_val = 0
+    try:
+        cur_val = int(cur_val)
+    except:
+        raise ValidationError("%s is not an integer" % (attr_name))
+    else:
+        if min_val is not None and max_val is not None:
+            if min_val is None:
+                if cur_val > max_val:
+                    raise ValidationError("%s too high (%d > %d)" % (
+                        attr_name,
+                        cur_val,
+                        max_val))
+            elif max_val is None:
+                if cur_val < min_val:
+                    raise ValidationError("%s too low (%d < %d)" % (
+                        attr_name,
+                        cur_val,
+                        min_val))
+            else:
+                if cur_val < min_val or cur_val > max_val:
+                    raise ValidationError("%s (%d) not in [%d, %d]" % (
+                        attr_name,
+                        cur_val,
+                        min_val,
+                        max_val))
+        setattr(inst, attr_name, cur_val)
+        return cur_val
+    
+def _check_empty_string(inst, attr_name):
+    cur_val = getattr(inst, attr_name)
+    if not cur_val.strip():
+        raise ValidationError("%s can not be empty" % (attr_name))
+    
 class apc_device(models.Model):
     idx = models.AutoField(db_column="idx", primary_key=True)
     device = models.ForeignKey("device")
@@ -414,11 +455,7 @@ class device_class(models.Model):
 def device_class_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        try:
-            new_pri = int(cur_inst.priority)
-        except:
-            raise ValidationError("Priority must be an integer")
-        cur_inst.priority = new_pri
+        _check_integer(cur_inst, "priority")
         
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)
@@ -537,7 +574,6 @@ class device_group(models.Model):
 
 @receiver(signals.pre_save, sender=device_group)
 def device_group_pre_save(sender, **kwargs):
-    print "dgps0"
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if not cur_inst.name:
@@ -1285,13 +1321,7 @@ def network_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         # what was the changed attribute
         change_attr = getattr(cur_inst, "change_attribute", None)
-        try:
-            new_pen = int(cur_inst.penalty)
-        except:
-            raise ValidationError("penalty must be an integer")
-        if new_pen < -100 or new_pen > 100:
-            raise ValidationError("penalty must be in [-100, 100]")
-        cur_inst.penalty = new_pen
+        _check_integer(cur_inst, "penalty", min_val=-100, max_val=100)
         nw_type = cur_inst.network_type.identifier
         if nw_type != "s" and cur_inst.master_network_id:
             raise ValidationError("only slave networks can have a master")
@@ -1347,13 +1377,7 @@ def network_device_type_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if not(cur_inst.identifier.strip()):
             raise ValidationError("identifer must not be empty")
-        try:
-            cur_mb = int(cur_inst.mac_bytes)
-        except:
-            raise ValidationError("mac_bytes must be an integer")
-        if cur_mb < 6 or cur_mb > 24:
-            raise ValidationError("mac_bytes must be in range [6, 24]")
-        cur_inst.mac_bytes = cur_mb
+        _check_integer(cur_inst, "mac_bytes", min_val=6, max_val=24)
     
 class network_network_device_type(models.Model):
     idx = models.AutoField(db_column="network_network_device_type_idx", primary_key=True)
@@ -1642,20 +1666,15 @@ def mon_device_templ_pre_save(sender, **kwargs):
         for attr_name, min_val, max_val in [
             ("max_attempts", 1, 10),
             ("ninterval", 0, 60)]:
-            cur_val = getattr(cur_inst, attr_name)
-            try:
-                cur_val = int(cur_val)
-            except:
-                raise ValidationError("%s is not an integer" % (attr_name))
+            cur_val = _check_inst(cur_inst, attr_name)
+            if cur_val < min_val or cur_val > max_val:
+                raise ValidationError("%s %d is out of bounds [%d, %d]" % (
+                    attr_name,
+                    cur_val,
+                    min_val,
+                    max_val))
             else:
-                if cur_val < min_val or cur_val > max_val:
-                    raise ValidationError("%s %d is out of bounds [%d, %d]" % (
-                        attr_name,
-                        cur_val,
-                        min_val,
-                        max_val))
-                else:
-                    setattr(cur_inst, attr_name, cur_val)
+                setattr(cur_inst, attr_name, cur_val)
                     
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
@@ -1797,20 +1816,7 @@ def mon_service_templ_pre_save(sender, **kwargs):
             ("check_interval", 1, 60),
             ("retry_interval", 1, 60),
             ("ninterval", 0, 60)]:
-            cur_val = getattr(cur_inst, attr_name)
-            try:
-                cur_val = int(cur_val)
-            except:
-                raise ValidationError("%s is not an integer" % (attr_name))
-            else:
-                if cur_val < min_val or cur_val > max_val:
-                    raise ValidationError("%s %d is out of bounds [%d, %d]" % (
-                        attr_name,
-                        cur_val,
-                        min_val,
-                        max_val))
-                else:
-                    setattr(cur_inst, attr_name, cur_val)
+            cur_val = _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 class package(models.Model):
     idx = models.AutoField(db_column="package_idx", primary_key=True)
@@ -1910,32 +1916,14 @@ def partition_pre_save(sender, **kwargs):
             raise ValidationError("partition number already used")
         cur_inst.pnum = p_num
         # size
-        try:
-            size = int(cur_inst.size)
-        except:
-            raise ValidationError("size is not a number")
-        if size < 0:
-            raise ValidationError("size must be >= 0")
-        cur_inst.size = size
+        _check_integer(cur_inst, "size", min_val=0)
         # mountpoint
         if cur_inst.mountpoint.strip() and not cur_inst.mountpoint.startswith("/"):
             raise ValidationError("mountpoint must start with '/'")
         # fs_freq
-        try:
-            fs_freq = int(cur_inst.fs_freq)
-        except:
-            raise ValidationError("fs_freq must be a number")
-        if fs_freq < 0 or fs_freq > 1:
-            raise ValidationError("fs_freq out of bounds [0, 1]")
-        cur_inst.fs_freq = fs_freq
+        _check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
         # fs_passno
-        try:
-            fs_passno = int(cur_inst.fs_passno)
-        except:
-            raise ValidationError("fs_passno must be a number")
-        if fs_passno < 0 or fs_passno > 2:
-            raise ValidationError("fs_passno out of bounds [0, 2]")
-        cur_inst.fs_passno = fs_passno
+        _check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
 
 class partition_disc(models.Model):
     idx = models.AutoField(db_column="partition_disc_idx", primary_key=True)
@@ -2459,7 +2447,7 @@ class capability(models.Model):
 
 class user(models.Model):
     idx = models.AutoField(db_column="user_idx", primary_key=True)
-    active = models.BooleanField()
+    active = models.BooleanField(default=True)
     login = models.CharField(unique=True, max_length=255)
     uid = models.IntegerField(unique=True)
     group = models.ForeignKey("group")
@@ -2468,16 +2456,16 @@ class user(models.Model):
     export_scr = models.ForeignKey("config", null=True, related_name="export_scr")
     home = models.TextField(blank=True, null=True)
     scratch = models.TextField(blank=True, null=True)
-    shell = models.CharField(max_length=765, blank=True)
+    shell = models.CharField(max_length=765, blank=True, default="/bin/bash")
     password = models.CharField(max_length=48, blank=True)
     cluster_contact = models.BooleanField()
-    uservname = models.CharField(max_length=765, blank=True)
-    usernname = models.CharField(max_length=765, blank=True)
-    usertitan = models.CharField(max_length=765, blank=True)
-    useremail = models.CharField(max_length=765, blank=True)
-    userpager = models.CharField(max_length=765, blank=True)
-    usertel = models.CharField(max_length=765, blank=True)
-    usercom = models.CharField(max_length=765, blank=True)
+    first_name = models.CharField(max_length=765, blank=True)
+    last_name = models.CharField(max_length=765, blank=True)
+    title = models.CharField(max_length=765, blank=True)
+    email = models.CharField(max_length=765, blank=True)
+    pager = models.CharField(max_length=765, blank=True)
+    tel = models.CharField(max_length=765, blank=True)
+    comment = models.CharField(max_length=765, blank=True)
     nt_password = models.CharField(max_length=255, blank=True)
     lm_password = models.CharField(max_length=255, blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -2495,22 +2483,20 @@ class user(models.Model):
         self.sge_servers = {}
         self.login_serers = {}
     def get_xml(self):
-        return E.user(
+        user_xml = E.user(
             unicode(self),
             pk="%d" % (self.pk),
             key="user__%d" % (self.pk),
+            login=self.login,
+            uid="%d" % (self.uid),
+            group="%d" % (self.group_id or 0),
+            aliases=self.aliases or "",
+            active="1" if self.active else "0",
         )
-    def create_django_user(self):
-        new_du = User(
-            username=self.login,
-            first_name=self.uservname,
-            last_name=self.usernname,
-            email=self.useremail,
-            is_staff=True,
-            is_superuser=False)
-        new_du.save()
-        self.django_user = new_du
-        return new_du
+        for attr_name in ["first_name", "last_name",
+                          "title", "email", "pager", "tel", "comment"]:
+            user_xml.attrib[attr_name] = getattr(self, attr_name)
+        return user_xml
     def add_capability(self, cap):
         self.capabilities[cap.pk] = cap
         self.capabilities[cap.name] = cap
@@ -2540,10 +2526,9 @@ class user(models.Model):
         self.secondary_groups = list(group.objects.filter(Q(user_group__user=self.pk)))
     def get_secondary_groups(self):
         return self.secondary_groups
-    def get_suffix(self):
-        return "userX%dX" % (self.pk)
     class Meta:
         db_table = u'user'
+        ordering = ("login", )
         permissions = {
             ("wf_apc" , "APC control"),
             ("wf_bc"  , "Boot control"),
@@ -2592,23 +2577,58 @@ class user(models.Model):
         return u"%s (%d; %s, %s)" % (
             self.login,
             self.pk,
-            self.uservname or "novname",
-            self.usernname or "nonname")
+            self.first_name or "first",
+            self.last_name or "last")
+
+@receiver(signals.pre_save, sender=user)
+def user_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_integer(cur_inst, "uid", min_val=100, max_val=65535)
+        _check_empty_string(cur_inst, "login")
+
+@receiver(signals.post_save, sender=user)
+def user_post_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        try:
+            django_user = User.objects.get(Q(username=cur_inst.login))
+        except User.DoesNotExist:
+            django_user = User(
+                username=cur_inst.login
+            )
+            django_user.save()
+        django_user.is_active = cur_inst.active
+        django_user.first_name = cur_inst.first_name
+        django_user.last_name = cur_inst.last_name
+        django_user.email = cur_inst.email
+        django_user.set_password(cur_inst.password)
+        django_user.save()
+
+@receiver(signals.post_delete, sender=user)
+def user_post_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        try:
+            User.objects.get(Q(username=cur_inst.login)).delete()
+        except User.DoesNotExist:
+            pass
 
 class group(models.Model):
     idx = models.AutoField(db_column="ggroup_idx", primary_key=True)
-    active = models.BooleanField()
+    active = models.BooleanField(default=True)
     groupname = models.CharField(db_column="ggroupname", unique=True, max_length=48)
     gid = models.IntegerField(unique=True)
     homestart = models.TextField(blank=True)
     scratchstart = models.TextField(blank=True)
-    respvname = models.CharField(max_length=765, blank=True)
-    respnname = models.CharField(max_length=765, blank=True)
-    resptitan = models.CharField(max_length=765, blank=True)
-    respemail = models.CharField(max_length=765, blank=True)
-    resptel = models.CharField(max_length=765, blank=True)
-    respcom = models.CharField(max_length=765, blank=True)
-    groupcom = models.CharField(max_length=765, blank=True)
+    group_comment = models.CharField(max_length=765, blank=True)
+    first_name = models.CharField(max_length=765, blank=True)
+    last_name = models.CharField(max_length=765, blank=True)
+    title = models.CharField(max_length=765, blank=True)
+    email = models.CharField(max_length=765, blank=True)
+    pager = models.CharField(max_length=765, blank=True)
+    tel = models.CharField(max_length=765, blank=True)
+    comment = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
@@ -2620,11 +2640,6 @@ class group(models.Model):
             self.django_group = None
         for sub_cap in self.group_cap_set.all().select_related("capability"):
             self.add_capability(sub_cap.capability)
-    def create_django_group(self):
-        new_dg = Group(name=self.groupname)
-        new_dg.save()
-        self.django_group = new_dg
-        return self.django_group
     def add_capability(self, cap):
         self.capabilities[cap.pk] = cap
         self.capabilities[cap.name] = cap
@@ -2637,16 +2652,55 @@ class group(models.Model):
         self.users[cur_user.login] = cur_user
     def get_user(self, user_ref):
         return self.users[user_ref]
-    def get_suffix(self):
-        return "groupX%dX" % (self.pk)
     def get_num_users(self):
         return len([key for key in self.users if type(key) == unicode])
+    def get_xml(self):
+        group_xml = E.group(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="group__%d" % (self.pk),
+            groupname=unicode(self.groupname),
+            gid="%d" % (self.gid),
+            homestart=self.homestart or "",
+            active="1" if self.active else "0",
+        )
+        for attr_name in ["first_name", "last_name", "group_comment",
+                     "title", "email", "pager", "tel", "comment"]:
+            group_xml.attrib[attr_name] = getattr(self, attr_name)
+        return group_xml
     class Meta:
         db_table = u'ggroup'
+        ordering = ("groupname", )
     def __unicode__(self):
-        return "%s (%d)" % (self.groupname,
-                            self.pk)
+        return "%s (gid=%d)" % (
+            self.groupname,
+            self.gid)
 
+@receiver(signals.pre_save, sender=group)
+def group_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_integer(cur_inst, "gid", min_val=100, max_val=65535)
+
+@receiver(signals.post_save, sender=group)
+def group_post_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        try:
+            django_group = Group.objects.get(Q(name=cur_inst.groupname))
+        except Group.DoesNotExist:
+            django_group = Group(name=cur_inst.groupname)
+            django_group.save()
+        
+@receiver(signals.post_delete, sender=group)
+def group_post_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        try:
+            Group.objects.get(Q(name=cur_inst.groupname)).delete()
+        except:
+            pass
+        
 class group_cap(models.Model):
     idx = models.AutoField(db_column="ggroupcap_idx", primary_key=True)
     group = models.ForeignKey("group", db_column="ggroup_id")
@@ -2813,23 +2867,9 @@ def netdevice_pre_save(sender, **kwargs):
             raise ValidationError("no matching device_type found")
         cur_inst.network_device_type = nd_type
         # fix None as vlan_id
-        if cur_inst.vlan_id is None:
-            cur_inst.vlan_id = 0
-        try:
-            cur_inst.vlan_id = int(cur_inst.vlan_id)
-        except ValueError:
-            raise ValidationError("vlan_id must be integer")
-        else:
-            if cur_inst.vlan_id < 0:
-                raise ValidationError("vlan_id must be >= 0")
+        _check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)
         # penalty
-        try:
-            cur_inst.penalty = int(cur_inst.penalty or "1")
-        except ValueError:
-            raise ValidationError("penalty must be integer")
-        else:
-            if cur_inst.penalty < 1:
-                raise ValidationError("penalty must be >= 1")
+        _check_integer(cur_inst, "penalty", min_val=1)
         # check mac address
         dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
                              re.compile("^%s$" % (":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
@@ -2866,13 +2906,7 @@ def net_ip_pre_save(sender, **kwargs):
 def peer_information_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        try:
-            cur_inst.penalty = int(cur_inst.penalty or "1")
-        except ValueError:
-            raise ValidationError("penalty must be integer")
-        else:
-            if cur_inst.penalty < 1:
-                raise ValidationError("penalty must be >= 1")
+        _check_integer(cur_inst, "penalty", min_val=1)
 
 @receiver(signals.pre_save, sender=config)
 def config_pre_save(sender, **kwargs):
@@ -2881,10 +2915,7 @@ def config_pre_save(sender, **kwargs):
         if not cur_inst.name:
             raise ValidationError("name must not be zero")
         # priority
-        try:
-            cur_inst.priority = int(cur_inst.priority or "1")
-        except ValueError:
-            raise ValidationError("priority must be integer")
+        _check_integer(cur_inst, "priority")
 
 def config_str_general_check(cur_inst):
     if not cur_inst.name:
@@ -2913,10 +2944,7 @@ def config_int_pre_save(sender, **kwargs):
             list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
         if cur_inst.name in all_var_names:
             raise ValidationError("name already used")
-        try:
-            cur_inst.value = int(cur_inst.value)
-        except ValueError:
-            raise ValidationError("value must be integer")
+        _check_integer(cur_inst, "value")
 
 @receiver(signals.pre_save, sender=config_bool)
 def config_bool_pre_save(sender, **kwargs):
@@ -2971,10 +2999,7 @@ def config_script_pre_save(sender, **kwargs):
             raise ValidationError("value is empty")
         if cur_inst.name in cur_inst.config.config_script_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
             raise ValidationError("name already used")
-        try:
-            cur_inst.priority = int(cur_inst.priority)
-        except:
-            raise ValidationError("priority must be an integer")
+        _check_integer(cur_inst, "priority")
             
 def get_related_models(in_obj):
     used_objs = 0
