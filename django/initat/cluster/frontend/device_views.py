@@ -53,14 +53,16 @@ def get_json_tree(request):
                         mimetype="application/json")
 
 def _get_device_list(request, cur_dg):
-    cur_devs = cur_dg.device_group.all()#.select_related("device_type").order_by("name")
+    cur_devs = cur_dg.device_group.all()
     sel_list = request.session.get("sel_list", [])
     json_struct = []
     for sub_dev in cur_devs:
         if sub_dev.device_type.identifier not in ["MD"]:
             key = "dev__%d" % (sub_dev.pk)
             json_struct.append({
-                "title"  : unicode(sub_dev),
+                "title"  : "%s (%s%s)" % (unicode(sub_dev.name),
+                                          sub_dev.device_type.identifier,
+                                          ", %s" % (sub_dev.comment) if sub_dev.comment else ""),
                 "select" : True if key in sel_list else False,
                 "key"    : key
             })
@@ -245,7 +247,6 @@ def manual_connection(request):
             parts = val.split("#")
             val = "(%s)(%s)(%s)" % (parts[0], "#" * (len(parts) - 1), parts[-1])
             val = val.replace("#", "\d")
-            print val
         re_dict[key] = re.compile("^%s$" % (val))
     # all cd / non-cd devices
     cd_devices = device.objects.filter(Q(device_type__identifier='CD'))
@@ -283,7 +284,8 @@ def manual_connection(request):
         else:
             created_cons.append(new_cd)
     if m_keys:
-        request.log("created %s" % (logging_tools.get_plural("connection", len(m_keys))), xml=True)
+        if created_cons:
+            request.log("created %s" % (logging_tools.get_plural("connection", len(m_keys))), xml=True)
     else:
         request.log("found no matching devices", logging_tools.LOG_LEVEL_WARN, xml=True)
     #print drag_str.replace("#", "\d")

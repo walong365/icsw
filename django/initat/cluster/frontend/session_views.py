@@ -14,6 +14,7 @@ from initat.core.render import render_me
 from django.conf import settings
 from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import init_logging
+from django.views.decorators.cache import never_cache
 
 # correct path to import session_handler
 if "cluster-backbone-sql" in __file__:
@@ -29,12 +30,11 @@ if not OLD_DIR in sys.path:
 
 import session_handler
 
+@never_cache
+def redirect_to_main(request):
+    return HttpResponseRedirect(reverse("session:login"))
+
 def sess_logout(request):
-    # destroy old sessions stuff
-##    if "DB_SESSION_ID" in request.session.keys():
-##        #sess_data = session_handler.read_session(request, request.session["DB_SESSION_ID"])
-##        #session_handler.delete_session(sess_data)
-##        pass
     from_logout = request.user.is_authenticated()
     logout(request)
     login_form = authentication_form()
@@ -54,19 +54,11 @@ def sess_login(request):
             except user.DoesNotExist:
                 db_user = None
                 request.log("no db_user defined")
-                #return HttpResponseRedirect(reverse("transfer:main"))
             else:
                 pass
             login(request, django_user)
             request.session["db_user"] = db_user
-            #print db_user
-            #sess_id = "".join([chr(random.randint(97, 122)) for x in range(16)])
-            #sess_dict = {"session_id" : sess_id}
-            #session_handler.init_session(request, sess_id, db_user, {"session_id" : sess_id})
-            #request.session["DB_SESSION_ID"] = sess_id
-            # no need to use transfer_views
             return HttpResponseRedirect(reverse("main:index"))
-            #return HttpResponseRedirect(reverse("transfer:main", args=["index.py?SID=%s" % (sess_id)]))
     else:
         login_form = authentication_form()
     return render_me(request, "login.html", {"login_form" : login_form,

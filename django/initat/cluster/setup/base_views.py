@@ -10,7 +10,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
      tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
      mon_contactgroup, get_related_models, network_device_type, network_type, device_class, \
-     device_location, network, mon_device_templ
+     device_location, network, mon_device_templ, user, group
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -23,6 +23,8 @@ import pprint
 import net_tools
 import server_command
 import re
+
+HIDDEN_FIELDS = set(["password",])
 
 @login_required
 @init_logging
@@ -76,7 +78,9 @@ def change_xml_entry(request):
                    "nwt"     : network_type,
                    "dc"      : device_class,
                    "dl"      : device_location,
-                   "nw"      : network
+                   "nw"      : network,
+                   "user"    : user,
+                   "group"   : group
                    }.get(object_type, None)
         if not mod_obj:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
@@ -146,7 +150,7 @@ def change_xml_entry(request):
                             request.log("error modifying: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
                             request.xml_response["original_value"] = old_value
                         except IntegrityError, what:
-                            request.log("error modifying (%d): %s" % (what[0], unicode(what[1])), logging_tools.LOG_LEVEL_ERROR, xml=True)
+                            request.log("error modifying: %s" % (unicode(what)), logging_tools.LOG_LEVEL_ERROR, xml=True)
                             request.xml_response["original_value"] = old_value
                         except:
                             raise
@@ -154,7 +158,10 @@ def change_xml_entry(request):
                             # reread new_value (in case of pre/post-save corrections)
                             new_value = getattr(cur_obj, attr_name)
                             request.xml_response["object"] = cur_obj.get_xml()
-                            request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
+                            if attr_name in HIDDEN_FIELDS:
+                                request.log("changed %s" % (attr_name), xml=True)
+                            else:
+                                request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
                         # handle others
                         if other_list:
                             other_change = E.changes(
@@ -218,10 +225,10 @@ def create_object(request, *args, **kwargs):
                                        num_dig,
                                        range_m.group("post"))
             create_list = [(range_attr, form_str % (cur_idx)) for cur_idx in xrange(start_idx, end_idx + 1)]
+    created_ok = []
     for change_key, change_value in create_list:
         new_obj = new_obj_class(**set_dict)
         if change_key:
-            print change_key, change_value
             setattr(new_obj, change_key, change_value)
         # add defaults
         for add_field, value in {"device" : [("device_class", device_class.objects.get(Q(pk=1)))]}.get(obj_name, []):
@@ -233,15 +240,17 @@ def create_object(request, *args, **kwargs):
         except:
             request.log("error creating: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR, xml=True)
         else:
+            created_ok.append(new_obj)
             # add m2m entries
             for key, value in m2m_dict.iteritems():
                 request.log("added %s for %s" % (logging_tools.get_plural("m2m entry", len(value)), key))
                 for sub_value in value:
                     getattr(new_obj, key).add(new_obj_class._meta.get_field(key).rel.to.objects.get(Q(pk=sub_value)))
             request.xml_response["new_entry"] = new_obj.get_xml()
-    request.log("created %s new %s" % (
-        " %d" % (len(create_list)) if len(create_list) > 1 else "",
-        new_obj._meta.object_name), xml=True)
+    if created_ok:
+        request.log("created %s new %s" % (
+            " %d" % (len(create_list)) if len(create_list) > 1 else "",
+            new_obj._meta.object_name), xml=True)
     return request.xml_response.create_response()
 
 @init_logging

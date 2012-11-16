@@ -117,7 +117,7 @@ function draw_tables() {
 
 function load_config() {
     $.ajax({
-        url     : "{% url mon:get_config %}",
+        url     : "{% url mon:setup %}",
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {

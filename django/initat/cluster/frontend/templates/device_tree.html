@@ -73,6 +73,21 @@ function change_sel_device_curl_cb(event) {
     });
 };
 
+function toggle_device_group_selection(event) {
+    var cur_el = $(event.target);
+    var cur_tr = cur_el.parents("tr:first");
+    cur_tr.parents("table:first").find("tr[id^='dev__" + cur_tr.attr("id").split("__")[1] + "__']").each(function() {
+        var dev_tr = $(this);
+        var dev_sel = dev_tr.find("input[id$='__sel']");
+        if (dev_sel.is(":checked")) {
+            dev_sel.removeAttr("checked");
+        } else {
+            dev_sel.attr("checked", "checked");
+        };
+        dev_tr.show();
+    });
+};
+
 function build_device_table(xml) {
     $("div#device_table").children().remove();
     new_table = $("<table>").attr({"id" : "device_tree"});
@@ -88,19 +103,25 @@ function build_device_table(xml) {
         if (cur_dg.attr("is_cdg") == "1") {
             new_tr.append($("<th>"));
         } else {
-            new_tr.append($("<th>").append(
-                $("<span>").attr({
-                    "class"   : "ui-icon ui-icon-triangle-1-e",
-                    "id"      : "expand_" + $(cur_dg).attr("pk")
-                }).bind("click", function(event) {
-                    var cur_class = $(event.target).attr("class");
-                    if (cur_class.match(/-1-e$/)) {
-                        toggle_device(cur_dg.attr("pk"), true);
-                    } else {
-                        toggle_device(cur_dg.attr("pk"), false);
-                    }
-                })
-            ));
+            new_tr.append(
+                $("<td>").append(
+                    $("<div>").css({"float" : "left"}).attr({
+                        "class"   : "ui-icon ui-icon-triangle-1-e",
+                        "id"      : "expand_" + $(cur_dg).attr("pk")
+                    }).bind("click", function(event) {
+                        var cur_class = $(event.target).attr("class");
+                        if (cur_class.match(/-1-e$/)) {
+                            toggle_device(cur_dg.attr("pk"), true);
+                        } else {
+                            toggle_device(cur_dg.attr("pk"), false);
+                        }
+                    })
+                ).append(
+                    $("<input>").attr({
+                        "type" : "checkbox"
+                    }).bind("click", toggle_device_group_selection)
+                )
+            );
         };
         new_tr.append($("<th>").append(
             create_input_el(cur_dg, "name", "devg__" + cur_dg.attr("pk"))
@@ -374,7 +395,7 @@ function propagate_dg_changes(cur_el) {
 };
 
 function toggle_device(dg_pk, state) {
-    var cur_dg = $("table#device_tree tr[id='devg__" + dg_pk + "'] span[id='expand_" + dg_pk + "']");
+    var cur_dg = $("table#device_tree tr[id='devg__" + dg_pk + "'] div[id='expand_" + dg_pk + "']");
     if (state) {
         cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
         cur_dg.addClass("ui-icon-triangle-1-s");

@@ -129,7 +129,7 @@ function draw_info(name, kwargs) {
     this.span = kwargs && (kwargs.span || 1) || 1;
     var attr_list = ["size", "default", "select_source", "boolean", "min", "max",
         "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group",
-        "css", "select_source_attribute"];
+        "css", "select_source_attribute", "password", "keep_td"];
     for (idx=0 ; idx < attr_list.length; idx ++) {
         var attr_name = attr_list[idx];
         if (kwargs && kwargs.hasOwnProperty(attr_name)) {
@@ -141,7 +141,7 @@ function draw_info(name, kwargs) {
     this.size = kwargs && kwargs.size || undefined;
     function get_kwargs() {
         var attr_list = ["size", "select_source", "boolean", "min", "max",
-            "number", "manytomany", "add_null_entry", "css", "select_source_attribute"];
+            "number", "manytomany", "add_null_entry", "css", "select_source_attribute", "password"];
         var kwargs = {new_default : this.default};
         for (idx=0 ; idx < attr_list.length; idx ++) {
             var attr_name = attr_list[idx];
@@ -229,11 +229,13 @@ function draw_line(cur_ds, xml_el) {
             });
             dummy_div.append(cur_line);
         };
-        var new_td = $("<td>");
-        if (cur_di.cspan) {
-            new_td.attr({"colspan" : cur_di.cspan});
+        if (! cur_di.keep_td) {
+            var new_td = $("<td>");
+            if (cur_di.cspan) {
+                new_td.attr({"colspan" : cur_di.cspan});
+            };
+            cur_line.append(new_td);
         };
-        cur_line.append(new_td);
         var new_els = create_input_el(xml_el, cur_di.name, line_prefix, cur_di.get_kwargs());
         el_list.push(new draw_result(cur_di.name, cur_di.group, new_els.last()));
         new_td.append(new_els);
@@ -473,6 +475,16 @@ function set_value(el_id, el_value) {
 function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts) {
     var is_textarea = false;
     var el_value = get_value(cur_el);
+    reset_value = false;
+    if (cur_el.attr("type") == "password") {
+        var check_pw = prompt("Please reenter password", "");
+        if (check_pw != el_value) {
+            alert("Password mismatch");
+            return;
+        } else {
+            reset_value = true;
+        };
+    };
     var data_field = {
         "id"       : cur_el.attr("id"),
         "checkbox" : cur_el.is(":checkbox"),
@@ -500,6 +512,7 @@ function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts
                         var cur_os = $(this);
                         set_value(cur_os.attr("id"), cur_os.text());
                     });
+                    if (reset_value) cur_el.val("");
                 };
             } else {
                 <!-- set back to previous value -->
@@ -508,6 +521,7 @@ function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts
                 } else {
                     $(cur_el).attr("value", get_xml_value(xml, "original_value"));
                 };
+                if (reset_value) cur_el.val("");
             };
             if (lock_list) unlock_elements(lock_list);
         }
@@ -551,7 +565,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
                 "type"  : "checkbox",
                 "id"    : id_prefix + "__" + attr_name
             });
-            if (xml_el && xml_el.attr(attr_name) == "1") new_el.attr("checked", "checked");
+            if ((xml_el && xml_el.attr(attr_name) == "1") || (! xml_el && kwargs.new_default)) new_el.attr("checked", "checked");
         } else if (kwargs.textarea) {
             // textarea input style
             var new_el = $("<textarea>").attr({
@@ -560,7 +574,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
         } else {
             // text input style
             var new_el = $("<input>").attr({
-                "type"  : kwargs.number ? "number" : "text",
+                "type"  : kwargs.password ? "password" : (kwargs.number ? "number" : "text"),
                 "id"    : id_prefix + "__" + attr_name,
                 "value" : xml_el === undefined ? (kwargs.new_default || (kwargs.number ? "0" : "")) : xml_el.attr(attr_name)
             });

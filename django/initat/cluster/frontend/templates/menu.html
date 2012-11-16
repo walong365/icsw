@@ -9,15 +9,21 @@
         <ul>
             <li><a href="{% url device:tree %}">{% trans "Devicetree" %}</a></li>
             <li><a href="{% url network:show_networks %}">{% trans "Networks" %}</a></li>
-            <li><a href="{% url network:network %}">{% trans "Device networks" %}</a></li>
             <li><a href="{% url config:show_configs %}">{% trans "Configurations" %}</a></li>
             <li><a href="{% url device:show_configs %}">{% trans "Device Configurations" %}</a></li>
-            <li><a href="{% url device:connections %}">{% trans "Device Connections" %}</a></li>
-            <li><a>{% trans "Basic settings" %}</a>
+            <li>
+                <a>{% trans "Basic settings" %}</a>
                 <ul>
                     <li><a href="{% url network:show_network_d_types %}">{% trans "Network types / Network device types" %}</a></li>
                     <li><a href="{% url setup:show_device_class_location %}">{% trans "Device locations / class" %}</a></li>
                     <li><a href="{% url config:show_config_types %}">{% trans "Configuration types" %}</a></li>
+                </ul>
+            </li>
+            <li>
+                <a>{% trans "Device settings" %}</a>
+                <ul>
+                    <li><a href="{% url network:network %}">{% trans "Device networks" %}</a></li>
+                    <li><a href="{% url device:connections %}">{% trans "Device Connections" %}</a></li>
                 </ul>
             </li>
         </ul>
@@ -30,6 +36,11 @@
             <li><a href="{% url setup:partition_overview %}">{% trans "Partition overview" %}</a></li>
         </ul>
     </li>
+    <li>
+        <a>{% trans "Users" %}</a>
+        <ul>
+            <li><a href="{% url user:overview 'table' %}">{% trans "Overview / Table" %}</a></li>
+        </ul>
     <li>
         <a>{% trans "Monitoring" %}</a>
         <ul>

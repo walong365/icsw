@@ -7,13 +7,6 @@ import process_tools
 # from django.contrib import admin
 # admin.autodiscover()
 
-transfer_patterns = patterns(
-    "initat.cluster.transfer",
-    url(r"^$", "transfer_views.redirect_to_main"),
-    url(r"transfer/"    , "transfer_views.transfer", name="main"),
-    url(r"transfer/(.*)", "transfer_views.transfer", name="main")
-)
-
 session_patterns = patterns(
     "initat.cluster.frontend",
     url(r"logout", "session_views.sess_logout", name="logout"),
@@ -115,11 +108,15 @@ network_patterns = patterns(
 monitoring_patterns = patterns(
     "initat.cluster.frontend",
     url("^setup$"            , "monitoring_views.setup"            , name="setup"),
-    url("^xml/get_config"    , "monitoring_views.get_config"       , name="get_config"),
     url("^create_command$"   , "monitoring_views.create_command"   , name="create_command"),
     url("^delete_command$"   , "monitoring_views.delete_command"   , name="delete_command"),
     url("xml/dev_config$"    , "monitoring_views.device_config"    , name="device_config"),
     url("create_config$"     , "monitoring_views.create_config"    , name="create_config"),
+)
+
+user_patterns = patterns(
+    "initat.cluster.frontend",
+    url("overview/(?P<mode>.*)$"      , "user_views.overview", name="overview")
 )
 
 main_patterns = patterns(
@@ -130,7 +127,7 @@ main_patterns = patterns(
 my_url_patterns = patterns(
     "",
     url(r"static/(?P<path>.*)$"        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
-    url(r"^"          , include(transfer_patterns  , namespace="transfer")),
+    url(r"^$"         , "initat.cluster.frontend.session_views.redirect_to_main"),
     url(r"^base/"     , include(base_patterns      , namespace="base"    )),
     url(r"^session/"  , include(session_patterns   , namespace="session" )),
     url(r"^config/"   , include(config_patterns    , namespace="config"  )),
@@ -141,6 +138,7 @@ my_url_patterns = patterns(
     url(r"^nagios/"   , include(monitoring_patterns, namespace="mon"     )),
     url(r"^boot/"     , include(boot_patterns      , namespace="boot"    )),
     url(r"^setup/"    , include(setup_patterns     , namespace="setup"   )),
+    url(r"^user/"     , include(user_patterns      , namespace="user"   )),
 )
 
 url_patterns = patterns(

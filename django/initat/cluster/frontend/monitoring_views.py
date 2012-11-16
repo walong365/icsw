@@ -60,9 +60,21 @@ def delete_command(request):
 @init_logging
 @login_required
 def setup(request):
-    return render_me(
-        request, "monitoring_setup.html",
-    )()
+    if request.method == "GET":
+        return render_me(
+            request, "monitoring_setup.html",
+        )()
+    else:
+        xml_resp = E.response()
+        request.xml_response["response"] = xml_resp
+        xml_resp.append(E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))]))
+        xml_resp.append(E.users(*[cur_u.get_xml() for cur_u in user.objects.all()]))
+        xml_resp.append(E.mon_periods(*[cur_p.get_xml() for cur_p in mon_period.objects.all()]))
+        xml_resp.append(E.mon_contacts(*[cur_c.get_xml() for cur_c in mon_contact.objects.all()]))
+        xml_resp.append(E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]))
+        xml_resp.append(E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]))
+        xml_resp.append(E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]))
+        return request.xml_response.create_response()
 
 @init_logging
 @login_required
@@ -70,20 +82,6 @@ def device_config(request):
     return render_me(
         request, "monitoring_device.html",
     )()
-
-@init_logging
-@login_required
-def get_config(request):
-    xml_resp = E.response()
-    request.xml_response["response"] = xml_resp
-    xml_resp.append(E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))]))
-    xml_resp.append(E.users(*[cur_u.get_xml() for cur_u in user.objects.all()]))
-    xml_resp.append(E.mon_periods(*[cur_p.get_xml() for cur_p in mon_period.objects.all()]))
-    xml_resp.append(E.mon_contacts(*[cur_c.get_xml() for cur_c in mon_contact.objects.all()]))
-    xml_resp.append(E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]))
-    xml_resp.append(E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]))
-    xml_resp.append(E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]))
-    return request.xml_response.create_response()
 
 @init_logging
 @login_required

@@ -36,7 +36,7 @@
 
 {% block javascript %}
 {% compress js %}
-    <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.layout.latest.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery.layout-latest.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.dataTables.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.sprintf.js_8.txt"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}js/jquery.tablesorter.js"></script>
@@ -99,6 +99,9 @@ function init_layout() {
         my_layout = $("body").layout({
             applyDefaultStyles  : true,
             spacing_open        : 6,
+            west__size          : 300,
+            west__maxSize       : 400,
+            west__minSize       : 100,
             north__spacing_open : 0,
             south__initClosed   : true,
             west__initClosed    : {% if request.session.west_closed %}true{% else %}false{% endif %},
