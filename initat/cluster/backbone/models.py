@@ -581,13 +581,15 @@ def device_group_pre_save(sender, **kwargs):
 
 @receiver(signals.post_save, sender=device_group)
 def device_group_post_save(sender, **kwargs):
+    cur_inst = kwargs["instance"]
+
     if kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
         # first is always cdg
         if device_group.objects.count() == 1 and not cur_inst.cluster_device_group:
             cur_inst.cluster_device_group = True
             cur_inst.save()
-    elif not kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
-        cur_inst = kwargs["instance"]
+
+    if not kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
         # meta_device is always created
         if not cur_inst.device_id:
             cur_inst._add_meta_device()
