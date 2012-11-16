@@ -584,7 +584,7 @@ def device_group_post_save(sender, **kwargs):
     if not kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
         cur_inst = kwargs["instance"]
         # first is always cdg
-        if device_group.objects.count() == 1:
+        if device_group.objects.count() == 1 and not cur_inst.cluster_device_group:
             cur_inst.cluster_device_group = True
             cur_inst.save()
         # meta_device is always created
