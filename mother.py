@@ -3022,7 +3022,7 @@ class server_process(threading_tools.process_pool):
                                      logging_tools.LOG_LEVEL_ERROR)
                     else:
                         srv_com.update_source()
-                        if cur_com in ["status", "refresh", "alter_macaddr"]:
+                        if cur_com in ["status", "refresh", "alter_macaddr", "soft_control"]:
                             t_proc = "control"
                             self.log("got command %s, sending to %s process" % (cur_com, t_proc))
                             self.send_to_process(
@@ -3052,8 +3052,9 @@ class server_process(threading_tools.process_pool):
             self.socket_dict["router"].connect(dst_addr)
             #time.sleep(0.2)
         #print "done"
+        zmq_id = "%s:hoststatus:" % (zmq_id)
         self.log("sending '%s' to %s (%s)" % (com_str, zmq_id, dst_addr))
-        self.socket_dict["router"].send_unicode("%s:hoststatus:" % (zmq_id), zmq.SNDMORE)
+        self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
         self.socket_dict["router"].send_unicode(unicode(com_str))
     # utility calls
     def _prepare_directories(self):

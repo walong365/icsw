@@ -213,8 +213,12 @@ class machine(object):
                 dev_node.attrib["ok"] = "%d" % (cur_ok)
                 dev_node.attrib["ip"] = res_dict["host"]
                 if cur_ok == 1:
-                    self.log("start hoststatus query to %s" % (res_dict["host"]))
-                    machine.process.send_pool_message("contact_hoststatus", self.device.get_boot_uuid(), "status", dev_node.attrib["ip"])
+                    self.log("send hoststatus query to %s" % (res_dict["host"]))
+                    machine.process.send_pool_message(
+                        "contact_hoststatus",
+                        self.device.get_boot_uuid() if self.ip_dict[dev_node.attrib["ip"]].network.network_type.identifier == "b" else self.device.uuid,
+                        dev_node.attrib.get("soft_command", "status"),
+                        dev_node.attrib["ip"])
                 # remove other ping requests for this node
                 for other_ping in srv_com.xpath(None, ".//ns:ping[@pk='%d']" % (self.pk)):
                     other_ping.getparent().remove(other_ping)
@@ -223,17 +227,15 @@ class machine(object):
         else:
             self.log("got unknown ip '%s'" % (res_dict["host"]), logging_tools.LOG_LEVEL_ERROR)
     def add_ping_info(self, cur_dev):
-        
-        print "add_ping_info", etree.tostring(cur_dev)
+        #print "add_ping_info", etree.tostring(cur_dev)
         if int(cur_dev.attrib["ok"]):
             cur_dev.attrib["network"] = self.ip_dict[cur_dev.attrib["ip"]].network.identifier
             #print self.ip_dict[cur_dev.attrib["ip"]]
         else:
             cur_dev.attrib["network"] = "unknown"
             cur_dev.attrib["network_state"] = "error"
-        
-        for key, value in self.ip_dict.iteritems():
-            print key, value.network
+        #for key, value in self.ip_dict.iteritems():
+        #    print key, value.network
     def set_ip_dict(self, in_dict):
         old_dict = self.ip_dict
         self.ip_dict = in_dict
@@ -701,6 +703,7 @@ class host(machine):
                                    "Kernel to boot : %s" % (new_kernel.name or "<no kernel set>"),
                                    "device UUID    : %s" % (self.device.get_boot_uuid()),
                                    "Kernel options : %s" % (append_string or "<none set>"),
+                                   "target state   : %s" % (unicode(self.device.new_state) if self.device.new_state_id else "???"),
                                    "will boot %s" % ("in %s" % (logging_tools.get_plural("second", int(global_config["NODE_BOOT_DELAY"] / 10))) if global_config["NODE_BOOT_DELAY"] else "immediately"),
                                    "",
                                    ""])
@@ -945,7 +948,7 @@ class host(machine):
     def nodestatus(self, in_text, instance):
         self.log("got status '%s' from %s" % (in_text, instance))
         self.set_req_state(in_text)
-        self.device.save(update_fields=["reqstate", "recvstate_timestamp"])
+        self.device.save(update_fields=["reqstate", "reqstate_timestamp"])
          
 class hm_icmp_protocol(icmp_twisted.icmp_protocol):
     def __init__(self, tw_process, log_template):
@@ -1108,6 +1111,7 @@ class node_control_process(threading_tools.process_obj):
         machine.sync()
         self.register_func("refresh", self._refresh)
         self.register_func("alter_macaddr", self.alter_macaddr)
+        self.register_func("soft_control", self._soft_control)
         self.register_func("ping_result", self._ping_result)
         self.register_timer(self._check_commands, 10)
         #self.kernel_dev = config_tools.server_check(server_type="kernel_server")
@@ -1138,6 +1142,13 @@ class node_control_process(threading_tools.process_obj):
             machine.iterate("read_dot_files")
         if id_str:
             self.send_pool_message("send_return", id_str, unicode(in_com))
+    def _soft_control(self, zmq_id, in_com, *args, **kwargs):
+        # soft_control takes the same path as ping but uses a different hoststatus command (not status)
+        self.log("got soft_control from id %s" % (zmq_id))
+        in_com = server_command.srv_command(source=in_com)
+        in_com["command"].attrib["zmq_id"] = zmq_id
+        machine.ping(in_com)
+        self.pending_list.append(in_com)
     def _status(self, zmq_id, in_com, *args, **kwargs):
         self.log("got status from id %s" % (zmq_id))
         in_com = server_command.srv_command(source=in_com)
@@ -1147,13 +1158,13 @@ class node_control_process(threading_tools.process_obj):
         #self.send_pool_message("send_return", zmq_id, unicode(in_com))
     def _ping_result(self, id_str, res_dict, **kwargs):
         new_pending = []
-        print "pr", id_str
+        #print "pr", id_str
         for cur_com in self.pending_list:
             if len(cur_com.xpath(None, ".//ns:ping[text() = '%s']" % (id_str))):
                 machine.interpret_result(cur_com, id_str, res_dict)
                 if not cur_com.xpath(None, ".//ns:ping_list"):
                     machine.iterate_xml(cur_com, "add_ping_info")
-                    print "**", cur_com.pretty_print()
+                    #print "**", cur_com.pretty_print()
                     self.send_pool_message("send_return", cur_com.xpath(None, ".//ns:command/@zmq_id")[0], unicode(cur_com))
                 else:
                     new_pending.append(cur_com)
