@@ -1166,6 +1166,15 @@ class server_process(threading_tools.process_pool):
     def _check_uuid(self):
         self.log("uuid checking")
         self.log(" - cluster_device_uuid is '%s'" % (uuid_tools.get_uuid().get_urn()))
+        my_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
+        file_uuid = uuid_tools.get_uuid().get_urn().split(":")[2]
+        if file_uuid != my_dev.uuid:
+            self.log("UUID differs from DB entry (%s [file] != %s [DB]), correcting DB entry" % (
+                file_uuid,
+                my_dev.uuid), logging_tools.LOG_LEVEL_ERROR)
+            my_dev.uuid = file_uuid
+            my_dev.save()
+        # uuid is also stored as device variable
         uuid_var = cluster_location.db_device_variable(global_config["SERVER_IDX"], "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
         # recognize for which devices i am responsible
         dev_r = cluster_location.device_recognition()
