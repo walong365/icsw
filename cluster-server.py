@@ -1193,7 +1193,8 @@ class server_process(threading_tools.process_pool):
         else:
             client = self.zmq_context.socket(zmq.ROUTER)
             client.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
-            client.setsockopt(zmq.HWM, 256)
+            client.setsockopt(zmq.SNDHWM, 256)
+            client.setsockopt(zmq.RCVHWM, 256)
             try:
                 client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
             except zmq.core.error.ZMQError:
