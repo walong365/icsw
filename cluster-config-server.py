@@ -49,7 +49,8 @@ import crypt
 from django.db import connection
 from lxml import etree
 from lxml.builder import E
-from initat.cluster.backbone.models import device, network, config, device_variable, net_ip, hopcount, \
+from initat.cluster.backbone.models import device, network, config, \
+     device_variable, net_ip, hopcount, boot_uuid, \
      partition, sys_partition, wc_files, tree_node, config_str, \
      cached_log_status, cached_log_source, log_source, devicelog
 from django.db.models import Q
@@ -2884,7 +2885,8 @@ class server_process(threading_tools.process_pool):
             client = self.zmq_context.socket(sock_type)
             client.setsockopt(zmq.IDENTITY, my_0mq_id)
             client.setsockopt(zmq.LINGER, 100)
-            client.setsockopt(zmq.HWM, 256)
+            client.setsockopt(zmq.RCVHWM, 256)
+            client.setsockopt(zmq.SNDHWM, 256)
             client.setsockopt(zmq.BACKLOG, 1)
             conn_str = "tcp://*:%d" % (bind_port)
             try:
@@ -2915,7 +2917,7 @@ class server_process(threading_tools.process_pool):
                     src_id = data[0].split(":")[0]
                     if not config_control.has_client(src_id):
                         try:
-                            new_dev = device.objects.get(Q(uuid=src_id))
+                            new_dev = device.objects.get(Q(uuid=src_id) | Q(uuid__startswith=src_id[:-5]))
                         except device.DoesNotExist:
                             self.log("no device with UUID %s found in database" % (src_id),
                                      logging_tools.LOG_LEVEL_ERROR)
