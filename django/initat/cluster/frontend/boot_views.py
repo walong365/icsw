@@ -186,7 +186,7 @@ def get_boot_info(request):
     dev_result = device.objects.filter(Q(name__in=sel_list))
     # to speed up things while testing
     result = None
-    if False:
+    if True:
         srv_com = server_command.srv_command(command="status")
         srv_com["devices"] = srv_com.builder(
             "devices",
@@ -195,6 +195,7 @@ def get_boot_info(request):
         if not result:
             request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
         else:
+            print result.pretty_print()
             pass
     xml_resp = E.boot_info()
     def_dict = {"network"       : "unknown",
@@ -221,8 +222,8 @@ def get_boot_info(request):
         xml_resp.append(dev_info)
     if option_dict.get("l", False):
         dev_logs = devicelog.objects.filter(Q(device__in=dev_result)).select_related("log_source", "log_status", "user")
-        for dev_log in dev_logs:
-            dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
+        #for dev_log in dev_logs:
+        #    dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
     # add option-dict related stuff
     print etree.tostring(xml_resp, pretty_print=True)
     request.xml_response["response"] = xml_resp
