@@ -70,7 +70,7 @@ def check_system(opt_ns):
         set_default_nodes = True
     if set_default_nodes:
         opt_ns.node = [
-            "hoststatus:simple",
+            "hoststatus:simple:hoststatus_zmq",
             "logging-server",
             "meta-server",
             "host-monitoring",
@@ -108,6 +108,7 @@ def check_system(opt_ns):
             check_list.append(name)
             check_dict[name] = {"type"          : c_type,
                                 "check_type"    : check_type,
+                                # pid_file_name or process_name for simple check
                                 "pid_file_name" : pid_file_name,
                                 "init_script"   : "/etc/init.d/%s" % (name)}
     ret_dict = {}
@@ -160,7 +161,7 @@ def check_system(opt_ns):
             act_pids = []
             if check_struct["check_type"] == "simple":
                 if os.path.isfile(check_struct["init_script"]):
-                    running_procs = [pid for pid in act_proc_dict.values() if pid["name"] == name]
+                    running_procs = [pid for pid in act_proc_dict.values() if pid["name"] == check_struct["pid_file_name"]]
                     if running_procs:
                         act_state, act_str = (0, "running")
                         act_pids = [p_struct["pid"] for p_struct in running_procs]
