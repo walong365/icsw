@@ -202,7 +202,7 @@ int main (int argc, char** argv) {
         zmq_msg_t request;
         zmq_msg_init_size (&request, strlen(sendbuff));
         memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
-        zmq_send(requester, &request, 0);
+        zmq_sendmsg(requester, &request, 0);
         zmq_msg_close(&request);
         // receive
         zmq_msg_t reply;
