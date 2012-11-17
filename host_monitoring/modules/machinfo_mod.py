@@ -258,7 +258,7 @@ class _general(hm_classes.hm_module):
                         ds_keys_ok_by_major.append(d_name)
                         last_name = d_name
                 if ds_keys_ok_by_name != ds_keys_ok_by_major:
-                    self._rescan_valid_disk_stuff(logger)
+                    self._rescan_valid_disk_stuff()
                     ds_keys_ok_by_major = ds_keys_ok_by_name
                     self.local_lvm_info.update()
                 mounted_lvms = {}

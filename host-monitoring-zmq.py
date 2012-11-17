@@ -55,7 +55,7 @@ try:
 except ImportError:
     VERSION_STRING = "?.?"
 
-MAX_USED_MEM = 150
+MAX_USED_MEM = 148
 TIME_FORMAT = "%.3f"
 
 CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
@@ -132,7 +132,8 @@ class id_discovery(object):
                                             self.src_id)
             new_sock.setsockopt(zmq.IDENTITY, id_str)
             new_sock.setsockopt(zmq.LINGER, 0)
-            new_sock.setsockopt(zmq.HWM, id_discovery.backlog_size)
+            new_sock.setsockopt(zmq.SNDHWM, id_discovery.backlog_size)
+            new_sock.setsockopt(zmq.RCVHWM, id_discovery.backlog_size)
             new_sock.setsockopt(zmq.BACKLOG, id_discovery.backlog_size)
             self.socket = new_sock
             id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)
@@ -262,7 +263,8 @@ class host_connection(object):
         id_str = "relayer_rtr_%s" % (process_tools.get_machine_name())
         new_sock.setsockopt(zmq.IDENTITY, id_str)
         new_sock.setsockopt(zmq.LINGER, 0)
-        new_sock.setsockopt(zmq.HWM, host_connection.backlog_size)
+        new_sock.setsockopt(zmq.SNDHWM, host_connection.backlog_size)
+        new_sock.setsockopt(zmq.RCVHWM, host_connection.backlog_size)
         new_sock.setsockopt(zmq.BACKLOG, host_connection.backlog_size)
         host_connection.zmq_socket = new_sock
         host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)
@@ -927,13 +929,15 @@ class relay_process(threading_tools.process_pool):
                 backlog_size = global_config["BACKLOG_SIZE"]
                 os.chmod(file_name, 0777)
                 cur_socket.setsockopt(zmq.LINGER, 0)
-                cur_socket.setsockopt(zmq.HWM, hwm_size)
+                cur_socket.setsockopt(zmq.SNDHWM, hwm_size)
+                cur_socket.setsockopt(zmq.RCVHWM, hwm_size)
                 if sock_type == zmq.PULL:
                     self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)
         self.client_socket = self.zmq_context.socket(zmq.ROUTER)
         self.client_socket.setsockopt(zmq.IDENTITY, "ccollclient:%s" % (process_tools.get_machine_name()))
         self.client_socket.setsockopt(zmq.LINGER, 0)
-        self.client_socket.setsockopt(zmq.HWM, 10)
+        self.client_socket.setsockopt(zmq.SNDHWM, 10)
+        self.client_socket.setsockopt(zmq.RCVHWM, 10)
         self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)
     def _resolve_address(self, target):
         # to avoid loops in the 0MQ connection scheme (will result to nasty asserts)
@@ -1429,7 +1433,8 @@ class server_process(threading_tools.process_pool):
         for bind_ip, (bind_0mq_id, is_virtual) in zmq_id_dict.iteritems():
             client = self.zmq_context.socket(zmq.ROUTER)
             client.setsockopt(zmq.IDENTITY, bind_0mq_id)
-            client.setsockopt(zmq.HWM, 256)
+            client.setsockopt(zmq.SNDHWM, 256)
+            client.setsockopt(zmq.RCVHWM, 256)
             try:
                 client.bind("tcp://%s:%d" % (
                     bind_ip,
@@ -1479,7 +1484,8 @@ class server_process(threading_tools.process_pool):
                 backlog_size = global_config["BACKLOG_SIZE"]
                 os.chmod(file_name, 0777)
                 cur_socket.setsockopt(zmq.LINGER, 0)
-                cur_socket.setsockopt(zmq.HWM, hwm_size)
+                cur_socket.setsockopt(zmq.SNDHWM, hwm_size)
+                cur_socket.setsockopt(zmq.RCVHWM, hwm_size)
                 if dst_func:
                     self.register_poller(cur_socket, zmq.POLLIN, dst_func)
     def register_vector_receiver(self, t_func):

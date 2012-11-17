@@ -185,15 +185,15 @@ int main (int argc, char** argv) {
         };
         zmq_msg_init_size (&request, strlen(sendbuff));
         memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
-        zmq_send(requester, &request, 0);
+        zmq_sendmsg(requester, &request, 0);
         zmq_msg_init(&reply);
         // receive header
-        zmq_recv(receiver, &reply, 0);
+        zmq_recvmsg(receiver, &reply, 0);
         zmq_getsockopt(receiver, ZMQ_RCVMORE, &more, &more_size);
         zmq_msg_close(&request);
         if (more == 1) {
             // receive body
-            zmq_recv(receiver, &reply, 0);
+            zmq_recvmsg(receiver, &reply, 0);
             int reply_size = zmq_msg_size(&reply);
             char *recv_buffer = malloc(reply_size + 1);
             memcpy (recv_buffer, zmq_msg_data(&reply), reply_size);
