@@ -191,7 +191,7 @@ int main (int argc, char** argv) {
         zmq_recvmsg(receiver, &reply, 0);
         zmq_getsockopt(receiver, ZMQ_RCVMORE, &more, &more_size);
         zmq_msg_close(&request);
-        if (more == 1) {
+        if (more) {
             // receive body
             zmq_recvmsg(receiver, &reply, 0);
             int reply_size = zmq_msg_size(&reply);
