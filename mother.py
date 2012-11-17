@@ -2892,6 +2892,7 @@ class server_process(threading_tools.process_pool):
         self.__msi_block = None#self._init_msi_block()
         self._init_subsys()
         self.register_func("send_return", self._send_return)
+        self.register_func("contact_hoststatus", self._contact_hoststatus)
         my_uuid = uuid_tools.get_uuid()
         self.log("cluster_device_uuid is '%s'" % (my_uuid.get_urn()))
         if self._init_network_sockets():
@@ -2982,12 +2983,14 @@ class server_process(threading_tools.process_pool):
                                                   sock_type))
                 self.register_poller(client, zmq.POLLIN, target_func)
                 self.socket_dict[key] = client
+        self.connection_set = set()
         return success
     def _new_com(self, zmq_sock):
         data = [zmq_sock.recv_unicode()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
             data.append(zmq_sock.recv_unicode())
         if len(data) == 2:
+            #print "UUID", data[0]
             if data[0].endswith("syslog_scan"):
                 self.send_to_process("control", "syslog_line", data[1])
             else:
@@ -3032,9 +3035,24 @@ class server_process(threading_tools.process_pool):
             self.log("wrong number of data chunks (%d != 2), data is '%s'" % (len(data), data[:20]),
                      logging_tools.LOG_LEVEL_ERROR)
     def _send_return(self, src_id, src_pid, zmq_id, srv_com, *args):
-        self.log("returning 0MQ message to %s (%s ...)" % (zmq_id, srv_com[0:10]))
-        self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
-        self.socket_dict["router"].send_unicode(unicode(srv_com))
+        self.log("returning 0MQ message to %s (%s ...)" % (zmq_id, srv_com[0:16]))
+        if zmq_id.endswith(":hoststatus:"):
+            pass
+        else:
+            self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
+            self.socket_dict["router"].send_unicode(unicode(srv_com))
+    def _contact_hoststatus(self, src_id, src_pid, zmq_id, com_str):
+        print "conn"
+        dst_addr = "tcp://172.17.1.2:2002"
+        if dst_addr not in self.connection_set:
+            print "-"
+            self.connection_set.add(dst_addr)
+            self.socket_dict["router"].connect(dst_addr)
+            time.sleep(0.2)
+        print "done"
+        self.log("sending '%s' to %s" % (com_str, zmq_id))
+        self.socket_dict["router"].send_unicode("%s:hoststatus:" % (zmq_id), zmq.SNDMORE)
+        self.socket_dict["router"].send_unicode(unicode(com_str))
     # utility calls
     def _prepare_directories(self):
         self.log("Checking directories ...")

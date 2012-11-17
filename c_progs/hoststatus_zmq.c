@@ -113,7 +113,7 @@ int main (int argc, char** argv) {
         chdir("/");
         npid = fork();
         if (npid) exit(0);
-       resourceLimit.rlim_max = 0;
+        resourceLimit.rlim_max = 0;
         getrlimit(RLIMIT_NOFILE, &resourceLimit);
         for (i = 0; i < resourceLimit.rlim_max; i++) {
             (void) close(i);
@@ -151,16 +151,17 @@ int main (int argc, char** argv) {
     char bind_address[100];
     sprintf(bind_address, "tcp://*:%d", PORT);
     zmq_bind (responder, bind_address);
-    syslog(LOG_DAEMON|LOG_INFO, "hoststatus (pid %d) listening on port %d (bind_string is %s)\n", getpid(), PORT, bind_address);
+    syslog(LOG_DAEMON|LOG_INFO, "hoststatus (pid %d) listening on port %d (bind_string is %s), ZMQ_IDENTITY is '%s'\n", getpid(), PORT, bind_address, identity_str);
     char *msg_text, *client_uuid;
     char *outbuff = malloc(SENDBUFF_SIZE + 1);
+    char *sendbuff = malloc(SENDBUFF_SIZE + 1);
     int loop=1;
     while (loop) {
         int msg_part = 0;
         while (1) {
             zmq_msg_t message;
             zmq_msg_init (&message);
-            zmq_recv (responder, &message, 0);
+            zmq_recvmsg (responder, &message, 0);
             //  Process the message part
             int size = zmq_msg_size (&message);
             if (msg_part == 0) {
@@ -222,16 +223,18 @@ int main (int argc, char** argv) {
             syslog(LOG_DAEMON|LOG_INFO, "got exit-request, answering %s", outbuff);
         } else {
             sprintf(outbuff, "unknown command %s", msg_text);
+            syslog(LOG_DAEMON|LOG_INFO, "unknown command, answering %s", outbuff);
         }
         syslog(LOG_DAEMON|LOG_INFO, "uuid / buffer : %d / %d", strlen(client_uuid), strlen(outbuff));
-        outbuff[SENDBUFF_SIZE] = '\0';
+        sprintf(sendbuff, "<?xml version='1.0'?><ics_batch><nodestatus>%s</nodestatus></ics_batch>", outbuff);
+        sendbuff[SENDBUFF_SIZE] = '\0';
         zmq_msg_t reply;
         zmq_msg_init_size (&reply, strlen(client_uuid));
         memcpy (zmq_msg_data (&reply), client_uuid, strlen(client_uuid));
-        zmq_send (responder, &reply, ZMQ_SNDMORE);
-        zmq_msg_init_size (&reply, strlen(outbuff));
-        memcpy (zmq_msg_data (&reply), outbuff, strlen(outbuff));
-        zmq_send (responder, &reply, 0);
+        zmq_sendmsg (responder, &reply, ZMQ_SNDMORE);
+        zmq_msg_init_size (&reply, strlen(sendbuff));
+        memcpy (zmq_msg_data (&reply), sendbuff, strlen(sendbuff));
+        zmq_sendmsg (responder, &reply, 0);
         zmq_msg_close (&reply);
     }
     zmq_close(responder);
@@ -240,6 +243,7 @@ int main (int argc, char** argv) {
     //printf ("%s\n", outbuff);
     free(retbuff);
     free(outbuff);
+    free(sendbuff);
     free(inbuff);
 
     if (postcom == 1) {

@@ -200,15 +200,20 @@ class machine(object):
             pl_parent = ping_list.getparent()
             pl_parent.remove(ping_list)
             pl_parent.getparent().remove(pl_parent)
-        machine.get_device(pk).interpret_loc_result(srv_com, res_dict)
+        machine.get_device(pk).interpret_local_result(srv_com, res_dict)
         print srv_com.pretty_print()
-    def interpret_loc_result(self, srv_com, res_dict):
+    def interpret_local_result(self, srv_com, res_dict):
+        # device-specific interpretation
         dev_node = srv_com.xpath(None, ".//ns:device[@pk='%d']" % (self.pk))[0]
         ip_list = self.ip_dict.keys()
         if res_dict["host"] in ip_list:
             if res_dict["recv_ok"]:
-                dev_node.attrib["ok"] = "%d" % (int(dev_node.attrib["ok"]) + 1)
+                cur_ok = int(dev_node.attrib["ok"]) + 1
+                dev_node.attrib["ok"] = "%d" % (cur_ok)
                 dev_node.attrib["ip"] = res_dict["host"]
+                if cur_ok == 1:
+                    self.log("start hoststatus query to %s" % (res_dict["host"]))
+                    machine.process.send_pool_message("contact_hoststatus", self.device.get_boot_uuid(), "status")
             else:
                 dev_node.attrib["failed"] = "%d" % (int(dev_node.attrib["failed"]) + 1)
         else:
@@ -247,6 +252,7 @@ class host(machine):
             self.device.uuid = str(uuid.uuid4())
             self.log("setting uuid to %s" % (self.device.uuid))
         machine.add_lut_key(self, self.device.uuid)
+        machine.add_lut_key(self, self.device.get_boot_uuid())
         self.device.save()
     # machine related
     def set_maint_ip(self, ip=None):
@@ -455,6 +461,8 @@ class host(machine):
                     ))
                 else:
                     self.log("no state set", logging_tools.LOG_LEVEL_WARN)
+                    self.clear_netboot_files()
+                    self.clear_kernel_links()
                     new_state, new_kernel = (None, None)
                 pxe_file = self.get_pxe_file_name()
                 net_file = self.get_net_file_name()
@@ -479,6 +487,8 @@ class host(machine):
                                  logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.log("new_kernel not set", logging_tools.LOG_LEVEL_ERROR)
+                self.clear_ip_mac_files()
+                self.clear_kernel_links()
         else:
             self.log("not node", logging_tools.LOG_LEVEL_WARN)
     def clear_ip_mac_files(self, except_list=[]):
@@ -493,6 +503,22 @@ class host(machine):
                              logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("removing pxe-boot file %s" % (entry))
+    def clear_netboot_files(self):
+        pxe_dir = self.get_pxelinux_dir()
+        for entry in os.listdir(pxe_dir):
+            try:
+                os.unlink("%s/%s" % (pxe_dir, entry))
+            except:
+                self.log("error removing netboot file %s" % (entry),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("removing netboot file %s" % (entry))
+    def clear_kernel_links(self):
+        for link_name in ["i", "k"]:
+            full_name = os.path.join(self.get_etherboot_dir(), link_name)
+            if os.path.islink(full_name):
+                self.log("removing kernel link %s" % (full_name))
+                os.unlink(full_name)
     def write_memtest_config(self):
         pxe_dir = self.get_pxelinux_dir()
         if pxe_dir:
@@ -620,7 +646,7 @@ class host(machine):
                         self.bootnetdevice.driver,
                         self.bootnetdevice.ethtool_options,
                         self.bootnetdevice.driver_options.replace(" ", ur"§"),
-                        self.device.uuid,
+                        self.device.get_boot_uuid(),
                         self.device.kernel_append
                         )])).strip().replace("  ", " ").replace("  ", " ")
                 self.clear_ip_mac_files([self.get_ip_mac_file_base_name()])
@@ -657,7 +683,7 @@ class host(machine):
                                    "MACAddress     : %s" % (self.bootnetdevice.macaddr.lower()),
                                    "Stage1 flavour : %s" % (self.device.stage1_flavour),
                                    "Kernel to boot : %s" % (new_kernel.name or "<no kernel set>"),
-                                   "device UUID    : %s" % (self.device.uuid),
+                                   "device UUID    : %s" % (self.device.get_boot_uuid()),
                                    "Kernel options : %s" % (append_string or "<none set>"),
                                    "will boot %s" % ("in %s" % (logging_tools.get_plural("second", int(global_config["NODE_BOOT_DELAY"] / 10))) if global_config["NODE_BOOT_DELAY"] else "immediately"),
                                    "",
@@ -875,6 +901,7 @@ class host(machine):
                 ip_action="SET").save()
             # no change dhcp-server
             self.handle_mac_command("alter")
+            
         else:
             change_fields = set()
             if self.device.dhcp_mac:
@@ -1096,11 +1123,13 @@ class node_control_process(threading_tools.process_obj):
         #self.send_pool_message("send_return", zmq_id, unicode(in_com))
     def _ping_result(self, id_str, res_dict, **kwargs):
         new_pending = []
+        print "pr", id_str
         for cur_com in self.pending_list:
             if len(cur_com.xpath(None, ".//ns:ping[text() = '%s']" % (id_str))):
                 machine.interpret_result(cur_com, id_str, res_dict)
                 if not cur_com.xpath(None, ".//ns:ping_list"):
                     machine.iterate_xml(cur_com, "add_ping_info")
+                    print "**", cur_com.pretty_print()
                     self.send_pool_message("send_return", cur_com.xpath(None, ".//ns:command/@zmq_id")[0], unicode(cur_com))
                 else:
                     new_pending.append(cur_com)
@@ -1307,6 +1336,7 @@ class node_control_process(threading_tools.process_obj):
                                 macaddr=in_dict["macaddr"].lower()).save()
                         else:
                             # no feed to device
+                            print greedy_devs[0].name
                             machine.get_device(greedy_devs[0].name).feed_dhcp(in_dict, in_line)
                     else:
                         all_greedy_devs = device.objects.filter(Q(dhcp_mac=True)).select_related("bootnetdevice").order_by("name")
@@ -1322,7 +1352,7 @@ class node_control_process(threading_tools.process_obj):
                         macaddr=in_dict["macaddr"].lower()
                     ).save()
                     # FIXME
-                    self.log("FIXME, handling of DHCP-requests", logging_tools.LOG_LEVEL_ERROR)
+                    #self.log("FIXME, handling of DHCP-requests", logging_tools.LOG_LEVEL_ERROR)
 ##                    dc.execute("INSERT INTO macbootlog VALUES(0, %s, %s, %s, %s, %s, null)", (0, sm_type, "REJECT", mac, self.__loc_config["LOG_SOURCE_IDX"]))
 ##                    self.log("DHCPDISCOVER for macadr %s (device %s%s, %s%s): address already used" % (
 ##                        mac,

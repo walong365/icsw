@@ -83,7 +83,7 @@ int main (int argc, char** argv) {
     int ret, num, inlen, file, i/*, time*/, port, rchar, verbose, quiet, retcode, write_file, timeout;
     struct in_addr sia;
     struct hostent *h;
-    char *iobuff, *sendbuff, *host_b, *act_pos, *act_source, *act_bp, *dest_host, *src_ip, *uuid_buffer;
+    char *iobuff, *sendbuff, *filebuff, *host_b, *act_pos, *act_source, *act_bp, *dest_host, *src_ip, *uuid_buffer;
     struct itimerval mytimer;
     struct sigaction *alrmsigact;
     struct utsname myuts;
@@ -147,22 +147,23 @@ int main (int argc, char** argv) {
 /*  errno = 0;*/
     //if (!h) err_exit("Wrong host or no host given!\n");
     sendbuff = (char*)malloc(SENDBUFF_SIZE);
+    filebuff = (char*)malloc(SENDBUFF_SIZE);
     if (!sendbuff) {
         free(host_b);
         exit(ENOMEM);
     }
     // mimic XML
-    sprintf(sendbuff, "<?xml version='1.0'?><ics_batch><nodeinfo>");
+    sprintf(filebuff, "");
     for (i = optind; i < argc; i++) {
         // skip first space
-        if (i > optind) sprintf(sendbuff, "%s ", sendbuff);
-        sprintf(sendbuff, "%s%s", sendbuff, argv[i]);
+        if (i > optind) sprintf(filebuff, "%s ", filebuff);
+        sprintf(filebuff, "%s%s", filebuff, argv[i]);
 //        if (act_pos != sendbuff) *act_pos++=' ';
 //        act_source = argv[i];
 //        while (*act_source) *act_pos++=*act_source++;
 //        *act_pos = 0;
     }
-    sprintf(sendbuff, "%s</nodeinfo></ics_batch>", sendbuff);
+    sprintf(sendbuff, "<?xml version='1.0'?><ics_batch><nodeinfo>%s</nodeinfo></ics_batch>", filebuff);
     sendbuff[SENDBUFF_SIZE] = '\0';/* terminate optarg for secure use of strlen() */
     if (!strlen(sendbuff)) err_exit("Nothing to send!\n");
     //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));
@@ -170,7 +171,7 @@ int main (int argc, char** argv) {
     if (write_file) {
         file = open(FNAME, O_NOFOLLOW|O_WRONLY|O_CREAT|O_TRUNC, S_IREAD|S_IWRITE|S_IRGRP|S_IROTH);
         if (file < 0) err_exit("Can't open statusfile "FNAME" for writing");
-        if (write(file, sendbuff, strlen(sendbuff)) < 0) err_message("Failed to write to "FNAME);
+        if (write(file, filebuff, strlen(filebuff)) < 0) err_message("Failed to write to "FNAME);
         if (close(file) < 0) err_message("Failed to close "FNAME);
     }
     void *context = zmq_init(1);
@@ -181,6 +182,7 @@ int main (int argc, char** argv) {
     if (!alrmsigact) {
         free(host_b);
         free(sendbuff);
+        free(filebuff);
         exit(ENOMEM);
     }
     alrmsigact -> sa_handler = &mysigh;
@@ -205,7 +207,7 @@ int main (int argc, char** argv) {
         // receive
         zmq_msg_t reply;
         zmq_msg_init(&reply);
-        zmq_recv(requester, &reply, 0);
+        zmq_recvmsg(requester, &reply, 0);
         int reply_size = zmq_msg_size(&reply);
         char *recv_buffer = malloc(reply_size + 1);
         memcpy (recv_buffer, zmq_msg_data(&reply), reply_size);
@@ -217,6 +219,7 @@ int main (int argc, char** argv) {
     zmq_close(requester);
     zmq_term(context);
     free(sendbuff);
+    free(filebuff);
     free(host_b);
     free(dest_host);
     free(src_ip);

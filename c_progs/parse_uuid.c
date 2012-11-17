@@ -16,6 +16,7 @@ char* parse_uuid(src_ip) {
             if ((colons_passed > 1 || i > 17) && (uuid_buffer[i] != '\n')) sprintf(identity_str, "%s%c", identity_str, uuid_buffer[i]);
             if (uuid_buffer[i] == ':') colons_passed++;
         };
+        close(uuid_file);
         sprintf(identity_str, "%s:%s:%s", identity_str, SERVICE_NAME, src_ip);
     } else {
         sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());

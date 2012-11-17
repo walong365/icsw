@@ -41,7 +41,7 @@ hoststatus_zmq: hoststatus_zmq.o
 	$(comp) hoststatus_zmq.o -o hoststatus_zmq -L ${PREFIX_CLUSTER}/${LIB_DIR} -lzmq ; \
 	strip hoststatus_zmq
 
-%.o: %.c
+%.o: %.c parse_uuid.c
 	$(comp) -I${PREFIX_CLUSTER}/include $< -O3 -c -o $@
 
 install: hoststatus tell_mother tell_mother_zmq hoststatus_zmq
