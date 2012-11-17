@@ -396,7 +396,7 @@ class device(models.Model):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
         return devicelog.new_log(self, log_src, log_stat, text, **kwargs)
-    def get_xml(self, full=True):
+    def get_xml(self, full=True,**kwargs):
         r_xml = E.device(
             unicode(self),
             E.devicelogs(),
@@ -405,20 +405,20 @@ class device(models.Model):
             pk="%d" % (self.pk),
             key="dev__%d" % (self.pk),
             # states
-            revstate=self.recvstate,
+            recvstate=self.recvstate,
             reqstate=self.reqstate,
             device_type="%d" % (self.device_type_id),
             device_group="%d" % (self.device_group_id),
-            new_kernel_id="%d" % (self.new_kernel_id or 0),
-            act_kernel_id="%d" % (self.act_kernel_id or 0),
-            new_image_id="%d" % (self.new_image_id or 0),
-            act_image_id="%d" % (self.act_image_id or 0),
+            new_kernel="%d" % (self.new_kernel_id or 0),
+            act_kernel="%d" % (self.act_kernel_id or 0),
+            new_image="%d" % (self.new_image_id or 0),
+            act_image="%d" % (self.act_image_id or 0),
             stage1_flavour=unicode(self.stage1_flavour),
             kernel_append=unicode(self.kernel_append),
             # target state
-            target_state="%d" % (self.new_state_id or 0),
-            full_target_state="%d__%d" % (self.new_state_id or 0,
-                                          self.prod_link_id or 0),
+            new_state="%d" % (self.new_state_id or 0),
+            full_new_state="%d__%d" % (self.new_state_id or 0,
+                                       self.prod_link_id or 0),
             boot_dev_name="%s" % (self.bootnetdevice.devname if self.bootnetdevice else "---"), 
             boot_dev_macaddr="%s" % (self.bootnetdevice.macaddr if self.bootnetdevice else ""),
             boot_dev_driver="%s" % (self.bootnetdevice.driver if self.bootnetdevice else ""),
@@ -436,6 +436,32 @@ class device(models.Model):
             r_xml.extend([
                 E.netdevices(*[ndev.get_xml() for ndev in self.netdevice_set.all()])
             ])
+        if kwargs.get("add_state", False):
+            mother_xml = kwargs["mother_xml"]
+            if mother_xml is None:
+                # no info from mother, set defaults
+                r_xml.attrib.update({
+                    "net_state" : "unknown",
+                    "network"   : "unknown"})
+            else:
+                now, recv_ts, req_ts = (
+                    cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
+                    self.recvstate_timestamp,
+                    self.reqstate_timestamp)
+                # determine if the node is down / pingable / responding to hoststatus requests
+                if not int(mother_xml.get("ok", "0")):
+                    # not pingable, down
+                    r_xml.attrib["net_state"] = "down"
+                    r_xml.attrib["network"]   = "unknown"
+                else:
+                    r_xml.attrib["network"] = mother_xml.attrib["network"]
+                    recv_timeout = (now - recv_ts).seconds
+                    req_timeout  = (now - req_ts ).seconds
+                    if min(req_timeout, recv_timeout) > 20:
+                        # too long ago, deem as outdated (not reachable by mother)
+                        r_xml.attrib["net_state"] = "ping"
+                    else:
+                        r_xml.attrib["net_state"] = "up"
         return r_xml
     def __unicode__(self):
         return u"%s%s" % (self.name,
