@@ -29,7 +29,8 @@ def show_boot(request):
         request, "boot_overview.html",
     )()
 
-OPTION_LIST = [("t", "target state", None),
+OPTION_LIST = [("s", "soft control", None),
+               ("t", "target state", None),
                ("k", "kernel"      , kernel),
                ("i", "image"       , image),
                ("b", "bootdevice"  , None),
@@ -156,7 +157,7 @@ def set_kernel(request):
 def set_target_state(request):
     _post = request.POST
     cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
-    t_state, t_prod_net = [int(value) for value in _post["target_state"].split("__")]
+    t_state, t_prod_net = [int(value) for value in _post["new_state"].split("__")]
     if t_state == 0:
         cur_dev.new_state = None
         cur_dev.prod_link = None
@@ -198,14 +199,10 @@ def get_boot_info(request):
             print result.pretty_print()
             pass
     xml_resp = E.boot_info()
-    def_dict = {"network"       : "unknown",
-                "network_state" : "error"}
+    # lut for device_logs
     dev_lut = {}
     for cur_dev in dev_result:
-        dev_info = cur_dev.get_xml(full=False)
-        dev_lut[cur_dev.pk] = dev_info
-        for cur_info in ["recvstate", "reqstate"]:
-            dev_info.attrib[cur_info] = getattr(cur_dev, cur_info)
+        # recv/reqstate are written by mother, here we 'salt' this information with the device XML (pingstate)
         if result is not None:
             # copy from mother
             dev_node = result.xpath(None, ".//ns:device[@pk='%d']" % (cur_dev.pk))
@@ -215,10 +212,8 @@ def get_boot_info(request):
                 dev_node = None
         else:
             dev_node = None
-        if dev_node is not None:
-            dev_info.attrib.update(dict([(key, dev_node.attrib.get(key, value)) for key, value in def_dict.iteritems()]))
-        else:
-            dev_info.attrib.update(def_dict)
+        dev_info = cur_dev.get_xml(full=False, add_state=True, mother_xml=dev_node)
+        dev_lut[cur_dev.pk] = dev_info
         xml_resp.append(dev_info)
     if option_dict.get("l", False):
         dev_logs = devicelog.objects.filter(Q(device__in=dev_result)).select_related("log_source", "log_status", "user")
@@ -228,3 +223,22 @@ def get_boot_info(request):
     print etree.tostring(xml_resp, pretty_print=True)
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def soft_control(request):
+    _post = request.POST
+    cur_dev = device.objects.get(Q(pk=_post["key"].split("__")[1]))
+    soft_state = _post["key"].split("__")[-1]
+    request.log("sending soft_control '%s' to device %s" % (soft_state, unicode(cur_dev)))
+    srv_com = server_command.srv_command(command="soft_control")
+    srv_com["devices"] = srv_com.builder(
+        "devices",
+        srv_com.builder("device", soft_command=soft_state, pk="%d" % (cur_dev.pk)))
+    result = net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+    if not result:
+        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        request.log("sent %s to %s" % (soft_state, unicode(cur_dev)), xml=True)
+    return request.xml_response.create_response()
+

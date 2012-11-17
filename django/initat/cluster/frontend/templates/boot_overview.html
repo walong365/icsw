@@ -52,6 +52,7 @@ function load_devices(sel_list) {
                 });
                 draw_table();
                 // redraw options
+                redraw_options("s");
                 redraw_options("t");
                 redraw_options("b");
                 redraw_options("k");
@@ -138,11 +139,12 @@ function update_device_info() {
                         var cur_dev = $(this);
                         var dev_tr = b_table.find("tr#" + cur_dev.attr("key"));
                         var dev_id = dev_tr.attr("id");
-                        dev_tr.find("td#recv_str").text(cur_dev.attr("recvstate"));
-                        dev_tr.find("td#req_str").text(cur_dev.attr("reqstate"));
-                        dev_tr.find("td#network").text(cur_dev.attr("network"));
-                        var net_state = cur_dev.attr("network_state");
-                        dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok", "error", "warn").addClass(net_state);
+                        dev_tr.find("td#recv_str").text("rcv: " + cur_dev.attr("recvstate"));
+                        dev_tr.find("td#req_str").text("req: " + cur_dev.attr("reqstate"));
+                        var net_state = cur_dev.attr("net_state");
+                        var tr_class = {"down" : "error", "unknown" : "error", "ping" : "warn", "up" : "ok"}[net_state];
+                        dev_tr.find("td#network").text(cur_dev.attr("network") + " ("+ net_state + ")");
+                        dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok error warn").addClass(tr_class);
                         if (OPTION_DICT["k"]) {
                             var kernel_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_k']");
                             set_kernel_option(cur_dev, kernel_tr);
@@ -150,6 +152,10 @@ function update_device_info() {
                         if (OPTION_DICT["t"]) {
                             var target_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_t']");
                             set_target_option(cur_dev, target_tr);
+                        };
+                        if (OPTION_DICT["s"]) {
+                            var target_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_s']");
+                            set_soft_control_option(cur_dev, target_tr);
                         };
                         if (OPTION_DICT["b"]) {
                             var boot_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_b']");
@@ -168,7 +174,9 @@ function update_device_info() {
                             set_devlog_option(cur_dev, devlog_tr);
                         };
                     });
-                }
+                } else {
+                    UPDATE_PENDING = 0;
+                };
             }
         });
     };
@@ -216,6 +224,10 @@ function set_boot_option(dev_xml, boot_tr) {
     boot_dev_name.text(dev_xml.attr("boot_dev_name"));
 };
 
+function set_soft_control_option(dev_xml, part_tr) {
+    // nothing to do
+};
+
 function set_part_option(dev_xml, part_tr) {
     var dev_id = part_tr.attr("id");
     var new_part = part_tr.find("select#" + dev_id + "__new_part");
@@ -246,7 +258,7 @@ function set_img_option(dev_xml, img_tr) {
     var dev_id = img_tr.attr("id");
     var new_img = img_tr.find("select#" + dev_id + "__new_image");
     if (img_tr.find(":disabled").length) {
-        new_img.val(dev_xml.attr("new_image_id"));
+        new_img.val(dev_xml.attr("new_image"));
         new_img.removeAttr("disabled");
         new_img.bind("change", change_image);
     } else {
@@ -314,7 +326,7 @@ function set_target_option(dev_xml, target_tr) {
     var dev_id = target_tr.attr("id");
     if (target_tr.find(":disabled").length) {
         var target_state = target_tr.find("select#" + dev_id + "__target_state");
-        target_state.val(dev_xml.attr("full_target_state"));
+        target_state.val(dev_xml.attr("full_new_state"));
         target_state.removeAttr("disabled");
         target_state.bind("change", change_target_state);
     };
@@ -328,8 +340,8 @@ function change_target_state(event) {
     $.ajax({
         url     : "{% url boot:set_target_state %}",
         data    : {
-            "dev_id"       : dev_id,
-            "target_state" : target_tr.find("select#" + dev_id + "__target_state").val()
+            "dev_id"    : dev_id,
+            "new_state" : target_tr.find("select#" + dev_id + "__target_state").val()
         },
         error   : handle_ajax_error,
         success : function(xml) {
@@ -347,7 +359,7 @@ function set_kernel_option(dev_xml, kernel_tr) {
         var act_kernel = kernel_tr.find("span#" + dev_id + "__act_kernel");
         var stage1_flav = kernel_tr.find("select#" + dev_id + "__kernel_flavour");
         var kernel_append = kernel_tr.find("input#" + dev_id + "__kernel_append");
-        new_kernel.val(dev_xml.attr("new_kernel_id"));
+        new_kernel.val(dev_xml.attr("new_kernel"));
         kernel_append.val(dev_xml.attr("new_append"));
         stage1_flav.val(dev_xml.attr("stage1_flavour"));
         new_kernel.removeAttr("disabled");
@@ -449,6 +461,19 @@ function redraw_options(opt) {
                         "id"       : dev_id + "__kernel_append",
                         "disabled" : "disabled"}));
                     break;
+                case "s":
+                    first_td.attr({"colspan" : "5"});
+                    first_td.append("soft control:");
+                    $.each(["status", "reboot", "halt", "poweroff"], function(key, value) {
+                        var radio_el = $("<input>").attr({
+                            "type"    : "radio",
+                            "name"    : dev_id + "__soft_control",
+                            "id"      : dev_id + "__" + value,
+                            "value"   : value}).bind("click", soft_control);
+                        if (key == 0) radio_el.attr("checked", "checked");
+                        first_td.append(radio_el).append($("<span>").text(value));
+                    });
+                    break;
                 case "t":
                     first_td.attr({"colspan" : "5"});
                     first_td.append("target state:");
@@ -536,6 +561,25 @@ function redraw_options(opt) {
     } else {
         // remove lines
         $("table#boot").find("tr[btype='opt_" + opt + "']").remove();
+    };
+};
+
+function soft_control(event) {
+    var cur_el = $(event.target);
+    if (cur_el.val() != "status") {
+        $.ajax({
+            url     : "{% url boot:soft_control %}",
+            error   : handle_ajax_error,
+            data    : {
+                "key" : cur_el.attr("id")
+            },
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    cur_el.removeAttr("checked");
+                    $("input[type='radio'][id='dev__" + cur_el.attr("id").split("__")[1] + "__status']").attr("checked", "checked");
+                };
+            }
+        });
     };
 };
 
