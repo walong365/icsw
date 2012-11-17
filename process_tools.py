@@ -220,14 +220,17 @@ def get_mem_info(pid=0, **kwargs):
         if os.path.isfile(smap_file_name):
             have_pss = False
             shared, private, pss = (0, 0, 0.)
-            for line in open(smap_file_name, "rb").readlines():
-                if line.startswith("Shared"):
-                    shared += int(line.split()[1])
-                elif line.startswith("Private"):
-                    private += int(line.split()[1])
-                elif line.startswith("Pss"):
-                    have_pss = True
-                    pss += float(line.split()[1]) + 0.5
+            try:
+                for line in open(smap_file_name, "rb").readlines():
+                    if line.startswith("Shared"):
+                        shared += int(line.split()[1])
+                    elif line.startswith("Private"):
+                        private += int(line.split()[1])
+                    elif line.startswith("Pss"):
+                        have_pss = True
+                        pss += float(line.split()[1]) + 0.5
+            except IOError:
+                pass
             if have_pss:
                 #print shared, pss - private
                 shared = pss - private

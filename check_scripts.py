@@ -22,53 +22,36 @@
 """ checks installed servers on system """
 
 import sys
-import getopt
 import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
 import commands
 import stat
 import time
 import process_tools
 import logging_tools
 import extra_server_tools
+import argparse
 try:
-    import mysql_tools
-except ImportError:
-    mysql_tools = None
-else:
-    import MySQLdb
+    import config_tools
+except:
+    config_tools = None
     
-SQL_ACCESS = "cluster_full_access"
-
 def check_threads(name, pids):
     ret_state = 7
-    unique_pids, pids_found = ({}, {})
-    for pid in pids:
-        unique_pids.setdefault(pid, 0)
-        pids_found.setdefault(pid, 0)
-        unique_pids[pid] += 1
-    # flag if 'threads'-key in status
-    has_t_key = False
+    unique_pids = dict([(key, pids.count(key)) for key in set(pids)])
+    pids_found = dict([(key, 0) for key in set(pids)])
     for pid in unique_pids.keys():
         stat_f = "/proc/%d/status" % (pid)
         if os.path.isfile(stat_f):
-            stat_dict = dict([(z[0].lower(), z[1].strip()) for z in [y.split(":", 1) for y in [x.strip() for x in file(stat_f, "r").read().replace("\t", " ").split("\n") if x.count(":")]]])
+            stat_dict = dict([line.strip().lower().split(":", 1) for line in file(stat_f, "r").read().replace("\t", " ").split("\n") if line.count(":") and line.strip()])
             if "threads" in stat_dict:
-                has_t_key = True
                 pids_found[pid] += int(stat_dict.get("threads", "1"))
             else:
                 pids_found[pid] += 1
-    if not has_t_key:
-        dot_files = [x for x in os.listdir("/proc") if x.startswith(".") and x[1:].isdigit()]
-        for df in dot_files:
-            stat_f = "/proc/%s/status" % (df)
-            if os.path.isfile(stat_f):
-                stat_dict = dict([(z[0].lower(), z[1].strip()) for z in [y.split(":", 1) for y in [x.strip() for x in file(stat_f, "r").read().replace("\t", " ").split("\n") if x.count(":")]]])
-                if "ppid" in stat_dict:
-                    ppid = int(stat_dict["ppid"])
-                    if ppid in pids_found:
-                        pids_found[ppid] += 1
-    num_started = unique_pids and sum(unique_pids.values()) or 0
-    num_found = pids_found and sum(pids_found.values()) or 0
+    num_started = sum(unique_pids.values()) if unique_pids else 0
+    num_found   = sum(pids_found.values()) if pids_found else 0
     # check for extra Nagios2.x thread
     if name == "nagios" and num_started == 1 and num_found == 2:
         num_started = 2
@@ -76,43 +59,43 @@ def check_threads(name, pids):
         ret_state = 0
     return ret_state, num_started, num_found
 
-def get_default_opt_dict():
-    return dict([(key, False) for key in ["full_status", "overview_mode", "db_info", "runlevel_info", "mem_info", "pid_info"]])
-
-def check_system(opt_dict, checks, db_cursor):
-    if not checks.setdefault("server", []) and not checks.setdefault("node", []):
+def check_system(opt_ns):
+    if not opt_ns.server and not opt_ns.node:
         set_default_nodes, set_default_servers = (True, True)
     else:
         set_default_nodes, set_default_servers = (False, False)
-    if checks["server"] == ["ALL"]:
+    if opt_ns.server == ["ALL"]:
         set_default_servers = True
-    if checks["node"] == ["ALL"]:
+    if opt_ns.node == ["ALL"]:
         set_default_nodes = True
     if set_default_nodes:
-        checks["node"] = ["hoststatus:simple",
-                          "logging-server",
-                          "meta-server",
-                          "host-monitoring",
-                          "package-client"]
+        opt_ns.node = [
+            "hoststatus:simple",
+            "logging-server",
+            "meta-server",
+            "host-monitoring",
+            "package-client"]
     if set_default_servers:
-        checks["server"] = ["logcheck-server",
-                            "package-server",
-                            "mother",
-                            "rrd-server-collector",
-                            "rrd-server-writer",
-                            "rrd-server-grapher",
-                            "sge-server",
-                            #"sge-relayer",
-                            "cluster-server",
-                            "cluster-config-server",
-                            "xen-server",
-                            "host-relay",
-                            "snmp-relay",
-                            "md-config-server",
-                            "nagios:threads_by_pid_file:/opt/nagios/var/nagios.lock"]
-        checks["server"].extend(extra_server_tools.extra_server_file().get_server_list())
+        opt_ns.server = [
+            "logcheck-server",
+            "package-server",
+            "mother",
+            "rrd-server-collector",
+            "rrd-server-writer",
+            "rrd-server-grapher",
+            "sge-server",
+            "cluster-server",
+            "cluster-config-server",
+            "xen-server",
+            "host-relay",
+            "snmp-relay",
+            "md-config-server",
+            "nagios:threads_by_pid_file:/opt/nagios/var/nagios.lock"]
+        opt_ns.server.extend(extra_server_tools.extra_server_file().get_server_list())
+        
     check_dict, check_list = ({}, [])
-    for c_type, c_list in checks.iteritems():
+    for c_type in ["node", "server"]:
+        c_list = getattr(opt_ns, c_type)
         for name in c_list:
             if name.count(":"):
                 name, check_type = name.split(":", 1)
@@ -130,33 +113,36 @@ def check_system(opt_dict, checks, db_cursor):
     ret_dict = {}
     if check_list:
     # pid-file mapping
-        pid_file_map = {"host-monitoring"      : "collserver/collserver.pid",
-                        "logging-server"       : "logserver/logserver.pid",
-                        "meta-server"          : "meta-server.pid",
-                        "rrd-server-collector" : "rrd-server/rrd-server-collector.pid",
-                        "rrd-server-writer"    : "rrd-server/rrd-server-writer.pid",
-                        "rrd-server-grapher"   : "rrd-server/rrd-server-grapher.pid",
-                        "host-relay"           : "collrelay/collrelay.pid",
-                        "xen-server"           : "xen-server.pid",
-                        "cluster-server"       : "cluster-server.pid",
-                        "ansys"                : "ansys-server/ansys-server.pid",
-                        "cransys"              : "cransys-server/cransys-server.pid"}
+        pid_file_map = {
+            "host-monitoring"      : "collserver/collserver.pid",
+            "logging-server"       : "logserver/logserver.pid",
+            "meta-server"          : "meta-server.pid",
+            "rrd-server-collector" : "rrd-server/rrd-server-collector.pid",
+            "rrd-server-writer"    : "rrd-server/rrd-server-writer.pid",
+            "rrd-server-grapher"   : "rrd-server/rrd-server-grapher.pid",
+            "host-relay"           : "collrelay/collrelay.pid",
+            "xen-server"           : "xen-server.pid",
+            "cluster-server"       : "cluster-server.pid",
+            "ansys"                : "ansys-server/ansys-server.pid",
+            "cransys"              : "cransys-server/cransys-server.pid"}
         # server-type mapping
-        server_type_map = {"mother"                : "mother_server",
-                           "cluster-server"        : "server",
-                           "snmp-relay"            : "nagios_master",
-                           "cluster-config-server" : "config_server",
-                           "host-relay"            : "nagios_master",
-                           "nagios"                : "nagios_master",
-                           "md-config-server"      : "nagios_master",
-                           "cransys"               : "cransys_server",
-                           "ansys"                 : "ansys_server"}
+        server_type_map = {
+            "mother"                : "mother_server",
+            "cluster-server"        : "server",
+            "snmp-relay"            : "nagios_master",
+            "cluster-config-server" : "config_server",
+            "host-relay"            : "nagios_master",
+            "nagios"                : "nagios_master",
+            "md-config-server"      : "nagios_master",
+            "cransys"               : "cransys_server",
+            "ansys"                 : "ansys_server"}
         # server-type to runlevel-name mapping
-        runlevel_map = {"ansys"   : "ansys-server",
-                        "cransys" : "cransys-server"}
+        runlevel_map = {
+            "ansys"   : "ansys-server",
+            "cransys" : "cransys-server"}
         act_proc_dict = process_tools.get_proc_list()
         stat_dict = {}
-        if opt_dict["runlevel_info"]:
+        if opt_ns.runlevel or opt_ns.all:
             for check in check_list:
                 r_stat, out = commands.getstatusoutput("chkconfig --list %s" % (runlevel_map.get(check, check)))
                 if r_stat:
@@ -165,7 +151,7 @@ def check_system(opt_dict, checks, db_cursor):
                     stat_dict[check] = "Error getting config: %s" % (out)
                 else:
                     stat_dict[check] = [line.strip().split(None, 1) for line in out.split("\n")][-1][1].lower()
-                    stat_dict[check] = [int(k2) for k2, v in [x.split(":") for x in stat_dict[check].split()] if v == "on"]
+                    stat_dict[check] = [int(k2) for k2, val in [part.split(":") for part in stat_dict[check].split()] if val == "on"]
         ret_dict["check_list"] = []
         for name in check_list:
             ret_dict["check_list"].append(name)
@@ -174,10 +160,10 @@ def check_system(opt_dict, checks, db_cursor):
             act_pids = []
             if check_struct["check_type"] == "simple":
                 if os.path.isfile(check_struct["init_script"]):
-                    running_procs = [x for x in act_proc_dict.values() if x["name"] == name]
+                    running_procs = [pid for pid in act_proc_dict.values() if pid["name"] == name]
                     if running_procs:
                         act_state, act_str = (0, "running")
-                        act_pids = [x["pid"] for x in running_procs]
+                        act_pids = [p_struct["pid"] for p_struct in running_procs]
                     else:
                         act_state, act_str = (7, "not running")
                 else:
@@ -191,8 +177,7 @@ def check_system(opt_dict, checks, db_cursor):
                     pid_file_name = "/var/run/%s" % (pid_file_name)
                 if os.path.isfile(pid_file_name):
                     pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
-                    act_pids = [int(x) for x in [y.strip() for y in file(pid_file_name, "r").read().split("\n")] if x]
-                    
+                    act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
                     act_state, num_started, num_found = check_threads(name, act_pids)
                     act_info_dict["state_info"] = (num_started, num_found, pid_time)
                 else:
@@ -205,17 +190,12 @@ def check_system(opt_dict, checks, db_cursor):
             else:
                 act_state = 1
                 act_info_dict["state_info"] = "Unknown check_type '%s'" % (check_struct["check_type"])
-            pid_dict = {}
-            for act_pid in act_pids:
-                pid_dict.setdefault(act_pid, 0)
-                pid_dict[act_pid] += 1
-            act_info_dict["pids"] = pid_dict
+            act_info_dict["pids"] = dict([(key, act_pids.count(key)) for key in set(act_pids)])
             if check_struct["type"] == "server":
-                import config_tools
-                if db_cursor:
+                if config_tools:
                     srv_type = server_type_map.get(name, name.replace("-", "_"))
-                    sql_info = config_tools.server_check(dc=db_cursor, server_type="%s%%" % (srv_type))
-                    if not sql_info.num_servers:
+                    sql_info = config_tools.server_check(server_type="%s" % (srv_type))
+                    if not sql_info.effective_device:
                         act_state = 5
                 else:
                     sql_info = "no db_con"
@@ -232,62 +212,18 @@ def check_system(opt_dict, checks, db_cursor):
     return ret_dict
     
 def main():
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "dtrTahmp", ["node=", "server=", "help"])
-    except getopt.GetoptError:
-        exc_info = sys.exc_info()
-        print "Error parsing commandline %s: %s (%s)" % (" ".join(sys.argv[1:]), str(exc_info[0]).strip(), str(exc_info[1]).strip())
-        sys.exit(-1)
-    opt_dict = get_default_opt_dict()
-    checks = {"node"   : [],
-              "server" : []}
-    for opt, arg in opts:
-        if opt in ["-h", "--help"]:
-            print "Usage: %s [options] [--node NODE-SCRIPTS] [--server SERVER-SCRIPTS]" % (os.path.basename(sys.argv[0]))
-            print "  where options is one or more of"
-            print "  -h, --help       this help"
-            print "  -t               thread overview"
-            print "  -T               full time info (implies -t)"
-            print "  -p               show pid info"
-            print "  -d               show database info"
-            print "  -r               runlevel info"
-            print "  -m               show info about memory consumption"
-            print "  -a               all of the above"
-            sys.exit(0)
-        if opt == "-T":
-            opt_dict["full_status"] = True
-            opt_dict["overview_mode"] = True
-        if opt == "-t":
-            opt_dict["overview_mode"] = True
-        if opt == "-p":
-            opt_dict["pid_info"] = True
-        if opt == "-r":
-            opt_dict["runlevel_info"] = True
-        if opt == "-d":
-            opt_dict["db_info"] = True
-        if opt == "-m":
-            opt_dict["mem_info"] = True
-        if opt == "-a":
-            opt_dict = dict([(k, True) for k in opt_dict.keys()])
-        if opt == "--node":
-            checks["node"] = [x.strip() for x in arg.split(",")]
-        if opt == "--server":
-            checks["server"] = [x.strip() for x in arg.split(",")]
-    if args:
-        print "Some (%s) left unparsed: %s" % (logging_tools.get_plural("argument", args), " ".join(args))
-        sys.exit(-1)
-    if mysql_tools:
-        db_con = mysql_tools.dbcon_container()
-        try:
-            dc = db_con.get_connection(SQL_ACCESS)
-        except MySQLdb.OperationalError:
-            dc = None
-    else:
-        dc = None
-        print "Warning, no mysql_tools found"
-    ret_dict = check_system(opt_dict, checks, dc)
-    if dc:
-        dc.release()
+    my_parser = argparse.ArgumentParser()
+    my_parser.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview (%(default)s)")
+    my_parser.add_argument("-T", dest="time", action="store_true", default=False, help="full time info (implies -t,  %(default)s)")
+    my_parser.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info (%(default)s)")
+    my_parser.add_argument("-d", dest="database", action="store_true", default=False, help="show database info (%(default)s)")
+    my_parser.add_argument("-r", dest="runlevel", action="store_true", default=False, help="runlevel info (%(default)s)")
+    my_parser.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption (%(default)s)")
+    my_parser.add_argument("-a", dest="all", action="store_true", default=False, help="all of the above (%(default)s)")
+    my_parser.add_argument("--node", type=str, nargs="+", default=[], help="node checks (%(default)s)")
+    my_parser.add_argument("--server", type=str, nargs="+", default=[], help="server checks (%(default)s)")
+    opt_ns = my_parser.parse_args()
+    ret_dict = check_system(opt_ns)
     if not ret_dict:
         print "Nothing to check"
         sys.exit(1)
@@ -301,28 +237,29 @@ def main():
                5 : (1, "skipped"    ),
                6 : (1, "not install"),
                7 : (2, "dead"       )}
-    rc_strs = dict([(k, "%s%s%s" % (col_str_dict[wc], v, col_str_dict[3])) for k, (wc, v) in rc_dict.iteritems()])
+    rc_strs = dict([(key, "%s%s%s" % (col_str_dict[wc], value, col_str_dict[3]))
+                    for key, (wc, value) in rc_dict.iteritems()])
     out_bl = logging_tools.form_list()
     head_l = ["Name"]
-    if opt_dict["overview_mode"]:
-        if opt_dict["full_status"]:
+    if opt_ns.time or opt_ns.all:
+        if opt_ns.thread or opt_ns.all:
             head_l.append("Thread and time info")
         else:
             head_l.append("Thread info")
-    if opt_dict["pid_info"]:
+    if opt_ns.pid or opt_ns.all:
         head_l.append("PIDs")
-    if opt_dict["db_info"]:
+    if opt_ns.database or opt_ns.all:
         head_l.append("DB Info")
-    if opt_dict["runlevel_info"]:
+    if opt_ns.runlevel or opt_ns.all:
         head_l.append("runlevel(s)")
-    if opt_dict["mem_info"]:
+    if opt_ns.memory or opt_ns.all:
         head_l.append("Memory")
     head_l.append("state")
     out_bl.set_header_string(0, head_l)
     for name in ret_dict["check_list"]:
         act_struct = ret_dict[name]
         out_list = [name]
-        if opt_dict["overview_mode"]:
+        if opt_ns.time or opt_ns.all:
             s_info = act_struct["state_info"]
             if type(s_info) == type(""):
                 out_list.append(s_info)
@@ -330,13 +267,15 @@ def main():
                 num_started, num_found, pid_time = s_info
                 num_miss = num_started - num_found
                 if num_miss > 0:
-                    ret_str = "%s %s missing" % (logging_tools.get_plural("thread", num_miss),
-                                                 num_miss == 1 and "is" or "are")
+                    ret_str = "%s %s missing" % (
+                        logging_tools.get_plural("thread", num_miss),
+                        num_miss == 1 and "is" or "are")
                 elif num_miss < 0:
-                    ret_str = "%s too much" % (logging_tools.get_plural("thread", -num_miss))
+                    ret_str = "%s too much" % (
+                        logging_tools.get_plural("thread", -num_miss))
                 else:
-                    ret_str = num_started == 1 and "the thread is running" or "all %d threads running" % (num_started)
-                if opt_dict["full_status"]:
+                    ret_str = "the thread is running" if num_started == 1 else "all %d threads running" % (num_started)
+                if opt_ns.thread or opt_ns.all:
                     diff_time  = max(0, time.mktime(time.localtime()) - pid_time)
                     diff_days  = int(diff_time / (3600 * 24))
                     diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
@@ -346,34 +285,37 @@ def main():
                                                                                     diff_hours, diff_mins, diff_secs,
                                                                                     time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
                 out_list.append(ret_str)
-        if opt_dict["pid_info"]:
+        if opt_ns.pid or opt_ns.all:
             pid_dict = act_struct["pids"]
             if pid_dict:
-                p_list = pid_dict.keys()
-                p_list.sort()
+                p_list = sorted(pid_dict.keys())
                 if max(pid_dict.values()) == 1:
                     out_list.append(logging_tools.compress_num_list(p_list))
                 else:
-                    out_list.append(",".join(["%d%s" % (k, pid_dict[k] > 1 and " (%d)" % (pid_dict[k]) or "") for k in p_list]))
+                    out_list.append(",".join(["%d%s" % (
+                        key,
+                        " (%d)" % (pid_dict[key]) if pid_dict[key] > 1 else "") for key in p_list]))
             else:
                 out_list.append("no PIDs")
-        if opt_dict["db_info"]:
+        if opt_ns.database or opt_ns.all:
             if type(act_struct["sql"]) == type(""):
                 out_list.append(act_struct["sql"])
             else:
-                out_list.append("%s (%s)" %  (act_struct["sql"].server_info_str,
-                                              act_struct["sql"].config_name))
-        if opt_dict["runlevel_info"]:
+                out_list.append("%s (%s)" %  (
+                    act_struct["sql"].server_info_str,
+                    act_struct["sql"].config_name))
+        if opt_ns.runlevel or opt_ns.all:
             rlevs = act_struct["runlevels"]
             if type(rlevs) == type([]):
                 if rlevs:
-                    out_list.append("%s %s" % (logging_tools.get_plural("level", rlevs, 0),
-                                               ", ".join(["%d" % (x) for x in rlevs])))
+                    out_list.append("%s %s" % (
+                        logging_tools.get_plural("level", rlevs, 0),
+                        ", ".join(["%d" % (r_lev) for r_lev in rlevs])))
                 else:
                     out_list.append("no levels")
             else:
                 out_list.append("<no runlevel info>")
-        if opt_dict["mem_info"]:
+        if opt_ns.memory or opt_ns.all:
             out_list.append(act_struct["mem"] and process_tools.beautify_mem_info(act_struct["mem"]) or "no pids")
         out_list.append(rc_strs[act_struct["state"]])
         out_bl.add_line(out_list)
@@ -381,3 +323,4 @@ def main():
         
 if __name__ == "__main__":
     main()
+

@@ -126,7 +126,12 @@ class server_check(object):
             self.effective_device = kwargs.get("effective_device", kwargs["device"])
         else:
             try:
-                self.device = device.objects.get(Q(name=self.short_host_name))
+                self.device = device.objects.prefetch_related(
+                    # intermediate sets not needed
+                    #"netdevice_set",
+                    #"netdevice_set__net_ip_set",
+                    #"netdevice_set__net_ip_set__network",
+                    "netdevice_set__net_ip_set__network__network_type").get(Q(name=self.short_host_name))
             except device.DoesNotExist:
                 self.device = None
             else:
@@ -387,9 +392,10 @@ class device_with_config(dict):
         for cur_entry in all_list:
             dev_conf_dict.setdefault(tuple(cur_entry[2:6]), []).append((cur_entry[0], cur_entry[1], cur_entry[5], cur_entry[6]))
         dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(pk__in=[key[1] for key in dev_conf_dict.iterkeys()] + list(md_set))).prefetch_related(
-            "netdevice_set",
-            "netdevice_set__net_ip_set",
-            "netdevice_set__net_ip_set__network",
+            # intermediates not needed
+            #"netdevice_set",
+            #"netdevice_set__net_ip_set",
+            #"netdevice_set__net_ip_set__network",
             "netdevice_set__net_ip_set__network__network_type")])
         conf_dict = dict([(cur_conf.pk, cur_conf) for cur_conf in config.objects.filter(Q(pk__in=conf_pks))])
         for dev_key, conf_list in dev_conf_dict.iteritems():

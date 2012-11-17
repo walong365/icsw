@@ -40,6 +40,7 @@ def main():
     parser.add_argument("-v", help="verbose mode [%(default)s]", default=False, dest="verbose", action="store_true")
     parser.add_argument("-i", help="set identity substring [%(default)s]", type=str, default="sc", dest="identity_string")
     parser.add_argument("-n", help="set number of iterations [%(default)d]", type=int, default=1, dest="iterations")
+    parser.add_argument("--raw", help="do not convert to server_command", default=False, action="store_true")
     parser.add_argument("--kv", help="key-value pair, colon-separated", action="append")
     #parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
@@ -49,7 +50,7 @@ def main():
     other_args = args.arguments + other_args
     identity_str = process_tools.zmq_identity_str(args.identity_string)
     zmq_context = zmq.Context(1)
-    client = zmq_context.socket(zmq.DEALER)
+    client = zmq_context.socket(zmq.DEALER)#ROUTER)#DEALER)
     client.setsockopt(zmq.IDENTITY, identity_str)
     client.setsockopt(zmq.LINGER, args.timeout)
     if args.protocoll == "ipc":
@@ -62,23 +63,29 @@ def main():
     for cur_iter in xrange(args.iterations):
         if args.verbose:
             print "iteration %d" % (cur_iter)
-        srv_com = server_command.srv_command(command=command)
-        if args.kv:
-            for kv_pair in args.kv:
-                key, value = kv_pair.split(":")
-                srv_com[key] = value
+        if args.raw:
+            srv_com = command
+        else:
+            srv_com = server_command.srv_command(command=command)
+            if args.kv:
+                for kv_pair in args.kv:
+                    key, value = kv_pair.split(":")
+                    srv_com[key] = value
         for arg_index, arg in enumerate(other_args):
             if args.verbose:
                 print " arg %2d: %s" % (arg_index, arg)
                 srv_com["arguments:arg%d" % (arg_index)] = arg
-        srv_com["arg_list"] = " ".join(other_args)
+        if not args.raw:
+            srv_com["arg_list"] = " ".join(other_args)
         s_time = time.time()
+        #client.send_unicode("49481fb4-4ca7-11e1-85fb-001f161a5a03:hoststatus:", zmq.SNDMORE)
         client.send_unicode(unicode(srv_com))
         recv_str = client.recv()
         e_time = time.time()
         if args.verbose:
-            print "communication took %s, received %d bytes" % (logging_tools.get_diff_time_str(e_time - s_time),
-                                                                len(recv_str))
+            print "communication took %s, received %d bytes" % (
+                logging_tools.get_diff_time_str(e_time - s_time),
+                len(recv_str))
         try:
             srv_reply = server_command.srv_command(source=recv_str)
         except:
