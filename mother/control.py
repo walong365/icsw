@@ -35,6 +35,7 @@ import copy
 import uuid
 import shutil
 import stat
+import datetime
 import re
 import ipvx_tools
 from lxml import etree
@@ -42,7 +43,8 @@ from django.db import connection
 from twisted.internet import reactor
 from twisted.python import log
 from twisted.internet.error import CannotListenError
-from initat.cluster.backbone.models import kernel, device, hopcount, image, macbootlog, mac_ignore, \
+from initat.cluster.backbone.models import kernel, device, hopcount, \
+     image, macbootlog, mac_ignore, cluster_timezone, \
      cached_log_status, cached_log_source, log_source, devicelog
 from django.db.models import Q
 import process_tools
@@ -196,12 +198,11 @@ class machine(object):
         pk = int(node.attrib["pk"])
         ping_list = node.getparent()
         ping_list.remove(node)
+        machine.get_device(pk).interpret_local_result(srv_com, res_dict)
         if not len(ping_list):
             pl_parent = ping_list.getparent()
             pl_parent.remove(ping_list)
             pl_parent.getparent().remove(pl_parent)
-        machine.get_device(pk).interpret_local_result(srv_com, res_dict)
-        print srv_com.pretty_print()
     def interpret_local_result(self, srv_com, res_dict):
         # device-specific interpretation
         dev_node = srv_com.xpath(None, ".//ns:device[@pk='%d']" % (self.pk))[0]
@@ -213,15 +214,24 @@ class machine(object):
                 dev_node.attrib["ip"] = res_dict["host"]
                 if cur_ok == 1:
                     self.log("start hoststatus query to %s" % (res_dict["host"]))
-                    machine.process.send_pool_message("contact_hoststatus", self.device.get_boot_uuid(), "status")
+                    machine.process.send_pool_message("contact_hoststatus", self.device.get_boot_uuid(), "status", dev_node.attrib["ip"])
+                # remove other ping requests for this node
+                for other_ping in srv_com.xpath(None, ".//ns:ping[@pk='%d']" % (self.pk)):
+                    other_ping.getparent().remove(other_ping)
             else:
                 dev_node.attrib["failed"] = "%d" % (int(dev_node.attrib["failed"]) + 1)
         else:
             self.log("got unknown ip '%s'" % (res_dict["host"]), logging_tools.LOG_LEVEL_ERROR)
     def add_ping_info(self, cur_dev):
+        
         print "add_ping_info", etree.tostring(cur_dev)
-        cur_dev.attrib["network"] = "unknown"
-        cur_dev.attrib["network_state"] = "error"
+        if int(cur_dev.attrib["ok"]):
+            cur_dev.attrib["network"] = self.ip_dict[cur_dev.attrib["ip"]].network.identifier
+            #print self.ip_dict[cur_dev.attrib["ip"]]
+        else:
+            cur_dev.attrib["network"] = "unknown"
+            cur_dev.attrib["network_state"] = "error"
+        
         for key, value in self.ip_dict.iteritems():
             print key, value.network
     def set_ip_dict(self, in_dict):
@@ -247,7 +257,9 @@ class host(machine):
         # check network settings
         self.check_network_settings()
         # save changes done during init
-        self.set_recv_req_state()
+        # do not overwrite states, preserve
+        #self.set_recv_state()
+        #self.set_req_state()
         if not self.device.uuid:
             self.device.uuid = str(uuid.uuid4())
             self.log("setting uuid to %s" % (self.device.uuid))
@@ -433,8 +445,12 @@ class host(machine):
         return "01-%s" % (self.maint_ip.netdevice.macaddr.lower().replace(":", "-"))
     def get_ip_mac_file_name(self):
         return "%s/%s" % (self.get_pxelinux_dir(), self.get_ip_mac_file_base_name())
-    def set_recv_req_state(self, recv_state = "error not set", req_state="error not set"):
-        self.device.recvstate, self.device.reqstate = (recv_state, req_state)
+    def set_recv_state(self, recv_state="error not set"):
+        self.device.recvstate = recv_state
+        self.device.recvstate_timestamp = cluster_timezone.localize(datetime.datetime.now())
+    def set_req_state(self, req_state="error not set"):
+        self.device.reqstate = req_state
+        self.device.reqstate_timestamp = cluster_timezone.localize(datetime.datetime.now())
     def refresh_target_kernel(self, *args, **kwargs):
         if kwargs.get("refresh", True):
             self.refresh_device()
@@ -914,15 +930,22 @@ class host(machine):
                 machine.process.node_src,
                 cached_log_status("i"),
                 "DHCP / %s (%s)" % (in_dict["key"], in_dict["ip"]))
-            self.device.recvstate = "got IP-Address via DHCP"
+            self.set_recv_state("got IP-Address via DHCP")
             change_fields.add("recvstate")
+            change_fields.add("recvstate_timestamp")
             if change_fields:
                 self.device.save(update_fields=list(change_fields))
             if self.device.new_state:
                 self.refresh_target_kernel(refresh=False)
     def nodeinfo(self, in_text, instance):
-        self.log("got '%s' from %s" % (in_text, instance))
+        self.log("got info '%s' from %s" % (in_text, instance))
+        self.set_recv_state(in_text)
+        self.device.save(update_fields=["recvstate", "recvstate_timestamp"])
         return "ok got it"
+    def nodestatus(self, in_text, instance):
+        self.log("got status '%s' from %s" % (in_text, instance))
+        self.set_req_state(in_text)
+        self.device.save(update_fields=["reqstate", "recvstate_timestamp"])
          
 class hm_icmp_protocol(icmp_twisted.icmp_protocol):
     def __init__(self, tw_process, log_template):
@@ -1030,7 +1053,7 @@ class twisted_process(threading_tools.process_obj):
             self.send_pool_message("process_exception", process_tools.get_except_info())
         else:
             self.register_func("ping", self._ping)
-            self._ping("qweqwe", "127.0.0.1", 4, 5.0)
+            #self._ping("qweqwe", "127.0.0.1", 4, 5.0)
         self.control_socket = self.connect_to_socket("control")
     def _ping(self, *args, **kwargs):
         self.icmp_protocol.ping(*args, **kwargs)
@@ -1091,6 +1114,7 @@ class node_control_process(threading_tools.process_obj):
         self.register_func("syslog_line", self._syslog_line)
         self.register_func("status", self._status)
         self.register_func("nodeinfo", self._nodeinfo)
+        self.register_func("nodestatus", self._nodestatus)
         # build dhcp res
         self.__dhcp_res = {
             "discover" : re.compile("(?P<program>\S+): DHCPDISCOVER from (?P<macaddr>\S+) via .*$"),
@@ -1144,6 +1168,13 @@ class node_control_process(threading_tools.process_obj):
         else:
             ret_str = "error no node with id '%s' found" % (node_id)
         self.send_pool_message("send_return", id_str, ret_str)
+    def _nodestatus(self, id_str, node_text, **kwargs):
+        node_id, instance = id_str.split(":", 1)
+        cur_dev = machine.get_device(node_id)
+        if cur_dev:
+            cur_dev.nodestatus(node_text, instance)
+        else:
+            self.log("error no node with id '%s' found" % (node_id), logging_tools.LOG_LEVEL_ERROR)
     def loop_post(self):
         machine.shutdown()
         self.twisted_socket.close()

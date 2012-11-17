@@ -2965,7 +2965,8 @@ class server_process(threading_tools.process_pool):
             client = self.zmq_context.socket(sock_type)
             client.setsockopt(zmq.IDENTITY, my_0mq_id)
             client.setsockopt(zmq.LINGER, 100)
-            client.setsockopt(zmq.HWM, 256)
+            client.setsockopt(zmq.SNDHWM, 256)
+            client.setsockopt(zmq.RCVHWM, 256)
             client.setsockopt(zmq.BACKLOG, 1)
             conn_str = "tcp://*:%d" % (bind_port)
             try:
@@ -3004,17 +3005,19 @@ class server_process(threading_tools.process_pool):
                     try:
                         cur_com = srv_com["command"].text
                     except:
-                        if srv_com.tree.find("nodeinfo") is not None:
-                            node_text = srv_com.tree.findtext("nodeinfo")
-                            t_proc = "control"
-                            cur_com = "nodeinfo"
-                            self.log("got command %s, sending to %s process" % (cur_com, t_proc))
-                            self.send_to_process(
-                                t_proc,
-                                cur_com, 
-                                data[0],
-                                node_text)
-                        else:
+                        cur_com = None
+                        for node_ct in ["nodeinfo", "nodestatus"]:
+                            if srv_com.tree.find(node_ct) is not None:
+                                node_text = srv_com.tree.findtext(node_ct)
+                                t_proc = "control"
+                                cur_com = node_ct
+                                self.log("got command %s, sending to %s process" % (cur_com, t_proc))
+                                self.send_to_process(
+                                    t_proc,
+                                    cur_com, 
+                                    data[0],
+                                    node_text)
+                        if cur_com is None:
                             self.log("got command '%s' from %s, ignoring" % (etree.tostring(srv_com.tree), data[0]),
                                      logging_tools.LOG_LEVEL_ERROR)
                     else:
@@ -3037,20 +3040,19 @@ class server_process(threading_tools.process_pool):
     def _send_return(self, src_id, src_pid, zmq_id, srv_com, *args):
         self.log("returning 0MQ message to %s (%s ...)" % (zmq_id, srv_com[0:16]))
         if zmq_id.endswith(":hoststatus:"):
-            pass
+            self.log("refuse to send return to %s" % (zmq_id), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
             self.socket_dict["router"].send_unicode(unicode(srv_com))
-    def _contact_hoststatus(self, src_id, src_pid, zmq_id, com_str):
-        print "conn"
-        dst_addr = "tcp://172.17.1.2:2002"
+    def _contact_hoststatus(self, src_id, src_pid, zmq_id, com_str, target_ip):
+        dst_addr = "tcp://%s:2002" % (target_ip)
         if dst_addr not in self.connection_set:
-            print "-"
+            self.log("adding connection %s" % (dst_addr))
             self.connection_set.add(dst_addr)
             self.socket_dict["router"].connect(dst_addr)
-            time.sleep(0.2)
-        print "done"
-        self.log("sending '%s' to %s" % (com_str, zmq_id))
+            #time.sleep(0.2)
+        #print "done"
+        self.log("sending '%s' to %s (%s)" % (com_str, zmq_id, dst_addr))
         self.socket_dict["router"].send_unicode("%s:hoststatus:" % (zmq_id), zmq.SNDMORE)
         self.socket_dict["router"].send_unicode(unicode(com_str))
     # utility calls
