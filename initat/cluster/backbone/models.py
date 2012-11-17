@@ -25,6 +25,9 @@ cluster_timezone = pytz.timezone(settings.TIME_ZONE)
 # cluster_log_source
 cluster_log_source = None
 
+def boot_uuid(cur_uuid):
+    return "%s-boot" % (cur_uuid[:-5])
+
 # helper functions
 def _check_integer(inst, attr_name, **kwargs):
     cur_val = getattr(inst, attr_name)
@@ -358,8 +361,11 @@ class device(models.Model):
     rsync = models.BooleanField()
     rsync_compressed = models.BooleanField()
     prod_link = models.ForeignKey("network", db_column="prod_link", null=True)
+    # states (with timestamp)
     recvstate = models.TextField(blank=True, default="not set")
+    recvstate_timestamp = models.DateTimeField(null=True)
     reqstate = models.TextField(blank=True, default="not set")
+    reqstate_timestamp = models.DateTimeField(null=True)
     bootnetdevice = models.ForeignKey("netdevice", null=True, related_name="boot_net_device")
     bootserver = models.ForeignKey("device", null=True, related_name="boot_server")
     reachable_via_bootserver = models.BooleanField(default=False)
@@ -386,6 +392,8 @@ class device(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     # slaves
     master_connections = models.ManyToManyField("self", through="cd_connection", symmetrical=False, related_name="slave_connections")
+    def get_boot_uuid(self):
+        return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
         return devicelog.new_log(self, log_src, log_stat, text, **kwargs)
     def get_xml(self, full=True):
@@ -396,6 +404,9 @@ class device(models.Model):
             comment=self.comment,
             pk="%d" % (self.pk),
             key="dev__%d" % (self.pk),
+            # states
+            revstate=self.recvstate,
+            reqstate=self.reqstate,
             device_type="%d" % (self.device_type_id),
             device_group="%d" % (self.device_group_id),
             new_kernel_id="%d" % (self.new_kernel_id or 0),
