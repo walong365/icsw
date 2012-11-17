@@ -24,10 +24,7 @@
 import sys
 import os
 import re
-try:
-    import bz2
-except:
-    bz2 = None
+import bz2
 import configfile_old as configfile
 import time
 import datetime
@@ -1348,7 +1345,8 @@ class server_process(threading_tools.process_pool):
             client = self.zmq_context.socket(sock_type)
             client.setsockopt(zmq.IDENTITY, my_0mq_id)
             client.setsockopt(zmq.LINGER, 100)
-            client.setsockopt(zmq.HWM, 256)
+            client.setsockopt(zmq.RCVHWM, 256)
+            client.setsockopt(zmq.SNDHWM, 256)
             client.setsockopt(zmq.BACKLOG, 1)
             conn_str = "tcp://*:%d" % (bind_port)
             try:
