@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2001-2004,2006 init.at
+# Copyright (c) 2001-2004,2006,2012 Andreas Lang-Nevyjel init.at
 #
 #
 # RedHat stuff
@@ -15,6 +15,7 @@
 # Description:   load modules at startup
 ### END INIT INFO
 
+export SYSTEMD_NO_WRAP="1"
 if [ -f /etc/rc.status ] ; then
     . /etc/rc.status
 else
@@ -25,47 +26,47 @@ rc_reset
 
 case "$1" in
     start)  echo -n "Loading modules..."
-	unset mods
-	if [ -f /etc/modules ] ; then
-	    mods=`cat /etc/modules`
-	fi
-	
-	if [ "${mods:-0}" = "0" ] ; then
-	    echo -n " no modules to load"
-	else
-	    echo -n " "
-# remove leading whitespace; [[:space:]] is something like echo -e ' \t\n'
-	    sed -e '/^[[:space:]]*/s/[[:space:]]*//' -e '/^#/d;' -e '/^$/d;' /etc/modules | while read modl ; do
+        unset mods
+        if [ -f /etc/modules ] ; then
+            mods=`cat /etc/modules`
+        fi
+    
+        if [ "${mods:-0}" = "0" ] ; then
+            echo -n " no modules to load"
+        else
+            echo -n " "
+        # remove leading whitespace; [[:space:]] is something like echo -e ' \t\n'
+            sed -e '/^[[:space:]]*/s/[[:space:]]*//' -e '/^#/d;' -e '/^$/d;' /etc/modules | while read modl ; do
                 mod=`echo $modl | cut -d " " -f 1`
                 modarg="`echo $modl | egrep '[[:space:]]' | cut -d " " -f 2-`"
                 if [ "${mod:-0}" != "0" ] ; then
-		    logger "Doing modprobe $mod (args $modarg)"
-		    modprobe $mod $modarg > /dev/null 2>&1 && {
-			echo -n "${done}${mod}${norm}-" ;
-		    } || {
-			echo -n "${warn}${mod}${norm}-" ;
-		    }
+                    logger "Doing modprobe $mod (args $modarg)"
+                    modprobe $mod $modarg > /dev/null 2>&1 && {
+                        echo -n "${done}${mod}${norm}-" ;
+                    } || {
+                        echo -n "${warn}${mod}${norm}-" ;
+                    }
                 fi
-	    done
-	    true
-	fi
-	/usr/local/sbin/generate-ethtool-config.py
-	rc_status -v
-	;;
+            done
+            true
+        fi
+        /usr/local/sbin/generate-ethtool-config.py
+        rc_status -v
+        ;;
     stop)
-	echo -n "Not implemented..."
-	rc_failed ;
-	rc_status -v
-	;;
+        echo -n "Not implemented..."
+        rc_failed ;
+        rc_status -v
+        ;;
     restart)
-	echo "reloading modules ..."
-	$0 stop && sleep 2 ; $0 start || return=$rc_failed
-	;;
+        echo "reloading modules ..."
+        $0 stop && sleep 2 ; $0 start || return=$rc_failed
+        ;;
     status)
-	echo -n "Showing loaded modules ..."
-	rc_status -v
-	/sbin/lsmod
-	;;
+        echo -n "Showing loaded modules ..."
+        rc_status -v
+        /sbin/lsmod
+        ;;
     *)      echo "Usage: $0 {start|stop|status}"
 esac
 
