@@ -909,6 +909,32 @@ class image_excl(models.Model):
     class Meta:
         db_table = u'image_excl'
 
+# package related models
+class package_repo(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=128, default="", unique=True)
+    alias = models.CharField(max_length=128, default="")
+    repo_type = models.CharField(max_length=128, default="")
+    enabled = models.BooleanField(default=True)
+    autorefresh = models.BooleanField(default=True)
+    gpg_check = models.BooleanField(default=True)
+    url = models.CharField(max_length=384, default="")
+    created = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.package_repo(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="pr__%d" % (self.pk),
+            name=self.name,
+            alias=self.alias,
+            repo_type=self.repo_type,
+            enabled="1" if self.enabled else "0",
+            autorefresh="1" if self.autorefresh else "0",
+            gpg_check="1" if self.gpg_check else "0",
+            url=self.url)
+    def __unicode__(self):
+        return self.name
+
 class inst_package(models.Model):
     idx = models.AutoField(db_column="inst_package_idx", primary_key=True)
     package = models.ForeignKey("package")
