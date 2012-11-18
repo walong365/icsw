@@ -23,33 +23,35 @@
 
 import sys
 import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
 import re
 import bz2
-import configfile_old as configfile
+import configfile
 import time
 import datetime
 import configfile
 import uuid_tools
 import logging_tools
 import process_tools
-import mysql_tools
-import MySQLdb
 import server_command
 import threading_tools
 import net_tools
 import pprint
 from lxml import etree
 from lxml.builder import E
-import xml
-import xml.dom.minidom
-import xml_tools
-import xml.parsers.expat
 import inotify_tools
 import stat
 import config_tools
 sys.path.append("/usr/local/sbin")
 import insert_package_info
 import zmq
+import cluster_location
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models import package_repo
+import subprocess
 
 try:
     from package_server_version import VERSION_STRING
@@ -70,6 +72,45 @@ DIRECT_MODE_VAR_NAME     = "package_client_direct_mode"
 SQL_ACCESS = "cluster_full_access"
 
 CONFIG_NAME = "/etc/sysconfig/cluster/package_server_clients.xml"
+
+class repository(object):
+    def __init__(self):
+        pass
+    
+class rpm_repository(repository):
+    pass
+
+class repo_type(object):
+    def __init__(self, master_process):
+        self.log_com = master_process.log
+        self.log("repository type is %s (%s)" % (self.REPO_TYPE_STR,
+                                                 self.REPO_SUBTYPE_STR))
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.log_com("[rt] %s" % (what), log_level)
+    
+class repo_type_rpm_zypper(repo_type):
+    REPO_TYPE_STR = "rpm"
+    REPO_SUBTYPE_STR = "zypper"
+    SCAN_REPOS = "zypper --xml lr"
+    REPO_CLASS = rpm_repository
+    def repo_scan_result(self, s_struct):
+        self.log("got repo scan result")
+        repo_xml = etree.fromstring(s_struct.read())
+        new_repos = []
+        for repo in repo_xml.xpath(".//repo-list/repo"):
+            try:
+                cur_repo = package_repo.objects.get(Q(name=repo.attrib["name"]))
+            except package_repo.DoesNotExist:
+                cur_repo = package_repo(name=repo.attrib["name"])
+                new_repos.append(cur_repo)
+            cur_repo.alias = repo.attrib["alias"]
+            cur_repo.repo_type = repo.attrib["type"]
+            cur_repo.enabled = True if int(repo.attrib["enabled"]) else False
+            cur_repo.autorefresh = True if int(repo.attrib["autorefresh"]) else False
+            cur_repo.gpg_check = True if int(repo.attrib["gpgcheck"]) else False
+            cur_repo.url = repo.findtext("url")
+            cur_repo.save()
+        self.log("found %s" % (logging_tools.get_plural("new repository", len(new_repos))))
 
 class command_thread(threading_tools.thread_obj):
     def __init__(self, log_queue, db_con, glob_config):
@@ -420,6 +461,130 @@ class package_status_thread(threading_tools.thread_obj):
         del res_field
     def loop_end(self):
         self.__dc.release()
+
+class subprocess_struct(object):
+    run_idx = 0
+    class Meta:
+        max_usage = 2
+        max_runtime = 300
+        use_popen = True
+        verbose = False
+    def __init__(self, master_process, src_id, com_line, **kwargs):
+        self.log_com = master_process.log
+        subprocess_struct.run_idx += 1
+        self.run_idx = subprocess_struct.run_idx
+        # copy Meta keys
+        for key in dir(subprocess_struct.Meta):
+            if not key.startswith("__") and not hasattr(self.Meta, key):
+                setattr(self.Meta, key, getattr(subprocess_struct.Meta, key))
+        if "verbose" in kwargs:
+            self.Meta.verbose = kwargs["verbose"]
+        self.src_id = src_id
+        self.command_line = com_line
+        self.multi_command = type(self.command_line) == list
+        self.com_num = 0
+        self.popen = None
+        self.cb_func = kwargs.get("cb_func", None)
+        self._init_time = time.time()
+        if kwargs.get("start", False):
+            self.run()
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.log_com("[ss %d/%d] %s" % (self.run_idx, self.com_num, what), log_level)
+    def run(self):
+        run_info = {}
+        if self.multi_command:
+            if self.command_line:
+                cur_cl = self.command_line[self.com_num]
+                if type(cur_cl) == type(()):
+                    # in case of tuple
+                    run_info["comline"] = cur_cl[0]
+                else:
+                    run_info["comline"] = cur_cl
+                run_info["command"] = cur_cl
+                run_info["run"] = self.com_num
+                self.com_num += 1
+            else:
+                run_info["comline"] = None
+        else:
+            run_info["comline"] = self.command_line
+        self.run_info = run_info
+        if run_info["comline"]:
+            if self.Meta.verbose:
+                self.log("popen '%s'" % (run_info["comline"]))
+            self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    def read(self):
+        if self.popen:
+            return self.popen.stdout.read()
+        else:
+            return None
+    def process_result(self):
+        if self.cb_func:
+            self.cb_func(self)
+    def finished(self):
+        if self.run_info["comline"] is None:
+            self.run_info["result"] = 0
+            # empty list of commands
+            fin = True
+        else:
+            self.run_info["result"] = self.popen.poll()
+            if self.Meta.verbose:
+                self.log("finished with %s" % (str(self.run_info["result"])))
+            fin = False
+            if self.run_info["result"] is not None:
+                self.process_result()
+                if self.multi_command:
+                    if self.com_num == len(self.command_line):
+                        # last command
+                        fin = True
+                    else:
+                        # next command
+                        self.run()
+                else:
+                    fin = True
+        return fin
+
+class repo_process(threading_tools.process_obj):
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+            init_logger=True)
+        # close database connection
+        connection.close()
+        self.register_func("rescan_all", self._rescan_all)
+        self.__background_commands = []
+        self.register_timer(self._check_delayed, 1)
+        # set repository type
+        self.repo_type = repo_type_rpm_zypper(self)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def loop_post(self):
+        self.__log_template.close()
+    def _rescan_all(self, *args, **kwargs):
+        print args, kwargs
+        self.__background_commands.append(subprocess_struct(self, 0, self.repo_type.SCAN_REPOS, start=True, verbose=global_config["DEBUG"], cb_func=self.repo_type.repo_scan_result))
+    def _check_delayed(self):
+        if len(self.__background_commands):
+            self.log("%s running in background" % (logging_tools.get_plural("command", len(self.__background_commands))))
+        cur_time = time.time()
+        new_list = []
+        for cur_del in self.__background_commands:
+            if cur_del.Meta.use_popen:
+                if cur_del.finished():
+                    #print "finished delayed"
+                    print "cur_del.send_return()"
+                elif abs(cur_time - cur_del._init_time) > cur_del.Meta.max_runtime:
+                    self.log("delay_object runtime exceeded, stopping")
+                    cur_del.terminate()
+                    #cur_del.send_return()
+                else:
+                    new_list.append(cur_del)
+            else:
+                if not cur_del.terminated:
+                    new_list.append(cur_del)
+        self.__background_commands = new_list
 
 class watcher_process(threading_tools.process_obj):
     def __init__(self, name, db_con):
@@ -1188,23 +1353,28 @@ class client(object):
                                                logging_tools.get_diff_time_str(e_time - s_time)))
 
 class server_process(threading_tools.process_pool):
-    def __init__(self, db_con):
+    def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
-        self.__db_con = db_con
         self.__pid_name = global_config["PID_NAME"]
         self.__queue_file_name = "%s/.queue_signal" % (global_config["ROOT_EXPORT_DIR"])
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.process_pool.__init__(
+            self, "main", zmq=True,
+            zmq_debug=global_config["ZMQ_DEBUG"])
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
+        self.register_exception("hup_error", self._hup_error)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._log_config()
+        self._re_insert_config()
         self.__msi_block = self._init_msi_block()
         self._init_clients()
         self._init_network_sockets()
         self._check_database()
-        self.add_process(watcher_process("watcher", self.__db_con), start=True)
+        self.add_process(repo_process("repo"), start=True)
+        #self.add_process(watcher_process("watcher"), start=True)
         #self.register_timer(self._send_update, global_config["RENOTIFY_CLIENTS_TIMEOUT"], instant=True)
         self.register_timer(self._send_update, 3600, instant=True)
+        self.send_to_process("repo", "rescan_all")
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -1216,8 +1386,9 @@ class server_process(threading_tools.process_pool):
         client.init(self)
     def _register_client(self, c_uid, srv_com):
         client.register(c_uid, srv_com["source"].attrib["host"])
-    def get_dc(self):
-        return self.__db_con.get_connection(SQL_ACCESS)
+    def _re_insert_config(self):
+        self.log("re-insert config")
+        cluster_location.write_config("package_server", global_config)
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
@@ -1253,6 +1424,9 @@ class server_process(threading_tools.process_pool):
                 self.log("cannot create file in %s: %s" % (self.__queue_file_name,
                                                            process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
+    def _hup_error(self, err_cause):
+        self.log("got SIGHUP, rescanning repositories")
+        self.send_to_process("repo", "rescan_all")
     def process_start(self, src_process, src_pid):
         # twisted needs 4 threads if connecting to TCP clients, 3 if not (???)
         mult = 3
@@ -1271,6 +1445,8 @@ class server_process(threading_tools.process_pool):
             open_sock.close()
         self.__log_template.close()
     def _check_database(self):
+        # FIXME ?
+        return
         dc = self.__db_con.get_connection(SQL_ACCESS)
         # rewrite inst_package for expansion variable
         dc.execute("SELECT ip.inst_package_idx, ip.location FROM inst_package ip ORDER BY ip.location")
@@ -1415,6 +1591,7 @@ def main():
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG"                    , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"                , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("PID_NAME"                 , configfile.str_c_var(os.path.join(prog_name, prog_name))),
         ("KILL_RUNNING"             , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("CHECK"                    , configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
@@ -1443,26 +1620,17 @@ def main():
                                                add_writeback_option=True,
                                                positional_arguments=False)
     global_config.write_file()
-    db_con = mysql_tools.dbcon_container()
-    try:
-        dc = db_con.get_connection(SQL_ACCESS)
-    except MySQLdb.OperationalError:
-        sys.stderr.write(" Cannot connect to SQL-Server ")
-        sys.exit(1)
-    sql_info = config_tools.server_check(dc=dc, server_type="package_server")
-    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.server_device_idx))])
-    if sql_info.num_servers == 0 and not global_config["FORCE"]:
-        sys.stderr.write(" Host %s is no package-server" % (long_host_name))
+    sql_info = config_tools.server_check(server_type="package_server")
+    if not sql_info.effective_device:
+        print "not a package_server"
         sys.exit(5)
     if global_config["CHECK"]:
         sys.exit(0)
-    if sql_info.num_servers > 1 and not global_config["FORCE"]:
-        print "Database error for host %s (package_server): too many entries found (%d)" % (long_host_name, sql_info.num_servers)
-        dc.release()
-    else:
-        if global_config["KILL_RUNNING"]:
-            log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
-        log_source_idx = process_tools.create_log_source_entry(dc, sql_info.server_device_idx, "package_server", "Package Server")
+    if global_config["KILL_RUNNING"]:
+        log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
+    global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
+    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("package-server", "Cluster PackageServer", device=sql_info.effective_device).pk))])
+    if True:
         dir_list = [
             "%s" % (global_config["ROOT_EXPORT_DIR"]),
             "%s/%s" % (global_config["ROOT_EXPORT_DIR"], ADD_PACK_PATH),
@@ -1484,7 +1652,6 @@ def main():
                     dir_fix_list.append(dir_val)
         # not implemented, FIXME, AL 20120512
         #configfile.write_config(dc, "package_server", glob_config)
-        dc.release()
         process_tools.renice()
         process_tools.fix_sysconfig_rights()
         process_tools.change_user_group_path(os.path.dirname(os.path.join(process_tools.RUN_DIR, global_config["PID_NAME"])), global_config["USER"], global_config["GROUP"])
@@ -1496,9 +1663,7 @@ def main():
                                        "err" : (0, "/var/lib/logging-server/py_err")})
         else:
             print "Debugging package-server on %s" % (long_host_name)
-        ret_code = server_process(db_con).loop()
-    db_con.close()
-    del db_con
+        ret_code = server_process().loop()
     sys.exit(ret_code)
 
 if __name__ == "__main__":
