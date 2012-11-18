@@ -50,7 +50,8 @@ import zmq
 import cluster_location
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import package_repo
+from initat.cluster.backbone.models import package_repo, package_search, cluster_timezone, \
+     package_search_result
 import subprocess
 
 try:
@@ -82,6 +83,7 @@ class rpm_repository(repository):
 
 class repo_type(object):
     def __init__(self, master_process):
+        self.master_process = master_process
         self.log_com = master_process.log
         self.log("repository type is %s (%s)" % (self.REPO_TYPE_STR,
                                                  self.REPO_SUBTYPE_STR))
@@ -93,6 +95,8 @@ class repo_type_rpm_zypper(repo_type):
     REPO_SUBTYPE_STR = "zypper"
     SCAN_REPOS = "zypper --xml lr"
     REPO_CLASS = rpm_repository
+    def search_package(self, s_string):
+        return "zypper --xml search -s %s" % (s_string)
     def repo_scan_result(self, s_struct):
         self.log("got repo scan result")
         repo_xml = etree.fromstring(s_struct.read())
@@ -111,6 +115,34 @@ class repo_type_rpm_zypper(repo_type):
             cur_repo.url = repo.findtext("url")
             cur_repo.save()
         self.log("found %s" % (logging_tools.get_plural("new repository", len(new_repos))))
+        self.master_process._reload_searches()
+    def init_search(self, s_struct):
+        cur_search = s_struct.run_info["stuff"]
+        cur_search.last_search_string = cur_search.search_string
+        cur_search.num_searches += 1
+        cur_search.current_state = "run"
+        cur_search.save(update_fields=["last_search_string", "current_state", "num_searches"])
+    def search_result(self, s_struct):
+        res_xml = etree.fromstring(s_struct.read())
+        cur_search = s_struct.run_info["stuff"]
+        cur_search.current_state = "done"
+        cur_search.results = len(res_xml.xpath(".//solvable"))
+        cur_search.last_search = cluster_timezone.localize(datetime.datetime.now())
+        cur_search.save(update_fields=["last_search", "current_state", "results"])
+        # all repos
+        repo_dict = dict([(cur_repo.name, cur_repo) for cur_repo in package_repo.objects.all()])
+        # delete previous search results
+        cur_search.package_search_result_set.all().delete()
+        self.log("found for %s: %d" % (cur_search.search_string, cur_search.results))
+        for result in res_xml.xpath(".//solvable"):
+            new_sr = package_search_result(
+                name=result.attrib["name"],
+                kind=result.attrib["kind"],
+                arch=result.attrib["arch"],
+                version=result.attrib["edition"],
+                package_search=cur_search,
+                package_repo=repo_dict[result.attrib["repository"]])
+            new_sr.save()
 
 class command_thread(threading_tools.thread_obj):
     def __init__(self, log_queue, db_con, glob_config):
@@ -484,22 +516,24 @@ class subprocess_struct(object):
         self.multi_command = type(self.command_line) == list
         self.com_num = 0
         self.popen = None
-        self.cb_func = kwargs.get("cb_func", None)
+        self.pre_cb_func = kwargs.get("pre_cb_func", None)
+        self.post_cb_func = kwargs.get("post_cb_func", None)
         self._init_time = time.time()
         if kwargs.get("start", False):
             self.run()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[ss %d/%d] %s" % (self.run_idx, self.com_num, what), log_level)
     def run(self):
-        run_info = {}
+        run_info = {"stuff" : None}
         if self.multi_command:
             if self.command_line:
-                cur_cl = self.command_line[self.com_num]
+                cur_cl, add_stuff = self.command_line[self.com_num]
                 if type(cur_cl) == type(()):
                     # in case of tuple
                     run_info["comline"] = cur_cl[0]
                 else:
                     run_info["comline"] = cur_cl
+                run_info["stuff"] = add_stuff
                 run_info["command"] = cur_cl
                 run_info["run"] = self.com_num
                 self.com_num += 1
@@ -511,15 +545,19 @@ class subprocess_struct(object):
         if run_info["comline"]:
             if self.Meta.verbose:
                 self.log("popen '%s'" % (run_info["comline"]))
+            self.current_stdout = ""
+            if self.pre_cb_func:
+                self.pre_cb_func(self)
             self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     def read(self):
         if self.popen:
-            return self.popen.stdout.read()
+            self.current_stdout = "%s%s" % (self.current_stdout, self.popen.stdout.read())
+            return self.current_stdout
         else:
             return None
     def process_result(self):
-        if self.cb_func:
-            self.cb_func(self)
+        if self.post_cb_func:
+            self.post_cb_func(self)
     def finished(self):
         if self.run_info["comline"] is None:
             self.run_info["result"] = 0
@@ -528,7 +566,10 @@ class subprocess_struct(object):
         else:
             self.run_info["result"] = self.popen.poll()
             if self.Meta.verbose:
-                self.log("finished with %s" % (str(self.run_info["result"])))
+                if self.run_info["result"] is None:
+                    self.log("pending")
+                else:
+                    self.log("finished with %s" % (str(self.run_info["result"])))
             fin = False
             if self.run_info["result"] is not None:
                 self.process_result()
@@ -541,6 +582,8 @@ class subprocess_struct(object):
                         self.run()
                 else:
                     fin = True
+            else:
+                self.current_stdout = "%s%s" % (self.current_stdout, self.popen.stdout.read())
         return fin
 
 class repo_process(threading_tools.process_obj):
@@ -554,6 +597,8 @@ class repo_process(threading_tools.process_obj):
         # close database connection
         connection.close()
         self.register_func("rescan_all", self._rescan_all)
+        self.register_func("reload_searches", self._reload_searches)
+        self.register_func("search", self._search)
         self.__background_commands = []
         self.register_timer(self._check_delayed, 1)
         # set repository type
@@ -562,9 +607,6 @@ class repo_process(threading_tools.process_obj):
         self.__log_template.log(log_level, what)
     def loop_post(self):
         self.__log_template.close()
-    def _rescan_all(self, *args, **kwargs):
-        print args, kwargs
-        self.__background_commands.append(subprocess_struct(self, 0, self.repo_type.SCAN_REPOS, start=True, verbose=global_config["DEBUG"], cb_func=self.repo_type.repo_scan_result))
     def _check_delayed(self):
         if len(self.__background_commands):
             self.log("%s running in background" % (logging_tools.get_plural("command", len(self.__background_commands))))
@@ -574,7 +616,8 @@ class repo_process(threading_tools.process_obj):
             if cur_del.Meta.use_popen:
                 if cur_del.finished():
                     #print "finished delayed"
-                    print "cur_del.send_return()"
+                    #print "cur_del.send_return()"
+                    pass
                 elif abs(cur_time - cur_del._init_time) > cur_del.Meta.max_runtime:
                     self.log("delay_object runtime exceeded, stopping")
                     cur_del.terminate()
@@ -585,6 +628,30 @@ class repo_process(threading_tools.process_obj):
                 if not cur_del.terminated:
                     new_list.append(cur_del)
         self.__background_commands = new_list
+    # commands
+    def _rescan_all(self, *args, **kwargs):
+        self.log("rescan repositories")
+        self.__background_commands.append(subprocess_struct(self, 0, self.repo_type.SCAN_REPOS, start=True, verbose=global_config["DEBUG"], post_cb_func=self.repo_type.repo_scan_result))
+    def _search(self, s_string):
+        self.log("searching for '%s'" % (s_string))
+        self.__background_commands.append(subprocess_struct(self, 0, self.repo_type.search_package(s_string), start=True, verbose=global_config["DEBUG"], post_cb_func=self.repo_type.search_result))
+    def _reload_searches(self, *args, **kwargs):
+        self.log("reloading searches")
+        search_list = []
+        for cur_search in package_search.objects.filter(Q(deleted=False) & Q(current_state__in=["ini", "wait"])):
+            search_list.append((self.repo_type.search_package(cur_search.search_string), cur_search))
+        if search_list:
+            self.log("%s found" % (logging_tools.get_plural("search", len(search_list))))
+            self.__background_commands.append(subprocess_struct(
+                self,
+                0,
+                search_list,
+                start=True,
+                verbose=global_config["DEBUG"],
+                pre_cb_func=self.repo_type.init_search,
+                post_cb_func=self.repo_type.search_result))
+        else:
+            self.log("nothing to search", logging_tools.LOG_LEVEL_WARN)
 
 class watcher_process(threading_tools.process_obj):
     def __init__(self, name, db_con):
@@ -1500,13 +1567,21 @@ class server_process(threading_tools.process_pool):
                 srv_com.xpath(None, ".//ns:device_command[@name='%s']" % (cur_dev))[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
             if valid_devs:
                 self._send_update(command="new_config", dev_list=valid_devs)
-            srv_com["result"].attrib.update({"reply" : "send update to %d of %d %s" % (len(valid_devs),
-                                                                                       len(all_devs),
-                                                                                       logging_tools.get_plural("device", len(all_devs))),
-                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK if len(valid_devs) == len(all_devs) else server_command.SRV_REPLY_STATE_WARN)})
+            srv_com["result"].attrib.update({
+                "reply" : "send update to %d of %d %s" % (
+                    len(valid_devs),
+                    len(all_devs),
+                    logging_tools.get_plural("device", len(all_devs))),
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK if len(valid_devs) == len(all_devs) else server_command.SRV_REPLY_STATE_WARN)})
+        elif in_com == "reload_searches":
+            self.send_to_process("repo", "reload_searches")
+            srv_com["result"].attrib.update({
+                "reply" : "ok reloading",
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
         else:
-            srv_com["result"].attrib.update({"reply" : "command %s not known" % (in_com),
-                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com["result"].attrib.update({
+                "reply" : "command %s not known" % (in_com),
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         #print srv_com.pretty_print()
         zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
         zmq_sock.send_unicode(unicode(srv_com))
@@ -1550,39 +1625,6 @@ class server_process(threading_tools.process_pool):
         send_com = server_command.srv_command(command=command)
         for target_name in send_list:
             self.send_reply(client.get(target_name).uid, send_com)
-
-class server_thread_pool(threading_tools.thread_pool):
-    def __init__(self, n_retry, log_lines, daemon, db_con, glob_config, loc_config):
-        # msi_block
-        # log thread
-        self.__log_queue = self.add_thread(logging_thread(self.__glob_config), start_thread=True).get_thread_queue()
-        for what, lev in log_lines:
-            self.log(what, lev)
-        self._check_database(db_con)
-        self.__ns = net_tools.network_server(timeout=1, log_hook=self.log, poll_verbose=False)
-        self.__bind_states = {}
-        self.__ns.add_object(net_tools.tcp_bind(self._new_command_con, port=self.__glob_config["COMMAND_PORT"], bind_retries=n_retry, bind_state_call=self._bind_state_call, timeout=60))
-        self.__ns.add_object(net_tools.tcp_bind(self._new_node_con, port=self.__glob_config["NODE_PORT"], bind_retries=n_retry, bind_state_call=self._bind_state_call, timeout=60))
-        self.__command_queue = self.add_thread(command_thread(self.__log_queue, db_con, self.__glob_config), start_thread=True).get_thread_queue()
-        self.__package_status_queue = self.add_thread(package_status_thread(self.__log_queue, db_con, self.__glob_config), start_thread=True).get_thread_queue()
-        self.__node_queue = self.add_thread(node_thread(self.__log_queue, db_con, self.__glob_config, self.__loc_config), start_thread=True).get_thread_queue()
-        self.__watcher_queue = self.add_thread(watcher_thread(self.__log_queue, db_con, self.__glob_config), start_thread=True).get_thread_queue()
-        self.__package_status_queue.put(("set_queue", ("node", self.__node_queue)))
-        self.__node_queue.put(("set_queue", ("package_status", self.__package_status_queue)))
-        self.__node_queue.put(("set_queue", ("command", self.__command_queue)))
-        self.__command_queue.put(("set_queue", ("watcher", self.__watcher_queue)))
-        self.__command_queue.put(("set_net_server", self.__ns))
-    def loop_function(self):
-        if not self["exit_requested"]:
-            self.__command_queue.put("update")
-            if self.__watcher_queue:
-                self.__watcher_queue.put("update")
-        self.__ns.step()
-        self.log(", ".join(["%s: %d of %d used" % (name, act_used, max_size) for name, (max_size, act_used) in self.get_thread_queue_info().iteritems()]))
-##    def _new_node_con(self, sock, src):
-##        return connection_from_node(sock, src, self.__node_queue)
-##    def _new_command_con(self, sock, src):
-##        return connection_for_command(sock, src, self.__command_queue)
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
