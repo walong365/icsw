@@ -10,6 +10,7 @@ from lxml import etree
 from lxml.builder import E
 from django.utils.functional import memoize
 import re
+import time
 import ipvx_tools
 import logging_tools
 import pprint
@@ -21,6 +22,10 @@ def only_wf_perms(in_list):
     return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
 
 cluster_timezone = pytz.timezone(settings.TIME_ZONE)
+system_timezone = pytz.timezone(time.tzname[0])
+
+def to_system_tz(in_dt):
+    return in_dt.astimezone(system_timezone)
 
 # cluster_log_source
 cluster_log_source = None
@@ -934,6 +939,111 @@ class package_repo(models.Model):
             url=self.url)
     def __unicode__(self):
         return self.name
+    class Meta:
+        ordering = ("name", )
+        
+class package_search(models.Model):
+    idx = models.AutoField(primary_key=True)
+    search_string = models.CharField(max_length=128, default="")
+    # search string for latest search result
+    last_search_string = models.CharField(max_length=128, default="")
+    user = models.ForeignKey("user")
+    num_searches = models.IntegerField(default=0)
+    # state diagramm ini (new) -> run -> done -> wait (search again pressed) -> run -> done -> ...
+    current_state = models.CharField(max_length=6, choices=(
+        ("ini" , "initialised"),
+        ("wait", "waiting"),
+        ("run" , "search running"),
+        ("done", "search done")), default="ini")
+    deleted = models.BooleanField()
+    # number of results for the last search
+    results = models.IntegerField(default=0)
+    last_search = models.DateTimeField(null=True)
+    created = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.package_search(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="ps__%d" % (self.pk),
+            search_string=self.search_string,
+            current_state=self.current_state,
+            num_searches="%d" % (self.num_searches),
+            last_search_string="%s" % (self.last_search_string),
+            last_search=unicode(to_system_tz(self.last_search)) if self.last_search else "never",
+            results="%d" % (self.results))
+    def __unicode__(self):
+        return self.search_string
+
+@receiver(signals.pre_save, sender=package_search)
+def package_search_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "search_string")
+        if not cur_inst.deleted:
+            num_ss = package_search.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(search_string=cur_inst.search_string) & Q(deleted=False)).count()
+            if num_ss:
+                raise ValidationError("search_string already used")
+
+class package_search_result(models.Model):
+    idx = models.AutoField(primary_key=True)
+    package_search = models.ForeignKey(package_search)
+    name = models.CharField(max_length=128, default="")
+    kind = models.CharField(max_length=16, default="package", choices=(
+        ("package", "Package"),
+        ("patch"  , "Patch"),
+    ))
+    arch = models.CharField(max_length=32, default="")
+    # version w. release
+    version = models.CharField(max_length=128, default="")
+    package_repo = models.ForeignKey(package_repo, null=True)
+    created = models.DateTimeField(auto_now_add=True)
+    def create_package(self):
+        new_p = package(
+            name=self.name,
+            version=self.version,
+            kind=self.kind,
+            arch=self.arch,
+            package_repo=self.package_repo)
+        new_p.save()
+        return new_p
+    def get_xml(self):
+        return E.package_search_result(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="psr__%d" % (self.pk),
+            name=self.name,
+            kind=self.kind,
+            arch=self.arch,
+            version=self.version,
+            package_repo="%d" % (self.package_repo_id or 0)
+        )
+    class Meta:
+        ordering = ("name", "arch", "version",)
+        
+class package(models.Model):
+    idx = models.AutoField(db_column="package_idx", primary_key=True)
+    name = models.CharField(max_length=128)
+    version = models.CharField(max_length=128)
+    kind = models.CharField(max_length=16, default="package", choices=(
+        ("package", "Package"),
+        ("patch"  , "Patch"),
+    ))
+    arch = models.CharField(max_length=32, default="")
+    # hard to determine ...
+    size = models.IntegerField(default=0)
+    package_repo = models.ForeignKey(package_repo, null=True)
+##    pgroup = models.TextField()
+##    summary = models.TextField()
+##    distribution = models.ForeignKey("distribution")
+##    vendor = models.ForeignKey("vendor")
+##    buildtime = models.IntegerField(null=True, blank=True)
+##    buildhost = models.CharField(max_length=765, blank=True)
+##    packager = models.CharField(max_length=765, blank=True)
+##    date = models.DateTimeField(auto_now_add=True)
+    created = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        db_table = u'package'
+        unique_together = (("name", "version", "arch", "kind",),)
 
 class inst_package(models.Model):
     idx = models.AutoField(db_column="inst_package_idx", primary_key=True)
@@ -942,7 +1052,7 @@ class inst_package(models.Model):
     native = models.BooleanField()
     last_build = models.IntegerField(null=True, blank=True)
     present_on_disk = models.BooleanField()
-    package_set = models.ForeignKey("package_set", null=True)
+    #package_set = models.ForeignKey("package_set", null=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'inst_package'
@@ -1884,30 +1994,12 @@ def mon_service_templ_pre_save(sender, **kwargs):
             ("ninterval", 0, 60)]:
             cur_val = _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
-class package(models.Model):
-    idx = models.AutoField(db_column="package_idx", primary_key=True)
-    name = models.CharField(max_length=255)
-    version = models.CharField(max_length=255)
-    release = models.CharField(max_length=255)
-    architecture = models.ForeignKey("architecture")
-    size = models.IntegerField(null=True, blank=True)
-    pgroup = models.TextField()
-    summary = models.TextField()
-    distribution = models.ForeignKey("distribution")
-    vendor = models.ForeignKey("vendor")
-    buildtime = models.IntegerField(null=True, blank=True)
-    buildhost = models.CharField(max_length=765, blank=True)
-    packager = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'package'
-
-class package_set(models.Model):
-    idx = models.AutoField(db_column="package_set_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=255)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'package_set'
+##class package_set(models.Model):
+##    idx = models.AutoField(db_column="package_set_idx", primary_key=True)
+##    name = models.CharField(unique=True, max_length=255)
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'package_set'
 
 class partition(models.Model):
     idx = models.AutoField(db_column="partition_idx", primary_key=True)
@@ -2813,12 +2905,12 @@ class user_cap(models.Model):
     class Meta:
         db_table = u'usercap'
 
-class vendor(models.Model):
-    idx = models.AutoField(db_column="vendor_idx", primary_key=True)
-    vendor = models.TextField()
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'vendor'
+##class vendor(models.Model):
+##    idx = models.AutoField(db_column="vendor_idx", primary_key=True)
+##    vendor = models.TextField()
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'vendor'
 
 class tree_node(models.Model):
     idx = models.AutoField(primary_key=True)
