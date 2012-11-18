@@ -53,7 +53,12 @@ function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array,
     };
     this.table_div = undefined;
     this.element_info = {};
-    function draw_table() {
+    this.clean = function() {
+        this.drawn = false;
+        this.table_div = undefined;
+    };
+    function draw_table(master_xml) {
+        this.master_xml = master_xml || MASTER_XML;
         if (this.table_div) {
             var table_div = this.table_div;
         } else {
@@ -73,7 +78,7 @@ function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array,
                 } else {
                     var search_str = cur_req + "s " + cur_req;
                 };
-                if (! MASTER_XML.find(search_str).length) {
+                if (! cur_ds.master_xml.find(search_str).length) {
                     missing_objects.push(ref_obj ? ref_obj.name : cur_req);
                     draw = false;
                 };
@@ -99,8 +104,9 @@ function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array,
                     });
                 });
             } else {
-                p_table.append(draw_line(cur_ds));
-                MASTER_XML.find(this.xml_name_plural + " " + this.xml_name).each(function() {
+                p_table.append(draw_head_line(cur_ds));
+                if (cur_ds.create_url) p_table.append(draw_line(cur_ds));
+                cur_ds.master_xml.find(this.xml_name_plural + " " + this.xml_name).each(function() {
                     p_table.append(draw_line(cur_ds, $(this)));
                 });
                 info_h3.text(cur_ds.name + " (").append(
@@ -127,7 +133,8 @@ function draw_info(name, kwargs) {
     this.name = name;
     this.label = kwargs && (kwargs.label || name.toTitle()) || name.toTitle();
     this.span = kwargs && (kwargs.span || 1) || 1;
-    var attr_list = ["size", "default", "select_source", "boolean", "min", "max",
+    var attr_list = ["size", "default", "select_source", "boolean", "min", "max", "ro",
+        "button", "change_cb", "trigger", "draw_result_cb",
         "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group",
         "css", "select_source_attribute", "password", "keep_td"];
     for (idx=0 ; idx < attr_list.length; idx ++) {
@@ -140,7 +147,8 @@ function draw_info(name, kwargs) {
     };
     this.size = kwargs && kwargs.size || undefined;
     function get_kwargs() {
-        var attr_list = ["size", "select_source", "boolean", "min", "max",
+        var attr_list = ["size", "select_source", "boolean", "min", "max", "ro", "button", "change_cb",
+            "draw_result_cb", "trigger",
             "number", "manytomany", "add_null_entry", "css", "select_source_attribute", "password"];
         var kwargs = {new_default : this.default};
         for (idx=0 ; idx < attr_list.length; idx ++) {
@@ -154,7 +162,7 @@ function draw_info(name, kwargs) {
             kwargs.modify_data_dict = this["modify_data_dict"];
             kwargs.modify_data_dict_opts = this;
         };
-        
+        kwargs.draw_info = this;
         return kwargs;
     };
     function modify_data_dict(in_dict, cur_di) {
@@ -185,29 +193,34 @@ function draw_result(name, group, element) {
     this.element = element;
 };
 
+function draw_head_line(cur_ds) {
+    var dummy_div = $("<div>");
+    var head_line = $("<tr>").attr({
+        "class" : "ui-widget-header ui-widget"
+    });
+    var cur_array = cur_ds.draw_array;
+    var cur_span = 1;
+    for (var idx=0; idx < cur_array.length ; idx++) {
+        var cur_di = cur_array[idx];
+        if (cur_di.newline) break;
+        cur_span--;
+        if (! cur_span) {
+            var new_td = $("<th>").attr({"colspan" : cur_di.span}).text(cur_di.label);
+            cur_span += cur_di.span;
+        };
+        head_line.append(new_td);
+    };
+    if (cur_ds.create_url) head_line.append($("<th>").text("action"));
+    dummy_div.append(head_line);
+    return dummy_div.children();
+};
+
 function draw_line(cur_ds, xml_el) {
     // cur_ds .... draw_setup
     // xml_el .... xml or undefined
     var dummy_div = $("<div>");
     if (xml_el === undefined) {
         var xml_pk = "new";
-        var head_line = $("<tr>").attr({
-            "class" : "ui-widget-header ui-widget"
-        });
-        var cur_array = cur_ds.draw_array;
-        var cur_span = 1;
-        for (var idx=0; idx < cur_array.length ; idx++) {
-            var cur_di = cur_array[idx];
-            if (cur_di.newline) break;
-            cur_span--;
-            if (! cur_span) {
-                var new_td = $("<th>").attr({"colspan" : cur_di.span}).text(cur_di.label);
-                cur_span += cur_di.span;
-            };
-            head_line.append(new_td);
-        };
-        head_line.append($("<th>").text("action"));
-        dummy_div.append(head_line);
     } else {
         var xml_pk = xml_el.attr("pk");
     };
@@ -236,18 +249,31 @@ function draw_line(cur_ds, xml_el) {
             };
             cur_line.append(new_td);
         };
-        var new_els = create_input_el(xml_el, cur_di.name, line_prefix, cur_di.get_kwargs());
-        el_list.push(new draw_result(cur_di.name, cur_di.group, new_els.last()));
+        var kwargs = cur_di.get_kwargs();
+        if (! cur_ds.create_url) {
+            kwargs.ro = true;
+        };
+        // triggers only work for defined instances
+        if ((cur_di.trigger && xml_el !== undefined) || ! cur_di.trigger) {
+            // removed, not needed ?
+            // kwargs.cur_ds = cur_ds;
+            var new_els = create_input_el(xml_el, cur_di.name, line_prefix, kwargs);
+            el_list.push(new draw_result(cur_di.name, cur_di.group, new_els.last()));
+        } else {
+            var new_els = [];
+        };
         new_td.append(new_els);
     };
     cur_ds.element_info[xml_pk] = el_list;
-    n_line.append(
-        $("<td>").append($("<input>").attr({
-            "type"  : "button",
-            "value" : xml_pk == "new" ? "create" : "delete",
-            "id"    : line_prefix
-        }).bind("click", function(event) { create_delete_element(event, cur_ds); })
-    ));
+    if (cur_ds.create_url) {
+        n_line.append(
+            $("<td>").append($("<input>").attr({
+                "type"  : "button",
+                "value" : xml_pk == "new" ? "create" : "delete",
+                "id"    : line_prefix
+            }).bind("click", function(event) { create_delete_element(event, cur_ds); })
+        ));
+    };
     return dummy_div.children();
 };
 
@@ -263,7 +289,7 @@ function update_table_info(cur_ds, info_h3) {
     } else {
         var info_span = $("span#info__" + cur_ds.postfix);
     };
-    info_span.text(MASTER_XML.find(cur_ds.xml_name_plural + " " + cur_ds.xml_name).length);
+    info_span.text(cur_ds.master_xml.find(cur_ds.xml_name_plural + " " + cur_ds.xml_name).length);
 };
 
 function append_new_line(cur_el, new_xml, cur_ds) {
@@ -291,7 +317,7 @@ function create_delete_element(event, cur_ds) {
             success : function(xml) {
                 if (parse_xml_response(xml)) {
                     var new_period = $(xml).find(cur_ds.xml_name);
-                    MASTER_XML.find(cur_ds.xml_name_plural).append(new_period);
+                    cur_ds.master_xml.find(cur_ds.xml_name_plural).append(new_period);
                     append_new_line(cur_el, new_period, cur_ds);
                     cur_el.parents("tr:first").find("td input[id$='__name']").attr("value", "");
                     update_table_info(cur_ds);
@@ -307,7 +333,7 @@ function create_delete_element(event, cur_ds) {
                 data : create_dict($("table#" + cur_ds.postfix), el_id),
                 success : function(xml) {
                     if (parse_xml_response(xml)) {
-                        MASTER_XML.find(cur_ds.xml_name + "[pk='" + el_id.split("__")[1] + "']").remove();
+                        cur_ds.master_xml.find(cur_ds.xml_name + "[pk='" + el_id.split("__")[1] + "']").remove();
                         delete_line(cur_el);
                         update_table_info(cur_ds);
                         redraw_tables();
@@ -445,6 +471,7 @@ function replace_xml_element(xml) {
     // replace element in MASTER_XML
     xml.find("value[name='object'] > *").each(function() {
         var new_el = $(this);
+        // FIXME; still referencing MASTER_XML
         MASTER_XML.find("[key='" + new_el.attr("key") + "']").replaceWith(new_el);
     });
 };
@@ -559,7 +586,14 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
         dummy_div.append($("<label>").attr({"for" : attr_name}).text(kwargs["label"]));
     };
     if (kwargs["select_source"] === undefined) {
-        if (kwargs.boolean) {
+        if (kwargs.button) {
+            // manual callback
+            var new_el = $("<input>").attr({
+                "type"  : "button",
+                "id"    : id_prefix + "__" + attr_name
+            });
+            new_el.val(attr_name);
+        } else if (kwargs.boolean) {
             // checkbox input style
             var new_el = $("<input>").attr({
                 "type"  : "checkbox",
@@ -573,11 +607,18 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
             }).text(xml_el === undefined ? (kwargs.new_default || "") : xml_el.attr(attr_name));
         } else {
             // text input style
-            var new_el = $("<input>").attr({
-                "type"  : kwargs.password ? "password" : (kwargs.number ? "number" : "text"),
-                "id"    : id_prefix + "__" + attr_name,
-                "value" : xml_el === undefined ? (kwargs.new_default || (kwargs.number ? "0" : "")) : xml_el.attr(attr_name)
-            });
+            if (kwargs.ro) {
+                // experimental, FIXME, too many if-levels
+                var new_el = $("<span>").attr({
+                    "id"    : id_prefix + "__" + attr_name
+                }).text(xml_el === undefined ? (kwargs.new_default || (kwargs.number ? "0" : "")) : xml_el.attr(attr_name));
+            } else {
+                var new_el = $("<input>").attr({
+                    "type"  : kwargs.password ? "password" : (kwargs.number ? "number" : "text"),
+                    "id"    : id_prefix + "__" + attr_name,
+                    "value" : xml_el === undefined ? (kwargs.new_default || (kwargs.number ? "0" : "")) : xml_el.attr(attr_name)
+                });
+            };
         };
         // copy attributes
         var attr_list = ["size", "min", "max"];
@@ -590,7 +631,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
     } else {
         // select input
         if (typeof(kwargs.select_source) == "string") {
-            var sel_source = MASTER_XML.find(kwargs.select_source);
+            var sel_source = (kwargs.draw_info && (kwargs.draw_info.draw_setup.master_xml || MASTER_XML) || MASTER_XML).find(kwargs.select_source);
         } else {
             var sel_source = kwargs.select_source;
         };
@@ -644,6 +685,11 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
     };
     if (xml_el !== undefined && (kwargs.bind === undefined || kwargs.bind)) {
         if (kwargs.change_cb) {
+            if (kwargs.button) {
+                new_el.bind("click", kwargs.change_cb);
+            } else {
+                new_el.bind("change", kwargs.change_cb);
+            };
             new_el.bind("change", kwargs.change_cb);
         } else {
             new_el.bind("change", function(event) {
@@ -653,7 +699,12 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
     } else if (kwargs.change_cb) {
         new_el.bind("change", kwargs.change_cb);
     };
-    return (dummy_div.append(new_el)).children();
+    if (kwargs && kwargs.ro && new_el.get(0).tagName != "SPAN" && ! kwargs.trigger) {
+        new_el.attr("disabled", "disabled");
+    };
+    dummy_div.append(new_el);
+    if (kwargs && kwargs.draw_result_cb) dummy_div = kwargs.draw_result_cb(xml_el, dummy_div);
+    return dummy_div.children();
 };
 
 </script>

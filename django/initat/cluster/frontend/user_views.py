@@ -1,4 +1,4 @@
-# setup views
+# user views
 
 import os
 from django.http import HttpResponse

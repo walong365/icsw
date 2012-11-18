@@ -37,6 +37,13 @@
         </ul>
     </li>
     <li>
+        <a>{% trans "Package Install" %}</a>
+        <ul>
+            <li><a href="{% url pack:repo_overview %}">{% trans "Repository Overview" %}</a></li>
+            <li><a href="{% url pack:search_package %}">{% trans "Package search" %}</a></li>
+        </ul>
+    </li>
+    <li>
         <a>{% trans "Users" %}</a>
         <ul>
             <li><a href="{% url user:overview 'table' %}">{% trans "Overview / Table" %}</a></li>

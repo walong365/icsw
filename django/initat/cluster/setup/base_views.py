@@ -10,7 +10,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
      tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
      mon_contactgroup, get_related_models, network_device_type, network_type, device_class, \
-     device_location, network, mon_device_templ, user, group
+     device_location, network, mon_device_templ, user, group, package_search
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -80,6 +80,7 @@ def change_xml_entry(request):
                    "dl"      : device_location,
                    "nw"      : network,
                    "user"    : user,
+                   "ps"      : package_search,
                    "group"   : group
                    }.get(object_type, None)
         if not mod_obj:

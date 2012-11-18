@@ -120,6 +120,17 @@ user_patterns = patterns(
     url("overview/(?P<mode>.*)$"      , "user_views.overview", name="overview")
 )
 
+pack_patterns = patterns(
+    "initat.cluster.frontend",
+    url("overview/repo$"      , "pack_views.repo_overview"    , name="repo_overview"    ),
+    url("search/repo$"        , "pack_views.search_package"   , name="search_package"   ),
+    url("search/create"       , "pack_views.create_search"    , name="create_search"    ),
+    url("search/delete"       , "pack_views.delete_search"    , name="delete_search"    ),
+    url("search/retry"        , "pack_views.retry_search"     , name="retry_search"     ),
+    url("search/search_result", "pack_views.get_search_result", name="get_search_result"),
+    url("search/use_package"  , "pack_views.use_package"      , name="use_package"      ),
+)
+
 main_patterns = patterns(
     "initat.cluster.frontend",
     url(r"index$" , "main_views.index", name="index"),
@@ -139,7 +150,8 @@ my_url_patterns = patterns(
     url(r"^nagios/"   , include(monitoring_patterns, namespace="mon"     )),
     url(r"^boot/"     , include(boot_patterns      , namespace="boot"    )),
     url(r"^setup/"    , include(setup_patterns     , namespace="setup"   )),
-    url(r"^user/"     , include(user_patterns      , namespace="user"   )),
+    url(r"^user/"     , include(user_patterns      , namespace="user"    )),
+    url(r"^pack/"     , include(pack_patterns      , namespace="pack"    )),
 )
 
 url_patterns = patterns(
