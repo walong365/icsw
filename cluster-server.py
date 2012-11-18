@@ -20,7 +20,6 @@
 """ cluster-server """
 
 import os
-import os.path
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -1537,7 +1536,7 @@ def main():
         sys.exit(5)
     ret_state = 256
     if sql_info.device:
-        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False))])
+        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
     else:
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(0, database=False))])
     if not global_config["SERVER_IDX"] and not global_config["FORCE"]:
