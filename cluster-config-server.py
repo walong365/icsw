@@ -3185,7 +3185,6 @@ class config_control(object):
             "modify_bootloader"       : self._handle_modify_bootloader,
         }
     def refresh(self):
-        print "refresh", unicode(self.device)
         self.device = device.objects.get(Q(pk=self.device.pk))
     def create_logger(self):
         if self.__log_template is None:
