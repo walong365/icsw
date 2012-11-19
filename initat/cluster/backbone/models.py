@@ -385,7 +385,8 @@ class device(models.Model):
     root_passwd = models.CharField(max_length=192, blank=True)
     # remove, no longer needed
     #device_mode = models.BooleanField()
-    relay_device = models.ForeignKey("device", null=True)
+    # link to monitor_server (or null for master)
+    monitor_server = models.ForeignKey("device", null=True)
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks")
     show_in_bootcontrol = models.BooleanField()
     # not so clever here, better in extra table, FIXME
@@ -401,7 +402,7 @@ class device(models.Model):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
         return devicelog.new_log(self, log_src, log_stat, text, **kwargs)
-    def get_xml(self, full=True,**kwargs):
+    def get_xml(self, full=True, **kwargs):
         r_xml = E.device(
             unicode(self),
             E.devicelogs(),
@@ -420,6 +421,7 @@ class device(models.Model):
             act_image="%d" % (self.act_image_id or 0),
             stage1_flavour=unicode(self.stage1_flavour),
             kernel_append=unicode(self.kernel_append),
+            monitor_server="%d" % (self.monitor_server_id or 0),
             # target state
             new_state="%d" % (self.new_state_id or 0),
             full_new_state="%d__%d" % (self.new_state_id or 0,
