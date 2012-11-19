@@ -1065,7 +1065,6 @@ class server_process(threading_tools.process_pool):
                 global_config["COMMAND"])
         self.__pid_name = global_config["PID_NAME"]
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        self.add_process(twisted_webserver("twisted", icmp=False), twisted=True, start=True)
         self.__msi_block = self._init_msi_block()
         self._re_insert_config()
         self.register_exception("int_error", self._int_error)
@@ -1079,6 +1078,7 @@ class server_process(threading_tools.process_pool):
         if self.__run_command:
             self.register_timer(self._run_command, 3600, instant=True)
         else:
+            self.add_process(twisted_webserver("twisted", icmp=False), twisted=True, start=True)
             self._init_network_sockets()
             self.register_timer(self._update, 30, instant=True)
 ##        self.__ns = None
