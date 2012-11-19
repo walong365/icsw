@@ -165,7 +165,8 @@ generate_devicefiles () {
     done
     # ptmx
     [ ! -c /dev/ptmx ] && mknod -m 0666 /dev/ptmx c 5 2
-    [ ! -c /dev/urandom ] && mknod -m 0644 /dev/urandom c 1 9
+    [ ! -c /dev/random ] && mknod -m 0666 /dev/random c 1 8
+    [ ! -c /dev/urandom ] && mknod -m 0666 /dev/urandom c 1 9
     # IDE hds
     for dsk in hda:3:0 hdb:3:64 hdc:22:0 hdd:22:64 hde:33:0 hdf:33:64 hdg:34:0 hdh:34:64 ; do
         bname=/dev/`echo $dsk | cut -d ":" -f 1`
@@ -269,9 +270,9 @@ generate_devicefiles
     done
 }
 
-echo "my UUID is '$uuid'"
+echo "system UUID is '$uuid'"
 
-echo urn:uuid:$uuid > /etc/sysconfig/cluster/.cluster_device_uuid
+echo urn:uuid:${uuid} > /etc/sysconfig/cluster/.cluster_device_uuid
 
 if [ ${ip:-0} = "0" ] ; then
     boottype="NET"

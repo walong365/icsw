@@ -76,7 +76,7 @@ stage2_dir_dict = {0 : ["sys",
                         "var/empty"],
                    1 : ["root", "tmp", "dev", "etc/pam.d", "proc",
                         "var/run", "var/log", "dev/pts", "sbin", "usr/lib", "usr/share"]}
-stage2_file_dict = {0 : ["inetd", "xinetd", "mkfs.xfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
+stage2_file_dict = {0 : ["inetd", "xinetd", "mkfs.xfs", "mkfs.btrfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
                          "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "xz"],
                     1 : ["ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
                          "df", "tar", "gzip", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "basename",
@@ -86,7 +86,7 @@ stage2_file_dict = {0 : ["inetd", "xinetd", "mkfs.xfs", "rmmod.old", "lsmod.old"
                          "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
                          "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
                          ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
-                         "seq", "tcpd", "hoststatus", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
+                         "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
                          "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty", "reset", "id", "lspci"]}
 
 stageloc_dir_dict = {0 : ["sys",
@@ -103,7 +103,7 @@ stageloc_file_dict = {0 : ["inetd", "xinetd", "mkfs.xfs", "rmmod.old", "lsmod.ol
                            "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
                            "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
                            ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
-                           "seq", "tcpd", "hoststatus", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
+                           "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
                            "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty", "reset", "id", "lspci"]}
 
 def make_debian_fixes(in_dict):

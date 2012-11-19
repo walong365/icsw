@@ -675,7 +675,8 @@ function get_conf_str() {
 
 function generate_devicefiles() {
     mknod /dev/tty c 5 0
-    mknod -m 0644 /dev/urandom c 1 9
+    mknod -m 0666 /dev/urandom c 1 9
+    mknod -m 0666 /dev/random c 1 8
     for dsk in hda:3:0 hdb:3:64 hdc:22:0 hdd:22:64 hde:33:0 hdf:33:64 hdg:34:0 hdh:34:64 ; do
         bname=/dev/`echo $dsk | cut -d ":" -f 1`
         major=`echo $dsk | cut -d ":" -f 2`
@@ -782,7 +783,7 @@ echo -e "127.0.0.1 localhost\n" > /etc/hosts
 
 echo -e "${GREEN}setting status and starting hoststatus${OFF}"
 reset_hoststat ${BM_MESG}
-hoststatus &
+hoststatus_zmq &
 
 hostname bootsystem
 
@@ -837,7 +838,10 @@ done
 
 depmod -ae || depmod -ave
 
+# network drivers from e1000 are stored in /.initrd_mods
 intrd_mods=`cat /.initrd_mods`
+# special handling of (lib)crc32c dependency problem
+echo ${mods:-0} | grep crc32 > /dev/null && modprobe crc32c
 for i in ${mods} ; do
     test -n "$i" && {
         newmod=`echo $i | cut -d "." -f 1` ; 
@@ -1044,6 +1048,16 @@ elif [ "$do_mount" = "1" ] ; then
                 dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
                 mkfs.ext4 -j -O sparse_super -q $p >>/conf/.output/format_ext4 2>&1 || { set_hoststat "error $FORM_MESG ext4 partition '$p'" ; }
                 tune2fs -T now $p
+            done
+        fi
+        
+        if [ -f /conf/pinfo/btrfsparts ]; then
+            btrfsp=`cat /conf/pinfo/btrfsparts | tr "\n" " "`
+            echo -e "$FORM_MESG btrfs partitions $ext4p"
+            for p in $btrfsp ; do
+                set_hoststat ${FORM_MESG} btrfs $p
+                dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
+                mkfs.btrfs $p >>/conf/.output/format_btrfs 2>&1 || { set_hoststat "error $FORM_MESG btrfs partition '$p'" ; }
             done
         fi
         
@@ -1269,7 +1283,7 @@ set_hoststat ${S2_DONE}
 echo "Umounting new system from /$basedir"
 umount /$basedir || err_exit "Cannot umount new system /$basedir"
 
-killall hoststatus
+killall hoststatus_zmq
 umount /conf
 [ "$SYSLOG_BIN" != "0" ] && killall $SYSLOG_BIN
 killall klogd

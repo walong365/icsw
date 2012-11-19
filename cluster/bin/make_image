@@ -1,6 +1,12 @@
 #!/bin/sh
 #set -ex
 
+echo ""
+echo "************************************"
+echo "deprecated, please use make_image.py"
+echo "************************************"
+echo ""
+
 CONFIGFILE='/etc/sysconfig/cluster/mysql.cf'
 [ ! -f $CONFIGFILE ] && { echo "No configfile, exiting" ; exit 1 ; }
 starttime=$(date +%s)

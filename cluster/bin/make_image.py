@@ -1,8 +1,10 @@
-#!/usr/bin/python-init -Ot
+#!/usr/bin/python-init -OtU
 #
-# Copyright (C) 2001,2002,2003,2004,2005 Andreas Lang, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2012 Andreas Lang, init.at
 #
-# Send feedback to: <lang@init.at>
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# this file is part of cluster-backbone
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -19,7 +21,11 @@
 #
 
 import sys
-import os,os.path
+import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+import argparse
 
 def main():
     s_dir="/"
