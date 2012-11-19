@@ -1060,6 +1060,16 @@ elif [ "$do_mount" = "1" ] ; then
                 mkfs.btrfs $p >>/conf/.output/format_btrfs 2>&1 || { set_hoststat "error $FORM_MESG btrfs partition '$p'" ; }
             done
         fi
+
+        if [ -f /conf/pinfo/xfsparts ]; then
+            btrfsp=`cat /conf/pinfo/xfsparts | tr "\n" " "`
+            echo -e "$FORM_MESG xfs partitions $ext4p"
+            for p in $xfsp ; do
+                set_hoststat ${FORM_MESG} xfs $p
+                dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
+                mkfs.xfs $p >>/conf/.output/format_btrfs 2>&1 || { set_hoststat "error $FORM_MESG xfs partition '$p'" ; }
+            done
+        fi
         
         mkdir /images
         # get partition
