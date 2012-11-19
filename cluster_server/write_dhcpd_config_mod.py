@@ -32,10 +32,10 @@ from initat.cluster.backbone.models import net_ip, \
 
 class write_dhcpd_config(cs_base_class.server_com):
     class Meta:
-        needed_configs = ["mother"]
+        needed_configs = ["mother_server"]
         needed_option_keys = ["authoritative"]
     def _call(self):
-        my_c = config_tools.server_check(server_type="mother")
+        my_c = config_tools.server_check(server_type="mother_server")
         boot_ips = my_c.identifier_ip_lut.get("b", [])
         if len(boot_ips) > 1:
             self.srv_com["result"].attrib.update({

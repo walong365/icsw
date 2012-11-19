@@ -1075,11 +1075,11 @@ class server_process(threading_tools.process_pool):
         #self.__is_server = not self.__server_com
         self._load_modules()#self.__loc_config, self.log, self.__is_server)
         self._init_capabilities()
-        self._init_network_sockets()
         self.__options = options
         if self.__run_command:
             self.register_timer(self._run_command, 3600, instant=True)
         else:
+            self._init_network_sockets()
             self.register_timer(self._update, 30, instant=True)
 ##        self.__ns = None
 ##        if not self.__server_com:
@@ -1184,11 +1184,12 @@ class server_process(threading_tools.process_pool):
                 cluster_location.db_device_variable(cur_dev, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
                 cluster_location.db_device_variable(cur_dev, "is_virtual", description="Flag set for Virtual Machines", value=1)
     def loop_end(self):
-        if self.com_socket:
-            self.log("closing socket")
-            self.com_socket.close()
-        if self.vector_socket:
-            self.vector_socket.close()
+        if not self.__run_command:
+            if self.com_socket:
+                self.log("closing socket")
+                self.com_socket.close()
+            if self.vector_socket:
+                self.vector_socket.close()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
@@ -1527,7 +1528,8 @@ def main():
     #db_con = mysql_tools.dbcon_container()
     #try:
         #dc = db_con.get_connection("cluster_full_access")
-    #except MySQLdb.OperationalError:
+    #except MySQLdb.OperationalError:        print my_devs
+
         #sys.stderr.write(" Cannot connect to SQL-Server ")
         #sys.exit(1)
     sql_info = config_tools.server_check(server_type="server")
