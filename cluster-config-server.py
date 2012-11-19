@@ -1292,6 +1292,7 @@ class partition_setup(object):
                     {"ext3"  : "ext2",
                      "ext4"  : "ext2",
                      "btrfs" : "ext2",
+                     "xfs"   : "ext2",
                      "swap"  : "linux-swap",
                      "lvm"   : "ext2",
                      "ext"   : ""}.get(fs_name, fs_name),
