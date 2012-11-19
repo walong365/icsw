@@ -313,6 +313,8 @@ class host_connection(object):
                 raise
             else:
                 self.__open = True
+                # make a short nap to let 0MQ settle things down
+                time.sleep(0.2)
         return self.__open
     def _close(self):
         if self.__open:
@@ -395,6 +397,8 @@ class host_connection(object):
         mes_id = result["relayer_id"].text
         if mes_id in host_connection.messages:
             host_connection.relayer_process._new_client(result["host"].text, int(result["port"].text))
+            if "host_unresolv" in result:
+                host_connection.relayer_process._new_client(result["host_unresolved"].text, int(result["port"].text))
             cur_mes = host_connection.messages[mes_id]
             if cur_mes.sent:
                 cur_mes.sent = False
@@ -946,6 +950,7 @@ class relay_process(threading_tools.process_pool):
         else:
             orig_target = target
             if target.lower() in ["localhost", "127.0.0.1", "localhost.localdomain"]:
+                # map localhost to something 0MQ can handle
                 target = process_tools.get_machine_name()
             # step 1: resolve to ip
             ip_addr = socket.gethostbyname(target)
@@ -998,6 +1003,7 @@ class relay_process(threading_tools.process_pool):
                 # check target host, rewrite to ip
                 t_host = srv_com["host"].text
                 ip_addr = self._resolve_address(t_host)
+                srv_com["host_unresolved"] = t_host
                 srv_com["host"] = ip_addr
                 if self.__autosense:
                     c_state = self.__client_dict.get(t_host, None)
