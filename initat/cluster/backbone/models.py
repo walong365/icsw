@@ -462,8 +462,14 @@ class device(models.Model):
                     r_xml.attrib["network"]   = "unknown"
                 else:
                     r_xml.attrib["network"] = mother_xml.attrib["network"]
-                    recv_timeout = (now - recv_ts).seconds
-                    req_timeout  = (now - req_ts ).seconds
+                    if recv_ts is not None:
+                        recv_timeout = (now - recv_ts).seconds
+                    else:
+                        recv_timeout = 3600
+                    if req_ts is not None:
+                        req_timeout = (now - req_ts ).seconds
+                    else:
+                        req_timeout = 3600
                     if min(req_timeout, recv_timeout) > 20:
                         # too long ago, deem as outdated (not reachable by mother)
                         r_xml.attrib["net_state"] = "ping"
