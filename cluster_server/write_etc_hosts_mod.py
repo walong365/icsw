@@ -42,11 +42,12 @@ class write_etc_hosts(cs_base_class.server_com):
         server_idxs = [self.server_idx]
         # get additional idx if host is virtual server
         #is_server, serv_idx, server_type, server_str, config_idx, real_server_name = cluster_location.is_server(self.dc, self.Meta.actual_configs[0], True, False)
-        is_server, serv_idx, server_type, server_str, config_idx, real_server_name = cluster_location.is_server("server", True, False, dc=self.dc)
+        
+        is_server, serv_idx, server_type, server_str, config_idx, real_server_name = cluster_location.is_server("server", True, False)
         if is_server and serv_idx != self.server_idx:
             server_idxs.append(serv_idx)
         # recognize for which devices i am responsible
-        dev_r = cluster_location.device_recognition(dc=self.dc)
+        dev_r = cluster_location.device_recognition()
         server_idxs = list(set(server_idxs) | set(dev_r.device_dict.keys()))
         # get all peers to local machine and local netdevices
         #print "srv", server_idxs
@@ -67,7 +68,7 @@ class write_etc_hosts(cs_base_class.server_com):
 ##        self.dc.execute(sql_str)
 ##        all_hosts = [list(self.dc.fetchall())]
         # self-references
-        my_devs = net_ip.objects.filter(Q(netdevice__hopcount_s_netdevice__d_netdevice__in=my_idxs) & Q(netdevice__device__in=server_idxs)).select_related("netdevice__device", "network__network_type").order_by(
+        my_devs = net_ip.objects.filter(Q(netdevice__device__in=server_idxs)).select_related("netdevice__device", "network__network_type").order_by(
             "netdevice__hopcount_s_netdevice__value", "netdevice__device__name", "ip"
         )
 ##        sql_str = "SELECT DISTINCT d.name, i.ip, i.alias, i.alias_excl, nw.network_idx, n.netdevice_idx, n.devname, nt.identifier, nw.name AS domain_name, nw.postfix, nw.short_names, n.penalty AS value FROM " + \
