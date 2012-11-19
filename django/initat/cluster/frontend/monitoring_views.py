@@ -85,6 +85,22 @@ def device_config(request):
 
 @init_logging
 @login_required
+def get_monitor_hosts(request):
+    mon_hosts = device.objects.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"])).prefetch_related("device_config_set__config")
+    srv_list = E.devices()
+    for cur_dev in mon_hosts:
+        dev_xml = cur_dev.get_xml(full=False)
+        if "monitor_server" in [dc.config.name for dc in cur_dev.device_config_set.all()]:
+            dev_xml.attrib["monitor_type"] = "server"
+        else:
+            dev_xml.attrib["monitor_type"] = "slave"
+        dev_xml.text = "%s [%s]" % (dev_xml.attrib["name"], dev_xml.attrib["monitor_type"])
+        srv_list.append(dev_xml)
+    request.xml_response["response"] = E.response(srv_list)
+    return request.xml_response.create_response()
+
+@init_logging
+@login_required
 def create_config(request):
     srv_com = server_command.srv_command(command="rebuild_host_config")
     #srv_com["devices"] = srv_com.builder(

@@ -26,8 +26,11 @@ function create_config() {
     });
 };
 
-// monitoring XML
-MON = undefined;
+// Devices XML
+DEVICES = undefined;
+
+// monitoring server XML
+MONSRV = undefined;
 
 function use_devs(dt_div) {
     CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
@@ -39,20 +42,27 @@ function use_devs(dt_div) {
 function load_devices(sel_list) {
     //console.log(sel_list);
     $.ajax({
-        url     : "{% url device:get_group_tree %}",
+        url     : "{% url mon:get_monitor_hosts %}",
         error   : handle_ajax_error,
-        data    : {
-            "sel_list"            : sel_list,
-            "extra_t0"            : "mon_device_templ",
-            "extra_t1"            : "mon_ext_host",
-            "ignore_meta_devices" : 1
-        },
         success : function(xml) {
-            if (parse_xml_response(xml)) {
-                DEVICES = $(xml).find("value[name='response']");
-                init_xml_change(DEVICES);
-                draw_tables();
-            }
+            MONSRV = $(xml).find("value[name='response']");
+            $.ajax({
+                url     : "{% url device:get_group_tree %}",
+                error   : handle_ajax_error,
+                data    : {
+                    "sel_list"            : sel_list,
+                    "extra_t0"            : "mon_device_templ",
+                    "extra_t1"            : "mon_ext_host",
+                    "ignore_meta_devices" : 1
+                },
+                success : function(xml) {
+                    if (parse_xml_response(xml)) {
+                        DEVICES = $(xml).find("value[name='response']");
+                        init_xml_change(DEVICES);
+                        draw_tables();
+                    }
+                }
+            });
         }
     });
 };
@@ -121,6 +131,14 @@ function draw_device(d_el) {
                 css            : {width : "250px"}
             })
         )
+    ).append(
+        $("<td>").append(
+            create_input_el(d_el, "monitor_server", line_prefix, {
+                select_source  : MONSRV.find("devices device"),
+                add_null_entry : "default (==master)",
+                css            : {width : "150px"}
+            })
+        )
     );
     dummy_div.append(new_tr);
     return dummy_div.children();
@@ -135,8 +153,8 @@ function draw_tables() {
             "class"   : "ui-widget ui-widget-header"
         });
         new_tr.append($("<th>").attr({
-            "colspan" : "4"
-        }).text("device group " + cur_dg.attr("name")));
+            "colspan" : "5"
+        }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")));
         c_table.append(new_tr);
         // at first append metadevice
         cur_dg.find("devices device[selected='selected'][meta_device='1']").each(function() {
@@ -149,7 +167,7 @@ function draw_tables() {
         });
     });
     $("div#mon_tables").append(c_table);
-    c_table.find("select").msDropdown({
+    c_table.find("select[id$='mon_ext_host']").msDropdown({
         useSprite : "smallIcons"
     });
 };
