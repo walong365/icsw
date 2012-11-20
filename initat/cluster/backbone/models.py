@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
 from django.utils.functional import memoize
+import uuid
 import re
 import time
 import ipvx_tools
@@ -482,6 +483,14 @@ class device(models.Model):
     class Meta:
         db_table = u'device'
         ordering = ("name",)
+
+@receiver(signals.pre_save, sender=device)
+def device_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "name")
+        if not cur_inst.uuid:
+            cur_inst.uuid = str(uuid.uuid4())
 
 class device_class(models.Model):
     idx = models.AutoField(db_column="device_class_idx", primary_key=True)
@@ -3000,13 +3009,6 @@ class wc_files(models.Model):
 ##    date = models.DateTimeField(auto_now_add=True)
 ##    class Meta:
 ##        db_table = u'xen_vbd'
-
-# signals
-@receiver(signals.pre_save, sender=device)
-def device_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        if not kwargs["instance"].name:
-            raise ValidationError("name can not be zero")
 
 @receiver(signals.pre_delete, sender=netdevice)
 def netdevice_pre_delete(sender, **kwargs):
