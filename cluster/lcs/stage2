@@ -1053,7 +1053,7 @@ elif [ "$do_mount" = "1" ] ; then
         
         if [ -f /conf/pinfo/btrfsparts ]; then
             btrfsp=`cat /conf/pinfo/btrfsparts | tr "\n" " "`
-            echo -e "$FORM_MESG btrfs partitions $ext4p"
+            echo -e "$FORM_MESG btrfs partitions $btrfsp"
             for p in $btrfsp ; do
                 set_hoststat ${FORM_MESG} btrfs $p
                 dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
@@ -1062,12 +1062,12 @@ elif [ "$do_mount" = "1" ] ; then
         fi
 
         if [ -f /conf/pinfo/xfsparts ]; then
-            btrfsp=`cat /conf/pinfo/xfsparts | tr "\n" " "`
-            echo -e "$FORM_MESG xfs partitions $ext4p"
+            xfsp=`cat /conf/pinfo/xfsparts | tr "\n" " "`
+            echo -e "$FORM_MESG xfs partitions $xfsp"
             for p in $xfsp ; do
                 set_hoststat ${FORM_MESG} xfs $p
                 dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
-                mkfs.xfs $p >>/conf/.output/format_btrfs 2>&1 || { set_hoststat "error $FORM_MESG xfs partition '$p'" ; }
+                mkfs.xfs $p >>/conf/.output/format_xfs 2>&1 || { set_hoststat "error $FORM_MESG xfs partition '$p'" ; }
             done
         fi
         
