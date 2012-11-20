@@ -1101,6 +1101,7 @@ class relay_process(threading_tools.process_pool):
                     srv_com["host_unresolved"] = t_host
                     srv_com["host"] = ip_addr
                     if self.__autosense:
+                        # try to get the state of both addresses
                         c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
                         if c_state is None:
                             # not needed
