@@ -102,7 +102,7 @@ function copy_config() {
 function get_conf_str() {
     num_retries=1
     while true ; do 
-	ret=`tell_mother -m $bserver -p 8006 -w $1 2>&1`  && {
+	ret=`tell_mother_zmq -m $bserver -p 8005 -w $1 2>&1`  && {
 	    state=`echo $ret| cut -d " " -f 1`
 	    [ "$state" == "ok" ] && break
 	}
