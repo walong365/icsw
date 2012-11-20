@@ -62,6 +62,7 @@ class subprocess_struct(object):
         self.multi_command = type(self.command_line) == list
         self.com_num = 0
         self.popen = None
+        self.srv_process = None
         self.cb_func = cb_func
         self._init_time = time.time()
         # if not a popen call
@@ -132,10 +133,11 @@ class subprocess_struct(object):
             "reply" : "runtime (%s) exceeded" % (logging_tools.get_plural("second", self.Meta.max_runtime)),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
     def send_return(self):
-        self.srv_process._send_return(self.zmq_sock, self.src_id, self.srv_com)
-        del self.srv_com
-        del self.zmq_sock
-        del self.srv_process
+        if self.srv_process:
+            self.srv_process._send_return(self.zmq_sock, self.src_id, self.srv_com)
+            del self.srv_com
+            del self.zmq_sock
+            del self.srv_process
         if self.popen:
             del self.popen
 

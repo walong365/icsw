@@ -137,7 +137,10 @@ int main (int argc, char** argv) {
     sprintf(sendbuff, "%s;%s;%d;", identity_str, host_b, port);
     act_pos = sendbuff;
     for (i = optind; i < argc; i++) {
-        sprintf(sendbuff, "%s %s", sendbuff, argv[i]);
+        if (verbose) {
+            printf("[%2d] %s\n", i, argv[i]);
+        };
+        sprintf(sendbuff, "%s%d;%s;", sendbuff, strlen(argv[i]), argv[i]);
 //        if (act_pos != sendbuff) *act_pos++=' ';
 //        act_source = argv[i];
 //        while (*act_source) *act_pos++=*act_source++;
@@ -182,6 +185,7 @@ int main (int argc, char** argv) {
         zmq_msg_t request, reply;
         if (verbose) {
             printf("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', pid is %d\n", strlen(sendbuff), identity_str, myuts.nodename, SERVICE_NAME, getpid());
+            printf("%s\n", sendbuff);
         };
         zmq_msg_init_size (&request, strlen(sendbuff));
         memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));

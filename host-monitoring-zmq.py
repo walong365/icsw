@@ -45,6 +45,7 @@ import icmp_twisted
 import pprint
 import uuid
 import uuid_tools
+import base64
 import difflib
 from lxml import etree
 from lxml.builder import E
@@ -61,6 +62,7 @@ TIME_FORMAT = "%.3f"
 CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
 MAPPING_FILE_IDS = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
 MAPPING_FILE_TYPES = os.path.join(CONFIG_DIR, "0mq_clients")
+MASTER_FILE_NAME = os.path.join(CONFIG_DIR, "monitor_master")
 
 def client_code():
     from host_monitoring import modules
@@ -218,6 +220,9 @@ class id_discovery(object):
         # last discovery try
         id_discovery.last_try = {}
     @staticmethod
+    def set_mapping(conn_str, uuid):
+        id_discovery.mapping[conn_str] = uuid
+    @staticmethod
     def is_pending(conn_str):
         return conn_str in id_discovery.pending
     @staticmethod
@@ -328,33 +333,37 @@ class host_connection(object):
         try:
             host_mes.set_com_struct(com_struct)
         except:
-            self.return_error(host_mes,
-                              "error parsing arguments: %s" % (process_tools.get_except_info()))
+            self.return_error(
+                host_mes,
+                "error parsing arguments: %s" % (process_tools.get_except_info()))
         else:
             if not self.tcp_con:
                 try:
                     self._open()
                 except:
-                    self.return_error(host_mes,
-                                      "error connecting to %s: %s" % (self.__conn_str,
-                                                                      process_tools.get_except_info()))
+                    self.return_error(
+                        host_mes,
+                        "error connecting to %s: %s" % (self.__conn_str,
+                                                        process_tools.get_except_info()))
                 else:
                     if False and self.__backlog_counter == host_connection.backlog_size:
                         # no stupid backlog counting
-                        self.return_error(host_mes,
-                                          "connection error (backlog full [%d.%d]) for '%s'" % (
-                                              self.__backlog_counter,
-                                              host_connection.backlog_size,
-                                              self.__conn_str))
+                        self.return_error(
+                            host_mes,
+                            "connection error (backlog full [%d.%d]) for '%s'" % (
+                                self.__backlog_counter,
+                                host_connection.backlog_size,
+                                self.__conn_str))
                         #self._close()
                     else:
                         try:
-                            host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.NOBLOCK|zmq.SNDMORE)
-                            host_connection.zmq_socket.send_unicode(unicode(host_mes.srv_com), zmq.NOBLOCK)
+                            host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT|zmq.SNDMORE)
+                            host_connection.zmq_socket.send_unicode(unicode(host_mes.srv_com), zmq.DONTWAIT)
                         except:
-                            self.return_error(host_mes,
-                                              "connection error (%s)" % (process_tools.get_except_info()),
-                                              )
+                            self.return_error(
+                                host_mes,
+                                "connection error (%s)" % (process_tools.get_except_info()),
+                            )
                         else:
                             #self.__backlog_counter += 1
                             host_mes.sent = True
@@ -774,11 +783,14 @@ class relay_process(threading_tools.process_pool):
         self.install_signal_handlers()
         id_discovery.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose)
         self._init_filecache()
+        self._init_master()
         self._init_msi_block()
+        self._init_network_sockets()
         self._init_ipc_sockets()
         self.register_exception("int_error" , self._sigint)
         self.register_exception("term_error", self._sigint)
         self.register_exception("hup_error", self._hup_error)
+        self.__delayed = []
         self.register_timer(self._check_timeout, 2)
         self.register_func("twisted_result", self._twisted_result)
         self._show_config()
@@ -804,6 +816,30 @@ class relay_process(threading_tools.process_pool):
                 self.__client_dict[t_host] = None
                 num_c += 1
         self.log("cleared %s" % (logging_tools.get_plural("state", num_c)))
+    def _init_master(self):
+        if os.path.isfile(MASTER_FILE_NAME):
+            master_xml = etree.fromstring(file(MASTER_FILE_NAME, "r").read())
+            self._register_master(master_xml.attrib["ip"], master_xml.attrib["uuid"], int(master_xml.attrib["port"]), write=False)
+        else:
+            self.log("no master_file found", logging_tools.LOG_LEVEL_WARN)
+            self.master_ip = None
+            self.master_port = None
+            self.master_uuid = None
+    def _register_master(self, master_ip, master_uuid, master_port, write=True):
+        self.master_ip = master_ip
+        self.master_uuid = master_uuid
+        self.master_port = master_port
+        if write:
+            file(MASTER_FILE_NAME, "w").write(etree.tostring(
+                E.master_data(
+                    ip=self.master_ip,
+                    uuid=self.master_uuid,
+                    port="%d" % (self.master_port)
+                )
+                , pretty_print=True))
+        conn_str = "tcp://%s:%d" % (self.master_ip, self.master_port)
+        self.log("registered master at %s (%s)" % (conn_str, self.master_uuid))
+        id_discovery.set_mapping(conn_str, self.master_uuid)
     def _init_filecache(self):
         self.__client_dict = {}
         self.__last_tried = {}
@@ -883,6 +919,26 @@ class relay_process(threading_tools.process_pool):
                      logging_tools.LOG_LEVEL_ERROR)
             for key in del_list:
                 del self.__nhm_dict[key]
+        # check delayed
+        cur_time = time.time()
+        new_list = []
+        if self.__delayed:
+            self.log("%s in delayed queue" % (logging_tools.get_plural("object", len(self.__delayed))))
+            for cur_del in self.__delayed:
+                if cur_del.Meta.use_popen:
+                    if cur_del.finished():
+                        #print "finished delayed"
+                        cur_del.send_return()
+                    elif abs(cur_time - cur_del._init_time) > cur_del.Meta.max_runtime:
+                        self.log("delay_object runtime exceeded, stopping")
+                        cur_del.terminate()
+                        cur_del.send_return()
+                    else:
+                        new_list.append(cur_del)
+                else:
+                    if not cur_del.terminated:
+                        new_list.append(cur_del)
+            self.__delayed = new_list
     def _twisted_result(self, src_proc, proc_id, src_id, srv_com, data_str):
         if src_id in self.__old_send_lut:
             self.__old_send_lut.pop(src_id)._handle_old_result(src_id, data_str)
@@ -943,6 +999,27 @@ class relay_process(threading_tools.process_pool):
         self.client_socket.setsockopt(zmq.SNDHWM, 10)
         self.client_socket.setsockopt(zmq.RCVHWM, 10)
         self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)
+    def _init_network_sockets(self):
+        client = self.zmq_context.socket(zmq.ROUTER)
+        uuid = "%s:relayer" % (uuid_tools.get_uuid().get_urn())
+        client.setsockopt(zmq.IDENTITY, uuid)
+        client.setsockopt(zmq.SNDHWM, 256)
+        client.setsockopt(zmq.RCVHWM, 256)
+        conn_str = "tcp://*:%d" % (
+            global_config["COM_PORT"])
+        try:
+            client.bind(conn_str)
+        except zmq.core.error.ZMQError:
+            self.log("error binding to *:%d: %s" % (
+                global_config["COM_PORT"],
+                process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_CRITICAL)
+            client.close()
+            self.network_socket = None
+        else:
+            self.log("bound to %s (ID %s)" % (conn_str, uuid))
+            self.register_poller(client, zmq.POLLIN, self._recv_command)
+            self.network_socket = client
     def _resolve_address(self, target):
         # to avoid loops in the 0MQ connection scheme (will result to nasty asserts)
         if target in self.__forward_lut:
@@ -974,80 +1051,98 @@ class relay_process(threading_tools.process_pool):
         return ip_addr
     def _recv_command(self, zmq_sock):
         data = zmq_sock.recv()
+        if zmq_sock.getsockopt(zmq.RCVMORE):
+            src_id = data
+            data = zmq_sock.recv()
+        else:
+            src_id = None
         xml_input = data.startswith("<")
         srv_com = None
         if xml_input:
             srv_com = server_command.srv_command(source=data)
-            src_id = srv_com["identity"].text
+            if src_id is None:
+                src_id = srv_com["identity"].text
+            else:
+                srv_com["identity"] = src_id
         else:
             if data.count(";") > 1:
                 parts = data.split(";", 3)
                 src_id = parts.pop(0)
-                com_part = parts[2].split(None, 1)
-                srv_com = server_command.srv_command(command=com_part.pop(0) if com_part else "", identity=src_id)
-                srv_com["host"] = parts[0]
-                srv_com["port"] = parts[1]
-                if com_part:
-                    arg_list = com_part[0].split()
+                # parse new format
+                if parts[2].endswith(";"):
+                    com_part = parts[2][:-1].split(";")
+                else:
+                    com_part = parts[2].split(";")
+                if all([com_part[idx].isdigit() and (len(com_part[idx + 1]) == int(com_part[idx])) for idx in xrange(0, len(com_part), 2)]):
+                    arg_list = [com_part[idx + 1] for idx in xrange(0, len(com_part), 2)]
+                    cur_com = arg_list.pop(0) if arg_list else ""
+                    srv_com = server_command.srv_command(command=cur_com, identity=src_id)
+                    srv_com["host"] = parts[0]
+                    srv_com["port"] = parts[1]
                     for arg_index, arg in enumerate(arg_list):
                         srv_com["arguments:arg%d" % (arg_index)] = arg
+                    srv_com["arg_list"] = " ".join(arg_list)
                 else:
-                    arg_list = []
-                srv_com["arg_list"] = " ".join(arg_list)
+                    self.log("error parsing %s" % (data), logging_tools.LOG_LEVEL_ERROR)
+                    srv_com = None
         if srv_com is not None:
             if self.__verbose:
-                self.log("got command '%s' for '%s' (XML: %s)" % (srv_com["command"].text,
-                                                                  srv_com["host"].text,
-                                                                  str(xml_input)))
+                self.log("got command '%s' for '%s' (XML: %s)" % (
+                    srv_com["command"].text,
+                    srv_com["host"].text,
+                    str(xml_input)))
             if "host" in srv_com and "port" in srv_com:
                 # check target host, rewrite to ip
                 t_host = srv_com["host"].text
-                ip_addr = self._resolve_address(t_host)
-                srv_com["host_unresolved"] = t_host
-                srv_com["host"] = ip_addr
-                if self.__autosense:
-                    c_state = self.__client_dict.get(t_host, None)
-                    if c_state is None:
-                        # not needed
-                        #host_connection.delete_hc(srv_com)
-                        if t_host not in self.__last_tried:
-                            self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
-                        self.__last_tried[t_host] = {"T" : "0",
-                                                     "0" : "T"}[self.__last_tried[t_host]]
-                        c_state = self.__last_tried[t_host]
-                    con_mode = c_state
-                    #con_mode = "0"
+                if t_host == "DIRECT":
+                    self._handle_direct_command(src_id, srv_com)
                 else:
-                    self.__old_clients.update()
-                    self.__new_clients.update()
-                    if t_host in self.__new_clients:
-                        con_mode = "0"
-                    elif t_host in self.__old_clients:
-                        con_mode = "T"
-                    elif self.__default_0mq:
-                        con_mode = "0"
+                    ip_addr = self._resolve_address(t_host)
+                    srv_com["host_unresolved"] = t_host
+                    srv_com["host"] = ip_addr
+                    if self.__autosense:
+                        c_state = self.__client_dict.get(t_host, None)
+                        if c_state is None:
+                            # not needed
+                            #host_connection.delete_hc(srv_com)
+                            if t_host not in self.__last_tried:
+                                self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
+                            self.__last_tried[t_host] = {"T" : "0",
+                                                         "0" : "T"}[self.__last_tried[t_host]]
+                            c_state = self.__last_tried[t_host]
+                        con_mode = c_state
+                        #con_mode = "0"
                     else:
-                        con_mode = "T"
-                # decide which code to use
-                if self.__verbose:
-                    self.log("connection to '%s:%d' via %s" % (t_host,
-                                                               int(srv_com["port"].text),
-                                                               con_mode))
-                if int(srv_com["port"].text) != 2001:
-                    # connect to non-host-monitoring service
-                    if con_mode == "0":
-                        self._send_to_nhm_service(src_id, srv_com, xml_input)
+                        self.__old_clients.update()
+                        self.__new_clients.update()
+                        if t_host in self.__new_clients:
+                            con_mode = "0"
+                        elif t_host in self.__old_clients:
+                            con_mode = "T"
+                        elif self.__default_0mq:
+                            con_mode = "0"
+                        else:
+                            con_mode = "T"
+                    # decide which code to use
+                    if self.__verbose:
+                        self.log("connection to '%s:%d' via %s" % (t_host,
+                                                                   int(srv_com["port"].text),
+                                                                   con_mode))
+                    if int(srv_com["port"].text) != 2001:
+                        # connect to non-host-monitoring service
+                        if con_mode == "0":
+                            self._send_to_nhm_service(src_id, srv_com, xml_input)
+                        else:
+                            self._send_to_old_nhm_service(src_id, srv_com, xml_input)
+                    elif con_mode == "0":
+                        self._send_to_client(src_id, srv_com, xml_input)
+                    elif con_mode == "T":
+                        self._send_to_old_client(src_id, srv_com, xml_input)
                     else:
-                        self._send_to_old_nhm_service(src_id, srv_com, xml_input)
-                elif con_mode == "0":
-                    self._send_to_client(src_id, srv_com, xml_input)
-                elif con_mode == "T":
-                    self._send_to_old_client(src_id, srv_com, xml_input)
-                else:
-                    self.log("unknown con_mode '%s', error" % (con_mode),
-                             logging_tools.LOG_LEVEL_CRITICAL)
-                if self.__verbose:
-                    self.log("send done")
+                        self.log("unknown con_mode '%s', error" % (con_mode),
+                                 logging_tools.LOG_LEVEL_CRITICAL)
+                    if self.__verbose:
+                        self.log("send done")
             else:
                 self.log("some keys missing (host and / or port)",
                          logging_tools.LOG_LEVEL_ERROR)
@@ -1062,6 +1157,52 @@ class relay_process(threading_tools.process_pool):
             cur_mem = process_tools.get_mem_info()
             self.log("memory usage is %s after %s" % (logging_tools.get_size_str(cur_mem),
                                                       logging_tools.get_plural("message", self.__num_messages)))
+    def _handle_direct_command(self, src_id, srv_com):
+        # only DIRECT command from ccollclientzmq
+        #print "*", src_id
+        cur_com = srv_com["command"].text
+        send_return = False
+        self.log("got DIRECT command %s" % (cur_com))
+        if cur_com == "file_content":
+            t_file = srv_com["file_name"].text
+            content = base64.b64decode(srv_com["content"].text)
+            try:
+                file(t_file, "w").write(content)
+                os.chown(t_file, int(srv_com["uid"].text), int(srv_com["gid"].text))
+            except:
+                self.log("error creating file %s: %s" % (
+                    t_file,
+                    process_tools.get_except_info()), 
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("created %s (%d bytes)" % (
+                    t_file,
+                    len(content)))
+        elif cur_com == "call_command":
+            cmdline = srv_com["cmdline"].text
+            self.log("got command '%s'" % (cmdline))
+            new_ss = hm_classes.subprocess_struct(
+                server_command.srv_command(command=cmdline, result="0"),
+                cmdline,
+                cb_func=self._ext_com_result)
+            new_ss.run()
+            self.__delayed.append(new_ss)
+        elif cur_com == "register_master":
+            self._register_master(srv_com["master_ip"].text,
+                                  srv_com["identity"].text,
+                                  int(srv_com["master_port"].text))
+        else:
+            # add cache ?
+            srv_com["host"] = self.master_ip
+            srv_com["port"] = "%d" % (self.master_port)
+            self._send_to_nhm_service(None, srv_com, None)
+            send_return = True
+        if send_return:
+            self._send_result(src_id, "processed direct command", server_command.SRV_REPLY_STATE_OK)
+    def _ext_com_result(self, sub_s):
+        self.log("external command gave:")
+        for line_num, line in enumerate(sub_s.read().split("\n")):
+            self.log(" %2d %s" % (line_num + 1, line))
     def _send_to_client(self, src_id, srv_com, xml_input):
         # generate new xml from srv_com
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
@@ -1084,8 +1225,9 @@ class relay_process(threading_tools.process_pool):
         else:
             id_discovery(srv_com, src_id, xml_input)
     def _send_to_nhm_service(self, src_id, srv_com, xml_input):
-        conn_str = "tcp://%s:%d" % (srv_com["host"].text,
-                                    int(srv_com["port"].text))
+        conn_str = "tcp://%s:%d" % (
+            srv_com["host"].text,
+            int(srv_com["port"].text))
         if id_discovery.has_mapping(conn_str):
             connected = conn_str in self.__nhm_connections
             # trigger id discovery
@@ -1100,8 +1242,8 @@ class relay_process(threading_tools.process_pool):
                     self.__nhm_connections.add(conn_str)
             if connected:
                 try:
-                    self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE|zmq.NOBLOCK)
-                    self.client_socket.send_unicode(unicode(srv_com), zmq.NOBLOCK)
+                    self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE|zmq.DONTWAIT)
+                    self.client_socket.send_unicode(unicode(srv_com), zmq.DONTWAIT)
                 except:
                     self._send_result(src_id, "error sending to %s: %s" % (
                         conn_str,
@@ -1191,6 +1333,8 @@ class relay_process(threading_tools.process_pool):
                 if value["type"] == "s":
                     self.log("closing stream for %s" % (key))
                     value["handle"].close()
+        if self.network_socket:
+            self.network_socket.close()
     def loop_end(self):
         self._close_ipc_sockets()
         self._close_io_sockets()
@@ -1723,6 +1867,7 @@ def main():
         ])
     elif prog_name == "collrelay":
         global_config.add_config_entries([
+            ("COM_PORT"   , configfile.int_c_var(2004, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
             ("TIMEOUT"  , configfile.int_c_var(8, help_string="timeout for calls to distance machines [%(default)d]")),
             ("AUTOSENSE", configfile.bool_c_var(False, help_string="enable autosensing of 0MQ/TCP Clients [%(default)s]")),
             ])
