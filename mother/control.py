@@ -262,6 +262,7 @@ class host(machine):
         # do not overwrite states, preserve
         #self.set_recv_state()
         #self.set_req_state()
+        # should now be handled in device_pre_save
         if not self.device.uuid:
             self.device.uuid = str(uuid.uuid4())
             self.log("setting uuid to %s" % (self.device.uuid))
