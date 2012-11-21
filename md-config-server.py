@@ -2280,7 +2280,7 @@ class server_process(threading_tools.process_pool):
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("md-config-server")
             msi_block.add_actual_pid(mult=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/md-config-server start"
             msi_block.stop_command = "/etc/init.d/md-config-server force-stop"
             msi_block.kill_pids = True
@@ -2420,10 +2420,11 @@ def main():
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
     ])
     global_config.parse_file()
-    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
-                                                                                  VERSION_STRING),
-                                               add_writeback_option=True,
-                                               positional_arguments=False)
+    options = global_config.handle_commandline(
+        description="%s, version is %s" % (prog_name,
+                                           VERSION_STRING),
+        add_writeback_option=True,
+        positional_arguments=False)
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="monitor_server")
     if not sql_info.effective_device:
