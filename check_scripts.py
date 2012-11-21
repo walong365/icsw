@@ -130,11 +130,11 @@ def check_system(opt_ns):
         server_type_map = {
             "mother"                : "mother_server",
             "cluster-server"        : "server",
-            "snmp-relay"            : "nagios_master",
+            "snmp-relay"            : "monitor_server",
             "cluster-config-server" : "config_server",
-            "host-relay"            : "nagios_master",
-            "nagios"                : "nagios_master",
-            "md-config-server"      : "nagios_master",
+            "host-relay"            : "monitor_server",
+            "nagios"                : "monitor_server",
+            "md-config-server"      : "monitor_server",
             "cransys"               : "cransys_server",
             "ansys"                 : "ansys_server"}
         # server-type to runlevel-name mapping

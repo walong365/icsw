@@ -242,38 +242,30 @@ class server_check(object):
             self.__network_info_fetched = True
     def _db_check_ip(self):
         # get local ip-addresses
-        my_ips = net_ip.objects.filter(Q(netdevice__device=self.device)).select_related("netdevice", "network", "network__network_type")
+        my_ips = set(net_ip.objects.exclude(
+            Q(network__network_type__identifier='l')
+            ).filter(
+                Q(netdevice__device=self.device)).select_related("netdevice", "network", "network__network_type").values_list("ip", flat=True))
         # check for virtual-device
         # get all real devices with the requested config, no meta-device handling possible
-        dev_list = device.objects.filter(Q(device_config__config__name=self.__server_type)).prefetch_related("netdevice_set", "netdevice_set__net_ip_set", "netdevice_set__net_ip_set__network", "netdevice_set__net_ip_set__network__network_type")
-        print len(dev_list), "FIXME db_check_ip (%s)" % (self.config.name if self.config else "config ???")
-        # to be fixed
-        return
-        my_confs = config.objects.filter(
-            Q(device_config__device__device_group__device_group=self.device_idx) &
-            Q(**{self.__match_str : self.__m_server_type})
-            ).distinct().values_list(
-                "device_config__device",
-                "pk",
-                "name",
-                "device_config__device__device_group__device_group__name",
-                # correct ? FIXME
-                "device_config__device__device_group__device_group",
-                "device_config__device__device_group__device_group__netdevice__net_ip__ip")
-        my_confs = [entry for entry in my_confs if entry[-1]]
-        all_ips_dict = {}
-        for db_rec in [entry for entry in my_confs if entry[-1] != u"127.0.0.1"]:
-            if db_rec[-1] not in self.simple_ip_list:
-                all_ips_dict[db_rec[-1]] = {"device_idx" : db_rec[0],
-                                            "device"     : db_rec[4],
-                                            "new_config" : db_rec[1],
-                                            "name"       : db_rec[3],
-                                            "confname"   : db_rec[2]}
-        for ai in all_ips_dict.keys():
-            if ai in self_ips:
-                #dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (short_host_name))
-                self.num_servers = 1
-                self._set_srv_info(self.device_idx, all_ips_dict[ai], "virtual", "virtual meta", "IP-address %s" % (ai))
+        dev_list = device.objects.filter(Q(device_config__config__name=self.__server_type))
+        if not dev_list:
+            # no device(s) found with IP and requested config
+            return
+        # find matching IP-adresses
+        for cur_dev in dev_list:
+            dev_ips = set(net_ip.objects.exclude(
+                Q(network__network_type__identifier='l')
+                ).filter(
+                    Q(netdevice__device=cur_dev)).values_list("ip", flat=True))
+            match_ips = my_ips & dev_ips
+            if match_ips:
+                self.device = cur_dev
+                # always working ?
+                self.config = config.objects.get(Q(name=self.__server_type))
+                self.effective_device = cur_dev
+                self.short_host_name = cur_dev.name
+                self._set_srv_info("virtual", "IP address '%s'" % (list(match_ips)[0]))
                 break
     def get_route_to_other_device(self, other, **kwargs):
         filter_ip = kwargs.get("filter_ip", None)
@@ -322,6 +314,7 @@ class server_check(object):
                                                  (db_rec[1], dest_ip_lut["p"])))
         return ret_list
     def report(self):
+        print self.effective_device
         if self.effective_device:
             return "short_host_name is %s (idx %d), server_origin is %s, effective_device_idx is %d, config_idx is %d, info_str is \"%s\"" % (
                 self.short_host_name,
