@@ -1648,6 +1648,52 @@ class config(models.Model):
     class Meta:
         db_table = u'new_config'
 
+@receiver(signals.pre_save, sender=config)
+def config_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "name")
+        # priority
+        _check_integer(cur_inst, "priority")
+
+@receiver(signals.post_save, sender=config)
+def config_post_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        if kwargs["created"]:
+            cur_inst = kwargs["instance"]
+            if cur_inst.name.count("export"):
+                if cur_inst.name.count("home"):
+                    # create a homedir export
+                    # add export / options config_vars
+                    config_str(
+                        name="homeexport",
+                        description="export path",
+                        config=cur_inst,
+                        value="/export_change_me").save()
+                    config_str(
+                        name="options",
+                        description="Options",
+                        config=cur_inst,
+                        value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none").save()
+                else:
+                    # create a normal export
+                    # add import / export / options config_vars
+                    config_str(
+                        name="export",
+                        description="export path",
+                        config=cur_inst,
+                        value="/export_change_me").save()
+                    config_str(
+                        name="import",
+                        description="import path (for automounter)",
+                        config=cur_inst,
+                        value="/import_change_me").save()
+                    config_str(
+                        name="options",
+                        description="Options",
+                        config=cur_inst,
+                        value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none").save()
+
 class config_type(models.Model):
     idx = models.AutoField(db_column="new_config_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
@@ -2629,8 +2675,8 @@ class user(models.Model):
     uid = models.IntegerField(unique=True)
     group = models.ForeignKey("group")
     aliases = models.TextField(blank=True, null=True)
-    export = models.ForeignKey("config", null=True, related_name="export")
-    export_scr = models.ForeignKey("config", null=True, related_name="export_scr")
+    export = models.ForeignKey("device_config", null=True, related_name="export")
+    export_scr = models.ForeignKey("device_config", null=True, related_name="export_scr")
     home = models.TextField(blank=True, null=True)
     scratch = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=765, blank=True, default="/bin/bash")
@@ -2669,6 +2715,7 @@ class user(models.Model):
             group="%d" % (self.group_id or 0),
             aliases=self.aliases or "",
             active="1" if self.active else "0",
+            export="%d" % (self.export_id or 0),
         )
         for attr_name in ["first_name", "last_name",
                           "title", "email", "pager", "tel", "comment"]:
@@ -3087,14 +3134,6 @@ def peer_information_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         _check_integer(cur_inst, "penalty", min_val=1)
 
-@receiver(signals.pre_save, sender=config)
-def config_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if not cur_inst.name:
-            raise ValidationError("name must not be zero")
-        # priority
-        _check_integer(cur_inst, "priority")
 
 def config_str_general_check(cur_inst):
     if not cur_inst.name:
