@@ -24,7 +24,7 @@
 
 import threading_tools
 import logging_tools
-from mother.config import global_config
+from mother_modules.config import global_config
 import server_command
 import pprint
 import time
@@ -48,7 +48,7 @@ from initat.cluster.backbone.models import kernel, device, hopcount, \
      cached_log_status, cached_log_source, log_source, devicelog
 from django.db.models import Q
 import process_tools
-from mother.command_tools import simple_command
+from mother_modules.command_tools import simple_command
 
 class machine(object):
     # store important device-related settings

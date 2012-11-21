@@ -25,7 +25,7 @@
 
 import threading_tools
 import logging_tools
-from mother.config import global_config
+from mother_modules.config import global_config
 import config_tools
 import commands
 import time
@@ -33,7 +33,7 @@ import subprocess
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, network
-from mother.command_tools import simple_command
+from mother_modules.command_tools import simple_command
 import re
 
 class external_command_process(threading_tools.process_obj):
