@@ -30,6 +30,8 @@ SERVER_BIN=/opt/cluster/sbin/cluster-config-server.py
 PYTHON_BIN=/usr/bin/python-init
 SERVER_PID=/var/run/cluster-config-server/cluster-config-server.pid
 SERVER_ARGS=""
+SERVER_USER="idccs"
+SERVER_GROUP="idg"
 
 test -x ${SERVER_BIN} || exit 5
 test -x ${PYTHON_BIN} || exit 5
