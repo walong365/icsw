@@ -35,13 +35,8 @@ import zmq
 import configfile
 import cluster_location
 import socket
-import stat
 import process_tools
 import logging_tools
-import pkg_resources
-pkg_resources.require("MySQL_python")
-import mysql_tools
-import MySQLdb
 import pprint
 import server_command
 import uuid_tools
@@ -54,7 +49,6 @@ import kernel_sync_tools
 from lxml import etree
 from lxml.builder import E
 # SNMP imports
-pkg_resources.require("pyasn1")
 import pyasn1.codec.ber
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 from pysnmp.carrier.asynsock import dispatch
@@ -1109,16 +1103,17 @@ class apc(machine):
                                                                                                                                                                                act_out["power_off_delay"],
                                                                                                                                                                                act_out["reboot_delay"]))
             #print sql_str
-            try:
-                dc.execute(sql_str, sql_tuple)
-            except MySQLdb.Warning, what:
-                self.log("+++ MySQL Warning excpetion has been thrown for %s (%s): %s" % (sql_str,
-                                                                                          str(sql_tuple),
-                                                                                          process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                if sql_str.startswith("INSERT"):
-                    self.outlets[i]["idx"] = dc.insert_id()
+            # commented out because of MySQLdb.Warning
+##            try:
+##                dc.execute(sql_str, sql_tuple)
+##            except MySQLdb.Warning, what:
+##                self.log("+++ MySQL Warning excpetion has been thrown for %s (%s): %s" % (sql_str,
+##                                                                                          str(sql_tuple),
+##                                                                                          process_tools.get_except_info()),
+##                         logging_tools.LOG_LEVEL_ERROR)
+##            else:
+##                if sql_str.startswith("INSERT"):
+##                    self.outlets[i]["idx"] = dc.insert_id()
         self.log("wrote APC and outlet info to database")
     # IBM Blade
     # ".1.3.6.1.4.1.2.3.51.2.22.1.6.1.1.8.(1-16)
@@ -2889,7 +2884,7 @@ class server_process(threading_tools.process_pool):
         self._enable_syslog_config()
         # check status entries
         self._check_status_entries()
-        self.__msi_block = None#self._init_msi_block()
+        self.__msi_block = self._init_msi_block()
         self._init_subsys()
         self.register_func("send_return", self._send_return)
         self.register_func("contact_hoststatus", self._contact_hoststatus)
@@ -2925,6 +2920,27 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+    def process_start(self, src_process, src_pid):
+        mult = 3
+        process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
+        if self.__msi_block:
+            self.__msi_block.add_actual_pid(src_pid, mult=mult)
+            self.__msi_block.save_block()
+    def _init_msi_block(self):
+        process_tools.save_pid(self.__pid_name, mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=6)
+        if True:
+            self.log("Initialising meta-server-info block")
+            msi_block = process_tools.meta_server_info("mother")
+            msi_block.add_actual_pid(mult=3)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=6)
+            msi_block.start_command = "/etc/init.d/mother-server start"
+            msi_block.stop_command = "/etc/init.d/mother-server force-stop"
+            msi_block.kill_pids = True
+            msi_block.save_block()
+        else:
+            msi_block = None
+        return msi_block
     def _init_subsys(self):
         self.log("init subsystems")
     def _int_error(self, err_cause):
@@ -3345,130 +3361,6 @@ class server_process(threading_tools.process_pool):
                 self.log("Found no mboot.c32 in %s" % (mb32_path), logging_tools.LOG_LEVEL_WARN)
         return nb_ok
 
-class server_thread_pool(threading_tools.thread_pool):
-    def __init__(self, db_con, g_config, loc_config):
-        self.__log_cache, self.__log_queue = ([], None)
-        self.__db_con = db_con
-        self.__glob_config, self.__loc_config = (g_config, loc_config)
-        threading_tools.thread_pool.__init__(self, "main", blocking_loop=False)
-        self.__msi_block = self._init_msi_block()
-        self.register_func("new_pid", self._new_pid)
-        self.register_func("restart_hoststatus", self._restart_hoststatus)
-        self.register_func("macaddrs_written", self._macaddrs_written)
-        self.register_exception("int_error", self._int_error)
-        self.register_exception("term_error", self._int_error)
-        #self.register_exception("hup_error", self._hup_error)
-        # enable syslog config
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        # re-insert config
-        self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=self.__loc_config["VERBOSE"] > 1)
-        self.__icmp_obj = net_tools.icmp_bind()
-        self.__ns.add_object(self.__icmp_obj)
-##        self.__syslog_udb = self.__ns.add_object(net_tools.unix_domain_bind(self._new_ud_out_recv, socket=self.__glob_config["SYSLOG_UDS_NAME"], mode=0666, bind_state_call=self._bind_state_call))[0]
-##        self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_command_con, port=g_config["COMPORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=120, in_buffer_size=65536))
-##        self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_node_con, port=g_config["NODEPORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=60))
-        # global network settings
-        self._check_global_network_stuff(dc)
-##        self.__ad_struct = all_devices(self.__log_queue, self.__glob_config, self.__loc_config, self.__db_con)
-        # to enable logging
-##        self.__log_queue.put(("set_ad_struct", self.__ad_struct))
-##        self.__ad_struct.db_sync(dc)
-        # start threads
-##        self.__sql_queue       = self.add_thread(sql_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-##        self.__dhcp_queue      = self.add_thread(dhcp_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-##        self.__com_queue       = self.add_thread(command_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-##        self.__config_queue    = self.add_thread(configure_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-##        self.__control_queue   = self.add_thread(control_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-##        # copy stuff from glob_config to loc_config for kernel_sync_thread
-        self.__glob_config.add_config_dict({"SERVER_SHORT_NAME" : configfile.str_c_var(self.__loc_config["SERVER_SHORT_NAME"]),
-                                            "SQL_ACCESS"        : configfile.str_c_var(self.__loc_config["SQL_ACCESS"]),
-                                            "SYNCER_ROLE"       : configfile.str_c_var("mother")})
-##        self.__kernel_queue    = self.add_thread(kernel_sync_tools.kernel_sync_thread(self.__glob_config, self.__db_con, log_type="queue", log_queue=self.__log_queue), start_thread=True).get_thread_queue()
-##        self.__snmp_send_queue = self.add_thread(snmp_send_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-##        self.__snmp_trap_queue = self.add_thread(snmp_trap_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-##        self.__dhcp_queue.put(("set_ad_struct", self.__ad_struct))
-##        self.__config_queue.put(("set_ad_struct", self.__ad_struct))
-##        self.__control_queue.put(("set_ad_struct", self.__ad_struct))
-##        self.__com_queue.put(("set_ad_struct", self.__ad_struct))
-##        self.__snmp_trap_queue.put(("set_ad_struct", self.__ad_struct))
-##        self.__queue_dict = {"log_queue"       : self.__log_queue,
-##                             "dhcp_queue"      : self.__dhcp_queue,
-##                             "command_queue"   : self.__com_queue,
-##                             "sql_queue"       : self.__sql_queue,
-##                             "config_queue"    : self.__config_queue,
-##                             "control_queue"   : self.__control_queue,
-##                             "kernel_queue"    : self.__kernel_queue,
-##                             "snmp_send_queue" : self.__snmp_send_queue}
-##        self.__log_queue.put(("set_queue_dict", self.__queue_dict))
-##        self.__com_queue.put(("set_queue_dict", self.__queue_dict))
-##        self.__dhcp_queue.put(("set_queue_dict", self.__queue_dict))
-##        self.__config_queue.put(("set_queue_dict", self.__queue_dict))
-##        self.__control_queue.put(("set_queue_dict", self.__queue_dict))
-##        self.__snmp_send_queue.put(("set_queue_dict", self.__queue_dict))
-##        self.__snmp_trap_queue.put(("set_queue_dict", self.__queue_dict))
-##        self.__control_queue.put(("set_net_stuff", (self.__ns, self.__icmp_obj)))
-##        self.__kernel_queue.put(("set_net_stuff", self.__ns))
-##        if self.__loc_config["DAEMON"]:
-##            # only restart hoststatus when in daemon-mode
-##            self.__log_queue.put(("delay_request", (self.get_own_queue(), "restart_hoststatus", 5)))
-##        dc.release()
-##        self.__config_queue.put(("refresh_all", (None, None)))
-        # uuid log
-        # write dhcp-address
-        self.__dhcp_queue.put(("server_com", server_command.server_command(command="alter_macadr",
-                                                                           option_dict={"SIGNAL_MAIN_THREAD" : "macaddrs_written"})))
-        # init apc-update-timestmamp
-        self.__last_apc_update = None
-    def _macaddrs_written(self):
-        self.log("all macaddresses refreshed from db, restarting dhcpd server")
-        dhcp_init_file = "/etc/init.d/dhcpd"
-        if os.path.isfile(dhcp_init_file):
-            self.log("restart dhcp-server")
-            c_stat, out_f = process_tools.submit_at_command("%s restart" % (dhcp_init_file), 0)
-            self.log("restarting %s gave %d:" % (dhcp_init_file,
-                                                 c_stat))
-            for line in out_f:
-                self.log(line)
-        else:
-            self.log("no %s found" % (dhcp_init_file),
-                     logging_tools.LOG_LEVEL_ERROR)
-    def _init_msi_block(self):
-        process_tools.save_pid(self.__loc_config["PID_NAME"])
-        if self.__loc_config["DAEMON"]:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("mother")
-            msi_block.add_actual_pid()
-            msi_block.start_command = "/etc/init.d/mother start"
-            msi_block.stop_command = "/etc/init.d/mother force-stop"
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
-        return msi_block
-    def loop_function(self):
-        self.__ns.step()
-        if self.__loc_config["VERBOSE"]:
-            tqi_dict = self.get_thread_queue_info()
-            tq_names = sorted(tqi_dict.keys())
-            self.log("tqi: %s" % (", ".join([t_used and "%s: %3d of %3d" % (t_name, t_used, t_total) or "%s: %3d" % (t_name, t_total) for (t_name, t_used, t_total) in [(t_name,
-                                                                                                                                                                         tqi_dict[t_name][1],
-                                                                                                                                                                         tqi_dict[t_name][0]) for t_name in tq_names]])))
-        act_time = time.time()
-        if not self.__last_apc_update or abs(self.__last_apc_update - act_time) > self.__glob_config["APC_REPROGRAMM_TIME"]:
-            self.__last_apc_update = act_time
-            for dev_name in [x for x in self.__ad_struct.keys() if not self.__ad_struct.is_an_ip(x)]:
-                dev = self.__ad_struct[dev_name]
-                if isinstance(dev, apc):
-                    dev.update(self.__queue_dict["command_queue"])
-                elif isinstance(dev, ibc):
-                    dev.update(self.__queue_dict["command_queue"])
-        for upd_q in [self.__log_queue, self.__control_queue]:
-            upd_q.put("update")
-    def thread_loop_post(self):
-        process_tools.delete_pid(self.__loc_config["PID_NAME"])
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
-        
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
