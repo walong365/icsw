@@ -1661,38 +1661,59 @@ def config_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         if kwargs["created"]:
             cur_inst = kwargs["instance"]
+            add_list = []
             if cur_inst.name.count("export"):
                 if cur_inst.name.count("home"):
                     # create a homedir export
                     # add export / options config_vars
-                    config_str(
-                        name="homeexport",
-                        description="export path",
-                        config=cur_inst,
-                        value="/export_change_me").save()
-                    config_str(
-                        name="options",
-                        description="Options",
-                        config=cur_inst,
-                        value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none").save()
+                    add_list = [
+                        config_str(
+                            name="homeexport",
+                            description="export path",
+                            value="/export_change_me"),
+                        config_str(
+                            name="options",
+                            description="Options",
+                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none"
+                        )
+                    ]
                 else:
                     # create a normal export
                     # add import / export / options config_vars
+                    add_list = [
+                        config_str(
+                            name="export",
+                            description="export path",
+                            value="/export_change_me"),
+                        config_str(
+                            name="import",
+                            description="import path (for automounter)",
+                            value="/import_change_me"),
+                        config_str(
+                            name="options",
+                            description="Options",
+                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none"
+                            )
+                    ]
+            elif cur_inst.name == "ldap_server":
+                add_list = [
                     config_str(
-                        name="export",
-                        description="export path",
-                        config=cur_inst,
-                        value="/export_change_me").save()
+                        name="base_dn",
+                        description="Base DN",
+                        value="dc=test,dc=ac,dc=at"),
                     config_str(
-                        name="import",
-                        description="import path (for automounter)",
-                        config=cur_inst,
-                        value="/import_change_me").save()
+                        name="admin_cn",
+                        description="Admin CN (relative to base_dn",
+                        value="admin"),
                     config_str(
-                        name="options",
-                        description="Options",
-                        config=cur_inst,
-                        value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none").save()
+                        name="root_passwd",
+                        description="LDAP Admin passwd",
+                        value="changeme"),
+                ]
+            for cur_var in add_list:
+                cur_var.config = cur_inst
+                cur_var.save()
+                
 
 class config_type(models.Model):
     idx = models.AutoField(db_column="new_config_type_idx", primary_key=True)
