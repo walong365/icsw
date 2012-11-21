@@ -17,6 +17,8 @@ import logging_tools
 import pprint
 import pytz
 import process_tools
+import hashlib
+import base64
 from django.conf import settings
 
 def only_wf_perms(in_list):
@@ -2777,7 +2779,16 @@ def user_post_save(sender, **kwargs):
         django_user.first_name = cur_inst.first_name
         django_user.last_name = cur_inst.last_name
         django_user.email = cur_inst.email
-        django_user.set_password(cur_inst.password)
+        pw_gen = "SHA1"
+        if cur_inst.password.startswith(pw_gen):
+            pass
+        else:
+            new_sh = hashlib.new(pw_gen)
+            new_sh.update(cur_inst.password)
+            cur_pw = "%s:%s" % (pw_gen, base64.b64encode(new_sh.digest()))
+            django_user.set_password(cur_inst.password)
+            cur_inst.password = cur_pw
+            cur_inst.save()
         django_user.save()
 
 @receiver(signals.post_delete, sender=user)
