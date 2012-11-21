@@ -86,7 +86,7 @@ def check_system(opt_ns):
             "sge-server",
             "cluster-server",
             "cluster-config-server",
-            "xen-server",
+            #"xen-server",
             "host-relay",
             "snmp-relay",
             "md-config-server",
@@ -122,7 +122,7 @@ def check_system(opt_ns):
             "rrd-server-writer"    : "rrd-server/rrd-server-writer.pid",
             "rrd-server-grapher"   : "rrd-server/rrd-server-grapher.pid",
             "host-relay"           : "collrelay/collrelay.pid",
-            "xen-server"           : "xen-server.pid",
+            #"xen-server"           : "xen-server.pid",
             "cluster-server"       : "cluster-server.pid",
             "ansys"                : "ansys-server/ansys-server.pid",
             "cransys"              : "cransys-server/cransys-server.pid"}
