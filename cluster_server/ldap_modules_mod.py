@@ -32,6 +32,8 @@ import crypt
 import ldap
 import ldap.modlist
 import server_command
+from django.db.models import Q
+from initat.cluster.backbone.models import user, group, device_config, device, config, config_str
 
 """ possible smb.conf:
 
@@ -64,6 +66,10 @@ class init_ldap_config(cs_base_class.server_com):
     class Meta:
         needed_configs = ["ldap_server"]
     def _add_entry(self, ld, dn, in_dict):
+        # rewrite to string
+        for key, value in in_dict.iteritems():
+            if type(value) == list:
+                in_dict[key] = [str(sub_val) for sub_val in value]
         try:
             ld.add_s(dn, ldap.modlist.addModlist(in_dict))
         except ldap.LDAPError:
@@ -95,12 +101,13 @@ class init_ldap_config(cs_base_class.server_com):
         return " / ".join(["%s: %s" % (x, err_dict[x]) for x in ["info", "desc"] if err_dict.has_key(x)])
     def _call(self):
         # fetch configs
-        self.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
-                               "device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
-        par_dict = dict([(x["name"], x["value"]) for x in self.dc.fetchall()])
+        par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="ldap_server"))])
+        #self.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
+                               #"device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
+        #par_dict = dict([(x["name"], x["value"]) for x in self.dc.fetchall()])
         errors = []
-        needed_keys = ["base_dn", "admin_cn", "root_passwd"]
-        missed_keys = [x for x in needed_keys if not par_dict.has_key(x)]
+        needed_keys = set(["base_dn", "admin_cn", "root_passwd"])
+        missed_keys = needed_keys - set(par_dict.keys())
         if len(missed_keys):
             errors.append("%s missing: %s" % (logging_tools.get_plural("config_key", len(missed_keys)),
                                               ", ".join(missed_keys)))
@@ -135,11 +142,12 @@ class init_ldap_config(cs_base_class.server_com):
                 try:
                     ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "objectclass=*")
                 except ldap.NO_SUCH_OBJECT:
-                    ok, err_str = self._add_entry(ld_write,
-                                                  par_dict["base_dn"],
-                                                  {"objectClass" : ["top", "dcObject", "organization"],
-                                                   "dc"          : [par_dict["base_dn"].split(",")[0].split("=")[1]],
-                                                   "o"           : [par_dict["base_dn"].split(",")[0].split("=")[1]]})
+                    ok, err_str = self._add_entry(
+                        ld_write,
+                        par_dict["base_dn"],
+                        {"objectClass" : ["top", "dcObject", "organization"],
+                         "dc"          : [par_dict["base_dn"].split(",")[0].split("=")[1]],
+                         "o"           : [par_dict["base_dn"].split(",")[0].split("=")[1]]})
                     if ok:
                         self.log("added root-entry at %s" % (par_dict["base_dn"]))
                     else:
@@ -231,12 +239,17 @@ class sync_ldap_config(cs_base_class.server_com):
     class Meta:
         needed_configs = ["ldap_server"]
     def _add_entry(self, ld, dn, in_dict):
+        for key, value in in_dict.iteritems():
+            if type(value) == list:
+                in_dict[key] = [str(sub_val) for sub_val in value]
+        pprint.pprint(in_dict)
         try:
             ld.add_s(dn, ldap.modlist.addModlist(in_dict))
         except ldap.LDAPError:
             success, err_str = (False, self._get_ldap_err_str(dn))
         else:
             success, err_str = (True, "")
+        print "ret:", success, err_str
         return success, err_str
     def _modify_entry(self, ld, dn, change_list):
         try:
@@ -259,12 +272,10 @@ class sync_ldap_config(cs_base_class.server_com):
         return "%s (%s)" % (dn, " / ".join(["%s: %s" % (x, err_dict[x]) for x in ["info", "desc"] if err_dict.get(x, None)]))
     def _call(self):
         # fetch configs
-        self.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
-                        "device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
-        par_dict = dict([(x["name"], x["value"]) for x in self.dc.fetchall()])
+        par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="ldap_server"))])
         errors = []
-        needed_keys = ["base_dn", "admin_cn", "root_passwd"]
-        missed_keys = [x for x in needed_keys if not par_dict.has_key(x)]
+        needed_keys = set(["base_dn", "admin_cn", "root_passwd"])
+        missed_keys = needed_keys - set(par_dict.keys())
         if len(missed_keys):
             errors.append("%s missing: %s" % (logging_tools.get_plural("config_key", len(missed_keys)),
                                               ", ".join(missed_keys)))
@@ -295,22 +306,26 @@ class sync_ldap_config(cs_base_class.server_com):
                 ldap_version = self.global_config["LDAP_SCHEMATA_VERSION"]
                 self.log("using LDAP_SCHEMATA_VERSION %d" % (ldap_version))
                 # fetch user / group info
-                self.dc.execute("SELECT g.* FROM ggroup g")
-                all_groups = dict([(x["ggroup_idx"], x) for x in self.dc.fetchall()])
-                self.dc.execute("SELECT u.* FROM user u")
-                all_users = dict([(x["user_idx"], x) for x in self.dc.fetchall() if x["ggroup"] in all_groups.keys()])
-                self.dc.execute("SELECT d.name, udl.user FROM device d, user_device_login udl WHERE udl.device=d.device_idx")
+                all_groups = dict([(cur_g.pk, cur_g) for cur_g in group.objects.all()])
+                #self.dc.execute("SELECT g.* FROM ggroup g")
+                #all_groups = dict([(x["ggroup_idx"], x) for x in self.dc.fetchall()])
+                all_users = dict([(cur_u.pk, cur_u) for cur_u in user.objects.all()])
+                #self.dc.execute("SELECT u.* FROM user u")
+                #all_users = dict([(x["user_idx"], x) for x in self.dc.fetchall() if x["ggroup"] in all_groups.keys()])
+                # not supported right now, FIXME
+                #self.dc.execute("SELECT d.name, udl.user FROM device d, user_device_login udl WHERE udl.device=d.device_idx")
                 devlog_dict = {}
-                for db_rec in self.dc.fetchall():
-                    devlog_dict.setdefault(db_rec["user"], []).append(db_rec["name"])
-                # secondary groups
-                self.dc.execute("SELECT * FROM user_ggroup")
-                for db_rec in self.dc.fetchall():
-                    if all_users.has_key(db_rec["user"]) and all_groups.has_key(db_rec["ggroup"]):
-                        all_users[db_rec["user"]].setdefault("secondary_groups", []).append(db_rec["ggroup"])
+                #for db_rec in self.dc.fetchall():
+                    #devlog_dict.setdefault(db_rec["user"], []).append(db_rec["name"])
+                # secondary groups, FIXME
+                #self.dc.execute("SELECT * FROM user_ggroup")
+                #for db_rec in self.dc.fetchall():
+                    #if all_users.has_key(db_rec["user"]) and all_groups.has_key(db_rec["ggroup"]):
+                        #all_users[db_rec["user"]].setdefault("secondary_groups", []).append(db_rec["ggroup"])
                 # luts
-                group_lut = dict([(x["ggroupname"], x["ggroup_idx"]) for x in all_groups.itervalues()])
-                user_lut = dict([(x["login"], x["user_idx"]) for x in all_users.itervalues()])
+                group_lut = dict([(cur_g.groupname, cur_g.pk) for cur_g in all_groups.itervalues()])
+                user_lut  = dict([(cur_u.login, cur_u.pk) for cur_u in all_users.itervalues()])
+                #user_lut = dict([(x["login"], x["user_idx"]) for x in all_users.itervalues()])
                 # get sub_ou
                 if par_dict.has_key("sub_ou"):
                     act_sub_ou = par_dict["sub_ou"]
@@ -328,52 +343,60 @@ class sync_ldap_config(cs_base_class.server_com):
                                                                       par_dict["sambadomain"]))
                 # build ldap structures
                 for g_idx, g_stuff in all_groups.iteritems():
-                    g_stuff["dn"] = "cn=%s,ou=Group,%s%s" % (g_stuff["ggroupname"],
-                                                             sub_ou_str,
-                                                             par_dict["base_dn"])
-                    primary_users   = [x["login"] for x in all_users.itervalues() if x["active"] and x["ggroup"] == g_idx]
-                    secondary_users = [x["login"] for x in all_users.itervalues() if x["active"] and g_idx in x.get("secondary_groups", []) and x["login"] not in primary_users]
+                    g_stuff.dn = "cn=%s,ou=Group,%s%s" % (
+                        g_stuff.groupname,
+                        sub_ou_str,
+                        par_dict["base_dn"])
+                    primary_users   = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and cur_u.group_id == g_idx]
+                    secondary_users = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and False]#g_idx in x.get("secondary_groups", []) and x["login"] not in primary_users]
                     group_classes = ["posixGroup", "top", "clusterGroup"]
-                    g_stuff["attrs"] = {"objectClass" : group_classes,
-                                        "cn"          : [g_stuff["ggroupname"]],
-                                        "gidNumber"   : [str(g_stuff["gid"])],
-                                        "memberUid"   : primary_users + secondary_users,
-                                        "description" : ["Responsible person: %s %s %s (%s)" % (g_stuff["resptitan"],
-                                                                                                g_stuff["respvname"],
-                                                                                                g_stuff["respnname"],
-                                                                                                g_stuff["respemail"])]}
+                    g_stuff.attributes = {
+                        "objectClass" : group_classes,
+                        "cn"          : [g_stuff.groupname],
+                        "gidNumber"   : [str(g_stuff.gid)],
+                        "memberUid"   : primary_users + secondary_users,
+                        "description" : ["Responsible person: %s %s %s (%s)" % (
+                            g_stuff.title,
+                            g_stuff.first_name,
+                            g_stuff.last_name,
+                            g_stuff.email)]}
                     if "sambadomain" in par_dict:
-                        g_stuff["attrs"]["objectClass"].append("sambaGroupMapping")
-                        g_stuff["attrs"]["sambaGroupType"] = "2"
-                        g_stuff["attrs"]["sambaSID"] = "%s-%d" % (samba_sid,
-                                                                  g_stuff["gid"] * 2 + 1)
+                        g_stuff.attributes["objectClass"].append("sambaGroupMapping")
+                        g_stuff.attributes["sambaGroupType"] = "2"
+                        g_stuff.attributes["sambaSID"] = "%s-%d" % (
+                            samba_sid,
+                            g_stuff["gid"] * 2 + 1)
                 for u_idx, u_stuff in all_users.iteritems():
-                    u_stuff["dn"] = "uid=%s,ou=People,%s%s" % (u_stuff["login"],
-                                                               sub_ou_str,
-                                                               par_dict["base_dn"])
-                    g_stuff = all_groups[u_stuff["ggroup"]]
+                    u_stuff.dn = "uid=%s,ou=People,%s%s" % (
+                        u_stuff.login,
+                        sub_ou_str,
+                        par_dict["base_dn"])
+                    g_stuff = all_groups[u_stuff.group_id]
                     # ldap.conf filter: pam_filter      &(objectclass=posixAccount)(|(host=\*)(host=zephises))
-                    u_stuff["attrs"] = {"objectClass"      : ["account", "posixAccount", "shadowAccount", "top", "clusterAccount"],
-                                        "cn"               : [u_stuff["login"]],
-                                        "userid"           : [u_stuff["login"]],
-                                        "gecos"            : ["%s %s %s (%s)" % (u_stuff["usertitan"],
-                                                                                 u_stuff["uservname"],
-                                                                                 u_stuff["usernname"],
-                                                                                 u_stuff["useremail"])],
-                                        "gidNumber"        : [str(g_stuff["gid"])],
-                                        "uidNumber"        : [str(u_stuff["uid"])],
-                                        "userPassword"     : ["{crypt}%s" % (u_stuff["password"])],
-                                        "homeDirectory"    : [os.path.normpath("%s/%s" % (g_stuff["homestart"], u_stuff["home"]))],
-                                        "loginShell"       : [u_stuff["shell"]],
-                                        "shadowLastChange" : ["11192"],
-                                        "shadowMin"        : ["-1"],
-                                        "shadowMax"        : ["99999"],
-                                        "shadowWarning"    : ["7"],
-                                        "shadowInactive"   : ["-1"],
-                                        "shadowExpire"     : ["-1"],
-                                        "shadowFlag"       : ["1345383808"],
-                                        "host"             : devlog_dict.get(u_stuff["user_idx"], ["*"]),
-                                        "description"      : [u_stuff["usercom"] or "no description"]}
+                    u_stuff.attributes = {
+                        "objectClass"      : ["account", "posixAccount", "shadowAccount", "top", "clusterAccount"],
+                        "cn"               : [u_stuff.login],
+                        "userid"           : [u_stuff.login],
+                        "gecos"            : [
+                            "%s %s %s (%s)" % (
+                                u_stuff.title,
+                                u_stuff.first_name,
+                                u_stuff.last_name,
+                                u_stuff.email)],
+                        "gidNumber"        : [str(g_stuff.gid)],
+                        "uidNumber"        : [str(u_stuff.uid)],
+                        "userPassword"     : ["{crypt}%s" % (u_stuff.password)],
+                        "homeDirectory"    : [os.path.normpath("%s/%s" % (g_stuff.homestart, u_stuff.home))],
+                        "loginShell"       : [u_stuff.shell],
+                        "shadowLastChange" : ["11192"],
+                        "shadowMin"        : ["-1"],
+                        "shadowMax"        : ["99999"],
+                        "shadowWarning"    : ["7"],
+                        "shadowInactive"   : ["-1"],
+                        "shadowExpire"     : ["-1"],
+                        "shadowFlag"       : ["1345383808"],
+                        "host"             : devlog_dict.get(u_stuff.pk, ["*"]),
+                        "description"      : [u_stuff.comment or "no description"]}
                     if "sambadomain" in par_dict:
                         u_stuff["attrs"]["objectClass"].append("sambaSamAccount")
                         u_stuff["attrs"]["sambaSID"] = "%s-%d" % (samba_sid,
@@ -386,15 +409,16 @@ class sync_ldap_config(cs_base_class.server_com):
                 groups_ok, groups_to_change, groups_to_remove = ([], [], [])
                 for dn, attrs in ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "(&(objectClass=posixGroup)(objectClass=clusterGroup))"):
                     dn_parts = ldap.explode_dn(dn, True)
-                    if dn.endswith(",ou=Group,%s%s" % (sub_ou_str,
-                                                       par_dict["base_dn"])):
+                    if dn.endswith(",ou=Group,%s%s" % (
+                        sub_ou_str,
+                        par_dict["base_dn"])):
                         group_name = dn_parts[0]
                         if group_name in group_lut.keys():
                             group_struct = all_groups[group_lut[group_name]]
-                            if group_struct["active"]:
-                                group_struct["orig_attrs"] = attrs
-                                group_struct["change_list"] = ldap.modlist.modifyModlist(group_struct["orig_attrs"], group_struct["attrs"])
-                                if group_struct["change_list"]:
+                            if group_struct.active:
+                                group_struct.orig_attributes = attrs
+                                group_struct.change_list = ldap.modlist.modifyModlist(group_struct.orig_attributes, group_struct.attributes)
+                                if group_struct.change_list:
                                     # changing group
                                     self.log("changing group %s (content differs)" % (group_name))
                                     groups_to_change.append(group_name)
@@ -410,55 +434,59 @@ class sync_ldap_config(cs_base_class.server_com):
                             groups_to_remove.append(group_name)
                     else:
                         self.log("ignoring posixGroup with dn %s" % (dn),
-                                        logging_tools.LOG_LEVEL_WARN)
+                                 logging_tools.LOG_LEVEL_WARN)
                 # add groups
-                groups_to_add = [x for x in group_lut.keys() if x not in groups_ok and x not in groups_to_change and x not in groups_to_remove]
+                groups_to_add = [group_name for group_name in group_lut.keys() if group_name not in groups_ok and group_name not in groups_to_change and group_name not in groups_to_remove]
                 for group_to_add in groups_to_add:
                     group_struct = all_groups[group_lut[group_to_add]]
-                    if group_struct["active"]:
-                        ok, err_str = self._add_entry(ld_write,
-                                                      group_struct["dn"],
-                                                      group_struct["attrs"])
+                    if group_struct.active:
+                        ok, err_str = self._add_entry(
+                            ld_write,
+                            group_struct.dn,
+                            group_struct.attributes)
                         if ok:
                             self.log("added group %s" % (group_to_add))
                         else:
                             errors.append(err_str)
                             self.log("cannot add group %s: %s" % (group_to_add, err_str),
-                                            logging_tools.LOG_LEVEL_ERROR)
+                                     logging_tools.LOG_LEVEL_ERROR)
                     else:
                         self.log("cannot add group %s: not active" % (group_to_add),
-                                        logging_tools.LOG_LEVEL_WARN)
+                                 logging_tools.LOG_LEVEL_WARN)
                 # modify groups
                 for group_to_change in groups_to_change:
                     group_struct = all_groups[group_lut[group_to_change]]
-                    ok, err_str = self._modify_entry(ld_write,
-                                                     group_struct["dn"],
-                                                     group_struct["change_list"])
+                    ok, err_str = self._modify_entry(
+                        ld_write,
+                        group_struct.dn,
+                        group_struct.change_list)
                     if ok:
                         self.log("modified group %s" % (group_to_change))
                     else:
                         errors.append(err_str)
                         self.log("cannot modify group %s: %s" % (group_to_change, err_str),
-                                        logging_tools.LOG_LEVEL_ERROR)
+                                 logging_tools.LOG_LEVEL_ERROR)
                 # remove groups
                 for group_to_remove in groups_to_remove:
-                    ok, err_str = self._delete_entry(ld_write,
-                                                     "cn=%s,ou=Group,%s%s" % (group_to_remove,
-                                                                              sub_ou_str,
-                                                                              par_dict["base_dn"]))
+                    ok, err_str = self._delete_entry(
+                        ld_write,
+                        "cn=%s,ou=Group,%s%s" % (group_to_remove,
+                                                 sub_ou_str,
+                                                 par_dict["base_dn"]))
                     
                     if ok:
                         self.log("deleted group %s" % (group_to_remove))
                     else:
                         errors.append(err_str)
                         self.log("cannot delete group %s: %s" % (group_to_remove, err_str),
-                                        logging_tools.LOG_LEVEL_ERROR)
+                                 logging_tools.LOG_LEVEL_ERROR)
                 # fetch all users from ldap
                 users_ok, users_to_change, users_to_remove = ([], [], [])
                 for dn, attrs in ld_write.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "(&(objectclass=posixAccount)(objectClass=clusterAccount))"):
                     dn_parts = ldap.explode_dn(dn, True)
-                    if dn.endswith(",ou=People,%s%s" % (sub_ou_str,
-                                                        par_dict["base_dn"])):
+                    if dn.endswith(",ou=People,%s%s" % (
+                        sub_ou_str,
+                        par_dict["base_dn"])):
                         user_name = dn_parts[0]
                         if user_name in user_lut.keys():
                             user_struct = all_users[user_lut[user_name]]
@@ -490,31 +518,31 @@ class sync_ldap_config(cs_base_class.server_com):
                 users_to_add = [x for x in user_lut.keys() if x not in users_ok and x not in users_to_change and x not in users_to_remove]
                 for user_to_add in users_to_add:
                     user_struct = all_users[user_lut[user_to_add]]
-                    if user_struct["active"] and all_groups[user_struct["ggroup"]]["active"]:
+                    if user_struct.active and all_groups[user_struct.group_id].active:
                         ok, err_str = self._add_entry(ld_write,
-                                                      user_struct["dn"],
-                                                      user_struct["attrs"])
+                                                      user_struct.dn,
+                                                      user_struct.attributes)
                         if ok:
                             self.log("added user %s" % (user_to_add))
                         else:
                             errors.append(err_str)
                             self.log("cannot add user %s: %s" % (user_to_add, err_str),
-                                            logging_tools.LOG_LEVEL_ERROR)
+                                     logging_tools.LOG_LEVEL_ERROR)
                     else:
                         self.log("cannot add user %s: not active" % (user_to_add),
-                                        logging_tools.LOG_LEVEL_WARN)
+                                 logging_tools.LOG_LEVEL_WARN)
                 # modify users
                 for user_to_change in users_to_change:
                     user_struct = all_users[user_lut[user_to_change]]
                     ok, err_str = self._modify_entry(ld_write,
-                                                     user_struct["dn"],
-                                                     user_struct["change_list"])
+                                                     user_struct.dn,
+                                                     user_struct.change_list)
                     if ok:
                         self.log("modified user %s" % (user_to_change))
                     else:
                         errors.append(err_str)
                         self.log("cannot modify user %s: %s" % (user_to_change, err_str),
-                                        logging_tools.LOG_LEVEL_ERROR)
+                                 logging_tools.LOG_LEVEL_ERROR)
                 # remove users
                 for user_to_remove in users_to_remove:
                     ok, err_str = self._delete_entry(ld_write,
@@ -527,8 +555,8 @@ class sync_ldap_config(cs_base_class.server_com):
                     else:
                         errors.append(err_str)
                         self.log("cannot delete user %s: %s" % (user_to_remove, err_str),
-                                        logging_tools.LOG_LEVEL_ERROR)
-                # automounter
+                                 logging_tools.LOG_LEVEL_ERROR)
+                # automounter, FIXME
                 self.dc.execute("SELECT d.name, cs.name AS csname, cs.value, cs.new_config FROM device d INNER JOIN new_config c INNER JOIN device_config dc INNER JOIN config_str cs INNER JOIN " + \
                                        "device_group dg INNER JOIN device_type dt LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_type=dt.device_type_idx AND dt.identifier='H' AND d.device_group=dg.device_group_idx " + \
                                        "AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND (cs.name='export' OR cs.name='import' OR cs.name='options' or cs.name='node_postfix') ORDER BY d.name, cs.config")
