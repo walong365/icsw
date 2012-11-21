@@ -252,8 +252,13 @@ class sync_ldap_config(cs_base_class.server_com):
         print "ret:", success, err_str
         return success, err_str
     def _modify_entry(self, ld, dn, change_list):
+        new_list = []
+        for val_0, val_1, val_list in change_list:
+            if type(val_list) == list:
+                val_list = [str(sub_val) for sub_val in val_list]
+            new_list.append((val_0, val_1, val_list))
         try:
-            ld.modify_s(dn, change_list)
+            ld.modify_s(dn, new_list)
         except ldap.LDAPError:
             success, err_str = (False, self._get_ldap_err_str(dn))
         else:
@@ -385,7 +390,7 @@ class sync_ldap_config(cs_base_class.server_com):
                                 u_stuff.email)],
                         "gidNumber"        : [str(g_stuff.gid)],
                         "uidNumber"        : [str(u_stuff.uid)],
-                        "userPassword"     : ["{crypt}%s" % (u_stuff.password)],
+                        "userPassword"     : ["{SHA}%s" % (u_stuff.password.split(":", 1)[1])],
                         "homeDirectory"    : [os.path.normpath("%s/%s" % (g_stuff.homestart, u_stuff.home))],
                         "loginShell"       : [u_stuff.shell],
                         "shadowLastChange" : ["11192"],
@@ -490,14 +495,17 @@ class sync_ldap_config(cs_base_class.server_com):
                         user_name = dn_parts[0]
                         if user_name in user_lut.keys():
                             user_struct = all_users[user_lut[user_name]]
-                            if user_struct["active"] and all_groups[user_struct["ggroup"]]["active"] and all_groups[user_struct["ggroup"]]["homestart"]:
+                            if user_struct.active and all_groups[user_struct.group_id].active and all_groups[user_struct.group_id].homestart:
                                 # debian fixes
                                 if attrs.has_key("uid") and not attrs.has_key("userid"):
                                     attrs["userid"] = attrs["uid"]
                                     del attrs["uid"]
-                                user_struct["orig_attrs"] = attrs
-                                user_struct["change_list"] = ldap.modlist.modifyModlist(user_struct["orig_attrs"], user_struct["attrs"], [sub_key for sub_key in user_struct["attrs"].keys() if sub_key.startswith("shadow") or sub_key.lower() in (["userpassword"] if ("do_not_sync_password" in par_dict) else [])])
-                                if user_struct["change_list"]:
+                                user_struct.orig_attributes = attrs
+                                user_struct.change_list = ldap.modlist.modifyModlist(
+                                    user_struct.orig_attributes,
+                                    user_struct.attributes,
+                                    [sub_key for sub_key in user_struct.attributes.keys() if sub_key.startswith("shadow") or sub_key.lower() in (["userpassword"] if ("do_not_sync_password" in par_dict) else [])])
+                                if user_struct.change_list:
                                     # changing user
                                     self.log("changing user %s (content differs)" % (user_name))
                                     users_to_change.append(user_name)
@@ -515,7 +523,7 @@ class sync_ldap_config(cs_base_class.server_com):
                         self.log("ignoring posixUser with dn %s" % (dn),
                                         logging_tools.LOG_LEVEL_WARN)
                 # add users
-                users_to_add = [x for x in user_lut.keys() if x not in users_ok and x not in users_to_change and x not in users_to_remove]
+                users_to_add = [user_pk for user_pk in user_lut.keys() if user_pk not in users_ok and user_pk not in users_to_change and user_pk not in users_to_remove]
                 for user_to_add in users_to_add:
                     user_struct = all_users[user_lut[user_to_add]]
                     if user_struct.active and all_groups[user_struct.group_id].active:
