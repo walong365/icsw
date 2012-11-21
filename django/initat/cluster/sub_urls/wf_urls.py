@@ -118,7 +118,8 @@ monitoring_patterns = patterns(
 
 user_patterns = patterns(
     "initat.cluster.frontend",
-    url("overview/(?P<mode>.*)$"      , "user_views.overview", name="overview")
+    url("overview/(?P<mode>.*)$"      , "user_views.overview"  , name="overview"),
+    url("sync$"                       , "user_views.sync_users", name="sync_users"),
 )
 
 pack_patterns = patterns(

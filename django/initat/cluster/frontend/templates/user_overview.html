@@ -11,10 +11,23 @@
 
 <div id="ug_tables"></div>
 
+<input type="button" value="Sync Users" onClick="sync_users();"/>
+
 <script type="text/javascript">
 
 // monitoring XML
 UG_XML = undefined;
+
+function sync_users() {
+    $.ajax({
+        url     : "{% url user:sync_users %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+            }
+        }
+    });
+};
 
 var master_array = {
     "group" : new draw_setup("Group", "group", "group",

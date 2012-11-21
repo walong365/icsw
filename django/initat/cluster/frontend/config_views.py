@@ -9,7 +9,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
      tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
-     mon_contactgroup, get_related_models, network_device_type, network_type
+     mon_contactgroup, get_related_models, network_device_type, network_type, get_related_models
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -243,25 +243,32 @@ def alter_config_cb(request):
         if checked:
             # remove all configs from devices in group
             to_remove = device_config.objects.exclude(Q(device=cur_dev)).filter(Q(config=cur_conf) & Q(device__in=all_devs))
+            # check if we can safely set the meta device_config
+            set_meta = True
             if len(to_remove):
-                to_remove.delete()
-                request.log("removed %s from devices" % (logging_tools.get_plural("config", len(to_remove))))
+                if any([True for del_obj in to_remove if get_related_models(del_obj)]):
+                    request.log("device configs are in use (hence protected)", logging_tools.LOG_LEVEL_ERROR, xml=True)
+                    set_meta = False
+                else:
+                    to_remove.delete()
+                    request.log("removed %s from devices" % (logging_tools.get_plural("config", len(to_remove))))
             # unset all devices except meta_device
-            try:
-                device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf))
-            except device_config.DoesNotExist:
-                device_config(device=cur_dev,
-                              config=cur_conf).save()
-                request.log("set meta config")
-            else:
-                request.log("meta config already set")
+            if set_meta:
+                try:
+                    device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf))
+                except device_config.DoesNotExist:
+                    device_config(device=cur_dev,
+                                  config=cur_conf).save()
+                    request.log("set meta config")
+                else:
+                    request.log("meta config already set")
         else:
             try:
-                device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf)).delete()
+                del_obj = device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf))
             except device_config.DoesNotExist:
                 request.log("meta config already unset")
             else:
-                request.log("removed meta config")
+                delete_object(request, del_obj)
     else:
         # get meta device
         try:
@@ -280,7 +287,7 @@ def alter_config_cb(request):
                 request.log("config already set")
         else:
             try:
-                device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf)).delete()
+                del_obj = device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf))
             except device_config.DoesNotExist:
                 if meta_dev:
                     # check if meta_device has config_set
@@ -290,14 +297,17 @@ def alter_config_cb(request):
                         request.log("config already unset and meta config also not set", logging_tools.LOG_LEVEL_ERROR)
                     else:
                         # set config for all devices exclude the meta device and this device
-                        meta_conf.delete()
-                        for set_dev in all_devs.exclude(Q(pk=meta_dev.pk)).exclude(Q(pk=cur_dev.pk)):
-                            device_config(device=set_dev,
-                                          config=cur_conf).save()
+                        if get_related_models(meta_conf):
+                            request.log("meta config is in use", logging_tools.LOG_LEVEL_ERROR, xml=True)
+                        else:
+                            meta_conf.delete()
+                            for set_dev in all_devs.exclude(Q(pk=meta_dev.pk)).exclude(Q(pk=cur_dev.pk)):
+                                device_config(device=set_dev,
+                                              config=cur_conf).save()
                 else:
                     request.log("config already unset")
             else:
-                request.log("removed config")
+                delete_object(request, del_obj)
     xml_resp = _get_device_configs(["dev__%d" % (sel_dev.pk) for sel_dev in all_devs], conf=cur_conf)
     xml_resp.extend([
         E.config(pk="%d" % (cur_conf.pk)),
@@ -309,7 +319,6 @@ def alter_config_cb(request):
                 ) for sel_dev in all_devs])
     ])
     request.xml_response["response"] = xml_resp
-    #print etree.tostring(xml_resp, pretty_print=True)
     return request.xml_response.create_response()
 
 class tree_struct(object):
@@ -389,5 +398,5 @@ def generate_config(request):
             res_node.append(cur_tree.get_xml())
             request.xml_response["result"].append(res_node)
         request.log("build done", xml=True)
-    print etree.tostring(request.xml_response.build_response(), pretty_print=True)
+    #print etree.tostring(request.xml_response.build_response(), pretty_print=True)
     return request.xml_response.create_response()

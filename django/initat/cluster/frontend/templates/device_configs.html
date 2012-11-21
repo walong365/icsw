@@ -180,29 +180,29 @@ function change_config(event) {
             "value" : cur_cb.is(":checked") ? "1" : "0"
         },
         success : function(xml) {
-            if (parse_xml_response(xml)) {
-                var res_xml = $(xml);
-                //console.log(res_xml);
-                var conf_pk = res_xml.find("device_configs config").attr("pk");
-                res_xml.find("devices device").each(function() {
-                    // deselect all checkboxes
-                    var cur_dev = $(this);
-                    var cur_cb = $("table#config input[id='dev__" + cur_dev.attr("pk") + "__config__" + conf_pk + "']");
-                    cur_cb.removeAttr("checked");
-                    cur_cb.prev().text("");
-                    cur_cb.next().text("");
-                });
-                res_xml.find("device_configs device_config").each(function() {
-                    var cur_dc = $(this);
-                    var cur_cb = $("table#config input[id='dev__" + cur_dc.attr("device") + "__config__" + conf_pk + "']");
-                    cur_cb.attr("checked", "checked");
-                    if (cur_dc.attr("meta") == "1") {
-                        cur_cb.prev().text("(");
-                        cur_cb.next().text(")");
-                    };
-                });
-                unlock_elements(lock_list);
-            };
+            parse_xml_response(xml);
+            var res_xml = $(xml);
+            //console.log(res_xml);
+            var conf_pk = res_xml.find("device_configs config").attr("pk");
+            res_xml.find("devices device").each(function() {
+                // deselect all checkboxes
+                var cur_dev = $(this);
+                var cur_cb = $("table#config input[id='dev__" + cur_dev.attr("pk") + "__config__" + conf_pk + "']");
+                cur_cb.removeAttr("checked");
+                cur_cb.prev().text("");
+                cur_cb.next().text("");
+            });
+            res_xml.find("device_configs device_config").each(function() {
+                var cur_dc = $(this);
+                var cur_cb = $("table#config input[id='dev__" + cur_dc.attr("device") + "__config__" + conf_pk + "']");
+                console.log("rc");
+                cur_cb.attr("checked", "checked");
+                if (cur_dc.attr("meta") == "1") {
+                    cur_cb.prev().text("(");
+                    cur_cb.next().text(")");
+                };
+            });
+            unlock_elements(lock_list);
         }
     });
 };

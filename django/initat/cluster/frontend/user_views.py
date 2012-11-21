@@ -32,7 +32,8 @@ def overview(request, *args, **kwargs):
         exp_list = E.homedir_exports(
             E.homedir_export("none", pk="0")
         )
-        home_exp = device_config.objects.filter(Q(config__name__icontains="homedir") & Q(config__name__icontains="export") & Q(config__config_str__name="homeexport")).select_related("device", "config").prefetch_related("config__config_str_set")
+        home_exp = device_config.objects.filter(
+            Q(config__name__icontains="homedir") & Q(config__name__icontains="export") & Q(config__config_str__name="homeexport")).select_related("device", "config").prefetch_related("config__config_str_set")
         for cur_exp in home_exp:
             exp_list.append(
                 E.homedir_export("%s on %s" % (cur_exp.config.config_str_set.get(Q(name="homeexport")).value,
@@ -47,3 +48,15 @@ def overview(request, *args, **kwargs):
         )
         request.xml_response["response"] = xml_resp
         return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def sync_users(request):
+    srv_com = server_command.srv_command(command="sync_ldap_config")
+    result = net_tools.zmq_connection("webfrontend", timeout=30).add_connection("tcp://localhost:8004", srv_com)
+    if not result:
+        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        res_node = result.xpath(None, ".//ns:result")[0]
+        request.log(res_node.attrib["reply"], int(res_node.attrib["state"]), xml=True)
+    return request.xml_response.create_response()
