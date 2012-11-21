@@ -440,7 +440,8 @@ class relay_process(threading_tools.process_pool):
                 backlog_size = global_config["BACKLOG_SIZE"]
                 os.chmod(file_name, 0777)
                 self.receiver_socket.setsockopt(zmq.LINGER, 0)
-                self.receiver_socket.setsockopt(zmq.HWM, hwm_size)
+                self.receiver_socket.setsockopt(zmq.RCVHWM, hwm_size)
+                self.receiver_socket.setsockopt(zmq.SNDHWM, hwm_size)
                 if sock_type == zmq.PULL:
                     self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)
     def _close_ipc_sockets(self):
