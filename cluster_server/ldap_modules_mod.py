@@ -391,7 +391,7 @@ class sync_ldap_config(cs_base_class.server_com):
                         "gidNumber"        : [str(g_stuff.gid)],
                         "uidNumber"        : [str(u_stuff.uid)],
                         "userPassword"     : ["{SHA}%s" % (u_stuff.password.split(":", 1)[1])],
-                        "homeDirectory"    : [os.path.normpath("%s/%s" % (g_stuff.homestart, u_stuff.home))],
+                        "homeDirectory"    : [os.path.normpath("%s/%s" % (g_stuff.homestart, u_stuff.home or u_stuff.login))],
                         "loginShell"       : [u_stuff.shell],
                         "shadowLastChange" : ["11192"],
                         "shadowMin"        : ["-1"],
@@ -564,58 +564,89 @@ class sync_ldap_config(cs_base_class.server_com):
                         errors.append(err_str)
                         self.log("cannot delete user %s: %s" % (user_to_remove, err_str),
                                  logging_tools.LOG_LEVEL_ERROR)
-                # automounter, FIXME
-                self.dc.execute("SELECT d.name, cs.name AS csname, cs.value, cs.new_config FROM device d INNER JOIN new_config c INNER JOIN device_config dc INNER JOIN config_str cs INNER JOIN " + \
-                                       "device_group dg INNER JOIN device_type dt LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_type=dt.device_type_idx AND dt.identifier='H' AND d.device_group=dg.device_group_idx " + \
-                                       "AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND (cs.name='export' OR cs.name='import' OR cs.name='options' or cs.name='node_postfix') ORDER BY d.name, cs.config")
+                # normal exports
+                exp_entries = device_config.objects.filter(
+                    Q(config__name__icontains="export") & 
+                    Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
+                #self.dc.execute("SELECT d.name, cs.name AS csname, cs.value, cs.new_config FROM device d INNER JOIN new_config c INNER JOIN device_config dc INNER JOIN config_str cs INNER JOIN " + \
+                                       #"device_group dg INNER JOIN device_type dt LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_type=dt.device_type_idx AND dt.identifier='H' AND d.device_group=dg.device_group_idx " + \
+                                       #"AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND (cs.name='export' OR cs.name='import' OR cs.name='options' or cs.name='node_postfix') ORDER BY d.name, cs.config")
                 export_dict = {}
                 ei_dict = {}
-                for entry in self.dc.fetchall():
-                    dev_name, act_idx = (entry["name"], entry["new_config"])
-                    # generate a small dict for each export-entry (per device)
-                    ei_dict.setdefault(dev_name, {}).setdefault(act_idx, {"export"       : None,
-                                                                          "import"       : None,
-                                                                          "node_postfix" : "",
-                                                                          "options"      : "-soft"})[entry["csname"]] = cs_tools.hostname_expand(entry["name"], entry["value"])
+                for entry in exp_entries:
+                    dev_name, act_pk = (entry.device.name,
+                                        entry.config.pk)
+                    ei_dict.setdefault(
+                        dev_name, {}).setdefault(
+                            act_pk, {
+                                "export"       : None,
+                                "import"       : None,
+                                "node_postfix" : "",
+                                "options"      : "-soft"})
+                    for c_str in entry.config.config_str_set.all():
+                        if c_str.name in ei_dict[dev_name][act_pk]:
+                            ei_dict[dev_name][act_pk][c_str.name] = c_str.value
+                pprint.pprint(ei_dict)
                 for mach, aeid_d in ei_dict.iteritems():
                     for aeid_idx, aeid in aeid_d.iteritems():
                         if aeid["export"] and aeid["import"]:
                             aeid["import"] = cs_tools.hostname_expand(mach, aeid["import"])
                             export_dict[aeid["import"]] = (aeid["options"], "%s%s:%s" % (mach, aeid["node_postfix"], aeid["export"]))
                 # home-exports
-                self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, device_config dc, config_str cs, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
-                                       "dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='homeexport' OR cs.name='options' OR cs.name='node_postfix') ORDER BY d.name")
+                exp_entries = device_config.objects.filter(
+                    Q(config__name__icontains="homedir") & 
+                    Q(config__name__icontains="export") &
+                    Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
+                #self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, device_config dc, config_str cs, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
+                                       #"dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='homeexport' OR cs.name='options' OR cs.name='node_postfix') ORDER BY d.name")
                 home_exp_dict = {}
-                for entry in self.dc.fetchall():
-                    home_exp_dict.setdefault(entry["device_config_idx"], {"name"         : entry["name"],
-                                                                          "options"      : "",
-                                                                          "node_postfix" : "",
-                                                                          "homeexport"   : ""})[entry["csname"]] = entry["value"]
+                for entry in exp_entries:
+                    dev_name, act_pk = (entry.device.name,
+                                        entry.pk)
+                    home_exp_dict.setdefault(
+                        act_pk, {
+                            "name"         : dev_name,
+                            "homeexport"   : "",
+                            "node_postfix" : "",
+                            "options"      : "-soft"})
+                    for c_str in entry.config.config_str_set.all():
+                        if c_str.name in home_exp_dict[act_pk]:
+                            home_exp_dict[act_pk][c_str.name] = c_str.value
+                pprint.pprint(home_exp_dict)
                 # remove invalid exports (with no homeexport-entry)
-                invalid_home_keys = [x for x in home_exp_dict.keys() if not home_exp_dict[x]["homeexport"]]
+                invalid_home_keys = [key for key, value in home_exp_dict.iteritems() if not value["homeexport"]]
                 for ihk in invalid_home_keys:
                     del home_exp_dict[ihk]
-                # scratch-exports
-                self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, config_str cs, device_config dc, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
-                                       "dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='scratchexport' OR cs.name='options' OR cs.name='node_postfix') ORDER BY d.name")
+                # scratch-exports, not used right now, FIXME
+                #self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, config_str cs, device_config dc, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
+                                       #"dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='scratchexport' OR cs.name='options' OR cs.name='node_postfix') ORDER BY d.name")
                 scratch_exp_dict = {}
-                for entry in self.dc.fetchall():
-                    scratch_exp_dict.setdefault(entry["device_config_idx"], {"name"          : entry["name"],
-                                                                             "options"       : "",
-                                                                             "node_postfix"  : "",
-                                                                             "scratchexport" : ""})[entry["csname"]] = entry["value"]
+                #for entry in self.dc.fetchall():
+                    #scratch_exp_dict.setdefault(entry["device_config_idx"], {"name"          : entry["name"],
+                                                                             #"options"       : "",
+                                                                             #"node_postfix"  : "",
+                                                                             #"scratchexport" : ""})[entry["csname"]] = entry["value"]
                 # remove invalid exports (with no scratchexport-entry)
-                invalid_scratch_keys = [x for x in scratch_exp_dict.keys() if not scratch_exp_dict[x]["scratchexport"]]
-                for isk in invalid_scratch_keys:
-                    del scratch_exp_dict[isk]
-                for user_stuff in [x for x in all_users.values() if x["active"] and all_groups[x["ggroup"]]["active"]]:
-                    group_stuff = all_groups[user_stuff["ggroup"]]
-                    if user_stuff["export"] in home_exp_dict.keys():
-                        home_stuff = home_exp_dict[user_stuff["export"]]
-                        export_dict[os.path.normpath("%s/%s" % (group_stuff["homestart"], user_stuff["home"]))] = (home_stuff["options"], "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff["home"]))
-                    if user_stuff["export_scr"] in scratch_exp_dict.keys():
-                        scratch_stuff = scratch_exp_dict[user_stuff["export_scr"]]
-                        export_dict[os.path.normpath("%s/%s" % (group_stuff["scratchstart"], user_stuff["scratch"]))] = (scratch_stuff["options"], "%s%s:%s/%s" % (scratch_stuff["name"], scratch_stuff["node_postfix"], scratch_stuff["scratchexport"], user_stuff["export"]))
+                #invalid_scratch_keys = [x for x in scratch_exp_dict.keys() if not scratch_exp_dict[x]["scratchexport"]]
+                #for isk in invalid_scratch_keys:
+                    #del scratch_exp_dict[isk]
+                for user_stuff in [cur_u for cur_u in all_users.itervalues() if cur_u.active and all_groups[cur_u.group_id].active]:
+                    group_stuff = all_groups[user_stuff.group_id]
+                    if user_stuff.export_id in home_exp_dict.keys():
+                        home_stuff = home_exp_dict[user_stuff.export_id]
+                        export_dict[os.path.normpath(
+                            "%s/%s" % (
+                                group_stuff.homestart,
+                                user_stuff.home or user_stuff.login))] = (
+                                    home_stuff["options"],
+                                    "%s%s:%s/%s" % (
+                                               home_stuff["name"],
+                                               home_stuff["node_postfix"],
+                                               home_stuff["homeexport"],
+                                               user_stuff.home or user_stuff.login))
+                    #if user_stuff["export_scr"] in scratch_exp_dict.keys():
+                        #scratch_stuff = scratch_exp_dict[user_stuff["export_scr"]]
+                        #export_dict[os.path.normpath("%s/%s" % (group_stuff["scratchstart"], user_stuff["scratch"]))] = (scratch_stuff["options"], "%s%s:%s/%s" % (scratch_stuff["name"], scratch_stuff["node_postfix"], scratch_stuff["scratchexport"], user_stuff["export"]))
                 #pprint.pprint(home_exp_dict)
                 #pprint.pprint(scratch_exp_dict)
                 # now we have all automount-maps in export_dict, form is mountpoint: (options, source)
