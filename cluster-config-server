@@ -30,8 +30,6 @@ SERVER_BIN=/opt/cluster/sbin/cluster-config-server.py
 PYTHON_BIN=/usr/bin/python-init
 SERVER_PID=/var/run/cluster-config-server/cluster-config-server.pid
 SERVER_ARGS=""
-SERVER_USER="idccs"
-SERVER_GROUP="idg"
 
 test -x ${SERVER_BIN} || exit 5
 test -x ${PYTHON_BIN} || exit 5
@@ -48,7 +46,7 @@ case "$1" in
 	if [ -f ${SERVER_PID} ] ; then
 	    echo -n " ... already running"
 	else
-	    ${SERVER_BIN} ${SERVER_ARGS} -f -u ${SERVER_USER} -g ${SERVER_GROUP} ${SERVER_ARGS}
+	    ${SERVER_BIN} ${SERVER_ARGS} ${SERVER_ARGS}
 	fi
 	rc_status -v
 	;;
