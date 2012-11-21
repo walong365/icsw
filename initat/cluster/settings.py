@@ -8,8 +8,10 @@ ugettext = lambda s : s
 
 from django.core.exceptions import ImproperlyConfigured
 
-
-DEBUG = os.uname()[1] in ["slayer", "eddie"]
+if "START_VIA_RC" in os.environ:
+    DEBUG = False
+else:
+    DEBUG = os.uname()[1] in ["slayer", "eddie"]
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -46,32 +48,35 @@ sql_dict = dict([(key[6:], value) for key, value in [
 mon_dict = dict([(key[7:], value) for key, value in [
     line.strip().split("=", 1) for line in file("/etc/sysconfig/cluster/mysql.cf", "r").read().split("\n") if line.count("=") and line.startswith("NAGIOS_")]])
 
-for src_key ,dst_key in [("DATABASE", "NAME"),
-                         ("USER"    , "USER"),
-                         ("PASSWD"  , "PASSWORD"),
-                         ("HOST"    , "HOST"),
-                         ("ENGINE"  , "ENGINE")]:
+for src_key ,dst_key in [
+    ("DATABASE", "NAME"),
+    ("USER"    , "USER"),
+    ("PASSWD"  , "PASSWORD"),
+    ("HOST"    , "HOST"),
+    ("ENGINE"  , "ENGINE")]:
     if src_key in sql_dict:
         DATABASES["default"][dst_key] = sql_dict[src_key]
 
 if mon_dict:
     DATABASES["monitor"] = dict([(key, value) for key, value in DATABASES["default"].iteritems()])
-    for src_key ,dst_key in [("DATABASE", "NAME"),
-                             ("USER"    , "USER"),
-                             ("PASSWD"  , "PASSWORD"),
-                             ("HOST"    , "HOST"),
-                             ("ENGINE"  , "ENGINE")]:
+    for src_key ,dst_key in [
+        ("DATABASE", "NAME"),
+        ("USER"    , "USER"),
+        ("PASSWD"  , "PASSWORD"),
+        ("HOST"    , "HOST"),
+        ("ENGINE"  , "ENGINE")]:
         if src_key in mon_dict:
             DATABASES["monitor"][dst_key] = mon_dict[src_key]
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 
 # compress settings
-COMPRESS = not DEBUG
+COMPRESS = False#not DEBUG
 COMPRESS_ENABLED = COMPRESS
-COMPRESS_OFFLINE = not DEBUG
+COMPRESS_OFFLINE = COMPRESS
 # rebuild once a day
 COMPRESS_REBUILD_TIMEOUT = 60 * 60 * 24
+STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
 
 CACHES = {
     "default" : {
@@ -121,11 +126,16 @@ MEDIA_ROOT = os.path.join(FILE_ROOT, "frontend", "media")
 
 MEDIA_URL = "%s/frontend/media/" % (SITE_ROOT)
 
+#COMPRESS_URL = "%s/frontend/media/" % (SITE_ROOT)
+
+COMPRESS_OFFLINE_CONTEXT = {
+    "MEDIA_URL" : MEDIA_URL
+}
+
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/home/media/media.lawrence.com/static/"
-#STATIC_ROOT = ''
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
@@ -207,7 +217,7 @@ INSTALLED_APPS = (
     "django.contrib.admindocs",
     "reversion",
     "south",
-    "compressor",
+    #"compressor",
     # cluster
 )
 
