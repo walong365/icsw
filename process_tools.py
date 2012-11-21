@@ -323,18 +323,19 @@ class int_error(error):
 
 class meta_server_info(object):
     def __init__(self, name):
-        self.__prop_list = [("start_command"    , "s", None ),
-                            ("stop_command"     , "s", None ),
-                            ("kill_pids"        , "b", False),
-                            ("check_memory"     , "b", True ),
-                            ("exe_name"         , "s", None ),
-                            ("need_any_pids"    , "b", 0    ),
-                            # how many pids can be too much
-                            ("fuzzy_ceiling"    , "i", 0    ),
-                            # how many pids can be too less
-                            ("fuzzy_floor"      , "i", 0    ),
-                            # heartbeat timeout, 0 means disabled
-                            ("heartbeat_timeout", "i", 0    )]
+        self.__prop_list = [
+            ("start_command"    , "s", None ),
+            ("stop_command"     , "s", None ),
+            ("kill_pids"        , "b", False),
+            ("check_memory"     , "b", True ),
+            ("exe_name"         , "s", None ),
+            ("need_any_pids"    , "b", 0    ),
+            # how many pids can be too much
+            ("fuzzy_ceiling"    , "i", 0    ),
+            # how many pids can be too less
+            ("fuzzy_floor"      , "i", 0    ),
+            # heartbeat timeout, 0 means disabled
+            ("heartbeat_timeout", "i", 0    )]
         if name.startswith("/"):
             self.__file_name = name
             # try to read complete info from file
