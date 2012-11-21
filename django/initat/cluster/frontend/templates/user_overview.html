@@ -49,7 +49,8 @@ var master_array = {
             new draw_info("title", {default : "title", keep_td : true}),
             new draw_info("email", {default : "email", newline : true, cspan : 7, show_label : true, label : "Email / Pager"}),
             new draw_info("pager", {default : "pager", keep_td : true}),
-            new draw_info("shell", {default : "/bin/sh", select_source : "shells shell", keep_td : true})
+            new draw_info("shell", {default : "/bin/sh", select_source : "shells shell", keep_td : true}),
+            new draw_info("export", {select_source : "homedir_exports homedir_export", keep_td : true})
         ], {
             "required_xml" : ["group"],
             "lock_div"     : "ug_tables"
