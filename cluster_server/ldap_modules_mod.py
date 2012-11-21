@@ -242,14 +242,12 @@ class sync_ldap_config(cs_base_class.server_com):
         for key, value in in_dict.iteritems():
             if type(value) == list:
                 in_dict[key] = [str(sub_val) for sub_val in value]
-        pprint.pprint(in_dict)
         try:
             ld.add_s(dn, ldap.modlist.addModlist(in_dict))
         except ldap.LDAPError:
             success, err_str = (False, self._get_ldap_err_str(dn))
         else:
             success, err_str = (True, "")
-        print "ret:", success, err_str
         return success, err_str
     def _modify_entry(self, ld, dn, change_list):
         new_list = []
@@ -586,7 +584,6 @@ class sync_ldap_config(cs_base_class.server_com):
                     for c_str in entry.config.config_str_set.all():
                         if c_str.name in ei_dict[dev_name][act_pk]:
                             ei_dict[dev_name][act_pk][c_str.name] = c_str.value
-                pprint.pprint(ei_dict)
                 for mach, aeid_d in ei_dict.iteritems():
                     for aeid_idx, aeid in aeid_d.iteritems():
                         if aeid["export"] and aeid["import"]:
@@ -612,7 +609,6 @@ class sync_ldap_config(cs_base_class.server_com):
                     for c_str in entry.config.config_str_set.all():
                         if c_str.name in home_exp_dict[act_pk]:
                             home_exp_dict[act_pk][c_str.name] = c_str.value
-                pprint.pprint(home_exp_dict)
                 # remove invalid exports (with no homeexport-entry)
                 invalid_home_keys = [key for key, value in home_exp_dict.iteritems() if not value["homeexport"]]
                 for ihk in invalid_home_keys:

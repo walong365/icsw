@@ -752,121 +752,121 @@ class background_thread(threading_tools.thread_obj):
                                                    logging_tools.get_plural("run", runs)))
         self.__socket_server_queue.put(("bg_task_finish", (act_sc.get_name(), act_call)))
 
-class socket_server_thread(threading_tools.thread_obj):
-    def __init__(self, db_con, glob_config, loc_config, ns, logger):
-        self.__db_con = db_con
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        self.__net_server = ns
-        self.__logger = logger
-        threading_tools.thread_obj.__init__(self, "socket_server", queue_size=50)
-        self.register_func("bg_task_finish", self._bg_task_finish)
-        self.register_func("in_tcp_bytes", self._tcp_in)
-        self.register_func("in_udp_bytes", self._udp_in)
-        self.register_func("set_bg_queue", self._set_bg_queue)
-        self.register_func("send_broadcast", self._send_broadcast)
-        self.register_func("send_error", self._send_error)
-        self.register_func("send_ok", self._send_ok)
-        self.register_func("contact_server", self._contact_server)
-        # background commands
-        self.__bg_commands = []
-        # unique key list
-        self.__ukey_list = []
-        # wait dict
-        self.__wait_dict = {}
-    def thread_running(self):
-        self.send_pool_message(("new_pid", self.pid))
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__logger.log(lev, what)
-    def _set_bg_queue(self, bg_queue):
-        self.__bg_queue = bg_queue
-    def _bg_task_finish(self, (sc_name, call_params)):
-        if sc_name not in self.__bg_commands:
-            self.log("*** error, command %s not in bg_command_list (%s)" % (sc_name,
-                                                                            ", ".join(self.__bg_commands)),
-                     logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("removing %s from bg_command_list" % (sc_name))
-            self.__bg_commands.remove(sc_name)
-            if self.__bg_commands:
-                self.log("%s queued: %s" % (logging_tools.get_plural("command", len(self.__bg_commands)),
-                                            ", ".join(self.__bg_commands)))
-            else:
-                self.log("no commands running in the background")
-    def _udp_in(self, (in_data, frm)):
-        src_host, src_port = frm
-        try:
-            u_key, command = in_data.split(None, 1)
-        except:
-            self.log("error decoding udp_data '%s' from %s: %s" % (in_data, str(frm), process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("got udp_command %s (key %s) from %s" % (command, u_key, str(frm)))
-            if u_key in self.__ukey_list:
-                self.log("key %s already in list, ignoring request ..." % (u_key))
-            else:
-                server_com = server_command.server_command(command = command)
-                server_com.set_compat(1)
-                ret_str, coms_queued = process_request(self.__glob_config, self.__loc_config, self.__logger, self.__db_con, server_com, src_host, src_port, 0, "0.0.0.0", self.get_thread_queue(), self.__bg_queue, self.__bg_commands, self.get_thread_pool())
-                self.__ukey_list.append(u_key)
-                self._do_server_broadcast(u_key, command)
-    def _tcp_in(self, tcp_stuff):
-        in_data = tcp_stuff.get_decoded_in_str()
-        try:
-            server_com = server_command.server_command(in_data)
-        except:
-            com_split = in_data.split()
-            server_com = server_command.server_command(command = com_split.pop(0))
-            server_com.set_option_dict(dict([(k, v) for k, v in [z for z in [x.split(":", 1) for x in com_split] if len(z) == 2]]))
-            server_com.set_compat(1)
-        tcp_stuff.set_command(server_com.get_command())
-        ret_str, coms_queued = process_request(self.__glob_config, self.__loc_config, self.__logger, self.__db_con, server_com, tcp_stuff.get_src_host(), tcp_stuff.get_src_port(), 0, tcp_stuff.get_loc_host(), self.get_thread_queue(), self.__bg_queue, self.__bg_commands, self.get_thread_pool())
-        for com_queued in coms_queued:
-            self.__bg_commands.append(com_queued)
-        if self.__bg_commands:
-            self.log("%s queued: %s" % (logging_tools.get_plural("command", len(self.__bg_commands)),
-                                        ", ".join(self.__bg_commands)))
-        if type(ret_str) == type(""):
-            server_reply = server_command.server_reply()
-            server_reply.set_ok_result(ret_str)
-        else:
-            server_reply = ret_str
-        tcp_stuff.add_to_out_buffer(server_reply)
-    def _send_broadcast(self, bc_com):
-        unique_key = time.strftime("%Y%m%d%H%M%S", time.localtime(time.time()))
-        self._do_server_broadcast(unique_key, bc_com)
-    def _contact_server(self, (srv_name, srv_ip, srv_port, srv_com)):
-        self.log("Sending %s to device '%s' (IP %s, port %d)" % (srv_com, srv_name, srv_ip, srv_port))
-        self.__net_server.add_object(net_tools.tcp_con_object(self._new_tcp_con, target_host=srv_ip, target_port=srv_port, bind_retries=1, rebind_wait_time=1, connect_state_call=self._udp_connect, connect_timeout_call=self._connect_timeout, timeout=10, add_data=srv_com))
-    def _connect_timeout(self, sock):
-        self.log("connect timeout", logging_tools.LOG_LEVEL_ERROR)
-        sock.close()
-    def _new_tcp_con(self, sock):
-        return simple_con("tcp", sock.get_target_host(), sock.get_target_port(), sock.get_add_data(), self.get_thread_queue())
-    def _do_server_broadcast(self, u_key, bc_com):
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        send_str = "%s %s" % (u_key, bc_com)
-        self.log("Initiating server-broadcast command '%s', key %s" % (bc_com, u_key))
-        dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE n.device=%d" % (self.__loc_config["SERVER_IDX"]))
-        my_netdev_idxs = [x["netdevice_idx"] for x in dc.fetchall()]
-        if my_netdev_idxs:
-            # start sending of nscd_reload commands
-            dc.execute("SELECT d.name, i.ip, h.value FROM device d INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device_group dg INNER JOIN device_type dt INNER JOIN " + \
-                       "hopcount h INNER JOIN netdevice n INNER JOIN netip i LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_idx=n.device AND i.netdevice=n.netdevice_idx AND dg.device_group_idx=d.device_group AND " + \
-                       "dc.new_config=c.new_config_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND c.name='server' AND d.device_type=dt.device_type_idx AND dt.identifier='H' AND " + \
-                       "h.s_netdevice=n.netdevice_idx AND (%s) ORDER BY h.value, d.name" % (" OR ".join(["h.d_netdevice=%d" % (x) for x in my_netdev_idxs])))
-            serv_ip_dict = dict([(db_rec["name"], db_rec["ip"]) for db_rec in dc.fetchall()])
-            for serv_name, serv_ip in serv_ip_dict.iteritems():
-                self.log(" - Sending %s to %s (%s) ..." % (send_str, serv_name, serv_ip))
-                self.__net_server.add_object(net_tools.udp_con_object(self._new_udp_con, target_host=serv_ip, target_port=SERVER_PORT, bind_retries=1, rebind_wait_time=1, connect_state_call=self._udp_connect, add_data=send_str))
-        dc.release()
-    def _new_udp_con(self, sock):
-        return simple_con("udp", sock.get_target_host(), sock.get_target_port(), sock.get_add_data(), self.get_thread_queue())
-    def _udp_connect(self, **args):
-        if args["state"] == "error":
-            self.get_thread_queue().put(("send_error", (args["host"], args["port"], args["type"], "connect error")))
-    def _send_error(self, (s_host, s_port, mode, what)):
-        self.log("send_error (%s, %s %d): %s" % (s_host, mode, s_port, what), logging_tools.LOG_LEVEL_ERROR)
-    def _send_ok(self, (s_host, s_port, mode, what)):
-        self.log("send_ok (%s, %s %d): %s" % (s_host, mode, s_port, what))
+##class socket_server_thread(threading_tools.thread_obj):
+##    def __init__(self, db_con, glob_config, loc_config, ns, logger):
+##        self.__db_con = db_con
+##        self.__glob_config, self.__loc_config = (glob_config, loc_config)
+##        self.__net_server = ns
+##        self.__logger = logger
+##        threading_tools.thread_obj.__init__(self, "socket_server", queue_size=50)
+##        self.register_func("bg_task_finish", self._bg_task_finish)
+##        self.register_func("in_tcp_bytes", self._tcp_in)
+##        self.register_func("in_udp_bytes", self._udp_in)
+##        self.register_func("set_bg_queue", self._set_bg_queue)
+##        self.register_func("send_broadcast", self._send_broadcast)
+##        self.register_func("send_error", self._send_error)
+##        self.register_func("send_ok", self._send_ok)
+##        self.register_func("contact_server", self._contact_server)
+##        # background commands
+##        self.__bg_commands = []
+##        # unique key list
+##        self.__ukey_list = []
+##        # wait dict
+##        self.__wait_dict = {}
+##    def thread_running(self):
+##        self.send_pool_message(("new_pid", self.pid))
+##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+##        self.__logger.log(lev, what)
+##    def _set_bg_queue(self, bg_queue):
+##        self.__bg_queue = bg_queue
+##    def _bg_task_finish(self, (sc_name, call_params)):
+##        if sc_name not in self.__bg_commands:
+##            self.log("*** error, command %s not in bg_command_list (%s)" % (sc_name,
+##                                                                            ", ".join(self.__bg_commands)),
+##                     logging_tools.LOG_LEVEL_ERROR)
+##        else:
+##            self.log("removing %s from bg_command_list" % (sc_name))
+##            self.__bg_commands.remove(sc_name)
+##            if self.__bg_commands:
+##                self.log("%s queued: %s" % (logging_tools.get_plural("command", len(self.__bg_commands)),
+##                                            ", ".join(self.__bg_commands)))
+##            else:
+##                self.log("no commands running in the background")
+##    def _udp_in(self, (in_data, frm)):
+##        src_host, src_port = frm
+##        try:
+##            u_key, command = in_data.split(None, 1)
+##        except:
+##            self.log("error decoding udp_data '%s' from %s: %s" % (in_data, str(frm), process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+##        else:
+##            self.log("got udp_command %s (key %s) from %s" % (command, u_key, str(frm)))
+##            if u_key in self.__ukey_list:
+##                self.log("key %s already in list, ignoring request ..." % (u_key))
+##            else:
+##                server_com = server_command.server_command(command = command)
+##                server_com.set_compat(1)
+##                ret_str, coms_queued = process_request(self.__glob_config, self.__loc_config, self.__logger, self.__db_con, server_com, src_host, src_port, 0, "0.0.0.0", self.get_thread_queue(), self.__bg_queue, self.__bg_commands, self.get_thread_pool())
+##                self.__ukey_list.append(u_key)
+##                self._do_server_broadcast(u_key, command)
+##    def _tcp_in(self, tcp_stuff):
+##        in_data = tcp_stuff.get_decoded_in_str()
+##        try:
+##            server_com = server_command.server_command(in_data)
+##        except:
+##            com_split = in_data.split()
+##            server_com = server_command.server_command(command = com_split.pop(0))
+##            server_com.set_option_dict(dict([(k, v) for k, v in [z for z in [x.split(":", 1) for x in com_split] if len(z) == 2]]))
+##            server_com.set_compat(1)
+##        tcp_stuff.set_command(server_com.get_command())
+##        ret_str, coms_queued = process_request(self.__glob_config, self.__loc_config, self.__logger, self.__db_con, server_com, tcp_stuff.get_src_host(), tcp_stuff.get_src_port(), 0, tcp_stuff.get_loc_host(), self.get_thread_queue(), self.__bg_queue, self.__bg_commands, self.get_thread_pool())
+##        for com_queued in coms_queued:
+##            self.__bg_commands.append(com_queued)
+##        if self.__bg_commands:
+##            self.log("%s queued: %s" % (logging_tools.get_plural("command", len(self.__bg_commands)),
+##                                        ", ".join(self.__bg_commands)))
+##        if type(ret_str) == type(""):
+##            server_reply = server_command.server_reply()
+##            server_reply.set_ok_result(ret_str)
+##        else:
+##            server_reply = ret_str
+##        tcp_stuff.add_to_out_buffer(server_reply)
+##    def _send_broadcast(self, bc_com):
+##        unique_key = time.strftime("%Y%m%d%H%M%S", time.localtime(time.time()))
+##        self._do_server_broadcast(unique_key, bc_com)
+##    def _contact_server(self, (srv_name, srv_ip, srv_port, srv_com)):
+##        self.log("Sending %s to device '%s' (IP %s, port %d)" % (srv_com, srv_name, srv_ip, srv_port))
+##        self.__net_server.add_object(net_tools.tcp_con_object(self._new_tcp_con, target_host=srv_ip, target_port=srv_port, bind_retries=1, rebind_wait_time=1, connect_state_call=self._udp_connect, connect_timeout_call=self._connect_timeout, timeout=10, add_data=srv_com))
+##    def _connect_timeout(self, sock):
+##        self.log("connect timeout", logging_tools.LOG_LEVEL_ERROR)
+##        sock.close()
+##    def _new_tcp_con(self, sock):
+##        return simple_con("tcp", sock.get_target_host(), sock.get_target_port(), sock.get_add_data(), self.get_thread_queue())
+##    def _do_server_broadcast(self, u_key, bc_com):
+##        dc = self.__db_con.get_connection(SQL_ACCESS)
+##        send_str = "%s %s" % (u_key, bc_com)
+##        self.log("Initiating server-broadcast command '%s', key %s" % (bc_com, u_key))
+##        dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE n.device=%d" % (self.__loc_config["SERVER_IDX"]))
+##        my_netdev_idxs = [x["netdevice_idx"] for x in dc.fetchall()]
+##        if my_netdev_idxs:
+##            # start sending of nscd_reload commands
+##            dc.execute("SELECT d.name, i.ip, h.value FROM device d INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device_group dg INNER JOIN device_type dt INNER JOIN " + \
+##                       "hopcount h INNER JOIN netdevice n INNER JOIN netip i LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_idx=n.device AND i.netdevice=n.netdevice_idx AND dg.device_group_idx=d.device_group AND " + \
+##                       "dc.new_config=c.new_config_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND c.name='server' AND d.device_type=dt.device_type_idx AND dt.identifier='H' AND " + \
+##                       "h.s_netdevice=n.netdevice_idx AND (%s) ORDER BY h.value, d.name" % (" OR ".join(["h.d_netdevice=%d" % (x) for x in my_netdev_idxs])))
+##            serv_ip_dict = dict([(db_rec["name"], db_rec["ip"]) for db_rec in dc.fetchall()])
+##            for serv_name, serv_ip in serv_ip_dict.iteritems():
+##                self.log(" - Sending %s to %s (%s) ..." % (send_str, serv_name, serv_ip))
+##                self.__net_server.add_object(net_tools.udp_con_object(self._new_udp_con, target_host=serv_ip, target_port=SERVER_PORT, bind_retries=1, rebind_wait_time=1, connect_state_call=self._udp_connect, add_data=send_str))
+##        dc.release()
+##    def _new_udp_con(self, sock):
+##        return simple_con("udp", sock.get_target_host(), sock.get_target_port(), sock.get_add_data(), self.get_thread_queue())
+##    def _udp_connect(self, **args):
+##        if args["state"] == "error":
+##            self.get_thread_queue().put(("send_error", (args["host"], args["port"], args["type"], "connect error")))
+##    def _send_error(self, (s_host, s_port, mode, what)):
+##        self.log("send_error (%s, %s %d): %s" % (s_host, mode, s_port, what), logging_tools.LOG_LEVEL_ERROR)
+##    def _send_ok(self, (s_host, s_port, mode, what)):
+##        self.log("send_ok (%s, %s %d): %s" % (s_host, mode, s_port, what))
         
 ##class monitor_thread(threading_tools.thread_obj):
 ##    def __init__(self, db_con, glob_config, loc_config, logger):
@@ -1051,7 +1051,6 @@ class socket_server_thread(threading_tools.thread_obj):
 class server_process(threading_tools.process_pool):
     def __init__(self, options):
         self.__log_cache, self.__log_template = ([], None)
-        #self.__db_con = db_con
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__run_command = True if global_config["COMMAND"].strip() else False
         if self.__run_command:
@@ -1193,6 +1192,7 @@ class server_process(threading_tools.process_pool):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+    def loop_post(self):
         self.__log_template.close()
     def _init_network_sockets(self):
         self.__connection_dict = {}
@@ -1434,6 +1434,7 @@ class server_process(threading_tools.process_pool):
             self.log("connected to %s" % (conn_str))
         self.send_broadcast(bc_com)
     def loop_function(self):
+        print "Loop"
         if self.__is_server:
             self.__mon_thread_queue.put("update")
             self.__ns.step()
