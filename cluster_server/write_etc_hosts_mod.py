@@ -82,13 +82,15 @@ class write_etc_hosts(cs_base_class.server_com):
         #self.dc.execute(sql_str)
         rsa_key_dict = {}
         for db_rec in ssh_vars:
-            print "* ssh_var *", db_rec
-            if db_rec["val_blob"] and db_rec["dvname"] == "ssh_host_rsa_key_pub":
-                if type(db_rec["val_blob"]) == type(array.array("b")):
-                    key_str = db_rec["val_blob"].tostring().split()
-                else:
-                    key_str = db_rec["val_blob"].split()
-                rsa_key_dict[db_rec["name"]] = " ".join(key_str)
+            pass
+            # not handled FIXME
+            #print "* ssh_var *", db_rec
+            #if db_rec["val_blob"] and db_rec["dvname"] == "ssh_host_rsa_key_pub":
+                #if type(db_rec["val_blob"]) == type(array.array("b")):
+                    #key_str = db_rec["val_blob"].tostring().split()
+                #else:
+                    #key_str = db_rec["val_blob"].split()
+                #rsa_key_dict[db_rec["name"]] = " ".join(key_str)
         # read pre/post lines from /etc/hosts
         pre_host_lines, post_host_lines = ([], [])
         # parse pre/post host_lines

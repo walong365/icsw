@@ -489,7 +489,7 @@ class rebuild_hopcount(cs_base_class.server_com):
             reb_var.val_date = pytz.utc.localize(datetime.datetime(*time.localtime()[0:6]))
             reb_var.save()
             state_var.delete()
-            if not self.global_config["COMMAND"]:
+            if not self.global_config["COMMAND"] and False:
                 print "broadcast"
                 self.log("broadcasting write_etc_hosts to other cluster-servers")
                 self.process_pool.send_broadcast("write_etc_hosts")
