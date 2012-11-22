@@ -1,0 +1,66 @@
+{% extends "main.html" %}
+
+{% load i18n compress %}
+
+{% block title %}{% trans "Package Repository Overview" %}{% endblock %}
+
+
+{% block content %}
+
+<h1 class="center">Package Repositories</h1>
+
+<div id="repo_tables"></div>
+
+<script type="text/javascript">
+
+// repository XML
+REPO_XML = undefined;
+
+var master_array = {
+    "repo" : new draw_setup("Package repositories", "package_repo", "package_repo",
+        undefined,
+        undefined,
+        [
+            new draw_info("name", {size : 40}),
+            new draw_info("alias", {size : 40}),
+            new draw_info("enabled", {boolean : true}),
+            new draw_info("autorefresh", {boolean : true}),
+            new draw_info("gpg_check", {boolean : true}),
+            new draw_info("url", {size : 60})
+        ], {
+            lock_div : "repo_tables"
+        }
+    )
+};
+
+function draw_tables() {
+    var t_div = $("div#repo_tables");
+    t_div.children().remove();
+    for (var key in master_array) {
+        t_div.append(master_array[key].draw_table());
+    };
+};
+
+function load_repos() {
+    $.ajax({
+        url     : "{% url pack:repo_overview %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                REPO_XML = $(xml).find("value[name='response']");
+                init_xml_change(REPO_XML);
+                draw_tables();
+            }
+        }
+    });
+}
+
+function add_config_handlers() {
+    load_repos();
+};
+
+$(document).ready(add_config_handlers);
+
+</script>
+
+{% endblock %}
