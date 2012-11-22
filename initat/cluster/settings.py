@@ -217,7 +217,7 @@ INSTALLED_APPS = (
     "django.contrib.admindocs",
     "reversion",
     "south",
-    #"compressor",
+    "compressor",
     # cluster
 )
 
