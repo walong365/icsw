@@ -132,6 +132,7 @@ pack_patterns = patterns(
     url("search/retry"        , "pack_views.retry_search"     , name="retry_search"     ),
     url("search/search_result", "pack_views.get_search_result", name="get_search_result"),
     url("search/use_package"  , "pack_views.use_package"      , name="use_package"      ),
+    url("install"             , "pack_views.install"          , name="install"          ),
 )
 
 main_patterns = patterns(

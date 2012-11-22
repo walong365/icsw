@@ -139,4 +139,17 @@ def use_package(request):
         except IntegrityError, what:
             request.log("error modifying: %s" % (unicode(what)), logging_tools.LOG_LEVEL_ERROR, xml=True)
     return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def install(request):
+    if request.method == "GET":
+        return render_me(request, "package_install.html", {})()
+    else:
+        xml_resp = E.response(
+##            E.package_searchs(*[cur_r.get_xml() for cur_r in package_search.objects.filter(Q(deleted=False))]),
+##            E.users(*[cur_u.get_xml() for cur_u in user.objects.all()])
+        )
+        request.xml_response["response"] = xml_resp
+        return request.xml_response.create_response()
     

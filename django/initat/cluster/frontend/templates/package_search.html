@@ -52,10 +52,18 @@ var search_array = {
             new draw_info("arch"),
             new draw_info("version"),
             new draw_info("package_repo", {select_source : "package_repos package_repo"}),
-            new draw_info("use", {change_cb : use_package, button : true, trigger : true})
+            new draw_info("use", {change_cb : use_package, button : true, trigger : true, draw_conditional: check_copied_flag})
         ]
     )
 }
+
+function check_copied_flag(cur_xml) {
+    if (cur_xml !== undefined) {
+        return cur_xml.attr("copied") == "1" ? false : true;
+    } else {
+        return false ;
+    }
+};
 
 function draw_result_element(xml_el, d_div) {
     if (xml_el) {
@@ -66,13 +74,13 @@ function draw_result_element(xml_el, d_div) {
             d_div.append($("<span>").append($("<a>").attr({
                 "href" : "#",
                 "id"   : el_id
-            }).text(span_text).bind("click", open_modal)));
+            }).text(span_text).bind("click", show_result)));
         };
     };
     return d_div;
 };
 
-function open_modal(event) {
+function show_result(event) {
     var targ_el = $(event.target);
     $.ajax({
         url     : "{% url pack:get_search_result %}",
@@ -103,6 +111,7 @@ function use_package(event) {
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
+                targ_el.remove();
             }
         }
     });

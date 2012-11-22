@@ -134,7 +134,7 @@ function draw_info(name, kwargs) {
     this.label = kwargs && (kwargs.label || name.toTitle()) || name.toTitle();
     this.span = kwargs && (kwargs.span || 1) || 1;
     var attr_list = ["size", "default", "select_source", "boolean", "min", "max", "ro",
-        "button", "change_cb", "trigger", "draw_result_cb",
+        "button", "change_cb", "trigger", "draw_result_cb", "draw_conditional",
         "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group",
         "css", "select_source_attribute", "password", "keep_td"];
     for (idx=0 ; idx < attr_list.length; idx ++) {
@@ -257,6 +257,15 @@ function draw_line(cur_ds, xml_el) {
         if ((cur_di.trigger && xml_el !== undefined) || ! cur_di.trigger) {
             // removed, not needed ?
             // kwargs.cur_ds = cur_ds;
+            if (cur_di.draw_conditional) {
+                var draw_el = cur_di.draw_conditional(xml_el);
+            } else {
+                var draw_el = true;
+            }
+        } else {
+            var draw_el = false;
+        }
+        if (draw_el) {
             var new_els = create_input_el(xml_el, cur_di.name, line_prefix, kwargs);
             el_list.push(new draw_result(cur_di.name, cur_di.group, new_els.last()));
         } else {
