@@ -1014,6 +1014,7 @@ class package_search_result(models.Model):
     arch = models.CharField(max_length=32, default="")
     # version w. release
     version = models.CharField(max_length=128, default="")
+    copied = models.BooleanField(default=False)
     package_repo = models.ForeignKey(package_repo, null=True)
     created = models.DateTimeField(auto_now_add=True)
     def create_package(self):
@@ -1023,7 +1024,13 @@ class package_search_result(models.Model):
             kind=self.kind,
             arch=self.arch,
             package_repo=self.package_repo)
-        new_p.save()
+        try:
+            new_p.save()
+        except:
+            raise
+        else:
+            self.copied = True;
+            self.save();
         return new_p
     def get_xml(self):
         return E.package_search_result(
@@ -1034,6 +1041,7 @@ class package_search_result(models.Model):
             kind=self.kind,
             arch=self.arch,
             version=self.version,
+            copied="1" if self.copied else "0",
             package_repo="%d" % (self.package_repo_id or 0)
         )
     class Meta:
@@ -1060,9 +1068,38 @@ class package(models.Model):
 ##    packager = models.CharField(max_length=765, blank=True)
 ##    date = models.DateTimeField(auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.package(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="pack__%d" % (self.pk),
+            name=self.name,
+            version=self.version,
+            kind=self.kind,
+            arch=self.arch,
+            size="%d" % (self.size),
+            package_repo="%d" % (self.package_repo_id)
+        )
+    def __unicode__(self):
+        return self.name
     class Meta:
         db_table = u'package'
         unique_together = (("name", "version", "arch", "kind",),)
+
+class package_device_connection(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey(device)
+    package = models.ForeignKey(package)
+    created = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.package_device_connection(
+            pk="%d" % (self.pk),
+            key="pdc__%d" % (self.pk),
+            device="%d" % (self.device_id),
+            package="%d" % (self.package_id)
+        )
+    class Meta:
+        pass
 
 class inst_package(models.Model):
     idx = models.AutoField(db_column="inst_package_idx", primary_key=True)
@@ -1304,19 +1341,19 @@ class ms_outlet(models.Model):
     class Meta:
         db_table = u'msoutlet'
 
-class netbotz_picture(models.Model):
-    idx = models.AutoField(db_column="netbotz_picture_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    year = models.IntegerField()
-    month = models.IntegerField()
-    day = models.IntegerField()
-    hour = models.IntegerField()
-    minute = models.IntegerField()
-    second = models.IntegerField()
-    path = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'netbotz_picture'
+##class netbotz_picture(models.Model):
+##    idx = models.AutoField(db_column="netbotz_picture_idx", primary_key=True)
+##    device = models.ForeignKey("device")
+##    year = models.IntegerField()
+##    month = models.IntegerField()
+##    day = models.IntegerField()
+##    hour = models.IntegerField()
+##    minute = models.IntegerField()
+##    second = models.IntegerField()
+##    path = models.CharField(max_length=765, blank=True)
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'netbotz_picture'
 
 class netdevice(models.Model):
     idx = models.AutoField(db_column="netdevice_idx", primary_key=True)
