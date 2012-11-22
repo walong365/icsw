@@ -117,3 +117,15 @@ def create_config(request):
         request.xml_response["result"] = E.devices()
     print etree.tostring(request.xml_response.build_response(), pretty_print=True)
     return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def rebuild_config(request):
+    srv_com = server_command.srv_command(command="rebuild_config")
+    result = net_tools.zmq_connection("webfrontend", timeout=30).add_connection("tcp://localhost:8010", srv_com)
+    if not result:
+        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        res_node = result.xpath(None, ".//ns:result")[0]
+        request.log(res_node.attrib["reply"], int(res_node.attrib["state"]), xml=True)
+    return request.xml_response.create_response()

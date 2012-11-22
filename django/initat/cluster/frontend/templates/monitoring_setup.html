@@ -16,6 +16,17 @@
 // monitoring XML
 MON = undefined;
 
+function rebuild_config() {
+    $.ajax({
+        url     : "{% url mon:rebuild_config %}",
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+            }
+        }
+    });
+};
+
 var master_array = {
     "monper" : new draw_setup("MonPeriod", "monper", "mon_period",
         "{% url base:create_object 'mon_period' %}",
