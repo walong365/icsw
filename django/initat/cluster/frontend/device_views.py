@@ -12,7 +12,7 @@ from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from initat.cluster.backbone.models import device_type, device_group, device, device_class, \
-     mon_device_templ, mon_ext_host, cd_connection
+     mon_device_templ, mon_ext_host, cd_connection, package_device_connection
 from django.core.exceptions import ValidationError
 from lxml import etree
 import config_tools
@@ -151,6 +151,7 @@ def get_group_tree(request):
     ignore_md = True if int(_post.get("ignore_meta_devices", 0)) else False
     # also possible via _post.getlist("sel_list", []) ?
     sel_list = _post.getlist("sel_list[]", [])#request.session.get("sel_list", [])
+    sel_pks = [int(value.split("__")[1]) for value in sel_list]
     xml_resp = E.device_groups()
     all_dgs = device_group.objects.exclude(Q(cluster_device_group=True)).prefetch_related("device_group").order_by("name")
     meta_dev_type_id = device_type.objects.get(Q(identifier="MD")).pk
@@ -171,14 +172,21 @@ def get_group_tree(request):
                     any_sel = True
         if any_sel:
             xml_resp.append(cur_xml)
-    for extra_key in [key for key in _post.keys() if key.startswith("extra_")]:
+    extra_re = re.compile("^extra_t(\d+)$")
+    for extra_key in [key for key in _post.keys() if extra_re.match(key)]:
         extra_name = _post[extra_key]
+        device_filter = True if "%s_device" % (extra_key) in _post else False
         kwargs = {"mon_ext_host" : {"with_images" : True}}.get(extra_name, {})
         select_rel_dict = {"cd_connection" : ["parent", "child"]}
-        request.log("adding extra data %s" % (extra_name))
+        request.log("adding extra data %s (device filter : %s)" % (extra_name,
+                                                                   str(device_filter)))
         extra_obj = globals()[extra_name]
+        if device_filter:
+            obj_list = extra_obj.objects.filter(Q(device__in=sel_pks))
+        else:
+            obj_list = extra_obj.objects.all()
         extra_list = getattr(E, "%ss" % (extra_name))(
-            *[cur_obj.get_xml(**kwargs) for cur_obj in extra_obj.objects.all().select_related(*select_rel_dict.get(extra_name, []))]
+            *[cur_obj.get_xml(**kwargs) for cur_obj in obj_list.select_related(*select_rel_dict.get(extra_name, []))]
         )
         xml_resp.append(extra_list)
     request.xml_response["response"] = xml_resp

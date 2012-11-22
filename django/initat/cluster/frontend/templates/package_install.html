@@ -2,64 +2,281 @@
 
 {% load i18n compress %}
 
-{% block title %}{% trans "Package Repository Overview" %}{% endblock %}
+{% block title %}{% trans "Package Install" %}{% endblock %}
 
 
 {% block content %}
 
-<h1 class="center">Package Repositories</h1>
+<h1 class="center">Package Install</h1>
 
-<div id="repo_tables"></div>
+<div id="device"></div>
+
+<div id="package"></div>
 
 <script type="text/javascript">
 
-// repository XML
-REPO_XML = undefined;
+// Package XML
+PACKAGE_XML = undefined;
+// Devices XML
+DEVICE_XML = undefined;
 
 var master_array = {
-    "repo" : new draw_setup("Package repositories", "package_repo", "package_repo",
+    "pack" : new draw_setup("Packages", "pack", "package",
         undefined,
         undefined,
         [
             new draw_info("name", {size : 40}),
-            new draw_info("alias", {size : 40}),
-            new draw_info("enabled", {boolean : true}),
-            new draw_info("autorefresh", {boolean : true}),
-            new draw_info("gpg_check", {boolean : true}),
-            new draw_info("url", {size : 60})
+            new draw_info("version", {size : 40}),
+            new draw_info("kind", {size : 20}),
+            new draw_info("arch", {size : 20}),
+            new draw_info("package_repo", {select_source : "package_repos package_repo"}),
+            new draw_info("add", {change_cb : add_package, button : true, trigger : true}),
+            new draw_info("remove", {change_cb : remove_package, button : true, trigger : true}),
+            new draw_info("delete", {change_cb : delete_package, button : true, trigger : true}),
         ], {
-            lock_div : "repo_tables"
+            lock_div : "package"
         }
     )
 };
 
-function draw_tables() {
-    var t_div = $("div#repo_tables");
+function use_devs(dt_div) {
+    CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
+        return(value.data.key);
+    });
+    load_devices(CUR_DEVICES);
+};
+
+function load_devices(sel_list) {
+    //console.log(sel_list);
+    $.ajax({
+        url     : "{% url device:get_group_tree %}",
+        error   : handle_ajax_error,
+        data    : {
+            "sel_list"            : sel_list,
+            "ignore_meta_devices" : 1,
+            "extra_t0"            : "package_device_connection",
+            "extra_t0_device"     : 1
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                DEVICE_XML = $(xml).find("value[name='response']");
+                draw_device_table();
+            }
+        }
+    });
+};
+
+function remove_package(event) {
+    var cur_el = $(event.target);
+    var pack_key = cur_el.attr("id").split("__").slice(0, 2).join("__");
+    var pack_pk = pack_key.split("__")[1];
+    var d_table = $("table#device");
+    // get all devices which have the current package not set
+    DEVICE_XML.find("device_group devices device[meta_device='0']").each(function() {
+        var dev_xml = $(this);
+        var dev_key = dev_xml.attr("key");
+        // device is select
+        if (d_table.find("input[id='" + dev_key + "__sel']").prop("checked")) {
+            var cur_pdc = DEVICE_XML.find("package_device_connections package_device_connection[package='" + pack_pk + "'][device='" + dev_xml.attr("pk") + "']");
+            if (cur_pdc.length) {
+                remove_package_xml(cur_pdc);
+            };
+        };
+    });
+};
+
+function remove_package_xml(cur_pdc) {
+    $.ajax({
+        url     : "{% url pack:remove_package %}",
+        data    : {
+            "pdc_key"  : cur_pdc.attr("key")
+        },
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                $("table#device").find("tr[id='" + cur_pdc.attr("key") + "']").remove();
+                DEVICE_XML.find("package_device_connections package_device_connection[key='" + cur_pdc.attr("key") + "']").remove();
+            }
+        }
+    });
+};
+
+function add_package(event) {
+    var cur_el = $(event.target);
+    var pack_key = cur_el.attr("id").split("__").slice(0, 2).join("__");
+    var pack_pk = pack_key.split("__")[1];
+    var d_table = $("table#device");
+    // get all devices which have the current package not set
+    DEVICE_XML.find("device_group devices device[meta_device='0']").each(function() {
+        var dev_xml = $(this);
+        var dev_key = dev_xml.attr("key");
+        // device is select
+        if (d_table.find("input[id='" + dev_key + "__sel']").prop("checked")) {
+            if (!DEVICE_XML.find("package_device_connections package_device_connection[package='" + pack_pk + "'][device='" + dev_xml.attr("pk") + "']").length) {
+                add_package_xml(dev_xml, PACKAGE_XML.find("package[key='" + pack_key + "']"));
+            };
+        };
+    });
+};
+
+function add_package_xml(dev_xml, pack_xml) {
+    $.ajax({
+        url     : "{% url pack:add_package %}",
+        data    : {
+            "dev_key"  : dev_xml.attr("key"),
+            "pack_key" : pack_xml.attr("key")
+        },
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                var new_pdc = $(xml).find("value[name='new_entry'] package_device_connection");
+                DEVICE_XML.find("package_device_connections").append(new_pdc);
+                $("table#device").find("tr[id='" + dev_xml.attr("key") + "']").after(
+                    draw_pdc(dev_xml, new_pdc)
+                );
+            }
+        }
+    });
+};
+
+function delete_package(event) {
+    var targ_el = $(event.target);
+    if (confirm("really delete package ?")) {
+        $.ajax({
+            url     : "{% url pack:remove_package %}",
+            data    : {
+                "pk" : targ_el.attr("id").split("__")[1]
+            },
+            error   : handle_ajax_error,
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    targ_el.parents("tr:first").remove();
+                }
+            }
+        });
+    };
+};
+
+function draw_pdc(dev_xml, pdc_xml) {
+    var line_prefix = pdc_xml.attr("key");
+    var new_tr = $("<tr>").attr({
+        "class" : "ui-widget ui-widget-header",
+        "id"    : line_prefix
+    });
+    new_tr.append(
+        $("<td>").text("pdc")
+    );
+    return new_tr;
+};
+
+function draw_device(d_el) {
+    var dummy_div = $("<div>");
+    var line_prefix = d_el.attr("key");
+    var new_tr = $("<tr>").attr({
+        "class" : "ui-widget ui-widget-header",
+        "id"    : line_prefix
+    });
+    new_tr.append(
+        $("<td>").append(
+            $("<input>").attr({
+                "type" : "checkbox",
+                "id"   : line_prefix + "__sel"
+            })
+        )
+    ).append(
+        $("<td>").attr({
+        }).text("device " + d_el.text())
+    );
+    dummy_div.append(new_tr);
+    DEVICE_XML.find("package_device_connections package_device_connection[device='" + d_el.attr("pk") + "']").each(function() {
+        var pdc_xml = $(this);
+        dummy_div.append(draw_pdc(d_el, pdc_xml));
+    });
+    return dummy_div.children();
+    
+};
+
+function draw_device_table() {
+    d_table = $("<table>").attr({"id" : "device"});
+    DEVICE_XML.find("device_group").each(function() {
+        var cur_dg = $(this);
+        var new_tr = $("<tr>").attr({
+            "class"   : "ui-widget ui-widget-header"
+        });
+        var line_prefix = cur_dg.attr("key");
+        new_tr.append(
+            $("<th>").append(
+                $("<input>").attr({
+                    "type" : "checkbox",
+                    "id"   : line_prefix + "__sel"
+                }).bind("click", change_dg_sel)
+            )
+        ).append($("<th>").attr({
+            "colspan" : "5"
+        }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")));
+        d_table.append(new_tr);
+        cur_dg.find("devices device[selected='selected'][meta_device='0']").each(function() {
+            var cur_dev = $(this);
+            d_table.append(draw_device(cur_dev));
+        });
+    });
+    var d_div = $("div#device");
+    d_div.children().remove();
+    d_div.append(d_table);
+    d_div.append($("<span>").text("selection: "));
+    d_div.append($("<input>").attr({
+        "type"  : "button",
+        "value" : "toggle"
+    }).bind("click", change_global_sel));
+};
+
+function change_global_sel(event) {
+    var d_table = $("table#device");
+    DEVICE_XML.find("device_group").each(function() {
+        var cur_dg = $(this);
+        var sel_box = d_table.find("input[id='" + cur_dg.attr("key") + "__sel']");
+        sel_box.trigger("click");
+    });
+};
+
+function change_dg_sel(event) {
+    var cur_el = $(event.target);
+    var d_table = $("table#device");
+    DEVICE_XML.find("device_group[key='" + cur_el.attr("id").split("__").slice(0, 2).join("__") + "'] devices device[selected='selected']").each(function() {
+        var cur_dev = $(this);
+        var sel_box = d_table.find("input[id='" + cur_dev.attr("key") + "__sel']");
+        sel_box.trigger("click");
+    });
+};
+
+function draw_package_table() {
+    var t_div = $("div#package");
     t_div.children().remove();
     for (var key in master_array) {
         t_div.append(master_array[key].draw_table());
     };
 };
 
-function load_repos() {
+function load_packages() {
     $.ajax({
-        url     : "{% url pack:repo_overview %}",
+        url     : "{% url pack:install %}",
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                REPO_XML = $(xml).find("value[name='response']");
-                init_xml_change(REPO_XML);
-                draw_tables();
+                PACKAGE_XML = $(xml).find("value[name='response']");
+                init_xml_change(PACKAGE_XML);
+                draw_package_table();
             }
         }
     });
 }
 
-function add_config_handlers() {
-    load_repos();
+function add_install_handlers() {
+    load_packages();
+    install_devsel_link(use_devs, true);
 };
 
-$(document).ready(add_config_handlers);
+$(document).ready(add_install_handlers);
 
 </script>
 

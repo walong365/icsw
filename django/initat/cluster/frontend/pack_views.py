@@ -17,7 +17,8 @@ import re
 from lxml.builder import E
 import process_tools
 from initat.cluster.backbone.models import package_repo, package_search, user, \
-     package_search_result
+     package_search_result, package, get_related_models, package_device_connection, \
+     device
 import server_command
 import net_tools
 
@@ -142,14 +143,67 @@ def use_package(request):
 
 @login_required
 @init_logging
+def remove_package(request):
+    _post = request.POST
+    try:
+        cur_p = package.objects.get(Q(pk=_post["pk"]))
+    except package.DoesNotExist:
+        request.log("package not found", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        num_ref = get_related_models(cur_p)
+        if num_ref:
+            request.log("cannot remove: %s" % (logging_tools.get_plural("reference", num_ref)),
+                        logging_tools.LOG_LEVEL_ERROR, xml=True)
+        else:
+            cur_p.delete()
+            request.log("removed package", xml=True)
+    return request.xml_response.create_response()
+    
+@login_required
+@init_logging
 def install(request):
     if request.method == "GET":
         return render_me(request, "package_install.html", {})()
     else:
         xml_resp = E.response(
-##            E.package_searchs(*[cur_r.get_xml() for cur_r in package_search.objects.filter(Q(deleted=False))]),
-##            E.users(*[cur_u.get_xml() for cur_u in user.objects.all()])
+            E.packages(
+                *[cur_p.get_xml() for cur_p in package.objects.all()]
+            ),
+            E.package_repos(*[cur_r.get_xml() for cur_r in package_repo.objects.all()])
         )
         request.xml_response["response"] = xml_resp
         return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def add_package(request):
+    _post = request.POST
+    dev_pk, pack_pk = (
+        int(_post["dev_key"].split("__")[1]),
+        int(_post["pack_key"].split("__")[1]))
+    try:
+        cur_pdc = package_device_connection.objects.get(Q(device=dev_pk) & Q(package=pack_pk))
+    except package_device_connection.DoesNotExist:
+        new_pdc = package_device_connection(
+            device=device.objects.get(Q(pk=dev_pk)),
+            package=package.objects.get(Q(pk=pack_pk)))
+        new_pdc.save()
+        request.xml_response["new_entry"] = new_pdc.get_xml()
+    else:
+        request.log("connection already exists", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def remove_package(request):
+    _post = request.POST
+    pdc_pk = int(_post["pdc_key"].split("__")[1])
+    try:
+        cur_pdc = package_device_connection.objects.get(Q(pk=pdc_pk))
+    except package_device_connection.DoesNotExist:
+        request.log("connection doest not exists", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        cur_pdc.delete()
+        request.log("connection removed", xml=True)
+    return request.xml_response.create_response()
     

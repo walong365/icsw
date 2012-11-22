@@ -125,14 +125,17 @@ user_patterns = patterns(
 
 pack_patterns = patterns(
     "initat.cluster.frontend",
-    url("overview/repo$"      , "pack_views.repo_overview"    , name="repo_overview"    ),
-    url("search/repo$"        , "pack_views.search_package"   , name="search_package"   ),
-    url("search/create"       , "pack_views.create_search"    , name="create_search"    ),
-    url("search/delete"       , "pack_views.delete_search"    , name="delete_search"    ),
-    url("search/retry"        , "pack_views.retry_search"     , name="retry_search"     ),
-    url("search/search_result", "pack_views.get_search_result", name="get_search_result"),
-    url("search/use_package"  , "pack_views.use_package"      , name="use_package"      ),
-    url("install"             , "pack_views.install"          , name="install"          ),
+    url("overview/repo$"       , "pack_views.repo_overview"    , name="repo_overview"    ),
+    url("search/repo$"         , "pack_views.search_package"   , name="search_package"   ),
+    url("search/create"        , "pack_views.create_search"    , name="create_search"    ),
+    url("search/delete"        , "pack_views.delete_search"    , name="delete_search"    ),
+    url("search/retry"         , "pack_views.retry_search"     , name="retry_search"     ),
+    url("search/search_result" , "pack_views.get_search_result", name="get_search_result"),
+    url("search/use_package"   , "pack_views.use_package"      , name="use_package"      ),
+    url("search/remove_package", "pack_views.remove_package"   , name="remove_package"   ),
+    url("install"              , "pack_views.install"          , name="install"          ),
+    url("pack/add"             , "pack_views.add_package"      , name="add_package"      ),
+    url("pack/remove"          , "pack_views.remove_package"   , name="remove_package"   ),
 )
 
 main_patterns = patterns(
