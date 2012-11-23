@@ -169,6 +169,9 @@ def install(request):
             E.packages(
                 *[cur_p.get_xml() for cur_p in package.objects.all()]
             ),
+            E.target_states(
+                *[E.target_state(key, pk=key) for key in ["keep", "install", "upgrade", "erase"]]
+                ),
             E.package_repos(*[cur_r.get_xml() for cur_r in package_repo.objects.all()])
         )
         request.xml_response["response"] = xml_resp
@@ -205,5 +208,27 @@ def remove_package(request):
     else:
         cur_pdc.delete()
         request.log("connection removed", xml=True)
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def change_target_state(request):
+    _post = request.POST
+    cur_pdc = package_device_connection.objects.get(Q(pk=_post["pdc_key"].split("__")[1]))
+    cur_pdc.target_state = _post["value"]
+    cur_pdc.save()
+    # signal package-server
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def change_package_flag(request):
+    _post = request.POST
+    cur_pdc = package_device_connection.objects.get(Q(pk=_post["pdc_key"].split("__")[1]))
+    flag_name = _post["pdc_key"].split("__")[-1]
+    value = True if int(_post["value"]) else False
+    setattr(cur_pdc, flag_name, value)
+    cur_pdc.save()
+    # signal package-server
     return request.xml_response.create_response()
     

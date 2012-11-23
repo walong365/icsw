@@ -30,6 +30,7 @@ var master_array = {
             new draw_info("kind", {size : 20}),
             new draw_info("arch", {size : 20}),
             new draw_info("package_repo", {select_source : "package_repos package_repo"}),
+            new draw_info("tstate", {change_cb : change_target_state, select_source : "target_states target_state", trigger : true, add_null_entry : "---"}),
             new draw_info("add", {change_cb : add_package, button : true, trigger : true}),
             new draw_info("remove", {change_cb : remove_package, button : true, trigger : true}),
             new draw_info("delete", {change_cb : delete_package, button : true, trigger : true}),
@@ -64,6 +65,25 @@ function load_devices(sel_list) {
             }
         }
     });
+};
+
+function change_target_state(event) {
+    var cur_el = $(event.target);
+    var pack_key = cur_el.attr("id").split("__").slice(0, 2).join("__");
+    var pack_pk = pack_key.split("__")[1];
+    var t_state = cur_el.val();
+    if (t_state != "0") {
+        cur_el.val("0");
+        $("table#device").find("tr[id^='pdc__'] ").each(function(idx) {
+            var cur_tr = $(this);
+            if (DEVICE_XML.find("package_device_connections package_device_connection[pk='" + cur_tr.attr("id").split("__")[1] + "'][package='" + pack_pk + "']").length) {
+                if (cur_tr.find("input[id$='__sel']:checkbox:checked").length) {
+                    var cur_sel = cur_tr.find("select[id$='__tstate']");
+                    cur_sel.val(t_state).trigger("change");
+                };
+            };
+        });
+    };
 };
 
 function remove_package(event) {
@@ -157,14 +177,83 @@ function delete_package(event) {
     };
 };
 
+function draw_tstate(pdc_xml) {
+    var cur_ts = $("<select>").attr({
+        "id" : pdc_xml.attr("key") + "__tstate"
+    });
+    PACKAGE_XML.find("target_states target_state").each(function(key) {
+        var value = $(this).attr("pk");
+        var cur_opt = $("<option>").attr({"value" : cur_opt}).text(value);
+        if (pdc_xml.attr("target_state") == value) cur_opt.attr("selected", "selected");
+        cur_ts.append(cur_opt);
+    });
+    cur_ts.bind("change", function(event) {
+        var cur_el = $(event.target);
+        $.ajax({
+            url   : "{% url pack:change_target_state %}",
+            data  : {
+                "pdc_key" : cur_el.attr("id"),
+                "value"   : cur_el.val()
+            },
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                }
+            }
+        });
+    });
+    return cur_ts;
+};
+
+function draw_pflag(pdc_xml, flag_name) {
+    var cur_ts = $("<input>").attr({
+        "type" : "checkbox",
+        "id"   : pdc_xml.attr("key") + "__" + flag_name});
+    if (pdc_xml.attr(flag_name) == "1") cur_ts.attr("checked", "checked");
+    cur_ts.bind("change", function(event) {
+        var cur_el = $(event.target);
+        $.ajax({
+            url   : "{% url pack:change_package_flag %}",
+            data  : {
+                "pdc_key" : cur_el.attr("id"),
+                "value"   : cur_el.prop("checked") ? "1" : "0"
+            },
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                }
+            }
+        });
+    });
+    return cur_ts;
+};
+
 function draw_pdc(dev_xml, pdc_xml) {
     var line_prefix = pdc_xml.attr("key");
+    var pack_xml = PACKAGE_XML.find("packages package[pk='" + pdc_xml.attr("package") + "']");
     var new_tr = $("<tr>").attr({
         "class" : "ui-widget ui-widget-header",
         "id"    : line_prefix
     });
     new_tr.append(
-        $("<td>").text("pdc")
+        $("<td>").append(
+            $("<input>").attr({
+                "type" : "checkbox",
+                "id"   : pdc_xml.attr("key") + "__sel"
+            })
+        )
+    ).append(
+        $("<td>").text(pack_xml.text())
+    ).append(
+        $("<td>").text(pack_xml.attr("version"))
+    ).append(
+        $("<td>").text(pack_xml.attr("arch"))
+    ).append(
+        $("<td>").append(draw_tstate(pdc_xml))
+    ).append(
+        $("<td>").text(pdc_xml.attr("installed"))
+    ).append(
+        $("<td>").append(draw_pflag(pdc_xml, "force_flag"))
+    ).append(
+        $("<td>").append(draw_pflag(pdc_xml, "nodeps_flag"))
     );
     return new_tr;
 };
@@ -182,7 +271,7 @@ function draw_device(d_el) {
                 "type" : "checkbox",
                 "id"   : line_prefix + "__sel"
             })
-        )
+        ).bind("change", change_d_sel)
     ).append(
         $("<td>").attr({
         }).text("device " + d_el.text())
@@ -247,6 +336,20 @@ function change_dg_sel(event) {
         var sel_box = d_table.find("input[id='" + cur_dev.attr("key") + "__sel']");
         sel_box.trigger("click");
     });
+};
+
+function change_d_sel(event) {
+    var cur_el = $(event.target);
+    var d_table = $("table#device");
+    var sel_tr = cur_el.parents("tr:first");
+    while (true) {
+        var sel_tr = sel_tr.next();
+        if (sel_tr && sel_tr.attr("id") && sel_tr.attr("id").match(/^pdc__/)) {
+            sel_tr.find("input[id$='__sel']").trigger("click");
+        } else {
+            break;
+        };
+    };
 };
 
 function draw_package_table() {
