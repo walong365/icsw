@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2011 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2011,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -20,18 +20,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" logcheck-server (to be run on a syslog_server) """
+
+import os
+import sys
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import getopt
-import msock
-import signal
-import select
 import time
 import syslog
-import os
-import os.path
 import datetime
 import sys
-import threading
 import re
 import shutil
 import configfile
@@ -41,8 +41,6 @@ import stat
 import types
 import process_tools
 import logging_tools
-import net_logging_tools
-import net_tools
 import threading_tools
 import mysql_tools
 import MySQLdb
@@ -51,12 +49,20 @@ import cPickle
 import pprint
 import server_command
 import gzip
+import cluster_location
 import bz2
 import struct
 import config_tools
+from django.db.models import Q
+
+try:
+    from logcheck_server_version import VERSION_STRING
+except ImportError:
+    VERSION_STRING = "?.?"
 
 SYSLOG_THREAD_STR = "syslog-thread-test"
 
+SERVER_PORT = 8014
 SCAN_TEXT_PREFIX = ".scan"
 
 LOGREADER_DATE_VARNAME   = "logsrv_logreader_date"
@@ -65,167 +71,6 @@ LOGREADER_OFFSET_VARNAME = "logsrv_logreader_offset"
 SQL_ACCESS = "cluster_full_access"
 
 # ---------------------------------------------------------------------
-# connection object
-class new_tcp_con(net_tools.buffer_object):
-    def __init__(self, src, recv_queue, log_queue):
-        self.__src_host, self.__src_port = src
-        self.__recv_queue = recv_queue
-        self.__log_queue = log_queue
-        net_tools.buffer_object.__init__(self)
-        self.__init_time = time.time()
-        self.__in_buffer = ""
-    def __del__(self):
-        pass
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (threading.currentThread().getName(), what, level)))
-    def get_src_host(self):
-        return self.__src_host
-    def get_src_port(self):
-        return self.__src_port
-    def add_to_in_buffer(self, what):
-        self.__in_buffer += what
-        p1_ok, what = net_tools.check_for_proto_1_header(self.__in_buffer)
-        if p1_ok:
-            self.__decoded = what
-            self.__recv_queue.put(("con", self))
-    def add_to_out_buffer(self, what, new_in_str=""):
-        self.lock()
-        # to give some meaningful log
-        if new_in_str:
-            self.__decoded = new_in_str
-        if self.socket:
-            self.out_buffer = net_tools.add_proto_1_header(what)
-            self.socket.ready_to_send()
-        else:
-            self.log("timeout, other side has closed connection")
-        self.unlock()
-    def out_buffer_sent(self, d_len):
-        if d_len == len(self.out_buffer):
-            self.__recv_queue = None
-            self.log("command %s from %s (port %d) took %s" % (self.__decoded.replace("\n", "\\n"),
-                                                               self.__src_host,
-                                                               self.__src_port,
-                                                               logging_tools.get_diff_time_str(abs(time.time() - self.__init_time))))
-            self.close()
-        else:
-            self.out_buffer = self.out_buffer[d_len:]
-    def get_decoded_in_str(self):
-        return self.__decoded
-    def report_problem(self, flag, what):
-        self.close()
-
-class node_con_obj(net_tools.buffer_object):
-    # connects to a foreign node
-    def __init__(self, com_thread, dst_host, send_str):
-        self.__target_queue = com_thread.get_thread_queue()
-        self.__dst_host = dst_host
-        self.__send_str = send_str
-        net_tools.buffer_object.__init__(self)
-    def __del__(self):
-        pass
-    def setup_done(self):
-        self.add_to_out_buffer(net_tools.add_proto_1_header(self.__send_str, True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.in_buffer += what
-        p1_ok, p1_data = net_tools.check_for_proto_1_header(self.in_buffer)
-        if p1_ok:
-            self.__target_queue.put("node_ok_result")
-            self.delete()
-    def report_problem(self, flag, what):
-        self.__target_queue.put("node_error_result")
-        self.delete()
-# ---------------------------------------------------------------------
-
-class throttle_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config, db_con, log_queue):
-        self.__db_con = db_con
-        self.__log_queue = log_queue
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        threading_tools.thread_obj.__init__(self, "throttle", queue_size=100)
-        self.register_func("update", self._update)
-        self.register_func("set_ad_struct", self._set_ad_struct)
-        self.register_func("throttle", self._throttle)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (self.name, what, lev)))
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        self.__throttle_dict = {}
-        self.__last_check = time.time()
-        self.__last_db_sync_time = time.time()
-    def _set_ad_struct(self, ad_struct):
-        self.log("got ad_struct")
-        self.__ad_struct = ad_struct
-        self._update()
-    def _log_dict(self):
-        if self.__throttle_dict:
-            num_th = len(self.__throttle_dict.keys())
-            self.log("Got throttling messages from %s: %s" % (logging_tools.get_plural("device", num_th),
-                                                              ", ".join(["%s (%d)" % (x, reduce(lambda a, b: a + b, [z["num"] for z in self.__throttle_dict[x].itervalues()])) for x in self.__throttle_dict.keys()])))
-            mes_list = []
-            for ml in reduce(lambda a, b: a + b, [x.keys() for x in self.__throttle_dict.itervalues()], []):
-                if ml not in mes_list:
-                    mes_list.append(ml)
-            mes_list.sort()
-            for mes in mes_list:
-                act_list = []
-                for dev, stuff in self.__throttle_dict.iteritems():
-                    if mes in stuff.keys():
-                        act_list.append("%s (%d)" % (dev, stuff[mes]["num"]))
-                        self.log("* throttle message '%-40s': %4d times (%s)" % (mes, stuff[mes]["num"], dev))
-                act_list.sort()
-                self.log(" - message %-40s: %2d devices: %s" % (mes, len(act_list), ", ".join(act_list)))
-    def _update(self):
-        act_time = time.time()
-        if act_time - self.__last_check > 60. or act_time < self.__last_check:
-            self.__last_check = act_time
-            self._log_dict()
-            self.__throttle_dict = {}
-    def _throttle(self, (mach, mes_str)):
-        self.__throttle_dict.setdefault(mach, {}).setdefault(mes_str, {"first" : time.time(), "num" : 0})
-        self.__throttle_dict[mach][mes_str]["num"] += 1
-        self.__throttle_dict[mach][mes_str]["last"] = time.time()
-
-class scan_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config, db_con, log_queue):
-        self.__db_con = db_con
-        self.__log_queue = log_queue
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        threading_tools.thread_obj.__init__(self, "scan", queue_size=100)
-        self.register_func("update", self._update)
-        self.register_func("set_ad_struct", self._set_ad_struct)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (self.name, what, lev)))
-    def _set_ad_struct(self, ad_struct):
-        self.log("got ad_struct")
-        self.__ad_struct = ad_struct
-        self._update()
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        self.__last_scan_time = time.time() - self.__glob_config["LOGSCAN_TIME"] * 60 * 2
-    def _update(self):
-        act_time = time.time()
-        if abs(act_time - self.__last_scan_time) > self.__glob_config["LOGSCAN_TIME"] * 60:
-            dc = self.__db_con.get_connection(SQL_ACCESS)
-            self.__ad_struct.acquire_read_lock()
-            dev_names = sorted([key for key in self.__ad_struct.keys() if not self.__ad_struct.is_an_ip(key)])
-            s_time = time.time()
-            self.log("starting scanning of logs for %s: %s" % (logging_tools.get_plural("device", len(dev_names)),
-                                                               logging_tools.compress_list(dev_names)))
-            for dev_name in dev_names:
-                dev_struct = self.__ad_struct[dev_name]
-                dev_struct.scan_logs(dc)
-            self.__ad_struct.release_read_lock()
-            e_time = time.time()
-            self.log(" ... log_scanning took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
-            self.__last_scan_time = act_time
-            dc.release()
-
 class sql_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, loc_config, db_con, log_queue):
         self.__db_con = db_con
@@ -285,18 +130,6 @@ class sql_thread(threading_tools.thread_obj):
     def loop_end(self):
         self._check_written(True)
         self.__dc.release()
-
-def time_to_int(in_str):
-    # transforms time (hh:mm:ss) to integer
-    t_spl = [int(x) for x in in_str.split(":")]
-    return t_spl[2] + 60 * (t_spl[1] + 60 * t_spl[0])
-
-def int_to_time(in_int):
-    # transforms time (hh:mm:ss) to integer
-    hours = int(in_int / 3600)
-    mins  = int((in_int - 3600 * hours) / 60)
-    secs  = in_int - 60 * (mins + 60 * hours)
-    return "%02d:%02d:%02d" % (hours, mins, secs)
 
 class machine(object):
     #def __init__(self, name, idx, ips={}, log_queue=None):
@@ -1136,6 +969,81 @@ class logging_thread(threading_tools.thread_obj):
                 handle, pre_str = (self.__glob_log, "device %s: " % (name))
         return (handle, pre_str)
 
+class server_process(threading_tools.process_pool):
+    def __init__(self, options):
+        self.__log_cache, self.__log_template = ([], None)
+        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        self.__pid_name = global_config["PID_NAME"]
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.__msi_block = self._init_msi_block()
+        self._re_insert_config()
+        self.register_exception("int_error", self._int_error)
+        self.register_exception("term_error", self._int_error)
+        # log config
+        self._log_config()
+        # prepare directories
+        self._prepare_directories()
+        # enable syslog_config
+        self._enable_syslog_config()
+        self.__options = options
+    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+        if self.__log_template:
+            while self.__log_cache:
+                self.__log_template.log(*self.__log_cache.pop(0))
+            self.__log_template.log(lev, what)
+        else:
+            self.__log_cache.append((lev, what))
+    def _int_error(self, err_cause):
+        if self["exit_requested"]:
+            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
+        else:
+            self["exit_requested"] = True
+    def _prepare_directories(self):
+        for cur_dir in [global_config["SYSLOG_DIR"]]:
+            if not os.path.isdir(cur_dir):
+                try:
+                    os.mkdir(cur_dir)
+                except:
+                    self.log("error creating %s: %s" % (
+                        cur_dir,
+                        process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+    def _log_config(self):
+        self.log("Config info:")
+        for line, log_level in global_config.get_log(clear=True):
+            self.log(" - clf: [%d] %s" % (log_level, line))
+        conf_info = global_config.get_config_info()
+        self.log("Found %d valid config-lines:" % (len(conf_info)))
+        for conf in conf_info:
+            self.log("Config : %s" % (conf))
+    def _re_insert_config(self):
+        self.log("re-insert config")
+        cluster_location.write_config("syslog_server", global_config)
+    def process_start(self, src_process, src_pid):
+        mult = 3
+        process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
+        if self.__msi_block:
+            self.__msi_block.add_actual_pid(src_pid, mult=mult)
+            self.__msi_block.save_block()
+    def _init_msi_block(self):
+        process_tools.save_pid(self.__pid_name, mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        self.log("Initialising meta-server-info block")
+        msi_block = process_tools.meta_server_info(self.__pid_name)
+        msi_block.add_actual_pid(mult=3)
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+        msi_block.start_command = "/etc/init.d/logcheck-server start"
+        msi_block.stop_command = "/etc/init.d/logcheck-server force-stop"
+        msi_block.kill_pids = True
+        msi_block.save_block()
+        return msi_block
+    def loop_end(self):
+        process_tools.delete_pid(self.__pid_name)
+        if self.__msi_block:
+            self.__msi_block.remove_meta_block()
+    def loop_post(self):
+        self.__log_template.close()
+
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, db_con, g_config, loc_config):
         self.__log_cache, self.__log_queue = ([], None)
@@ -1170,14 +1078,9 @@ class server_thread_pool(threading_tools.thread_pool):
         self._re_insert_config(dc)
         self.__ad_struct = all_devices(self.__log_queue, self.__glob_config, self.__loc_config, self.__db_con)
         self.__ad_struct.db_sync()
-        self.__sql_queue  = self.add_thread(sql_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__scan_queue = self.add_thread(scan_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
         self.__com_queue  = self.add_thread(com_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
         self.__queue_dict = {"logging_queue" : self.__log_queue,
-                             "sql_queue"     : self.__sql_queue,
-                             "scan_queue"    : self.__scan_queue,
                              "com_queue"     : self.__com_queue}
-        self.__scan_queue.put(("set_ad_struct", self.__ad_struct))
         self.__com_queue.put(("set_queue_dict", self.__queue_dict))
         self.__com_queue.put(("set_netserver", self.__ns))
         dc.release()
@@ -1506,170 +1409,63 @@ class server_thread_pool(threading_tools.thread_pool):
             self.log("Something went wrong while trying to modify '%s', help..." % (slcn),
                      logging_tools.LOG_LEVEL_ERROR)
 
-##         threading.Thread(name="socket_request", target=socket_server_thread_code, args = [main_queue, log_queue, sreq_queue, sreq_queue, nserver, msi_block]).start()
+global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 def main():
-    long_host_name = socket.getfqdn(socket.gethostname())
-    short_host_name = long_host_name.split(".")[0]
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "dvCu:g:fkh", ["version", "help", "reparse", "noscan", "rescan", "initparse"])
-    except:
-        print "Error parsing commandline %s" % (" ".join(sys.argv[:]))
-        sys.exit(1)
-    try:
-        from logcheck_server_version import VERSION_STRING
-    except ImportError:
-        VERSION_STRING = "?.?"
-    loc_config = configfile.configuration("local_config", {"PID_NAME"               : configfile.str_c_var("logcheck-server/logcheck-server"),
-                                                           "DAEMON"                 : configfile.bool_c_var(True),
-                                                           "SERVER_FULL_NAME"       : configfile.str_c_var(long_host_name),
-                                                           "SERVER_SHORT_NAME"      : configfile.str_c_var(short_host_name),
-                                                           "VERBOSE"                : configfile.int_c_var(0),
-                                                           "CHECK"                  : configfile.bool_c_var(False),
-                                                           "KILL_RUNNING"           : configfile.bool_c_var(True),
-                                                           "REPARSE"                : configfile.bool_c_var(False),
-                                                           "INIT_SCAN"              : configfile.bool_c_var(True),
-                                                           "RESCAN"                 : configfile.bool_c_var(False),
-                                                           "FORCE_INIT_PARSE"       : configfile.bool_c_var(False),
-                                                           "USER"                   : configfile.str_c_var("root"),
-                                                           "GROUP"                  : configfile.str_c_var("root"),
-                                                           "LOGCHECK_SERVER_IDX"    : configfile.int_c_var(0),
-                                                           "LOG_SOURCES"            : configfile.dict_c_var({}),
-                                                           "LOG_STATUS"             : configfile.dict_c_var({}),
-                                                           "LOG_SOURCE_IDX"         : configfile.int_c_var(0),
-                                                           "VERSION_STRING"         : configfile.str_c_var(VERSION_STRING)})
-    fixit = False
-    pname = os.path.basename(sys.argv[0])
-    for opt, arg in opts:
-        if opt in ["-h", "--help"]:
-            print "Usage: %s [OPTIONS]" % (pname)
-            print " where options is one or more of"
-            print "  -h,--help           this help"
-            print "  --version           version info"
-            print "  -d                  no daemonizing"
-            print "  -f                  fix directory permissions"
-            print "  -C                  check if i am a logcheck-server"
-            print "  -u [USER]           set user to USER"
-            print "  -g [GROUP]          set group to GROUP"
-            print "  -k                  kill running instances of logcheck-server"
-            print "  --reparse           reparse all logs (can be very time-consuming, use with care)"
-            print "  --initparse         force initial logscan (e.g. concentration call), overriding config"
-            print "  --noscan            disable initial logscan (e.g. concentration call)"
-            print "  --rescan            force scanning of all available logs (not from last savepoint)"
-            sys.exit(1)
-        if opt == "--version":
-            print "logcheck-server, Version %s" % (loc_config["VERSION_STRING"])
-            sys.exit(0)
-        if opt == "-d":
-            loc_config["DAEMON"] = False
-        if opt == "-v":
-            loc_config["VERBOSE"] += 1
-        if opt == "-C":
-            loc_config["CHECK"] = True
-        if opt == "-f":
-            fixit = True
-        if opt == "-u":
-            loc_config["USER"] = arg
-        if opt == "-g":
-            loc_config["GROUP"] = arg
-        if opt == "-k":
-            loc_config["KILL_RUNNING"] = False
-        if opt == "--reparse":
-            loc_config["REPARSE"] = True
-        if opt == "--noscan":
-            loc_config["INIT_SCAN"] = False
-        if opt == "--rescan":
-            loc_config["RESCAN"] = True
-        if opt == "--initparse":
-            loc_config["FORCE_INIT_PARSE"] = True
-    db_con = mysql_tools.dbcon_container(with_logging=not loc_config["DAEMON"])
-    try:
-        dc = db_con.get_connection(SQL_ACCESS)
-    except MySQLdb.OperationalError:
-        sys.stderr.write(" Cannot connect to SQL-Server ")
-        sys.exit(1)
-    sql_info = config_tools.server_check(dc=dc, server_type="logcheck_server")
-    loc_config["LOGCHECK_SERVER_IDX"] = sql_info.server_device_idx
-    if not loc_config["LOGCHECK_SERVER_IDX"]:
-        sys.stderr.write(" Host %s is no logcheck-server " % (long_host_name))
+    long_host_name, mach_name = process_tools.get_fqdn()
+    prog_name = global_config.name()
+    global_config.add_config_entries([
+        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+        ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
+        ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
+        ("FORCE"               , configfile.bool_c_var(False, help_string="force running [%(default)s]", action="store_true", only_commandline=True)),
+        ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True, short_options="C")),
+        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("USER"                , configfile.str_c_var("idlog", help_string="user to run as [%(default)s]")),
+        ("GROUP"               , configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
+        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
+        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+    ])
+    global_config.parse_file()
+    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
+                                                                                  VERSION_STRING),
+                                               add_writeback_option=True,
+                                               positional_arguments=False)
+    global_config.write_file()
+    sql_info = config_tools.server_check(server_type="syslog_server")
+    if not sql_info.effective_device:
+        print "not a syslog_server"
         sys.exit(5)
-    if loc_config["CHECK"]:
-        sys.exit(0)
-    if loc_config["KILL_RUNNING"]:
-        kill_dict = process_tools.build_kill_dict(pname)
-        for k, v in kill_dict.iteritems():
-            log_str = "Trying to kill pid %d (%s) with signal 9 ..." % (k, v)
-            try:
-                os.kill(k, 9)
-            except:
-                log_str = "%s error (%s)" % (log_str, process_tools.get_except_info())
-            else:
-                log_str = "%s ok" % (log_str)
-            logging_tools.my_syslog(log_str)
-    g_config = configfile.read_global_config(dc, "logcheck_server", {"LOG_DIR"                : configfile.str_c_var("/var/log/cluster/logcheck-server"),
-                                                                     "SYSLOG_DIR"             : configfile.str_c_var("/var/log/hosts"),
-                                                                     "COMPORT"                : configfile.int_c_var(8014),
-                                                                     "KEEP_LOGS_UNCOMPRESSED" : configfile.int_c_var(2),
-                                                                     "KEEP_LOGS_TOTAL"        : configfile.int_c_var(30),
-                                                                     "INITIAL_LOGCHECK"       : configfile.int_c_var(0),
-                                                                     "LOGSCAN_TIME"           : configfile.int_c_var(60, info="time in minutes between two logscan iterations"),
-                                                                     "DB_RESYNC_TIME"         : configfile.int_c_var(60),
-                                                                     "SYSLOG_SOCKET_DIR"      : configfile.str_c_var("/var/lib/logcheck-server"),
-                                                                     "SYSLOG_SOCKET_NAME"     : configfile.str_c_var("syslog"),
-                                                                     "SYSLOG_OK_ITER"         : configfile.int_c_var(5),
-                                                                     "SYSLOG_CHECK_OK"        : configfile.int_c_var(10),
-                                                                     "SYSLOG_CHECK_ERROR"     : configfile.int_c_var(1),
-                                                                     "MAX_PARSE_FILE_SIZE"    : configfile.int_c_var(200 * 1024 * 1024),
-                                                                     "LOGCHECK_RUN_TIME"      : configfile.str_c_var("02:00"),
-                                                                     "INTERNAL_CHECK_NAME"    : configfile.str_c_var("logcheck_server_check"),
-                                                                     "LOGCHECK_SRC_IGNORE"    : configfile.array_c_var(["postfix",
-                                                                                                                        "ypbind",
-                                                                                                                        "syslogd",
-                                                                                                                        "syslog-ng",
-                                                                                                                        "sshd",
-                                                                                                                        "in.rshd",
-                                                                                                                        "slapd",
-                                                                                                                        "rshd",
-                                                                                                                        "pam_rhosts_auth",
-                                                                                                                        "automount",
-                                                                                                                        "python",
-                                                                                                                        "python2.4",
-                                                                                                                        "python-init",
-                                                                                                                        "ntpd",
-                                                                                                                        "mpd",
-                                                                                                                        "ntpdate",
-                                                                                                                        "modprobe",
-                                                                                                                        "hoststatus",
-                                                                                                                        "tell_mother",
-                                                                                                                        "logger",
-                                                                                                                        "crontab",
-                                                                                                                        "FILE_REFERENCE"]),
-                                                                     "KERNEL_IGNORE_PREFIXES" : configfile.array_c_var(["nat_", "ftl_"])})
-    g_config.add_config_dict({"SYSLOG_SOCKET" : configfile.str_c_var("%s/%s" % (g_config["SYSLOG_SOCKET_DIR"], g_config["SYSLOG_SOCKET_NAME"]))})
-    if fixit:
-        process_tools.fix_directories(loc_config["USER"], loc_config["GROUP"], [g_config["LOG_DIR"], g_config["SYSLOG_SOCKET_DIR"], "/var/run/logcheck-server"])
     ret_state = 256
-    loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, loc_config["LOGCHECK_SERVER_IDX"], "logcheck", "Logcheck Server")
-    if not loc_config["LOG_SOURCE_IDX"]:
-        print "Too many log_sources with my id found, exiting..."
-        dc.release()
+    if sql_info.device:
+        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
     else:
-        loc_config["LOG_SOURCES"] = process_tools.get_all_log_sources(dc)
-        loc_config["LOG_STATUS"]  = process_tools.get_all_log_status(dc)
-        process_tools.renice()
-        if loc_config["DAEMON"]:
-            # become daemon and wait 2 seconds
-            process_tools.become_daemon(wait = 2)
-            process_tools.set_handles({"out" : (1, "logcheck"),
-                                       "err" : (0, "/var/lib/logging-server/py_err")})
-        else:
-            print "Debugging logcheck"
-        dc.release()
-        my_tp = server_thread_pool(db_con, g_config, loc_config)
-        my_tp.thread_loop()
-        #ret_state = server_code(daemon, reparse, init_scan, rescan, force_init_parse, db_con)
-    db_con.close()
-    del db_con
+        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(0, database=False))])
+    if not global_config["SERVER_IDX"] and not global_config["FORCE"]:
+        sys.stderr.write(" %s is no syslog-server, exiting..." % (long_host_name))
+        sys.exit(5)
+    cluster_location.read_config_from_db(global_config, "syslog_server", [
+        ("SYSLOG_DIR"             , configfile.str_c_var("/var/log/hosts")),
+        ("COMPORT"                , configfile.int_c_var(SERVER_PORT)),
+        ("KEEP_LOGS_UNCOMPRESSED" , configfile.int_c_var(2)),
+        ("KEEP_LOGS_TOTAL"        , configfile.int_c_var(30)),
+        ("INITIAL_LOGCHECK"       , configfile.bool_c_var(False)),
+        ("LOGSCAN_TIME"           , configfile.int_c_var(60, info="time in minutes between two logscan iterations"))
+    ])
+    #if fixit:
+        #process_tools.fix_directories(loc_config["USER"], loc_config["GROUP"], [g_config["LOG_DIR"], g_config["SYSLOG_SOCKET_DIR"], "/var/run/logcheck-server"])
+    process_tools.renice()
+    global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
+    process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
+    if not global_config["DEBUG"]:
+        # become daemon and wait 2 seconds
+        process_tools.become_daemon(wait = 2)
+        process_tools.set_handles({"out" : (1, "logcheck"),
+                                   "err" : (0, "/var/lib/logging-server/py_err")})
+    else:
+        print "Debugging logcheck_server"
+    ret_state = server_process(options).loop()
     sys.exit(ret_state)
 
 if __name__ == "__main__":
