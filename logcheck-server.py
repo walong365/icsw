@@ -1012,18 +1012,18 @@ class server_process(threading_tools.process_pool):
         self.log("re-insert config")
         cluster_location.write_config("syslog_server", global_config)
     def process_start(self, src_process, src_pid):
-        mult = 3
+        mult = 2
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult)
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info(self.__pid_name)
         msi_block.add_actual_pid(mult=3)
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
         msi_block.start_command = "/etc/init.d/logcheck-server start"
         msi_block.stop_command = "/etc/init.d/logcheck-server force-stop"
         msi_block.kill_pids = True
@@ -1343,7 +1343,7 @@ def main():
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
+        ("PID_NAME"            , configfile.str_c_var(os.path.join(prog_name, prog_name))),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("FORCE"               , configfile.bool_c_var(False, help_string="force running [%(default)s]", action="store_true", only_commandline=True)),
         ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True, short_options="C")),
@@ -1363,6 +1363,8 @@ def main():
     if not sql_info.effective_device:
         print "not a syslog_server"
         sys.exit(5)
+    if global_config["CHECK"]:
+        sys.exit(0)
     ret_state = 256
     if sql_info.device:
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
