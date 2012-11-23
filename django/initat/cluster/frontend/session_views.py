@@ -28,8 +28,6 @@ else:
 if not OLD_DIR in sys.path:
     sys.path.append(OLD_DIR)
 
-import session_handler
-
 @never_cache
 def redirect_to_main(request):
     return HttpResponseRedirect(reverse("session:login"))
