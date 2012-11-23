@@ -30,6 +30,8 @@ import logging_tools
 import datetime
 import types
 import argparse
+import pwd
+import grp
 from collections import OrderedDict
 import threading
 from multiprocessing import Manager, current_process
@@ -78,6 +80,10 @@ class config_proxy(BaseProxy):
     def get_argument_stuff(self):
         return self._callmethod("get_argument_stuff")
     def set_uid_gid(self, uid, gid):
+        if type(uid) in [str, unicode]:
+            uid = pwd.getpwnam(uid)[2]
+        if type(gid) in [str, unicode]:
+            gid = grp.getgrnam(gid)[2]
         cur_address = self._manager.address
         addr_path = os.path.dirname(cur_address)
         os.chown(addr_path, uid, gid)
