@@ -129,6 +129,7 @@ def check_system(opt_ns):
         # server-type mapping
         server_type_map = {
             "mother"                : "mother_server",
+            "logcheck-server"       : "syslog_server",
             "cluster-server"        : "server",
             "snmp-relay"            : "monitor_server",
             "cluster-config-server" : "config_server",
