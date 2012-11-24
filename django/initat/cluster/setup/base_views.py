@@ -113,7 +113,9 @@ def change_xml_entry(request):
                     else:
                         other_list = None
                     new_value = _post["value"]
-                    if cur_obj._meta.get_field(attr_name).get_internal_type() == "ManyToManyField":
+                    # check field ? hack for compound fields
+                    check_field = attr_name not in ["ethtool_autoneg", "ethtool_duplex", "ethtool_speed"]
+                    if check_field and cur_obj._meta.get_field(attr_name).get_internal_type() == "ManyToManyField":
                         if other_list:
                             request.log("ignoring others", logging_tools.LOG_LEVEL_CRITICAL)
                         # handle many to many

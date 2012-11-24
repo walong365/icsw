@@ -260,7 +260,7 @@ def manual_connection(request):
     cd_devices = device.objects.filter(Q(device_type__identifier='CD'))
     non_cd_devices = device.objects.exclude(Q(device_type__identifier='CD'))
     # iterate over non-cd-device
-    pprint.pprint(re_dict)
+    #pprint.pprint(re_dict)
     match_dict = {}
     for key, dev_list in [("drag", non_cd_devices),
                           ("target", cd_devices)]:

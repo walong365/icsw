@@ -196,7 +196,7 @@ def get_boot_info(request):
         if not result:
             request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
         else:
-            print result.pretty_print()
+            #print result.pretty_print()
             pass
     xml_resp = E.boot_info()
     # lut for device_logs
@@ -220,7 +220,7 @@ def get_boot_info(request):
         #for dev_log in dev_logs:
         #    dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
     # add option-dict related stuff
-    print etree.tostring(xml_resp, pretty_print=True)
+    #print etree.tostring(xml_resp, pretty_print=True)
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
 

@@ -47,7 +47,7 @@ function load_devices(sel_list) {
             if (parse_xml_response(xml)) {
                 DEVICES = $(xml).find("value[name='response']");
                 CUR_PURE_DEVICES = [];
-                $(xml).find("device[meta_device='0']").each(function() {
+                $(xml).find("device[meta_device='0'][selected='selected']").each(function() {
                     CUR_PURE_DEVICES.push($(this).attr("name"));
                 });
                 draw_table();

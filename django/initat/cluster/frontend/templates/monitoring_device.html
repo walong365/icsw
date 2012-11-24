@@ -168,7 +168,8 @@ function draw_tables() {
     });
     $("div#mon_tables").append(c_table);
     c_table.find("select[id$='mon_ext_host']").msDropdown({
-        useSprite : "smallIcons"
+        useSprite : "smallIcons",
+        visibleRows : 15
     });
 };
 

@@ -19,6 +19,7 @@ from initat.cluster.backbone.models import device, network, net_ip, \
      netdevice_speed, device_variable, device_group
 import server_command
 import net_tools
+import ipvx_tools
 
 @login_required
 @init_logging
@@ -279,11 +280,91 @@ def get_valid_peers(request):
 def copy_network(request):
     _post = request.POST
     source_dev = device.objects.get(Q(pk=_post["source_dev"]))
-    target_devs = device.objects.exclude(Q(pk=source_dev.pk)).filter(Q(pk__in=[value.split("__")[1] for value in _post.getlist("all_devs[]") if value.startswith("dev__")])).order_by("name")
+    target_devs = device.objects.exclude(Q(pk=source_dev.pk)).filter(Q(pk__in=[value.split("__")[1] for value in _post.getlist("all_devs[]") if value.startswith("dev__")])).prefetch_related(
+        "netdevice_set",
+        "netdevice_set__netdevice_speed",
+        "netdevice_set__network_device_type",
+        "netdevice_set__net_ip_set",
+        "netdevice_set__net_ip_set__network",
+        "netdevice_set__net_ip_set__network__network_type").order_by("name")
     if len(target_devs):
+        diff_ip = ipvx_tools.ipv4("0.0.0.1")
         request.log("source device is %s" % (unicode(source_dev)))
         request.log("%s: %s" % (logging_tools.get_plural("target device", len(target_devs)),
                                 ", ".join([unicode(cur_dev) for cur_dev in target_devs])))
+        # read peer_informations
+        src_nds = source_dev.netdevice_set.all().values_list("pk", flat=True)
+        peer_dict = {}
+        for peer_info in peer_information.objects.filter(Q(s_netdevice__in=src_nds) | Q(d_netdevice__in=src_nds)):
+            s_local, d_local = (peer_info.s_netdevice_id in src_nds,
+                                peer_info.d_netdevice_id in src_nds)
+            if s_local and d_local:
+                if peer_info.s_netdevice_id != peer_info.d_netdevice_id:
+                    request.log("host peering detection, not handled", logging_tools.LOG_LEVEL_CRITICAL)
+                else:
+                    peer_dict[peer_info.s_netdevice_id] = (None, peer_info.penalty)
+            elif s_local:
+                peer_dict[peer_info.s_netdevice_id] = (peer_info.d_netdevice, peer_info.penalty)
+            else:
+                peer_dict[peer_info.d_netdevice_id] = (peer_info.s_netdevice, peer_info.penalty)
+        pprint.pprint(peer_dict)
+        for target_num, target_dev in enumerate(target_devs):
+            offset = target_num + 1
+            request.log("operating on %s, offset is %d" % (unicode(target_dev), offset))
+            if target_dev.bootnetdevice_id:
+                request.log("removing bootnetdevice %s" % (unicode(target_dev.bootnetdevice)))
+                target_dev.bootnetdevice = None
+                target_dev.save()
+            # preserve mac/fakemac addresses
+            mac_dict, fmac_dict = ({}, {})
+            for cur_nd in target_dev.netdevice_set.all():
+                if int(cur_nd.macaddr.replace(":", ""), 16):
+                    mac_dict[cur_nd.devname] = cur_nd.macaddr
+                if int(cur_nd.fake_macaddr.replace(":", ""), 16):
+                    fmac_dict[cur_nd.devname] = cur_nd.fake_macaddr
+                # remove all netdevices
+                cur_nd.delete()
+            # copy from source
+            for cur_nd in source_dev.netdevice_set.all().prefetch_related(
+                "netdevice_speed",
+                "network_device_type",
+                "net_ip_set",
+                "net_ip_set__network",
+                "net_ip_set__network__network_type"):
+                new_nd = cur_nd.copy()
+                if new_nd.devname in mac_dict:
+                    new_nd.macaddr = mac_dict[new_nd.devname]
+                if new_nd.devname in fmac_dict:
+                    new_nd.fake_macaddr = fmac_dict[new_nd.devname]
+                new_nd.device = target_dev
+                new_nd.save()
+                for cur_ip in cur_nd.net_ip_set.all().prefetch_related(
+                    "network",
+                    "network__network_type"):
+                    new_ip = cur_ip.copy()
+                    new_ip.netdevice = new_nd
+                    if cur_ip.network.network_type.identifier != "l":
+                        # increase IP for non-loopback addresses
+                        ip_val = ipvx_tools.ipv4(cur_ip.ip)
+                        for seq in xrange(offset):
+                            ip_val += diff_ip
+                        new_ip.ip = str(ip_val)
+                    new_ip.save()
+                # peering
+                if cur_nd.pk in peer_dict:
+                    target_nd, penalty = peer_dict[cur_nd.pk]
+                    if target_nd == None:
+                        # local peer
+                        peer_information(
+                            s_netdevice=new_nd,
+                            d_netdevice=new_nd,
+                            penalty=penalty).save()
+                    else:
+                        # remote peer
+                        peer_information(
+                            s_netdevice=new_nd,
+                            d_netdevice=target_nd,
+                            penalty=penalty).save()
         request.log("copied network settings", xml=True)
     else:
         request.log("no target_devices", logging_tools.LOG_LEVEL_WARN, xml=True)
