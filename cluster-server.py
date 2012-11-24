@@ -20,10 +20,10 @@
 """ cluster-server """
 
 import os
+import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import sys
 import socket
 import re
 import time

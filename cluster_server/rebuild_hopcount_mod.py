@@ -50,20 +50,6 @@ def generate_minhop_dict(in_hops):
             mh_d[sig] = pen, pens, hop
     return mh_d
 
-##def generate_minhop_2_dict(in_hops, mh_d):
-##    for pen, hop in in_hops:
-##        #print pen, hop
-##        n_sig_1, n_sig_2 = (hop[0], hop[-1])
-##        sig = (n_sig_1, n_sig_2)
-##        for key in mh_d.keys():
-##            (sig_1, sig_2) = key
-##            if sig_1 == n_sig_1 and sig_2 == n_sig_2:
-##                sig = None
-##                if pen < mh_d[key][0]:
-##                    mh_d[key] = pen, hop
-##        if sig:
-##            mh_d[sig] = pen, hop
-
 def get_hcs(hc, nd_dict):
     ndev = nd_dict[hc]
     #return "%s, %d (%d)" % (ndev["devname"], ndev["penalty"], hc)
@@ -137,7 +123,6 @@ class rhc_device(object):
     def add_netdevice(self, nd_record):
         self.__netdevs[nd_record.pk] = nd_record
         nd_record.peers = []
-        nd_record.ips = []
         if self.device_type == "nc":
             self.device_type = "leaf"
         if nd_record.routing:
@@ -147,8 +132,6 @@ class rhc_device(object):
                 self.__int_routes.append((y, nd_record.pk))
             self.__routing = True
             self.device_type = "router"
-    def add_netip(self, ip_record):
-        self.__netdevs[ip_record.netdevice_id].ips.append(ip_record)
     def get_routing_netdevice_idx_list(self):
         return [x for x in self.__netdevs.keys() if self.__netdevs[x]["routing"]]
     def get_netdevice_idx_list(self):
@@ -171,10 +154,10 @@ class rhc_device(object):
         return self.get_num_int_routes() + self.get_num_ext_routes()
     def get_nd_info(self, idx):
         act_nd = self.__netdevs[idx]
-        return "%s (%d, %d, %s)" % (act_nd["devname"],
-                                    act_nd["penalty"],
-                                    act_nd["routing"],
-                                    ",".join(act_nd["ips"]))
+        return "%s (%d, %d)" % (
+            act_nd["devname"],
+            act_nd["penalty"],
+            act_nd["routing"])
     def get_num_nds(self):
         return len(self.__netdevs.keys())
     def get_simple_peers(self, src_idx):
@@ -241,7 +224,6 @@ class rebuild_hopcount(cs_base_class.server_com):
         # show flag
         show = settings.DEBUG
         # get device-structs
-        all_ips = net_ip.objects.exclude(Q(netdevice__device__device_type__identifier="MD")).select_related("netdevice__device__device_type")
         try:
             device_variable.objects.get(Q(device=cdg_dev) & Q(name=HOPCOUNT_REBUILT_VAR_NAME)).delete()
         except device_variable.DoesNotExist:
@@ -258,28 +240,46 @@ class rebuild_hopcount(cs_base_class.server_com):
             var_type="i",
             val_int=0)
         state_var.save()
-        #print all_ips
-##        my_dc.execute("SELECT d.name, dt.identifier, d.device_idx, n.netdevice_idx, n.device, n.devname, n.routing, n.penalty, i.ip FROM device d INNER JOIN device_type dt LEFT JOIN " + \
-##                      "netdevice n ON n.device=d.device_idx LEFT JOIN netip i ON i.netdevice=n.netdevice_idx WHERE d.device_type=dt.device_type_idx AND dt.identifier != 'MD'")
         nd_dict, devices, devices_2, peers, dev_lut = ({}, {}, {}, {}, {})
         nd_lut = {}
         # get list of devices 
-        for db_rec in all_ips:#my_dc.fetchall():
-            if not devices.has_key(db_rec.netdevice.device.name):
-                devices_2[db_rec.netdevice.device.name] = rhc_device(db_rec.netdevice.device)
-                devices[db_rec.netdevice.device.name] = db_rec.netdevice.device
-                db_rec.netdevice.device.nds = []
-                db_rec.netdevice.device.peers = []
-                dev_lut[db_rec.netdevice.device.pk] = db_rec.netdevice.device.name
-            if db_rec.netdevice.devname:
-                if not nd_dict.has_key(db_rec.netdevice.pk):
-                    db_rec.netdevice.peers = []
-                    nd_dict[db_rec.netdevice.pk] = db_rec.netdevice#dict([(k, db_rec[k]) for k in ["netdevice_idx", "devname", "routing", "penalty", "name", "device"]] + [("peers", [])])
-                    devices[db_rec.netdevice.device.name].nds.append(db_rec.netdevice)
-                    devices_2[db_rec.netdevice.device.name].add_netdevice(db_rec.netdevice)
-                    nd_lut[db_rec.netdevice.pk] = devices_2[db_rec.netdevice.device.name].device.name
-            if db_rec.ip:
-                devices_2[db_rec.netdevice.device.name].add_netip(db_rec)
+        # netdevice version
+        all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).select_related("device__device_type")
+        for db_rec in all_nds:
+            if not devices.has_key(db_rec.device.name):
+                devices_2[db_rec.device.name] = rhc_device(db_rec.device)
+                devices[db_rec.device.name] = db_rec.device
+                db_rec.device.nds = []
+                db_rec.device.peers = []
+                dev_lut[db_rec.device.pk] = db_rec.device.name
+            if db_rec.devname:
+                if not nd_dict.has_key(db_rec.pk):
+                    db_rec.peers = []
+                    nd_dict[db_rec.pk] = db_rec
+                    devices[db_rec.device.name].nds.append(db_rec)
+                    devices_2[db_rec.device.name].add_netdevice(db_rec)
+                    nd_lut[db_rec.pk] = devices_2[db_rec.device.name].device.name
+            #if db_rec.ip:
+            #    devices_2[db_rec.device.name].add_netip(db_rec)
+            
+        # IP version
+##        all_ips = net_ip.objects.exclude(Q(netdevice__device__device_type__identifier="MD")).select_related("netdevice__device__device_type")
+##        for db_rec in all_ips:#my_dc.fetchall():
+##            if not devices.has_key(db_rec.netdevice.device.name):
+##                devices_2[db_rec.netdevice.device.name] = rhc_device(db_rec.netdevice.device)
+##                devices[db_rec.netdevice.device.name] = db_rec.netdevice.device
+##                db_rec.netdevice.device.nds = []
+##                db_rec.netdevice.device.peers = []
+##                dev_lut[db_rec.netdevice.device.pk] = db_rec.netdevice.device.name
+##            if db_rec.netdevice.devname:
+##                if not nd_dict.has_key(db_rec.netdevice.pk):
+##                    db_rec.netdevice.peers = []
+##                    nd_dict[db_rec.netdevice.pk] = db_rec.netdevice#dict([(k, db_rec[k]) for k in ["netdevice_idx", "devname", "routing", "penalty", "name", "device"]] + [("peers", [])])
+##                    devices[db_rec.netdevice.device.name].nds.append(db_rec.netdevice)
+##                    devices_2[db_rec.netdevice.device.name].add_netdevice(db_rec.netdevice)
+##                    nd_lut[db_rec.netdevice.pk] = devices_2[db_rec.netdevice.device.name].device.name
+##            if db_rec.ip:
+##                devices_2[db_rec.netdevice.device.name].add_netip(db_rec)
         # get peerinfo
         all_peers = peer_information.objects.all()
         #my_dc.execute("SELECT p.s_netdevice, p.d_netdevice, p.penalty, p.peer_information_idx FROM peer_information p")
