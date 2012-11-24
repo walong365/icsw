@@ -1090,13 +1090,29 @@ class package_device_connection(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey(device)
     package = models.ForeignKey(package)
+    # target state
+    target_state = models.CharField(max_length=8, choices=(
+        ("keep", "keep"),
+        ("install", "install"),
+        ("upgrade", "upgrade"),
+        ("erase"  , "erase")), default="keep")
+    installed = models.CharField(max_length=8, choices=(
+        ("u", "unknown"),
+        ("y", "yes"),
+        ("n", "no")), default="u")
+    force_flag = models.BooleanField(default=False)
+    nodeps_flag = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.package_device_connection(
             pk="%d" % (self.pk),
             key="pdc__%d" % (self.pk),
             device="%d" % (self.device_id),
-            package="%d" % (self.package_id)
+            package="%d" % (self.package_id),
+            target_state="%s" % (self.target_state),
+            installed="%s" % (self.installed),
+            force_flag="1" if self.force_flag else "0",
+            nodeps_flag="1" if self.nodeps_flag else "0",
         )
     class Meta:
         pass
