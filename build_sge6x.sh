@@ -36,26 +36,26 @@ if [ ! -d ${SGE_ROOT}/bin ] ; then
     echo "No ${SGE_ROOT}/bin found, compiling SGE ..."
     if [ ! -f aimk ] ; then
         echo "Not in source directory (aimk has to be in the actual directory)"
-	exit -1
+    exit -1
     fi
     if [ ! -f /bin/csh ] ; then
-	echo "need /bin/csh, exiting"
-	exit -1
+    echo "need /bin/csh, exiting"
+    exit -1
     fi
-	# SECLIBS_STATIC fix
-	sed -i s/set\ SECLIB.*=\ \"\"/set\ SECLIB=\"\"\;\ set\ SECLIBS_STATIC=\"\"/g aimk
-	# HZ fix
-	HZ=$(cat /boot/config* | grep CONFIG_HZ= | cut -d "=" -f 2| sort | uniq)
-	sed -i sQ.*sys/param.*Q#define\ HZ\ ${HZ}Qg daemons/common/procfs.c
+    # SECLIBS_STATIC fix
+    sed -i s/set\ SECLIB.*=\ \"\"/set\ SECLIB=\"\"\;\ set\ SECLIBS_STATIC=\"\"/g aimk
+    # HZ fix
+    HZ=$(cat /boot/config* | grep CONFIG_HZ= | cut -d "=" -f 2| sort | uniq)
+    sed -i sQ.*sys/param.*Q#define\ HZ\ ${HZ}Qg daemons/common/procfs.c
     echo "Compiling"
     export SGE_INPUT_CFLAGS=-Wno-error
     ./scripts/zerodepend
     ./aimk -only-depend -no-dump
     ./aimk -man -no-dump
-	# removed parallel, not working with SoG
-	# -parallel $(( $(cat /proc/cpuinfo | grep processor | wc -l ) * 2))
+    # removed parallel, not working with SoG
+    # -parallel $(( $(cat /proc/cpuinfo | grep processor | wc -l ) * 2))
     #./aimk -spool-classic -no-dump -no-secure -no-jni -no-java  || { echo "Compilation failed, exiting" ; exit -1 ; }
-    ./aimk -spool-classic -no-dump -no-hwloc -no-secure -no-jni -no-java  || { echo "Compilation failed, exiting" ; exit -1 ; }
+    ./aimk -spool-classic -no-secure -no-jni -no-java  || { echo "Compilation failed, exiting" ; exit -1 ; }
     echo "Installing"
     echo Y | scripts/distinst -noexit -local -allall 
     echo "Modifying ownership of $SGE_ROOT to sge.sge"
@@ -65,16 +65,16 @@ if [ ! -d ${SGE_ROOT}/bin ] ; then
     # check for util/arch bug
     echo "Checking for buggy util/arch"
     ./util/arch | grep UNSUPPO >/dev/null && {
-	echo "Fixing ${SGE_ROOT}/util/arch"
-	cat util/arch | sed s/3\|4\|5/3\|4\|5\|6/g > /tmp/bla
-	mv /tmp/bla util/arch
-	chown sge.sge util/arch
-	chmod 0755 util/arch
+    echo "Fixing ${SGE_ROOT}/util/arch"
+    cat util/arch | sed s/3\|4\|5/3\|4\|5\|6/g > /tmp/bla
+    mv /tmp/bla util/arch
+    chown sge.sge util/arch
+    chmod 0755 util/arch
     }
     echo "Modify ld.so.conf.d"
     if [ ! -f /etc/ld.so.conf.d/sge.conf ] ; then
-	echo "${SGE_ROOT}/lib/$(util/arch)" > /etc/ld.so.conf.d/sge.conf
-	ldconfig
+    echo "${SGE_ROOT}/lib/$(util/arch)" > /etc/ld.so.conf.d/sge.conf
+    ldconfig
     fi
 fi
 sge_flavour=$(basename $SGE_ROOT)
@@ -83,12 +83,11 @@ inst_file=/tmp/sge_inst
 echo "Creating installation template in $inst_file"
 cat > $inst_file << EOF
 SGE_ROOT=${SGE_ROOT}
-SGE_QMASTER_PORT=$(cat /etc/services | grep sge_qmaster | grep tcp | tr -s " " | cut -d " " -f 2 | cut -d "/" -f 1)
-SGE_EXECD_PORT=$(cat /etc/services | grep sge_execd | grep tcp | tr -s " " | cut -d " " -f 2 | cut -d "/" -f 1)
+SGE_QMASTER_PORT=$(cat /etc/services | grep sge_qmaster | tr "\t" " " | grep tcp | tr -s " " | cut -d " " -f 2 | cut -d "/" -f 1)
+SGE_EXECD_PORT=$(cat /etc/services | grep sge_execd | tr "\t" " " | grep tcp | tr -s " " | cut -d " " -f 2 | cut -d "/" -f 1)
 CELL_NAME=${SGE_CELL}
 ADMIN_USER="sge"
 QMASTER_SPOOL_DIR=/var/spool/${sge_flavour}
-EXECD_SPOOL_DIR=/var/spool/${sge_flavour}
 GID_RANGE=30000-30200
 SPOOLING_METHOD=classic
 PAR_EXECD_INST_COUNT=20
