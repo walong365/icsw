@@ -1387,10 +1387,28 @@ class netdevice(models.Model):
     fake_macaddr = models.CharField(db_column="fake_macadr", max_length=177, blank=True)
     network_device_type = models.ForeignKey("network_device_type")
     description = models.CharField(max_length=765, blank=True)
-    is_bridge = models.BooleanField()
+    is_bridge = models.BooleanField(default=False)
     bridge_name = models.CharField(max_length=765, blank=True)
     vlan_id = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def copy(self):
+        return netdevice(
+            devname=self.devname,
+            macaddr=self.get_dummy_macaddr(),
+            driver_options=self.driver_options,
+            speed=self.speed,
+            netdevice_speed=self.netdevice_speed,
+            driver=self.driver,
+            routing=self.routing,
+            penalty=self.penalty,
+            dhcp_device=self.dhcp_device,
+            ethtool_options=self.ethtool_options,
+            fake_macaddr=self.get_dummy_macaddr(),
+            network_device_type=self.network_device_type,
+            description=self.description,
+            is_bridge=self.is_bridge,
+            bridge_name=self.bridge_name,
+            vlan_id=self.vlan_id)
     def find_matching_network_device_type(self):
         # remove digits
         name = self.devname.split(":")[0].strip("0123456789")
@@ -1402,6 +1420,8 @@ class netdevice(models.Model):
         else:
             # FIXME, enhance to full match
             return ndt_list[0]
+    def get_dummy_macaddr(self):
+        return ":".join(["00"] * self.network_device_type.mac_bytes)
     class Meta:
         db_table = u'netdevice'
         ordering = ("devname",)
@@ -1453,6 +1473,47 @@ class netdevice(models.Model):
             network_device_type="%d" % (self.network_device_type_id),
             nd_type="%d" % (self.network_device_type_id))
 
+@receiver(signals.pre_delete, sender=netdevice)
+def netdevice_pre_delete(sender, **kwargs):
+    # too late here, handled by delete_netdevice in network_views
+    pass
+    #if "instance" in kwargs:
+        #cur_inst = kwargs["instance"]
+        #for cur_dev in device.objects.filter(Q(bootnetdevice=cur_inst.pk)):
+            #cur_dev.bootnetdevice = None
+            #cur_dev.save(update_fields=["bootnetdevice"])
+       
+@receiver(signals.pre_save, sender=netdevice)
+def netdevice_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "devname")
+        all_nd_names = netdevice.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device_id)).values_list("devname", flat=True)
+        if cur_inst.devname in all_nd_names:
+            raise ValidationError("devname '%s' already used" % (cur_inst.devname))
+        # change network_device_type
+        nd_type = cur_inst.find_matching_network_device_type()
+        if not nd_type:
+            raise ValidationError("no matching device_type found")
+        cur_inst.network_device_type = nd_type
+        # fix None as vlan_id
+        _check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)
+        # penalty
+        _check_integer(cur_inst, "penalty", min_val=1)
+        # check mac address
+        dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
+                             re.compile("^%s$" % (":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
+        # set empty if not set
+        if not cur_inst.macaddr.strip() or int(cur_inst.macaddr.replace(":", ""), 16) == 0:
+            cur_inst.macaddr = dummy_mac
+        # set empty if not set
+        if not cur_inst.fake_macaddr.strip() or int(cur_inst.fake_macaddr.replace(":", ""), 16) == 0:
+            cur_inst.fake_macaddr = dummy_mac
+        if not mac_re.match(cur_inst.macaddr):
+            raise ValidationError("MACaddress has illegal format")
+        if not mac_re.match(cur_inst.fake_macaddr):
+            raise ValidationError("fake MACaddress has illegal format")
+
 class netdevice_speed(models.Model):
     idx = models.AutoField(db_column="netdevice_speed_idx", primary_key=True)
     speed_bps = models.BigIntegerField(null=True, blank=True)
@@ -1491,6 +1552,13 @@ class net_ip(models.Model):
     alias = models.CharField(max_length=765, blank=True, default="")
     alias_excl = models.NullBooleanField(null=True, blank=True, default=False)
     date = models.DateTimeField(auto_now_add=True)
+    def copy(self):
+        return net_ip(
+            ip=self.ip,
+            network=self.network,
+            penalty=self.penalty,
+            alias=self.alias,
+            alias_excl=self.alias_excl)
     def get_hex_ip(self):
         return "".join(["%02X" % (int(part)) for part in self.ip.split(".")])
     def get_xml(self):
@@ -1509,6 +1577,38 @@ class net_ip(models.Model):
         return self.ip
     class Meta:
         db_table = u'netip'
+
+@receiver(signals.pre_save, sender=net_ip)
+def net_ip_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        try:
+            ipv_addr = ipvx_tools.ipv4(cur_inst.ip)
+        except:
+            raise ValidationError("not a valid IPv4 address")
+        if not ipv_addr.network_matches(cur_inst.network):
+            match_list = ipv_addr.find_matching_network(network.objects.all())
+            if match_list:
+                cur_inst.network = match_list[0][1]
+            else:
+                raise ValidationError("no maching network found")
+        all_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
+        if cur_inst.ip in all_ips:
+            raise ValidationError("Adress already used")
+        if cur_inst.network.network_type.identifier == "b":
+            # set boot netdevice
+            cur_inst.netdevice.device.bootnetdevice = cur_inst.netdevice
+            cur_inst.netdevice.device.save()
+
+@receiver(signals.post_save, sender=net_ip)
+def net_ip_post_save(sender, **kwargs):
+    cur_inst = kwargs["instance"]
+    if kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if cur_inst.ip == "127.0.0.1" and kwargs["created"] and not cur_inst.alias.strip():
+            cur_inst.alias = "localhost"
+            cur_inst.alias_excl = True
+            cur_inst.save()
 
 class network(models.Model):
     idx = models.AutoField(db_column="network_idx", primary_key=True)
@@ -1989,16 +2089,8 @@ def mon_device_templ_pre_save(sender, **kwargs):
             raise ValidationError("name must not be zero")
         for attr_name, min_val, max_val in [
             ("max_attempts", 1, 10),
-            ("ninterval", 0, 60)]:
-            cur_val = _check_inst(cur_inst, attr_name)
-            if cur_val < min_val or cur_val > max_val:
-                raise ValidationError("%s %d is out of bounds [%d, %d]" % (
-                    attr_name,
-                    cur_val,
-                    min_val,
-                    max_val))
-            else:
-                setattr(cur_inst, attr_name, cur_val)
+            ("ninterval"   , 0, 60)]:
+            _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
                     
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
@@ -3122,95 +3214,7 @@ class wc_files(models.Model):
         )
     class Meta:
         db_table = u'wc_files'
-
-##class xen_device(models.Model):
-##    idx = models.AutoField(db_column="xen_device_idx", primary_key=True)
-##    device = models.ForeignKey("device")
-##    memory = models.IntegerField()
-##    max_memory = models.IntegerField()
-##    builder = models.CharField(max_length=15, blank=True)
-##    cmdline = models.CharField(max_length=765, blank=True)
-##    vcpus = models.IntegerField()
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'xen_device'
-##
-##class xen_vbd(models.Model):
-##    idx = models.AutoField(db_column="xen_vbd_idx", primary_key=True)
-##    xen_device = models.ForeignKey("xen_device")
-##    vbd_type = models.CharField(max_length=15, blank=True)
-##    sarg0 = models.CharField(max_length=765, blank=True)
-##    sarg1 = models.CharField(max_length=765, blank=True)
-##    sarg2 = models.CharField(max_length=765, blank=True)
-##    sarg3 = models.CharField(max_length=765, blank=True)
-##    iarg0 = models.IntegerField(null=True, blank=True)
-##    iarg1 = models.IntegerField(null=True, blank=True)
-##    iarg2 = models.IntegerField(null=True, blank=True)
-##    iarg3 = models.IntegerField(null=True, blank=True)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'xen_vbd'
-
-@receiver(signals.pre_delete, sender=netdevice)
-def netdevice_pre_delete(sender, **kwargs):
-    # too late here, handled by delete_netdevice in network_views
-    pass
-    #if "instance" in kwargs:
-        #cur_inst = kwargs["instance"]
-        #for cur_dev in device.objects.filter(Q(bootnetdevice=cur_inst.pk)):
-            #cur_dev.bootnetdevice = None
-            #cur_dev.save(update_fields=["bootnetdevice"])
-       
-@receiver(signals.pre_save, sender=netdevice)
-def netdevice_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if not cur_inst.devname:
-            raise ValidationError("name can not be zero")
-        all_nd_names = netdevice.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device_id)).values_list("devname", flat=True)
-        if cur_inst.devname in all_nd_names:
-            raise ValidationError("devname '%s' already used" % (cur_inst.devname))
-        # change network_device_type
-        nd_type = cur_inst.find_matching_network_device_type()
-        if not nd_type:
-            raise ValidationError("no matching device_type found")
-        cur_inst.network_device_type = nd_type
-        # fix None as vlan_id
-        _check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)
-        # penalty
-        _check_integer(cur_inst, "penalty", min_val=1)
-        # check mac address
-        dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
-                             re.compile("^%s$" % (":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
-        cur_inst.macaddr = cur_inst.macaddr or dummy_mac
-        if not mac_re.match(cur_inst.macaddr):
-            raise ValidationError("MACaddress has illegal format")
-        cur_inst.fake_macaddr = cur_inst.fake_macaddr or dummy_mac
-        if not mac_re.match(cur_inst.fake_macaddr):
-            raise ValidationError("fake MACaddress has illegal format")
-
-@receiver(signals.pre_save, sender=net_ip)
-def net_ip_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        try:
-            ipv_addr = ipvx_tools.ipv4(cur_inst.ip)
-        except:
-            raise ValidationError("not a valid IPv4 address")
-        if not ipv_addr.network_matches(cur_inst.network):
-            match_list = ipv_addr.find_matching_network(network.objects.all())
-            if match_list:
-                cur_inst.network = match_list[0][1]
-            else:
-                raise ValidationError("no maching network found")
-        all_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
-        if cur_inst.ip in all_ips:
-            raise ValidationError("Adress already used")
-        if cur_inst.network.network_type.identifier == "b":
-            # set boot netdevice
-            cur_inst.netdevice.device.bootnetdevice = cur_inst.netdevice
-            cur_inst.netdevice.device.save()
-
+            
 @receiver(signals.pre_save, sender=peer_information)
 def peer_information_pre_save(sender, **kwargs):
     if "instance" in kwargs:
