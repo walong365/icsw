@@ -238,7 +238,7 @@ class link_object(new_config_object):
         self.set_uid(ref_config.get_uid())
         self.set_gid(ref_config.get_gid())
     def write_object(self, t_file):
-        return "%s %s" % (self.dest, self.source)
+        return "%s %s" % (self.source, self.dest)
 ##        file(t_file, "w").write("".join(self.content))
 ##    def write_object(self, dest, disk_int):
 ##        ret_state, ret_str = (0, "%s %s" % (self.dest, self.source))
@@ -994,7 +994,8 @@ def do_nets(conf):
                                                                                  "NETMASK"   : cur_net.netmask,
                                                                                  "NETWORK"   : cur_net.network}
                     else:
-                        if int(cur_nd.macaddr.replace(":", ""), 16) != 0:
+                        # FIXME; take netdevice even with zero macaddr
+                        if int(cur_nd.macaddr.replace(":", ""), 16) != 0 or True:
                             dev_dict[cur_nd.devname] = cur_nd.macaddr
                             if sys_dict["vendor"] == "suse" and ((sys_dict["version"] == 10 and sys_dict["release"] == 3) or sys_dict["version"] > 10 or (sys_dict["version"], sys_dict["release"]) == (10, 10)):
                                 # openSUSE 10.3, >= 11.0
@@ -1368,7 +1369,14 @@ class partition_setup(object):
 # generate /etc/hosts for nodes, including routing-info
 def do_etc_hosts(conf):
     conf_dict = conf.conf_dict
-    all_hopcounts = hopcount.objects.filter(Q(s_netdevice__in=[cur_ip.netdevice for cur_ip in conf_dict["node_if"]])).select_related("d_netdevice", "d_netdevice__device").prefetch_related("d_netdevice__net_ip_set", "d_netdevice__net_ip_set__network").order_by("value", "d_netdevice__devname", "d_netdevice__device__name")
+    all_hopcounts = hopcount.objects.filter(Q(s_netdevice__in=[cur_ip.netdevice for cur_ip in conf_dict["node_if"]])).select_related(
+        "d_netdevice",
+        "d_netdevice__device").prefetch_related(
+            "d_netdevice__net_ip_set",
+            "d_netdevice__net_ip_set__network").order_by(
+                "value",
+                "d_netdevice__devname",
+                "d_netdevice__device__name")
 ##    all_netdevs = [db_rec["netdevice_idx"] for db_rec in pub_stuff["node_if"]]
 ##    sql_str = "SELECT DISTINCT d.name, i.ip, i.alias, i.alias_excl, nw.network_idx, n.netdevice_idx, n.devname, n.vlan_id, nt.identifier, nw.name as domain_name, nw.postfix, nw.short_names, h.value FROM " + \
 ##        "device d, netip i, netdevice n, network nw, network_type nt, hopcount h WHERE nt.network_type_idx=nw.network_type AND i.network=nw.network_idx AND n.device=d.device_idx AND i.netdevice=n.netdevice_idx " + \
@@ -3700,7 +3708,7 @@ def main():
         ("CHECK"               , configfile.bool_c_var(False, help_string="only check for server status", action="store_true", only_commandline=True, short_options="C")),
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
-        ("USER"                , configfile.str_c_var("idccss", help_string="user to run as [%(default)s]")),
+        ("USER"                , configfile.str_c_var("idccs", help_string="user to run as [%(default)s]")),
         ("GROUP"               , configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
         ("GROUPS"              , configfile.array_c_var(["idg"])),
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
@@ -3753,6 +3761,7 @@ def main():
 ##        process_tools.fix_files(loc_config["USER_NAME"], loc_config["GROUP_NAME"], ["/var/log/cluster-config-server.out", "/tmp/cluster-config-server.out"])
 ##    dc.release()
     process_tools.renice()
+    global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     if not global_config["DEBUG"]:
         process_tools.become_daemon()
