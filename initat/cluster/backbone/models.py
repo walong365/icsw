@@ -1456,9 +1456,18 @@ class netdevice(models.Model):
 class netdevice_speed(models.Model):
     idx = models.AutoField(db_column="netdevice_speed_idx", primary_key=True)
     speed_bps = models.BigIntegerField(null=True, blank=True)
-    check_via_ethtool = models.BooleanField()
-    full_duplex = models.BooleanField()
+    check_via_ethtool = models.BooleanField(default=True)
+    full_duplex = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.netdevice_speed(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="nds__%d" % (self.pk),
+            speed_bps="%d" % (self.speed_bps),
+            check_via_ethtool="1" if self.check_via_ethtool else "0",
+            full_duplex="1" if self.full_duplex else "0",
+        )
     class Meta:
         db_table = u'netdevice_speed'
     def __unicode__(self):
