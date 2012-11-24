@@ -165,7 +165,7 @@ class snmp_scheme(object):
         pass
     def proc_data(self):
         return [self.net_obj.snmp_version, self.net_obj.name, self.net_obj.snmp_community, self.envelope, self.transform_single_key] + self.snmp_start()
-    def parse_options(self, options, **args):
+    def parse_options(self, options, **kwargs):
         old_stdout, old_stderr = (sys.stdout, sys.stderr)
         act_io = cStringIO.StringIO()
         sys.stdout = act_io
@@ -180,8 +180,8 @@ class snmp_scheme(object):
         finally:
             sys.stdout, sys.stderr = (old_stdout,
                                       old_stderr)
-        one_integer_ok = args.get("one_integer_arg_allowed", False)
-        args_ok = args.get("add_args_ok", False) or one_integer_ok
+        one_integer_ok = kwargs.get("one_integer_arg_allowed", False)
+        args_ok = kwargs.get("add_args_ok", False) or one_integer_ok
         if self.args:
             if not args_ok:
                 self.__errors.append("no additional arguments allowed")
@@ -347,8 +347,8 @@ class snmp_scheme(object):
                     self.snmp_dict.setdefault(header, {})[key] = value
 
 class load_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "load", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "load", **kwargs)
         # T for table, G for get
         self.requests = snmp_oid("1.3.6.1.4.1.2021.10.1.3", cache=True)
         self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=5.0)
@@ -1296,6 +1296,28 @@ class ibm_bc_storage_status_scheme(snmp_scheme):
         return ret_state, "%s: %s, %s" % (limits.get_state_str(ret_state),
                                           logging_tools.get_plural("item", len(store_dict)),
                                           "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
+        
+class temperature_probe_scheme(snmp_scheme):
+    def __init__(self, **args):
+        snmp_scheme.__init__(self, "temperature_probe_scheme", **args)
+        self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 22626, 1, 2, 1, 1), cache=True)
+        self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=35.0)
+        self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=40.0)
+        self.parse_options(args["options"])
+    def process_return(self):
+        warn_temp = int(self.opts.warn)
+        crit_temp = int(self.opts.crit)
+        use_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        cur_temp = float(use_dict.values()[0])
+        if cur_temp > crit_temp:
+            cur_state = limits.nag_STATE_CRITICAL
+        elif cur_temp > warn_temp:
+            cur_state = limits.nag_STATE_WARNING
+        else:
+            cur_state = limits.nag_STATE_OK
+        return cur_state, "%s: temperature %.2f C" % (
+            limits.get_state_str(cur_state),
+            cur_temp)
         
 if __name__ == "__main__":
     print "Loadable module, exiting"

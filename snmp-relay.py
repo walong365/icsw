@@ -553,7 +553,18 @@ class relay_process(threading_tools.process_pool):
         else:
             srv_com = None
             if body.count(";") >= 3:
-                envelope, host, snmp_version, snmp_community, comline = body.split(";", 4)
+                parts = body.split(";", 4)
+                envelope = parts.pop(0)
+                # parse new format
+                if parts[3].endswith(";"):
+                    com_part = parts[3][:-1].split(";")
+                else:
+                    com_part = parts[3].split(";")
+                if all([com_part[idx].isdigit() and (len(com_part[idx + 1]) == int(com_part[idx])) for idx in xrange(0, len(com_part), 2)]):
+                    arg_list = [com_part[idx + 1] for idx in xrange(0, len(com_part), 2)]
+                host, snmp_version, snmp_community = parts[0:3]
+                comline = " ".join(arg_list)
+                #envelope, host, snmp_version, snmp_community, comline = body.split(";", 4)
                 parameter_ok = True
         if parameter_ok:
             try:
@@ -680,6 +691,7 @@ def main():
     handledict = {"out"    : (1, "snmp-relay.out"),
                   "err"    : (0, "/var/lib/logging-server/py_err"),
                   "strict" : 0}
+    process_tools.ALLOW_MULTIPLE_INSTANCES = False
     process_tools.renice()
     if global_config["DAEMONIZE"] and not global_config["DEBUG"]:
         process_tools.become_daemon()
