@@ -608,7 +608,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
                 "type"  : "checkbox",
                 "id"    : id_prefix + "__" + attr_name
             });
-            if ((xml_el && xml_el.attr(attr_name) == "1") || (! xml_el && kwargs.new_default)) new_el.attr("checked", "checked");
+            if ((xml_el && xml_el.attr(attr_name) == "1") || (! xml_el && kwargs.new_default)) new_el.prop("checked", true);
         } else if (kwargs.textarea) {
             // textarea input style
             var new_el = $("<textarea>").attr({

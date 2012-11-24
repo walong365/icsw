@@ -189,16 +189,17 @@ def get_network_tree(request):
         "device_type").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").order_by("device_group__name", "name"):
         dev_list.append(cur_dev.get_xml())
     xml_resp.append(dev_list)
-    ns_list = E.netspeed_list(
-        *[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()])
-    if not len(ns_list):
-        # create some dummy entries
-        netdevice_speed(
-            speed_bps=1000000000,
-            check_via_ethtool=True,
-            full_duplex=True).save()
-        ns_list = E.netspeed_list(
-            *[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()])
+    ns_list = E.netdevice_speeds(
+        *[cur_ns.get_xml() for cur_ns in netdevice_speed.objects.all()])
+    # now handled via fixtures
+    #if not len(ns_list):
+        ## create some dummy entries
+        #netdevice_speed(
+            #speed_bps=1000000000,
+            #check_via_ethtool=True,
+            #full_duplex=True).save()
+        #ns_list = E.netspeed_list(
+            #*[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()])
     xml_resp.append(ns_list)
     xml_resp.append(E.network_device_type_list(
         *[E.network_device_type(unicode(cur_ndt), pk="%d" % (cur_ndt.pk)) for cur_ndt in network_device_type.objects.all()]))
@@ -215,7 +216,7 @@ def get_network_tree(request):
         *[E.ethtool_speed(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "10 Mbit", "100 MBit", "1 GBit", "10 GBit"])]))
     # peers
     xml_resp.append(_get_valid_peers())
-    print etree.tostring(xml_resp, pretty_print=True)
+    #print etree.tostring(xml_resp, pretty_print=True)
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
 
@@ -273,3 +274,18 @@ def get_valid_peers(request):
     request.xml_response["valid_peers"] = _get_valid_peers()
     return request.xml_response.create_response()
 
+@login_required
+@init_logging
+def copy_network(request):
+    _post = request.POST
+    source_dev = device.objects.get(Q(pk=_post["source_dev"]))
+    target_devs = device.objects.exclude(Q(pk=source_dev.pk)).filter(Q(pk__in=[value.split("__")[1] for value in _post.getlist("all_devs[]") if value.startswith("dev__")])).order_by("name")
+    if len(target_devs):
+        request.log("source device is %s" % (unicode(source_dev)))
+        request.log("%s: %s" % (logging_tools.get_plural("target device", len(target_devs)),
+                                ", ".join([unicode(cur_dev) for cur_dev in target_devs])))
+        request.log("copied network settings", xml=True)
+    else:
+        request.log("no target_devices", logging_tools.LOG_LEVEL_WARN, xml=True)
+    return request.xml_response.create_response()
+    

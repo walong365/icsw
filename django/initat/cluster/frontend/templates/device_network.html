@@ -8,13 +8,14 @@
 
 <h1 class="center">Device network settings, hopcount info: <span id="hopcount_rebuild_info">unknown</span>, <input type="button" value="rebuild hopcount" onClick="trigger_hopcount_rebuild(); "/></h1>
 
-<div id="network_table">
-</div>
+<div id="network_table"></div>
 
+<div id="network_copy">Set all networks from <select id="network_copy"></select></div>
 <script type="text/javascript">
 
 DEVICE_NETWORKS = undefined;
 DUMMY_MAC ="00:00:00:00:00:00";
+SELECTED_DEVICES = undefined;
 
 function modify_rowspan(cur_el, diff) {
     cur_el.attr({"rowspan" : parseInt(cur_el.attr("rowspan")) + diff});
@@ -296,7 +297,7 @@ function create_delete_new_net_ip(event) {
 };
 
 function create_netspeed_element(id_str, cur_nd) {
-    var dummy_val = DEVICE_NETWORKS.find("netspeed_list netspeed:first").attr("pk");
+    var dummy_val = DEVICE_NETWORKS.find("netdevice_speeds netdevice_speed:first").attr("pk");
     var sel_val = cur_nd === undefined ? dummy_val : cur_nd.attr("netdevice_speed");
     var cur_el = $("<select>").attr({
         "id"    : id_str,
@@ -307,7 +308,7 @@ function create_netspeed_element(id_str, cur_nd) {
             submit_change($(event.target));
         });
     };
-    DEVICE_NETWORKS.find("netspeed_list netspeed").each(function() {
+    DEVICE_NETWORKS.find("netdevice_speeds netdevice_speed").each(function() {
         var cur_ns = $(this);
         var cur_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text());
         if (cur_ns.attr("pk") == sel_val) cur_opt.attr("selected", "selected");
@@ -320,7 +321,7 @@ function toggle_netdevice_line(line_prefix, state, line_spec) {
     var dev_line = $("table#network_tree tr[id^='nd__" + line_prefix.split("__")[1] + "__']");
     var nd_line = $("table#network_tree tr[id='" + line_prefix + "']");
     var exp_line = $("table#network_tree tr[id^='" + line_prefix + "__" + line_spec + "']");
-    var cur_dg = nd_line.find("span[id$='__expand_" + line_spec + "']");
+    var cur_dg = nd_line.find("div[id$='__expand__" + line_spec + "']");
     if (state) {
         cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
         cur_dg.addClass("ui-icon-triangle-1-s");
@@ -335,10 +336,10 @@ function toggle_netdevice_line(line_prefix, state, line_spec) {
 };
 
 function get_expand_td(line_prefix, name, title) {
-    return $("<td>").append(
-        $("<span>").attr({
+    return $("<td>").css("white-space", "nowrap").append(
+        $("<div>").css({"float" : "left"}).attr({
             "class"   : "ui-icon ui-icon-triangle-1-e",
-            "id"      : line_prefix + "__expand_" + name,
+            "id"      : line_prefix + "__expand__" + name,
             "title"   : title === undefined ? "show " + name : title
         }).bind("click", function(event) {
             var cur_class = $(event.target).attr("class");
@@ -347,8 +348,7 @@ function get_expand_td(line_prefix, name, title) {
             } else {
                 toggle_netdevice_line(line_prefix, false, name);
             }
-        })
-    );
+        })).append($("<span>").text(name));
 };
 
 function add_net_ip_line(cur_dev, cur_nd, line_prefix, cur_ip) {
@@ -456,8 +456,8 @@ function add_netdevice_line(cur_dev, cur_nd) {
     cur_tr.append(get_expand_td(line_prefix, "hw"));
     cur_tr.append(get_expand_td(line_prefix, "mac"));
     if (nd_pk == "new"){
-        cur_tr.append($("<td>"));
-        cur_tr.append($("<td>"));
+        cur_tr.append($("<td>").text("---"));
+        cur_tr.append($("<td>").text("---"));
     } else {
         // IP
         cur_tr.append(get_expand_td(line_prefix, "ip"));
@@ -573,12 +573,12 @@ function draw_network_table() {
     new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
 };
 
-function reload_network_tree(sel_list) {
+function reload_network_tree() {
     $.ajax({
         url     : "{% url network:get_network_tree %}",
         error   : handle_ajax_error,
         data    : {
-            "sel_list" : sel_list
+            "sel_list" : SELECTED_DEVICES
         },
         success : function(xml) {
             if (parse_xml_response(xml)) {
@@ -586,9 +586,43 @@ function reload_network_tree(sel_list) {
                 init_xml_change(DEVICE_NETWORKS);
                 draw_network_table();
                 reload_hopcount_info();
+                init_copy_widget();
             }
         }
     });
+};
+
+function init_copy_widget() {
+    var c_w = $("select#network_copy");
+    c_w.children().remove();
+    c_w.append($("<option>").attr({"value" : "0"}).text("---"));
+    c_w.val("0");
+    DEVICE_NETWORKS.find("device").each(function() {
+        var cur_dev = $(this);
+        c_w.append($("<option>").attr({"value" : cur_dev.attr("pk")}).text(cur_dev.attr("name")));
+    });
+    c_w. off("change").on("change", copy_network);
+};
+
+function copy_network(event) {
+    cur_el = $(event.target);
+    var c_val = cur_el.val();
+    if (confirm("Overwrite all networks with the one from " + DEVICE_NETWORKS.find("device[pk='" + c_val + "']").attr("name") + " ?")) {
+        $.ajax({
+            url     : "{% url network:copy_network %}",
+            error   : handle_ajax_error,
+            data    : {
+                "source_dev" : c_val,
+                "all_devs"   : SELECTED_DEVICES
+            },
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    reload_network_tree();
+                }
+            }
+        });
+    };
+    cur_el.val(0);
 };
 
 function trigger_hopcount_rebuild() {
@@ -616,9 +650,10 @@ function reload_hopcount_info() {
 };
 
 function use_devs(dt_div) {
-    reload_network_tree(_.map(dt_div.dynatree("getSelectedNodes"), function(value) {
+    SELECTED_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
         return(value.data.key);
-    }));
+    });
+    reload_network_tree();
 };
 
 function add_dnet_handlers() {
