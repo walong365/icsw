@@ -566,7 +566,7 @@ class build_container(object):
         cur_node.add_config(self.cur_conf.pk)
         return cur_node.content_node
     def add_dir_object(self, don, **kwargs):
-        return self._add_dir_object(dir_object(fon, config=self, **kwargs))
+        return self._add_dir_object(dir_object(don, config=self, **kwargs))
     def _add_dir_object(self, d_obj):
         cur_node = self.g_tree.get_node(d_obj.dest, d_obj, dir_node=True)
         if not cur_node in self.__touched_objects:
