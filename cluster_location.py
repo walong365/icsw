@@ -199,8 +199,9 @@ def write_config(server_type, g_config, **kwargs):
                     cur_var = var_obj.objects.get(
                         Q(name=real_k_name) &
                         Q(config=srv_info.config) &
-                        (Q(device=0) | Q(device=None) | Q(device=srv_info.effective_device.pk)) &
-                        Q(config__device_config__device__device_group__device_group=srv_info.effective_device.pk)
+                        (Q(device=0) | Q(device=None) | Q(device=srv_info.effective_device.pk))
+                        # removed config via meta_device, AL 20121125
+                        #Q(config__device_config__device__device_group__device_group=srv_info.effective_device.pk)
                     )
                 except var_obj.DoesNotExist:
                     var_obj(name=real_k_name,
