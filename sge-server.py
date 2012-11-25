@@ -123,7 +123,7 @@ class server_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
         # re-insert config
-        #self._re_insert_config(dc)
+        self._re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
@@ -161,6 +161,9 @@ class server_process(threading_tools.process_pool):
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
         self.send_to_process("rms_mon", "full_reload")
+    def _re_insert_config(self):
+        self.log("re-insert config")
+        cluster_location.write_config("sge_server", global_config)
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
@@ -185,7 +188,8 @@ class server_process(threading_tools.process_pool):
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
         client.setsockopt(zmq.IDENTITY, "sgeserver")
-        client.setsockopt(zmq.HWM, 256)
+        client.setsockopt(zmq.RCVHWM, 256)
+        client.setsockopt(zmq.SNDHWM, 256)
         try:
             client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
         except zmq.core.error.ZMQError:

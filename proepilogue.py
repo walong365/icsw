@@ -1080,7 +1080,8 @@ class client(object):
         client.socket = zmq_context.socket(zmq.ROUTER)
         client.socket.setsockopt(zmq.IDENTITY, client.router_id)
         client.socket.setsockopt(zmq.LINGER, 0)
-        client.socket.setsockopt(zmq.HWM, 100)
+        client.socket.setsockopt(zmq.SNDHWM, 100)
+        client.socket.setsockopt(zmq.RCVHWM, 100)
         client.socket.setsockopt(zmq.BACKLOG, 100)
         log_com("init client struct (%s, %s)" % (client.dsc_id,
                                                  client.router_id))
