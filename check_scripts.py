@@ -53,7 +53,7 @@ def check_threads(name, pids):
     num_started = sum(unique_pids.values()) if unique_pids else 0
     num_found   = sum(pids_found.values()) if pids_found else 0
     # check for extra Nagios2.x thread
-    if name == "nagios" and num_started == 1 and num_found == 2:
+    if name == "monitoring" and num_started == 1 and num_found == 2:
         num_started = 2
     if num_started == num_found:
         ret_state = 0
@@ -80,17 +80,20 @@ def check_system(opt_ns):
             "logcheck-server",
             "package-server",
             "mother",
-            "rrd-server-collector",
-            "rrd-server-writer",
-            "rrd-server-grapher",
+            #"rrd-server-collector",
+            #"rrd-server-writer",
+            #"rrd-server-grapher",
             "sge-server",
             "cluster-server",
             "cluster-config-server",
             #"xen-server",
             "host-relay",
             "snmp-relay",
-            "md-config-server",
-            "nagios:threads_by_pid_file:/opt/nagios/var/nagios.lock"]
+            "md-config-server"]
+        if os.path.isfile("/etc/init.d/icinga"):
+            opt_ns.server.append("monitoring:threads_by_pid_file:/opt/icinga/var/icinga.lock")
+        elif os.path.isfile("/etc/init.d/nagios"):
+            opt_ns.server.append("monitoring:threads_by_pid_file:/opt/nagios/var/nagios.lock")
         opt_ns.server.extend(extra_server_tools.extra_server_file().get_server_list())
         
     check_dict, check_list = ({}, [])
@@ -134,7 +137,7 @@ def check_system(opt_ns):
             "snmp-relay"            : "monitor_server",
             "cluster-config-server" : "config_server",
             "host-relay"            : "monitor_server",
-            "nagios"                : "monitor_server",
+            "monitoring"            : "monitor_server",
             "md-config-server"      : "monitor_server",
             "cransys"               : "cransys_server",
             "ansys"                 : "ansys_server"}
