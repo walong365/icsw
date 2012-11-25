@@ -784,13 +784,16 @@ def build_node_list(s_info, options):
     for cur_host in s_info.get_all_hosts():
         for cur_job in cur_host.xpath("job"):
             job_host_lut.setdefault(cur_job.attrib["full_id"], []).append(cur_host.attrib["short_name"])
-            job_host_pe_lut.setdefault(cur_host.attrib["short_name"], {}).setdefault(cur_job.findtext("jobvalue[@name='qinstance_name']").split("@")[0], {}).setdefault(cur_job.get("full_id"), []).append(cur_job.findtext("jobvalue[@name='pe_master']"))
+            job_host_pe_lut.setdefault(
+                cur_host.attrib["short_name"], {}).setdefault(
+                    cur_job.findtext("jobvalue[@name='qinstance_name']").split("@")[0], {}).setdefault(
+                        cur_job.get("full_id"), []).append(cur_job.findtext("jobvalue[@name='pe_master']"))
     if options.merge_node_queue:
         d_list = sorted([(act_h.attrib["name"], sorted([cur_q.attrib["name"] for cur_q in act_h.findall("queue")])) for act_h in s_info.get_all_hosts() if act_h.attrib["short_name"] != "global"])
     else:
         d_list = []
         for act_q in s_info.get_all_queues():
-            d_list.extend([(act_q.attrib["name"], h_name.text) for h_name in act_q.findall(".//host")])
+            d_list.extend([(act_q.attrib["name"], h_name.text) for h_name in act_q.findall(".//host") if h_name.text != "NONE"])
         d_list = sorted(d_list, key=lambda node: node[1 if options.node_sort else 0])
     node_list = E.node_list()
     if options.merge_node_queue:
