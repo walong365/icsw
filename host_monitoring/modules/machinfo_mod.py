@@ -2205,6 +2205,44 @@ class partinfo_command(hm_classes.hm_command):
             ret_f.append("lvminfo: %s" % (lvm_stuff.get_info()))
         return limits.nag_STATE_OK, "\n".join(ret_f)
 
+class mdstat_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        srv_com["mdstat"] = server_command.compress(file("/proc/mdstat", "r").read())
+    def interpret(self, srv_com, cur_ns):
+        lines = server_command.decompress(srv_com["mdstat"].text).split("\n")
+        raid_list = []
+        cur_raid = None
+        for line_num, line in enumerate(lines):
+            parts = line.strip().split()
+            if line.startswith("md"):
+                cur_raid = {"name"  : parts[0],
+                            "state" : parts[2]}
+                parts = parts[3:]
+                if cur_raid["state"] == "active":
+                    cur_raid["type"] = parts.pop(0)
+                else:
+                    cur_raid["type"] = None
+                cur_raid["discs"] = parts
+                raid_list.append(cur_raid)
+            elif cur_raid and len(parts) > 2:
+                if parts[1] == "blocks":
+                    cur_raid["blocks"] = int(parts[0])
+                elif parts[1] == "resync":
+                    cur_raid["resync"] = parts[3]
+        ret_state = limits.nag_STATE_OK
+        if any(["resync" in cur_raid for cur_raid in raid_list]):
+            ret_state = limits.nag_STATE_WARNING
+        if raid_list:
+            ret_str = ", ".join(["%s (%s%s%s)" % (
+                        cur_raid["name"],
+                        "%s %s" % (cur_raid["state"], cur_raid["type"]) if cur_raid["state"] == "active" else cur_raid["state"],
+                        ", %d blocks" % (cur_raid["blocks"]) if "blocks" in cur_raid else "",
+                        ", resync %s" % (cur_raid["resync"]) if "resync" in cur_raid else ""
+                        ) for cur_raid in raid_list])
+        else:
+            ret_str = "no md-devices found"
+        return ret_state, ret_str
+        
 class dmiinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         dmi_stat, dmi_result = commands.getstatusoutput("/opt/cluster/bin/dmidecode")
@@ -2212,7 +2250,7 @@ class dmiinfo_command(hm_classes.hm_command):
             dmi_stat, dmi_result = commands.getstatusoutput("/opt/cluster/bin/dmidecode --dump-bin %s" % (tmp_file.name))
             srv_com["dmi_dump"] = server_command.compress(file(tmp_file.name, "r").read())
     def interpret(self, srv_com, cur_ns):
-        with tempfile.NamedTemporaryFile()  as tmp_file:
+        with tempfile.NamedTemporaryFile() as tmp_file:
             file(tmp_file.name, "w").write(server_command.decompress(srv_com["dmi_dump"].text))
             dmi_stat, dmi_result = commands.getstatusoutput("/opt/cluster/bin/dmidecode --from-dump %s" % (tmp_file.name))
             # decode dmi-info
