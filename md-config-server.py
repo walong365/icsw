@@ -174,7 +174,7 @@ class main_config(object):
             " %s" % (self.__slave_name) if self.__slave_name else "",
             what), level)
     def get_command_name(self):
-        return os.path.join(self.__r_dir_dict["etc"],
+        return os.path.join(self.__r_dir_dict["var"],
                             "ext_com" if global_config["MD_TYPE"] == "nagios" else "icinga.cmd")
     def distribute(self):
         if self.slave_ip:
@@ -2367,7 +2367,7 @@ class server_process(threading_tools.process_pool):
                 if send_return:
                     srv_com["result"] = None
                     # blabla
-                    srv_com["result"].attrib.update({"reply" : "ok processed command",
+                    srv_com["result"].attrib.update({"reply" : "ok processed command %s" % (cur_com),
                                                      "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
                     self.com_socket.send_unicode(src_id, zmq.SNDMORE)
                     self.com_socket.send_unicode(unicode(srv_com))
