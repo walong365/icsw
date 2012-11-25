@@ -99,28 +99,108 @@ function toggle_config_line(line_prefix, state, line_spec) {
     };
 };
 
+function change_d_sel(event) {
+    var cur_el = $(event.target);
+    var d_table = $("table#config");
+};
+
+function change_dg_sel(event) {
+    var cur_el = $(event.target);
+    var d_table = $("table#config");
+    var sel_tr = cur_el.parents("tr:first");
+    while (true) {
+        var sel_tr = sel_tr.next();
+        if (sel_tr && sel_tr.attr("id") && sel_tr.attr("id").match(/^dev__/)) {
+            sel_tr.find("input[id$='__sel']").trigger("click");
+        } else {
+            break;
+        };
+    };
+};
+
+function change_global_sel(event) {
+    var d_table = $("table#config");
+    d_table.find("tr th input[id^='devg__'][id$='__sel']").each(function() {
+        var sel_box = $(this);
+        sel_box.trigger("click");
+    });
+};
+
+function change_monitor_template(event) {
+    var d_table = $("table#config");
+    var mon_val = $(event.target).val();
+    d_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each(function() { 
+        var sel_el = $(this).parents("tr:first").find("select[id$='__mon_device_templ']");
+        if (sel_el.val() != mon_val) sel_el.val(mon_val).trigger("change");
+    });
+    $(event.target).val(0);
+};
+    
+function change_mon_ext_host(event) {
+    var d_table = $("table#config");
+    var mon_val = $(event.target).val();
+    d_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each(function() { 
+        var sel_el = $(this).parents("tr:first").find("select[id$='__mon_ext_host']");
+        if (sel_el.val() != mon_val) sel_el.val(mon_val).trigger("change");
+    });
+    // not working
+    //$(event.target).val(0);
+};
+    
+function change_monitor_server(event) {
+    var d_table = $("table#config");
+    var mon_val = $(event.target).val();
+    d_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each(function() { 
+        var sel_el = $(this).parents("tr:first").find("select[id$='__monitor_server']");
+        if (sel_el.val() != mon_val) sel_el.val(mon_val).trigger("change");
+    });
+    $(event.target).val(0);
+};
+    
+function change_monitor_checks(event) {
+    var d_table = $("table#config");
+    d_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each(function() { 
+        $(this).parents("tr:first").find("input[id$='__monitor_checks']").trigger("click");
+    });
+};
+
 function draw_device(d_el) {
     var dummy_div = $("<div>");
-    var line_prefix = d_el.attr("key");
+    if (d_el) {
+        var line_prefix = d_el.attr("key");
+        var is_meta = d_el.attr("meta_device") == "1";
+    } else {
+        var line_prefix = "new";
+        var is_meta = false;
+    };
     var new_tr = $("<tr>").attr({
         "class" : "ui-widget ui-widget-header",
         "id"    : line_prefix
     });
-    var is_meta = d_el.attr("meta_device") == "1";
-    new_tr.append($("<td>").attr({
-    }).text((is_meta ? "Meta device" : "device") + " " + d_el.text()));
     new_tr.append(
+        $("<td>").append(
+            $("<input>").attr({
+                "type" : "checkbox",
+                "id"   : line_prefix + "__sel"
+            }).bind("click", d_el ? change_d_sel : change_global_sel)
+        )
+    ).append(
+        $("<td>").attr({
+        }).text((is_meta ? "Meta device" : "device") + " " + (d_el ? d_el.text() : "global"))
+    ).append(
         $("<td>").append(
             create_input_el(d_el, "mon_device_templ", line_prefix, {
                 select_source  : "mon_device_templs mon_device_templ",
                 add_null_entry : "not set",
-                css            : {width : "100px"}
+                css            : {width : "100px"},
+                change_cb      : d_el ? undefined : change_monitor_template
             })
         )
     ).append(
         $("<td>").append(
             create_input_el(d_el, "monitor_checks", line_prefix, {
-                boolean : 1
+                boolean : 1,
+                change_cb : d_el ? undefined : change_monitor_checks
             })
         )
     ).append(
@@ -128,7 +208,8 @@ function draw_device(d_el) {
             create_input_el(d_el, "mon_ext_host", line_prefix, {
                 select_source  : "mon_ext_hosts mon_ext_host",
                 add_null_entry : "not set",
-                css            : {width : "250px"}
+                css            : {width : "250px"},
+                change_cb : d_el ? undefined : change_mon_ext_host
             })
         )
     ).append(
@@ -136,7 +217,8 @@ function draw_device(d_el) {
             create_input_el(d_el, "monitor_server", line_prefix, {
                 select_source  : MONSRV.find("devices device"),
                 add_null_entry : "default (==master)",
-                css            : {width : "150px"}
+                css            : {width : "150px"},
+                change_cb : d_el ? undefined : change_monitor_server
             })
         )
     );
@@ -145,14 +227,24 @@ function draw_device(d_el) {
 };
 
 function draw_tables() {
-    $("div#mon_tables").children().remove();
+    var d_div = $("div#mon_tables");
+    d_div.children().remove();
     c_table = $("<table>").attr({"id" : "config"});
     DEVICES.find("device_group").each(function() {
         var cur_dg = $(this);
+        var line_prefix = cur_dg.attr("key");
         var new_tr = $("<tr>").attr({
             "class"   : "ui-widget ui-widget-header"
         });
-        new_tr.append($("<th>").attr({
+        new_tr.append(
+            $("<th>").append(
+                $("<input>").attr({
+                    "type" : "checkbox",
+                    "id"   : line_prefix + "__sel"
+                }).bind("click", change_dg_sel)
+            )
+        ).append(
+            $("<th>").attr({
             "colspan" : "5"
         }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")));
         c_table.append(new_tr);
@@ -166,7 +258,17 @@ function draw_tables() {
             c_table.append(draw_device(cur_dev));
         });
     });
-    $("div#mon_tables").append(c_table);
+    // global change
+    var new_tr = $("<tr>").attr({
+        "class"   : "ui-widget ui-widget-header"
+    });
+    new_tr.append(
+        $("<th>").attr({
+        "colspan" : "6"
+    }).addClass("ui-widget ui-widget-header").text("all devices"));
+    c_table.append(new_tr);
+    c_table.append(draw_device(undefined));
+    d_div.append(c_table);
     c_table.find("select[id$='mon_ext_host']").msDropdown({
         useSprite : "smallIcons",
         visibleRows : 15
