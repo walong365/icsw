@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright (c) 2002,2003,2004,2005,2006,2012 Andreas Lang-Nevyjel init.at
 #
@@ -40,64 +40,64 @@ rc_reset
 export HOSTNAME=`/bin/hostname`
 case "$1" in
     start)
-		echo -n "Starting collrelay.py"
-		if [ -f ${RELAY_PID} ] ; then
-			echo -n " ... already running"
-		else
-			for dir in $SERVER_DIRS ; do
-			[ ! -d "${dir}" ] && mkdir -p ${dir}
-			done
-			${RELAY_BIN} ${RELAY_ARGS}
-		fi
-		rc_status -v
-		;;
+        echo -n "Starting collrelay.py"
+        if [ -f ${RELAY_PID} ] ; then
+            echo -n " ... already running"
+        else
+            for dir in $SERVER_DIRS ; do
+            [ ! -d "${dir}" ] && mkdir -p ${dir}
+            done
+            ${RELAY_BIN} ${RELAY_ARGS}
+        fi
+        rc_status -v
+        ;;
     stop)      
-		echo -n "Stopping collrelay.py"
-		if [ -f ${RELAY_PID} ] ; then
-			kill -s 15 `cat ${RELAY_PID} | head -n 1` || rc_failed
-		else
-			rc_failed
-		fi
-		rc_status -v		
-		;;
+        echo -n "Stopping collrelay.py"
+        if [ -f ${RELAY_PID} ] ; then
+            kill -s 15 `cat ${RELAY_PID} | head -n 1` || rc_failed
+        else
+            rc_failed
+        fi
+        rc_status -v		
+        ;;
     force-stop)
-		echo -n "Force stopping collrelay.py"
-		if [ -f ${RELAY_PID} ] ; then
-			kill -9 `cat ${RELAY_PID} ` || rc_failed
-		else
-			rc_failed
-		fi
-		rm -f ${RELAY_PID}
-		rc_status -v
-		;;
+        echo -n "Force stopping collrelay.py"
+        if [ -f ${RELAY_PID} ] ; then
+            kill -9 `cat ${RELAY_PID} ` || rc_failed
+        else
+            rc_failed
+        fi
+        rm -f ${RELAY_PID}
+        rc_status -v
+        ;;
     status)
-		echo -n "Checking collrelay.py..."
-		check_threads_ok ${RELAY_PID} || {
-			check_threads ${RELAY_PID} || rc_failed 
-		} 
-		rc_status -v
-		;;
+        echo -n "Checking collrelay.py..."
+        check_threads_ok ${RELAY_PID} || {
+            check_threads ${RELAY_PID} || rc_failed 
+        } 
+        rc_status -v
+        ;;
     restart)
-		echo "Restarting $(basename $RELAY_BIN)"
-		$0 stop && sleep 2 ; $0 start || return=$rc_failed
-		;;
+        echo "Restarting $(basename $RELAY_BIN)"
+        $0 stop && sleep 2 ; $0 start || return=$rc_failed
+        ;;
     force-restart)
-		echo "Restarting $(basename $RELAY_BIN)"
-		$0 force-stop && sleep 2 ; $0 start || return=$rc_failed
-		;;
+        echo "Restarting $(basename $RELAY_BIN)"
+        $0 force-stop && sleep 2 ; $0 start || return=$rc_failed
+        ;;
     reload)
-		echo -n "Reloading collrelay.py"
-		if [ -f ${SERVER_PID} ] ; then
-			kill -HUP `cat ${RELAY_PID} | head -n 1` || rc_failed
-		else
-			rc_failed
-		fi
-		rc_status -v
-		;;
+        echo -n "Reloading collrelay.py"
+        if [ -f ${SERVER_PID} ] ; then
+            kill -HUP `cat ${RELAY_PID} | head -n 1` || rc_failed
+        else
+            rc_failed
+        fi
+        rc_status -v
+        ;;
     *)
-		echo "Usage: $0 {start|stop|restart|status|force-stop|force-restart|reload}"
-		exit 1
-		;;
+        echo "Usage: $0 {start|stop|restart|status|force-stop|force-restart|reload}"
+        exit 1
+        ;;
 esac
 
 rc_exit
