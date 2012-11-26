@@ -25,7 +25,7 @@ var master_array = {
             new draw_info("postfix", {default : "", size : 3}),
             new draw_info("name"),
             new draw_info("network_type", {select_source : "network_types network_type"} ),
-            new draw_info("master_network", {select_source : "networks network", add_null_entry : "not set"} ),
+            new draw_info("master_network", {select_source : get_master_networks, add_null_entry : "not set"} ),
             new draw_info("short_names", {boolean : 1, label : "SNames / Named / Other", span : 3}),
             new draw_info("write_bind_config", {boolean : 1}),
             new draw_info("write_other_network_config", {boolean : 1}),
@@ -37,6 +37,21 @@ var master_array = {
         ],
         {"lock_div" : "nw_tables"})
 };   
+
+function get_master_networks() {
+    var prod_id = NETWORK_XML.find("network_types network_type[identifier='p']").attr("pk");
+    var ret_field = $("<networks>");
+    NETWORK_XML.find("networks network").each(function() {
+        var cur_nw = $(this);
+        if (cur_nw.attr("network_type") == prod_id) {
+            ret_field.append($("<network>").attr({
+                "pk"  : cur_nw.attr("pk"),
+                "key" : cur_nw.attr("key")
+            }).text(cur_nw.text()));
+        };
+    });
+    return ret_field.find("network");
+};
 
 function load_networks() {
     $.ajax({

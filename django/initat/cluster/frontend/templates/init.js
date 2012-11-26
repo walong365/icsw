@@ -308,7 +308,12 @@ function append_new_line(cur_el, new_xml, cur_ds) {
 
 function delete_line(cur_el) {
     var del_tr = cur_el.parents("tr:first");
-    del_tr.remove();
+    if (del_tr.attr("id")) {
+        var del_table = del_tr.parents("table:first");
+        del_table.find("tr#" + del_tr.attr("id")).remove();
+    } else {
+        del_tr.remove();
+    };
 };
 
 function create_delete_element(event, cur_ds) {
@@ -578,9 +583,19 @@ function in_array(in_array, s_str) {
 // resync select list
 function sync_select_from_xml(cur_el, cur_di) {
     var old_pks = get_attribute_list(cur_el.find("option:selected"), "value");
-    var ref_list = MASTER_XML.find(cur_di.select_source);
+    var kwargs = cur_di.get_kwargs();
+    if (typeof(kwargs.select_source) == "string") {
+        var sel_source = (kwargs.draw_info && (kwargs.draw_info.draw_setup.master_xml || MASTER_XML) || MASTER_XML).find(kwargs.select_source);
+    } else if (typeof(kwargs.select_source) == "function") {
+        var sel_source = kwargs.select_source(undefined);
+    } else {
+        var sel_source = kwargs.select_source;
+    };
     cur_el.children().remove();
-    ref_list.each(function() {
+    if (kwargs.add_null_entry) {
+        cur_el.append($("<option>").attr({"value" : "0"}).text(kwargs.add_null_entry));
+    };
+    sel_source.each(function() {
         var cur_ns = $(this);
         var new_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text());
         if (in_array(cur_ns.attr("pk"), old_pks)) new_opt.attr("selected", "seleted");
@@ -641,6 +656,8 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
         // select input
         if (typeof(kwargs.select_source) == "string") {
             var sel_source = (kwargs.draw_info && (kwargs.draw_info.draw_setup.master_xml || MASTER_XML) || MASTER_XML).find(kwargs.select_source);
+        } else if (typeof(kwargs.select_source) == "function") {
+            var sel_source = kwargs.select_source(xml_el);
         } else {
             var sel_source = kwargs.select_source;
         };
