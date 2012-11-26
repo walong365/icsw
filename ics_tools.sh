@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -27,7 +27,7 @@
 # Short-Description: dummy for ics_tools
 ### END INIT INFO
 
-function check_threads() {
+check_threads() {
     if [ -n "$1" ] ; then
         ret=$(/opt/cluster/bin/ics_tools.py $1)
     else 
@@ -38,7 +38,7 @@ function check_threads() {
     return $ret_val
 }
 
-function check_threads_ok() {
+check_threads_ok() {
     if [ -n "$1" ] ; then
         ret=$(/opt/cluster/bin/ics_tools.py -o $1)
     else 
