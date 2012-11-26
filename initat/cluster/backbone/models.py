@@ -1692,7 +1692,9 @@ def network_pre_save(sender, **kwargs):
                 ip_dict[key] = ipvx_tools.ipv4(getattr(cur_inst, key))
             except:
                 raise ValidationError("%s is not an IPv4 address" % (key))
-        if change_attr in  ["network", "netmask"]:
+        if not change_attr:
+            change_attr = "network"
+        if change_attr in ["network", "netmask"]:
             ip_dict["broadcast"] = ~ ip_dict["netmask"] | (ip_dict["network"] & ip_dict["netmask"])
         elif change_attr == "broadcast":
             ip_dict["netmask"] = ~ (ip_dict["broadcast"] & ~ ip_dict["network"])
