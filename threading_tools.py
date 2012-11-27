@@ -1505,6 +1505,8 @@ class process_pool(object):
                                          logging_tools.LOG_LEVEL_CRITICAL)
                                 for line in exc_info.log_lines:
                                     self.log("   %s" % (line), logging_tools.LOG_LEVEL_ERROR)
+                                # raise exception, important
+                                raise
                         else:
                             print "???0", sock, c_type
                             time.sleep(1)
