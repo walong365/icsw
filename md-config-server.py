@@ -40,6 +40,7 @@ import cluster_location
 import server_command
 import threading_tools
 import config_tools
+import crypt
 from initat.md_config_server import special_commands
 try:
     from md_config_server.version import VERSION_STRING
@@ -49,7 +50,8 @@ from django.db.models import Q
 from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_service, mon_ext_host, mon_check_command, mon_check_command_type, mon_period, mon_contact, \
-     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, hopcount
+     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, hopcount, \
+     user
 from django.conf import settings
 import base64
 import uuid_tools
@@ -203,8 +205,9 @@ class main_config(object):
             " %s" % (self.__slave_name) if self.__slave_name else "",
             what), level)
     def get_command_name(self):
-        return os.path.join(self.__r_dir_dict["var"],
-                            "ext_com" if global_config["MD_TYPE"] == "nagios" else "icinga.cmd")
+        return os.path.join(
+            self.__r_dir_dict["var"],
+            "ext_com" if global_config["MD_TYPE"] == "nagios" else "icinga.cmd")
     def distribute(self):
         if self.slave_ip:
             self.log("start send to slave")
@@ -248,6 +251,7 @@ class main_config(object):
             "archives",
             "ssl",
             "bin",
+            "sbin",
             "lib",
             "lib64",
             "var/spool",
@@ -451,17 +455,19 @@ class main_config(object):
                                          ("url_html_path"            , "/%s" % (global_config["MD_TYPE"])),
                                          ("show_context_help"        , 0),
                                          ("use_authentication"       , 1),
-                                         ("default_user_name"        , def_user),
+                                         #("default_user_name"        , def_user),
                                          ("default_statusmap_layout" , 5),
                                          ("default_statuswrl_layout" , 4),
                                          ("refresh_rate"             , 60),
+                                         ("lock_author_name"         , 1),
                                          ("authorized_for_system_information"        , def_user),
                                          ("authorized_for_system_commands"           , def_user),
                                          ("authorized_for_configuration_information" , def_user),
                                          ("authorized_for_all_hosts"                 , def_user),
                                          ("authorized_for_all_host_commands"         , def_user),
                                          ("authorized_for_all_services"              , def_user),
-                                         ("authorized_for_all_service_commands"      , def_user)] + [("tac_show_only_hard_state", 1)] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else [])
+                                         ("authorized_for_all_service_commands"      , def_user)] + 
+                                 [("tac_show_only_hard_state", 1)] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else [])
         if sql_suc:
             pass
         else:
@@ -472,6 +478,43 @@ class main_config(object):
             self[ndo2db_cfg.get_name()] = ndo2db_cfg
         self[cgi_config.get_name()] = cgi_config
         self[resource_cfg.get_name()] = resource_cfg
+        if self.master:
+            # wsgi config
+            if os.path.isfile("/etc/debian_version"):
+                www_user, www_group = ("apache", "apache")
+            else:
+                www_user, www_group = ("wwwrun", "www")
+            wsgi_config = base_config(
+                "wsgi",
+                is_host_file=True,
+                headers=["[uwsgi]"],
+                values=[
+                    ("chdir"           , self.__r_dir_dict[""]),
+                    ("plugin-dir"      , "/opt/cluster/lib64"),
+                    ("cgi-mode"        , "true"),
+                    ("master"          , "true"),
+                    ("vacuum"          , "true"),
+                    ("workers"         , 16),
+                    ("harakiri-verbose", 1),
+                    ("plugins"         , "cgi"),
+                    ("socket"          , os.path.join(self.__r_dir_dict["var"], "uwsgi.sock")),
+                    ("uid"             , www_user),
+                    ("gid"             , www_group),
+                    ("cgi"             , self.__r_dir_dict["sbin"]),
+                    ("no-default-app"  , "true"),
+                    ("pidfile"         , os.path.join(self.__r_dir_dict["var"], "wsgi.pid")),
+                    ("daemonize"       , os.path.join(self.__r_dir_dict["var"], "wsgi.log")),
+                    ("chown-socket"    , www_user),
+                    ("no-site"         , "true"),
+                    #("route"           , "^/icinga/cgi-bin basicauth:Monitor,init:init"),
+                ])
+            self[wsgi_config.get_name()] = wsgi_config
+            # create htpasswd
+            htp_file = os.path.join(self.__r_dir_dict["etc"], "http_users.cfg")
+            file(htp_file, "w").write("\n".join(
+                ["%s:{SSHA}%s" % (
+                    cur_u.login,
+                    cur_u.password_ssha.split(":", 1)[1]) for cur_u in user.objects.filter(Q(active=True))] + [""]))
     def _write_entries(self):
         cfg_written, empty_cfg_written = ([], [])
         start_time = time.time()
@@ -525,12 +568,13 @@ class main_config(object):
         return self.__dict[key]
 
 class base_config(object):
-    def __init__(self, name, **args):
+    def __init__(self, name, **kwargs):
         self.__name = name
         self.__dict, self.__key_list = ({}, [])
-        self.is_host_file   = args.get("is_host_file", False)
-        self.belongs_to_ndo = args.get("belongs_to_ndo", False)
-        for key, value in args.get("values", []):
+        self.is_host_file   = kwargs.get("is_host_file", False)
+        self.belongs_to_ndo = kwargs.get("belongs_to_ndo", False)
+        self.headers = kwargs.get("headers", [])
+        for key, value in kwargs.get("values", []):
             self[key] = value
         self.act_content = []
     def get_name(self):
@@ -553,15 +597,15 @@ class base_config(object):
                     c_lines.append("")
             last_key = key
             value = self.__dict[key]
-            if type(value) == type([]):
+            if type(value) == list:
                 pass
-            elif type(value) in [type(0), type(0L)]:
+            elif type(value) in [int, long]:
                 value = [str(value)]
             else:
                 value = [value]
             for act_v in value:
                 c_lines.append("%s=%s" % (key, act_v))
-        self.act_content = c_lines
+        self.act_content = self.headers + c_lines
         
 class nag_config(object):
     def __init__(self, name, **kwargs):
