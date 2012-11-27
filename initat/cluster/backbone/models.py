@@ -333,7 +333,7 @@ class device(models.Model):
     #axnumber = models.CharField(max_length=192, blank=True)
     alias = models.CharField(max_length=384, blank=True)
     comment = models.CharField(max_length=384, blank=True)
-    snmp_class = models.ForeignKey("snmp_class", null=True)
+    #snmp_class = models.ForeignKey("snmp_class", null=True)
     # better suited in a n:m model, removed
     #switch = models.ForeignKey("device", null=True, related_name="switch_device")
     #switchport = models.IntegerField(null=True, blank=True)
@@ -779,6 +779,11 @@ class device_variable(models.Model):
         elif self.var_type == "s":
             dev_xml.attrib["value"] = self.val_str
         return dev_xml
+    def __unicode__(self):
+        return "%s[%s] = %s" % (
+            self.name,
+            self.var_type,
+            str(self.get_value()))
     class Meta:
         db_table = u'device_variable'
         ordering = ("name",)
@@ -2810,17 +2815,17 @@ class sge_userlist_type(models.Model):
     class Meta:
         db_table = u'sge_userlist_type'
 
-class snmp_class(models.Model):
-    idx = models.AutoField(db_column="snmp_class_idx", primary_key=True)
-    name = models.CharField(max_length=192)
-    descr = models.CharField(max_length=765)
-    read_community = models.CharField(max_length=192)
-    write_community = models.CharField(max_length=192)
-    snmp_version = models.IntegerField(null=True, blank=True)
-    update_freq = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'snmp_class'
+#class snmp_class(models.Model):
+    #idx = models.AutoField(db_column="snmp_class_idx", primary_key=True)
+    #name = models.CharField(max_length=192)
+    #descr = models.CharField(max_length=765)
+    #read_community = models.CharField(max_length=192)
+    #write_community = models.CharField(max_length=192)
+    #snmp_version = models.IntegerField(null=True, blank=True)
+    #update_freq = models.IntegerField(null=True, blank=True)
+    #date = models.DateTimeField(auto_now_add=True)
+    #class Meta:
+        #db_table = u'snmp_class'
 
 class snmp_config(models.Model):
     idx = models.AutoField(db_column="snmp_config_idx", primary_key=True)
