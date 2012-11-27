@@ -126,13 +126,13 @@ class snmp_settings(object):
             "dev__%d" % (cur_dev.pk))
         if global_key not in self.__snmp_vars:
             # read global configs
-            self.__snmp_vars["GLOBAL"] = dict([(cur_var.name, cur_var) for cur_var in device_variable.objects.filter(Q(device=self.__cdg) & Q(name__istartswith="snmp_"))])
+            self.__snmp_vars["GLOBAL"] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg) & Q(name__istartswith="snmp_"))])
         if dg_key not in self.__snmp_vars:
             # read device_group configs
-            self.__snmp_vars[dg_key] = dict([(cur_var.name, cur_var) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device) & Q(name__istartswith="snmp_"))])
+            self.__snmp_vars[dg_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device) & Q(name__istartswith="snmp_"))])
         if dev_key not in self.__snmp_vars:
             # read device configs
-            self.__snmp_vars[dev_key] = dict([(cur_var.name, cur_var) for cur_var in device_variable.objects.filter(Q(device=cur_dev) & Q(name__istartswith="snmp_"))])
+            self.__snmp_vars[dev_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev) & Q(name__istartswith="snmp_"))])
         ret_dict = {
             "SNMP_VERSION"         : 2,
             "SNMP_READ_COMMUNITY"  : "public",
@@ -841,12 +841,12 @@ class all_commands(host_type_config):
                 ),
             mon_check_command(
                 name="ochp-command",
-                command_line="$USER2$ -m DIRECT ochp-event $HOSTNAME$ $HOSTSTATE$ \"$HOSTOUTPUT$\"",
+                command_line="$USER2$ -m DIRECT ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"$HOSTOUTPUT$\"",
                 description="OCHP Command"
                 ),
             mon_check_command(
                 name="ocsp-command",
-                command_line="$USER2$ -m DIRECT ocsp-event $HOSTNAME$ $SERVICEDESC$ $SERVICESTATE$ \"$SERVICEOUTPUT$\"",
+                command_line="$USER2$ -m DIRECT ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"$SERVICEOUTPUT$\"",
                 description="OCSP Command"
                 ),
             ]:
@@ -1104,7 +1104,7 @@ class check_command(object):
         if not in_list and self.__num_args:
             in_list = [""] * self.__num_args
         out_list = []
-        for idx, item in zip(range(1, len(in_list) + 1), in_list):
+        for idx, item in zip(xrange(1, len(in_list) + 1), in_list):
             arg_name = "ARG%d" % (idx)
             if self.__default_values.has_key(arg_name) and not item:
                 var_name = self.__default_values[arg_name][0]
@@ -1112,7 +1112,10 @@ class check_command(object):
                     item = dev_variables[var_name]
                 else:
                     item = self.__default_values[arg_name][1]
-            out_list.append(item)
+            if type(item) in [int, long]:
+                out_list.append("%d" % (item))
+            else:
+                out_list.append(item)
         #if out_list:
         #    print "*", self.__name, "-"*20
         #    print "i", in_list, dev_variables
@@ -1657,8 +1660,7 @@ class build_process(threading_tools.process_obj):
                         for cur_var in device_variable.objects.filter(Q(device=host)):
                             var_name = cur_var.name
                             dev_variables[var_name] = cur_var
-                        for key, value in snmp_stack.get_vars(host).iteritems():
-                            dev_variables[key] = value.get_value()
+                        dev_variables.update(snmp_stack.get_vars(host))
                         self.mach_log("device has %s" % (
                             logging_tools.get_plural("device_variable", len(dev_variables.keys()))))
                         # now we have the device- and service template
@@ -2328,6 +2330,20 @@ class server_process(threading_tools.process_pool):
         target_com = {
             "ocsp-event" : "PROCESS_SERVICE_CHECK_RESULT",
             "ochp-event" : "PROCESS_HOST_CHECK_RESULT"}[com_type]
+        # rewrite state information
+        state_idx, error_state = (1, 1) if com_type == "ochp-event" else (2, 2)
+        targ_list[state_idx] = "%d" % ({
+            "ok"          : 0,
+            "up"          : 0,
+            "warning"     : 1,
+            "down"        : 1,
+            "unreachable" : 2,
+            "critical"    : 2,
+            "unknown"     : 3}.get(targ_list[state_idx].lower(), error_state))
+        if com_type == "ocsp-event":
+            pass
+        else:
+            pass
         out_line = "[%d] %s;%s\n" % (
             int(time.time()),
             target_com,
