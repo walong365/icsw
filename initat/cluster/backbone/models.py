@@ -19,6 +19,7 @@ import pytz
 import process_tools
 import hashlib
 import base64
+import os
 from django.conf import settings
 
 def only_wf_perms(in_list):
@@ -2903,7 +2904,9 @@ class user(models.Model):
     home = models.TextField(blank=True, null=True)
     scratch = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=765, blank=True, default="/bin/bash")
+    # SHA encrypted
     password = models.CharField(max_length=48, blank=True)
+    password_ssha = models.CharField(max_length=64, blank=True, default="")
     cluster_contact = models.BooleanField()
     first_name = models.CharField(max_length=765, blank=True)
     last_name = models.CharField(max_length=765, blank=True)
@@ -3049,15 +3052,22 @@ def user_post_save(sender, **kwargs):
         django_user.first_name = cur_inst.first_name
         django_user.last_name = cur_inst.last_name
         django_user.email = cur_inst.email
-        pw_gen = "SHA1"
-        if cur_inst.password.startswith(pw_gen):
+        pw_gen_1 = "SHA1"
+        if cur_inst.password.startswith(pw_gen_1):
             pass
         else:
-            new_sh = hashlib.new(pw_gen)
-            new_sh.update(cur_inst.password)
-            cur_pw = "%s:%s" % (pw_gen, base64.b64encode(new_sh.digest()))
-            django_user.set_password(cur_inst.password)
+            passwd = cur_inst.password
+            new_sh = hashlib.new(pw_gen_1)
+            new_sh.update(passwd)
+            cur_pw = "%s:%s" % (pw_gen_1, base64.b64encode(new_sh.digest()))
+            django_user.set_password(passwd)
             cur_inst.password = cur_pw
+            # ssha1
+            salt = os.urandom(4)
+            new_sh.update(salt)
+            #print base64.b64encode(new_sh.digest() +  salt)
+            cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() +  salt))
+            #cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() + salt))
             cur_inst.save()
         django_user.save()
 
