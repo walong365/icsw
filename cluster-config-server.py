@@ -388,14 +388,15 @@ class tree_node_g(object):
             return "%s/%s" % (self.parent.get_path(), self.path)
         else:
             return "%s" % (self.path)
-    def get_node(self, path, c_node, dir_node=False):
+    def get_node(self, path, c_node, dir_node=False, use_existing=False):
         if self.root_node:
             # normalize path at top level
             path = os.path.normpath(path)
         if path == self.path:
             if self.is_dir == dir_node:
                 if self.content_node != c_node:
-                    raise ValueError, "content node already set but with different type"
+                    if not use_existing:
+                        raise ValueError, "content node already set but with different type"
                 # match, return myself
                 if self.content_node.c_type == "l":
                     self.is_link = True
@@ -417,7 +418,7 @@ class tree_node_g(object):
                 else:
                     # add dir node
                     self.childs[path_list[1]] = tree_node_g(path_list[1], c_node, parent=self, intermediate=True)
-            return self.childs[path_list[1]].get_node(os.path.join(*path_list[1:]), c_node, dir_node=dir_node)
+            return self.childs[path_list[1]].get_node(os.path.join(*path_list[1:]), c_node, dir_node=dir_node, use_existing=use_existing)
     def get_type_str(self):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
     def __unicode__(self):
@@ -558,9 +559,9 @@ class build_container(object):
         cur_node.add_config(self.cur_conf.pk)
         return cur_node.content_node
     def add_file_object(self, fon, **kwargs):
-        return self._add_file_object(file_object(fon, config=self, **kwargs))
-    def _add_file_object(self, f_obj):
-        cur_node = self.g_tree.get_node(f_obj.dest, f_obj)
+        return self._add_file_object(file_object(fon, config=self, **kwargs), append=kwargs.get("append", False))
+    def _add_file_object(self, f_obj, append=False):
+        cur_node = self.g_tree.get_node(f_obj.dest, f_obj, use_existing=append)
         if not cur_node in self.__touched_objects:
             self.__touched_objects.append(cur_node)
         cur_node.add_config(self.cur_conf.pk)
@@ -1233,10 +1234,7 @@ def do_ssh(conf):
 def do_fstab(conf):
     act_ps = partition_setup(conf)
     fstab_co = conf.add_file_object("/etc/fstab")
-    if act_ps.valid:
-        fstab_co += act_ps.fstab
-    else:
-        raise ValueError, act_ps.ret_str
+    fstab_co += act_ps.fstab
     
 class partition_setup(object):
     def __init__(self, conf):
