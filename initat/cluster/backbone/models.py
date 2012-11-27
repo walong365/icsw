@@ -634,7 +634,7 @@ class device_group(models.Model):
         return cur_xml
     class Meta:
         db_table = u'device_group'
-        ordering = ("cluster_device_group", "name", )
+        ordering = ("-cluster_device_group", "name", )
     def __unicode__(self):
         return u"%s%s%s" % (
             self.name,
@@ -653,13 +653,13 @@ def device_group_pre_save(sender, **kwargs):
 def device_group_post_save(sender, **kwargs):
     cur_inst = kwargs["instance"]
 
-    if kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
+    if kwargs["created"] and not kwargs["raw"]:
         # first is always cdg
         if device_group.objects.count() == 1 and not cur_inst.cluster_device_group:
             cur_inst.cluster_device_group = True
             cur_inst.save()
 
-    if not kwargs["created"] and not kwargs["raw"] and "instance" in kwargs:
+    if not kwargs["raw"]:
         # meta_device is always created
         if not cur_inst.device_id:
             cur_inst._add_meta_device()
