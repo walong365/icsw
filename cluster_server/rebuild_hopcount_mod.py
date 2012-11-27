@@ -484,7 +484,7 @@ class rebuild_hopcount(cs_base_class.server_com):
             except device_variable.DoesNotExist:
                 reb_var = device_variable(device=cdg_dev,
                                           name="hopcount_table_build_time")
-            reb_var.val_type = "d"
+            reb_var.var_type = "d"
             reb_var.description = "rebuilt at %s" % (self.global_config["SERVER_SHORT_NAME"])
             reb_var.val_date = pytz.utc.localize(datetime.datetime(*time.localtime()[0:6]))
             reb_var.save()

@@ -708,8 +708,8 @@ class sync_ldap_config(cs_base_class.server_com):
                                               "attrs" : dict([("objectClass"   , mount_point_class),
                                                               ("cn"            , [sub_mount_point]),
                                                               (mount_point_name, ["%s %s" % (mount_opts, mount_src)])] + ldap_add_list)})
-                map_keys = [x["dn"] for x in auto_maps]
-                auto_dict = dict([(x["dn"], x) for x in auto_maps])
+                map_keys = [value["dn"] for value in auto_maps]
+                auto_dict = dict([(value["dn"], value) for value in auto_maps])
                 # fetch all maps from ldap
                 maps_ok, maps_to_change, maps_to_remove = ([], [], [])
                 for dn, attrs in ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "(objectClass=clusterAutomount)"):
