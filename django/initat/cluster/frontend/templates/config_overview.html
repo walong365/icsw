@@ -49,8 +49,8 @@ TR_LUT = new Array();
 
 function get_expand_td(line_prefix, name, title) {
     return $("<td>").append(
-        $("<span>").attr({
-            "class"   : "ui-icon ui-icon-triangle-1-e",
+        $("<div>").attr({
+            "class"   : "ui-icon ui-icon-triangle-1-e leftfloat",
             "id"      : line_prefix + "__expand_" + name,
             "title"   : title === undefined ? "show " + name : title
         }).bind("click", function(event) {
@@ -69,12 +69,12 @@ function get_expand_td(line_prefix, name, title) {
 };
 
 function update_expand_info() {
-    $("table#config tr td span[id*='__expand_']").each(function() {
-        var cur_span = $(this);
-        var span_id = cur_span.attr("id");
-        if (!span_id.match(/__info$/)) {
-            var num_tr = $("table#config tr[id^='" + span_id.replace(/^(conf__\d+__)[a-z]+_(.*)$/, "$1$2") + "']").length - 1;
-            cur_span.next().text(num_tr);
+    $("table#config tr td div[id*='__expand_']").each(function() {
+        var cur_div = $(this);
+        var div_id = cur_div.attr("id");
+        if (!div_id.match(/__info$/)) {
+            var num_tr = $("table#config tr[id^='" + div_id.replace(/^(conf__\d+__)[a-z]+_(.*)$/, "$1$2") + "']").length - 1;
+            cur_div.next().text(num_tr);
         };
     });
 };
@@ -84,7 +84,7 @@ function toggle_config_line(line_prefix, state, line_spec, conf_line) {
         var conf_line = $("table#config tr[id='" + line_prefix + "']");
     };
     var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
-    var cur_dg = conf_line.find("span[id$='__expand_" + line_spec + "']");
+    var cur_dg = conf_line.find("div[id$='__expand_" + line_spec + "']");
     if (state) {
         cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
         cur_dg.addClass("ui-icon-triangle-1-s");
@@ -156,7 +156,7 @@ function apply_filter() {
             };
         });
         // collapse all expanded trs
-        $("table#config").find("tr td span[id*='__expand_'].ui-icon-triangle-1-s").each(function() {
+        $("table#config").find("tr td div[id*='__expand_'].ui-icon-triangle-1-s").each(function() {
             var cur_tr = $(this).parents("tr:first");
             toggle_config_line(cur_tr.attr("id"), false, "var", cur_tr);
             toggle_config_line(cur_tr.attr("id"), false, "moncc", cur_tr);
@@ -364,8 +364,6 @@ function add_config_var_line(c_el, line_prefix, c_var) {
     cv_tr.append(cur_td);
     cur_td.append(
         create_input_el(c_var, "name", line_prefix)
-    ).append(
-        create_input_el(c_var, "description", line_prefix)
     );
     if (c_var) {
         if (c_var.attr("type") == "bool") {
@@ -386,7 +384,9 @@ function add_config_var_line(c_el, line_prefix, c_var) {
             create_input_el(c_var, "value", line_prefix)
         );
     };
-    
+    cur_td.append(
+        create_input_el(c_var, "description", line_prefix)
+    );
     if (c_var) {
         cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<span>").text(c_var.attr("type"))));
     } else {
@@ -457,13 +457,13 @@ function add_config_script_line(c_el, line_prefix, cs_com) {
     cur_td.append(
         create_input_el(cs_com, "name", line_prefix)
     ).append(
+        create_input_el(cs_com, "value", line_prefix, {textarea : true})
+    ).append(
         create_input_el(cs_com, "description", line_prefix)
     ).append(
         create_input_el(cs_com, "priority", line_prefix, {number : true})
     ).append(
         create_input_el(cs_com, "enabled", line_prefix, {boolean : true})
-    ).append(
-        create_input_el(cs_com, "value", line_prefix, {textarea : true})
     );
     if (cs_com) {
         cur_td.append($("<input>").attr({
@@ -556,6 +556,7 @@ function init_config_table() {
     // activate codemirrors
     $("div#config textarea").each(function() {
         init_textarea($(this));
+        
     });
     update_expand_info();
 };
@@ -576,6 +577,7 @@ function init_textarea(cur_ta) {
             cur_struct.line = cur_struct.editor.setLineClass(cur_struct.editor.getCursor().line, null, "activeline");
         }
     });
+    cur_ed.setSize(1024, null);
     CODEMIRROR_DICT[cur_id] = {
         "editor" : cur_ed,
         "line"   : cur_ed.setLineClass(0, "activeline")

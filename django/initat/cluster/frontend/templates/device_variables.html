@@ -130,6 +130,7 @@ function add_dv_line(c_el, line_prefix, cs_com) {
     var cs_tr = $("<tr>").attr({
         "id"  : line_prefix
     }).hide();
+    cs_tr.append($("<td>"));
     var cur_td = $("<td>");
     cs_tr.append(cur_td);
     var val_kwargs = {};
@@ -140,11 +141,11 @@ function add_dv_line(c_el, line_prefix, cs_com) {
     cur_td.append(
         create_input_el(cs_com, "name", line_prefix)
     ).append(
-        create_input_el(cs_com, "description", line_prefix)
+        create_input_el(cs_com, "value", line_prefix, val_kwargs)
     ).append(
         create_input_el(cs_com, "is_public", line_prefix, {boolean : true})
     ).append(
-        create_input_el(cs_com, "value", line_prefix, val_kwargs)
+        create_input_el(cs_com, "description", line_prefix)
     );
     cs_tr.append($("<td>").append(
         $("<input>").attr({
@@ -165,10 +166,11 @@ function draw_device(d_el) {
         "id"    : line_prefix
     });
     var is_meta = d_el.attr("meta_device") == "1";
-    new_tr.append($("<th>").attr({
-        "colspan" : "7"
-    }).text((is_meta ? "Meta device" : "device") + " " + d_el.text()));
     new_tr.append(get_expand_td(line_prefix, "dv", "variable"));
+    new_tr.append($("<th>").attr({
+        "colspan" : "2",
+        "class"   : "left"
+    }).text((is_meta ? "Meta device" : "device") + " " + d_el.text()));
     dummy_div.append(new_tr);
     dummy_div.append(add_dv_line(d_el, line_prefix));
     d_el.find("device_variables device_variable").each(function() {
@@ -185,8 +187,11 @@ function draw_var_table() {
         var new_tr = $("<tr>").attr({
             "class"   : "ui-widget ui-widget-header"
         });
-        new_tr.append($("<th>").attr({
-            "colspan" : "8"
+        new_tr.append($("<th>").css({
+            "padding" : "5px",
+            "border"  : "1px solid black"
+        }).attr({
+            "colspan" : "3"
         }).text("device group " + cur_dg.attr("name")));
         c_table.append(new_tr);
         // at first append metadevice

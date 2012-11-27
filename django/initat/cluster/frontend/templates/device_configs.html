@@ -117,10 +117,11 @@ function draw_device(d_el) {
         "id"    : line_prefix
     });
     var is_meta = d_el.attr("meta_device") == "1";
-    new_tr.append($("<th>").attr({
-        "colspan" : "7"
-    }).text((is_meta ? "Meta device" : "device") + " " + d_el.text()));
     new_tr.append(get_expand_td(line_prefix, "config", "config"));
+    new_tr.append($("<th>").attr({
+        "class"   : "left",
+        "colspan" : "8"
+    }).text((is_meta ? "Meta device" : "device") + " " + d_el.text()));
     dummy_div.append(new_tr);
     var cur_entries = 0;
     var cur_tr;
@@ -130,6 +131,7 @@ function draw_device(d_el) {
             cur_tr = $("<tr>").attr({
                 "id" : line_prefix + "__config__" + run_idx
             }).hide();
+            cur_tr.append($("<td>"));
         };
         var cur_conf = $(this);
         var cur_cb = $("<input>").attr({
@@ -215,8 +217,11 @@ function draw_tables() {
         var new_tr = $("<tr>").attr({
             "class"   : "ui-widget ui-widget-header"
         });
-        new_tr.append($("<th>").attr({
-            "colspan" : "8"
+        new_tr.append($("<th>").css({
+            "padding" : "5px",
+            "border"  : "1px solid black"
+        }).attr({
+            "colspan" : "9"
         }).text("device group " + cur_dg.attr("name")));
         c_table.append(new_tr);
         // at first append metadevice
