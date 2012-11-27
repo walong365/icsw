@@ -159,7 +159,7 @@ def get_group_tree(request):
     all_dgs = device_group.objects
     if ignore_cdg:
         all_dgs = all_dgs.exclude(Q(cluster_device_group=True))
-    all_dgs = all_dgs.prefetch_related("device_group").order_by("name")
+    all_dgs = all_dgs.prefetch_related("device_group")
     meta_dev_type_id = device_type.objects.get(Q(identifier="MD")).pk
     # only devices are transfered with the selected attribute
     for cur_dg in all_dgs:
