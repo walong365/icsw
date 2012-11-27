@@ -6,9 +6,7 @@
 
 {% block content %}
 
-<h1 class="center">Device variables, <span id="config_info">none defined</span></h1>
-
-{# <input type="text" id="filter" value="" onKeyUp="apply_filter();"/> #}
+<h1 class="center">Device variables</h1>
 
 <div id="variables"></div>
 
@@ -120,63 +118,6 @@ function create_delete_dv(event) {
             }
         });
     };
-};
-
-function add_config_var_line(c_el, line_prefix, c_var) {
-    if (c_var === undefined) {
-        var line_prefix = "dv__new";
-    } else {
-        var line_prefix = c_var.attr("key");
-    };
-    var cv_tr = $("<tr>").attr({
-        "id" : line_prefix
-    }).hide();
-    var cur_td = $("<td>");
-    cv_tr.append(cur_td);
-    cur_td.append(
-        create_input_el(c_var, "name", line_prefix)
-    ).append(
-        create_input_el(c_var, "description", line_prefix)
-    );
-    if (c_var) {
-        if (c_var.attr("type") == "bool") {
-            cur_td.append(
-                create_input_el(c_var, "value", line_prefix, {boolean : true})
-            );
-        } else if (c_var.attr("type") == "int") {
-            cur_td.append(
-                create_input_el(c_var, "value", line_prefix, {number : true})
-            );
-        } else {
-            cur_td.append(
-                create_input_el(c_var, "value", line_prefix)
-            );
-        };
-    } else {
-        cur_td.append(
-            create_input_el(c_var, "value", line_prefix)
-        );
-    };
-    
-    if (c_var) {
-        cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<span>").text(c_var.attr("type"))));
-    } else {
-        cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<select>").attr({"id" : line_prefix + "__type"}).
-            append($("<option>").attr("value", "str").text("string")).
-            append($("<option>").attr("value", "int").text("integer")).
-            append($("<option>").attr("value", "bool").text("boolean")).
-            append($("<option>").attr("value", "blob").text("blob"))
-        ))
-    };
-    cv_tr.append($("<td>").append(
-        $("<input>").attr({
-            "type"  : "button",
-            "value" : c_var ? "delete" : "create",
-            "id"    : line_prefix
-        }).bind("click", create_delete_config_var)
-        )
-    );
-    return cv_tr;
 };
 
 function add_dv_line(c_el, line_prefix, cs_com) {
