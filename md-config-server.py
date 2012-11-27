@@ -115,6 +115,35 @@ BROKER_STATECHANGE_DATA     = 2 ** 17
 BROKER_RESERVED18           = 2 ** 18
 BROKER_RESERVED19           = 2 ** 19
 
+class snmp_settings(object):
+    def __init__(self, cdg):
+        self.__cdg = cdg
+        self.__snmp_vars = {}
+    def get_vars(self, cur_dev):
+        global_key, dg_key, dev_key = (
+            "GLOBAL",
+            "dg__%d" % (cur_dev.device_group_id),
+            "dev__%d" % (cur_dev.pk))
+        if global_key not in self.__snmp_vars:
+            # read global configs
+            self.__snmp_vars["GLOBAL"] = dict([(cur_var.name, cur_var) for cur_var in device_variable.objects.filter(Q(device=self.__cdg) & Q(name__istartswith="snmp_"))])
+        if dg_key not in self.__snmp_vars:
+            # read device_group configs
+            self.__snmp_vars[dg_key] = dict([(cur_var.name, cur_var) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device) & Q(name__istartswith="snmp_"))])
+        if dev_key not in self.__snmp_vars:
+            # read device configs
+            self.__snmp_vars[dev_key] = dict([(cur_var.name, cur_var) for cur_var in device_variable.objects.filter(Q(device=cur_dev) & Q(name__istartswith="snmp_"))])
+        ret_dict = {
+            "SNMP_VERSION"         : 2,
+            "SNMP_READ_COMMUNITY"  : "public",
+            "SNMP_WRITE_COMMUNITY" : "private"}
+        for s_key in ret_dict.iterkeys():
+            for key in [dev_key, dg_key, global_key]:
+                if s_key in self.__snmp_vars[key]:
+                    ret_dict[s_key] = self.__snmp_vars[key][s_key]
+                    break
+        return ret_dict
+        
 class main_config(object):
     def __init__(self, b_proc, monitor_server, **kwargs):
         self.__build_process = b_proc
@@ -255,8 +284,9 @@ class main_config(object):
                                     "ndo2db")
         ndomod_cfg = base_config(NDOMOD_NAME,
                                  belongs_to_ndo=True,
-                                 values=[("instance_name"              , "clusternagios"),
-                                         ("output_type"                , "unixsocket"),
+                                 values=[
+                                     ("instance_name"              , "clusternagios"),
+                                     ("output_type"                , "unixsocket"),
                                          ("output"                     , "%s/ido.sock" % (self.__r_dir_dict["var"])),
                                          ("tcp_port"                   , 5668),
                                          ("output_buffer_items"        , 5000),
@@ -1254,7 +1284,7 @@ class build_process(threading_tools.process_obj):
             ret_stat = 1
         return ret_stat, out
     def _reload_nagios(self):
-        start_nagios, restart_nagios = (False, False)
+        start_daemon, restart_daemon = (False, False)
         cs_stat, cs_out = self._check_nagios_config()
         if not cs_stat:
             self.log("Checking the %s-config resulted in an error, not trying to (re)start" % (global_config["MD_TYPE"]), logging_tools.LOG_LEVEL_ERROR)
@@ -1273,7 +1303,7 @@ class build_process(threading_tools.process_obj):
                         self.__nagios_lock_file_name,
                         global_config["MD_TYPE"]),
                              logging_tools.LOG_LEVEL_WARN)
-                    start_nagios = True
+                    start_daemon = True
                 else:
                     pid = file(self.__nagios_lock_file_name).read().strip()
                     try:
@@ -1285,7 +1315,7 @@ class build_process(threading_tools.process_obj):
                             process_tools.get_except_info(),
                             global_config["MD_TYPE"]),
                                  logging_tools.LOG_LEVEL_ERROR)
-                        restart_nagios = True
+                        restart_daemon = True
                     else:
                         try:
                             os.kill(pid, signal.SIGHUP)
@@ -1296,18 +1326,18 @@ class build_process(threading_tools.process_obj):
                                 global_config["MD_TYPE"],
                                 process_tools.get_except_info()),
                                      logging_tools.LOG_LEVEL_ERROR)
-                            restart_nagios = True
+                            restart_daemon = True
                         else:
                             self.log("Successfully signaled pid %d with SIGHUP (%d)" % (pid, signal.SIGHUP))
             else:
                 self.log("Nagios LockFile '%s' not found, trying to start %s" % (self.__nagios_lock_file_name,
                                                                                  global_config["MD_TYPE"]),
                          logging_tools.LOG_LEVEL_WARN)
-                start_nagios = True
-        if start_nagios:
+                start_daemon = True
+        if start_daemon:
             self.log("Trying to start %s via at-command" % (global_config["MD_TYPE"]))
             sub_stat, log_lines = process_tools.submit_at_command("/etc/init.d/%s start" % (global_config["MD_TYPE"]))
-        elif restart_nagios:
+        elif restart_daemon:
             self.log("Trying to restart %s via at-command" % (global_config["MD_TYPE"]))
             sub_stat, log_lines = process_tools.submit_at_command("/etc/init.d/%s restart" % (global_config["MD_TYPE"]))
         else:
@@ -1336,6 +1366,8 @@ class build_process(threading_tools.process_obj):
                 # no rebuild
                 rebuild_it = False
         if rebuild_it:
+            # fetch SNMP-stuff of cluster
+            snmp_stack = snmp_settings(cdg)
             rebuild_gen_config = False
             if global_config["ALL_HOSTS_NAME"] in h_list:
                 self.log("rebuilding complete config (for master and %s)" % (
@@ -1363,7 +1395,7 @@ class build_process(threading_tools.process_obj):
                     bc_valid = False
             if bc_valid:
                 for cur_gc in [self.__gen_config] + self.__slave_configs.values():
-                    self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates)
+                    self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack)
                     # refresh implies _write_entries
                     cur_gc.refresh()
                     if not cur_gc.master:
@@ -1453,7 +1485,7 @@ class build_process(threading_tools.process_obj):
             return ("%%%dd" % (size)) % (i_val)
         else:
             return ("%%%ds" % (size)) % ("-")
-    def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates):
+    def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack):
         start_time = time.time()
         #server_idxs = [global_config["SERVER_IDX"]]
         # get additional idx if host is virtual server
@@ -1625,14 +1657,8 @@ class build_process(threading_tools.process_obj):
                         for cur_var in device_variable.objects.filter(Q(device=host)):
                             var_name = cur_var.name
                             dev_variables[var_name] = cur_var
-                        # get snmp related variables
-                        # FIXME
-                        #sql_str = "SELECT sc.* FROM snmp_class sc WHERE sc.snmp_class_idx=%d" % (host["snmp_class"])
-                        #dc.execute(sql_str)
-                        #if dc.rowcount:
-                        #    db_rec = dc.fetchone()
-                        #    dev_variables["SNMP_VERSION"] = "%d" % (db_rec["snmp_version"])
-                        #    dev_variables["SNMP_COMMUNITY"] = db_rec["read_community"]
+                        for key, value in snmp_stack.get_vars(host).iteritems():
+                            dev_variables[key] = value.get_value()
                         self.mach_log("device has %s" % (
                             logging_tools.get_plural("device_variable", len(dev_variables.keys()))))
                         # now we have the device- and service template
@@ -2133,7 +2159,7 @@ class server_process(threading_tools.process_pool):
     def _check_nagios_version(self):
         start_time = time.time()
         md_version, md_type = ("unknown", "unknown")
-        for t_daemon in ["icinga", "nagios"]:
+        for t_daemon in ["icinga", "icinga-init", "nagios", "nagios-init"]:
             if os.path.isfile("/etc/debian_version"):
                 cstat, cout = commands.getstatusoutput("dpkg -s %s" % (t_daemon))
                 if not cstat:
@@ -2155,7 +2181,7 @@ class server_process(threading_tools.process_pool):
                 else:
                     self.log("Package %s not found in RPM db" % (t_daemon), logging_tools.LOG_LEVEL_ERROR)
             if md_version != "unknown":
-                md_type = t_daemon
+                md_type = t_daemon.split("-")[0]
                 break
         # save to local config
         if md_version[0].isdigit():
@@ -2169,7 +2195,7 @@ class server_process(threading_tools.process_pool):
                 ("MD_LOCK_FILE"     , configfile.str_c_var("%s.lock" % (md_type))),
             ])
         # device_variable local to the server
-        dv = cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon RPM", value=md_version)
+        dv = cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon pacakge", value=md_version)
 ##        if dv.is_set():
 ##            dv.set_value(md_version)
 ##            dv.update(dc)
@@ -2307,7 +2333,13 @@ class server_process(threading_tools.process_pool):
             target_com,
             ";".join(targ_list))
         if self.__external_cmd_file:
-            file(self.__external_cmd_file, "w").write(out_line)
+            try:
+                file(self.__external_cmd_file, "w").write(out_line)
+            except:
+                self.log("error writing to %s: %s" % (
+                    self.__external_cmd_file,
+                    process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                raise
         else:
             self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
     def _send_command(self, *args, **kwargs):
@@ -2465,6 +2497,7 @@ def main():
     ])
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/md-config-server"])
+    global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
         process_tools.become_daemon()
