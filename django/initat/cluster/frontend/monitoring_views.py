@@ -15,6 +15,7 @@ from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from lxml import etree
+from django.http import HttpResponseRedirect
 from lxml.builder import E
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
@@ -129,3 +130,8 @@ def rebuild_config(request):
         res_node = result.xpath(None, ".//ns:result")[0]
         request.log(res_node.attrib["reply"], int(res_node.attrib["state"]), xml=True)
     return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def call_icinga(request):
+    return HttpResponseRedirect("http://localhost:80/icinga")

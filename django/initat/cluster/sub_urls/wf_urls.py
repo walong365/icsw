@@ -112,13 +112,14 @@ network_patterns = patterns(
 
 monitoring_patterns = patterns(
     "initat.cluster.frontend",
-    url("^setup$"              , "monitoring_views.setup"            , name="setup"),
-    url("^create_command$"     , "monitoring_views.create_command"   , name="create_command"),
-    url("^delete_command$"     , "monitoring_views.delete_command"   , name="delete_command"),
-    url("xml/dev_config$"      , "monitoring_views.device_config"    , name="device_config"),
-    url("create_config$"       , "monitoring_views.create_config"    , name="create_config"),
+    url("^setup$"              , "monitoring_views.setup"            , name="setup"            ),
+    url("^create_command$"     , "monitoring_views.create_command"   , name="create_command"   ),
+    url("^delete_command$"     , "monitoring_views.delete_command"   , name="delete_command"   ),
+    url("xml/dev_config$"      , "monitoring_views.device_config"    , name="device_config"    ),
+    url("create_config$"       , "monitoring_views.create_config"    , name="create_config"    ),
     url("xml/get_monitor_hosts", "monitoring_views.get_monitor_hosts", name="get_monitor_hosts"),
-    url("xml/rebuild_config"   , "monitoring_views.rebuild_config"   , name="rebuild_config"),
+    url("xml/rebuild_config"   , "monitoring_views.rebuild_config"   , name="rebuild_config"   ),
+    url("to_icinga$"           , "monitoring_views.call_icinga"      , name="call_icinga"      ),
 )
 
 user_patterns = patterns(
