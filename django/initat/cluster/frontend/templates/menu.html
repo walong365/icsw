@@ -10,7 +10,6 @@
             <li><a href="{% url device:tree %}">{% trans "Devicetree" %}</a></li>
             <li><a href="{% url network:show_networks %}">{% trans "Networks" %}</a></li>
             <li><a href="{% url config:show_configs %}">{% trans "Configurations" %}</a></li>
-            <li><a href="{% url device:show_configs %}">{% trans "Device Configurations" %}</a></li>
             <li>
                 <a>{% trans "Basic settings" %}</a>
                 <ul>
@@ -22,8 +21,10 @@
             <li>
                 <a>{% trans "Device settings" %}</a>
                 <ul>
-                    <li><a href="{% url network:network %}">{% trans "Device networks" %}</a></li>
-                    <li><a href="{% url device:connections %}">{% trans "Device Connections" %}</a></li>
+                    <li><a href="{% url device:show_configs %}">{% trans "Configurations" %}</a></li>
+                    <li><a href="{% url network:network %}">{% trans "Network" %}</a></li>
+                    <li><a href="{% url device:connections %}">{% trans "Connections" %}</a></li>
+                    <li><a href="{% url device:variables %}">{% trans "Variables" %}</a></li>
                 </ul>
             </li>
         </ul>
@@ -66,17 +67,6 @@
         <a>{% trans "Session" %}</a>
         <ul>
             <li><a href="{% url session:logout %}">{% trans "Logout" %}</a></li>
-        </ul>
-    </li>
-    <li>
-        <a>test</a>
-        <ul>
-            <li>
-                <a>test2</a>
-                <ul>
-                    <li><a>sub3</a></li>
-                </ul>
-            </li>
         </ul>
     </li>
 </ul>

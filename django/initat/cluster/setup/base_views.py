@@ -10,7 +10,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
      tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
      mon_contactgroup, get_related_models, network_device_type, network_type, device_class, \
-     device_location, network, mon_device_templ, user, group, package_search
+     device_location, network, mon_device_templ, user, group, package_search, device_variable
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -81,7 +81,8 @@ def change_xml_entry(request):
                    "nw"      : network,
                    "user"    : user,
                    "ps"      : package_search,
-                   "group"   : group
+                   "group"   : group,
+                   "dv"      : device_variable
                    }.get(object_type, None)
         if not mod_obj:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
@@ -113,8 +114,10 @@ def change_xml_entry(request):
                     else:
                         other_list = None
                     new_value = _post["value"]
+                    compound_fields = {"device_variable" : ["value"],
+                                       "netdevice"       : ["ethtool_autoneg", "ethtool_duplex", "ethtool_speed"]}.get(cur_obj._meta.object_name, [])
                     # check field ? hack for compound fields
-                    check_field = attr_name not in ["ethtool_autoneg", "ethtool_duplex", "ethtool_speed"]
+                    check_field = attr_name not in compound_fields
                     if check_field and cur_obj._meta.get_field(attr_name).get_internal_type() == "ManyToManyField":
                         if other_list:
                             request.log("ignoring others", logging_tools.LOG_LEVEL_CRITICAL)
@@ -183,31 +186,39 @@ def create_object(request, *args, **kwargs):
     request.log("obj_name for create_object is '%s'" % (obj_name))
     new_obj_class = globals()[obj_name]
     key_pf = min([(len(key), key) for key in _post.iterkeys() if key.count("__new")])[1]
-    set_dict = {}
+    set_dict, extra_dict = ({}, {})
     m2m_dict = {}
     request.log("key_prefix is '%s'" % (key_pf))
+    no_check_fields = {"device_variable" : ["value"]}.get(obj_name, [])
+    if no_check_fields:
+        request.log("%s: %s" % (
+            logging_tools.get_plural("no_check_field", len(no_check_fields)),
+            ", ".join(no_check_fields)))
     for key, value in _post.iteritems():
         if key.startswith(key_pf) and key != key_pf:
             s_key = key[len(key_pf) + 2:]
-            int_type = new_obj_class._meta.get_field(s_key).get_internal_type()
-            skip = False
-            if int_type.lower() in ["booleanfield", "nullbooleanfield"]:
-                d_value = True if int(value) else False
-            elif int_type.lower() in ["foreignkey"]:
-                if int(value) == 0:
-                    d_value = None
-                else:
-                    d_value = new_obj_class._meta.get_field(s_key).rel.to.objects.get(pk=value)
-            elif int_type.lower() in ["integerfield"]:
-                d_value = int(value)
-            elif int_type.lower() in ["manytomanyfield"]:
-                skip = True
-                m2m_dict[s_key] = [int(val) for val in value.split("::") if val.strip()]
+            if s_key in no_check_fields:
+                extra_dict[s_key] = value
             else:
-                d_value = value
-            request.log("key '%s' is '%s' -> '%s' (%s)" % (s_key, value, unicode(d_value), type(d_value)))
-            if not skip:
-                set_dict[s_key] = d_value
+                skip = False
+                int_type = new_obj_class._meta.get_field(s_key).get_internal_type()
+                if int_type.lower() in ["booleanfield", "nullbooleanfield"]:
+                    d_value = True if int(value) else False
+                elif int_type.lower() in ["foreignkey"]:
+                    if int(value) == 0:
+                        d_value = None
+                    else:
+                        d_value = new_obj_class._meta.get_field(s_key).rel.to.objects.get(pk=value)
+                elif int_type.lower() in ["integerfield"]:
+                    d_value = int(value)
+                elif int_type.lower() in ["manytomanyfield"]:
+                    skip = True
+                    m2m_dict[s_key] = [int(val) for val in value.split("::") if val.strip()]
+                else:
+                    d_value = value
+                request.log("key '%s' is '%s' -> '%s' (%s)" % (s_key, value, unicode(d_value), type(d_value)))
+                if not skip:
+                    set_dict[s_key] = d_value
     create_list = [(None, None)]
     for range_attr, range_re in {"device" : [
         ("name", re.compile("^(?P<name>.+)\[(?P<start>\d+)-(?P<end>\d+)\](?P<post>.*)$"))]}.get(obj_name, []):
@@ -231,11 +242,15 @@ def create_object(request, *args, **kwargs):
     created_ok = []
     for change_key, change_value in create_list:
         new_obj = new_obj_class(**set_dict)
+        for key, value in extra_dict.iteritems():
+            setattr(new_obj, key, value)
         if change_key:
             setattr(new_obj, change_key, change_value)
         # add defaults
         for add_field, value in {"device" : [("device_class", device_class.objects.get(Q(pk=1)))]}.get(obj_name, []):
             setattr(new_obj, add_field, value)
+        if obj_name == "device_variable":
+            new_obj.device = device.objects.get(Q(pk=key_pf.split("__")[1]))
         try:
             new_obj.save()
         except ValidationError, what:
@@ -261,10 +276,11 @@ def create_object(request, *args, **kwargs):
 def delete_object(request, *args, **kwargs):
     _post = request.POST
     obj_name = kwargs["obj_name"]
-    request.log("obj_name for delete_object is '%s'" % (obj_name))
     del_obj_class = globals()[obj_name]
     key_pf = min([(len(key), key) for key in _post.iterkeys() if key.count("__")])[1]
-    del_pk = int(key_pf.split("__")[1])
+    del_index = int(_post.get("delete_index", "1"))
+    request.log("obj_name for delete_object is '%s' (delete_index is %d)" % (obj_name, del_index))
+    del_pk = int(key_pf.split("__")[del_index])
     request.log("removing item with pk %d" % (del_pk))
     try:
         del_obj = del_obj_class.objects.get(Q(pk=del_pk))

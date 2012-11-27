@@ -1,0 +1,302 @@
+{% extends "main.html" %}
+
+{% load i18n compress %}
+
+{% block title %}{% trans "Variables" %}{% endblock %}
+
+{% block content %}
+
+<h1 class="center">Device variables, <span id="config_info">none defined</span></h1>
+
+{# <input type="text" id="filter" value="" onKeyUp="apply_filter();"/> #}
+
+<div id="variables"></div>
+
+<script type="text/javascript">
+
+// selected devices
+CUR_DEVICES = undefined;
+
+function get_expand_td(line_prefix, name, title) {
+    return $("<td>").append(
+        $("<div>").css({"float" : "left"}).attr({
+            "class"   : "ui-icon ui-icon-triangle-1-e",
+            "id"      : line_prefix + "__expand__" + name,
+            "title"   : title === undefined ? "show " + name : title
+        }).bind("click", function(event) {
+            var cur_class = $(event.target).attr("class");
+            if (cur_class.match(/-1-e$/)) {
+                toggle_variable_line(line_prefix, true, name);
+            } else {
+                toggle_variable_line(line_prefix, false, name);
+            }
+        })
+    ).append(
+        $("<span>").attr({
+            "id" : line_prefix + "__expand__" + name + "__info"
+        }).text(title)
+    );
+};
+
+function update_expand_info() {
+    $("table#variables tr td div[id*='__expand__']").each(function() {
+        var cur_span = $(this);
+        var span_id = cur_span.attr("id");
+        var start_tr = cur_span.parents("tr:first");
+        var num_lines = -1;
+        while (true) {
+            start_tr = start_tr.next();
+            if (start_tr && start_tr.attr("id") && start_tr.attr("id").match(/^dev__\d+__dv__/)) {
+                num_lines += 1;
+            } else {
+                break;
+            };
+        };
+        cur_span.next().text(num_lines);
+    });
+};
+
+function toggle_variable_line(line_prefix, state, line_spec, conf_line) {
+    if (conf_line === undefined) {
+        var conf_line = $("table#variables tr[id='" + line_prefix + "']");
+    };
+    var exp_line  = $("table#variables tr[id^='" + line_prefix + "__" + line_spec + "']");
+    var cur_dg = conf_line.find("div[id$='__expand__" + line_spec + "']");
+    if (state) {
+        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
+        cur_dg.addClass("ui-icon-triangle-1-s");
+        exp_line.show();
+    } else {
+        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
+        cur_dg.addClass("ui-icon-triangle-1-e");
+        exp_line.hide();
+    };
+};
+
+
+function inject_variable_line(new_cs) {
+    var header_tr = $("table#variables tr[id$='dev__" + new_cs.attr("device") + "__dv__new']");
+    var cur_config = DEVICES.find("device[pk='" + new_cs.attr("device") + "']");
+    header_tr.find("input[id$='__name']").attr("value", "");
+    var new_lines = add_dv_line(cur_config, "dev__" + new_cs.attr("device"), new_cs).show();
+    header_tr.after(new_lines);
+    update_expand_info();
+};
+
+function remove_variable_line(cur_el) {
+    var cs_line = $("table#variables tr[id^='" + cur_el.attr("id") + "']");
+    cs_line.remove();
+    update_expand_info();
+};
+
+function create_delete_dv(event) {
+    var cur_el = $(event.target);
+    var lock_list = lock_elements($("table#variables"));
+    if (cur_el.attr("id").match(/new$/)) {
+        // create element
+        $.ajax({
+            url  : "{% url base:create_object 'device_variable' %}",
+            data : create_dict($("table#variables"), cur_el.attr("id")),
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    var new_cs = $(xml).find("value[name='new_entry']").children();
+                    inject_variable_line(new_cs);
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    } else {
+        // delete
+        var del_dict = create_dict($("table#variables"), cur_el.attr("id"));
+        del_dict.delete_index = 3;
+        $.ajax({
+            url  : "{% url base:delete_object 'device_variable' %}",
+            data : del_dict,
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    remove_variable_line(cur_el);
+                };
+                unlock_elements(lock_list);
+            }
+        });
+    };
+};
+
+function add_config_var_line(c_el, line_prefix, c_var) {
+    if (c_var === undefined) {
+        var line_prefix = "dv__new";
+    } else {
+        var line_prefix = c_var.attr("key");
+    };
+    var cv_tr = $("<tr>").attr({
+        "id" : line_prefix
+    }).hide();
+    var cur_td = $("<td>");
+    cv_tr.append(cur_td);
+    cur_td.append(
+        create_input_el(c_var, "name", line_prefix)
+    ).append(
+        create_input_el(c_var, "description", line_prefix)
+    );
+    if (c_var) {
+        if (c_var.attr("type") == "bool") {
+            cur_td.append(
+                create_input_el(c_var, "value", line_prefix, {boolean : true})
+            );
+        } else if (c_var.attr("type") == "int") {
+            cur_td.append(
+                create_input_el(c_var, "value", line_prefix, {number : true})
+            );
+        } else {
+            cur_td.append(
+                create_input_el(c_var, "value", line_prefix)
+            );
+        };
+    } else {
+        cur_td.append(
+            create_input_el(c_var, "value", line_prefix)
+        );
+    };
+    
+    if (c_var) {
+        cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<span>").text(c_var.attr("type"))));
+    } else {
+        cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<select>").attr({"id" : line_prefix + "__type"}).
+            append($("<option>").attr("value", "str").text("string")).
+            append($("<option>").attr("value", "int").text("integer")).
+            append($("<option>").attr("value", "bool").text("boolean")).
+            append($("<option>").attr("value", "blob").text("blob"))
+        ))
+    };
+    cv_tr.append($("<td>").append(
+        $("<input>").attr({
+            "type"  : "button",
+            "value" : c_var ? "delete" : "create",
+            "id"    : line_prefix
+        }).bind("click", create_delete_config_var)
+        )
+    );
+    return cv_tr;
+};
+
+function add_dv_line(c_el, line_prefix, cs_com) {
+    if (cs_com === undefined) {
+        var cs_key = "dv__new";
+    } else {
+        var cs_key = cs_com.attr("key");
+    };
+    var line_prefix = line_prefix + "__" + cs_key;
+    var cs_tr = $("<tr>").attr({
+        "id"  : line_prefix
+    }).hide();
+    var cur_td = $("<td>");
+    cs_tr.append(cur_td);
+    var val_kwargs = {};
+    if (cs_com) {
+        if (cs_com.attr("var_type") == "b") val_kwargs.boolean = true;
+        if (cs_com.attr("var_type") == "i") val_kwargs.number = true;
+    };
+    cur_td.append(
+        create_input_el(cs_com, "name", line_prefix)
+    ).append(
+        create_input_el(cs_com, "description", line_prefix)
+    ).append(
+        create_input_el(cs_com, "is_public", line_prefix, {boolean : true})
+    ).append(
+        create_input_el(cs_com, "value", line_prefix, val_kwargs)
+    );
+    cs_tr.append($("<td>").append(
+        $("<input>").attr({
+            "type"  : "button",
+            "value" : cs_com ? "delete" : "create",
+            "id"    : line_prefix
+        }).bind("click", create_delete_dv)
+        )
+    );
+    return cs_tr;
+};
+
+function draw_device(d_el) {
+    var dummy_div = $("<div>");
+    var line_prefix = d_el.attr("key");
+    var new_tr = $("<tr>").attr({
+        "class" : "ui-widget ui-widget-header",
+        "id"    : line_prefix
+    });
+    var is_meta = d_el.attr("meta_device") == "1";
+    new_tr.append($("<th>").attr({
+        "colspan" : "7"
+    }).text((is_meta ? "Meta device" : "device") + " " + d_el.text()));
+    new_tr.append(get_expand_td(line_prefix, "dv", "variable"));
+    dummy_div.append(new_tr);
+    dummy_div.append(add_dv_line(d_el, line_prefix));
+    d_el.find("device_variables device_variable").each(function() {
+        dummy_div.append(add_dv_line(d_el, line_prefix, $(this)));
+    });
+    return dummy_div.children();
+};
+
+function draw_var_table() {
+    //update_config_info();
+    c_table = $("<table>").attr({"id" : "variables"});
+    DEVICES.find("device_group").each(function() {
+        var cur_dg = $(this);
+        var new_tr = $("<tr>").attr({
+            "class"   : "ui-widget ui-widget-header"
+        });
+        new_tr.append($("<th>").attr({
+            "colspan" : "8"
+        }).text("device group " + cur_dg.attr("name")));
+        c_table.append(new_tr);
+        // at first append metadevice
+        cur_dg.find("devices device[selected='selected'][meta_device='1']").each(function() {
+            var cur_dev = $(this);
+            c_table.append(draw_device(cur_dev));
+        });
+        cur_dg.find("devices device[selected='selected'][meta_device='0']").each(function() {
+            var cur_dev = $(this);
+            c_table.append(draw_device(cur_dev));
+        });
+    });
+    var v_div = $("div#variables");
+    v_div.children().remove();
+    v_div.append(c_table);
+    update_expand_info();
+};
+
+function load_variables(sel_list) {
+    //console.log(sel_list);
+    $.ajax({
+        url     : "{% url device:get_group_tree %}",
+        error   : handle_ajax_error,
+        data    : {
+            "sel_list"       : sel_list,
+            "ignore_cdg"     : 0,
+            "with_variables" : 1
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                DEVICES = $(xml).find("value[name='response']");
+                init_xml_change(DEVICES);
+                draw_var_table();
+            }
+        }
+    });
+};
+
+function use_devs(dt_div) {
+    CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
+        return(value.data.key);
+    });
+    load_variables(CUR_DEVICES);
+};
+
+function add_config_handlers() {
+    install_devsel_link(use_devs, true);
+};
+
+$(document).ready(add_config_handlers);
+
+</script>
+
+{% endblock %}

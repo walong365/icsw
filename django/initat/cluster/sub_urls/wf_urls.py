@@ -87,6 +87,9 @@ device_patterns = patterns(
     url("^xml/create_connect" , "device_views.create_connection"  , name="create_connection"  ),
     url("^xml/delete_connect" , "device_views.delete_connection"  , name="delete_connection"  ),
     url("manual_connection"   , "device_views.manual_connection"  , name="manual_connection"  ),
+    url("variables$"          , "device_views.variables"          , name="variables"          ),
+    url("variables/create$"   , "device_views.create_variable"    , name="create_variable"    ),
+    url("variables/delete$"   , "device_views.delete_variable"    , name="delete_variable"    ),
 )
 
 network_patterns = patterns(

@@ -582,13 +582,10 @@ function init_textarea(cur_ta) {
     };
 };
 
-function load_configs(sel_list) {
+function load_configs() {
     $.ajax({
         url     : "{% url config:get_configs %}",
         error   : handle_ajax_error,
-        data    : {
-            "sel_list" : sel_list
-        },
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 CONFIGS = $(xml).find("value[name='response']");

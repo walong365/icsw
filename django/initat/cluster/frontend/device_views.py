@@ -148,16 +148,22 @@ def show_configs(request):
 @init_logging
 def get_group_tree(request):
     _post = request.POST
-    ignore_md = True if int(_post.get("ignore_meta_devices", 0)) else False
+    ignore_md      = True if int(_post.get("ignore_meta_devices", "0")) else False
+    ignore_cdg     = True if int(_post.get("ignore_cdg", "1"))          else False
+    with_variables = True if int(_post.get("with_variables", "0"))      else False
+    
     # also possible via _post.getlist("sel_list", []) ?
     sel_list = _post.getlist("sel_list[]", [])#request.session.get("sel_list", [])
     sel_pks = [int(value.split("__")[1]) for value in sel_list]
     xml_resp = E.device_groups()
-    all_dgs = device_group.objects.exclude(Q(cluster_device_group=True)).prefetch_related("device_group").order_by("name")
+    all_dgs = device_group.objects
+    if ignore_cdg:
+        all_dgs = all_dgs.exclude(Q(cluster_device_group=True))
+    all_dgs = all_dgs.prefetch_related("device_group").order_by("name")
     meta_dev_type_id = device_type.objects.get(Q(identifier="MD")).pk
     # only devices are transfered with the selected attribute
     for cur_dg in all_dgs:
-        cur_xml = cur_dg.get_xml(full=False)
+        cur_xml = cur_dg.get_xml(full=False, with_variables=with_variables)
         any_sel = False
 ##        if cur_xml.attrib["key"] in sel_list:
 ##            cur_xml.attrib["selected"] = "selected"
@@ -300,4 +306,26 @@ def manual_connection(request):
     #drag_re = re.compile(re_fstr % (drag_str.replace("#", "\d")))
     #target_re = re.compile(re_fstr % (target_str.replace("#", "\d")))
     #pprint.pprint(_post)
+    return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def variables(request):
+    if request.method == "GET":
+        return render_me(request, "device_variables.html")()
+    else:
+        return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def create_variable(request):
+    _post = request.POST
+    pprint.pprint(_post)
+    return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def delete_variable(request):
+    _post = request.POST
+    pprint.pprint(_post)
     return request.xml_response.create_response()

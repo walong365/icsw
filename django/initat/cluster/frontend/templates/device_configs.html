@@ -68,7 +68,7 @@ function update_config_info(num_shown) {
 };
 
 function get_expand_list() {
-    return _.map($("table#config tr span[id*='__expand_'][class*='-1-s']"), function(cur_el) { return $(cur_el).attr("id"); });
+    return _.map($("table#config tr span[id*='__expand__'][class*='-1-s']"), function(cur_el) { return $(cur_el).attr("id"); });
 };
 
 function restore_expansion(exp_list) {
@@ -81,7 +81,7 @@ function get_expand_td(line_prefix, name, title) {
     return $("<td>").append(
         $("<span>").attr({
             "class"   : "ui-icon ui-icon-triangle-1-e",
-            "id"      : line_prefix + "__expand_" + name,
+            "id"      : line_prefix + "__expand__" + name,
             "title"   : title === undefined ? "show " + name : title
         }).bind("click", function(event) {
             var cur_class = $(event.target).attr("class");
@@ -97,7 +97,7 @@ function get_expand_td(line_prefix, name, title) {
 function toggle_config_line(line_prefix, state, line_spec) {
     var conf_line = $("table#config tr[id='" + line_prefix + "']");
     var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
-    var cur_dg = conf_line.find("span[id$='__expand_" + line_spec + "']");
+    var cur_dg = conf_line.find("span[id$='__expand__" + line_spec + "']");
     if (state) {
         cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
         cur_dg.addClass("ui-icon-triangle-1-s");
