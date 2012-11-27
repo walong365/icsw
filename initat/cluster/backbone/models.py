@@ -478,6 +478,12 @@ class device(models.Model):
                         r_xml.attrib["net_state"] = "ping"
                     else:
                         r_xml.attrib["net_state"] = "up"
+        if kwargs.get("with_variables", False):
+            r_xml.append(
+                E.device_variables(
+                    *[cur_dv.get_xml() for cur_dv in self.device_variable_set.all()]
+                )
+            )
         return r_xml
     def __unicode__(self):
         return u"%s%s" % (self.name,
@@ -610,7 +616,7 @@ class device_group(models.Model):
         return new_md
     def get_metadevice_name(self):
         return "METADEV_%s" % (self.name)
-    def get_xml(self, full=True, with_devices=True):
+    def get_xml(self, full=True, with_devices=True, with_variables=False):
         cur_xml = E.device_group(
             unicode(self),
             pk="%d" % (self.pk),
@@ -620,8 +626,11 @@ class device_group(models.Model):
             is_cdg="1" if self.cluster_device_group else "0"
         )
         if with_devices:
+            sub_list = self.device_group.all()
+            if with_variables:
+                sub_list = sub_list.prefetch_related("device_variable_set")
             cur_xml.append(
-                E.devices(*[cur_dev.get_xml(full=full) for cur_dev in self.device_group.all()])
+                E.devices(*[cur_dev.get_xml(full=full, with_variables=with_variables) for cur_dev in sub_list])
             )
         return cur_xml
     class Meta:
@@ -724,20 +733,70 @@ class device_type(models.Model):
 
 class device_variable(models.Model):
     idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
-    device = models.ForeignKey("device", null=True)
+    device = models.ForeignKey("device")
     is_public = models.BooleanField(default=True)
     name = models.CharField(max_length=765)
-    description = models.CharField(max_length=765, blank=True)
-    var_type = models.CharField(max_length=3)
-    val_str = models.TextField(blank=True, null=True)
-    val_int = models.IntegerField(null=True, blank=True)
+    description = models.CharField(max_length=765, default="", blank=True)
+    var_type = models.CharField(max_length=3, choices=[
+        ("i", "integer"),
+        ("s", "string"),
+        ("d", "datetime"),
+        ("t", "time"),
+        ("b", "blob")])
+    val_str = models.TextField(blank=True, null=True, default="")
+    val_int = models.IntegerField(null=True, blank=True, default=0)
     # base64 encoded
-    val_blob = models.TextField(blank=True, null=True)
+    val_blob = models.TextField(blank=True, null=True, default="")
     val_date = models.DateTimeField(null=True, blank=True)
     val_time = models.TextField(blank=True, null=True) # This field type is a guess.
     date = models.DateTimeField(auto_now_add=True)
+    def set_value(self, value):
+        if value.isdigit():
+            self.var_type = "i"
+            self.val_int = int(value)
+        else:
+            self.var_type = "s"
+            self.val_str = value
+    def get_value(self):
+        if self.var_type == "i":
+            return self.val_int
+        elif self.var_type == "s":
+            return self.val_str
+        else:
+            return "get_value for %s" % (self.var_type)
+    value = property(get_value, set_value)
+    def get_xml(self):
+        dev_xml = E.device_variable(
+            pk="%d" % (self.pk),
+            key="dv__%d" % (self.pk),
+            device="%d" % (self.device_id),
+            is_public="1" if self.is_public else "0",
+            name=self.name,
+            description=self.description or "",
+            var_type=self.var_type)
+        if self.var_type == "i":
+            dev_xml.attrib["value"] = "%d" % (self.val_int)
+        elif self.var_type == "s":
+            dev_xml.attrib["value"] = self.val_str
+        return dev_xml
     class Meta:
         db_table = u'device_variable'
+        ordering = ("name",)
+
+@receiver(signals.pre_save, sender=device_variable)
+def device_variable_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if cur_inst.device_id:
+            _check_empty_string(cur_inst, "name")
+            if cur_inst.var_type == "s":
+                _check_empty_string(cur_inst, "val_str")
+            if cur_inst.var_type == "i":
+                _check_integer(cur_inst, "val_int")
+            _check_empty_string(cur_inst, "var_type")
+            all_var_names = device_variable.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device)).values_list("name", flat=True)
+            if cur_inst.name in all_var_names:
+                raise ValidationError("name '%s' already used for device" % (cur_inst.name))
 
 class devicelog(models.Model):
     idx = models.AutoField(db_column="devicelog_idx", primary_key=True)
@@ -1839,6 +1898,11 @@ def config_post_save(sender, **kwargs):
                             name="options",
                             description="Options",
                             value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none"
+                        ),
+                        config_str(
+                            name="node_postfix",
+                            description="postfix (to change network interface)",
+                            value=""
                         )
                     ]
                 else:
