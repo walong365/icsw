@@ -62,9 +62,9 @@ case "$1" in
                 true 
                 echo -n "."
                 if [ -x /bin/usleep ] ; then
-                usleep 250000
+                    usleep 250000
                 else
-                sleep 1
+                    sleep 1
                 fi
                 [ ! -f ${SERVER_PID} ] && break 
             done
