@@ -632,8 +632,6 @@ class device_group(models.Model):
         )
         if with_devices:
             sub_list = self.device_group.all()
-            if with_variables:
-                sub_list = sub_list.prefetch_related("device_variable_set")
             cur_xml.append(
                 E.devices(*[cur_dev.get_xml(full=full, with_variables=with_variables, add_title=add_title) for cur_dev in sub_list])
             )
@@ -3019,6 +3017,7 @@ class group(models.Model):
     tel = models.CharField(max_length=765, blank=True)
     comment = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    # not implemented right now in md-config-server
     allowed_device_groups = models.ManyToManyField(device_group)
     def get_xml(self):
         group_xml = E.group(
