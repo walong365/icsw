@@ -2884,7 +2884,7 @@ class user(models.Model):
     # SHA encrypted
     password = models.CharField(max_length=48, blank=True)
     password_ssha = models.CharField(max_length=64, blank=True, default="")
-    cluster_contact = models.BooleanField()
+    #cluster_contact = models.BooleanField()
     first_name = models.CharField(max_length=765, blank=True)
     last_name = models.CharField(max_length=765, blank=True)
     title = models.CharField(max_length=765, blank=True)
@@ -2896,7 +2896,22 @@ class user(models.Model):
     lm_password = models.CharField(max_length=255, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     allowed_device_groups = models.ManyToManyField(device_group)
-    def get_xml(self):
+    def get_permissions(self):
+        return ", ".join([cur_perm.name for cur_perm in Permission.objects.filter(Q(user__username=self.login))]) or "nothing"
+    def set_permissions(self, new_perms):
+        try:
+            dj_user = User.objects.get(Q(username=self.login))
+        except User.DoesNotExist:
+            pass
+        else:
+            cur_perms = set([cur_entry.pk for cur_entry in dj_user.user_permissions.all()])
+            new_perms = set(new_perms.split("::"))
+            for del_perm in cur_perms - new_perms:
+                dj_user.user_permissions.remove(Permission.objects.get(Q(pk=del_perm)))
+            for add_perm in new_perms - cur_perms:
+                dj_user.user_permissions.add(Permission.objects.get(Q(pk=add_perm)))
+    permissions = property(get_permissions, set_permissions)
+    def get_xml(self, with_permissions=False):
         user_xml = E.user(
             unicode(self),
             pk="%d" % (self.pk),
@@ -2908,7 +2923,12 @@ class user(models.Model):
             active="1" if self.active else "0",
             export="%d" % (self.export_id or 0),
             allowed_device_groups="::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)]),
-       )
+        )
+        if with_permissions:
+            user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(user__username=self.login))])
+        else:
+            # empty field
+            user_xml.attrib["permissions"] = ""
         for attr_name in ["first_name", "last_name",
                           "title", "email", "pager", "tel", "comment"]:
             user_xml.attrib[attr_name] = getattr(self, attr_name)
@@ -2917,6 +2937,8 @@ class user(models.Model):
         db_table = u'user'
         ordering = ("login", )
         permissions = {
+            ("all_devices", "access all devices"),
+            ("test_right", "Test right"),
             #("wf_apc" , "APC control"),
         }
     def __unicode__(self):
