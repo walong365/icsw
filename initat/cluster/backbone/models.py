@@ -442,6 +442,11 @@ class device(models.Model):
             mon_ext_host="%d" % (self.mon_ext_host_id or 0),
             curl=unicode(self.curl),
         )
+        if kwargs.get("add_title", False):
+            r_xml.attrib["title"] = "%s (%s%s)" % (
+                self.name,
+                self.device_type.identifier,
+                ", %s" % (self.comment) if self.comment else "")
         if full:
             r_xml.extend([
                 E.netdevices(*[ndev.get_xml() for ndev in self.netdevice_set.all()])
@@ -616,7 +621,7 @@ class device_group(models.Model):
         return new_md
     def get_metadevice_name(self):
         return "METADEV_%s" % (self.name)
-    def get_xml(self, full=True, with_devices=True, with_variables=False):
+    def get_xml(self, full=True, with_devices=True, with_variables=False, add_title=False):
         cur_xml = E.device_group(
             unicode(self),
             pk="%d" % (self.pk),
@@ -630,7 +635,7 @@ class device_group(models.Model):
             if with_variables:
                 sub_list = sub_list.prefetch_related("device_variable_set")
             cur_xml.append(
-                E.devices(*[cur_dev.get_xml(full=full, with_variables=with_variables) for cur_dev in sub_list])
+                E.devices(*[cur_dev.get_xml(full=full, with_variables=with_variables, add_title=add_title) for cur_dev in sub_list])
             )
         return cur_xml
     class Meta:
