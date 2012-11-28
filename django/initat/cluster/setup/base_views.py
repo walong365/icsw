@@ -115,6 +115,7 @@ def change_xml_entry(request):
                         other_list = None
                     new_value = _post["value"]
                     compound_fields = {"device_variable" : ["value"],
+                                       "user"            : ["permissions"],
                                        "netdevice"       : ["ethtool_autoneg", "ethtool_duplex", "ethtool_speed"]}.get(cur_obj._meta.object_name, [])
                     # check field ? hack for compound fields
                     check_field = attr_name not in compound_fields
@@ -189,7 +190,8 @@ def create_object(request, *args, **kwargs):
     set_dict, extra_dict = ({}, {})
     m2m_dict = {}
     request.log("key_prefix is '%s'" % (key_pf))
-    no_check_fields = {"device_variable" : ["value"]}.get(obj_name, [])
+    no_check_fields = {"device_variable" : ["value"],
+                       "user"            : ["permissions"]}.get(obj_name, [])
     if no_check_fields:
         request.log("%s: %s" % (
             logging_tools.get_plural("no_check_field", len(no_check_fields)),

@@ -17,6 +17,7 @@ from initat.cluster.backbone.models import partition_table, partition_disc, part
      partition_fs, image, architecture, device_class, device_location, group, user, \
      device_config, device_group
 import server_command
+from django.contrib.auth.models import User, UserManager, Permission
 import net_tools
 
 @login_required
@@ -40,10 +41,23 @@ def overview(request, *args, **kwargs):
                                                unicode(cur_exp.device)),
                                  pk="%d" % (cur_exp.pk))
             )
+        # all permissions
+        all_perms = Permission.objects.all().select_related("content_type").order_by("codename")
+        perm_list = E.permissions()
+        for entry in all_perms:
+            c_name, ctm = (entry.codename,
+                           entry.content_type.model)
+            c_parts = c_name.split("_")
+            if c_parts[0] in ["add", "change", "delete"] and c_name.endswith(ctm) or c_name.startswith("wf_"):
+                pass
+            elif entry.content_type.app_label in ["backbone"]:
+                perm_list.append(E.permission(entry.name, pk="%d" % (entry.pk)))
+            
         xml_resp = E.response(
             exp_list,
+            perm_list,
             E.groups(*[cur_g.get_xml() for cur_g in group.objects.all()]),
-            E.users(*[cur_u.get_xml() for cur_u in user.objects.all()]),
+            E.users(*[cur_u.get_xml(with_permissions=True) for cur_u in user.objects.all()]),
             E.shells(*[E.shell(cur_shell, pk=cur_shell) for cur_shell in sorted(shell_names)]),
             E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))])
         )

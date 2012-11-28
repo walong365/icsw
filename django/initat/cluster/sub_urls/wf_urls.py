@@ -169,8 +169,6 @@ my_url_patterns = patterns(
     url(r"^pack/"     , include(pack_patterns      , namespace="pack"    )),
 )
 
-print settings.MEDIA_URL
-
 url_patterns = patterns(
     "",
     url(r"^%s/media/frontend/(?P<path>.*)$" % (settings.REL_SITE_ROOT)    , "django.views.static.serve", {
