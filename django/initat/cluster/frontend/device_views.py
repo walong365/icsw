@@ -21,52 +21,12 @@ from django.db.models import Q
 import re
 import time
 from django.core.urlresolvers import reverse
+from django.contrib.auth.models import User, UserManager, Permission
 
 @login_required
 @init_logging
 def device_tree(request):
     return render_me(request ,"device_tree.html", hide_sidebar=True)()
-
-@login_required
-@init_logging
-def get_json_tree(request):
-    _post = request.POST
-    # build list for device_selection -> group lookup
-    sel_list = request.session.get("sel_list", [])
-    dg_list = device_group.objects.filter(Q(device_group__in=[cur_sel.split("_")[-1] for cur_sel in sel_list if cur_sel.startswith("dev_")])).values_list("pk", flat=True)
-    full_tree = device_group.objects.prefetch_related("device_group", "device_group__device_type").order_by("-cluster_device_group", "name")
-    json_struct = []
-    for cur_dg in full_tree:
-        key = "devg__%d" % (cur_dg.pk)
-        cur_jr = {
-            "title"    : unicode(cur_dg),
-            "isFolder" : True,
-            "isLazy"   : False,
-            "select"   : key in sel_list,
-            "expand"   : cur_dg.pk in dg_list,
-            "key"      : key,
-            "data"     : {"devg_pk" : cur_dg.pk},
-            "children" : _get_device_list(request, cur_dg)
-        }
-        json_struct.append(cur_jr)
-    return HttpResponse(json.dumps(json_struct),
-                        mimetype="application/json")
-
-def _get_device_list(request, cur_dg):
-    cur_devs = cur_dg.device_group.all()
-    sel_list = request.session.get("sel_list", [])
-    json_struct = []
-    for sub_dev in cur_devs:
-        if sub_dev.device_type.identifier not in ["MD"]:
-            key = "dev__%d" % (sub_dev.pk)
-            json_struct.append({
-                "title"  : "%s (%s%s)" % (unicode(sub_dev.name),
-                                          sub_dev.device_type.identifier,
-                                          ", %s" % (sub_dev.comment) if sub_dev.comment else ""),
-                "select" : True if key in sel_list else False,
-                "key"    : key
-            })
-    return json_struct
 
 @login_required
 @init_logging
@@ -91,7 +51,6 @@ def get_xml_tree(request):
             *[E.mother_server(unicode(mother_server.effective_device), pk="%d" % (mother_server.effective_device.pk)) for mother_server in all_mothers])
     )
     request.xml_response["response"] = xml_resp
-    #request.log("catastrophic error", logging_tools.LOG_LEVEL_ERROR, xml=True)
     return request.xml_response.create_response()
 
 @login_required
@@ -105,6 +64,7 @@ def clear_selection(request):
 @init_logging
 def add_selection(request):
     _post = request.POST
+    pprint.pprint(_post)
     if "key" in _post:
         # single set / delete
         add_flag, add_sel_list, cur_list = (
@@ -123,7 +83,7 @@ def add_selection(request):
             cur_list.append(add_sel)
         elif not add_flag and add_sel in cur_list:
             cur_list.remove(add_sel)
-        if add_sel.startswith("devg_"):
+        if add_sel.startswith("devg__"):
             # emulate toggle of device_group
             request.log("toggle selection of device_group %d" % (int(add_sel.split("__")[1])))
             toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(Q(device_group=add_sel.split("__")[1])).values_list("pk", flat=True)]
@@ -144,40 +104,69 @@ def show_configs(request):
         request, "device_configs.html",
     )()
 
-@login_required
-@init_logging
-def get_group_tree(request):
-    _post = request.POST
-    ignore_md      = True if int(_post.get("ignore_meta_devices", "0")) else False
-    ignore_cdg     = True if int(_post.get("ignore_cdg", "1"))          else False
-    with_variables = True if int(_post.get("with_variables", "0"))      else False
-    
-    # also possible via _post.getlist("sel_list", []) ?
-    sel_list = _post.getlist("sel_list[]", [])#request.session.get("sel_list", [])
-    sel_pks = [int(value.split("__")[1]) for value in sel_list]
-    xml_resp = E.device_groups()
+def _get_group_tree(request, sel_list, **kwargs):
+    ignore_md       = kwargs.get("ignore_meta_devices", False)
+    ignore_cdg      = kwargs.get("ignore_cdg", True)
+    with_variables  = kwargs.get("with_variables", False)
+    # show only nodes where the user has permissions for
+    permission_tree = kwargs.get("permission_tree", False)
+    xml_resp = E.response()
+    devg_resp = E.device_groups()
+    #sel_pks = [int(value.split("__")[1]) for value in sel_list]
     all_dgs = device_group.objects
+    if permission_tree:
+        # rights
+        all_devs = request.user.has_perm("backbone.all_devices")
+        if not all_devs:
+            # ignore meta-device
+            ignore_cdg = True
+            all_dgs = all_dgs.filter(Q(pk__in= request.session["db_user"].allowed_device_groups.all()))
     if ignore_cdg:
         all_dgs = all_dgs.exclude(Q(cluster_device_group=True))
-    all_dgs = all_dgs.prefetch_related("device_group")
+    all_dgs = all_dgs.prefetch_related("device_group", "device_group__device_type")
     meta_dev_type_id = device_type.objects.get(Q(identifier="MD")).pk
-    # only devices are transfered with the selected attribute
+    # selected ........ device or device_group selected
+    # tree_selected ... device is selected 
     for cur_dg in all_dgs:
-        cur_xml = cur_dg.get_xml(full=False, with_variables=with_variables)
+        cur_xml = cur_dg.get_xml(full=False, with_variables=with_variables, add_title=True)
+        if cur_xml.attrib["key"] in sel_list:
+            cur_xml.attrib["selected"] = "selected"
+            cur_xml.attrib["tree_selected"] = "selected"
         any_sel = False
-##        if cur_xml.attrib["key"] in sel_list:
-##            cur_xml.attrib["selected"] = "selected"
-##            any_sel = True
         for cur_dev in cur_xml.find("devices"):
             if ignore_md and int(cur_dev.attrib["device_type"]) == meta_dev_type_id:
                 cur_dev.getparent().remove(cur_dev)
             else:
-                cur_dev.attrib["meta_device"] = "1" if int(cur_dev.attrib["device_type"]) == meta_dev_type_id else "0"
+                if int(cur_dev.attrib["device_type"]) == meta_dev_type_id:
+                    cur_dev.attrib["tree_selected"] = "selected"
+                    cur_dev.attrib["meta_device"] = "1"
+                else:
+                    cur_dev.attrib["meta_device"] = "0"
                 if cur_dev.attrib["key"] in sel_list or cur_xml.attrib["key"] in sel_list:
+                    #if permission_tree or (cur_dev.attrib["key"] in sel_list or cur_xml.attrib["key"] in sel_list):
                     cur_dev.attrib["selected"] = "selected"
                     any_sel = True
+                if cur_dev.attrib["key"] in sel_list:
+                    cur_dev.attrib["tree_selected"] = "selected"
+                if permission_tree:
+                    any_sel = True
         if any_sel:
-            xml_resp.append(cur_xml)
+            devg_resp.append(cur_xml)
+    return E.repsonse(devg_resp)
+    
+@login_required
+@init_logging
+def get_group_tree(request):
+    _post = request.POST
+    ignore_md       = True if int(_post.get("ignore_meta_devices", "0")) else False
+    ignore_cdg      = True if int(_post.get("ignore_cdg", "1"))          else False
+    with_variables  = True if int(_post.get("with_variables", "0"))      else False
+    permission_tree = True if int(_post.get("permission_tree", "0"))     else False
+    if "sel_list[]" in _post:
+        sel_list = _post.getlist("sel_list[]", [])
+    else:
+        sel_list = request.session.get("sel_list", [])
+    xml_resp = _get_group_tree(request, sel_list, ignore_md=ignore_md, ignore_cdg=ignore_cdg, with_variables=with_variables, permission_tree=permission_tree)
     extra_re = re.compile("^extra_t(\d+)$")
     for extra_key in [key for key in _post.keys() if extra_re.match(key)]:
         extra_name = _post[extra_key]

@@ -47,7 +47,7 @@ function load_devices(sel_list) {
             if (parse_xml_response(xml)) {
                 DEVICES = $(xml).find("value[name='response']");
                 CUR_PURE_DEVICES = [];
-                $(xml).find("device[meta_device='0'][selected='selected']").each(function() {
+                $(xml).find("device[meta_device='0'][tree_selected='selected']").each(function() {
                     CUR_PURE_DEVICES.push($(this).attr("name"));
                 });
                 draw_table();
@@ -79,7 +79,7 @@ function draw_table() {
             "colspan" : "8"
         }).text("device group " + cur_dg.attr("name")));
         b_table.append(new_tr);
-        cur_dg.find("devices device[selected='selected'][meta_device='0']").each(function() {
+        cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each(function() {
             var cur_dev = $(this);
             b_table.append(draw_device(cur_dev));
         });

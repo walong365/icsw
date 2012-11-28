@@ -249,25 +249,27 @@ function draw_tables() {
         }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")));
         c_table.append(new_tr);
         // at first append metadevice
-        cur_dg.find("devices device[selected='selected'][meta_device='1']").each(function() {
+        cur_dg.find("devices device[tree_selected='selected'][meta_device='1']").each(function() {
             var cur_dev = $(this);
             c_table.append(draw_device(cur_dev));
         });
-        cur_dg.find("devices device[selected='selected'][meta_device='0']").each(function() {
+        cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each(function() {
             var cur_dev = $(this);
             c_table.append(draw_device(cur_dev));
         });
     });
     // global change
-    var new_tr = $("<tr>").attr({
-        "class"   : "ui-widget ui-widget-header"
-    });
-    new_tr.append(
-        $("<th>").attr({
-        "colspan" : "6"
-    }).addClass("ui-widget ui-widget-header").text("all devices"));
-    c_table.append(new_tr);
-    c_table.append(draw_device(undefined));
+    if (DEVICES.find("device_group").length) {
+        var new_tr = $("<tr>").attr({
+            "class"   : "ui-widget ui-widget-header"
+        });
+        new_tr.append(
+            $("<th>").attr({
+            "colspan" : "6"
+        }).addClass("ui-widget ui-widget-header").text("all devices"));
+        c_table.append(new_tr);
+        c_table.append(draw_device(undefined));
+    };
     d_div.append(c_table);
     c_table.find("select[id$='mon_ext_host']").msDropdown({
         useSprite : "smallIcons",

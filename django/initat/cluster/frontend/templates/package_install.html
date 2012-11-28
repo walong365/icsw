@@ -304,7 +304,7 @@ function draw_device_table() {
             "colspan" : "5"
         }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")));
         d_table.append(new_tr);
-        cur_dg.find("devices device[selected='selected'][meta_device='0']").each(function() {
+        cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each(function() {
             var cur_dev = $(this);
             d_table.append(draw_device(cur_dev));
         });
@@ -331,7 +331,7 @@ function change_global_sel(event) {
 function change_dg_sel(event) {
     var cur_el = $(event.target);
     var d_table = $("table#device");
-    DEVICE_XML.find("device_group[key='" + cur_el.attr("id").split("__").slice(0, 2).join("__") + "'] devices device[selected='selected']").each(function() {
+    DEVICE_XML.find("device_group[key='" + cur_el.attr("id").split("__").slice(0, 2).join("__") + "'] devices device[tree_selected='selected']").each(function() {
         var cur_dev = $(this);
         var sel_box = d_table.find("input[id='" + cur_dev.attr("key") + "__sel']");
         sel_box.trigger("click");

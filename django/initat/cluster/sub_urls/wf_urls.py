@@ -78,7 +78,6 @@ boot_patterns = patterns(
 device_patterns = patterns(
     "initat.cluster.frontend",
     url("^device_tree$"       , "device_views.device_tree"        , name="tree"               ),
-    url("^get_json_tree$"     , "device_views.get_json_tree"      , name="get_json_tree"      ), 
     url("^get_xml_tree$"      , "device_views.get_xml_tree"       , name="get_xml_tree"       ), 
     url("^add_selection$"     , "device_views.add_selection"      , name="add_selection"      ),
     url("^clear_selection$"   , "device_views.clear_selection"    , name="clear_selection"    ),

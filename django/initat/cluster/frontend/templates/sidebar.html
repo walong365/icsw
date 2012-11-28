@@ -130,18 +130,6 @@ function sidebar_handler() {
     $("div#sidebar_tree").dynatree({
         autoFocus  : false,
         checkbox   : true,
-        initAjax   : {
-            url  : "{% url device:get_json_tree %}",
-            data : {}
-        },
-        onPostInit : function(is_reloading, is_error) {
-            $.each($("div#sidebar_tree").dynatree("getSelectedNodes"), function(index, value) {
-                value.expand(true);
-            })
-            if (CALL_DEVSEL_LINK_WHEN_LOADED) {
-                $("div#devsel_div button#devsel_button").trigger("click");
-            };
-        },
         onSelect : function(flag, dtnode) {
             if (!ADS_RUNNING) {
                 if (! dtnode.isExpanded()) {
@@ -164,7 +152,49 @@ function sidebar_handler() {
         },
         debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
     });
-    var my_tree = $("#sidebar_tree").dynatree("getTree");
+    $.ajax({
+        url     : "{% url device:get_group_tree %}",
+        error   : handle_ajax_error,
+        data    : {
+            "ignore_cdg"      : "0",
+            "permission_tree" : "1"
+        },
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+                var root_node = $("#sidebar_tree").dynatree("getRoot");
+                $(xml).find("device_groups device_group").each(function() {
+                    var cur_dg = $(this);
+                    var dg_node = root_node.addChild({
+                        title    : cur_dg.attr("name"),
+                        isFolder : true,
+                        isLazy   : false,
+                        select   : cur_dg.attr("tree_selected") == "selected" ? true : false,
+                        expand   : cur_dg.attr("tree_selected") == "selected" ? true : false,
+                        key      : cur_dg.attr("key")
+                    });
+                    cur_dg.find("device").each(function() {
+                        var cur_dev = $(this);
+                        if (cur_dev.attr("meta_device") == "1") {
+                        } else {
+                            dg_node.addChild({
+                                title  : cur_dev.attr("title"),
+                                select : cur_dev.attr("tree_selected") == "selected" ? true : false,
+                                key    : cur_dev.attr("key")
+                            });
+                        };
+                    });
+                });
+                $.each($("div#sidebar_tree").dynatree("getSelectedNodes"), function(index, value) {
+                    value.expand(true);
+                    value.makeVisible(true);
+                });
+                if (CALL_DEVSEL_LINK_WHEN_LOADED) {
+                    $("div#devsel_div button#devsel_button").trigger("click");
+                };
+            }
+        }
+    });
+    
     $("div#sidebar_tree ul").css({"border" : "none", "margin" : "0px"});
     $("div#sidebar_tree").css({"border" : "1px dotted gray", "background-color" : "#FFFFFF"});
     $("input#device_selection").focus();

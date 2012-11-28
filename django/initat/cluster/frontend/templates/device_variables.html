@@ -195,11 +195,11 @@ function draw_var_table() {
         }).text("device group " + cur_dg.attr("name")));
         c_table.append(new_tr);
         // at first append metadevice
-        cur_dg.find("devices device[selected='selected'][meta_device='1']").each(function() {
+        cur_dg.find("devices device[tree_selected='selected'][meta_device='1']").each(function() {
             var cur_dev = $(this);
             c_table.append(draw_device(cur_dev));
         });
-        cur_dg.find("devices device[selected='selected'][meta_device='0']").each(function() {
+        cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each(function() {
             var cur_dev = $(this);
             c_table.append(draw_device(cur_dev));
         });

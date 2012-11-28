@@ -189,7 +189,7 @@ function draw_tables() {
     }).css({
         "clear" : "both"
     });
-    DCON.find("device[device_type!='" + cd_id + "'][selected='selected']").each(function() {
+    DCON.find("device[device_type!='" + cd_id + "'][tree_selected='selected']").each(function() {
         cd_ul_d.append(draw_node($(this)));
     });
     cd_ul_d.find("div").draggable({revert : "valid"});
@@ -199,7 +199,7 @@ function draw_tables() {
     }).css({
         "clear" : "both"
     });
-    DCON.find("device[device_type='" + cd_id + "'][selected='selected']").each(function() {
+    DCON.find("device[device_type='" + cd_id + "'][tree_selected='selected']").each(function() {
         cd_ul_nd.append(draw_target_dev($(this)));
     });
     $("div#dcon_tables").append(cd_ul_nd);
