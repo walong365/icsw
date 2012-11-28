@@ -1015,6 +1015,24 @@ class process_obj(multiprocessing.Process):
                         cur_mes = cur_q.recv_pyobj()
                         self._handle_message(cur_mes)
                 except:
+                    exc_info = sys.exc_info()
+                    self._exc_info = exc_info
+                    # FIXME
+                    exc_type = str(exc_info[0]).split(".")[-1].split("'")[0]
+                    except_info = get_except_info()
+                    self.log("caught unknown exception %s (%s), traceback" % (exc_type, except_info),
+                             logging_tools.LOG_LEVEL_CRITICAL)
+                    tb = self._exc_info[2]
+                    out_lines = ["Exception in thread '%s'" % (self.name)]
+                    for file_name, line_no, name, line in traceback.extract_tb(tb):
+                        self.log("File '%s', line %d, in %s" % (file_name, line_no, name),
+                                 logging_tools.LOG_LEVEL_CRITICAL)
+                        out_lines.append("File '%s', line %d, in %s" % (file_name, line_no, name))
+                        if line:
+                            self.log(" - %d : %s" % (line_no, line),
+                                     logging_tools.LOG_LEVEL_CRITICAL)
+                            out_lines.append(" - %d : %s" % (line_no, line))
+                    out_lines.append(except_info)
                     print "process_obj.loop() %s: %s" % (self.name,
                                                          process_tools.get_except_info())
                     raise
