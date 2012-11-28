@@ -185,9 +185,10 @@ def get_boot_info(request):
     option_dict = dict([(short, True if _post.get("opt_%s" % (short)) in ["true"] else False) for short, long_opt, t_class in OPTION_LIST])
     sel_list = _post.getlist("sel_list[]")
     dev_result = device.objects.filter(Q(name__in=sel_list))
+    call_mother = True if int(_post["call_mother"]) else False
     # to speed up things while testing
     result = None
-    if True:
+    if call_mother:
         srv_com = server_command.srv_command(command="status")
         srv_com["devices"] = srv_com.builder(
             "devices",
@@ -203,16 +204,19 @@ def get_boot_info(request):
     dev_lut = {}
     for cur_dev in dev_result:
         # recv/reqstate are written by mother, here we 'salt' this information with the device XML (pingstate)
-        if result is not None:
-            # copy from mother
-            dev_node = result.xpath(None, ".//ns:device[@pk='%d']" % (cur_dev.pk))
-            if len(dev_node):
-                dev_node = dev_node[0]
+        if call_mother:
+            if result is not None:
+                # copy from mother
+                dev_node = result.xpath(None, ".//ns:device[@pk='%d']" % (cur_dev.pk))
+                if len(dev_node):
+                    dev_node = dev_node[0]
+                else:
+                    dev_node = None
             else:
                 dev_node = None
+            dev_info = cur_dev.get_xml(full=False, add_state=True, mother_xml=dev_node)
         else:
-            dev_node = None
-        dev_info = cur_dev.get_xml(full=False, add_state=True, mother_xml=dev_node)
+            dev_info = cur_dev.get_xml(full=False)
         dev_lut[cur_dev.pk] = dev_info
         xml_resp.append(dev_info)
     if option_dict.get("l", False):

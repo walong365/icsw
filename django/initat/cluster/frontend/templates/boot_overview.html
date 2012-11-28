@@ -15,7 +15,7 @@
 <div id="boot">
 </div>
 
-<input type="button" value="update info" onClick="force_update_info();"/>
+<input type="button" value="update info" onClick="force_update_info(true);"/>
 
 <script type="text/javascript">
 
@@ -60,7 +60,7 @@ function load_devices(sel_list) {
                 redraw_options("i");
                 redraw_options("l");
                 // call update_device_info after table draw
-                update_device_info();
+                update_device_info(true);
             }
         }
     });
@@ -113,12 +113,12 @@ function use_devs(dt_div) {
     load_device_table();
 };
 
-function force_update_info() {
+function force_update_info(call_mother) {
     UPDATE_PENDING = 0;
-    update_device_info();
+    update_device_info(call_mother);
 };
 
-function update_device_info() {
+function update_device_info(call_mother) {
     if (CUR_PURE_DEVICES.length && ! UPDATE_PENDING) {
         UPDATE_PENDING = 1;
         var send_data = {
@@ -127,6 +127,7 @@ function update_device_info() {
         for (key in OPTION_DICT) {
             send_data["opt_"+ key] = OPTION_DICT[key];
         };
+        send_data["call_mother"] = call_mother ? 1 : 0;
         $.ajax({
             url     : "{% url boot:get_boot_info %}",
             error   : handle_ajax_error,
@@ -139,12 +140,14 @@ function update_device_info() {
                         var cur_dev = $(this);
                         var dev_tr = b_table.find("tr#" + cur_dev.attr("key"));
                         var dev_id = dev_tr.attr("id");
-                        dev_tr.find("td#recv_str").text("rcv: " + cur_dev.attr("recvstate"));
-                        dev_tr.find("td#req_str").text("req: " + cur_dev.attr("reqstate"));
-                        var net_state = cur_dev.attr("net_state");
-                        var tr_class = {"down" : "error", "unknown" : "error", "ping" : "warn", "up" : "ok"}[net_state];
-                        dev_tr.find("td#network").text(cur_dev.attr("network") + " ("+ net_state + ")");
-                        dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok error warn").addClass(tr_class);
+                        if (call_mother) {
+                            dev_tr.find("td#recv_str").text("rcv: " + cur_dev.attr("recvstate"));
+                            dev_tr.find("td#req_str").text("req: " + cur_dev.attr("reqstate"));
+                            var net_state = cur_dev.attr("net_state");
+                            var tr_class = {"down" : "error", "unknown" : "error", "ping" : "warn", "up" : "ok"}[net_state];
+                            dev_tr.find("td#network").text(cur_dev.attr("network") + " ("+ net_state + ")");
+                            dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok error warn").addClass(tr_class);
+                        };
                         if (OPTION_DICT["k"]) {
                             var kernel_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_k']");
                             set_kernel_option(cur_dev, kernel_tr);
@@ -415,8 +418,10 @@ function change_option(event) {
     };
 };
 
+// create option lines
 function redraw_options(opt) {
     if (OPTION_DICT[opt]) {
+        var get_info_from_server = true;
         // add lines
         $("table#boot").find("tr[btype='device']").each(function() {
             var dev_tr = $(this);
@@ -473,6 +478,7 @@ function redraw_options(opt) {
                         if (key == 0) radio_el.attr("checked", "checked");
                         first_td.append(radio_el).append($("<span>").text(value));
                     });
+                    get_info_from_server = false;
                     break;
                 case "t":
                     first_td.attr({"colspan" : "5"});
@@ -556,8 +562,8 @@ function redraw_options(opt) {
                     first_td.append(dev_sel);
                     break;
             };
-            force_update_info();
         });
+        if (get_info_from_server) force_update_info(false);
     } else {
         // remove lines
         $("table#boot").find("tr[btype='opt_" + opt + "']").remove();
@@ -596,9 +602,11 @@ function install_options() {
                         "type" : "checkbox",
                         "id"   : "opt_" + opt.attr("short")})
                     opt_h3.append(opt_button);
-                    opt_h3.append(opt.text() + ", ");
+                    opt_h3.append($("<label>").attr({"for" : "opt_" + opt.attr("short")}).text(opt.text()));
                     opt_button.bind("change", change_option);
                 });
+                opt_h3.find("input").button();
+                opt_h3.buttonset();
             }
         }
     });
@@ -608,8 +616,8 @@ function install_options() {
 function add_config_handlers() {
     install_options();
     install_devsel_link(use_devs, true);
-    $(document).everyTime(10000, "update_device_info", function(i) {
-        update_device_info();
+    $(document).everyTime(1000000, "update_device_info", function(i) {
+        update_device_info(true);
     });
 };
 
