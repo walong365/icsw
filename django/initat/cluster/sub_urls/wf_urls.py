@@ -1,6 +1,7 @@
 from django.conf.urls import patterns, include, url
 from django.conf import settings
 import sys
+import os
 import process_tools
 
 # Uncomment the next two lines to enable the admin:
@@ -152,7 +153,7 @@ main_patterns = patterns(
 
 my_url_patterns = patterns(
     "",
-    url(r"static/(?P<path>.*)$"        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
+    #url(r"static/(?P<path>.*)$"        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
     url(r"^$"         , "initat.cluster.frontend.session_views.redirect_to_main"),
     url(r"^base/"     , include(base_patterns      , namespace="base"    )),
     url(r"^session/"  , include(session_patterns   , namespace="session" )),
@@ -168,12 +169,14 @@ my_url_patterns = patterns(
     url(r"^pack/"     , include(pack_patterns      , namespace="pack"    )),
 )
 
+print settings.MEDIA_URL
+
 url_patterns = patterns(
     "",
-    # hack for icons
-    url(r"^%s/frontend/media/(?P<path>.*)$" % (settings.REL_SITE_ROOT), "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}, name="media"),
-    url(r"icons-init/(?P<path>.*)$"                                   , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT[:-14] + "/icons"}),
-    url(r"^%s/initat/(?P<path>.*)$" % (settings.REL_SITE_ROOT)        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT[:-22]}),
-    url(r"^%s/icinga/(?P<path>.*)$" % (settings.REL_SITE_ROOT)        , "django.views.static.serve", {"document_root" : "/opt/icinga"}),
-    url(r"^%s/" % (settings.REL_SITE_ROOT)                            , include(my_url_patterns)),
+    url(r"^%s/media/frontend/(?P<path>.*)$" % (settings.REL_SITE_ROOT)    , "django.views.static.serve", {
+        "document_root" : os.path.join(settings.FILE_ROOT, "frontend", "media")}),
+    url(r"^%s/static/initat/core/(?P<path>.*)$" % (settings.REL_SITE_ROOT), "django.views.static.serve", {
+        "document_root" : os.path.join(settings.FILE_ROOT, "..", "core")}),
+    url(r"^%s/" % (settings.REL_SITE_ROOT)                                , include(my_url_patterns)),
+    url(r"^$", "initat.cluster.frontend.session_views.redirect_to_main"),
 )
