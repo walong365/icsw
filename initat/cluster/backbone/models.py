@@ -2918,6 +2918,7 @@ class user(models.Model):
     nt_password = models.CharField(max_length=255, blank=True)
     lm_password = models.CharField(max_length=255, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    allowed_device_groups = models.ManyToManyField(device_group)
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
         self.user_vars = {}
@@ -2942,7 +2943,8 @@ class user(models.Model):
             aliases=self.aliases or "",
             active="1" if self.active else "0",
             export="%d" % (self.export_id or 0),
-        )
+            allowed_device_groups="::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)]),
+       )
         for attr_name in ["first_name", "last_name",
                           "title", "email", "pager", "tel", "comment"]:
             user_xml.attrib[attr_name] = getattr(self, attr_name)
@@ -3096,6 +3098,7 @@ class group(models.Model):
     tel = models.CharField(max_length=765, blank=True)
     comment = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    allowed_device_groups = models.ManyToManyField(device_group)
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
         self.capabilities = {}
@@ -3129,6 +3132,7 @@ class group(models.Model):
             gid="%d" % (self.gid),
             homestart=self.homestart or "",
             active="1" if self.active else "0",
+            allowed_device_groups="::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)]),
         )
         for attr_name in ["first_name", "last_name", "group_comment",
                      "title", "email", "pager", "tel", "comment"]:
