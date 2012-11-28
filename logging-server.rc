@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 #
 # Copyright (c) 2003,2004,2005,2006,2007,2008,2011,2012 Andreas Lang-Nevyjel init.at
 #
@@ -24,7 +24,7 @@ else
 fi
 . /etc/init.d/ics_tools.sh
 
-function setup() {
+setup() {
     [ ! -d /var/run/logserver ] && mkdir /var/run/logserver 
     [ ! -d /var/lock/logserver ] && mkdir /var/lock/logserver 
     chmod 0750 /var/run/logserver
