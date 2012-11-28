@@ -9,6 +9,10 @@ import initat.cluster.sub_urls
 
 urlpatterns = initat.cluster.sub_urls.sub_patterns
 
-urlpatterns += patterns('',
-    (r'^cluster/admin/', include(admin.site.urls)),
+urlpatterns += patterns("",
+    (r"^%s/admin/" % (settings.REL_SITE_ROOT)               , include(admin.site.urls)),
+    #(r"^%s/media/(?P<path>.*)$" % (settings.REL_SITE_ROOT)  , "django.views.static.serve", {
+    #    "document_root" : settings.MEDIA_ROOT,
+    #    "show_indexes"  : True}),
 )
+

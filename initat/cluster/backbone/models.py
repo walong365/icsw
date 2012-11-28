@@ -2869,29 +2869,6 @@ class sys_partition(models.Model):
     class Meta:
         db_table = u'sys_partition'
 
-class capability(models.Model):
-    idx = models.AutoField(db_column="capability_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=45)
-    mother_capability = models.IntegerField(null=True, blank=True)
-    mother_capability_name = models.CharField(max_length=45, blank=True, null=True)
-    priority = models.IntegerField(null=True, blank=True)
-    defvalue = models.IntegerField(null=True, blank=True)
-    enabled = models.BooleanField()
-    description = models.CharField(max_length=765, blank=True)
-    modulename = models.CharField(max_length=384, blank=True, null=True)
-    left_string = models.CharField(max_length=192, blank=True)
-    right_string = models.CharField(max_length=384, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    def __init__(self, *args, **kwargs):
-        models.Model.__init__(self, *args, **kwargs)
-        # just for compatibility reasons
-        self.authorized_by = "None"
-        self.enabled = False
-    def authorize(self, source):
-        self.authorized_by, self.enabled = (source, True)
-    class Meta:
-        db_table = u'capability'
-
 class user(models.Model):
     idx = models.AutoField(db_column="user_idx", primary_key=True)
     active = models.BooleanField(default=True)
@@ -2919,19 +2896,6 @@ class user(models.Model):
     lm_password = models.CharField(max_length=255, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     allowed_device_groups = models.ManyToManyField(device_group)
-    def __init__(self, *args, **kwargs):
-        models.Model.__init__(self, *args, **kwargs)
-        self.user_vars = {}
-        self.capabilities = {}
-        try:
-            self.django_user = User.objects.get(username=self.login)
-        except User.DoesNotExist:
-            self.django_user = None
-        for cur_cap in self.user_cap_set.all().select_related("capability"):
-            self.add_capability(cur_cap.capability)
-        self.secondary_groups = []
-        self.sge_servers = {}
-        self.login_serers = {}
     def get_xml(self):
         user_xml = E.user(
             unicode(self),
@@ -2949,81 +2913,11 @@ class user(models.Model):
                           "title", "email", "pager", "tel", "comment"]:
             user_xml.attrib[attr_name] = getattr(self, attr_name)
         return user_xml
-    def add_capability(self, cap):
-        self.capabilities[cap.pk] = cap
-        self.capabilities[cap.name] = cap
-    def add_sge_server(self, srv_dev):
-        self.sge_servers[srv_dev.pk] = srv_dev
-    def get_sge_servers(self):
-        return self.sge_servers.keys()
-    def add_user_var(self, u_var):
-        self.user_vars[u_var.pk] = u_var
-    def save_modified_user_vars(self):
-        print "save_modified_user_vars"
-    def capability_ok(self, cap_name, only_user=False):
-        # do not use, superuser has all rights
-        #return self.django_user.has_perm("wf_%s" % (cap_name))
-        #print cap_name, cap_name in self.capabilities, cap_name in self.group.capabilities
-        if only_user:
-            return cap_name in self.capabilities
-        else:
-            return cap_name in self.capabilities or cap_name in self.group.capabilities 
-    def get_num_capabilities(self):
-        return len(self.capabilities)
-    def get_all_permissions(self, *args):
-        return self.django_user.get_all_permissions(*args)
-    def get_group_permissions(self, *args):
-        return self.django_user.get_group_permissions(*args)
-    def add_secondary_groups(self):
-        self.secondary_groups = list(group.objects.filter(Q(user_group__user=self.pk)))
-    def get_secondary_groups(self):
-        return self.secondary_groups
     class Meta:
         db_table = u'user'
         ordering = ("login", )
         permissions = {
-            ("wf_apc" , "APC control"),
-            ("wf_bc"  , "Boot control"),
-            ("wf_cc"  , "Cluster configuration"),
-            ("wf_ccl" , "Cluster location config"),
-            ("wf_ccn" , "Cluster network"),
-            ("wf_ncd" , "Generate new devices"),
-            ("wf_conf", "Configuration"),
-            ("wf_sc"  , "Clusterinfo"),
-            ("wf_clo" , "Clusterlog"),
-            ("wf_info", "Information"),
-            ("wf_uhw" , "Update hardware info"),
-            ("wf_hwi" , "Hardware info"),
-            ("wf_ic"  , "Image control"),
-            ("wf_rms" , "Resource managment system"),
-            ("wf_jsko", "Kill jobs from other users"),
-            ("wf_sacl", "Show all cells"),
-            ("wf_jsoi", "Show stdout / stderr and filewatch-info for all users"),
-            ("wf_jsyi", "Jobsystem information (SGE)"),
-            ("wf_kc"  , "Kernel control"),
-            ("wf_mu"  , "Modify Users"),
-            ("wf_bu"  , "Browse Users"),
-            ("wf_mg"  , "Modify Groups"),
-            ("wf_bg"  , "Browse Groups"),
-            ("wf_user", "User configuration"),
-            ("wf_sql" , "Display SQL statistics"),
-            ("wf_prf" , "Profile webfrontend"),
-            ("wf_li"  , "User config"),
-            ("wf_mp"  , "Modify personal userdata (pwd)"),
-            ("wf_mpsh", "Show hidden user vars"),
-            ("wf_na"  , "Monitoring daemon"),
-            ("wf_nap" , "Nagios Problems"),
-            ("wf_nai" , "Nagios Misc"),
-            ("wf_nbs" , "Netbotz show"),
-            ("wf_pi"  , "Package install"),
-            ("wf_pu"  , "Partition configuration"),
-            ("wf_jsqm", "Queue information (SGE)"),
-            ("wf_ch"  , "Cluster history"),
-            ("wf_ri"  , "Rsync install"),
-            ("wf_csc" , "Server configuration"),
-            ("wf_si"  , "Session info"),
-            ("wf_xeng", "Xen"),
-            ("wf_xeni", "Xen Information"),
+            #("wf_apc" , "APC control"),
         }
     def __unicode__(self):
         return u"%s (%d; %s, %s)" % (
@@ -3099,30 +2993,6 @@ class group(models.Model):
     comment = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     allowed_device_groups = models.ManyToManyField(device_group)
-    def __init__(self, *args, **kwargs):
-        models.Model.__init__(self, *args, **kwargs)
-        self.capabilities = {}
-        self.users = {}
-        try:
-            self.django_group = Group.objects.get(name=self.groupname)
-        except Group.DoesNotExist:
-            self.django_group = None
-        for sub_cap in self.group_cap_set.all().select_related("capability"):
-            self.add_capability(sub_cap.capability)
-    def add_capability(self, cap):
-        self.capabilities[cap.pk] = cap
-        self.capabilities[cap.name] = cap
-    def get_num_capabilities(self):
-        return len(self.capabilities)
-    def has_capability(self, cap_name):
-        return cap_name in self.capabilities
-    def add_user(self, cur_user):
-        self.users[cur_user.pk] = cur_user
-        self.users[cur_user.login] = cur_user
-    def get_user(self, user_ref):
-        return self.users[user_ref]
-    def get_num_users(self):
-        return len([key for key in self.users if type(key) == unicode])
     def get_xml(self):
         group_xml = E.group(
             unicode(self),
@@ -3171,14 +3041,6 @@ def group_post_delete(sender, **kwargs):
         except:
             pass
         
-class group_cap(models.Model):
-    idx = models.AutoField(db_column="ggroupcap_idx", primary_key=True)
-    group = models.ForeignKey("group", db_column="ggroup_id")
-    capability = models.ForeignKey("capability")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ggroupcap'
-
 class user_device_login(models.Model):
     idx = models.AutoField(db_column="user_device_login_idx", primary_key=True)
     user = models.ForeignKey("user")
@@ -3208,14 +3070,6 @@ class user_var(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'user_var'
-
-class user_cap(models.Model):
-    idx = models.AutoField(db_column="usercap_idx", primary_key=True)
-    user = models.ForeignKey("user")
-    capability = models.ForeignKey("capability")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'usercap'
 
 ##class vendor(models.Model):
 ##    idx = models.AutoField(db_column="vendor_idx", primary_key=True)

@@ -122,14 +122,14 @@ USE_TZ = True
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash.
 # Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
-MEDIA_ROOT = os.path.join(FILE_ROOT, "frontend", "media")
+MEDIA_ROOT = os.path.join(FILE_ROOT, "media")
 
-MEDIA_URL = "%s/frontend/media/" % (SITE_ROOT)
+MEDIA_URL = "%s/media/" % (SITE_ROOT)
 
 #COMPRESS_URL = "%s/frontend/media/" % (SITE_ROOT)
 
 COMPRESS_OFFLINE_CONTEXT = {
-    "MEDIA_URL" : MEDIA_URL
+    "MEDIA_URL" : MEDIA_URL,
 }
 
 # Absolute path to the directory static files should be collected to.
@@ -139,7 +139,7 @@ COMPRESS_OFFLINE_CONTEXT = {
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
-STATIC_URL = "%s/" % (SITE_ROOT)
+STATIC_URL = "%s/static/" % (SITE_ROOT)
 
 # Session settings
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
