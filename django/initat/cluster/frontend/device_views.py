@@ -64,7 +64,6 @@ def clear_selection(request):
 @init_logging
 def add_selection(request):
     _post = request.POST
-    pprint.pprint(_post)
     if "key" in _post:
         # single set / delete
         add_flag, add_sel_list, cur_list = (
@@ -123,7 +122,12 @@ def _get_group_tree(request, sel_list, **kwargs):
             all_dgs = all_dgs.filter(Q(pk__in= request.session["db_user"].allowed_device_groups.all()))
     if ignore_cdg:
         all_dgs = all_dgs.exclude(Q(cluster_device_group=True))
-    all_dgs = all_dgs.prefetch_related("device_group", "device_group__device_type")
+    all_dgs = all_dgs.prefetch_related(
+        "device_group",
+        "device_group__device_type")
+    if with_variables:
+        all_dgs = all_dgs.prefetch_related(
+            "device_group__device_variable_set")
     meta_dev_type_id = device_type.objects.get(Q(identifier="MD")).pk
     # selected ........ device or device_group selected
     # tree_selected ... device is selected 
