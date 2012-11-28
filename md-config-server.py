@@ -938,7 +938,7 @@ class all_contacts(host_type_config):
                 sn_command = "%s,notify-by-sms" % (sn_command)
             nag_conf = nag_config(
                 full_name,
-                contact_name=full_name,
+                contact_name=contact.user.login,
                 host_notification_period=gen_conf["timeperiod"][contact.hnperiod_id]["name"],
                 service_notification_period=gen_conf["timeperiod"][contact.snperiod_id]["name"],
                 host_notification_commands=hn_command,
@@ -959,6 +959,22 @@ class all_contacts(host_type_config):
             nag_conf["pager"] = contact.user.pager or "----"
             self.__obj_list.append(nag_conf)
             self.__dict[contact.pk] = nag_conf
+        # add all contacts not used in mon_contacts but somehow related to a device (and active)
+        for std_user in user.objects.filter(Q(mon_contact=None) & (Q(active=True))):
+            devg_ok = std_user.allowed_device_groups.all()
+            if devg_ok:
+                full_name = ("%s %s" % (std_user.first_name, std_user.last_name)).strip().replace(" ", "_") or std_user.login
+                nag_conf = nag_config(
+                    full_name,
+                    contact_name=std_user.login,
+                    alias=std_user.comment or full_name,
+                    host_notifications_enabled=0,
+                    service_notifications_enabled=0,
+                    host_notification_commands="host-notify-by-email",
+                    service_notification_commands="notify-by-email",
+                )
+                self.__obj_list.append(nag_conf)
+                #self.__dict[contact.pk] = nag_conf
     def __getitem__(self, key):
         return self.__dict[key]
     def get_object_list(self):
@@ -1711,6 +1727,8 @@ class build_process(threading_tools.process_obj):
                         act_host = nag_config(host.name)
                         act_host["host_name"] = host.name
                         # set alias
+                        if host.device_group.user_set.all():
+                            act_host["contacts"] = ",".join([cur_u.login for cur_u in host.device_group.user_set.all()])
                         act_host["alias"] = host.alias or host.name
                         act_host["address"] = relay_ip and "%s:%s" % (relay_ip, valid_ip) or valid_ip
                         # check for parents
@@ -1771,6 +1789,7 @@ class build_process(threading_tools.process_obj):
                             act_host["obsess_over_host"] = 1
                         host_groups = set(contact_group_dict.get(host.name, []))
                         act_host["contact_groups"] = ",".join(host_groups) if host_groups else global_config["NONE_CONTACT_GROUP"]
+                        act_host["contacts"] = ""
                         self.mach_log("contact groups for host: %s" % (
                             ", ".join(sorted(host_groups)) or "none"))
                         if host.monitor_checks:
