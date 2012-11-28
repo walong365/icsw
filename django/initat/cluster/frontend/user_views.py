@@ -15,7 +15,7 @@ from lxml.builder import E
 import process_tools
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, device_class, device_location, group, user, \
-     device_config
+     device_config, device_group
 import server_command
 import net_tools
 
@@ -44,7 +44,8 @@ def overview(request, *args, **kwargs):
             exp_list,
             E.groups(*[cur_g.get_xml() for cur_g in group.objects.all()]),
             E.users(*[cur_u.get_xml() for cur_u in user.objects.all()]),
-            E.shells(*[E.shell(cur_shell, pk=cur_shell) for cur_shell in sorted(shell_names)])
+            E.shells(*[E.shell(cur_shell, pk=cur_shell) for cur_shell in sorted(shell_names)]),
+            E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))])
         )
         request.xml_response["response"] = xml_resp
         return request.xml_response.create_response()
