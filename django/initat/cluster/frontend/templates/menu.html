@@ -29,6 +29,7 @@
             </li>
         </ul>
     </li>
+    {% if settings.CLUSTER_LICENSE.boot %}
     <li>
         <a>{% trans "Operation" %}</a>
         <ul>
@@ -37,6 +38,8 @@
             <li><a href="{% url setup:partition_overview %}">{% trans "Partition overview" %}</a></li>
         </ul>
     </li>
+    {% endif %}
+    {% if settings.CLUSTER_LICENSE.package %}
     <li>
         <a>{% trans "Package Install" %}</a>
         <ul>
@@ -45,11 +48,14 @@
             <li><a href="{% url pack:install %}">{% trans "Install" %}</a></li>
         </ul>
     </li>
+    {% endif %}
     <li>
         <a>{% trans "Users" %}</a>
         <ul>
             <li><a href="{% url user:overview 'table' %}">{% trans "Overview / Table" %}</a></li>
         </ul>
+    </li>
+    {% if settings.CLUSTER_LICENSE.monitor %}
     <li>
         <a>{% trans "Monitoring" %}</a>
         <ul>
@@ -59,12 +65,15 @@
             <li><a href="/ganglia-web">{% trans "Ganglia" %}</a></li>
         </ul>
     </li>
+    {% endif %}
+    {% if settings.CLUSTER_LICENSE.rms %}
     <li>
         <a>{% trans "RMS" %}</a>
         <ul>
             <li><a href="{% url rms:overview %}">{% trans "RMS overview" %}</a></li>
         </ul>
     </li>
+    {% endif %}
     <li>
         <a>{% trans "Session" %}</a>
         <ul>
