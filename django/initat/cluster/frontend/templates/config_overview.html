@@ -7,14 +7,14 @@
 {% block tab_js %}
 
 {% compress js %}
-    <script type="text/javascript" src="{{ MEDIA_URL }}js/codemirror.js"></script>
-    <script type="text/javascript" src="{{ MEDIA_URL }}js/python.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/codemirror.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/python.js"></script>
 {% endcompress %}
 {% endblock %}
 
 {% block extra_stylesheets %}
 {% compress css %}
-    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/codemirror.css" />
+    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/codemirror.css" />
 {% endcompress %}
 <style type="text/css">
 .CodeMirror {border-top: 1px solid black; border-bottom: 1px solid black;}
