@@ -378,7 +378,7 @@ class main_config(object):
                        ("accept_passive_service_checks"    , 1),
                        ("enable_notifications"             , 1 if self.master else 0),
                        ("enable_event_handlers"            , 1),
-                       ("process_performance_data"         , 0),
+                       ("process_performance_data"         , 0 if self.master else (1 if global_config["ENABLE_PNP"] else 0)),
                        ("obsess_over_services"             , 1 if not self.master else 0),
                        ("obsess_over_hosts"                , 1 if not self.master else 0),
                        ("check_for_orphaned_services"      , 0),
@@ -396,6 +396,22 @@ class main_config(object):
                        # NDO stuff
                        ]
         if self.master:
+            if global_config["ENABLE_PNP"]:
+                main_values.extend([
+                    #("host_perfdata_command"   , "process-host-perfdata"),
+                    #("service_perfdata_command", "process-service-perfdata"),
+                    ("service_perfdata_file", "/opt/pnp4icinga/var/service-perfdata"),
+                    ("service_perfdata_file_template", "DATATYPE::SERVICEPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tSERVICEDESC::$SERVICEDESC$\tSERVICEPERFDATA::$SERVICEPERFDATA$\tSERVICECHECKCOMMAND::$SERVICECHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$\tSERVICESTATE::$SERVICESTATE$\tSERVICESTATETYPE::$SERVICESTATETYPE$"),
+                    ("service_perfdata_file_mode", "a"),
+                    ("service_perfdata_file_processing_interval", "15"),
+                    ("service_perfdata_file_processing_command", "process-service-perfdata-file"),
+                    
+                    ("host_perfdata_file", "/opt/pnp4icinga/var/host-perfdata"),
+                    ("host_perfdata_file_template", "DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$"),
+                    ("host_perfdata_file_mode", "a"),
+                    ("host_perfdata_file_processing_interval", "15"),
+                    ("host_perfdata_file_processing_command", "process-host-perfdata-file"),
+                ])
             main_values.append(
                 ("event_broker_options"             , global_config["EVENT_BROKER_OPTIONS"])
             )
@@ -814,7 +830,7 @@ class all_commands(host_type_config):
         host_type_config.__init__(self, build_proc)
         self.__obj_list, self.__dict = ([], {})
         self._add_notify_commands()
-        self._add_commands_from_db()
+        self._add_commands_from_db(gen_conf)
     def get_name(self):
         return "command"
     def _add_notify_commands(self):
@@ -866,10 +882,23 @@ class all_commands(host_type_config):
                               command_name="host-notify-by-sms",
                               command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '$HOSTSTATE$ alert for $HOSTNAME$ ($HOSTADDRESS$)'")
         self.__obj_list.append(nag_conf)
-    def _add_commands_from_db(self):
+    def _add_commands_from_db(self, gen_conf):
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
         check_coms = list(mon_check_command.objects.all().select_related("mon_check_command_type",
                                                                          "mon_service_templ"))
+        if global_config["ENABLE_PNP"] and gen_conf.master:
+            check_coms += [
+                mon_check_command(
+                    name="process-service-perfdata-file",
+                    command_line="/usr/bin/perl /opt/pnp4icinga/libexec/process_perfdata.pl --bulk=/opt/pnp4icinga/var/service-perfdata",
+                    description="Process service performance data",
+                    ),
+                mon_check_command(
+                    name="process-host-perfdata-file",
+                    command_line="/usr/bin/perl /opt/pnp4icinga/libexec/process_perfdata.pl  --bulk=/opt/pnp4icinga/var/host-perfdata",
+                    description="Process host performance data",
+                    ),
+            ]
         for ngc in check_coms + [
             mon_check_command(
                 name="check-host-alive",
@@ -2560,6 +2589,7 @@ def main():
         ("NETSPEED_DEFAULT_VALUE"      , configfile.int_c_var(10000000)),
         ("CHECK_HOST_ALIVE_PINGS"      , configfile.int_c_var(3)),
         ("CHECK_HOST_ALIVE_TIMEOUT"    , configfile.float_c_var(5.0)),
+        ("ENABLE_PNP"                  , configfile.bool_c_var(False)),
         ("NONE_CONTACT_GROUP"          , configfile.str_c_var("none_group")),
         ("FROM_ADDR"                   , configfile.str_c_var(long_host_name)),
         ("MAIN_LOOP_TIMEOUT"           , configfile.int_c_var(30)),
