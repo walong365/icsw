@@ -616,7 +616,7 @@ function install_options() {
 function add_config_handlers() {
     install_options();
     install_devsel_link(use_devs, true);
-    $(document).everyTime(1000000, "update_device_info", function(i) {
+    $(document).everyTime(10000, "update_device_info", function(i) {
         update_device_info(true);
     });
 };
