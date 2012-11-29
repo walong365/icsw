@@ -26,7 +26,6 @@ import sys
 import os
 import time
 import threading
-import commands
 import stat
 import process_tools
 import datetime
@@ -43,15 +42,37 @@ from django.db.models import Q
 
 LICENSE_FILE="/etc/sysconfig/cluster/cluster_license"
 
-def check_license():
-    pass
+LICENSE_CAPS = [
+    ("monitor", "Monitoring services"),
+    ("boot", "boot/config facility for nodes"),
+    ("package", "Package installation"),
+    ("rms", "Resource Management system"),
+]
+
+
+def check_license(lic_name):
+    lic_xml = etree.fromstring(
+        open(LICENSE_FILE, "r").read())
+    cur_lic = lic_xml.xpath(".//license[@short='%s']" % (lic_name))
+    if len(cur_lic):
+        return True if cur_lic[0].get("enabled", "no").lower() in ["yes", "true", "1"] else False
+    else:
+        return False
+    
+def get_all_licenses():
+    lic_xml = etree.fromstring(
+        open(LICENSE_FILE, "r").read())
+    return lic_xml.xpath(".//license/@short")
+
 def create_default_license():
     if not os.path.isfile(LICENSE_FILE):
         lic_tree = E.cluster(
             E.licenses(
+                *[E.license(name, short=name, info=info, enabled="no") for name, info in LICENSE_CAPS]
             )
         )
         file(LICENSE_FILE, "w").write(etree.tostring(lic_tree, pretty_print=True))
+        os.chmod(LICENSE_FILE, 0o644)
         print("created license file '%s'" % (LICENSE_FILE))
     else:
         print("license file '%s' already present" % (LICENSE_FILE))
