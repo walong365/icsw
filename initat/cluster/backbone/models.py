@@ -2908,7 +2908,7 @@ class user(models.Model):
             pass
         else:
             cur_perms = set([cur_entry.pk for cur_entry in dj_user.user_permissions.all()])
-            new_perms = set(new_perms.split("::"))
+            new_perms = set([entry for entry in new_perms.split("::") if entry.strip()])
             for del_perm in cur_perms - new_perms:
                 dj_user.user_permissions.remove(Permission.objects.get(Q(pk=del_perm)))
             for add_perm in new_perms - cur_perms:
