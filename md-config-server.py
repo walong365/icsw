@@ -378,7 +378,7 @@ class main_config(object):
                        ("accept_passive_service_checks"    , 1),
                        ("enable_notifications"             , 1 if self.master else 0),
                        ("enable_event_handlers"            , 1),
-                       ("process_performance_data"         , 0 if self.master else (1 if global_config["ENABLE_PNP"] else 0)),
+                       ("process_performance_data"         , (1 if global_config["ENABLE_PNP"] else 0) if self.master else 0),
                        ("obsess_over_services"             , 1 if not self.master else 0),
                        ("obsess_over_hosts"                , 1 if not self.master else 0),
                        ("check_for_orphaned_services"      , 0),
@@ -914,12 +914,12 @@ class all_commands(host_type_config):
                 ),
             mon_check_command(
                 name="ochp-command",
-                command_line="$USER2$ -m DIRECT ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"$HOSTOUTPUT$\"",
+                command_line="$USER2$ -m DIRECT ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"%s\"" % ("$HOSTOUTPUT$|$HOSTPERFDATA$" if global_config["ENABLE_PNP"] else "$HOSTOUTPUT$"),
                 description="OCHP Command"
                 ),
             mon_check_command(
                 name="ocsp-command",
-                command_line="$USER2$ -m DIRECT ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"$SERVICEOUTPUT$\"",
+                command_line="$USER2$ -m DIRECT ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"%s\" " % ("$SERVICEOUTPUT$|$SERVICEPERFDATA$" if global_config["ENABLE_PNP"] else "$SERVICEOUTPUT$"),
                 description="OCSP Command"
                 ),
             ]:
