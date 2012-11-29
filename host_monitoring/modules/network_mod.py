@@ -761,8 +761,11 @@ class ping_command(hm_classes.hm_command):
             else:
                 ret_state = limits.nag_STATE_WARNING
             if num_received == 0:
-                return ret_state, "%s: no reply (%s sent)" % (target,
-                                                              logging_tools.get_plural("packet", num_sent))
+                return ret_state, "%s: no reply (%s sent) | loss=%d rta=0.00ms" % (
+                    target,
+                    logging_tools.get_plural("packet", num_sent),
+                    num_sent,
+                )
             else:
                 if mean_time is not None:
                     if mean_time < 0.01:
@@ -771,10 +774,14 @@ class ping_command(hm_classes.hm_command):
                         time_info = "%.4f s mean time" % (mean_time)
                 else:
                     time_info = "no time info"
-                return ret_state, "%s: %d of %d (%s)" % (target,
-                                                         num_received,
-                                                         num_sent,
-                                                         time_info)
+                return ret_state, "%s: %d of %d (%s) | loss=%d rta=%.2fms" % (
+                    target,
+                    num_received,
+                    num_sent,
+                    time_info,
+                    num_sent - num_received,
+                    1000 * mean_time
+                )
     
 class net_command(hm_classes.hm_command):
     info_str = "network information"
