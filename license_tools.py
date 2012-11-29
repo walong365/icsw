@@ -1,11 +1,11 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007,2008,2009,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
-# This file is part of cluster-backbone-sql
+# This file is part of cluster-backbone-tools
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -38,6 +38,8 @@ import hashlib
 import tempfile
 from initat.cluster.backbone.models import kernel, kernel_build, kernel_log, device, cluster_timezone
 from django.db.models import Q
+
+LICENSE_FILE="/etc/sysconfig/cluster/cluster_license"
 
 KNOWN_INITRD_FLAVOURS = ["lo", "cpio", "cramfs"]
 

@@ -28,72 +28,72 @@ function copy_config() {
     echo "Waiting for configuration ACK"
     conf_str=`get_conf_str "ack_config"`
     if [ "$(echo $conf_str | cut -d " " -f 2)" != "ok" ] ; then
-	echo "error getting config: $conf_str"
-	ret_val=1;
+        echo "error getting config: $conf_str"
+        ret_val=1;
     else
         if [ ! -f /conf/config_files_${1} ] ; then
             echo "No file config_files_${1} found in /conf, exiting ..."
             ret_val=1;
-	else
-	    num_ack=`echo $conf_str| cut -d " " -f 1`
-	    tot_req=$(($num_req + $num_ack))
-	    if [ -f /conf/.config_files ] ; then
-		while read file ; do
-		    rm -f /$basedir/$file ;
-		done < /conf/.config_files
-	    fi
-	    rm -f /conf/.config_files
-	    if [ -f /conf/config_dirs_${1} ] ; then
-		echo "Generating directory for config $1 from server"
-		while read num dir ; do
-		    num_w=`echo $dir | wc -w`
-		    if [ "${num_w}" -ge "4" ] ; then
-			uid=`echo $dir | cut -d " " -f 1`
-			gid=`echo $dir | cut -d " " -f 2`
-			mode=`echo $dir | cut -d " " -f 3`
-			dir=`echo $dir | cut -d " " -f 4-`
-		    else
-			uid=0;
-			gid=0;
-			mode="0755";
-		    fi
-		    echo "Generating directory ($mode,$uid,$gid) ${dir}";
-		    mkdir -p "/$basedir/$dir"
-		    chown ${uid}:${gid} "/$basedir/$dir"
-		    chmod ${mode} "/$basedir/$dir"
-		done < /conf/config_dirs_${1}
-	    fi
-	    if [ -f /conf/config_files_${1} ] ; then
-		echo "Installing config files for config $1 from server"
-		while read num uid gid mode file ; do
-		    echo "Installing ($mode,$uid,$gid) $file" ;
-		    filedir=`dirname /$basedir/$file`
-		    echo "$file" >> /conf/.config_files
-		    [ ! -d "$filedir" ] && mkdir -p "$filedir"
-		    [ -d "$filedir" ] && {
-			cp -a /conf/content_${1}/$num /$basedir/$file ;
-			chown ${uid}:${gid} /$basedir/$file ;
-			chmod ${mode} /$basedir/$file ;
-		    }
-		done < /conf/config_files_${1}
-	    fi
-	    if [ -f /conf/config_links_${1} ] ; then
-		echo "Linking files config $1 from server"
-		while read dest src ; do
-		    echo "Linking from $src to $dest "
-		    chroot /$basedir [ -L $src ] && rm -f /${basedir}/$src
-		    chroot /$basedir /bin/ln -sf $dest $src
-		    echo $src >> /conf/.config_files
-		done < /conf/config_links_${1}
-	    fi
-	    if [ -f /conf/config_${1}.rc ] ; then
-		echo "Installing rc.config for config $1 from server"
-		file="etc/rc.config"
-		echo "$file" >> /conf/.config_files
-		cp -a /conf/config_${1}.rc /$basedir/$file
-	    fi
-	    ret_val=0;
-	fi
+        else
+            num_ack=`echo $conf_str| cut -d " " -f 1`
+            tot_req=$(($num_req + $num_ack))
+            if [ -f /conf/.config_files ] ; then
+                while read file ; do
+                    rm -f /$basedir/$file ;
+                done < /conf/.config_files
+            fi
+            rm -f /conf/.config_files
+            if [ -f /conf/config_dirs_${1} ] ; then
+                echo "Generating directory for config $1 from server"
+                while read num dir ; do
+                    num_w=`echo $dir | wc -w`
+                    if [ "${num_w}" -ge "4" ] ; then
+                        uid=`echo $dir | cut -d " " -f 1`
+                        gid=`echo $dir | cut -d " " -f 2`
+                        mode=`echo $dir | cut -d " " -f 3`
+                        dir=`echo $dir | cut -d " " -f 4-`
+                    else
+                        uid=0;
+                        gid=0;
+                        mode="0755";
+                    fi
+                    echo "Generating directory ($mode,$uid,$gid) ${dir}";
+                    mkdir -p "/$basedir/$dir"
+                    chown ${uid}:${gid} "/$basedir/$dir"
+                    chmod ${mode} "/$basedir/$dir"
+                done < /conf/config_dirs_${1}
+            fi
+            if [ -f /conf/config_files_${1} ] ; then
+                echo "Installing config files for config $1 from server"
+                while read num uid gid mode file ; do
+                    echo "Installing ($mode,$uid,$gid) $file" ;
+                    filedir=`dirname /$basedir/$file`
+                    echo "$file" >> /conf/.config_files
+                    [ ! -d "$filedir" ] && mkdir -p "$filedir"
+                    [ -d "$filedir" ] && {
+                        cp -a /conf/content_${1}/$num /$basedir/$file ;
+                        chown ${uid}:${gid} /$basedir/$file ;
+                        chmod ${mode} /$basedir/$file ;
+                    }
+                done < /conf/config_files_${1}
+            fi
+            if [ -f /conf/config_links_${1} ] ; then
+                echo "Linking files config $1 from server"
+                while read num dest src ; do
+                    echo "Linking from $src to $dest "
+                    chroot /$basedir [ -L $src ] && rm -f /${basedir}/$src
+                    chroot /$basedir /bin/ln -sf $dest $src
+                    echo $src >> /conf/.config_files
+                done < /conf/config_links_${1}
+            fi
+            if [ -f /conf/config_${1}.rc ] ; then
+                echo "Installing rc.config for config $1 from server"
+                file="etc/rc.config"
+                echo "$file" >> /conf/.config_files
+                cp -a /conf/config_${1}.rc /$basedir/$file
+            fi
+            ret_val=0;
+        fi
     fi
 #start_shell
     return $ret_val;
@@ -102,15 +102,15 @@ function copy_config() {
 function get_conf_str() {
     num_retries=1
     while true ; do 
-	ret=`tell_mother_zmq -m $bserver -p 8005 -w $1 2>&1`  && {
-	    state=`echo $ret| cut -d " " -f 1`
-	    [ "$state" == "ok" ] && break
-	}
-	#time_wait=$(( 10 + $RANDOM / 5000))
-	time_wait=$(( 1 ))
-	echo >&2 "error ($ret), will sleep for $time_wait seconds"
-	num_retries=$(($num_retries + 1))
-	sleep $time_wait
+        ret=`tell_mother_zmq -m $bserver -p 8005 -w $1 2>&1`  && {
+            state=`echo $ret| cut -d " " -f 1`
+            [ "$state" == "ok" ] && break
+        }
+        #time_wait=$(( 10 + $RANDOM / 5000))
+        time_wait=$(( 1 ))
+        echo >&2 "error ($ret), will sleep for $time_wait seconds"
+        num_retries=$(($num_retries + 1))
+        sleep $time_wait
     done
     echo "$num_retries $ret"
 }
