@@ -24,21 +24,8 @@
 
 import sys
 import os
-import time
-import threading
-import stat
-import process_tools
-import datetime
-import logging_tools
-import pprint
-import server_command
-import gzip
-import hashlib
-import tempfile
 from lxml import etree
 from lxml.builder import E
-from initat.cluster.backbone.models import kernel, kernel_build, kernel_log, device, cluster_timezone
-from django.db.models import Q
 
 LICENSE_FILE="/etc/sysconfig/cluster/cluster_license"
 
