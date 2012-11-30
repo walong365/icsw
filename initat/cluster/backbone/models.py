@@ -21,6 +21,7 @@ import hashlib
 import base64
 import os
 from django.conf import settings
+from rest_framework import serializers
 
 def only_wf_perms(in_list):
     return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
@@ -2929,6 +2930,11 @@ class user(models.Model):
             self.first_name or "first",
             self.last_name or "last")
 
+class user_xml(serializers.ModelSerializer):
+    class Meta:
+        model = user
+        fields = ("idx", "login")
+        
 @receiver(signals.pre_save, sender=user)
 def user_pre_save(sender, **kwargs):
     if "instance" in kwargs:

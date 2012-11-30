@@ -219,6 +219,8 @@ INSTALLED_APPS = (
     "reversion",
     "south",
     "compressor",
+    # REST
+    "rest_framework",
     # cluster
 )
 
@@ -257,31 +259,12 @@ all_lics = get_all_licenses()
 CLUSTER_LICENSE = {}
 for cur_lic in all_lics:
     CLUSTER_LICENSE[cur_lic] = check_license(cur_lic)
-# A sample logging configuration. The only tangible logging
-# performed by this configuration is to send an email to
-# the site admins on every HTTP 500 error when DEBUG=False.
-# See http://docs.djangoproject.com/en/dev/topics/logging for
-# more details on how to customize your logging configuration.
-##LOGGING = {
-##    "version": 1,
-##    "disable_existing_loggers": False,
-##    "filters": {
-##        "require_debug_false": {
-##            "()": "django.utils.log.RequireDebugFalse"
-##        }
-##    },
-##    "handlers": {
-##        "mail_admins": {
-##            "level": "ERROR",
-##            "filters": ["require_debug_false"],
-##            "class": "django.utils.log.AdminEmailHandler"
-##        }
-##    },
-##    "loggers": {
-##        "django.request": {
-##            "handlers": ["mail_admins"],
-##            "level": "ERROR",
-##            "propagate": True,
-##        },
-##    }
-##}
+
+rest_renderers = [
+    "rest_framework.renderers.XMLRenderer",
+    "rest_framework.renderers.JSONRenderer"] + ["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []
+    
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': tuple(rest_renderers)
+}
+
