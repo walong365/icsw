@@ -47,6 +47,7 @@ try:
 except ImportError:
     VERSION_STRING = "?.?"
 from django.db.models import Q
+from django.contrib.auth.models import User, Group, Permission
 from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_service, mon_ext_host, mon_check_command, mon_check_command_type, mon_period, mon_contact, \
@@ -66,8 +67,6 @@ NAG_HOST_UNREACHABLE = 2
 # default port
 SERVER_COM_PORT = 8010
 TEMPLATE_NAME = "t"
-SQL_ACCESS = "cluster_full_access"
-
 
 IDOMOD_PROCESS_PROCESS_DATA           = 2 ** 0
 IDOMOD_PROCESS_TIMED_EVENT_DATA       = 2 ** 1
@@ -400,13 +399,13 @@ class main_config(object):
                 main_values.extend([
                     #("host_perfdata_command"   , "process-host-perfdata"),
                     #("service_perfdata_command", "process-service-perfdata"),
-                    ("service_perfdata_file", "/opt/pnp4icinga/var/service-perfdata"),
+                    ("service_perfdata_file", os.path.join(global_config["PNP_DIR"], "var/service-perfdata")),
                     ("service_perfdata_file_template", "DATATYPE::SERVICEPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tSERVICEDESC::$SERVICEDESC$\tSERVICEPERFDATA::$SERVICEPERFDATA$\tSERVICECHECKCOMMAND::$SERVICECHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$\tSERVICESTATE::$SERVICESTATE$\tSERVICESTATETYPE::$SERVICESTATETYPE$"),
                     ("service_perfdata_file_mode", "a"),
                     ("service_perfdata_file_processing_interval", "15"),
                     ("service_perfdata_file_processing_command", "process-service-perfdata-file"),
                     
-                    ("host_perfdata_file", "/opt/pnp4icinga/var/host-perfdata"),
+                    ("host_perfdata_file", os.path.join(global_config["PNP_DIR"], "var/host-perfdata")),
                     ("host_perfdata_file_template", "DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$"),
                     ("host_perfdata_file_mode", "a"),
                     ("host_perfdata_file_processing_interval", "15"),
@@ -890,12 +889,17 @@ class all_commands(host_type_config):
             check_coms += [
                 mon_check_command(
                     name="process-service-perfdata-file",
-                    command_line="/usr/bin/perl /opt/pnp4icinga/libexec/process_perfdata.pl --bulk=/opt/pnp4icinga/var/service-perfdata",
+                    command_line="/usr/bin/perl %s/lib/process_perfdata.pl --bulk=%s/var/service-perfdata" % (
+                        global_config["PNP_DIR"],
+                        global_config["PNP_DIR"]
+                        ),
                     description="Process service performance data",
                     ),
                 mon_check_command(
                     name="process-host-perfdata-file",
-                    command_line="/usr/bin/perl /opt/pnp4icinga/libexec/process_perfdata.pl  --bulk=/opt/pnp4icinga/var/host-perfdata",
+                    command_line="/usr/bin/perl %s/lib/process_perfdata.pl  --bulk=%s/var/host-perfdata" % (
+                        global_config["PNP_DIR"],
+                        global_config["PNP_DIR"]),
                     description="Process host performance data",
                     ),
             ]
@@ -1579,11 +1583,9 @@ class build_process(threading_tools.process_obj):
             return ("%%%ds" % (size)) % ("-")
     def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack):
         start_time = time.time()
-        #server_idxs = [global_config["SERVER_IDX"]]
-        # get additional idx if host is virtual server
-        #sql_info = config_tools.server_check(server_type="monitor_server")
-        #if sql_info.effective_device.pk and sql_info.effective_device.pk != global_config["SERVER_IDX"]:
-        #    server_idxs.append(sql_info.server_device_idx)
+        # get contacts with access to all devices
+        all_access = list(user.objects.filter(Q(login__in=[cur_u.username for cur_u in User.objects.all() if cur_u.has_perm("all_devices")])).values_list("login", flat=True))
+        self.log("users with access to all devices: %s" % (", ".join(sorted(all_access))))
         server_idxs = [cur_gc.monitor_server.pk]
         # get netip-idxs of own host
         my_net_idxs = set(netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True))
@@ -1755,9 +1757,15 @@ class build_process(threading_tools.process_obj):
                         # now we have the device- and service template
                         act_host = nag_config(host.name)
                         act_host["host_name"] = host.name
+                        # action url
+                        if global_config["ENABLE_PNP"]:
+                            act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (global_config["PNP_URL"])
+                        c_list = all_access
                         # set alias
                         if host.device_group.user_set.all():
-                            act_host["contacts"] = ",".join([cur_u.login for cur_u in host.device_group.user_set.all()])
+                            c_list.extend([cur_u.login for cur_u in host.device_group.user_set.all()])
+                        if c_list:
+                            act_host["contacts"] = ",".join(c_list)
                         act_host["alias"] = host.alias or host.name
                         act_host["address"] = relay_ip and "%s:%s" % (relay_ip, valid_ip) or valid_ip
                         # check for parents
@@ -2590,6 +2598,8 @@ def main():
         ("CHECK_HOST_ALIVE_PINGS"      , configfile.int_c_var(3)),
         ("CHECK_HOST_ALIVE_TIMEOUT"    , configfile.float_c_var(5.0)),
         ("ENABLE_PNP"                  , configfile.bool_c_var(False)),
+        ("PNP_DIR"                     , configfile.str_c_var("/opt/pnp4nagios")),
+        ("PNP_URL"                     , configfile.str_c_var("/pnp4nagios")),
         ("NONE_CONTACT_GROUP"          , configfile.str_c_var("none_group")),
         ("FROM_ADDR"                   , configfile.str_c_var(long_host_name)),
         ("MAIN_LOOP_TIMEOUT"           , configfile.int_c_var(30)),
