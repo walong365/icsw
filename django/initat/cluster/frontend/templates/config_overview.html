@@ -51,7 +51,7 @@ function get_expand_td(line_prefix, name, title) {
     return $("<td>").append(
         $("<div>").attr({
             "class"   : "ui-icon ui-icon-triangle-1-e leftfloat",
-            "id"      : line_prefix + "__expand_" + name,
+            "id"      : line_prefix + "__expand__" + name,
             "title"   : title === undefined ? "show " + name : title
         }).bind("click", function(event) {
             var cur_class = $(event.target).attr("class");
@@ -63,17 +63,17 @@ function get_expand_td(line_prefix, name, title) {
         })
     ).append(
         $("<span>").attr({
-            "id" : line_prefix + "__expand_" + name + "__info"
+            "id" : line_prefix + "__expand__" + name + "__info"
         }).text("???")
     );
 };
 
 function update_expand_info() {
-    $("table#config tr td div[id*='__expand_']").each(function() {
+    $("table#config tr td div[id*='__expand__']").each(function() {
         var cur_div = $(this);
         var div_id = cur_div.attr("id");
         if (!div_id.match(/__info$/)) {
-            var num_tr = $("table#config tr[id^='" + div_id.replace(/^(conf__\d+__)[a-z]+_(.*)$/, "$1$2") + "']").length - 1;
+            var num_tr = $("table#config tr[id^='" + div_id.replace(/^(conf__\d+__)[a-z]+__(.*)$/, "$1$2") + "']").length - 1;
             cur_div.next().text(num_tr);
         };
     });
@@ -84,7 +84,7 @@ function toggle_config_line(line_prefix, state, line_spec, conf_line) {
         var conf_line = $("table#config tr[id='" + line_prefix + "']");
     };
     var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
-    var cur_dg = conf_line.find("div[id$='__expand_" + line_spec + "']");
+    var cur_dg = conf_line.find("div[id$='__expand__" + line_spec + "']");
     if (state) {
         cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
         cur_dg.addClass("ui-icon-triangle-1-s");
@@ -156,7 +156,7 @@ function apply_filter() {
             };
         });
         // collapse all expanded trs
-        $("table#config").find("tr td div[id*='__expand_'].ui-icon-triangle-1-s").each(function() {
+        $("table#config").find("tr td div[id*='__expand__'].ui-icon-triangle-1-s").each(function() {
             var cur_tr = $(this).parents("tr:first");
             toggle_config_line(cur_tr.attr("id"), false, "var", cur_tr);
             toggle_config_line(cur_tr.attr("id"), false, "moncc", cur_tr);
@@ -427,6 +427,8 @@ function add_monitoring_line(c_el, line_prefix, n_com) {
     ).append(
         create_input_el(n_com, "description", line_prefix)
     ).append(
+        create_input_el(n_com, "enable_perfdata", line_prefix, {boolean : true})
+    ).append(
         create_input_el(n_com, "mon_check_command_type", line_prefix, {select_source : CONFIGS.find("mon_check_command_types mon_check_command_type")})
     ).append(
         create_input_el(n_com, "mon_service_templ", line_prefix, {select_source : CONFIGS.find("mon_service_templates mon_service_templ")})
@@ -437,8 +439,7 @@ function add_monitoring_line(c_el, line_prefix, n_com) {
             "value" : n_com ? "delete" : "create",
             "id"    : line_prefix
         }).bind("click", create_delete_monitoring_command)
-        )
-    );
+    ));
     return nc_tr;
 };
 
