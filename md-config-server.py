@@ -280,7 +280,7 @@ class main_config(object):
         sql_file = "/etc/sysconfig/cluster/mysql.cf"
         sql_suc, sql_dict = configfile.readconfig(sql_file, 1)
         resource_cfg = base_config("resource", is_host_file=True)
-        resource_cfg["$USER1$"] = "/opt/%s/libexec" % (global_config["MD_TYPE"])
+        resource_cfg["$USER1$"] = "/opt/%s/lib" % (global_config["MD_TYPE"])
         resource_cfg["$USER2$"] = "/opt/cluster/sbin/ccollclientzmq -t %d" % (global_config["CCOLLCLIENT_TIMEOUT"])
         resource_cfg["$USER3$"] = "/opt/cluster/sbin/csnmpclientzmq -t %d" % (global_config["CSNMPCLIENT_TIMEOUT"])
         NDOMOD_NAME, NDO2DB_NAME = ("ndomod",
@@ -910,11 +910,13 @@ class all_commands(host_type_config):
                     global_config["CHECK_HOST_ALIVE_PINGS"],
                     global_config["CHECK_HOST_ALIVE_TIMEOUT"]),
                 description="Check-host-alive command via ping",
+                enable_perfdata=global_config["ENABLE_PNP"],
                 ),
             mon_check_command(
                 name="check-host-alive-2",
                 command_line="$USER2$ -m $HOSTADDRESS$ version",
-                description="Check-host-alive command via collserver"
+                description="Check-host-alive command via collserver",
+                enable_perfdata=global_config["ENABLE_PNP"],
                 ),
             mon_check_command(
                 name="ochp-command",
@@ -942,7 +944,8 @@ class all_commands(host_type_config):
                                  ngc.description,
                                  ngc.device_id,
                                  special,
-                                 servicegroup_name=ngc.mon_check_command_type.name if ngc.mon_check_command_type_id else "other")
+                                 servicegroup_name=ngc.mon_check_command_type.name if ngc.mon_check_command_type_id else "other",
+                                 enable_perfdata=ngc.enable_perfdata)
             nag_conf = cc_s.get_nag_config()
             self.__obj_list.append(nag_conf)
             self.__dict[nag_conf["command_name"]] = cc_s
@@ -1167,6 +1170,7 @@ class check_command(object):
         self.device = device
         self.servicegroup_name = kwargs.get("servicegroup_name", "other")
         self.__descr = descr.replace(",", ".")
+        self.enable_perfdata = kwargs.get("enable_perfdata", False)
         self.__special = special
         self._generate_md_com_line()
     def get_num_args(self):
@@ -1759,7 +1763,9 @@ class build_process(threading_tools.process_obj):
                         act_host["host_name"] = host.name
                         # action url
                         if global_config["ENABLE_PNP"]:
-                            act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (global_config["PNP_URL"])
+                            act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
+                            if host.enable_perfdata:
+                                act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (global_config["PNP_URL"])
                         c_list = all_access
                         # set alias
                         if host.device_group.user_set.all():
@@ -1935,6 +1941,10 @@ class build_process(threading_tools.process_obj):
                                         if checks_are_active and not cur_gc.master:
                                             # trace
                                             act_serv["obsess_over_service"] = 1
+                                        if global_config["ENABLE_PNP"]:
+                                            act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
+                                            if host.enable_perfdata and s_check.enable_perfdata:
+                                                act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (global_config["PNP_URL"])
                                         act_serv["servicegroups"]         = s_check.servicegroup_name
                                         cur_gc["servicegroup"].add_host(host_name, act_serv["servicegroups"])
                                         act_serv["check_command"]         = "!".join([s_check["command_name"]] + s_check.correct_argument_list(sc, dev_variables))
