@@ -391,6 +391,8 @@ class device(models.Model):
     # link to monitor_server (or null for master)
     monitor_server = models.ForeignKey("device", null=True)
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks")
+    # performance data tracking
+    enable_perfdata = models.BooleanField(default=False)
     show_in_bootcontrol = models.BooleanField()
     # not so clever here, better in extra table, FIXME
     #cpu_info = models.TextField(blank=True, null=True)
@@ -441,6 +443,7 @@ class device(models.Model):
             monitor_checks="1" if self.monitor_checks else "0",
             mon_ext_host="%d" % (self.mon_ext_host_id or 0),
             curl=unicode(self.curl),
+            enable_perfdata="1" if self.enable_perfdata else "0",
         )
         if kwargs.get("add_title", False):
             r_xml.attrib["title"] = "%s (%s%s)" % (
@@ -1977,33 +1980,6 @@ class new_rrd_data(models.Model):
     class Meta:
         db_table = u'new_rrd_data'
 
-# now a manytomany in mon_contactgroup
-##class mon_ccgroup(models.Model):
-##    idx = models.AutoField(db_column="ng_ccgroup_idx", primary_key=True)
-##    mon_contact = models.ForeignKey("mon_contact")
-##    mon_contactgroup = models.ForeignKey("mon_contactgroup")
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'ng_ccgroup'
-
-# now a manytomany in mon_contactgroup
-##class mon_cgservicet(models.Model):
-##    idx = models.AutoField(db_column="ng_cgservicet_idx", primary_key=True)
-##    mon_contactgroup = models.ForeignKey("mon_contactgroup")
-##    mon_service_templ = models.ForeignKey("mon_service_templ")
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'ng_cgservicet'
-
-# now a manytomany in mon_contactgroup
-##class mon_device_contact(models.Model):
-##    idx = models.AutoField(db_column="ng_device_contact_idx", primary_key=True)
-##    device_group = models.ForeignKey("device_group")
-##    mon_contactgroup = models.ForeignKey("mon_contactgroup")
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'ng_device_contact'
-
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
@@ -2016,6 +1992,7 @@ class mon_check_command(models.Model):
     description = models.CharField(max_length=192, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    enable_perfdata = models.BooleanField(default=False)
     def get_xml(self):
         return E.mon_check_command(
             self.name,
@@ -2026,7 +2003,8 @@ class mon_check_command(models.Model):
             mon_service_templ="%d" % (self.mon_service_templ_id),
             name=self.name or "",
             command_line=self.command_line or "",
-            description=self.description or ""
+            description=self.description or "",
+            enable_perfdata="1" if self.enable_perfdata else "0",
         )
     class Meta:
         db_table = u'ng_check_command'
