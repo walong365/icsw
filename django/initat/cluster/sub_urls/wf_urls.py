@@ -122,11 +122,19 @@ monitoring_patterns = patterns(
     url("to_icinga$"           , "monitoring_views.call_icinga"      , name="call_icinga"      ),
 )
 
+from initat.cluster.frontend import user_views
+
 user_patterns = patterns(
     "initat.cluster.frontend",
-    url("overview/(?P<mode>.*)$"      , "user_views.overview"  , name="overview"),
-    url("sync$"                       , "user_views.sync_users", name="sync_users"),
+    url("overview/(?P<mode>.*)$"      , "user_views.overview"   , name="overview"),
+    url("sync$"                       , "user_views.sync_users" , name="sync_users"),
+    url("rest/user/$"                 , user_views.user_list.as_view()),
+    url("rest/user/(?P<pk>[0-9]+)/$"  , user_views.user_detail.as_view()),
 )
+
+from rest_framework.urlpatterns import format_suffix_patterns
+
+user_patterns = format_suffix_patterns(user_patterns)
 
 pack_patterns = patterns(
     "initat.cluster.frontend",
@@ -174,6 +182,8 @@ url_patterns = patterns(
         "document_root" : os.path.join(settings.FILE_ROOT, "frontend", "media")}),
     url(r"^%s/static/initat/core/(?P<path>.*)$" % (settings.REL_SITE_ROOT), "django.views.static.serve", {
         "document_root" : os.path.join(settings.FILE_ROOT, "..", "core")}),
+    url(r"^%s/static/rest_framework/(?P<path>.*)$" % (settings.REL_SITE_ROOT), "django.views.static.serve", {
+        "document_root" : "/opt/python-init/lib/python/site-packages/rest_framework/static/rest_framework"}),
     url(r"^%s/" % (settings.REL_SITE_ROOT)                                , include(my_url_patterns)),
     url(r"^$", "initat.cluster.frontend.session_views.redirect_to_main"),
 )
