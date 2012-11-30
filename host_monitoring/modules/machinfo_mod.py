@@ -1490,7 +1490,10 @@ class load_command(hm_classes.hm_command):
             ret_state = max(ret_state, limits.nag_STATE_WARNING if max_load >= cur_ns.warn else limits.nag_STATE_OK)
         if cur_ns.crit is not None:
             ret_state = max(ret_state, limits.nag_STATE_CRITICAL if max_load >= cur_ns.crit else limits.nag_STATE_OK)
-        return ret_state, "load (1/5/15): %.2f %.2f %.2f" % (load_1, load_5, load_15)
+        return ret_state, "load (1/5/15): %.2f %.2f %.2f | load1=%.2f load5=%.2f load15=%.2f" % (
+            load_1, load_5, load_15,
+            load_1, load_5, load_15
+        )
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
         load1  = float(result["load1"])
