@@ -48,9 +48,6 @@ import zmq
 import cluster_server
 from django.db.models import Q
 from host_monitoring import hm_classes
-from twisted.internet import reactor
-from twisted.python import log
-from twisted.web import server, resource, wsgi
 from django.core.handlers.wsgi import WSGIHandler
 from initat.cluster.backbone.models import device, device_variable, log_source
 from initat.cluster.backbone.middleware import show_database_calls
@@ -249,36 +246,6 @@ def process_request(glob_config, loc_config, logger, db_con, server_com, src_hos
     logger.info(type(ret_str) == type("") and ret_str or "%d: %s" % (ret_str.get_state(), ret_str.get_result()))
     return ret_str, commands_queued
 
-class http_wsgi(resource.Resource):
-    def __init__(self, wsgi_resource):
-        resource.Resource.__init__(self)
-        self.wsgi_resource = wsgi_resource
-    def getChild(self, path, request):
-        path0 = request.prepath.pop(0)
-        request.postpath.insert(0, path0)
-        print request
-        return self.wsgi_resource
-    
-class twisted_webserver(threading_tools.process_obj):
-    def process_init(self):
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        my_observer = logging_tools.twisted_log_observer(global_config["LOG_NAME"],
-                                                         global_config["LOG_DESTINATION"],
-                                                         zmq=True,
-                                                         context=self.zmq_context)
-        log.startLoggingWithObserver(my_observer, setStdout=False)
-        os.environ["DJANGO_SETTINGS_MODULE"] = "initat.cluster.settings"
-        self.twisted_observer = my_observer
-        wsgi_resource = wsgi.WSGIResource(reactor, reactor.getThreadPool(), WSGIHandler())
-        resource = http_wsgi(wsgi_resource)
-        my_site = server.Site(resource)
-        reactor.listenTCP(8099, my_site)
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_template.log(log_level, what)
-    def loop_post(self):
-        self.twisted_observer.close()
-        self.__log_template.close()
-    
 class bg_stuff(object):
     class Meta:
         min_time_between_runs = 30
@@ -1077,7 +1044,6 @@ class server_process(threading_tools.process_pool):
         if self.__run_command:
             self.register_timer(self._run_command, 3600, instant=True)
         else:
-            self.add_process(twisted_webserver("twisted", icmp=False), twisted=True, start=True)
             self._init_network_sockets()
             self.register_timer(self._update, 30, instant=True)
 ##        self.__ns = None
@@ -1154,12 +1120,12 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
         if not global_config["COMMAND"]:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info(self.__pid_name)
             msi_block.add_actual_pid(mult=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
             msi_block.start_command = "/etc/init.d/cluster-server start"
             msi_block.stop_command = "/etc/init.d/cluster-server force-stop"
             msi_block.kill_pids = True

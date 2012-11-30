@@ -50,36 +50,20 @@ class write_etc_hosts(cs_base_class.server_com):
         dev_r = cluster_location.device_recognition()
         server_idxs = list(set(server_idxs) | set(dev_r.device_dict.keys()))
         # get all peers to local machine and local netdevices
-        #print "srv", server_idxs
         my_idxs = netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True)
-        #print "net", my_idxs
         # ref_table
         ref_table = dict([((cur_entry.s_netdevice_id, cur_entry.d_netdevice_id), cur_entry.value) for cur_entry in hopcount.objects.filter(Q(s_netdevice__in=my_idxs) | Q(d_netdevice__in=my_idxs))])
-        #pprint.pprint(ref_table)
-        #self.dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE (%s)" % (" OR ".join(["n.device=%d" % (srv_idx) for srv_idx in server_idxs])))
-        #my_idxs = [db_rec["netdevice_idx"] for db_rec in self.dc.fetchall()]
         t_devs = net_ip.objects.filter(Q(netdevice__hopcount_s_netdevice__d_netdevice__in=my_idxs)).select_related("netdevice__device", "network__network_type").order_by(
             "netdevice__hopcount_s_netdevice__value", "netdevice__device__name", "ip"
         )
         all_hosts = list(t_devs)
-##        sql_str = "SELECT DISTINCT d.name, i.ip, i.alias, i.alias_excl, nw.network_idx, n.netdevice_idx, n.devname, nt.identifier, nw.name AS domain_name, nw.postfix, nw.short_names, h.value FROM " + \
-##                  "device d, netip i, netdevice n, network nw, network_type nt, hopcount h WHERE nt.network_type_idx=nw.network_type AND i.network=nw.network_idx AND n.device=d.device_idx AND " + \
-##                  "i.netdevice=n.netdevice_idx AND n.netdevice_idx=h.s_netdevice AND (%s) ORDER BY h.value, d.name, i.ip, nw.postfix" % (" OR ".join(["h.d_netdevice=%d" % (x) for x in my_idxs]))
-##        self.dc.execute(sql_str)
-##        all_hosts = [list(self.dc.fetchall())]
         # self-references
         my_devs = net_ip.objects.filter(Q(netdevice__device__in=server_idxs)).select_related("netdevice__device", "network__network_type").order_by(
             "netdevice__hopcount_s_netdevice__value", "netdevice__device__name", "ip"
         )
-##        sql_str = "SELECT DISTINCT d.name, i.ip, i.alias, i.alias_excl, nw.network_idx, n.netdevice_idx, n.devname, nt.identifier, nw.name AS domain_name, nw.postfix, nw.short_names, n.penalty AS value FROM " + \
-##                  "device d, netip i, netdevice n, network nw, network_type nt WHERE nt.network_type_idx=nw.network_type AND i.network=nw.network_idx AND n.device=d.device_idx AND i.netdevice=n.netdevice_idx AND " + \
-##                  "d.device_idx=%d ORDER BY d.name, i.ip, nw.postfix" % (self.server_idx)
-##        self.dc.execute(sql_str)
         all_hosts.extend(list(my_devs))
         # fetch key-information
         ssh_vars = device_variable.objects.filter(Q(name="ssh_host_rsa_key_pub")).select_related("device")
-        #sql_str = "SELECT DISTINCT d.name, dv.name AS dvname, dv.val_blob FROM device d LEFT JOIN device_variable dv ON dv.device=d.device_idx WHERE dv.name='ssh_host_rsa_key_pub'"
-        #self.dc.execute(sql_str)
         rsa_key_dict = {}
         for db_rec in ssh_vars:
             pass
