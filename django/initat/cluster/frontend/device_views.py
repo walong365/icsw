@@ -170,7 +170,7 @@ def get_group_tree(request):
         sel_list = _post.getlist("sel_list[]", [])
     else:
         sel_list = request.session.get("sel_list", [])
-    xml_resp = _get_group_tree(request, sel_list, ignore_md=ignore_md, ignore_cdg=ignore_cdg, with_variables=with_variables, permission_tree=permission_tree)
+    xml_resp = _get_group_tree(request, sel_list, ignore_meta_devices=ignore_md, ignore_cdg=ignore_cdg, with_variables=with_variables, permission_tree=permission_tree)
     extra_re = re.compile("^extra_t(\d+)$")
     for extra_key in [key for key in _post.keys() if extra_re.match(key)]:
         extra_name = _post[extra_key]

@@ -52,6 +52,7 @@ function load_devices(sel_list) {
                 });
                 draw_table();
                 // redraw options
+                redraw_options("h");
                 redraw_options("s");
                 redraw_options("t");
                 redraw_options("b");
@@ -160,6 +161,10 @@ function update_device_info(call_mother) {
                             var target_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_s']");
                             set_soft_control_option(cur_dev, target_tr);
                         };
+                        if (OPTION_DICT["h"]) {
+                            var target_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_h']");
+                            set_hard_control_option(cur_dev, target_tr);
+                        };
                         if (OPTION_DICT["b"]) {
                             var boot_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_b']");
                             set_boot_option(cur_dev, boot_tr);
@@ -227,8 +232,54 @@ function set_boot_option(dev_xml, boot_tr) {
     boot_dev_name.text(dev_xml.attr("boot_dev_name"));
 };
 
-function set_soft_control_option(dev_xml, part_tr) {
+function set_soft_control_option(dev_xml, scon_tr) {
     // nothing to do
+};
+
+function set_hard_control_option(dev_xml, hcon_tr) {
+    var dev_id = hcon_tr.attr("id");
+    var new_hcon = hcon_tr.find("span#" + dev_id + "__hard_control");
+    if (new_hcon.attr("disabled") == "disabled") {
+        if (dev_xml.find("cd_connection").length) {
+            new_hcon.text("");
+            dev_xml.find("cd_connection").each(function() {
+                var new_cd = $(this);
+                new_hcon.append(new_cd.attr("parent_name") + " : ");
+                var new_el = $("<select>").attr({
+                    "id" : dev_id + "__" + new_cd.attr("key")
+                }).bind("change", change_hard_control);
+                new_el.append($("<option>").attr(
+                    {"value" : "0"}).text("---"));
+                $.each(["on", "off", "cycle"], function(key, value) {
+                    var hd_opt = $("<option>").attr({
+                        "value" : value}).text(value);
+                    new_el.append(hd_opt);
+                });
+                new_hcon.append(new_el);    
+            });
+            new_hcon.removeAttr("disabled");
+        } else {
+            new_hcon.text("nothing found");
+        };
+    };
+};
+
+function change_hard_control(event) {
+    var cur_el = $(event.target);
+    $.ajax({
+        url     : "{% url boot:hard_control %}",
+        error   : handle_ajax_error,
+        data    : {
+            "cd_id" : cur_el.attr("id"),
+            "value" : cur_el.val()
+        },
+        error   : handle_ajax_error,
+        success : function(xml) {
+            if (parse_xml_response(xml)) {
+            }
+        }
+    });
+    cur_el.val("0");
 };
 
 function set_part_option(dev_xml, part_tr) {
@@ -465,6 +516,15 @@ function redraw_options(opt) {
                         "type"     : "text",
                         "id"       : dev_id + "__kernel_append",
                         "disabled" : "disabled"}));
+                    break;
+                case "h":
+                    first_td.attr({"colspan" : "5"});
+                    first_td.append("hard control:");
+                    var hard_con = $("<span>").attr({
+                        "id"       : dev_id + "__hard_control",
+                        "disabled" : "disabled"
+                    }).text("waiting");
+                    first_td.append(hard_con);
                     break;
                 case "s":
                     first_td.attr({"colspan" : "5"});

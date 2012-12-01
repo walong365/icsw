@@ -75,6 +75,7 @@ boot_patterns = patterns(
     url("^xml/set_part"        , "boot_views.set_partition"   , name="set_partition"),
     url("^xml/set_iamge"       , "boot_views.set_image"       , name="set_image"),
     url("^soft_control$"       , "boot_views.soft_control"    , name="soft_control"       ),
+    url("^hard_control$"       , "boot_views.hard_control"    , name="hard_control"       ),
 )
 
 device_patterns = patterns(

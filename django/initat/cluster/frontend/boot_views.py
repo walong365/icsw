@@ -11,7 +11,8 @@ from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from initat.cluster.backbone.models import device_type, device_group, device, \
-     device_class, kernel, image, partition_table, status, network, devicelog
+     device_class, kernel, image, partition_table, status, network, devicelog, \
+     cd_connection
 from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
@@ -29,7 +30,8 @@ def show_boot(request):
         request, "boot_overview.html",
     )()
 
-OPTION_LIST = [("s", "soft control", None),
+OPTION_LIST = [("h", "hard control", None),
+               ("s", "soft control", None),
                ("t", "target state", None),
                ("k", "kernel"      , kernel),
                ("i", "image"       , image),
@@ -225,6 +227,10 @@ def get_boot_info(request):
         #    dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
     # add option-dict related stuff
     #print etree.tostring(xml_resp, pretty_print=True)
+    if option_dict.get("h", False):
+        # device connections
+        for cur_cd in cd_connection.objects.filter(Q(child__in=dev_result)).select_related("child", "parent"):
+            dev_lut[cur_cd.child_id].find("connections").append(cur_cd.get_xml())
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
 
@@ -246,3 +252,27 @@ def soft_control(request):
         request.log("sent %s to %s" % (soft_state, unicode(cur_dev)), xml=True)
     return request.xml_response.create_response()
 
+@init_logging
+@login_required
+def hard_control(request):
+    _post = request.POST
+    cd_id, command = (_post["cd_id"],
+                      _post["value"])
+    cur_cd_con = cd_connection.objects.get(Q(pk=cd_id.split("__")[-1]))
+    target_dev = device.objects.select_related("child", "parent").get(Q(pk=cd_id.split("__")[1]))
+    request.log("got hc command '%s' for device '%s' (controling device: %s)" % (
+        command,
+        unicode(target_dev),
+        unicode(cur_cd_con.parent)))
+    srv_com = server_command.srv_command(command="hard_control")
+    srv_com["devices"] = srv_com.builder(
+        "devices",
+        srv_com.builder("device", command=command, cd_con="%d" % (cur_cd_con.pk)))
+    result = net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+    if not result:
+        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        request.log(result.xpath(None, ".//ns:result")[0].get("reply"),
+                    int(result.xpath(None, ".//ns:result")[0].get("state")),
+                    xml=True)
+    return request.xml_response.create_response()
