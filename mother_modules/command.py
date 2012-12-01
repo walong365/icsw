@@ -98,6 +98,7 @@ class hc_command(object):
                 self.log("com_str is '%s'" % (com_str))
                 simple_command(com_str,
                                short_info="True",
+                               done_func=self.hc_done,
                                log_com=self.log,
                                info="hard_control")
             else:
@@ -117,6 +118,13 @@ class hc_command(object):
             self.log("cannot handle curl_base '%s'" % (self.curl_base), logging_tools.LOG_LEVEL_CRITICAL)
             com_str = None
         return com_str
+    def hc_done(self, hc_sc):
+        cur_out = hc_sc.read()
+        self.log("hc_com finished with stat %d (%d bytes)" % (
+            hc_sc.result,
+            len(cur_out)))
+        for line_num, line in enumerate(cur_out.split("\n")):
+            self.log(" %3d %s" % (line_num + 1, line))
     def get_var(self, var_name, default_val=None):
         try:
             cur_var = self.cd_obj.parent.device_variable_set.get(Q(name=var_name))
