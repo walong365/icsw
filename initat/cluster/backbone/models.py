@@ -2930,10 +2930,13 @@ class user(models.Model):
             self.first_name or "first",
             self.last_name or "last")
 
-class user_xml(serializers.ModelSerializer):
+class user_serializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        print attrs
+        return attrs
     class Meta:
         model = user
-        fields = ("idx", "login")
+        fields = ("idx", "login", "uid", "group")
         
 @receiver(signals.pre_save, sender=user)
 def user_pre_save(sender, **kwargs):
@@ -2988,7 +2991,7 @@ def user_post_delete(sender, **kwargs):
 class group(models.Model):
     idx = models.AutoField(db_column="ggroup_idx", primary_key=True)
     active = models.BooleanField(default=True)
-    groupname = models.CharField(db_column="ggroupname", unique=True, max_length=48)
+    groupname = models.CharField(db_column="ggroupname", unique=True, max_length=48, blank=False)
     gid = models.IntegerField(unique=True)
     homestart = models.TextField(blank=True)
     scratchstart = models.TextField(blank=True)
@@ -3025,6 +3028,11 @@ class group(models.Model):
         return "%s (gid=%d)" % (
             self.groupname,
             self.gid)
+
+class group_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = group
+        fields = ("idx", "active", "gid")
 
 @receiver(signals.pre_save, sender=group)
 def group_pre_save(sender, **kwargs):
