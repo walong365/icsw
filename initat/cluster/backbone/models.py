@@ -2932,13 +2932,15 @@ class user(models.Model):
             self.first_name or "first",
             self.last_name or "last")
 
-class user_serializer(serializers.ModelSerializer):
-    def validate(self, attrs):
-        print attrs
-        return attrs
+class user_serializer(serializers.HyperlinkedModelSerializer):#ModelSerializer):
+    url = serializers.HyperlinkedIdentityField(format='api', view_name="rest:user_detail")
+    group = serializers.HyperlinkedRelatedField(view_name="rest:group_detail")
+    #def validate(self, attrs):
+    #    print attrs
+    #    return attrs
     class Meta:
         model = user
-        fields = ("idx", "login", "uid", "group")
+        fields = ("url", "login", "uid", "group")
         
 @receiver(signals.pre_save, sender=user)
 def user_pre_save(sender, **kwargs):
@@ -3031,10 +3033,11 @@ class group(models.Model):
             self.groupname,
             self.gid)
 
-class group_serializer(serializers.ModelSerializer):
+class group_serializer(serializers.HyperlinkedModelSerializer):#ModelSerializer):
+    url = serializers.HyperlinkedIdentityField(format='api', view_name="rest:group_detail")
     class Meta:
         model = group
-        fields = ("idx", "active", "gid")
+        fields = ("url", "groupname", "active", "gid")
 
 @receiver(signals.pre_save, sender=group)
 def group_pre_save(sender, **kwargs):
