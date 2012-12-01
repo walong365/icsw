@@ -412,6 +412,8 @@ class device(models.Model):
         r_xml = E.device(
             unicode(self),
             E.devicelogs(),
+            # all master connections
+            E.connections(),
             name=self.name,
             comment=self.comment,
             pk="%d" % (self.pk),
