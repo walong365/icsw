@@ -74,6 +74,14 @@
         </ul>
     </li>
     {% endif %}
+    {% if settings.CLUSTER_LICENSE.rest %}
+    <li>
+        <a>{% trans "REST" %}</a>
+        <ul>
+            <li><a href="{% url rest:root %}">{% trans "REST API rootnode" %}</a></li>
+        </ul>
+    </li>
+    {% endif %}
     <li>
         <a>{% trans "Session" %}</a>
         <ul>
