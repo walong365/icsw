@@ -175,6 +175,17 @@ def keyword_check(*kwarg_list):
             return func(*args, **kwargs)
         return _wrapped_view
     return decorator
+
+##class rest_logging(object):
+##    def __init__(self, func):
+##        self.__name__ = func.__name__
+##        self.__logger = logging_pool.get_logger("rest")
+##        self._func = func
+##    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+##        self.__logger.log(log_level, "[%s] %s" % (self.__name__, what))
+##    def as_view(self, *args, **kwargs):
+##        print args, kwargs
+##        return self._func.as_view(*args, **kwargs)
     
 class init_logging(object):
     def __init__(self, func):

@@ -15,7 +15,7 @@ from lxml.builder import E
 import process_tools
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, device_class, device_location, group, user, \
-     device_config, device_group, user_xml
+     device_config, device_group
 import server_command
 from django.contrib.auth.models import User, UserManager, Permission
 import net_tools
@@ -75,21 +75,4 @@ def sync_users(request):
         res_node = result.xpath(None, ".//ns:result")[0]
         request.log(res_node.attrib["reply"], int(res_node.attrib["state"]), xml=True)
     return request.xml_response.create_response()
-
-from rest_framework.renderers import XMLRenderer
-from rest_framework.parsers import XMLParser
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view, APIView
-from rest_framework.response import Response
-from django.http import Http404
-from rest_framework import mixins
-from rest_framework import generics
-
-class user_list(generics.ListCreateAPIView):
-    model = user
-    serializer_class = user_xml
-
-class user_detail(generics.RetrieveUpdateDestroyAPIView):
-    model = user
-    serializer_class = user_xml
 

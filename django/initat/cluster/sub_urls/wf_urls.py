@@ -3,6 +3,8 @@ from django.conf import settings
 import sys
 import os
 import process_tools
+from initat.cluster.frontend import rest_views
+from rest_framework.urlpatterns import format_suffix_patterns
 
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
@@ -122,19 +124,21 @@ monitoring_patterns = patterns(
     url("to_icinga$"           , "monitoring_views.call_icinga"      , name="call_icinga"      ),
 )
 
-from initat.cluster.frontend import user_views
-
 user_patterns = patterns(
     "initat.cluster.frontend",
     url("overview/(?P<mode>.*)$"      , "user_views.overview"   , name="overview"),
     url("sync$"                       , "user_views.sync_users" , name="sync_users"),
-    url("rest/user/$"                 , user_views.user_list.as_view()),
-    url("rest/user/(?P<pk>[0-9]+)/$"  , user_views.user_detail.as_view()),
 )
 
-from rest_framework.urlpatterns import format_suffix_patterns
+rest_patterns = patterns(
+    "initat.cluster.frontend",
+    url("^user/$"                 , rest_views.user_list.as_view()),
+    url("^user/(?P<pk>[0-9]+)/$"  , rest_views.user_detail.as_view()),
+    url("^group/$"                , rest_views.group_list.as_view()),
+    url("^group/(?P<pk>[0-9]+)/$" , rest_views.group_detail.as_view()),
+)
 
-user_patterns = format_suffix_patterns(user_patterns)
+rest_patterns = format_suffix_patterns(rest_patterns)
 
 pack_patterns = patterns(
     "initat.cluster.frontend",
@@ -174,6 +178,7 @@ my_url_patterns = patterns(
     url(r"^setup/"    , include(setup_patterns     , namespace="setup"   )),
     url(r"^user/"     , include(user_patterns      , namespace="user"    )),
     url(r"^pack/"     , include(pack_patterns      , namespace="pack"    )),
+    url(r"^rest/"     , include(rest_patterns      , namespace="rest"    )),
 )
 
 url_patterns = patterns(
