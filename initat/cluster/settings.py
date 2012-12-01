@@ -219,8 +219,6 @@ INSTALLED_APPS = (
     "reversion",
     "south",
     "compressor",
-    # REST
-    "rest_framework",
     # cluster
 )
 
@@ -260,18 +258,22 @@ CLUSTER_LICENSE = {}
 for cur_lic in all_lics:
     CLUSTER_LICENSE[cur_lic] = check_license(cur_lic)
 
-rest_renderers = [
-    "rest_framework.renderers.XMLRenderer",
-    "rest_framework.renderers.JSONRenderer"] + ["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []
-    
-REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES' : tuple(rest_renderers),
-    "DEFAULT_PARSER_CLASSES"   : (
-        "rest_framework.parsers.XMLParser",
-        "rest_framework.parsers.JSONParser",
-    ),
-    "DEFAULT_AUTHENTICATION_CLASSES" : (
-        "rest_framework.authentication.BasicAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
-    )
-}
+# add rest if enabled
+if CLUSTER_LICENSE["rest"]:
+    INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
+
+    rest_renderers = [
+        "rest_framework.renderers.XMLRenderer",
+        "rest_framework.renderers.JSONRenderer"] + ["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []
+        
+    REST_FRAMEWORK = {
+        'DEFAULT_RENDERER_CLASSES' : tuple(rest_renderers),
+        "DEFAULT_PARSER_CLASSES"   : (
+            "rest_framework.parsers.XMLParser",
+            "rest_framework.parsers.JSONParser",
+        ),
+        "DEFAULT_AUTHENTICATION_CLASSES" : (
+            "rest_framework.authentication.BasicAuthentication",
+            "rest_framework.authentication.SessionAuthentication",
+        )
+    }
