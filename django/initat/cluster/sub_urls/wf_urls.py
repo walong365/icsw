@@ -130,15 +130,16 @@ user_patterns = patterns(
     url("sync$"                       , "user_views.sync_users" , name="sync_users"),
 )
 
-rest_patterns = patterns(
-    "initat.cluster.frontend",
-    url("^user/$"                 , rest_views.user_list.as_view()),
-    url("^user/(?P<pk>[0-9]+)/$"  , rest_views.user_detail.as_view()),
-    url("^group/$"                , rest_views.group_list.as_view()),
-    url("^group/(?P<pk>[0-9]+)/$" , rest_views.group_detail.as_view()),
-)
-
-rest_patterns = format_suffix_patterns(rest_patterns)
+if settings.CLUSTER_LICENSE["rest"]:
+    rest_patterns = patterns(
+        "initat.cluster.frontend",
+        url("^user/$"                 , rest_views.user_list.as_view()),
+        url("^user/(?P<pk>[0-9]+)/$"  , rest_views.user_detail.as_view()),
+        url("^group/$"                , rest_views.group_list.as_view()),
+        url("^group/(?P<pk>[0-9]+)/$" , rest_views.group_detail.as_view()),
+    )
+    
+    rest_patterns = format_suffix_patterns(rest_patterns)
 
 pack_patterns = patterns(
     "initat.cluster.frontend",
@@ -178,8 +179,13 @@ my_url_patterns = patterns(
     url(r"^setup/"    , include(setup_patterns     , namespace="setup"   )),
     url(r"^user/"     , include(user_patterns      , namespace="user"    )),
     url(r"^pack/"     , include(pack_patterns      , namespace="pack"    )),
-    url(r"^rest/"     , include(rest_patterns      , namespace="rest"    )),
 )
+
+if settings.CLUSTER_LICENSE["rest"]:
+    my_url_patterns += patterns(
+        "",
+        url(r"^rest/"     , include(rest_patterns      , namespace="rest"    )),
+    )
 
 url_patterns = patterns(
     "",
