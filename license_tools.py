@@ -54,12 +54,12 @@ def get_all_licenses():
 
 def create_default_license():
     if not os.path.isfile(LICENSE_FILE):
-        lic_tree = E.cluster(
+        lic_xml = E.cluster(
             E.licenses(
                 *[E.license(name, short=name, info=info, enabled="no") for name, info in LICENSE_CAPS]
             )
         )
-        file(LICENSE_FILE, "w").write(etree.tostring(lic_tree, pretty_print=True))
+        file(LICENSE_FILE, "w").write(etree.tostring(lic_xml, pretty_print=True))
         os.chmod(LICENSE_FILE, 0o644)
         print("created license file '%s'" % (LICENSE_FILE))
     else:
@@ -74,7 +74,7 @@ def create_default_license():
                 )
         if changed:
             print("license file '%s' already present and updated" % (LICENSE_FILE))
-            file(LICENSE_FILE, "w").write(etree.tostring(lic_tree, pretty_print=True))
+            file(LICENSE_FILE, "w").write(etree.tostring(lic_xml, pretty_print=True))
             os.chmod(LICENSE_FILE, 0o644)
         else:
             print("license file '%s' already present" % (LICENSE_FILE))
