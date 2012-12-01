@@ -32,10 +32,121 @@ import time
 import subprocess
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, network
+from initat.cluster.backbone.models import device, network, cd_connection, device_variable, \
+     hopcount
 from mother_modules.command_tools import simple_command
 import re
+import server_command
+import process_tools
+from lxml import etree
 
+class snmp_settings(object):
+    def __init__(self, cdg):
+        self.__cdg = cdg
+        self.__snmp_vars = {}
+    def get_vars(self, cur_dev):
+        global_key, dg_key, dev_key = (
+            "GLOBAL",
+            "dg__%d" % (cur_dev.device_group_id),
+            "dev__%d" % (cur_dev.pk))
+        if global_key not in self.__snmp_vars:
+            # read global configs
+            self.__snmp_vars["GLOBAL"] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg) & Q(name__istartswith="snmp_"))])
+        if dg_key not in self.__snmp_vars:
+            # read device_group configs
+            self.__snmp_vars[dg_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device) & Q(name__istartswith="snmp_"))])
+        if dev_key not in self.__snmp_vars:
+            # read device configs
+            self.__snmp_vars[dev_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev) & Q(name__istartswith="snmp_"))])
+        ret_dict = {
+            "SNMP_VERSION"         : 2,
+            "SNMP_READ_COMMUNITY"  : "public",
+            "SNMP_WRITE_COMMUNITY" : "private"}
+        for s_key in ret_dict.iterkeys():
+            for key in [dev_key, dg_key, global_key]:
+                if s_key in self.__snmp_vars[key]:
+                    ret_dict[s_key] = self.__snmp_vars[key][s_key]
+                    break
+        return ret_dict
+
+class hc_command(object):
+    def __init__(self, xml_struct):
+        cur_cd = cd_connection.objects.select_related("child", "parent").prefetch_related("parent__device_variable_set").get(Q(pk=xml_struct.get("cd_con")))
+        self.cd_obj = cur_cd
+        command = xml_struct.get("command")
+        self.curl_base = self.cd_obj.parent.curl.split(":")[0]
+        self.log("got command %s for %s (curl is '%s', target: %s)" % (
+            command,
+            unicode(cur_cd.parent),
+            cur_cd.parent.curl,
+            unicode(cur_cd.child)))
+        var_list = {"ipmi" : [
+            ("IPMI_USERNAME", "admin"),
+            ("IPMI_PASSWORD", "admin")]}.get(self.curl_base, [])
+        var_dict = dict([(key, self.get_var(key, def_val)) for key, def_val in var_list])
+        for key in sorted(var_dict):
+            self.log(" var %-20s : %s" % (
+                key,
+                str(var_dict[key])))
+        com_ip = self.get_ip_to_host(self.cd_obj.parent)
+        if not com_ip:
+            self.log("cannot reach device %s" % (unicode(self.cd_obj.parent)),
+                     logging_tools.LOG_LEVEL_ERROR)
+        else:
+            com_str = self._build_com_str(var_dict, com_ip, command)
+            if com_str:
+                self.log("com_str is '%s'" % (com_str))
+                simple_command(com_str,
+                               short_info="True",
+                               log_com=self.log,
+                               info="hard_control")
+            else:
+                self.log("com_str is None, strange...", logging_tools.LOG_LEVEL_ERROR)
+    def _build_com_str(self, var_dict, com_ip, command):
+        if self.curl_base == "ipmi":
+            com_str = "%s -H %s -U %s -P %s chassis power %s" % (
+                process_tools.find_file("ipmitool"),
+                com_ip,
+                var_dict["IPMI_USERNAME"],
+                var_dict["IPMI_PASSWORD"],
+                {"on" : "on",
+                 "off" : "off",
+                 "cycle" : "cycle"}.get(command, "status")
+            )
+        else:
+            self.log("cannot handle curl_base '%s'" % (self.curl_base), logging_tools.LOG_LEVEL_CRITICAL)
+            com_str = None
+        return com_str
+    def get_var(self, var_name, default_val=None):
+        try:
+            cur_var = self.cd_obj.parent.device_variable_set.get(Q(name=var_name))
+        except device_variable.DoesNotExist:
+            try:
+                cur_var = self.cd_obj.parent.device_group.device.device_variable_set.get(Q(name=var_name))
+            except device_variable.DoesNotExist:
+                try:
+                    cur_var = device_variable.objects.get(Q(device__device_group__cluster_device_group=True) & Q(name=var_name))
+                except device_variable.DoesNotExist:
+                    var_value = default_val
+                    cur_var = None
+        if cur_var:
+            var_value = cur_var.value
+        return var_value
+    def get_ip_to_host(self, dev_struct):
+        hc_list = hopcount.objects.filter(Q(s_netdevice__device=dev_struct) & Q(d_netdevice__in=hc_command.process.sc.netdevice_idx_list)).order_by("value")
+        com_ip = None
+        if hc_list:
+            ip_list = hc_list[0].d_netdevice.net_ip_set.all().values_list("ip", flat=True)
+            if ip_list:
+                com_ip = ip_list[0]
+        return com_ip
+    @staticmethod
+    def setup(proc):
+        hc_command.process = proc
+        hc_command.process.log("init hc_command")
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        hc_command.process.log("[hc] %s" % (what), log_level)
+                 
 class external_command_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
@@ -55,10 +166,17 @@ class external_command_process(threading_tools.process_obj):
             self.__kernel_ip = None
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
         self.register_func("delay_command", self._delay_command)
+        self.register_func("hard_control", self._hard_control)
+        self.register_timer(self._check_commands, 10)
+        hc_command.setup(self)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
         self.__log_template.close()
+    def _check_commands(self):
+        simple_command.check()
+        if simple_command.idle():
+            self.set_loop_timer(1000)
     def _delay_command(self, *args, **kwargs):
         if simple_command.idle():
             self.register_timer(self._check_commands, 1)
@@ -78,6 +196,10 @@ class external_command_process(threading_tools.process_obj):
         simple_command.check()
         if simple_command.idle():
             self.unregister_timer(self._check_commands)
+    def _hard_control(self, zmq_id, in_com, *args, **kwargs):
+        in_com = server_command.srv_command(source=in_com)
+        for cur_dev in in_com.xpath(None, ".//ns:device"):
+            hc_command(cur_dev)
     def sc_finished(self, sc_com):
         self.log("simple command done")
         print sc_com.read()
