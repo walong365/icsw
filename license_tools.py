@@ -31,9 +31,10 @@ LICENSE_FILE="/etc/sysconfig/cluster/cluster_license"
 
 LICENSE_CAPS = [
     ("monitor", "Monitoring services"),
-    ("boot", "boot/config facility for nodes"),
+    ("boot"   , "boot/config facility for nodes"),
     ("package", "Package installation"),
-    ("rms", "Resource Management system"),
+    ("rms"    , "Resource Management system"),
+    ("rest"   , "REST server"),
 ]
 
 
@@ -62,7 +63,21 @@ def create_default_license():
         os.chmod(LICENSE_FILE, 0o644)
         print("created license file '%s'" % (LICENSE_FILE))
     else:
-        print("license file '%s' already present" % (LICENSE_FILE))
+        lic_xml = etree.fromstring(
+            open(LICENSE_FILE, "r").read())
+        changed = False
+        for lic_name, info in LICENSE_CAPS:
+            if not len(lic_xml.xpath(".//licenses/license[@short='%s']" % (lic_name))):
+                changed = True
+                lic_xml.find("licenses").append(
+                    E.license(lic_name, short=lic_name, info=info, enabled="no")
+                )
+        if changed:
+            print("license file '%s' already present and updated" % (LICENSE_FILE))
+            file(LICENSE_FILE, "w").write(etree.tostring(lic_tree, pretty_print=True))
+            os.chmod(LICENSE_FILE, 0o644)
+        else:
+            print("license file '%s' already present" % (LICENSE_FILE))
         
 if __name__ == "__main__":
     create_default_license()
