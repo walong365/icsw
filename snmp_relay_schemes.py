@@ -1315,8 +1315,9 @@ class temperature_probe_scheme(snmp_scheme):
             cur_state = limits.nag_STATE_WARNING
         else:
             cur_state = limits.nag_STATE_OK
-        return cur_state, "%s: temperature %.2f C" % (
+        return cur_state, "%s: temperature %.2f C | temp=%.2f" % (
             limits.get_state_str(cur_state),
+            cur_temp,
             cur_temp)
         
 if __name__ == "__main__":
