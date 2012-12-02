@@ -40,35 +40,6 @@ import server_command
 import process_tools
 from lxml import etree
 
-class snmp_settings(object):
-    def __init__(self, cdg):
-        self.__cdg = cdg
-        self.__snmp_vars = {}
-    def get_vars(self, cur_dev):
-        global_key, dg_key, dev_key = (
-            "GLOBAL",
-            "dg__%d" % (cur_dev.device_group_id),
-            "dev__%d" % (cur_dev.pk))
-        if global_key not in self.__snmp_vars:
-            # read global configs
-            self.__snmp_vars["GLOBAL"] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg) & Q(name__istartswith="snmp_"))])
-        if dg_key not in self.__snmp_vars:
-            # read device_group configs
-            self.__snmp_vars[dg_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device) & Q(name__istartswith="snmp_"))])
-        if dev_key not in self.__snmp_vars:
-            # read device configs
-            self.__snmp_vars[dev_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev) & Q(name__istartswith="snmp_"))])
-        ret_dict = {
-            "SNMP_VERSION"         : 2,
-            "SNMP_READ_COMMUNITY"  : "public",
-            "SNMP_WRITE_COMMUNITY" : "private"}
-        for s_key in ret_dict.iterkeys():
-            for key in [dev_key, dg_key, global_key]:
-                if s_key in self.__snmp_vars[key]:
-                    ret_dict[s_key] = self.__snmp_vars[key][s_key]
-                    break
-        return ret_dict
-
 class hc_command(object):
     def __init__(self, xml_struct):
         cur_cd = cd_connection.objects.select_related("child", "parent").prefetch_related("parent__device_variable_set").get(Q(pk=xml_struct.get("cd_con")))
