@@ -903,6 +903,7 @@ class all_commands(host_type_config):
                     description="Process host performance data",
                     ),
             ]
+        command_names = set()
         for ngc in check_coms + [
             mon_check_command(
                 name="check-host-alive",
@@ -936,8 +937,17 @@ class all_commands(host_type_config):
                 ngc_name, special = (re1m.group("comname"), re1m.group("special"))
             else:
                 ngc_name, special = (ngc.name, None)
-            if ngc.pk:
-                ngc_name = "%s_%d" % (ngc_name, ngc.pk)
+            name_postfix = 0
+            while True:
+                if ngc_name not in command_names:
+                    break
+                elif "%s_%d" % (ngc_name, name_postfix) in command_names:
+                    name_postfix += 1
+                else:
+                    break
+            if name_postfix:
+                ngc_name = "%s_%d" % (ngc_name, name_postfix)
+            command_names.add(ngc_name)
             cc_s = check_command(ngc_name, ngc.command_line,
                                  ngc.config.name if ngc.config_id else None,
                                  ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
@@ -1038,7 +1048,7 @@ class all_contact_groups(host_type_config):
                                   alias=cg_group.alias)
             self.__dict[cg_group.pk] = nag_conf
             for member in cg_group.members.all():
-                nag_conf["members"] = gen_conf["contact"][member.pk]["name"]
+                nag_conf["members"] = gen_conf["contact"][member.pk]["contact_name"]
         self.__obj_list = self.__dict.values()
     def has_key(self, key):
         return self.__dict.has_key(key)
