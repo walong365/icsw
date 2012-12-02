@@ -202,7 +202,7 @@ def get_boot_info(request):
             #print result.pretty_print()
             pass
     xml_resp = E.boot_info()
-    # lut for device_logs
+    # lut for connections
     dev_lut = {}
     for cur_dev in dev_result:
         # recv/reqstate are written by mother, here we 'salt' this information with the device XML (pingstate)
@@ -221,16 +221,32 @@ def get_boot_info(request):
             dev_info = cur_dev.get_xml(full=False)
         dev_lut[cur_dev.pk] = dev_info
         xml_resp.append(dev_info)
-    if option_dict.get("l", False):
-        dev_logs = devicelog.objects.filter(Q(device__in=dev_result)).select_related("log_source", "log_status", "user")
-        for dev_log in dev_logs:
-            dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
     # add option-dict related stuff
     #print etree.tostring(xml_resp, pretty_print=True)
     if option_dict.get("h", False):
         # device connections
         for cur_cd in cd_connection.objects.filter(Q(child__in=dev_result)).select_related("child", "parent"):
             dev_lut[cur_cd.child_id].find("connections").append(cur_cd.get_xml())
+    request.xml_response["response"] = xml_resp
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def get_devlog_info(request):
+    _post = request.POST
+    sel_list = _post.getlist("sel_list[]")
+    dev_result = device.objects.filter(Q(name__in=sel_list))
+    xml_resp = E.boot_info()
+    # lut for device_logs
+    dev_lut = {}
+    for cur_dev in dev_result:
+        # recv/reqstate are written by mother, here we 'salt' this information with the device XML (pingstate)
+        dev_info = cur_dev.get_xml(full=False)
+        dev_lut[cur_dev.pk] = dev_info
+        xml_resp.append(dev_info)
+    dev_logs = devicelog.objects.filter(Q(device__in=dev_result)).select_related("log_source", "log_status", "user")
+    for dev_log in dev_logs:
+        dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
 

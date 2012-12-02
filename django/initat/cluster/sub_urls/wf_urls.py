@@ -69,11 +69,12 @@ boot_patterns = patterns(
     url("^xml/get_options"     , "boot_views.get_html_options", name="get_html_options"),
     url("^xml/get_addon_info$" , "boot_views.get_addon_info"  , name="get_addon_info"),
     url("^xml/get_boot_info$"  , "boot_views.get_boot_info"   , name="get_boot_info"),
+    url("^xml/get_devlog_info$", "boot_views.get_devlog_info" , name="get_devlog_info"),
     url("^xml/set_kernel"      , "boot_views.set_kernel"      , name="set_kernel"),
     url("^xml/set_target_state", "boot_views.set_target_state", name="set_target_state"),
     url("^xml/set_boot"        , "boot_views.set_boot"        , name="set_boot"),
     url("^xml/set_part"        , "boot_views.set_partition"   , name="set_partition"),
-    url("^xml/set_iamge"       , "boot_views.set_image"       , name="set_image"),
+    url("^xml/set_image"       , "boot_views.set_image"       , name="set_image"),
     url("^soft_control$"       , "boot_views.soft_control"    , name="soft_control"       ),
     url("^hard_control$"       , "boot_views.hard_control"    , name="hard_control"       ),
 )

@@ -25,8 +25,9 @@ CUR_DEVICES = undefined;
 CUR_PURE_DEVICES = undefined;
 // current device XML
 DEVICES = undefined;
-// flag: pending update info
+// flag: pending update info (and for log)
 UPDATE_PENDING = 0;
+UPDATE_DEVLOG_PENDING = 0;
 // option dict
 OPTION_DICT = new Array();
 // XMLs for kernel, image, partition
@@ -119,6 +120,35 @@ function force_update_info(call_mother) {
     update_device_info(call_mother);
 };
 
+function update_devlog_info() {
+    if (CUR_PURE_DEVICES.length && ! UPDATE_DEVLOG_PENDING) {
+        UPDATE_DEVLOG_PENDING = 1;
+        var send_data = {
+            "sel_list" : CUR_PURE_DEVICES
+        };
+        $.ajax({
+            url     : "{% url boot:get_devlog_info %}",
+            error   : handle_ajax_error,
+            data    : send_data,
+            success : function(xml) {
+                if (parse_xml_response(xml)) {
+                    UPDATE_DEVLOG_PENDING = 0;
+                    var b_table = $("table#boot");
+                    $(xml).find("device").each(function() {
+                        var cur_dev = $(this);
+                        var dev_tr = b_table.find("tr#" + cur_dev.attr("key"));
+                        var dev_id = dev_tr.attr("id");
+                        if (OPTION_DICT["l"]) {
+                            var devlog_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_l']");
+                            set_devlog_option(cur_dev, devlog_tr);
+                        };
+                    });
+                };
+            }
+        });
+    };
+};
+
 function update_device_info(call_mother) {
     if (CUR_PURE_DEVICES.length && ! UPDATE_PENDING) {
         UPDATE_PENDING = 1;
@@ -176,10 +206,6 @@ function update_device_info(call_mother) {
                         if (OPTION_DICT["i"]) {
                             var img_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_i']");
                             set_img_option(cur_dev, img_tr);
-                        };
-                        if (OPTION_DICT["l"]) {
-                            var devlog_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_l']");
-                            set_devlog_option(cur_dev, devlog_tr);
                         };
                     });
                 } else {
@@ -473,6 +499,7 @@ function change_option(event) {
 function redraw_options(opt) {
     if (OPTION_DICT[opt]) {
         var get_info_from_server = true;
+        var get_devlog_info_from_server = false;
         // add lines
         $("table#boot").find("tr[btype='device']").each(function() {
             var dev_tr = $(this);
@@ -620,10 +647,13 @@ function redraw_options(opt) {
                         "disabled" : "disabled"
                     });
                     first_td.append(dev_sel);
+                    get_info_from_server = false;
+                    get_devlog_info_from_server = true;
                     break;
             };
         });
         if (get_info_from_server) force_update_info(false);
+        if (get_devlog_info_from_server) update_devlog_info(false);
     } else {
         // remove lines
         $("table#boot").find("tr[btype='opt_" + opt + "']").remove();
@@ -678,6 +708,9 @@ function add_config_handlers() {
     install_devsel_link(use_devs, true);
     $(document).everyTime(10000, "update_device_info", function(i) {
         update_device_info(true);
+    });
+    $(document).everyTime(10000, "update_devlog_info", function(i) {
+        update_devlog_info(true);
     });
 };
 
