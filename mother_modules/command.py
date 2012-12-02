@@ -115,7 +115,7 @@ class hc_command(object):
         hc_list = hopcount.objects.filter(Q(s_netdevice__device=dev_struct) & Q(d_netdevice__in=hc_command.process.sc.netdevice_idx_list)).order_by("value")
         com_ip = None
         if hc_list:
-            ip_list = hc_list[0].d_netdevice.net_ip_set.all().values_list("ip", flat=True)
+            ip_list = hc_list[0].s_netdevice.net_ip_set.all().values_list("ip", flat=True)
             if ip_list:
                 com_ip = ip_list[0]
         return com_ip
