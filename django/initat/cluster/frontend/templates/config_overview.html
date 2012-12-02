@@ -47,27 +47,6 @@ CODEMIRROR_DICT = new Object();
 CUR_DEVICES = undefined;
 TR_LUT = new Array();
 
-function get_expand_td(line_prefix, name, title) {
-    return $("<td>").append(
-        $("<div>").attr({
-            "class"   : "ui-icon ui-icon-triangle-1-e leftfloat",
-            "id"      : line_prefix + "__expand__" + name,
-            "title"   : title === undefined ? "show " + name : title
-        }).bind("click", function(event) {
-            var cur_class = $(event.target).attr("class");
-            if (cur_class.match(/-1-e$/)) {
-                toggle_config_line(line_prefix, true, name);
-            } else {
-                toggle_config_line(line_prefix, false, name);
-            }
-        })
-    ).append(
-        $("<span>").attr({
-            "id" : line_prefix + "__expand__" + name + "__info"
-        }).text("???")
-    );
-};
-
 function update_expand_info() {
     $("table#config tr td div[id*='__expand__']").each(function() {
         var cur_div = $(this);
@@ -84,10 +63,7 @@ function toggle_config_line(line_prefix, state, line_spec, conf_line) {
         var conf_line = $("table#config tr[id='" + line_prefix + "']");
     };
     var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
-    var cur_dg = conf_line.find("div[id$='__expand__" + line_spec + "']");
     if (state) {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-s");
         exp_line.show();
         exp_line.find("textarea").each(function() {
             var cur_id = $(this).attr("id");
@@ -96,8 +72,6 @@ function toggle_config_line(line_prefix, state, line_spec, conf_line) {
             };
         });
     } else {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-e");
         exp_line.hide();
     };
 };
@@ -510,9 +484,9 @@ function draw_config(c_el) {
         create_input_el(c_el, "config_type", line_prefix, {label : "Type" , select_source : CONFIGS.find("config_types config_type")})
     ));
     if (c_el) {
-        c_line.append(get_expand_td(line_prefix, "var"));
-        c_line.append(get_expand_td(line_prefix, "moncc"));
-        c_line.append(get_expand_td(line_prefix, "cscript"));
+        c_line.append(get_expand_td(line_prefix, "var", undefined, toggle_config_line));
+        c_line.append(get_expand_td(line_prefix, "moncc", undefined, toggle_config_line));
+        c_line.append(get_expand_td(line_prefix, "cscript", undefined, toggle_config_line));
     } else {
         c_line.append($("<td>").attr({"colspan" : "3"}));
     };

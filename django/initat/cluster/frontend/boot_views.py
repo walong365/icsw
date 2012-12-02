@@ -223,8 +223,8 @@ def get_boot_info(request):
         xml_resp.append(dev_info)
     if option_dict.get("l", False):
         dev_logs = devicelog.objects.filter(Q(device__in=dev_result)).select_related("log_source", "log_status", "user")
-        #for dev_log in dev_logs:
-        #    dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
+        for dev_log in dev_logs:
+            dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
     # add option-dict related stuff
     #print etree.tostring(xml_resp, pretty_print=True)
     if option_dict.get("h", False):

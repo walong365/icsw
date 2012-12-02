@@ -603,6 +603,41 @@ function sync_select_from_xml(cur_el, cur_di) {
     });
 };
 
+// get expansion list
+function get_expand_td(line_prefix, name, title, cb_func) {
+    return exp_td = $("<td>").append(
+        $("<div>").attr({
+            "class"   : "ui-icon ui-icon-triangle-1-e leftfloat",
+            "id"      : line_prefix + "__expand__" + name,
+            "title"   : title === undefined ? "show " + name : title
+        })
+    ).append(
+        $("<span>").attr({
+            "id"    : line_prefix + "__expand__" + name + "__info",
+            "title" : title === undefined ? "show " + name : title
+        }).text(name)
+    ).bind("click", function(event) { toggle_config_line_ev(event, cb_func) ; }).mouseover(function () { $(this).addClass("highlight"); }).mouseout(function() { $(this).removeClass("highlight"); });
+};
+
+function toggle_config_line_ev(event, cb_func) {
+    // get div-element
+    var cur_el = $(event.target);
+    if (cur_el.prop("tagName") != "TD") cur_el = cur_el.parent("td");
+    cur_el = cur_el.children("div");
+    var cur_class = cur_el.attr("class");
+    var name = cur_el.attr("id").split("__").pop();
+    var line_prefix = /^(.*)__expand__.*$/.exec(cur_el.attr("id"))[1];
+    if (cur_class.match(/-1-e/)) {
+        cur_el.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
+        cur_el.addClass("ui-icon-triangle-1-s");
+        cb_func(line_prefix, true, name);
+    } else {
+        cur_el.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
+        cur_el.addClass("ui-icon-triangle-1-e");
+        cb_func(line_prefix, false, name);
+    }
+};
+
 function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
     var dummy_div = $("<div>");
     kwargs = kwargs || {};

@@ -77,34 +77,12 @@ function restore_expansion(exp_list) {
     });
 };
 
-function get_expand_td(line_prefix, name, title) {
-    return $("<td>").append(
-        $("<span>").attr({
-            "class"   : "ui-icon ui-icon-triangle-1-e",
-            "id"      : line_prefix + "__expand__" + name,
-            "title"   : title === undefined ? "show " + name : title
-        }).bind("click", function(event) {
-            var cur_class = $(event.target).attr("class");
-            if (cur_class.match(/-1-e$/)) {
-                toggle_config_line(line_prefix, true, name);
-            } else {
-                toggle_config_line(line_prefix, false, name);
-            }
-        })
-    );
-};
-
 function toggle_config_line(line_prefix, state, line_spec) {
     var conf_line = $("table#config tr[id='" + line_prefix + "']");
     var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
-    var cur_dg = conf_line.find("span[id$='__expand__" + line_spec + "']");
     if (state) {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-s");
         exp_line.show();
     } else {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-e");
         exp_line.hide();
     };
 };
@@ -117,7 +95,7 @@ function draw_device(d_el) {
         "id"    : line_prefix
     });
     var is_meta = d_el.attr("meta_device") == "1";
-    new_tr.append(get_expand_td(line_prefix, "config", "config"));
+    new_tr.append(get_expand_td(line_prefix, "config", "config", toggle_config_line));
     new_tr.append($("<th>").attr({
         "class"   : "left",
         "colspan" : "8"

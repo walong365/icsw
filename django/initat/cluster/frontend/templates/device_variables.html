@@ -15,27 +15,6 @@
 // selected devices
 CUR_DEVICES = undefined;
 
-function get_expand_td(line_prefix, name, title) {
-    return $("<td>").append(
-        $("<div>").css({"float" : "left"}).attr({
-            "class"   : "ui-icon ui-icon-triangle-1-e",
-            "id"      : line_prefix + "__expand__" + name,
-            "title"   : title === undefined ? "show " + name : title
-        }).bind("click", function(event) {
-            var cur_class = $(event.target).attr("class");
-            if (cur_class.match(/-1-e$/)) {
-                toggle_variable_line(line_prefix, true, name);
-            } else {
-                toggle_variable_line(line_prefix, false, name);
-            }
-        })
-    ).append(
-        $("<span>").attr({
-            "id" : line_prefix + "__expand__" + name + "__info"
-        }).text(title)
-    );
-};
-
 function update_expand_info() {
     $("table#variables tr td div[id*='__expand__']").each(function() {
         var cur_span = $(this);
@@ -166,7 +145,7 @@ function draw_device(d_el) {
         "id"    : line_prefix
     });
     var is_meta = d_el.attr("meta_device") == "1";
-    new_tr.append(get_expand_td(line_prefix, "dv", "variable"));
+    new_tr.append(get_expand_td(line_prefix, "dv", "variable", toggle_variable_line));
     new_tr.append($("<th>").attr({
         "colspan" : "2",
         "class"   : "left"

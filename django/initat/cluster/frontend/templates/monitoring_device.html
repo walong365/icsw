@@ -67,23 +67,6 @@ function load_devices(sel_list) {
     });
 };
 
-function get_expand_td(line_prefix, name, title) {
-    return $("<td>").append(
-        $("<span>").attr({
-            "class"   : "ui-icon ui-icon-triangle-1-e",
-            "id"      : line_prefix + "__expand_" + name,
-            "title"   : title === undefined ? "show " + name : title
-        }).bind("click", function(event) {
-            var cur_class = $(event.target).attr("class");
-            if (cur_class.match(/-1-e$/)) {
-                toggle_config_line(line_prefix, true, name);
-            } else {
-                toggle_config_line(line_prefix, false, name);
-            }
-        })
-    );
-};
-
 function toggle_config_line(line_prefix, state, line_spec) {
     var conf_line = $("table#config tr[id='" + line_prefix + "']");
     var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
