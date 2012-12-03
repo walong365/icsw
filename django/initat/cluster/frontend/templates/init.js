@@ -35,6 +35,16 @@ $.ajaxSetup({
     }
 });
 
+function draw_ds_tables(t_div, master_array) {
+    t_div.children().remove();
+    for (var key in master_array) {
+        t_div.append(master_array[key].draw_table());
+    };
+    t_div.accordion({
+        heightStyle : "content",
+        collapsible : true
+    });
+};
 
 function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array, kwargs) {
     this.name = name;
@@ -56,15 +66,19 @@ function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array,
     this.clean = function() {
         this.drawn = false;
         this.table_div = undefined;
+        this.info_h3 = undefined;
     };
     function draw_table(master_xml) {
         this.master_xml = master_xml || MASTER_XML;
         if (this.table_div) {
             var table_div = this.table_div;
+            var info_h3 = this.info_h3;
         } else {
-            var table_div = $("<div>").attr({"id" : this.postfix});
-            table_div.append($("<h3>").attr({"id" : this.postfix}));
-            table_div.append($("<table>").attr({"id" : this.postfix}));
+            var table_div = $("<div>").attr({
+                "id" : this.postfix
+            });
+            var info_h3 = $("<h3>").attr({"id" : this.postfix});
+            table_div.append($("<table>").attr({"id" : this.postfix}).addClass("style2"));
         };
         var draw = true;
         var cur_ds = this;
@@ -85,7 +99,6 @@ function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array,
             };
         };
         var p_table = table_div.find("table");
-        var info_h3 = table_div.find("h3#" + this.postfix);
         if (draw) {
             if (cur_ds.drawn) {
                 p_table.find("tr[id]").each(function() {
@@ -120,10 +133,13 @@ function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array,
             };
             info_h3.text("parent objects missing for " + cur_ds.name + ": " + missing_objects.join(", "));
         };
-        table_div.append(p_table);
         this.drawn = draw;
-        this.table_div = table_div;
-        return table_div;
+        if (!this.table_div) {
+            this.table_div = table_div;
+            this.info_h3 = info_h3;
+            var dummy_div = $("<div>").append(info_h3).append(table_div);
+            return dummy_div.children();
+        };
     };
     this.draw_table = draw_table;
 };

@@ -134,7 +134,6 @@ function sidebar_handler() {
         checkbox   : true,
         onDblClick : function(dtnode, event) {
             if (!ADS_RUNNING) {
-                console.log("dbl");
                 if (! DYN_DTS_LOCKCOUNT) {
                     DBL_HANDLING = true;
                     dtnode.toggleSelect();
@@ -152,7 +151,6 @@ function sidebar_handler() {
         },
         onSelect : function(flag, dtnode) {
             if (!ADS_RUNNING && !DBL_HANDLING) {
-                console.log("single");
                 if (! dtnode.isExpanded()) {
                     dtnode.expand(true);
                 };

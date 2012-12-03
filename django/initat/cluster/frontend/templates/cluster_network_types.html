@@ -50,11 +50,7 @@ function load_nwts() {
 }
 
 function draw_tables() {
-    var t_div = $("div#nwt_tables");
-    t_div.children().remove();
-    for (var key in master_array) {
-        t_div.append(master_array[key].draw_table());
-    };
+    draw_ds_tables($("div#nwt_tables"), master_array);
 };
 
 function add_config_handlers() {

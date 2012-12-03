@@ -75,11 +75,7 @@ var master_array = {
 };
 
 function draw_tables() {
-    var t_div = $("div#ug_tables");
-    t_div.children().remove();
-    for (var key in master_array) {
-        t_div.append(master_array[key].draw_table());
-    };
+    draw_ds_tables($("div#ug_tables"), master_array);
 };
 
 function load_users_groups() {
