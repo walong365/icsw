@@ -408,6 +408,13 @@ class device(models.Model):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
         return devicelog.new_log(self, log_src, log_stat, text, **kwargs)
+    def get_simple_xml(self):
+        return E.device(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="dev__%d" % (self.pk),
+            name=self.name
+        )
     def get_xml(self, full=True, **kwargs):
         r_xml = E.device(
             unicode(self),
@@ -447,6 +454,8 @@ class device(models.Model):
             mon_ext_host="%d" % (self.mon_ext_host_id or 0),
             curl=unicode(self.curl),
             enable_perfdata="1" if self.enable_perfdata else "0",
+            devs_mon_host_cluster="::".join(["%d" % (cur_mhc.pk) for cur_mhc in self.devs_mon_host_cluster.all()]),
+            devs_mon_service_cluster="::".join(["%d" % (cur_mhc.pk) for cur_mhc in self.devs_mon_service_cluster.all()]),
         )
         if kwargs.get("add_title", False):
             r_xml.attrib["title"] = "%s (%s%s)" % (
@@ -1983,6 +1992,80 @@ class new_rrd_data(models.Model):
     class Meta:
         db_table = u'new_rrd_data'
 
+class mon_host_cluster(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32, blank=False, null=False, unique=True)
+    description = models.CharField(max_length=64, default="")
+    main_device = models.ForeignKey("device", related_name="main_mon_host_cluster")
+    mon_service_templ = models.ForeignKey("mon_service_templ")
+    devices = models.ManyToManyField(device, related_name="devs_mon_host_cluster")
+    warn_value = models.IntegerField(default=0)
+    error_value = models.IntegerField(default=1)
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.mon_host_cluster(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="monhc__%d" % (self.pk),
+            name=self.name,
+            main_device="%d" % (self.main_device_id),
+            mon_service_templ="%d" % (self.mon_service_templ_id),
+            devices="::".join(["%d" %  (cur_pk) for cur_pk in self.devices.all().values_list("pk", flat=True)]),
+            warn_value="%d" % (self.warn_value),
+            error_value="%d" % (self.error_value),
+            description=self.description,
+        )
+    def __unicode__(self):
+        return self.name
+
+@receiver(signals.pre_save, sender=mon_host_cluster)
+def mon_host_cluster_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "name")
+        for attr_name, min_val, max_val in [
+            ("warn_value", 0, 128),
+            ("error_value"   , 0, 128)]:
+            _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+            
+class mon_service_cluster(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32, blank=False, null=False, unique=True)
+    description = models.CharField(max_length=64, default="")
+    main_device = models.ForeignKey("device", related_name="main_mon_service_cluster")
+    mon_service_templ = models.ForeignKey("mon_service_templ")
+    devices = models.ManyToManyField(device, related_name="devs_mon_service_cluster")
+    mon_check_command = models.ForeignKey("mon_check_command")
+    warn_value = models.IntegerField(default=0)
+    error_value = models.IntegerField(default=1)
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.mon_service_cluster(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="monsc__%d" % (self.pk),
+            name=self.name,
+            main_device="%d" % (self.main_device_id),
+            mon_service_templ="%d" % (self.mon_service_templ_id),
+            mon_check_command="%d" % (self.mon_check_command_id),
+            devices="::".join(["%d" %  (cur_pk) for cur_pk in self.devices.all().values_list("pk", flat=True)]),
+            warn_value="%d" % (self.warn_value),
+            error_value="%d" % (self.error_value),
+            description=self.description,
+        )
+    def __unicode__(self):
+        return self.name
+
+@receiver(signals.pre_save, sender=mon_service_cluster)
+def mon_service_cluster_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "name")
+        for attr_name, min_val, max_val in [
+            ("warn_value", 0, 128),
+            ("error_value"   , 0, 128)]:
+            _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
@@ -2091,8 +2174,7 @@ class mon_contactgroup(models.Model):
 def mon_contactgroup_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        if not cur_inst.name.strip():
-            raise ValidationError("name is empty")
+        _check_empty_string(cur_inst, "name")
 
 class mon_device_templ(models.Model):
     idx = models.AutoField(db_column="ng_device_templ_idx", primary_key=True)
