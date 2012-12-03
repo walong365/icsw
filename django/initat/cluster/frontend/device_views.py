@@ -65,6 +65,7 @@ def clear_selection(request):
 @init_logging
 def add_selection(request):
     _post = request.POST
+    dbl = True if int(_post["double"]) else False
     if "key" in _post:
         # single set / delete
         add_flag, add_sel_list, cur_list = (
@@ -83,7 +84,7 @@ def add_selection(request):
             cur_list.append(add_sel)
         elif not add_flag and add_sel in cur_list:
             cur_list.remove(add_sel)
-        if add_sel.startswith("devg__"):
+        if add_sel.startswith("devg__") and not dbl:
             # emulate toggle of device_group
             request.log("toggle selection of device_group %d" % (int(add_sel.split("__")[1])))
             toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(Q(device_group=add_sel.split("__")[1])).values_list("pk", flat=True)]
