@@ -134,4 +134,4 @@ def rebuild_config(request):
 @login_required
 @init_logging
 def call_icinga(request):
-    return HttpResponseRedirect("http://localhost:80/icinga")
+    return HttpResponseRedirect("http://%s/icinga" % (request.META["HTTP_HOST"]))
