@@ -40,19 +40,19 @@ import cluster_location
 import server_command
 import threading_tools
 import config_tools
-import crypt
+import codecs
 from initat.md_config_server import special_commands
 try:
     from md_config_server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
 from django.db.models import Q
-from django.contrib.auth.models import User, Group, Permission
+from django.contrib.auth.models import User
 from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_service, mon_ext_host, mon_check_command, mon_check_command_type, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, hopcount, \
-     user
+     user, mon_host_cluster, mon_service_cluster
 from django.conf import settings
 import base64
 import uuid_tools
@@ -415,11 +415,11 @@ class main_config(object):
                     ("host_perfdata_file_template", "DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$"),
                     ("host_perfdata_file_mode", "a"),
                     ("host_perfdata_file_processing_interval", "15"),
-                    ("host_perfdata_file_processing_command", "process-host-perfdata-file"),
+                    ("host_perfdata_file_processing_command" , "process-host-perfdata-file"),
                 ])
             if global_config["ENABLE_NDO"]:
                 if global_config["MD_TYPE"] == "nagios":
-                    main_values.append(("*broker_module" , "%s/ndomod-%dx.o config_file=%s/%s.cfg" % (
+                    main_values.append(("*broker_module", "%s/ndomod-%dx.o config_file=%s/%s.cfg" % (
                         self.__r_dir_dict["bin"],
                         global_config["MD_VERSION"],
                         self.__r_dir_dict["etc"],
@@ -427,13 +427,13 @@ class main_config(object):
                 else:
                     if os.path.exists(os.path.join(self.__r_dir_dict["lib64"], "idomod.so")):
                         main_values.append(
-                            ("*broker_module" , "%s/idomod.so config_file=%s/%s.cfg" % (
+                            ("*broker_module", "%s/idomod.so config_file=%s/%s.cfg" % (
                                 self.__r_dir_dict["lib64"],
                                 self.__r_dir_dict["etc"],
                                 NDOMOD_NAME)))
                     else:
                         main_values.append(
-                            ("*broker_module" , "%s/idomod.so config_file=%s/%s.cfg" % (
+                            ("*broker_module", "%s/idomod.so config_file=%s/%s.cfg" % (
                                 self.__r_dir_dict["lib"],
                                 self.__r_dir_dict["etc"],
                                 NDOMOD_NAME)))
@@ -473,7 +473,8 @@ class main_config(object):
         def_user = "%sadmin" % (global_config["MD_TYPE"])
         cgi_config = base_config("cgi",
                                  is_host_file=True,
-                                 values=[("main_config_file"         , "%s/%s.cfg" % (self.__r_dir_dict["etc"], global_config["MAIN_CONFIG_NAME"])),
+                                 values=[("main_config_file"         , "%s/%s.cfg" % (
+                                     self.__r_dir_dict["etc"], global_config["MAIN_CONFIG_NAME"])),
                                          ("physical_html_path"       , "%s" % (self.__r_dir_dict["share"])),
                                          ("url_html_path"            , "/%s" % (global_config["MD_TYPE"])),
                                          ("show_context_help"        , 0),
@@ -547,7 +548,7 @@ class main_config(object):
                 stuff.create_content()
                 if stuff.act_content != stuff.old_content:
                     try:
-                        open(act_cfg_name, "w").write("\n".join(stuff.act_content + [""]))
+                        codecs.open(act_cfg_name, "w", "Utf-8").write(u"\n".join(stuff.act_content + [u""]))
                     except IOError:
                         self.log("Error writing content of %s to %s: %s" % (key, act_cfg_name, process_tools.get_except_info()),
                                  logging_tools.LOG_LEVEL_CRITICAL)
@@ -944,6 +945,16 @@ class all_commands(host_type_config):
                 command_line="$USER2$ -m DIRECT ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"%s\" " % ("$SERVICEOUTPUT$|$SERVICEPERFDATA$" if global_config["ENABLE_PNP"] else "$SERVICEOUTPUT$"),
                 description="OCSP Command"
                 ),
+            mon_check_command(
+                name="check_service_cluster",
+                command_line="$USER1$/check_cluster --service -l $ARG1$ -w $ARG2$ -c $ARG3$ -d $ARG4$",
+                description="Check Service Cluster"
+                ),
+            mon_check_command(
+                name="check_host_cluster",
+                command_line="$USER1$/check_cluster --host -l $ARG1$ -w $ARG2$ -c $ARG3$ -d $ARG4$",
+                description="Check Host Cluster"
+                ),
             ]:
             #pprint.pprint(ngc)
             # build / extract ngc_name
@@ -978,6 +989,8 @@ class all_commands(host_type_config):
         return self.__obj_list
     def values(self):
         return self.__dict.values()
+    def __getitem__(self, key):
+        return self.__dict[key]
     
 class all_contacts(host_type_config):
     def __init__(self, gen_conf, build_proc):
@@ -1179,6 +1192,8 @@ class all_services(host_type_config):
         return self.__obj_list
     def append(self, value):
         self.__obj_list.append(value)
+    def extend(self, value):
+        self.__obj_list.extend(value)
     def values(self):
         return self.__obj_list
     def remove_host(self, host_obj):
@@ -1751,9 +1766,9 @@ class build_process(threading_tools.process_obj):
                 #print mni_str_s, mni_str_d, dev_str_s, dev_str_d
                 # get correct netdevice for host
                 if host.name == global_config["SERVER_SHORT_NAME"]:
-                    valid_ips, traces, relay_ip = (["127.0.0.1"], [host_pk], "")
+                    valid_ips, traces = (["127.0.0.1"], [host_pk])
                 else:
-                    valid_ips, traces, relay_ip = self._get_target_ip_info(my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts)
+                    valid_ips, traces = self._get_target_ip_info(my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts)
                     if not valid_ips:
                         num_error += 1
                 act_def_dev = dev_templates[host.mon_device_templ_id or 0]
@@ -1764,8 +1779,6 @@ class build_process(threading_tools.process_obj):
                         host.name,
                         ", ".join(valid_ips),
                         valid_ip))
-                    if relay_ip:
-                        self.mach_log(" - contact via relay-ip %s" % (relay_ip))
                     if not serv_templates.has_key(act_def_dev.mon_service_templ_id):
                         self.log("Default service_template not found in service_templates", logging_tools.LOG_LEVEL_WARN)
                     else:
@@ -1798,7 +1811,7 @@ class build_process(threading_tools.process_obj):
                         if c_list:
                             act_host["contacts"] = ",".join(c_list)
                         act_host["alias"] = host.alias or host.name
-                        act_host["address"] = relay_ip and "%s:%s" % (relay_ip, valid_ip) or valid_ip
+                        act_host["address"] = valid_ip
                         # check for parents
                         parents = []
                         # rule 1: APC Masterswitches have their bootserver set as parent
@@ -1885,7 +1898,7 @@ class build_process(threading_tools.process_obj):
                                         global_config["MD_VERSION"]),
                                              logging_tools.LOG_LEVEL_ERROR)
                             # clear host from servicegroups
-                            cur_gc["servicegroup"].clear_host(host_name)
+                            cur_gc["servicegroup"].clear_host(host.name)
                             # get check_commands and templates
                             conf_names = all_configs.get(host.name, [])
                             # build lut
@@ -1937,48 +1950,40 @@ class build_process(threading_tools.process_obj):
                                         # contact_group is only written if contact_group is responsible for the host and the service_template
                                     serv_temp = serv_templates[s_check.get_template(act_def_serv.name)]
                                     serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
-                                    self.mach_log("  adding check %-30s (%2d p), template %s, %s" % (
-                                        s_check["command_name"],
-                                        len(sc_array),
-                                        s_check.get_template(act_def_serv.name),
-                                        "cg: %s" % (", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs"))
-                                    for sc_name, sc in sc_array:
-                                        act_serv = nag_config(sc_name)
-                                        act_serv["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
-                                        act_serv["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
-                                        act_serv["service_description"]   = sc_name.replace("(", "[").replace(")", "]")
-                                        act_serv["host_name"]             = host.name
-                                        act_serv["is_volatile"]           = serv_temp.volatile
-                                        act_serv["check_period"]          = cur_gc["timeperiod"][serv_temp.nsc_period_id]["name"]
-                                        act_serv["max_check_attempts"]    = serv_temp.max_attempts
-                                        act_serv["normal_check_interval"] = serv_temp.check_interval
-                                        act_serv["retry_check_interval"]  = serv_temp.retry_interval
-                                        act_serv["notification_interval"] = serv_temp.ninterval
-                                        act_serv["notification_options"]  = ",".join(serv_temp.notification_options)
-                                        act_serv["notification_period"]   = cur_gc["timeperiod"][serv_temp.nsn_period_id]["name"]
-                                        if serv_cgs:
-                                            act_serv["contact_groups"] = ",".join(serv_cgs)
-                                        else:
-                                            act_serv["contact_groups"] = global_config["NONE_CONTACT_GROUP"]
-                                        if not checks_are_active:
-                                            act_serv["check_freshness"] = 0
-                                            act_serv["freshness_threshold"] = 3600
-                                        if checks_are_active and not cur_gc.master:
-                                            # trace
-                                            act_serv["obsess_over_service"] = 1
-                                        if global_config["ENABLE_PNP"]:
-                                            act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
-                                            if host.enable_perfdata and s_check.enable_perfdata:
-                                                act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (global_config["PNP_URL"])
-                                        act_serv["servicegroups"]         = s_check.servicegroup_name
-                                        cur_gc["servicegroup"].add_host(host_name, act_serv["servicegroups"])
-                                        act_serv["check_command"]         = "!".join([s_check["command_name"]] + s_check.correct_argument_list(sc, dev_variables))
-                                        if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
-                                            self.mach_log("   removing command %s because of %s" % (s_check["command_name"],
-                                                                                                    act_host["check_command"]))
-                                        else:
-                                            num_ok += 1
-                                            service_nc.append(act_serv)
+                                    sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc, dev_variables)
+                                    service_nc.extend(sc_list)
+                                    num_ok += len(sc_list)
+                            # add cluster checks
+                            mhc_checks = host.main_mon_host_cluster.all().prefetch_related("devices")
+                            if len(mhc_checks):
+                                self.mach_log("adding %s" % (logging_tools.get_plural("host_cluster check", len(mhc_checks))))
+                                for mhc_check in mhc_checks:
+                                    dev_names = ",".join(["$HOSTSTATEID:%s$" % (cur_dev.name) for cur_dev in mhc_check.devices.all()])
+                                    s_check = cur_gc["command"]["check_host_cluster"]
+                                    serv_temp = serv_templates[mhc_check.mon_service_templ_id]
+                                    serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                    sub_list = self.get_service(
+                                        host, act_host, s_check, [(s_check.get_description(), [mhc_check.description, mhc_check.warn_value, mhc_check.error_value, dev_names])],
+                                        act_def_serv, serv_cgs, checks_are_active,
+                                        serv_temp, cur_gc, dev_variables)
+                                    service_nc.extend(sub_list)
+                                    num_ok += len(sc_list)
+                            # add service checks
+                            msc_checks = host.main_mon_service_cluster.all().prefetch_related("devices")
+                            if len(msc_checks):
+                                self.mach_log("adding %s" % (logging_tools.get_plural("service_cluster check", len(mhc_checks))))
+                                for msc_check in msc_checks:
+                                    c_com = cur_gc["command"][msc_check.mon_check_command.name]
+                                    dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.name, c_com["command_name"]) for cur_dev in mhc_check.devices.all()])
+                                    s_check = cur_gc["command"]["check_service_cluster"]
+                                    serv_temp = serv_templates[msc_check.mon_service_templ_id]
+                                    serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                    sub_list = self.get_service(
+                                        host, act_host, s_check, [(s_check.get_description(), [msc_check.description, msc_check.warn_value, msc_check.error_value, dev_names])],
+                                        act_def_serv, serv_cgs, checks_are_active,
+                                        serv_temp, cur_gc, dev_variables)
+                                    service_nc.extend(sub_list)
+                                    num_ok += len(sc_list)
                             host_nc[act_host["name"]] = act_host
                         else:
                             self.mach_log("Host %s is disabled" % (host.name))
@@ -2005,9 +2010,53 @@ class build_process(threading_tools.process_obj):
         end_time = time.time()
         self.log("created configs for %s hosts in %s" % (host_info_str,
                                                          logging_tools.get_diff_time_str(end_time - start_time)))
+    def get_service(self, host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc, dev_variables):
+        self.mach_log("  adding check %-30s (%2d p), template %s, %s" % (
+            s_check["command_name"],
+            len(sc_array),
+            s_check.get_template(act_def_serv.name),
+            "cg: %s" % (", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs"))
+        ret_field = []
+        for sc_name, sc in sc_array:
+            act_serv = nag_config(sc_name)
+            act_serv["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
+            act_serv["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
+            act_serv["service_description"]   = sc_name.replace("(", "[").replace(")", "]")
+            act_serv["host_name"]             = host.name
+            act_serv["is_volatile"]           = serv_temp.volatile
+            act_serv["check_period"]          = cur_gc["timeperiod"][serv_temp.nsc_period_id]["name"]
+            act_serv["max_check_attempts"]    = serv_temp.max_attempts
+            act_serv["normal_check_interval"] = serv_temp.check_interval
+            act_serv["retry_check_interval"]  = serv_temp.retry_interval
+            act_serv["notification_interval"] = serv_temp.ninterval
+            act_serv["notification_options"]  = ",".join(serv_temp.notification_options)
+            act_serv["notification_period"]   = cur_gc["timeperiod"][serv_temp.nsn_period_id]["name"]
+            if serv_cgs:
+                act_serv["contact_groups"] = ",".join(serv_cgs)
+            else:
+                act_serv["contact_groups"] = global_config["NONE_CONTACT_GROUP"]
+            if not checks_are_active:
+                act_serv["check_freshness"] = 0
+                act_serv["freshness_threshold"] = 3600
+            if checks_are_active and not cur_gc.master:
+                # trace
+                act_serv["obsess_over_service"] = 1
+            if global_config["ENABLE_PNP"]:
+                act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
+                if host.enable_perfdata and s_check.enable_perfdata:
+                    act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (global_config["PNP_URL"])
+            act_serv["servicegroups"]         = s_check.servicegroup_name
+            cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
+            act_serv["check_command"]         = "!".join([s_check["command_name"]] + s_check.correct_argument_list(sc, dev_variables))
+            if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
+                self.mach_log("   removing command %s because of %s" % (s_check["command_name"],
+                                                                        act_host["check_command"]))
+            else:
+                ret_field.append(act_serv)
+        return ret_field
     def _get_target_ip_info(self, my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts):
         host = all_hosts_dict[host_pk]
-        traces, relay_ip = ([], "")
+        traces = []
 ##        mni_str_s = " OR ".join(["h.s_netdevice=%d" % (x) for x in my_net_idxs])
 ##        dev_str_d = " OR ".join(["h.d_netdevice=%d" % (x) for x in net_devices.keys()])
 ##        dc.execute("SELECT h.s_netdevice, h.d_netdevice, h.trace, h.value FROM hopcount h WHERE (%s) AND (%s) ORDER BY h.value" % (mni_str_s, dev_str_d))
@@ -2031,37 +2080,7 @@ class build_process(threading_tools.process_obj):
             valid_ips = []
         else:
             valid_ips = (",".join([",".join([y for y in net_devices[x]]) for x in targ_netdev_idxs])).split(",")
-            # FIXME, for relaying
-            r_dev_idx = 0
-            #r_dev_idx = check_hosts[host_idx]["relay_device"]
-            if r_dev_idx:
-                relay_host = all_hosts_dict[r_dev_idx]
-                if all_net_devices["v"].has_key(relay_host["name"]):
-                    relay_net_devices = all_net_devices["v"][relay_host["name"]]
-                    dev_str_d = " OR ".join(["h.d_netdevice=%d" % (x) for x in relay_net_devices.keys()])
-                    dc.execute("SELECT h.s_netdevice, h.d_netdevice, h.trace FROM hopcount h WHERE (%s) AND (%s) ORDER BY h.value" % (mni_str_s, dev_str_d))
-                    relay_netdev_ds = dc.fetchone()
-                    if relay_netdev_ds:
-                        relay_netdev_idxs = [relay_netdev_ds[k] for k in ["s_netdevice", "d_netdevice"] if relay_netdev_ds[k] not in my_net_idxs]
-                        if not relay_netdev_idxs:
-                            # special case: peers defined but only local netdevices found, mabye alias ?
-                            relay_netdev_idxs = [relay_netdev_ds["s_netdevice"]]
-                        if relay_netdev_ds["trace"]:
-                            relay_traces = [int(x) for x in relay_netdev_ds["trace"].split(":")]
-                            if relay_traces[0] != r_dev_idx:
-                                relay_traces.reverse()
-                        else:
-                            relay_traces = []
-                    else:
-                        relay_netdev_idxs = None
-                else:
-                    relay_netdev_idxs = None
-                if not relay_netdev_idxs:
-                    self.log("Cannot reach relay_host %s (check peer_information)" % (relay_host["name"]), logging_tools.LOG_LEVEL_ERROR)
-                    valid_ips = []
-                else:
-                    relay_ip = (",".join([",".join([y for y in relay_net_devices[x]]) for x in relay_netdev_idxs])).split(",")[0]
-        return valid_ips, traces, relay_ip
+        return valid_ips, traces
 
 class command_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, loc_config, db_con, log_queue):
