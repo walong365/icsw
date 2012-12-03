@@ -115,6 +115,37 @@ var master_array = {
             "required_xml" : ["monper", "monst"],
             "lock_div"     : "mon_tables"
         }
+    ),
+    "monhc" : new draw_setup("Host Cluster", "monhc", "mon_host_cluster",
+        "{% url base:create_object 'mon_host_cluster' %}",
+        "{% url base:delete_object 'mon_host_cluster' %}",
+        [  
+            new draw_info("name"),
+            new draw_info("description"),
+            new draw_info("mon_service_templ", {select_source : "mon_service_templs mon_service_templ", label : "ServiceTemplate"}),
+            new draw_info("main_device", {select_source : "devices device", label : "Main device"}),
+            new draw_info("warn_value", {min : 0, max : 128, number: true, default : 0}),
+            new draw_info("error_value", {min : 0, max : 128, number: true, default : 1}),
+            new draw_info("devices", {select_source : "devices device", label : "Devices", manytomany : true})
+        ], {
+            "required_xml" : ["monst"]
+        }
+    ),
+    "monsc" : new draw_setup("Service Cluster", "monsc", "mon_service_cluster",
+        "{% url base:create_object 'mon_service_cluster' %}",
+        "{% url base:delete_object 'mon_service_cluster' %}",
+        [  
+            new draw_info("name"),
+            new draw_info("description"),
+            new draw_info("mon_service_templ", {select_source : "mon_service_templs mon_service_templ", label : "ServiceTemplate"}),
+            new draw_info("main_device", {select_source : "devices device", label : "Main device"}),
+            new draw_info("warn_value", {min : 0, max : 128, number: true, default : 0}),
+            new draw_info("error_value", {min : 0, max : 128, number: true, default : 1}),
+            new draw_info("mon_check_command", {select_source : "mon_check_command", label : "Check command"}),
+            new draw_info("devices", {select_source : "devices device", label : "Devices", manytomany : true})
+        ], {
+            "required_xml" : ["monst"]
+        }
     )
 };
 

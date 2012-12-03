@@ -9,7 +9,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, mon_period, mon_contact, user, \
      mon_contactgroup, get_related_models, network_type, network_device_type, mon_device_templ, \
-     mon_ext_host
+     mon_ext_host, mon_host_cluster, mon_service_cluster
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -68,37 +68,43 @@ def setup(request):
     else:
         xml_resp = E.response()
         request.xml_response["response"] = xml_resp
-        xml_resp.append(E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))]))
-        xml_resp.append(E.users(*[cur_u.get_xml() for cur_u in user.objects.all()]))
-        xml_resp.append(E.mon_periods(*[cur_p.get_xml() for cur_p in mon_period.objects.all()]))
-        xml_resp.append(E.mon_contacts(*[cur_c.get_xml() for cur_c in mon_contact.objects.all()]))
-        xml_resp.append(E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]))
-        xml_resp.append(E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]))
-        xml_resp.append(E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]))
+        xml_resp.extend(
+            [
+                E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))]),
+                E.users(*[cur_u.get_xml() for cur_u in user.objects.all()]),
+                E.mon_periods(*[cur_p.get_xml() for cur_p in mon_period.objects.all()]),
+                E.mon_contacts(*[cur_c.get_xml() for cur_c in mon_contact.objects.all()]),
+                E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]),
+                E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
+                E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
+                E.mon_host_clusters(*[cur_mhc.get_xml() for cur_mhc in mon_host_cluster.objects.all()]),
+                E.mon_service_clusters(*[cur_msc.get_xml() for cur_msc in mon_service_cluster.objects.all()]),
+                E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
+                E.mon_check_Command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.all()]),
+            ]
+        )
         return request.xml_response.create_response()
 
 @init_logging
 @login_required
 def device_config(request):
-    return render_me(
-        request, "monitoring_device.html",
-    )()
-
-@init_logging
-@login_required
-def get_monitor_hosts(request):
-    mon_hosts = device.objects.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"])).prefetch_related("device_config_set__config")
-    srv_list = E.devices()
-    for cur_dev in mon_hosts:
-        dev_xml = cur_dev.get_xml(full=False)
-        if "monitor_server" in [dc.config.name for dc in cur_dev.device_config_set.all()]:
-            dev_xml.attrib["monitor_type"] = "server"
-        else:
-            dev_xml.attrib["monitor_type"] = "slave"
-        dev_xml.text = "%s [%s]" % (dev_xml.attrib["name"], dev_xml.attrib["monitor_type"])
-        srv_list.append(dev_xml)
-    request.xml_response["response"] = E.response(srv_list)
-    return request.xml_response.create_response()
+    if request.method == "GET":
+        return render_me(
+            request, "monitoring_device.html",
+        )()
+    else:
+        mon_hosts = device.objects.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"])).prefetch_related("device_config_set__config")
+        srv_list = E.devices()
+        for cur_dev in mon_hosts:
+            dev_xml = cur_dev.get_xml(full=False)
+            if "monitor_server" in [dc.config.name for dc in cur_dev.device_config_set.all()]:
+                dev_xml.attrib["monitor_type"] = "server"
+            else:
+                dev_xml.attrib["monitor_type"] = "slave"
+            dev_xml.text = "%s [%s]" % (dev_xml.attrib["name"], dev_xml.attrib["monitor_type"])
+            srv_list.append(dev_xml)
+        request.xml_response["response"] = E.response(srv_list)
+        return request.xml_response.create_response()
 
 @init_logging
 @login_required

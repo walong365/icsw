@@ -10,7 +10,8 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
      tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
      mon_contactgroup, get_related_models, network_device_type, network_type, device_class, \
-     device_location, network, mon_device_templ, user, group, package_search, device_variable
+     device_location, network, mon_device_templ, user, group, package_search, device_variable, \
+     mon_host_cluster, mon_service_cluster
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -74,6 +75,8 @@ def change_xml_entry(request):
                    "mondt"   : mon_device_templ,
                    "monst"   : mon_service_templ,
                    "moncg"   : mon_contactgroup,
+                   "monhc"   : mon_host_cluster,
+                   "monsc"   : mon_service_cluster,
                    "nwdt"    : network_device_type,
                    "nwt"     : network_type,
                    "dc"      : device_class,
@@ -117,66 +120,87 @@ def change_xml_entry(request):
                     compound_fields = {"device_variable" : ["value"],
                                        "user"            : ["permissions"],
                                        "netdevice"       : ["ethtool_autoneg", "ethtool_duplex", "ethtool_speed"]}.get(cur_obj._meta.object_name, [])
-                    # check field ? hack for compound fields
-                    check_field = attr_name not in compound_fields
-                    if check_field and cur_obj._meta.get_field(attr_name).get_internal_type() == "ManyToManyField":
+                    backward_m2m_relations = {
+                        "device" : {
+                            "devs_mon_host_cluster"    : "mon_host_cluster",
+                            "devs_mon_service_cluster" : "mon_service_cluster"},
+                        }.get(cur_obj._meta.object_name, [])
+                    if attr_name in backward_m2m_relations:
+                        # handle backward relations
                         if other_list:
                             request.log("ignoring others", logging_tools.LOG_LEVEL_CRITICAL)
-                        # handle many to many
                         new_value = set([int(val) for val in new_value.split("::") if val.strip()])
                         m2m_rel = getattr(cur_obj, attr_name)
                         old_value = set(m2m_rel.all().values_list("pk", flat=True))
                         rem_values = old_value - new_value
                         add_values = new_value - old_value
-                        for rem_value in rem_values:
-                            m2m_rel.remove(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=rem_value))
-                        for add_value in add_values:
-                            m2m_rel.add(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=add_value))
+                        glob_obj = globals()[backward_m2m_relations[attr_name]]
+                        if rem_values:
+                            m2m_rel.remove(*list(glob_obj.objects.filter(Q(pk__in=rem_values))))
+                        if add_values:
+                            m2m_rel.add(*list(glob_obj.objects.filter(Q(pk__in=add_values))))
                         request.log("added %d, removed %d" % (len(add_values), len(rem_values)), xml=True)
                     else:
-                        # others may be present but are not used right now
-                        old_value = getattr(cur_obj, attr_name)
-                        if _post["checkbox"] == "true":
-                            # cast to bool
-                            new_value = bool(int(new_value))
-                        try:
-                            if cur_obj._meta.get_field(attr_name).get_internal_type() == "ForeignKey":
-                                # follow foreign key the django way
-                                if int(new_value) == 0:
-                                    new_value = None
-                                else:
-                                    new_value = cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=new_value)
-                        except:
-                            # in case of meta-fields like ethtool_autoneg,speed,duplex
-                            pass
-                        cur_obj.change_attribute = attr_name
-                        setattr(cur_obj, attr_name, new_value)
-                        try:
-                            cur_obj.save()
-                        except ValidationError, what:
-                            request.log("error modifying: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
-                            request.xml_response["original_value"] = old_value
-                        except IntegrityError, what:
-                            request.log("error modifying: %s" % (unicode(what)), logging_tools.LOG_LEVEL_ERROR, xml=True)
-                            request.xml_response["original_value"] = old_value
-                        except:
-                            raise
+                        # check field ? hack for compound fields
+                        check_field = attr_name not in compound_fields
+                        if check_field and cur_obj._meta.get_field(attr_name).get_internal_type() == "ManyToManyField":
+                            if other_list:
+                                request.log("ignoring others", logging_tools.LOG_LEVEL_CRITICAL)
+                            # handle many to many
+                            new_value = set([int(val) for val in new_value.split("::") if val.strip()])
+                            m2m_rel = getattr(cur_obj, attr_name)
+                            old_value = set(m2m_rel.all().values_list("pk", flat=True))
+                            rem_values = old_value - new_value
+                            add_values = new_value - old_value
+                            for rem_value in rem_values:
+                                m2m_rel.remove(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=rem_value))
+                            for add_value in add_values:
+                                m2m_rel.add(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=add_value))
+                            request.log("added %d, removed %d" % (len(add_values), len(rem_values)), xml=True)
                         else:
-                            # reread new_value (in case of pre/post-save corrections)
-                            new_value = getattr(cur_obj, attr_name)
-                            request.xml_response["object"] = cur_obj.get_xml()
-                            if attr_name in HIDDEN_FIELDS:
-                                request.log("changed %s" % (attr_name), xml=True)
+                            # others may be present but are not used right now
+                            old_value = getattr(cur_obj, attr_name)
+                            if _post["checkbox"] == "true":
+                                # cast to bool
+                                new_value = bool(int(new_value))
+                            try:
+                                if cur_obj._meta.get_field(attr_name).get_internal_type() == "ForeignKey":
+                                    # follow foreign key the django way
+                                    if int(new_value) == 0:
+                                        new_value = None
+                                    else:
+                                        new_value = cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=new_value)
+                            except:
+                                # in case of meta-fields like ethtool_autoneg,speed,duplex
+                                pass
+                            cur_obj.change_attribute = attr_name
+                            setattr(cur_obj, attr_name, new_value)
+                            try:
+                                cur_obj.save()
+                            except ValidationError, what:
+                                request.log("error modifying: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
+                                request.xml_response["original_value"] = old_value
+                            except IntegrityError, what:
+                                request.log("error modifying: %s" % (unicode(what)), logging_tools.LOG_LEVEL_ERROR, xml=True)
+                                request.xml_response["original_value"] = old_value
+                            except:
+                                raise
                             else:
-                                request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
-                        # handle others
-                        if other_list:
-                            other_change = E.changes(
-                                E.change(unicode(getattr(cur_obj, attr_name)), id=_post["id"], name=attr_name))
-                            for other in other_list:
-                                name = other.split("__")[-1]
-                                other_change.append(E.change(unicode(getattr(cur_obj, name)), id=other, name=name))
-                            request.xml_response["changes"] = other_change
+                                # reread new_value (in case of pre/post-save corrections)
+                                new_value = getattr(cur_obj, attr_name)
+                                request.xml_response["object"] = cur_obj.get_xml()
+                                if attr_name in HIDDEN_FIELDS:
+                                    request.log("changed %s" % (attr_name), xml=True)
+                                else:
+                                    request.log("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), xml=True)
+                            # handle others
+                            if other_list:
+                                other_change = E.changes(
+                                    E.change(unicode(getattr(cur_obj, attr_name)), id=_post["id"], name=attr_name))
+                                for other in other_list:
+                                    name = other.split("__")[-1]
+                                    other_change.append(E.change(unicode(getattr(cur_obj, name)), id=other, name=name))
+                                request.xml_response["changes"] = other_change
     return request.xml_response.create_response()
 
 @init_logging

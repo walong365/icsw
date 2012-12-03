@@ -42,7 +42,7 @@ function use_devs(dt_div) {
 function load_devices(sel_list) {
     //console.log(sel_list);
     $.ajax({
-        url     : "{% url mon:get_monitor_hosts %}",
+        url     : "{% url mon:device_config %}",
         error   : handle_ajax_error,
         success : function(xml) {
             MONSRV = $(xml).find("value[name='response']");
@@ -53,6 +53,8 @@ function load_devices(sel_list) {
                     "sel_list"            : sel_list,
                     "extra_t0"            : "mon_device_templ",
                     "extra_t1"            : "mon_ext_host",
+                    "extra_t2"            : "mon_host_cluster",
+                    "extra_t3"            : "mon_service_cluster",
                     "ignore_meta_devices" : 1
                 },
                 success : function(xml) {
@@ -219,6 +221,28 @@ function draw_device(d_el) {
             })
         )
     );
+    if (d_el) {
+        new_tr.append(
+            $("<td>").append(
+                create_input_el(d_el, "devs_mon_host_cluster", line_prefix, {
+                    select_source  : DEVICES.find("mon_host_clusters mon_host_cluster"),
+                    manytomany     : true,
+                    css            : {width : "150px"}
+                })
+            )
+        ).append(
+            $("<td>").append(
+                create_input_el(d_el, "devs_mon_service_cluster", line_prefix, {
+                    select_source  : DEVICES.find("mon_service_clusters mon_service_cluster"),
+                    manytomany     : true,
+                    css            : {width : "150px"}
+                })
+            )
+        );
+    } else {
+        new_tr.append($("<td>"));
+        new_tr.append($("<td>"));
+    };
     dummy_div.append(new_tr);
     return dummy_div.children();
 };
@@ -242,7 +266,7 @@ function draw_tables() {
             )
         ).append(
             $("<th>").attr({
-            "colspan" : "6"
+            "colspan" : "8"
         }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")));
         c_table.append(new_tr);
         // at first append metadevice
@@ -262,7 +286,7 @@ function draw_tables() {
         });
         new_tr.append(
             $("<th>").attr({
-            "colspan" : "7"
+            "colspan" : "9"
         }).addClass("ui-widget ui-widget-header").text("all devices"));
         c_table.append(new_tr);
         c_table.append(draw_device(undefined));
