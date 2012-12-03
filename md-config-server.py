@@ -395,6 +395,12 @@ class main_config(object):
                        # NDO stuff
                        ]
         if self.master:
+            if global_config["ENABLE_LIVESTATUS"]:
+                main_values.extend([
+                    ("*broker_module", "%s/mk-livestatus/livestatus.o %s/live" % (
+                    self.__r_dir_dict["lib64"],
+                    self.__r_dir_dict["var"]))
+                ])
             if global_config["ENABLE_PNP"]:
                 main_values.extend([
                     #("host_perfdata_command"   , "process-host-perfdata"),
@@ -411,27 +417,29 @@ class main_config(object):
                     ("host_perfdata_file_processing_interval", "15"),
                     ("host_perfdata_file_processing_command", "process-host-perfdata-file"),
                 ])
-            main_values.append(
-                ("event_broker_options"             , global_config["EVENT_BROKER_OPTIONS"])
-            )
-            if global_config["MD_TYPE"] == "nagios":
-                main_values.append(("broker_module" , "%s/ndomod-%dx.o config_file=%s/%s.cfg" % (self.__r_dir_dict["bin"],
-                                                                                                 global_config["MD_VERSION"],
-                                                                                                 self.__r_dir_dict["etc"],
-                                                                                                 NDOMOD_NAME)))
-            else:
-                if os.path.exists(os.path.join(self.__r_dir_dict["lib64"], "idomod.so")):
-                    main_values.append(
-                        ("broker_module" , "%s/idomod.so config_file=%s/%s.cfg" % (
-                            self.__r_dir_dict["lib64"],
-                            self.__r_dir_dict["etc"],
-                            NDOMOD_NAME)))
+            if global_config["ENABLE_NDO"]:
+                if global_config["MD_TYPE"] == "nagios":
+                    main_values.append(("*broker_module" , "%s/ndomod-%dx.o config_file=%s/%s.cfg" % (
+                        self.__r_dir_dict["bin"],
+                        global_config["MD_VERSION"],
+                        self.__r_dir_dict["etc"],
+                        NDOMOD_NAME)))
                 else:
-                    main_values.append(
-                        ("broker_module" , "%s/idomod.so config_file=%s/%s.cfg" % (
-                            self.__r_dir_dict["lib"],
-                            self.__r_dir_dict["etc"],
-                            NDOMOD_NAME)))
+                    if os.path.exists(os.path.join(self.__r_dir_dict["lib64"], "idomod.so")):
+                        main_values.append(
+                            ("*broker_module" , "%s/idomod.so config_file=%s/%s.cfg" % (
+                                self.__r_dir_dict["lib64"],
+                                self.__r_dir_dict["etc"],
+                                NDOMOD_NAME)))
+                    else:
+                        main_values.append(
+                            ("*broker_module" , "%s/idomod.so config_file=%s/%s.cfg" % (
+                                self.__r_dir_dict["lib"],
+                                self.__r_dir_dict["etc"],
+                                NDOMOD_NAME)))
+            main_values.append(
+                ("event_broker_options"             , -1 if global_config["ENABLE_LIVESTATUS"] else global_config["EVENT_BROKER_OPTIONS"])
+            )
         else:
             # add global event handlers
             main_values.extend([
@@ -595,9 +603,16 @@ class base_config(object):
     def get_name(self):
         return self.__name
     def __setitem__(self, key, value):
+        if key.startswith("*"):
+            key, multiple = (key[1:], True)
+        else:
+            multiple = False
         if key not in self.__key_list:
             self.__key_list.append(key)
-        self.__dict[key] = value
+        if multiple:
+            self.__dict.setdefault(key, []).append(value)
+        else:
+            self.__dict[key] = value
     def __getitem__(self, key):
         return self.__dict[key]
     def create_content(self):
@@ -2618,6 +2633,8 @@ def main():
         ("CHECK_HOST_ALIVE_PINGS"      , configfile.int_c_var(3)),
         ("CHECK_HOST_ALIVE_TIMEOUT"    , configfile.float_c_var(5.0)),
         ("ENABLE_PNP"                  , configfile.bool_c_var(False)),
+        ("ENABLE_LIVESTATUS"           , configfile.bool_c_var(True)),
+        ("ENABLE_NDO"                  , configfile.bool_c_var(False)),
         ("PNP_DIR"                     , configfile.str_c_var("/opt/pnp4nagios")),
         ("PNP_URL"                     , configfile.str_c_var("/pnp4nagios")),
         ("NONE_CONTACT_GROUP"          , configfile.str_c_var("none_group")),
