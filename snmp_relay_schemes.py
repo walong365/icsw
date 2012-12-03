@@ -1319,6 +1319,29 @@ class temperature_probe_scheme(snmp_scheme):
             limits.get_state_str(cur_state),
             cur_temp,
             cur_temp)
+
+class temperature_probe_hum_scheme(snmp_scheme):
+    def __init__(self, **args):
+        snmp_scheme.__init__(self, "temperature_probe_scheme_hum", **args)
+        self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 22626, 1, 2, 1, 2), cache=True)
+        self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=80.0)
+        self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=95.0)
+        self.parse_options(args["options"])
+    def process_return(self):
+        warn_hum = int(self.opts.warn)
+        crit_hum = int(self.opts.crit)
+        use_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        cur_hum = float(use_dict.values()[0])
+        if cur_hum > crit_hum:
+            cur_state = limits.nag_STATE_CRITICAL
+        elif cur_hum > warn_hum:
+            cur_state = limits.nag_STATE_WARNING
+        else:
+            cur_state = limits.nag_STATE_OK
+        return cur_state, "%s: humidity %.2f %% | hum=%.2f%%" % (
+            limits.get_state_str(cur_state),
+            cur_hum,
+            cur_hum)
         
 if __name__ == "__main__":
     print "Loadable module, exiting"
