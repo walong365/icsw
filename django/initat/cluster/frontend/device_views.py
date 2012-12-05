@@ -109,6 +109,7 @@ def _get_group_tree(request, sel_list, **kwargs):
     ignore_md       = kwargs.get("ignore_meta_devices", False)
     ignore_cdg      = kwargs.get("ignore_cdg", True)
     with_variables  = kwargs.get("with_variables", False)
+    with_monitoring = kwargs.get("with_monitoring", False)
     # show only nodes where the user has permissions for
     permission_tree = kwargs.get("permission_tree", False)
     xml_resp = E.response()
@@ -129,6 +130,10 @@ def _get_group_tree(request, sel_list, **kwargs):
         "device_group__device_type",
         #"device_group__mon_host_cluster_set"
     )
+    if with_monitoring:
+        all_dgs = all_dgs.prefetch_related(
+            "device_group__devs_mon_host_cluster",
+            "device_group__devs_mon_service_cluster")
     if with_variables:
         all_dgs = all_dgs.prefetch_related(
             "device_group__device_variable_set")
@@ -136,7 +141,7 @@ def _get_group_tree(request, sel_list, **kwargs):
     # selected ........ device or device_group selected
     # tree_selected ... device is selected 
     for cur_dg in all_dgs:
-        cur_xml = cur_dg.get_xml(full=False, with_variables=with_variables, add_title=True)
+        cur_xml = cur_dg.get_xml(full=False, with_variables=with_variables, with_monitoring=with_monitoring, add_title=True)
         if cur_xml.attrib["key"] in sel_list:
             cur_xml.attrib["selected"] = "selected"
             cur_xml.attrib["tree_selected"] = "selected"
@@ -170,11 +175,14 @@ def get_group_tree(request):
     ignore_cdg      = True if int(_post.get("ignore_cdg", "1"))          else False
     with_variables  = True if int(_post.get("with_variables", "0"))      else False
     permission_tree = True if int(_post.get("permission_tree", "0"))     else False
+    with_monitoring = True if int(_post.get("with_monitoring", "0"))     else False
     if "sel_list[]" in _post:
         sel_list = _post.getlist("sel_list[]", [])
     else:
         sel_list = request.session.get("sel_list", [])
-    xml_resp = _get_group_tree(request, sel_list, ignore_meta_devices=ignore_md, ignore_cdg=ignore_cdg, with_variables=with_variables, permission_tree=permission_tree)
+    xml_resp = _get_group_tree(request, sel_list, ignore_meta_devices=ignore_md,
+                               ignore_cdg=ignore_cdg, with_variables=with_variables,
+                               permission_tree=permission_tree, with_monitoring=with_monitoring)
     extra_re = re.compile("^extra_t(\d+)$")
     for extra_key in [key for key in _post.keys() if extra_re.match(key)]:
         extra_name = _post[extra_key]

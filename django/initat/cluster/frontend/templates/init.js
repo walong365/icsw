@@ -757,7 +757,11 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
             });
             //new_el.msDropdown();
         } else {
-            var new_el = $("<span>").addClass("error").text("no " + attr_name + " defined");
+            if (kwargs.ignore_missing_source) {
+                var new_el = $("<span>");
+            } else {
+                var new_el = $("<span>").addClass("error").text("no " + attr_name + " defined");
+            };
         };
     };
     if (xml_el !== undefined && (kwargs.bind === undefined || kwargs.bind)) {

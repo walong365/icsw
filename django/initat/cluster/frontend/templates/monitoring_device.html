@@ -55,7 +55,8 @@ function load_devices(sel_list) {
                     "extra_t1"            : "mon_ext_host",
                     "extra_t2"            : "mon_host_cluster",
                     "extra_t3"            : "mon_service_cluster",
-                    "ignore_meta_devices" : 1
+                    "ignore_meta_devices" : 1,
+                    "with_monitoring"     : 1
                 },
                 success : function(xml) {
                     if (parse_xml_response(xml)) {
@@ -227,7 +228,8 @@ function draw_device(d_el) {
                 create_input_el(d_el, "devs_mon_host_cluster", line_prefix, {
                     select_source  : DEVICES.find("mon_host_clusters mon_host_cluster"),
                     manytomany     : true,
-                    css            : {width : "150px"}
+                    css            : {width : "150px"},
+                    ignore_missing_source : true
                 })
             )
         ).append(
@@ -235,7 +237,8 @@ function draw_device(d_el) {
                 create_input_el(d_el, "devs_mon_service_cluster", line_prefix, {
                     select_source  : DEVICES.find("mon_service_clusters mon_service_cluster"),
                     manytomany     : true,
-                    css            : {width : "150px"}
+                    css            : {width : "150px"},
+                    ignore_missing_source : true
                 })
             )
         );
