@@ -1906,9 +1906,13 @@ class build_process(threading_tools.process_obj):
                             # clear host from servicegroups
                             cur_gc["servicegroup"].clear_host(host.name)
                             # get check_commands and templates
-                            conf_names = all_configs.get(host.name, [])
+                            conf_names = set(all_configs.get(host.name, []))
+                            # cluster config names
+                            cconf_names = set(host.devs_mon_service_cluster.all().values_list("mon_check_command__name", flat=True))
                             # build lut
-                            conf_dict = dict([(cur_c["command_name"], cur_c) for cur_c in cur_gc["command"].values() if cur_c.get_config() in conf_names and (not(cur_c.get_device()) or cur_c.get_device() == host.pk)])
+                            conf_dict = dict([(cur_c["command_name"], cur_c) for cur_c in cur_gc["command"].values() if 
+                                              (cur_c.get_config() in conf_names and (not(cur_c.get_device()) or cur_c.get_device() == host.pk)) or
+                                              cur_c["command_name"] in cconf_names])
                             # old code, use only_ping config
                             #if host["identifier"] == "NB" or host["identifier"] == "AM" or host["identifier"] == "S":
                             #    # set config-dict for netbotzes, APC Masterswitches and switches to ping
