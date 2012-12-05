@@ -1712,8 +1712,8 @@ class network(models.Model):
     end_range = models.IPAddressField(default="0.0.0.0")
     date = models.DateTimeField(auto_now_add=True)
     network_device_type = models.ManyToManyField("network_device_type")
-    def get_xml(self):
-        return E.network(
+    def get_xml(self, add_ip_info=False):
+        r_xml = E.network(
             unicode(self),
             pk="%d" % (self.pk),
             key="nw_%d" % (self.pk),
@@ -1731,7 +1731,10 @@ class network(models.Model):
             write_bind_config="1" if self.write_bind_config else "0",
             write_other_network_config="1" if self.write_other_network_config else "0",
             network_device_type="::".join(["%d" % (cur_pk) for cur_pk in self.network_device_type.all().values_list("pk", flat=True)]),
-       )
+        )
+        if add_ip_info:
+            r_xml.attrib["ip_count"] = "%d" % (len(self.net_ip_set.all()))
+        return r_xml
     class Meta:
         db_table = u'network'
     def get_full_postfix(self):
