@@ -280,7 +280,10 @@ class main_config(object):
         sql_file = "/etc/sysconfig/cluster/mysql.cf"
         sql_suc, sql_dict = configfile.readconfig(sql_file, 1)
         resource_cfg = base_config("resource", is_host_file=True)
-        resource_cfg["$USER1$"] = "/opt/%s/lib" % (global_config["MD_TYPE"])
+        if os.path.isfile("/opt/%s/libexec/check_dns" % (global_config["MD_TYPE"])):
+            resource_cfg["$USER1$"] = "/opt/%s/libexec" % (global_config["MD_TYPE"])
+        else:
+            resource_cfg["$USER1$"] = "/opt/%s/lib" % (global_config["MD_TYPE"])
         resource_cfg["$USER2$"] = "/opt/cluster/sbin/ccollclientzmq -t %d" % (global_config["CCOLLCLIENT_TIMEOUT"])
         resource_cfg["$USER3$"] = "/opt/cluster/sbin/csnmpclientzmq -t %d" % (global_config["CSNMPCLIENT_TIMEOUT"])
         NDOMOD_NAME, NDO2DB_NAME = ("ndomod",
@@ -370,6 +373,7 @@ class main_config(object):
                        ("state_retention_file"             , "%s/retention.dat" % (self.__r_dir_dict["var"])),
                        ("retention_update_interval"        , 60),
                        ("use_retained_program_state"       , 0),
+                       ("use_retained_scheduling_info"     , 0),
                        ("interval_length"                  , 60 if not self.master else 60),
                        ("use_aggressive_host_checking"     , 0),
                        ("execute_service_checks"           , 1),
@@ -452,7 +456,9 @@ class main_config(object):
             main_values.extend([("object_cache_file"            , "%s/object.cache" % (self.__r_dir_dict["var"])),
                                 ("use_large_installation_tweaks", "1"),
                                 ("enable_environment_macros"    , "0"),
-                                ("max_service_check_spread"     , global_config["MAX_SERVICE_CHECK_SPREAD"])])
+                                ("max_service_check_spread"     , global_config["MAX_SERVICE_CHECK_SPREAD"]),
+                                ("max_host_check_spread"        , global_config["MAX_HOST_CHECK_SPREAD"]),
+                                ])
         else:
             # values for Nagios 1.x, 2.x
             main_values.extend([("comment_file"                     , "%s/comment.log" % (self.__r_dir_dict["var"])),
@@ -1766,7 +1772,7 @@ class build_process(threading_tools.process_obj):
                 #print mni_str_s, mni_str_d, dev_str_s, dev_str_d
                 # get correct netdevice for host
                 if host.name == global_config["SERVER_SHORT_NAME"]:
-                    valid_ips, traces = (["127.0.0.1"], [host_pk])
+                    valid_ips, traces = (["127.0.0.1"], [(1, [host_pk])])
                 else:
                     valid_ips, traces = self._get_target_ip_info(my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts)
                     if not valid_ips:
@@ -1847,8 +1853,8 @@ class build_process(threading_tools.process_obj):
                         else:
                             self.mach_log("No direct parent(s) found, registering trace")
                             if host.bootserver_id != host_pk and host.bootserver_id:
-                                traces.append(host_pk)
-                            if len(traces) > 1:
+                                traces.append((1, [host_pk]))
+                            if traces and len(traces[0][1]) > 1:
                                 act_host["possible_parents"] = traces
                                 #print traces, host["name"], all_hosts_dict[traces[1]]["name"]
                                 #parents += [all_hosts_dict[traces[1]]["name"]]
@@ -1999,14 +2005,20 @@ class build_process(threading_tools.process_obj):
         host_names = host_nc.keys()
         for host in host_nc.values():
             if host.has_key("possible_parents"):
+                parent_list = []
                 p_parents = host["possible_parents"]
-                for parent_idx in p_parents:
-                    parent = all_hosts_dict[parent_idx].name
-                    if parent in host_names and parent != host["name"]:
-                        host["parents"] = ",".join([parent])
-                        self.mach_log("Setting parent to %s" % (parent), logging_tools.LOG_LEVEL_OK, host["name"])
-                        break
+                #print "*", p_parents
+                for p_val, p_list in p_parents:
+                    for parent_idx in p_list:
+                        parent = all_hosts_dict[parent_idx].name
+                        if parent in host_names and parent != host["name"]:
+                            parent_list.append(parent)
+                            # exit inner loop
+                            break
                 del host["possible_parents"]
+                if parent_list:
+                    host["parents"] = ",".join(parent_list)
+                    self.mach_log("Setting parent to %s" % (", ".join(parent_list)), logging_tools.LOG_LEVEL_OK, host["name"])
         end_time = time.time()
         self.log("created configs for %s hosts in %s" % (host_info_str,
                                                          logging_tools.get_diff_time_str(end_time - start_time)))
@@ -2069,10 +2081,11 @@ class build_process(threading_tools.process_obj):
                 targ_netdev_idxs = [targ_netdev_ds.s_netdevice_id]
             if any([net_devices.has_key(key) for key in targ_netdev_idxs]):
                 if targ_netdev_ds.trace:
-                    traces = [int(val) for val in targ_netdev_ds.trace.split(":")]
-                    if traces[0] != host_pk:
-                        traces.reverse()
-                break
+                    loc_traces = [int(val) for val in targ_netdev_ds.trace.split(":")]
+                    if loc_traces[0] != host_pk:
+                        loc_traces.reverse()
+                traces.append((targ_netdev_ds.value, loc_traces))
+                #break
             else:
                 targ_netdev_idxs = None
         if not targ_netdev_idxs:
@@ -2666,6 +2679,7 @@ def main():
         ("CCOLLCLIENT_TIMEOUT"         , configfile.int_c_var(6)),
         ("CSNMPCLIENT_TIMEOUT"         , configfile.int_c_var(20)),
         ("MAX_SERVICE_CHECK_SPREAD"    , configfile.int_c_var(5)),
+        ("MAX_HOST_CHECK_SPREAD"       , configfile.int_c_var(5)),
         ("MAX_CONCURRENT_CHECKS"       , configfile.int_c_var(500)),
         ("ALL_HOSTS_NAME"              , configfile.str_c_var("***ALL***")),
         ("SERVER_SHORT_NAME"           , configfile.str_c_var(mach_name)),
