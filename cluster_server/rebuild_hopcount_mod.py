@@ -34,9 +34,10 @@ from initat.cluster.backbone.models import net_ip, netdevice, device, device_var
 HOPCOUNT_REBUILT_VAR_NAME = "hopcount_table_build_time"
 HOPCOUNT_STATE_VAR_NAME = "hopcount_state_var"
 
-def generate_minhop_dict(in_hops):
+def generate_minhop_dict_old(in_hops):
     mh_d = {}
     for pen, pens, hop in in_hops:
+        print hop, pens, len(hop), len(pens)
         #print pen, hop
         n_sig_1, n_sig_2 = (hop[0], hop[-1])
         sig = (n_sig_1, n_sig_2)
@@ -47,7 +48,14 @@ def generate_minhop_dict(in_hops):
                 if pen < mh_d[key][0]:
                     mh_d[key] = pen, pens, hop
         if sig:
-            mh_d[sig] = pen, pens, hop
+            mh_d[sig] = (pen, pens, hop)
+    return mh_d
+
+def generate_minhop_dict(in_hops):
+    # simpler (not needed) minhop_dict generator to honor loops (for redundant monitoring)
+    mh_d = {}
+    for run_idx, (pen, pens, hop) in enumerate(in_hops):
+        mh_d[run_idx] = (pen, pens, hop)
     return mh_d
 
 def get_hcs(hc, nd_dict):
@@ -56,14 +64,15 @@ def get_hcs(hc, nd_dict):
     return "%s, %d" % (ndev.devname, ndev.penalty)
         
 def find_path(source_ndev, dest_ndev, devs, peers, nd_dict):
+    """ find path between source_ndev and dest_ndev """
     # net_devices touched
     #netdevs_touched = [source_ndev]
     # final connections
     final_cons = []
     # peer keys
-    peer_keys = peers.keys()
+    peer_keys = set(peers)
     # connection format is [penaltys], [hns, nds, nd2a, hn2, nd2b, nd3a, hn3, nd3b, ndd, hnd], [netdevs_touched]
-    act_cons = [([], [source_ndev], [source_ndev])]
+    act_cons = [([], [source_ndev], set([source_ndev]))]
     while True:
         new_list = [(x, y, z) for x, y, z in act_cons if y[-1] in peer_keys]
         act_cons = []
@@ -74,15 +83,15 @@ def find_path(source_ndev, dest_ndev, devs, peers, nd_dict):
                 if nd == dest_ndev:
                     final_cons.append((act_peer + [new_p], act_con + [nd]))
                 elif d_route:
-                    #print [(x["name"], x["netdevice_idx"] in netdevs_touched) for x in devs[act_ndev["name"]]["nds"]]
-                    for next_ndev in [x for x in devs[act_ndev.device.name].nds if x.pk not in netdevs_touched]:
-                        next_nd = next_ndev.pk
-                        netdevs_touched.append(next_nd)
+                    for next_nd in devs[act_ndev.device.name].nd_pks - netdevs_touched:
+                        next_ndev = nd_dict[next_nd]
+                        # needed ?
+                        netdevs_touched.add(next_nd)
                         if act_ndev.pk not in act_con and next_nd != source_ndev and next_ndev.routing:
                             # routing device found
                             act_cons.append((act_peer + [new_p, act_ndev.penalty, next_ndev.penalty],
                                              act_con  + [nd, next_nd],
-                                             netdevs_touched + [nd, next_nd]))
+                                             netdevs_touched | set([nd, next_nd])))
         if not act_cons:
             break
     return final_cons
@@ -250,6 +259,7 @@ class rebuild_hopcount(cs_base_class.server_com):
                 devices_2[db_rec.device.name] = rhc_device(db_rec.device)
                 devices[db_rec.device.name] = db_rec.device
                 db_rec.device.nds = []
+                db_rec.device.nd_pks = set()
                 db_rec.device.peers = []
                 dev_lut[db_rec.device.pk] = db_rec.device.name
             if db_rec.devname:
@@ -257,29 +267,12 @@ class rebuild_hopcount(cs_base_class.server_com):
                     db_rec.peers = []
                     nd_dict[db_rec.pk] = db_rec
                     devices[db_rec.device.name].nds.append(db_rec)
+                    devices[db_rec.device.name].nd_pks.add(db_rec.pk)
                     devices_2[db_rec.device.name].add_netdevice(db_rec)
                     nd_lut[db_rec.pk] = devices_2[db_rec.device.name].device.name
             #if db_rec.ip:
             #    devices_2[db_rec.device.name].add_netip(db_rec)
             
-        # IP version
-##        all_ips = net_ip.objects.exclude(Q(netdevice__device__device_type__identifier="MD")).select_related("netdevice__device__device_type")
-##        for db_rec in all_ips:#my_dc.fetchall():
-##            if not devices.has_key(db_rec.netdevice.device.name):
-##                devices_2[db_rec.netdevice.device.name] = rhc_device(db_rec.netdevice.device)
-##                devices[db_rec.netdevice.device.name] = db_rec.netdevice.device
-##                db_rec.netdevice.device.nds = []
-##                db_rec.netdevice.device.peers = []
-##                dev_lut[db_rec.netdevice.device.pk] = db_rec.netdevice.device.name
-##            if db_rec.netdevice.devname:
-##                if not nd_dict.has_key(db_rec.netdevice.pk):
-##                    db_rec.netdevice.peers = []
-##                    nd_dict[db_rec.netdevice.pk] = db_rec.netdevice#dict([(k, db_rec[k]) for k in ["netdevice_idx", "devname", "routing", "penalty", "name", "device"]] + [("peers", [])])
-##                    devices[db_rec.netdevice.device.name].nds.append(db_rec.netdevice)
-##                    devices_2[db_rec.netdevice.device.name].add_netdevice(db_rec.netdevice)
-##                    nd_lut[db_rec.netdevice.pk] = devices_2[db_rec.netdevice.device.name].device.name
-##            if db_rec.ip:
-##                devices_2[db_rec.netdevice.device.name].add_netip(db_rec)
         # get peerinfo
         all_peers = peer_information.objects.all()
         #my_dc.execute("SELECT p.s_netdevice, p.d_netdevice, p.penalty, p.peer_information_idx FROM peer_information p")
@@ -292,110 +285,10 @@ class rebuild_hopcount(cs_base_class.server_com):
                         devices_2[nd_lut[src]].add_ext_route(src, dst, act_peer.penalty)
                     devices_2[nd_lut[src]].add_peer_information(src, dst, act_peer.penalty)
                     peers.setdefault(src, {})[dst] = (act_peer.penalty, nd_dict[dst].routing)
-        dev_names = sorted(devices.keys())
-##        if show and False:
-##            # new code, still in development phase, FIXME
-##            print "Found %s: %s" % (logging_tools.get_plural("device", len(dev_names)),
-##                                    logging_tools.compress_list(dev_names))
-##            routing_dev_names = sorted([x for x in devices_2.keys() if devices_2[x].is_routing_device()])
-##            print "Found %s: %s" % (logging_tools.get_plural("routing device", len(routing_dev_names)),
-##                                    logging_tools.compress_list(routing_dev_names))
-##            leaf_dev_names = sorted([x for x in devices_2.keys() if not devices_2[x].is_routing_device()])
-##            print "Found %s: %s" % (logging_tools.get_plural("leaf device", len(leaf_dev_names)),
-##                                    logging_tools.compress_list(leaf_dev_names))
-##            routing_devs_visit = []
-##            routing_routes = {}
-##            out_list = logging_tools.form_list()
-##            out_list.set_header_string(0, ["SDev", "SNet", "DDev", "DNet", "penalty"])
-##            dot_lines = ["graph G {", "rankdir=\"LR\";"]
-##            # additional routes, add after core-routing is done
-##            add_routes = {}
-##            for s_name in routing_dev_names:
-##                rs_dev = devices_2[s_name]
-##                dot_lines.append(rs_dev.get_dot_str(devices_2, nd_lut))
-##                for d_name in [x for x in routing_dev_names if x not in routing_devs_visit]:
-##                    rd_dev = devices_2[d_name]
-##                    all_hops = []
-##                    for s_net_idx in rs_dev.get_routing_netdevice_idx_list():
-##                        for d_net_idx in rd_dev.get_routing_netdevice_idx_list():
-##                            all_hops.extend(r_route(s_net_idx, d_net_idx).find_routes(devices_2, nd_lut))
-##                    if all_hops:
-##                        generate_minhop_2_dict(all_hops, add_routes)
-##                        #print s_name, d_name, generate_minhop_dict(all_hops)
-##                routing_devs_visit.append(s_name)
-##            # add routes
-##            for (s_n_dev, d_n_dev), (min_pen, min_hop) in add_routes.iteritems():
-##                s_dev, d_dev = (devices_2[nd_lut[s_n_dev]], devices_2[nd_lut[d_n_dev]])
-##                s_dev.add_ext_route(s_n_dev, d_n_dev, min_pen)
-##                d_dev.add_ext_route(d_n_dev, s_n_dev, min_pen)
-##                out_list.add_line((s_dev.name, s_dev.get_nd_info(s_n_dev), d_dev.name, d_dev.get_nd_info(d_n_dev), min_pen))
-##            dot_lines.append("}")
-##            #print "\n".join(dot_lines)
-##            if out_list:
-##                print out_list
-##            conn_type_dict, conn_type_list = ({}, [])
-##            out_list = logging_tools.form_list()
-##            out_list.set_header_string(0, ["Name", "DevType", "NodeType", "#nds", "#i_routes", "#x_routes", "routing info"])
-##            for dev_name in dev_names:
-##                act_dev = devices_2[dev_name]
-##                #print dev_name, act_dev.is_routing_device(), act_dev.get_connection_type_str()
-##                #print "warning, netdevice without peer information found: %s on %s (external link?)" % (nd_dict[src_idx]["devname"],
-##                #dev_lut[nd_dict[src_idx]["device"]])
-##                add_info = []
-##                conn_type_str = act_dev.get_connection_type_str()
-##                if conn_type_str:
-##                    if conn_type_str not in conn_type_list:
-##                        conn_type_dict[conn_type_str] = []
-##                        conn_type_list.append(conn_type_str)
-##                    conn_type_dict[conn_type_str].append(dev_name)
-##                    add_info.append("ct %3d" % (conn_type_list.index(conn_type_str) + 1))
-##                    add_info.append(conn_type_str)
-##                else:
-##                    add_info.append("---")
-##                out_list.add_line((dev_name,
-##                                   act_dev.identifier,
-##                                   act_dev.device_type,
-##                                   act_dev.get_num_nds(),
-##                                   act_dev.get_num_int_routes(),
-##                                   act_dev.get_num_ext_routes(),
-##                                   ", ".join(add_info)))
-##            print out_list
-##            source_visit = []
-##            for s_name in dev_names:
-##                s_dev = devices_2[s_name]
-##                dest_dict = {}
-##                print "%s %s (%d)" % (s_dev.device_type, s_name, s_dev.idx)
-##                dest = []
-##                for d in [s_dev.get_simple_peers(x) for x in s_dev.get_netdevice_idx_list()]:
-##                    dest.extend(d)
-##                for d_idx, d_pen in dest:
-##                    d_dev = devices_2[nd_lut[d_idx]]
-##                    if d_dev.name != s_dev.name:
-##                        dest_dict.setdefault(d_dev.name, []).append(([d_idx], d_pen + nd_dict[d_idx]["penalty"]))
-##                        next_devs = d_dev.get_peers(d_idx)
-##                        print "  ", d_pen, d_dev.name, next_devs
-##                        for d2_idx, d2_pen in next_devs:
-##                            d2_dev = devices_2[nd_lut[d2_idx]]
-##                            dest_dict.setdefault(d2_dev.name, []).append(([d_idx, d2_idx], d_pen + d2_pen + nd_dict[d_idx]["penalty"]+ nd_dict[d2_idx]["penalty"]))
-##                            d2_peers = d2_dev.get_simple_peers(d2_idx)
-##                            print "    ", d2_dev.name, d2_pen
-##                            for d3_idx, d3_pen in d2_peers:
-##                                d3_dev = devices_2[nd_lut[d3_idx]]
-##                                dest_dict.setdefault(d3_dev.name, []).append(([d_idx, d2_idx, d3_idx], d_pen + d2_pen + d3_pen + nd_dict[d_idx]["penalty"] + nd_dict[d2_idx]["penalty"] + nd_dict[d3_idx]["penalty"]))
-##                                print "       ", d3_dev.name, d3_pen
-##                for k, v in dest_dict.iteritems():
-##                    print " - ", k, v
-##                    #for d_idx in s_net["peers"]:
-##                    #    print d_idx#x, s_net, peers[d_idx].keys()
-####                 for d_name in [x for x in dev_names if x not in source_visit]:
-####                     d_nets = devices[s_name]["nds"]
-##                    
-####                     print s_name, d_name
-####                 source_visit.append(s_name)
-##            return
+        dev_names = set(devices.keys())
         # delete hopcounts
         hopcount.objects.all().delete()
-        source_visit = []
+        source_visit = set()
         num_routes, num_dups = (0, 0)
         # restarted ?
         restarted = 0
@@ -413,7 +306,7 @@ class rebuild_hopcount(cs_base_class.server_com):
             checks_left -= 2 * num_devs - 1
             num_devs -= 1
             s_nets = devices[s_name].nds
-            for d_name in [x for x in dev_names if x not in source_visit]:
+            for d_name in dev_names - source_visit:
                 all_hops = []
                 d_nets = devices[d_name].nds
                 for s_net in s_nets:
@@ -468,7 +361,7 @@ class rebuild_hopcount(cs_base_class.server_com):
                 else:
                     if show:
                         print "Found no routes from %10s to %10s" % (s_name, d_name)
-            source_visit.append(s_name)
+            source_visit.add(s_name)
             #break
             # FIXME
             #restarted = call_params.check_for_restart()

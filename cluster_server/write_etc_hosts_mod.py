@@ -53,14 +53,22 @@ class write_etc_hosts(cs_base_class.server_com):
         my_idxs = netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True)
         # ref_table
         ref_table = dict([((cur_entry.s_netdevice_id, cur_entry.d_netdevice_id), cur_entry.value) for cur_entry in hopcount.objects.filter(Q(s_netdevice__in=my_idxs) | Q(d_netdevice__in=my_idxs))])
-        t_devs = net_ip.objects.filter(Q(netdevice__hopcount_s_netdevice__d_netdevice__in=my_idxs)).select_related("netdevice__device", "network__network_type").order_by(
-            "netdevice__hopcount_s_netdevice__value", "netdevice__device__name", "ip"
-        )
+        t_devs = net_ip.objects.filter(Q(netdevice__hopcount_s_netdevice__d_netdevice__in=my_idxs)).select_related(
+            "netdevice__device",
+            "network__network_type").order_by(
+                "netdevice__hopcount_s_netdevice__value",
+                "netdevice__device__name",
+                "ip"
+            )
         all_hosts = list(t_devs)
         # self-references
-        my_devs = net_ip.objects.filter(Q(netdevice__device__in=server_idxs)).select_related("netdevice__device", "network__network_type").order_by(
-            "netdevice__hopcount_s_netdevice__value", "netdevice__device__name", "ip"
-        )
+        my_devs = net_ip.objects.filter(Q(netdevice__device__in=server_idxs)).select_related(
+            "netdevice__device",
+            "network__network_type").order_by(
+                "netdevice__hopcount_s_netdevice__value",
+                "netdevice__device__name",
+                "ip"
+            )
         all_hosts.extend(list(my_devs))
         # fetch key-information
         ssh_vars = device_variable.objects.filter(Q(name="ssh_host_rsa_key_pub")).select_related("device")
@@ -112,6 +120,8 @@ class write_etc_hosts(cs_base_class.server_com):
         name_dict = {}
         # ip dictionary
         ip_dict = {}
+        # connection keys
+        con_keys = set(ref_table)
         # build dict, ip->[list of hosts]
         for host in all_hosts:
             # get names
@@ -133,10 +143,13 @@ class write_etc_hosts(cs_base_class.server_com):
             name_dict.setdefault(host.netdevice.device.name, []).extend([out_name for out_name in out_names if out_name not in name_dict[host.netdevice.device.name] and not out_name.startswith("localhost")])
             ip_dict.setdefault(host.ip, [])
             if out_names not in [x[1] for x in ip_dict[host.ip]]:
-                #print ref_table[(host.netdevice.hopcount_s_netdevice_id.value,
-                #                 host.netdevice.hopcount_d_netdevice_id.value)]
-                # FIXME, we have to find a way to get the hopcount value
-                ip_dict[host.ip].append((1, out_names))
+                found_keys = set([(host.netdevice_id, my_idx) for my_idx in my_idxs]) & con_keys
+                if found_keys:
+                    min_value = min([ref_table[key] for key in found_keys])
+                else:
+                    # localhost ?
+                    min_value = 1
+                ip_dict[host.ip].append((min_value, out_names))
         # out_list
         loc_dict = {}
         for ip, h_list in ip_dict.iteritems():
