@@ -454,9 +454,14 @@ class device(models.Model):
             mon_ext_host="%d" % (self.mon_ext_host_id or 0),
             curl=unicode(self.curl),
             enable_perfdata="1" if self.enable_perfdata else "0",
-            devs_mon_host_cluster="::".join(["%d" % (cur_mhc.pk) for cur_mhc in self.devs_mon_host_cluster.all()]),
-            devs_mon_service_cluster="::".join(["%d" % (cur_mhc.pk) for cur_mhc in self.devs_mon_service_cluster.all()]),
         )
+        if kwargs.get("with_monitoring", False):
+            r_xml.attrib.update(
+                {
+                    "devs_mon_host_cluster" : "::".join(["%d" % (cur_mhc.pk) for cur_mhc in self.devs_mon_host_cluster.all()]),
+                    "devs_mon_service_cluster" : "::".join(["%d" % (cur_mhc.pk) for cur_mhc in self.devs_mon_service_cluster.all()]),
+                }
+            )
         if kwargs.get("add_title", False):
             r_xml.attrib["title"] = "%s (%s%s)" % (
                 self.name,
@@ -636,7 +641,7 @@ class device_group(models.Model):
         return new_md
     def get_metadevice_name(self):
         return "METADEV_%s" % (self.name)
-    def get_xml(self, full=True, with_devices=True, with_variables=False, add_title=False):
+    def get_xml(self, full=True, with_devices=True, with_variables=False, add_title=False, with_monitoring=False):
         cur_xml = E.device_group(
             unicode(self),
             pk="%d" % (self.pk),
@@ -648,7 +653,11 @@ class device_group(models.Model):
         if with_devices:
             sub_list = self.device_group.all()
             cur_xml.append(
-                E.devices(*[cur_dev.get_xml(full=full, with_variables=with_variables, add_title=add_title) for cur_dev in sub_list])
+                E.devices(*[cur_dev.get_xml(
+                    full=full,
+                    with_variables=with_variables,
+                    add_title=add_title,
+                    with_monitoring=with_monitoring) for cur_dev in sub_list])
             )
         return cur_xml
     class Meta:
