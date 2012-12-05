@@ -3026,12 +3026,14 @@ class user(models.Model):
             self.first_name or "first",
             self.last_name or "last")
 
-class user_serializer(serializers.HyperlinkedModelSerializer):#ModelSerializer):
-    url = serializers.HyperlinkedIdentityField(format='api', view_name="rest:user_detail")
-    group = serializers.HyperlinkedRelatedField(view_name="rest:group_detail")
-    #def validate(self, attrs):
-    #    print attrs
-    #    return attrs
+class user_serializer_h(serializers.HyperlinkedModelSerializer):
+    url = serializers.HyperlinkedIdentityField(format='api', view_name="rest:user_detail_h")
+    group = serializers.HyperlinkedRelatedField(view_name="rest:group_detail_h")
+    class Meta:
+        model = user
+        fields = ("url", "login", "uid", "group")
+
+class user_serializer(serializers.ModelSerializer):
     class Meta:
         model = user
         fields = ("url", "login", "uid", "group")
@@ -3127,8 +3129,13 @@ class group(models.Model):
             self.groupname,
             self.gid)
 
-class group_serializer(serializers.HyperlinkedModelSerializer):#ModelSerializer):
-    url = serializers.HyperlinkedIdentityField(format='api', view_name="rest:group_detail")
+class group_serializer_h(serializers.HyperlinkedModelSerializer):
+    url = serializers.HyperlinkedIdentityField(format='api', view_name="rest:group_detail_h")
+    class Meta:
+        model = group
+        fields = ("url", "groupname", "active", "gid")
+
+class group_serializer(serializers.ModelSerializer):
     class Meta:
         model = group
         fields = ("url", "groupname", "active", "gid")
