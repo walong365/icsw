@@ -10,7 +10,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 import logging_tools
-from initat.cluster.backbone.models import user, user_serializer, group, group_serializer
+from initat.cluster.backbone.models import user, user_serializer, group, group_serializer, \
+     user_serializer_h, group_serializer_h
 from rest_framework.renderers import XMLRenderer
 from rest_framework.parsers import XMLParser
 from rest_framework.decorators import api_view, APIView
@@ -24,9 +25,33 @@ from rest_framework.reverse import reverse
 @api_view(('GET',))
 def api_root(request, format=None):
     return Response({
-        'user'  : reverse('rest:user_list', request=request),
-        'group' : reverse('rest:group_list', request=request)
+        'user'  : reverse('rest:user_list_h', request=request),
+        'group' : reverse('rest:group_list_h', request=request)
     })
+
+class user_list_h(generics.ListCreateAPIView):
+    authentication_classes = (BasicAuthentication, SessionAuthentication, )
+    permission_classes = (IsAuthenticated,)
+    model = user
+    serializer_class = user_serializer_h
+
+class user_detail_h(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = (BasicAuthentication, SessionAuthentication, )
+    permission_classes = (IsAuthenticated,)
+    model = user
+    serializer_class = user_serializer_h
+
+class group_list_h(generics.ListCreateAPIView):
+    authentication_classes = (BasicAuthentication, SessionAuthentication, )
+    permission_classes = (IsAuthenticated,)
+    model = group
+    serializer_class = group_serializer_h
+
+class group_detail_h(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = (BasicAuthentication, SessionAuthentication, )
+    permission_classes = (IsAuthenticated,)
+    model = group
+    serializer_class = group_serializer_h
 
 class user_list(generics.ListCreateAPIView):
     authentication_classes = (BasicAuthentication, SessionAuthentication, )
