@@ -1,6 +1,7 @@
 # user views
 
 import os
+import time
 from django.http import HttpResponse
 from initat.core.render import render_me
 from django.http import Http404
@@ -21,6 +22,7 @@ from rest_framework.authentication import BasicAuthentication, SessionAuthentica
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
+import types
 
 @api_view(('GET',))
 def api_root(request, format=None):
@@ -28,6 +30,37 @@ def api_root(request, format=None):
         'user'  : reverse('rest:user_list_h', request=request),
         'group' : reverse('rest:group_list_h', request=request)
     })
+
+class rest_logging(object):
+    def __init__(self, func):
+        #self.__name__ = func.__name__
+        self._func = func
+        print hasattr(func, "__call__")
+        print ("Tracing {0}".format(func.__name__))
+    def __get__(self, obj, owner_class=None):
+        # magic ...
+        return types.MethodType(self, obj)
+    def __call__(self, *args, **kwargs):
+        s_time = time.time()
+        e_time = time.time()
+        print args, kwargs
+        result = self._func(*args, **kwargs)
+        print e_time - s_time
+        return result
+        
+class detail_view(mixins.RetrieveModelMixin,
+                  mixins.UpdateModelMixin,
+                  mixins.DestroyModelMixin,
+                  generics.SingleObjectAPIView):
+    @rest_logging
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
+    @rest_logging
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+    @rest_logging
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
 
 class user_list_h(generics.ListCreateAPIView):
     authentication_classes = (BasicAuthentication, SessionAuthentication, )
@@ -59,7 +92,7 @@ class user_list(generics.ListCreateAPIView):
     model = user
     serializer_class = user_serializer
 
-class user_detail(generics.RetrieveUpdateDestroyAPIView):
+class user_detail(detail_view):
     authentication_classes = (BasicAuthentication, SessionAuthentication, )
     permission_classes = (IsAuthenticated,)
     model = user
@@ -76,3 +109,4 @@ class group_detail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (IsAuthenticated,)
     model = group
     serializer_class = group_serializer
+
