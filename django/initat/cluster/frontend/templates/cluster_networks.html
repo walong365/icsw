@@ -33,7 +33,8 @@ var master_array = {
             new draw_info("network", {default : "192.168.1.0", size : 16, cspan : 2, label : "NW", show_label : true, group : "network"}),
             new draw_info("netmask", {default : "255.255.255.0", size : 16, label : "NM", show_label : true, group : "network"}),
             new draw_info("broadcast", {default : "192.168.1.255", size : 16, label : "BC", show_label : true, group : "network"}),
-            new draw_info("gateway", {default : "192.168.1.1", size : 16, cspan : 2, label : "GW", show_label : true, group : "network"})
+            new draw_info("gateway", {default : "192.168.1.1", size : 16, cspan : 3, label : "GW", show_label : true, group : "network"}),
+            new draw_info("ip_count", {number : 1, ro : true})
         ],
         {"lock_div" : "nw_tables"})
 };   

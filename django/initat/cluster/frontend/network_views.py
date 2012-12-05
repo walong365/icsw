@@ -52,7 +52,7 @@ def show_cluster_networks(request):
     else:
         xml_resp = E.response(
             E.networks(
-                *[cur_nw.get_xml() for cur_nw in network.objects.all()]
+                *[cur_nw.get_xml(add_ip_info=True) for cur_nw in network.objects.all()]
                 ),
             E.network_types(
                 *[cur_nwt.get_xml() for cur_nwt in network_type.objects.all()]
@@ -189,34 +189,29 @@ def get_network_tree(request):
         "device_group",
         "device_type").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").order_by("device_group__name", "name"):
         dev_list.append(cur_dev.get_xml())
-    xml_resp.append(dev_list)
-    ns_list = E.netdevice_speeds(
-        *[cur_ns.get_xml() for cur_ns in netdevice_speed.objects.all()])
     # now handled via fixtures
-    #if not len(ns_list):
-        ## create some dummy entries
-        #netdevice_speed(
-            #speed_bps=1000000000,
-            #check_via_ethtool=True,
-            #full_duplex=True).save()
-        #ns_list = E.netspeed_list(
-            #*[E.netspeed(unicode(cur_ns), pk="%d" % (cur_ns.pk)) for cur_ns in netdevice_speed.objects.all()])
-    xml_resp.append(ns_list)
-    xml_resp.append(E.network_device_type_list(
-        *[E.network_device_type(unicode(cur_ndt), pk="%d" % (cur_ndt.pk)) for cur_ndt in network_device_type.objects.all()]))
-    # networks
-    xml_resp.append(E.network_list(
-        *[cur_nw.get_xml() for cur_nw in network.objects.all().select_related("network_type").order_by("name")]
-    ))
-    # ethtool options
-    xml_resp.append(E.ethtool_autoneg_list(
-        *[E.ethtool_autoneg(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]))
-    xml_resp.append(E.ethtool_duplex_list(
-        *[E.ethtool_duplex(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]))
-    xml_resp.append(E.ethtool_speed_list(
-        *[E.ethtool_speed(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "10 Mbit", "100 MBit", "1 GBit", "10 GBit"])]))
-    # peers
-    xml_resp.append(_get_valid_peers())
+    xml_resp.extend(
+        [
+            dev_list,
+            E.netdevice_speeds(
+                *[cur_ns.get_xml() for cur_ns in netdevice_speed.objects.all()]),
+            E.network_device_type_list(
+                *[E.network_device_type(unicode(cur_ndt), pk="%d" % (cur_ndt.pk)) for cur_ndt in network_device_type.objects.all()]),
+            # networks
+            E.network_list(
+                *[cur_nw.get_xml() for cur_nw in network.objects.all().select_related("network_type").order_by("name")]
+            ),
+            # ethtool options
+            E.ethtool_autoneg_list(
+                *[E.ethtool_autoneg(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]),
+            E.ethtool_duplex_list(
+                *[E.ethtool_duplex(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]),
+            E.ethtool_speed_list(
+                *[E.ethtool_speed(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "10 Mbit", "100 MBit", "1 GBit", "10 GBit"])]),
+            # peers,
+            _get_valid_peers()
+        ]
+    )
     #print etree.tostring(xml_resp, pretty_print=True)
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
