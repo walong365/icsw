@@ -3036,7 +3036,7 @@ class user_serializer_h(serializers.HyperlinkedModelSerializer):
 class user_serializer(serializers.ModelSerializer):
     class Meta:
         model = user
-        fields = ("url", "login", "uid", "group")
+        fields = ("login", "uid", "group")
         
 @receiver(signals.pre_save, sender=user)
 def user_pre_save(sender, **kwargs):
@@ -3138,7 +3138,7 @@ class group_serializer_h(serializers.HyperlinkedModelSerializer):
 class group_serializer(serializers.ModelSerializer):
     class Meta:
         model = group
-        fields = ("url", "groupname", "active", "gid")
+        fields = ("groupname", "active", "gid")
 
 @receiver(signals.pre_save, sender=group)
 def group_pre_save(sender, **kwargs):
