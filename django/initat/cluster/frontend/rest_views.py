@@ -35,8 +35,6 @@ class rest_logging(object):
     def __init__(self, func):
         #self.__name__ = func.__name__
         self._func = func
-        print hasattr(func, "__call__")
-        print ("Tracing {0}".format(func.__name__))
     def __get__(self, obj, owner_class=None):
         # magic ...
         return types.MethodType(self, obj)

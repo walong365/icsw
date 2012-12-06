@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n compress %}
+{% load i18n compress coffeescript %}
 
 {% block title %}{% trans "Device Configuration" %}{% endblock %}
 
@@ -175,7 +175,6 @@ function change_config(event) {
             res_xml.find("device_configs device_config").each(function() {
                 var cur_dc = $(this);
                 var cur_cb = $("table#config input[id='dev__" + cur_dc.attr("device") + "__config__" + conf_pk + "']");
-                console.log("rc");
                 cur_cb.attr("checked", "checked");
                 if (cur_dc.attr("meta") == "1") {
                     cur_cb.prev().text("(");
@@ -277,6 +276,10 @@ function add_dcon_handlers() {
 };
 
 $(document).ready(add_dcon_handlers);
+
+{% inlinecoffeescript %}
+
+{% endinlinecoffeescript %}
 
 </script>
 

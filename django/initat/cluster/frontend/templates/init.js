@@ -1,3 +1,5 @@
+{% load coffeescript %}
+
 <script type="text/javascript">
 
 String.prototype.toTitle = function () {
@@ -35,18 +37,165 @@ $.ajaxSetup({
     }
 });
 
-function draw_ds_tables(t_div, master_array) {
-    t_div.children().remove();
-    for (var key in master_array) {
-        t_div.append(master_array[key].draw_table());
-    };
-    t_div.accordion({
-        heightStyle : "content",
+{% inlinecoffeescript %}
+
+root = exports ? this
+
+root.update_table_info = (cur_ds, info_h3) ->
+    if info_h3
+        info_span = info_h3.find("span#info__" + cur_ds.postfix)
+    else
+        info_span = $("span#info__" + cur_ds.postfix)
+    info_span.text(cur_ds.master_xml.find(cur_ds.xml_name_plural + " " + cur_ds.xml_name).length)
+
+root.draw_head_line = (cur_ds) ->
+    dummy_div = $("<div>")
+    head_line = $("<tr>").attr
+        class : "ui-widget-header ui-widget"
+    cur_span = 0
+    for cur_di in cur_ds.draw_array
+        if cur_di.newline
+            break
+        cur_span--
+        if not cur_span
+            new_td = $("<th>").attr("colspan" : cur_di.span).text(cur_di.label)
+            cur_span += cur_di.span
+        head_line.append(new_td)
+    if cur_ds.create_url
+        head_line.append($("<th>").text("action"))
+    dummy_div.append(head_line)
+    return dummy_div.children()
+    
+root.redraw_tables = () ->
+    (value.draw_table() for key, value of master_array)
+    
+root.draw_ds_tables = (t_div, master_array) ->
+    t_div.children().remove()
+    t_div.append (value.draw_table() for key, value of master_array)
+    t_div.accordion
+        heightStyle : "content"
         collapsible : true
+    
+root.draw_setup = (name, postfix, xml_name, create_url, delete_url, draw_array, kwargs) ->
+    this.name = name
+    this.postfix = postfix
+    this.xml_name = xml_name
+    # plural, plural(s) = ses and not ss (!)
+    this.xml_name_plural = if this.xml_name.match(///s$///) then this.xml_name + "es" else this.xml_name + "s"
+    this.create_url = create_url
+    this.delete_url = delete_url
+    if kwargs?
+        if kwargs.required_xml?
+            this.required_xml = kwargs.required_xml
+        else
+            this.required_xml = []
+        if kwargs.lock_div?
+            this.lock_div = kwargs.lock_div
+        else
+            this.lock_div = ""
+    else
+        this.required_xml = []
+        this.lock_div = ""
+    this.drawn = false
+    this.draw_array = draw_array
+    for draw_entry in draw_array
+        draw_entry.draw_setup = this
+    this.table_div = undefined
+    this.element_info = {}
+    this.clean = () ->
+        this.drawn = false
+        this.table_div = undefined
+        this.info_h3 = undefined
+    this.draw_table = (master_xml) ->
+        this.master_xml = if master_xml? then master_xml else MASTER_XML
+        if this.table_div
+            table_div = this.table_div
+            info_h3   = this.info_h3
+        else
+            table_div = $("<div>").attr
+                id : this.postfix
+            info_h3 = $("<h3>").attr
+                id : this.postfx
+            table_div.append ($("<table>")
+                .attr(id: this.postfix)
+                .addClass("style2"))
+        draw = true
+        cur_ds = this
+        missing_objects = []
+        if cur_ds.required_xml
+            for cur_req in cur_ds.required_xml
+                ref_obj = master_array[cur_req]
+                if ref_obj
+                    search_str = ref_obj.xml_name_plural + " " + ref_obj.xml_name
+                else
+                    search_str = cur_req + "s " + cur_req
+                if not cur_ds.master_xml.find(search_str).length
+                    missing_objects.push(if ref_obj then ref_obj.name else cur_req)
+                    draw = false
+        p_table = table_div.find("table")
+        if draw
+            if cur_ds.drawn
+                p_table.find("tr[id]").each ->
+                    cur_tr = $(this)
+                    cur_tr.find("select").each ->
+                        cur_sel = $(this)
+                        for cur_di in cur_ds.draw_array
+                            cur_re = new RegExp(cur_di.name + "$")
+                            if cur_sel.attr("id").match(cur_re)
+                                sync_select_from_xml(cur_sel, cur_di)
+            else
+                p_table.append(draw_head_line(cur_ds))
+                if cur_ds.create_url
+                    p_table.append(draw_line(cur_ds))
+                cur_ds.master_xml.find(this.xml_name_plural + " " + this.xml_name).each ->
+                    p_table.append(draw_line(cur_ds, $(this)))
+                info_h3.text(cur_ds.name + " (").append(
+                    $("<span>").attr(id : "info__" + this.postfix).text("---")
+                ).append($("<span>").text(")"))
+                update_table_info(this, info_h3)
+        else
+            if this.drawn
+                p_table.children().remove()
+            info_h3.text("parent objects missing for " + cur_ds.name + ": " + missing_objects.join(", "))
+        this.drawn = draw
+        if not this.table_div
+            this.table_div = table_div
+            this.info_h3 = info_h3
+            dummy_div = $("<div>").append(info_h3).append(table_div)
+            return dummy_div.children()
+    return this
+    
+{% endinlinecoffeescript %}
+
+function draw_head_line_old(cur_ds) {
+    var dummy_div = $("<div>");
+    var head_line = $("<tr>").attr({
+        "class" : "ui-widget-header ui-widget"
     });
+    var cur_array = cur_ds.draw_array;
+    var cur_span = 1;
+    for (var idx=0; idx < cur_array.length ; idx++) {
+        var cur_di = cur_array[idx];
+        if (cur_di.newline) break;
+        cur_span--;
+        if (! cur_span) {
+            var new_td = $("<th>").attr({"colspan" : cur_di.span}).text(cur_di.label);
+            cur_span += cur_di.span;
+        };
+        head_line.append(new_td);
+    };
+    if (cur_ds.create_url) head_line.append($("<th>").text("action"));
+    dummy_div.append(head_line);
+    return dummy_div.children();
 };
 
-function draw_setup(name, postfix, xml_name, create_url, delete_url, draw_array, kwargs) {
+function redraw_tables_old() {
+    for (var key in master_array) {
+        master_array[key].draw_table();
+    };
+};
+
+function draw_setup_old(name, postfix, xml_name, create_url, delete_url, draw_array, kwargs) {
     this.name = name;
     this.postfix = postfix;
     this.xml_name = xml_name;
@@ -209,28 +358,6 @@ function draw_result(name, group, element) {
     this.element = element;
 };
 
-function draw_head_line(cur_ds) {
-    var dummy_div = $("<div>");
-    var head_line = $("<tr>").attr({
-        "class" : "ui-widget-header ui-widget"
-    });
-    var cur_array = cur_ds.draw_array;
-    var cur_span = 1;
-    for (var idx=0; idx < cur_array.length ; idx++) {
-        var cur_di = cur_array[idx];
-        if (cur_di.newline) break;
-        cur_span--;
-        if (! cur_span) {
-            var new_td = $("<th>").attr({"colspan" : cur_di.span}).text(cur_di.label);
-            cur_span += cur_di.span;
-        };
-        head_line.append(new_td);
-    };
-    if (cur_ds.create_url) head_line.append($("<th>").text("action"));
-    dummy_div.append(head_line);
-    return dummy_div.children();
-};
-
 function draw_line(cur_ds, xml_el) {
     // cur_ds .... draw_setup
     // xml_el .... xml or undefined
@@ -300,21 +427,6 @@ function draw_line(cur_ds, xml_el) {
         ));
     };
     return dummy_div.children();
-};
-
-function redraw_tables() {
-    for (var key in master_array) {
-        master_array[key].draw_table();
-    };
-};
-
-function update_table_info(cur_ds, info_h3) {
-    if (info_h3) {
-        var info_span = info_h3.find("span#info__" + cur_ds.postfix);
-    } else {
-        var info_span = $("span#info__" + cur_ds.postfix);
-    };
-    info_span.text(cur_ds.master_xml.find(cur_ds.xml_name_plural + " " + cur_ds.xml_name).length);
 };
 
 function append_new_line(cur_el, new_xml, cur_ds) {
