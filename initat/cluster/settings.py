@@ -219,8 +219,13 @@ INSTALLED_APPS = (
     "reversion",
     "south",
     "compressor",
+    "coffeescript",
     # cluster
 )
+
+# coffee settings
+COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
+COFFEESCRIPT_USE_CACHE = False
 
 # add all applications, including backbone
 

@@ -2036,8 +2036,8 @@ def mon_host_cluster_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "name")
         for attr_name, min_val, max_val in [
-            ("warn_value", 0, 128),
-            ("error_value"   , 0, 128)]:
+            ("warn_value" , 0, 128),
+            ("error_value", 0, 128)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
             
 class mon_service_cluster(models.Model):
@@ -2074,8 +2074,8 @@ def mon_service_cluster_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "name")
         for attr_name, min_val, max_val in [
-            ("warn_value", 0, 128),
-            ("error_value"   , 0, 128)]:
+            ("warn_value" , 0, 128),
+            ("error_value", 0, 128)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 class mon_check_command(models.Model):
