@@ -622,7 +622,7 @@ class device_device_selection(models.Model):
 class device_group(models.Model):
     idx = models.AutoField(db_column="device_group_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192, blank=False)
-    description = models.CharField(max_length=384)
+    description = models.CharField(max_length=384, default="")
     #device = models.ForeignKey("device", null=True, blank=True, related_name="group_device")
     # must be an IntegerField, otherwise we have a cycle reference
     #device = models.IntegerField(null=True, blank=True)
@@ -669,6 +669,15 @@ class device_group(models.Model):
             " (%s)" % (self.description) if self.description else "",
             "[*]" if self.cluster_device_group else ""
         )
+
+class device_group_serializer(serializers.ModelSerializer):
+    def validate(self, in_dict):
+        if "description" not in in_dict:
+            in_dict["description"] = ""
+        return in_dict
+    class Meta:
+        model = device_group
+        fields = ("idx", "name", "description")
 
 @receiver(signals.pre_save, sender=device_group)
 def device_group_pre_save(sender, **kwargs):
@@ -3036,7 +3045,7 @@ class user_serializer_h(serializers.HyperlinkedModelSerializer):
 class user_serializer(serializers.ModelSerializer):
     class Meta:
         model = user
-        fields = ("login", "uid", "group")
+        fields = ("idx", "login", "uid", "group")
         
 @receiver(signals.pre_save, sender=user)
 def user_pre_save(sender, **kwargs):
