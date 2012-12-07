@@ -8,6 +8,10 @@ from initat.cluster.license_tools import check_license, get_all_licenses
 ugettext = lambda s : s
 
 from django.core.exceptions import ImproperlyConfigured
+# monkey-patch threading for python 2.7.x
+if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
+    import threading
+    threading._DummyThread._Thread__stop = lambda x: 42
 
 if "START_VIA_RC" in os.environ:
     DEBUG = False
