@@ -133,6 +133,12 @@ user_patterns = patterns(
 )
 
 if settings.CLUSTER_LICENSE["rest"]:
+    rpl = []
+    for obj_name in ["user", "group", "device_group"]:
+        rpl.extend([
+            url("^%s/$" % (obj_name), getattr(rest_views, "%s_list" % (obj_name)).as_view(), name="%s_list" % (obj_name)),
+            url("^%s/(?P<pk>[0-9]+)/$" % (obj_name), getattr(rest_views, "%s_detail" % (obj_name)).as_view(), name="%s_detail" % (obj_name)),
+        ])
     rest_patterns = patterns(
         "initat.cluster.frontend",
         url("^api/$"                     , "rest_views.api_root"              , name="root"),
@@ -140,12 +146,8 @@ if settings.CLUSTER_LICENSE["rest"]:
         url("^api/user/(?P<pk>[0-9]+)/$" , rest_views.user_detail_h.as_view() , name="user_detail_h"),
         url("^api/group/$"               , rest_views.group_list_h.as_view()  , name="group_list_h"),
         url("^api/group/(?P<pk>[0-9]+)/$", rest_views.group_detail_h.as_view(), name="group_detail_h"),
-        url("^user/$"                    , rest_views.user_list.as_view()     , name="user_list"),
-        url("^user/(?P<pk>[0-9]+)/$"     , rest_views.user_detail.as_view()   , name="user_detail"),
-        url("^group/$"                   , rest_views.group_list.as_view()    , name="group_list"),
-        url("^group/(?P<pk>[0-9]+)/$"    , rest_views.group_detail.as_view()  , name="group_detail"),
+        *rpl
     )
-    
     rest_patterns = format_suffix_patterns(rest_patterns)
 
 pack_patterns = patterns(
