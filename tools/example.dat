@@ -1,0 +1,4 @@
+# example file for modify_object input
+
+device_group(name='test', [device(name='bla', [netdevice(devname='eth0', [net_ip(ip='192.168.1.1')])]), device(name='x')])
+
