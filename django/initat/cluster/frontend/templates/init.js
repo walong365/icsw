@@ -41,31 +41,6 @@ $.ajaxSetup({
 
 root = exports ? this
 
-root.update_table_info = (cur_ds, info_h3) ->
-    if info_h3
-        info_span = info_h3.find("span#info__" + cur_ds.postfix)
-    else
-        info_span = $("span#info__" + cur_ds.postfix)
-    info_span.text(cur_ds.master_xml.find(cur_ds.xml_name_plural + " " + cur_ds.xml_name).length)
-
-root.draw_head_line = (cur_ds) ->
-    dummy_div = $("<div>")
-    head_line = $("<tr>").attr
-        class : "ui-widget-header ui-widget"
-    cur_span = 0
-    for cur_di in cur_ds.draw_array
-        if cur_di.newline
-            break
-        cur_span--
-        if not cur_span
-            new_td = $("<th>").attr("colspan" : cur_di.span).text(cur_di.label)
-            cur_span += cur_di.span
-        head_line.append(new_td)
-    if cur_ds.create_url
-        head_line.append($("<th>").text("action"))
-    dummy_div.append(head_line)
-    return dummy_div.children()
-    
 root.redraw_tables = () ->
     (value.draw_table() for key, value of master_array)
     
@@ -75,419 +50,267 @@ root.draw_ds_tables = (t_div, master_array) ->
     t_div.accordion
         heightStyle : "content"
         collapsible : true
-    
-root.draw_setup = (name, postfix, xml_name, create_url, delete_url, draw_array, kwargs) ->
-    this.name = name
-    this.postfix = postfix
-    this.xml_name = xml_name
-    # plural, plural(s) = ses and not ss (!)
-    this.xml_name_plural = if this.xml_name.match(///s$///) then this.xml_name + "es" else this.xml_name + "s"
-    this.create_url = create_url
-    this.delete_url = delete_url
-    if kwargs?
-        if kwargs.required_xml?
-            this.required_xml = kwargs.required_xml
-        else
-            this.required_xml = []
-        if kwargs.lock_div?
-            this.lock_div = kwargs.lock_div
-        else
-            this.lock_div = ""
-    else
-        this.required_xml = []
-        this.lock_div = ""
-    this.drawn = false
-    this.draw_array = draw_array
-    for draw_entry in draw_array
-        draw_entry.draw_setup = this
-    this.table_div = undefined
-    this.element_info = {}
-    this.clean = () ->
-        this.drawn = false
-        this.table_div = undefined
-        this.info_h3 = undefined
-    this.draw_table = (master_xml) ->
-        this.master_xml = if master_xml? then master_xml else MASTER_XML
-        if this.table_div
-            table_div = this.table_div
-            info_h3   = this.info_h3
+
+class draw_setup
+    constructor: (@name, @postfix, @xml_name, @create_url, @delete_url, @draw_array, @kwargs={}) ->
+        @xml_name_plural = if this.xml_name.match(///s$///) then this.xml_name + "es" else this.xml_name + "s"
+        @required_xml = @kwargs.required_xml or []
+        @lock_div = @kwargs.lock_div or ""
+        for draw_entry in @draw_array
+            draw_entry.draw_setup = @
+        # flags
+        @drawn = false
+        @table_div = undefined
+        @element_info = {}
+    clean: ->
+        @drawn     = false
+        @table_div = undefined
+        @info_h3   = undefined
+    draw_head_line: ->
+        dummy_div = $("<div>")
+        head_line = $("<tr>").attr
+            class : "ui-widget-header ui-widget"
+        cur_span = 1
+        for cur_di in @draw_array
+            if cur_di.newline
+                break
+            cur_span--
+            if not cur_span
+                new_td = $("<th>").attr("colspan" : cur_di.span).text(cur_di.label)
+                cur_span += cur_di.span
+            head_line.append(new_td)
+        if @create_url
+            head_line.append($("<th>").text("action"))
+        dummy_div.append(head_line)
+        return dummy_div.children()
+    draw_table: (master_xml) ->
+        @master_xml = if master_xml? then master_xml else MASTER_XML
+        if @table_div
+            table_div = @table_div
         else
             table_div = $("<div>").attr
-                id : this.postfix
-            info_h3 = $("<h3>").attr
-                id : this.postfx
+                id : @postfix
+            @info_h3 = $("<h3>").attr
+                id : @postfx
             table_div.append ($("<table>")
-                .attr(id: this.postfix)
+                .attr(id: @postfix)
                 .addClass("style2"))
         draw = true
-        cur_ds = this
         missing_objects = []
-        if cur_ds.required_xml
-            for cur_req in cur_ds.required_xml
+        if @required_xml
+            for cur_req in @required_xml
                 ref_obj = master_array[cur_req]
                 if ref_obj
                     search_str = ref_obj.xml_name_plural + " " + ref_obj.xml_name
                 else
                     search_str = cur_req + "s " + cur_req
-                if not cur_ds.master_xml.find(search_str).length
+                if not @master_xml.find(search_str).length
                     missing_objects.push(if ref_obj then ref_obj.name else cur_req)
                     draw = false
         p_table = table_div.find("table")
         if draw
-            if cur_ds.drawn
-                p_table.find("tr[id]").each ->
-                    cur_tr = $(this)
-                    cur_tr.find("select").each ->
-                        cur_sel = $(this)
-                        for cur_di in cur_ds.draw_array
-                            cur_re = new RegExp(cur_di.name + "$")
-                            if cur_sel.attr("id").match(cur_re)
-                                sync_select_from_xml(cur_sel, cur_di)
+            if @drawn
+                @redraw()
             else
-                p_table.append(draw_head_line(cur_ds))
-                if cur_ds.create_url
-                    p_table.append(draw_line(cur_ds))
-                cur_ds.master_xml.find(this.xml_name_plural + " " + this.xml_name).each ->
-                    p_table.append(draw_line(cur_ds, $(this)))
-                info_h3.text(cur_ds.name + " (").append(
-                    $("<span>").attr(id : "info__" + this.postfix).text("---")
-                ).append($("<span>").text(")"))
-                update_table_info(this, info_h3)
+                @first_draw(p_table)
         else
-            if this.drawn
+            if @drawn
                 p_table.children().remove()
-            info_h3.text("parent objects missing for " + cur_ds.name + ": " + missing_objects.join(", "))
-        this.drawn = draw
-        if not this.table_div
-            this.table_div = table_div
-            this.info_h3 = info_h3
-            dummy_div = $("<div>").append(info_h3).append(table_div)
+            @info_h3.text("parent objects missing for " + @name + ": " + missing_objects.join(", "))
+        @drawn = draw
+        if not @table_div
+            @table_div = table_div
+            dummy_div = $("<div>").append(@info_h3).append(table_div)
             return dummy_div.children()
-    return this
-    
-{% endinlinecoffeescript %}
+    first_draw: (p_table) ->
+        p_table.append(@draw_head_line())
+        if @create_url
+            p_table.append(@draw_line())
+        @master_xml.find(@xml_name_plural + " " + @xml_name).each (index, element) =>
+            p_table.append(@draw_line($(element)))
+        @info_h3.text(@name + " (").append(
+            $("<span>").attr(id : "info__" + @postfix).text("---")
+        ).append($("<span>").text(")"))
+        @update_table_info()
+    redraw: () ->
+        @table_div.find("table").find("tr[id]").each (index, cur_tr) =>
+            $(cur_tr).find("select").each (index, cur_sel) =>
+                for cur_di in @draw_array
+                    cur_re = new RegExp("__" + cur_di.name + "$")
+                    if $(cur_sel).attr("id").match(cur_re)
+                        cur_di.sync_select_from_xml($(cur_sel))
+    append_new_line: (cur_el, new_xml) ->
+        @table_div.find("table:first").append(@draw_line(new_xml))
+        @update_table_info()
+    delete_line: (cur_el) ->
+        del_tr = cur_el.parents("tr:first")
+        if del_tr.attr("id")
+            @table_div.find("table:first tr#" + del_tr.attr("id")).remove()
+        else
+            del_tr.remove()
+        @update_table_info()
+    update_table_info: () ->
+        @info_h3.find("span#info__" + @postfix).text(@master_xml.find(@xml_name_plural + " " + @xml_name).length)
+    draw_line: (xml_el) ->
+        dummy_div = $("<div>")
+        xml_pk = if xml_el then xml_el.attr("pk") else "new"
+        line_prefix = @postfix + "__" + xml_pk
+        n_line = $("<tr>").attr
+            "id"    : line_prefix
+            "class" : "ui-widget"
+        el_list = []
+        dummy_div.append(n_line)
+        cur_line = n_line
+        for cur_di in @draw_array
+            if cur_di.newline
+                cur_line = $("<tr>").attr
+                    "id"    : line_prefix
+                    "class" : "ui-widget"
+                dummy_div.append(cur_line)
+            if not cur_di.keep_td
+                new_td = $("<td>")
+                if cur_di.cspan
+                    new_td.attr("colspan" : cur_di.cspan)
+                cur_line.append(new_td)
+            kwargs = cur_di.get_kwargs()
+            if not @create_url
+                kwargs.ro = true
+            if (cur_di.trigger and xml_el) or not cur_di.trigger
+                if cur_di.draw_conditional
+                    draw_el = cur_di.draw_conditional(xml_el)
+                else
+                    draw_el = true
+            else
+                draw_el = false
+            if draw_el
+                new_els = create_input_el(xml_el, cur_di.name, line_prefix, kwargs)
+                el_list.push(cur_di.create_draw_result(new_els.last()))
+            else
+                new_els = []
+            new_td.append(new_els)
+        @element_info[xml_pk] = el_list
+        if @create_url
+            n_line.append(
+                $("<td>").append(
+                    $("<input>").attr(
+                        "type"  : "button"
+                        "value" : if xml_pk == "new" then "create" else "delete"
+                        "id"    : line_prefix)
+                ).bind("click", (event) =>
+                    @create_delete_element(event)
+                )
+            )
+        return dummy_div.children()
+    create_delete_element: (event) ->
+        cur_el = $(event.target)
+        el_id  = cur_el.attr("id")
+        lock_list = if @lock_div then lock_elements($("div#" + @lock_div)) else []
+        if el_id.match(///new$///)
+            $.ajax
+                url     : @create_url
+                data    : create_dict($("table#" + @postfix), el_id)
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        new_period = $(xml).find(@xml_name)
+                        @master_xml.find(@xml_name_plural).append(new_period)
+                        @append_new_line(cur_el, new_period)
+                        cur_el.parents("tr:first").find("td input[id$='__name']").attr("value", "")
+                        redraw_tables()
+                    unlock_elements(lock_list)
+        else
+            if confirm("really delete " + @name + " ?")
+                $.ajax
+                    url     : @delete_url
+                    data    : create_dict($("table#" + @postfix), el_id)
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            @master_xml.find(@xml_name + "[pk='" + el_id.split("__")[1] + "']").remove()
+                            @delete_line(cur_el)
+                            redraw_tables()
+                        unlock_elements(lock_list)
+            else
+                unlock_elements(lock_list)
 
-function draw_head_line_old(cur_ds) {
-    var dummy_div = $("<div>");
-    var head_line = $("<tr>").attr({
-        "class" : "ui-widget-header ui-widget"
-    });
-    var cur_array = cur_ds.draw_array;
-    var cur_span = 1;
-    for (var idx=0; idx < cur_array.length ; idx++) {
-        var cur_di = cur_array[idx];
-        if (cur_di.newline) break;
-        cur_span--;
-        if (! cur_span) {
-            var new_td = $("<th>").attr({"colspan" : cur_di.span}).text(cur_di.label);
-            cur_span += cur_di.span;
-        };
-        head_line.append(new_td);
-    };
-    if (cur_ds.create_url) head_line.append($("<th>").text("action"));
-    dummy_div.append(head_line);
-    return dummy_div.children();
-};
-
-function redraw_tables_old() {
-    for (var key in master_array) {
-        master_array[key].draw_table();
-    };
-};
-
-function draw_setup_old(name, postfix, xml_name, create_url, delete_url, draw_array, kwargs) {
-    this.name = name;
-    this.postfix = postfix;
-    this.xml_name = xml_name;
-    // plural, plural(s) = ses and not ss (!)
-    this.xml_name_plural = this.xml_name.match(/s$/) ? this.xml_name + "es" : this.xml_name + "s";
-    this.create_url = create_url;
-    this.delete_url = delete_url;
-    this.required_xml = kwargs && (kwargs.required_xml || []) || [];
-    this.lock_div = kwargs && (kwargs.lock_div || "") || "";
-    this.drawn = false;
-    this.draw_array = draw_array;
-    for (var idx=0; idx < draw_array.length ; idx++) {
-        draw_array[idx].draw_setup = this;
-    };
-    this.table_div = undefined;
-    this.element_info = {};
-    this.clean = function() {
-        this.drawn = false;
-        this.table_div = undefined;
-        this.info_h3 = undefined;
-    };
-    function draw_table(master_xml) {
-        this.master_xml = master_xml || MASTER_XML;
-        if (this.table_div) {
-            var table_div = this.table_div;
-            var info_h3 = this.info_h3;
-        } else {
-            var table_div = $("<div>").attr({
-                "id" : this.postfix
-            });
-            var info_h3 = $("<h3>").attr({"id" : this.postfix});
-            table_div.append($("<table>").attr({"id" : this.postfix}).addClass("style2"));
-        };
-        var draw = true;
-        var cur_ds = this;
-        var missing_objects = []
-        if (cur_ds.required_xml) {
-            for (var idx=0; idx < cur_ds.required_xml.length; idx++) {
-                var cur_req = cur_ds.required_xml[idx];
-                var ref_obj = master_array[cur_req];
-                if (ref_obj) {
-                    var search_str = ref_obj.xml_name_plural + " " + ref_obj.xml_name;
-                } else {
-                    var search_str = cur_req + "s " + cur_req;
-                };
-                if (! cur_ds.master_xml.find(search_str).length) {
-                    missing_objects.push(ref_obj ? ref_obj.name : cur_req);
-                    draw = false;
-                };
-            };
-        };
-        var p_table = table_div.find("table");
-        if (draw) {
-            if (cur_ds.drawn) {
-                p_table.find("tr[id]").each(function() {
-                    var cur_tr = $(this);
-                    cur_tr.find("select").each(function() {
-                        var cur_sel = $(this);
-                        for (idx=0 ; idx < cur_ds.draw_array.length; idx++) {
-                            var cur_di = cur_ds.draw_array[idx];
-                            var cur_re = new RegExp(cur_di.name + "$");
-                            if (cur_sel.attr("id").match(cur_re)) {
-                                if (cur_di.select_source) {
-                                    sync_select_from_xml(cur_sel, cur_di);
-                                };
-                            };
-                        };
-                    });
-                });
-            } else {
-                p_table.append(draw_head_line(cur_ds));
-                if (cur_ds.create_url) p_table.append(draw_line(cur_ds));
-                cur_ds.master_xml.find(this.xml_name_plural + " " + this.xml_name).each(function() {
-                    p_table.append(draw_line(cur_ds, $(this)));
-                });
-                info_h3.text(cur_ds.name + " (").append(
-                    $("<span>").attr({"id" : "info__" + this.postfix}).text("---")
-                ).append($("<span>").text(")"));
-                update_table_info(this, info_h3);
-            };
-        } else {
-            if (this.drawn) {
-                p_table.children().remove();
-            };
-            info_h3.text("parent objects missing for " + cur_ds.name + ": " + missing_objects.join(", "));
-        };
-        this.drawn = draw;
-        if (!this.table_div) {
-            this.table_div = table_div;
-            this.info_h3 = info_h3;
-            var dummy_div = $("<div>").append(info_h3).append(table_div);
-            return dummy_div.children();
-        };
-    };
-    this.draw_table = draw_table;
-};
-
-// info how to render a given XML-attribute
-function draw_info(name, kwargs) {
-    this.name = name;
-    this.label = kwargs && (kwargs.label || name.toTitle()) || name.toTitle();
-    this.span = kwargs && (kwargs.span || 1) || 1;
-    var attr_list = ["size", "default", "select_source", "boolean", "min", "max", "ro",
+class draw_info
+    constructor: (@name, @kwargs={}) ->
+        @label = @kwargs.label or @name.toTitle()
+        @span = @kwargs.span or 1
+        for attr_name in ["size", "default", "select_source", "boolean", "min", "max", "ro",
         "button", "change_cb", "trigger", "draw_result_cb", "draw_conditional",
         "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group",
-        "css", "select_source_attribute", "password", "keep_td"];
-    for (idx=0 ; idx < attr_list.length; idx ++) {
-        var attr_name = attr_list[idx];
-        if (kwargs && kwargs.hasOwnProperty(attr_name)) {
-            this[attr_name] = kwargs[attr_name];
-        } else {
-            this[attr_name] = undefined;
-        };
-    };
-    this.size = kwargs && kwargs.size || undefined;
-    function get_kwargs() {
-        var attr_list = ["size", "select_source", "boolean", "min", "max", "ro", "button", "change_cb",
+        "css", "select_source_attribute", "password", "keep_td"]
+            @[attr_name] = @kwargs[attr_name] or undefined
+        @size = @kwargs.size or undefined
+    get_kwargs: () ->
+        kwargs = {new_default : @default}
+        for attr_name in ["size", "select_source", "boolean", "min", "max", "ro", "button", "change_cb",
             "draw_result_cb", "trigger",
-            "number", "manytomany", "add_null_entry", "css", "select_source_attribute", "password"];
-        var kwargs = {new_default : this.default};
-        for (idx=0 ; idx < attr_list.length; idx ++) {
-            var attr_name = attr_list[idx];
-            kwargs[attr_name] = this[attr_name];
-        };
-        if (this.show_label) {
-            kwargs["label"] = this["label"];
-        };
-        if (this.group) {
-            kwargs.modify_data_dict = this["modify_data_dict"];
-            kwargs.modify_data_dict_opts = this;
-        };
-        kwargs.draw_info = this;
-        return kwargs;
-    };
-    function modify_data_dict(in_dict, cur_di) {
-        var other_list = [];
-        var lock_list = ["#" + in_dict["id"]];
-        var xml_pk = in_dict["id"].split("__");
-        var xml_pk = xml_pk[xml_pk.length - 2];
-        var element_info = cur_di.draw_setup.element_info[xml_pk];
-        for (idx = 0; idx < cur_di.draw_setup.draw_array.length; idx++) {
-            var other_dr = element_info[idx];
-            if (other_dr.group == cur_di.group && other_dr.name != cur_di.name) {
-                other_list.push(other_dr.element.attr("id"));
-                lock_list.push("#" + other_dr.element.attr("id"));
-                in_dict[other_dr.element.attr("id")] = get_value(other_dr.element);
-            };
-        };
-        in_dict["other_list"] = other_list.join("::");
-        in_dict["lock_list"] = lock_list;
-    };
-    this.modify_data_dict = modify_data_dict;
-    this.get_kwargs = get_kwargs;
-};
+            "number", "manytomany", "add_null_entry", "css", "select_source_attribute", "password"]
+            kwargs[attr_name] = @[attr_name]
+        if @show_label
+            kwargs.label = @label
+        if @group
+            kwargs.modify_data_dict = @modify_data_dict
+        return kwargs
+    modify_data_dict: (in_dict) =>
+        other_list = []
+        lock_list  = []
+        xml_pk = in_dict["id"].split("__")
+        xml_pk = xml_pk[xml_pk.length - 2]
+        element_info = @draw_setup.element_info[xml_pk]
+        for other_dr in element_info
+            if other_dr.group == @group and other_dr.name != @name
+                other_id = other_dr.element.attr("id")
+                other_list.push(other_id)
+                lock_list.push("#" + other_id)
+                in_dict[other_id] = get_value(other_dr.element)
+        in_dict.other_list = other_list.join("::")
+        in_dict.lock_list = lock_list
+    sync_select_from_xml: (cur_el) ->
+        old_pks = ($(cur_sub).attr("value") for cur_sub in cur_el.find("option:selected"))
+        if typeof(@select_source) == "string"
+            sel_source = @draw_setup.master_xml.find(@select_source)
+        else if typeof(@select_source) == "function"
+            sel_source = @select_source(undefined)
+        else
+            sel_source = @select_source
+        cur_el.children().remove()
+        if @add_null_entry
+            cur_el.append($("<option>").attr("value" : 0).text(@add_null_entry))
+        for cur_ns in sel_source
+            cur_ns = $(cur_ns)
+            new_opt = $("<option>").attr("value" : cur_ns.attr("pk")).text(cur_ns.text())
+            if cur_ns.attr("pk") in old_pks
+                new_opt.attr("selected", "selected")
+            cur_el.append(new_opt)
+    create_draw_result: (new_el) ->
+        return new draw_result(@name, @group, new_el)
+        
+# storage node for rendered element
+class draw_result
+    constructor: (@name, @group, @element) ->
+    
+get_value = (cur_el) ->
+    if cur_el.is(":checkbox")
+        el_value = cur_el.is(":checked") ? "1" : "0"
+    else if cur_el.prop("tagName") == "TEXTAREA"
+        is_textarea = true
+        el_value = cur_el.text()
+    else if cur_el.prop("tagName") == "SELECT" and cur_el.attr("multiple")
+        el_value = ($(element).attr("value") for element in cur_el.find("option:selected")).join("::")
+    else
+        el_value = cur_el.attr("value")
+    return el_value;
 
-// storage node for rendered element
-function draw_result(name, group, element) {
-    this.name = name;
-    this.group = group;
-    this.element = element;
-};
+set_value = (el_id, el_value) ->
+    $("#" + el_id).val(el_value)
 
-function draw_line(cur_ds, xml_el) {
-    // cur_ds .... draw_setup
-    // xml_el .... xml or undefined
-    var dummy_div = $("<div>");
-    if (xml_el === undefined) {
-        var xml_pk = "new";
-    } else {
-        var xml_pk = xml_el.attr("pk");
-    };
-    var line_prefix = cur_ds.postfix + "__" + xml_pk;
-    var n_line = $("<tr>").attr({
-        "id"    : line_prefix,
-        "class" : "ui-widget"
-    });
-    var el_list = [];
-    dummy_div.append(n_line);
-    var cur_array = cur_ds.draw_array;
-    var cur_line = n_line;
-    for (var idx=0; idx < cur_array.length ; idx++) {
-        var cur_di = cur_array[idx];
-        if (cur_di.newline) {
-            var cur_line = $("<tr>").attr({
-                "id"    : line_prefix,
-                "class" : "ui-widget"
-            });
-            dummy_div.append(cur_line);
-        };
-        if (! cur_di.keep_td) {
-            var new_td = $("<td>");
-            if (cur_di.cspan) {
-                new_td.attr({"colspan" : cur_di.cspan});
-            };
-            cur_line.append(new_td);
-        };
-        var kwargs = cur_di.get_kwargs();
-        if (! cur_ds.create_url) {
-            kwargs.ro = true;
-        };
-        // triggers only work for defined instances
-        if ((cur_di.trigger && xml_el !== undefined) || ! cur_di.trigger) {
-            // removed, not needed ?
-            // kwargs.cur_ds = cur_ds;
-            if (cur_di.draw_conditional) {
-                var draw_el = cur_di.draw_conditional(xml_el);
-            } else {
-                var draw_el = true;
-            }
-        } else {
-            var draw_el = false;
-        }
-        if (draw_el) {
-            var new_els = create_input_el(xml_el, cur_di.name, line_prefix, kwargs);
-            el_list.push(new draw_result(cur_di.name, cur_di.group, new_els.last()));
-        } else {
-            var new_els = [];
-        };
-        new_td.append(new_els);
-    };
-    cur_ds.element_info[xml_pk] = el_list;
-    if (cur_ds.create_url) {
-        n_line.append(
-            $("<td>").append($("<input>").attr({
-                "type"  : "button",
-                "value" : xml_pk == "new" ? "create" : "delete",
-                "id"    : line_prefix
-            }).bind("click", function(event) { create_delete_element(event, cur_ds); })
-        ));
-    };
-    return dummy_div.children();
-};
+root.get_value = get_value
+root.set_value = set_value
+root.draw_setup = draw_setup
+root.draw_info  = draw_info
 
-function append_new_line(cur_el, new_xml, cur_ds) {
-    var t_table = cur_el.parents("table:first");
-    t_table.append(draw_line(cur_ds, new_xml));
-};
-
-function delete_line(cur_el) {
-    var del_tr = cur_el.parents("tr:first");
-    if (del_tr.attr("id")) {
-        var del_table = del_tr.parents("table:first");
-        del_table.find("tr#" + del_tr.attr("id")).remove();
-    } else {
-        del_tr.remove();
-    };
-};
-
-function create_delete_element(event, cur_ds) {
-    var cur_el = $(event.target);
-    var el_id = cur_el.attr("id");
-    if (cur_ds.lock_div) {
-        var lock_list = lock_elements($("div#" + cur_ds.lock_div));
-    } else {
-        var lock_list = [];
-    };
-    if (el_id.match(/new$/)) {
-        $.ajax({
-            url  : cur_ds.create_url,
-            data : create_dict($("table#" + cur_ds.postfix), el_id),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    var new_period = $(xml).find(cur_ds.xml_name);
-                    cur_ds.master_xml.find(cur_ds.xml_name_plural).append(new_period);
-                    append_new_line(cur_el, new_period, cur_ds);
-                    cur_el.parents("tr:first").find("td input[id$='__name']").attr("value", "");
-                    update_table_info(cur_ds);
-                    redraw_tables();
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    } else {
-        if (confirm("really delete " + cur_ds.name + " ?")) {
-            $.ajax({
-                url  : cur_ds.delete_url,
-                data : create_dict($("table#" + cur_ds.postfix), el_id),
-                success : function(xml) {
-                    if (parse_xml_response(xml)) {
-                        cur_ds.master_xml.find(cur_ds.xml_name + "[pk='" + el_id.split("__")[1] + "']").remove();
-                        delete_line(cur_el);
-                        update_table_info(cur_ds);
-                        redraw_tables();
-                    };
-                    unlock_elements(lock_list);
-                }
-            });
-        } else {
-            unlock_elements(lock_list);
-        };
-    };
-};
+{% endinlinecoffeescript %}
 
 parse_xml_response = function(xml, min_level) {
     var success = false;
@@ -572,13 +395,6 @@ function unlock_elements(el_list) {
     el_list.removeAttr("disabled");
 };
 
-// get all attributes of a given select
-function get_attribute_list(jq_sel, attr_name) {
-    var new_list = [];
-    jq_sel.each(function() { new_list.push($(this).attr(attr_name)); });
-    return new_list;
-};
-
 // create a dictionary from a list of elements
 function create_dict(top_el, id_prefix) {
     var in_list = top_el.find("input[id^='" + id_prefix + "'], select[id^='" + id_prefix + "'], textarea[id^='" + id_prefix + "']");
@@ -618,29 +434,6 @@ function replace_xml_element(xml) {
     });
 };
 
-function get_value(cur_el) {
-    if (cur_el.is(":checkbox")) {
-        var el_value = cur_el.is(":checked") ? "1" : "0";
-    } else if (cur_el.prop("tagName") == "TEXTAREA") {
-        var is_textarea = true;
-        var el_value = cur_el.text();
-    } else if (cur_el.prop("tagName") == "SELECT" && cur_el.attr("multiple")) {
-        var sel_field = [];
-        cur_el.find("option:selected").each(function(idx) {
-            sel_field.push($(this).attr("value"));
-        });
-        var el_value = sel_field.join("::");
-    } else {
-        var el_value = cur_el.attr("value");
-    };
-    return el_value;
-};
-
-function set_value(el_id, el_value) {
-    var cur_el = $("#" + el_id);
-    cur_el.val(el_value);
-};
-
 function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts) {
     var is_textarea = false;
     var el_value = get_value(cur_el);
@@ -660,7 +453,7 @@ function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts
         "value"    : el_value
     };
     if (modify_data_dict !== undefined) {
-        modify_data_dict(data_field, modify_data_dict_opts);
+        modify_data_dict(data_field);
     };
     if (data_field.lock_list) {
         lock_list = $(data_field.lock_list.join(", ")).attr("disabled", "disabled");
@@ -679,6 +472,7 @@ function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts
                     // set values
                     $(xml).find("changes change").each(function() {
                         var cur_os = $(this);
+                        console.log(cur_os.attr("id"));
                         set_value(cur_os.attr("id"), cur_os.text());
                     });
                     if (reset_value) cur_el.val("");
@@ -706,29 +500,6 @@ function in_array(in_array, s_str) {
         };
     };
     return res;
-};
-
-// resync select list
-function sync_select_from_xml(cur_el, cur_di) {
-    var old_pks = get_attribute_list(cur_el.find("option:selected"), "value");
-    var kwargs = cur_di.get_kwargs();
-    if (typeof(kwargs.select_source) == "string") {
-        var sel_source = (kwargs.draw_info && (kwargs.draw_info.draw_setup.master_xml || MASTER_XML) || MASTER_XML).find(kwargs.select_source);
-    } else if (typeof(kwargs.select_source) == "function") {
-        var sel_source = kwargs.select_source(undefined);
-    } else {
-        var sel_source = kwargs.select_source;
-    };
-    cur_el.children().remove();
-    if (kwargs.add_null_entry) {
-        cur_el.append($("<option>").attr({"value" : "0"}).text(kwargs.add_null_entry));
-    };
-    sel_source.each(function() {
-        var cur_ns = $(this);
-        var new_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text());
-        if (in_array(cur_ns.attr("pk"), old_pks)) new_opt.attr("selected", "seleted");
-        cur_el.append(new_opt);
-    });
 };
 
 // get expansion list
@@ -886,7 +657,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
             new_el.bind("change", kwargs.change_cb);
         } else {
             new_el.bind("change", function(event) {
-                submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.modify_data_dict_opts);
+                submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict);
             })
         };
     } else if (kwargs.change_cb) {
