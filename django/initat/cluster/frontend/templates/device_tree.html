@@ -14,23 +14,6 @@
 
 <script type="text/javascript">
 
-// tree xml
-TREE_XML = undefined;
-
-function change_device_group_cb(event) {
-    submit_change($(event.target));
-    // move row
-    var cur_tr = $(event.target).parents("tr:first");
-    var new_dg_tr = $("table#device_tree tr[id='devg__" + $(event.target).attr("value") + "']");
-    cur_tr.insertAfter(new_dg_tr);
-    cur_tr.attr({
-        "id" : "dev__" + new_dg_tr.attr("id").split("__")[1] + "__" + cur_tr.attr("id").split("__")[2]
-    });
-    update_device_group_info(TREE_XML);
-    // force unroll of device_groups
-    toggle_device(new_dg_tr.attr("id").split("__")[1], true);
-};
-
 function change_sel_device_type_cb(event) {
     var new_dt = $(event.target).attr("value");
     $(event.target).attr("value", "0");
@@ -73,383 +56,391 @@ function change_sel_device_curl_cb(event) {
     });
 };
 
-function toggle_device_group_selection(event) {
-    var cur_el = $(event.target);
-    var cur_tr = cur_el.parents("tr:first");
-    cur_tr.parents("table:first").find("tr[id^='dev__" + cur_tr.attr("id").split("__")[1] + "__']").each(function() {
-        var dev_tr = $(this);
-        var dev_sel = dev_tr.find("input[id$='__sel']");
-        if (dev_sel.is(":checked")) {
-            dev_sel.removeAttr("checked");
-        } else {
-            dev_sel.attr("checked", "checked");
-        };
-        dev_tr.show();
-    });
-};
+{% inlinecoffeescript %}
 
-function build_device_table(xml) {
-    $("div#device_table").children().remove();
-    new_table = $("<table>").attr({"id" : "device_tree"});
-    // device_type metadevice
-    var md_dt = $(xml).find("device_type[identifier='MD']").attr("pk");
-    $(xml).find("device_group").each(function() {
-        var cur_dg = $(this);
-        var new_tr = $("<tr>").attr({
-            "id"    : cur_dg.attr("key"),
+class device_tree
+    constructor: (@xml) ->
+        # XML is already jqueryified
+        init_xml_change(xml)
+    build_table: (@top_div) ->
+        @top_div.children().remove()
+        # device_type metadevice
+        @md_dt = @xml.find("device_type[identifier='MD']").attr "pk"
+        new_table = $("<table>").attr
+            "id" : "device_tree"
+        @xml.find("device_group").each (index, cur_dg) =>
+            new_table.append(@build_group($(cur_dg)))
+        new_table.append(@build_new_group)
+        new_table.append(@build_new_device)
+        new_table.append(@build_selected)
+        @top_div.append(new_table)
+        @update_device_group_info()
+        #new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; })
+        new_table.find("input#new__device__name").focus()
+    update_device_group_info: () =>
+        if not @xml.find("device_group[is_cdg='0']").length
+            @top_div.find("table tr[id='new_dev']").hide()
+        else:
+            @top_div.find("table tr[id='new_dev']").show()
+        @top_div.find("table#device_tree tr[id^='devg__']").each (index, cur_tr) =>
+            cur_tr = $(cur_tr)
+            dg_pk = cur_tr.attr("id").split("__")[1]
+            @recolor_device_group(dg_pk)
+            info_th = cur_tr.find("span[id^='devg__'][id$='__info']")
+            num_devs = @xml.find("device_group[pk='" + dg_pk + "'] device[device_type!='" + @md_dt + "']").length
+            info_th.text(num_devs + " device" + (if num_devs == 1 then "" else "s"))
+    toggle_device_group: (line_prefix, state, name) =>
+        dg_pk = line_prefix.split("__")[1]
+        if state
+            @top_div.find("tr[id^='dev__" + dg_pk + "__']").show()
+            @recolor_device_group(dg_pk)
+        else
+            @top_div.find("tr[id^='dev__" + dg_pk + "__']").hide()
+    change_device_group_cb: (cur_el) =>
+        # move row
+        dev_id = cur_el.attr("id").split("__")[1]
+        new_dg_id = cur_el.attr("value")
+        cur_el.parents("tr:first").remove()
+        new_dg = @xml.find("device_group[pk='" + new_dg_id + "']")
+        dev_xml = @xml.find("device[pk='" + dev_id + "']")
+        # important: set device group
+        dev_xml.attr("device_group", new_dg_id)
+        # call create_device
+        @create_device(dev_xml)
+    recolor_device_group: (dg_pk) =>
+        @top_div.find("tr[id^='dev__" + dg_pk + "__']").removeClass("even odd")
+        @top_div.find("tr[id^='dev__" + dg_pk + "__']:even").addClass("even")
+        @top_div.find("tr[id^='dev__" + dg_pk + "__']:odd").addClass("odd")
+    toggle_device_group_selection: (event) =>
+        cur_el = $(event.target)
+        cur_tr = cur_el.parents("tr:first")
+        cur_tr.parents("table:first").find("tr[id^='dev__" + cur_tr.attr("id").split("__")[1] + "__']").each (index, dev_tr) ->
+            dev_tr = $(dev_tr)
+            dev_sel = dev_tr.find("input[id$='__sel']")
+            if dev_sel.is(":checked")
+                dev_sel.removeAttr("checked")
+            else
+                dev_sel.attr("checked", "checked")
+            dev_tr.show()
+    build_group: (cur_dg) =>
+        new_tr = $("<tr>").attr
+            "id"    : cur_dg.attr("key")
             "class" : "ui-widget ui-widget-header"
-        });
-        // expandbox / name
-        if (cur_dg.attr("is_cdg") == "1") {
-            new_tr.append($("<th>"));
-        } else {
+        line_prefix = "devg__" + cur_dg.attr("pk")
+        if cur_dg.attr("is_cdg") == "1"
+            new_tr.append $("<th>")
+        else
             new_tr.append(
-                $("<td>").append(
-                    $("<div>").css({"float" : "left"}).attr({
-                        "class"   : "ui-icon ui-icon-triangle-1-e",
-                        "id"      : "expand_" + $(cur_dg).attr("pk")
-                    }).bind("click", function(event) {
-                        var cur_class = $(event.target).attr("class");
-                        if (cur_class.match(/-1-e$/)) {
-                            toggle_device(cur_dg.attr("pk"), true);
-                        } else {
-                            toggle_device(cur_dg.attr("pk"), false);
-                        }
-                    })
-                ).append(
-                    $("<input>").attr({
-                        "type" : "checkbox"
-                    }).bind("click", toggle_device_group_selection)
+                get_expand_td(line_prefix, "devicegroup", undefined, @toggle_device_group)
+            ).append($("<td>").append(
+                $("<input>").attr({
+                    "type" : "checkbox"
+                }).bind("click", (event) =>
+                    @toggle_device_group_selection(event))
                 )
-            );
-        };
-        new_tr.append($("<th>").append(
-            create_input_el(cur_dg, "name", "devg__" + cur_dg.attr("pk"))
-        ));
-        new_tr.append($("<th>").append(
-            create_input_el(cur_dg, "description", "devg__" + cur_dg.attr("pk"))
-        ));
-        new_tr.append($("<th>").append(
-            $("<span>").attr({
-                "id" : "devg__" + cur_dg.attr("pk") + "__info"
-            }).text("---"))
-        );
-        new_tr.append($("<th>").text(cur_dg.attr("is_cdg") == "1" ? "Cluster device group" : "device group"));
-        new_tr.append($("<th>").text("motherserver"));
-        new_tr.append($("<th>").text("cURL"));
-        if (cur_dg.attr("is_cdg") == "1") {
-            new_tr.append($("<th>"));
-        } else {
+            )
+        new_tr.append(
+            $("<th>").append(
+                create_input_el(cur_dg, "name", line_prefix, {callback : @update_dg_changes})
+            )
+        )
+        new_tr.append(
+            $("<th>").append(
+                create_input_el(cur_dg, "description", line_prefix)
+            )
+        )
+        new_tr.append(
+            $("<th>").append(
+                $("<span>").attr({
+                    "id" : line_prefix + "__info"
+                }).text("---")
+            )
+        )
+        new_tr.append($("<th>").text(if cur_dg.attr("is_cdg") == 1 then "Cluster device group" else  "device group"))
+        new_tr.append($("<th>").text("motherserver"))
+        new_tr.append($("<th>").text("cURL"))
+        if cur_dg.attr("is_cdg") == "1"
+            new_tr.append($("<th>"))
+        else
             new_tr.append($("<th>").append(
                 $("<input>").attr({
                     "type"  : "button",
                     "value" : "delete"
-                }).bind("click", function(event) {
-                    var data = {};
-                    data["devg__" + cur_dg.attr("pk")] = "1"
-                    if (confirm("really delete device_group " + cur_dg.attr("name") + " ?")) {
-                        $.ajax({
-                            url : "{% url base:delete_object 'device_group' %}",
-                            data : data,
-                            success : function(xml) {
-                                if (parse_xml_response(xml)) {
-                                    reload_device_tree(xml);
-                                }
-                            }
-                        })
-                    };
-                })
-            ));
-        }
-        new_table.append(new_tr);
-        $(cur_dg).find("device[device_type!='" + md_dt + "']").each(function() {
-            var cur_d = $(this);
-            var new_tr = $("<tr>").attr({
-                "id"    : "dev__" + cur_dg.attr("pk") + "__" + cur_d.attr("pk"),
-                "class" : "ui-widget"
-            });
-            // name
-            new_tr.append($("<td>").append(
-                create_input_el(cur_d, "sel", "dev__" + cur_d.attr("pk"), {boolean : true, bind : false})
-            ));
-            new_tr.append($("<td>").append(
-                create_input_el(cur_d, "name", "dev__" + cur_d.attr("pk"))
-            ));
-            // description / comment
-            new_tr.append($("<td>").append(
-                create_input_el(cur_d, "comment", "dev__" + cur_d.attr("pk"))
-            ));
-            // device_type
-            new_tr.append($("<th>").append(
-                create_input_el(cur_d, "device_type", "dev__" + cur_d.attr("pk"), {
-                    select_source           : "device_types device_type[identifier!='MD']",
-                    select_source_attribute : "name"
-                })
-            ));
-            // device group
-            new_tr.append($("<td>").append(
-                create_input_el(cur_d, "device_group", "dev__" + cur_d.attr("pk"), {
-                    select_source           : "response device_group[is_cdg='0']",
-                    select_source_attribute : "name",
-                    change_cb               : change_device_group_cb
-                })
-            ));
-            // mother server
-            new_tr.append($("<td>").append(
-                create_input_el(cur_d, "bootserver", "dev__" + cur_d.attr("pk"), {
-                    select_source  : "mother_servers mother_server",
-                    add_null_entry : "not set"
-                })
-            ));
-            // cULR
-            new_tr.append($("<td>").append(
-                create_input_el(cur_d, "curl", "dev__" + cur_d.attr("pk"))
-            ));
-            // device_group, cdg is not an option
-            new_tr.append($("<td>").append(
-                $("<input>").attr({
-                    "type"  : "button",
-                    "value" : "delete",
-                    "id"    : "dev__del__" + cur_d.attr("pk")
-                }).bind("click", function(event, param) {
-                    if (param == "noask" || confirm("really delete device " + cur_d.attr("name") + " ?")) {
-                        data = {};
-                        data["dev__" + cur_d.attr("pk")] = "1"
-                        $.ajax({
-                            url : "{% url base:delete_object 'device' %}",
-                            data : data,
-                            success : function(xml) {
-                                if (parse_xml_response(xml)) {
-                                    $(event.target).parents("tr:first").remove();
-                                    update_device_group_info(xml);
-                                }
-                            }
-                        })
-                    };
-                })
-            ));
-            new_table.append(new_tr);
-            new_tr.hide();
-        });
-    });
-    // new device group
-    var new_tr = $("<tr>").attr({
-        "id"    : "new_dg",
-        "class" : "ui-widget ui-widget-header"
-    }).append(
-        $("<th>").append("new DevGroup")
-    ).append(
-        $("<th>").append(
-            create_input_el(undefined, "name", "new__device_group")
+                }).bind("click", (event) =>
+                    data = {}
+                    data[line_prefix] = "1"
+                    if confirm("really delete device_group " + cur_dg.attr("name") + " ?")
+                        $.ajax
+                            url : "{% url base:delete_object 'device_group' %}"
+                            data : data
+                            success : (xml) =>
+                                if parse_xml_response(xml)
+                                    @delete_device_group(cur_dg.attr("pk"))
+                )
+            ))
+        dummy_div = $("<div>").append(new_tr)
+        cur_dg.find("device[device_type!='" + @md_dt + "']").each (index, cur_d) =>
+            dummy_div.append(@build_device(cur_dg, $(cur_d)))
+        return dummy_div.children()
+    build_device: (cur_dg, cur_d) ->
+        line_prefix = "dev__" + cur_d.attr("pk")
+        new_tr = $("<tr>").attr
+            # not standard, FIXME
+            "id"    : "dev__" + cur_dg.attr("pk") + "__" + cur_d.attr("pk")
+            "class" : "ui-widget"
+        # name
+        new_tr.append($("<td>").append(create_input_el(cur_d, "sel", line_prefix, {boolean : true, bind : false})))
+        new_tr.append($("<td>").append(create_input_el(cur_d, "name", line_prefix)))
+        # description / comment
+        new_tr.append($("<td>").append(create_input_el(cur_d, "comment", line_prefix)))
+        # device_type
+        new_tr.append($("<th>").append(
+            create_input_el(cur_d, "device_type", line_prefix, {
+                select_source           : "device_types device_type[identifier!='MD']",
+                select_source_attribute : "name"
+            })
+        ))
+        # device group
+        new_tr.append($("<td>").append(
+            create_input_el(cur_d, "device_group", line_prefix, {
+                select_source           : "response device_group[is_cdg='0']",
+                select_source_attribute : "name",
+                callback                : @change_device_group_cb
+            })
+        ))
+        # mother server
+        new_tr.append($("<td>").append(
+            create_input_el(cur_d, "bootserver", line_prefix, {
+                select_source  : "mother_servers mother_server",
+                add_null_entry : "not set"
+            })
+        ))
+        # cURL
+        new_tr.append($("<td>").append(
+            create_input_el(cur_d, "curl", line_prefix)
+        ))
+        # device_group, cdg is not an option
+        new_tr.append($("<td>").append(
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "delete",
+                "id"    : "dev__del__" + cur_d.attr("pk")
+            }).bind("click", (event, param) =>
+                if (param == "noask" || confirm("really delete device " + cur_d.attr("name") + " ?")) 
+                    data = {}
+                    data[line_prefix] = "1"
+                    $.ajax
+                        url     : "{% url base:delete_object 'device' %}"
+                        data    : data
+                        success : (xml) =>
+                            if parse_xml_response(xml)
+                                @delete_device(cur_d.attr("pk"))
+                )
+            )
         )
-    );
-    new_tr.append($("<th>").append(
-        create_input_el(undefined, "description", "new__device_group")
-    ));
-    new_tr.append($("<th>").attr({"colspan" : "4"}));
-    new_tr.append($("<th>").append(
-        $("<input>").attr({
-            "type"  : "button",
-            "value" : "create"
-        }).bind("click", function(event) {
-            $.ajax({
-                url : "{% url base:create_object 'device_group' %}",
-                data : {
-                    "devg__new"              : 1,
-                    "devg__new__name"        : $("table tr#new_dg input#new__device_group__name").attr("value"),
-                    "devg__new__description" : $("table tr#new_dg input#new__device_group__description").attr("value")
-                },
-                success : function(xml) {
-                    if (parse_xml_response(xml)) {
-                        reload_device_tree(xml);
+        new_tr.hide()
+        return new_tr
+    delete_device: (dev_pk) =>
+        @top_div.find("tr[id^='dev__'][id$='__" + dev_pk + "']").remove()
+        @xml.find("device[pk='" + dev_pk + "']").remove()
+        @update_device_group_info()
+    create_device: (dev_xml) =>
+        cur_dg = @xml.find("device_group[pk='" + dev_xml.attr("device_group") + "']")
+        cur_dg.append(dev_xml)
+        dg_tr = @top_div.find("table tr[id='devg__" + cur_dg.attr("pk") + "']")
+        dg_tr.after(@build_device(cur_dg, dev_xml))
+        @toggle_device_group("devg__" + cur_dg.attr("pk"), true)
+        force_expansion_state(dg_tr, true)
+        @update_device_group_info()
+    delete_device_group: (devg_pk) =>
+        @top_div.find("tr[id='devg__" + devg_pk + "']").remove()
+        @xml.find("device_group[pk='" + devg_pk + "']").remove()
+        @update_device_group_info()
+        @top_div.find("select[id$='__device_group'] option[value='" + devg_pk + "']").each (index, opt_el) =>
+            $(opt_el).remove()
+    create_device_group: (devg_xml) =>
+        @xml.find("response").append(devg_xml)
+        @top_div.find("tr[id='new_dg']").before(@build_group(devg_xml))
+        @update_device_group_info()
+        @top_div.find("select[id$='__device_group']").each (index, sel_el) =>
+            $(sel_el).append($("<option>").attr({
+                "value" : devg_xml.attr("pk")
+            }).text(devg_xml.attr("name")))
+    update_dg_changes: (dg_el) =>
+        dg_pk = dg_el.attr("id").split("__")[1]
+        new_name = @xml.find("device_group[pk='" + dg_pk + "']").attr("name")
+        @top_div.find("select[id$='__device_group']").each (index, sel_el) =>
+            $(sel_el).find("option[value='" + dg_pk + "']").each (index, opt_el) =>
+                $(opt_el).text(new_name)
+    build_new_group: =>
+        # new device group
+        new_tr = $("<tr>").attr({
+            "id"    : "new_dg",
+            "class" : "ui-widget ui-widget-header"
+        }).append(
+            $("<th>").append("new DevGroup")
+        ).append(
+            $("<th>").append(
+                create_input_el(undefined, "name", "new__device_group")
+            )
+        )
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "description", "new__device_group")
+        ))
+        new_tr.append($("<th>").attr({"colspan" : "4"}))
+        new_tr.append($("<th>").append(
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "create"
+            }).bind("click", (event) =>
+                $.ajax
+                    url : "{% url base:create_object 'device_group' %}"
+                    data : {
+                        "devg__new"              : 1,
+                        "devg__new__name"        : $("table tr#new_dg input#new__device_group__name").attr("value"),
+                        "devg__new__description" : $("table tr#new_dg input#new__device_group__description").attr("value")
                     }
-                }
-            })
-        })
-    ));
-    new_table.append(new_tr);
-    // new device
-    var new_tr = $("<tr>").attr({
-        "id"    : "new_dev",
-        "class" : "ui-widget ui-widget-header"}).append(
-        $("<th>").append("new Device")).append(
-        $("<th>").append(
-            create_input_el(undefined, "name", "new")
-    ));
-    new_tr.append($("<th>").append(
-        create_input_el(undefined, "comment", "new")
-    ));
-    new_tr.append($("<th>").append(
-        create_input_el(undefined, "device_type", "new", {
-            select_source           : "device_types device_type[identifier!='MD']",
-            select_source_attribute : "name"
-        })
-    ));
-    new_tr.append($("<th>").append(
-        create_input_el(undefined, "device_group", "new", {
-            select_source           : "response device_group[is_cdg='0']",
-            select_source_attribute : "name"
-        })
-    ));
-    // mother server
-    new_tr.append($("<th>").append(
-        create_input_el(undefined, "bootserver", "new", {
-            select_source  : "mother_servers mother_server",
-            add_null_entry : "not set"
-        })
-    ));
-    // cURL
-    new_tr.append($("<th>").append(
-        create_input_el(undefined, "curl", "new", {
-            new_default : "ssh://"
-        })
-    ));
-    new_tr.append($("<th>").append(
-        $("<input>").attr({
-            "type"  : "button",
-            "value" : "create"
-        }).bind("click", function(event) {
-            $(event.target).attr("disabled", "disabled");
-            $.ajax({
-                url : "{% url base:create_object 'device' %}",
-                data : {
-                    "dev__new"               : 1,
-                    "dev__new__name"         : $("table tr#new_dev input#new__name").attr("value"),
-                    "dev__new__comment"      : $("table tr#new_dev input#new__comment").attr("value"),
-                    "dev__new__device_type"  : $("table tr#new_dev select#new__device_type").attr("value"),
-                    "dev__new__device_group" : $("table tr#new_dev select#new__device_group").attr("value"),
-                    "dev__new__bootserver"   : $("table tr#new_dev select#new__bootserver").attr("value"),
-                    "dev__new__curl"         : $("table tr#new_dev input#new__curl").attr("value")
-                },
-                success : function(xml) {
-                    $(event.target).removeAttr("disabled");
-                    if (parse_xml_response(xml)) {
-                        reload_device_tree(xml);
-                    }
-                }
-            })
-        })
-    ));
-    new_table.append(new_tr);
-    // selected devices
-    var new_tr = $("<tr>").attr({
-        "id"    : "sel_dev",
-        "class" : "ui-widget ui-widget-header"}).append($("<th>").attr({"colspan" : "3"}).append("action on selected devices"));
-    new_tr.append($("<th>").append(
-        create_input_el(undefined, "type", "sel_device__", {
-            select_source           : "device_types device_type[identifier!='MD']",
-            select_source_attribute : "name",
-            add_null_entry          : "-- keep --",
-            change_cb               : change_sel_device_type_cb
-        })
-    ));
-    new_tr.append($("<th>").append(
-        create_input_el(undefined, "group", "sel_device__", {
-            select_source           : "response device_group[is_cdg='0']",
-            select_source_attribute : "name",
-            add_null_entry          : "-- keep --",
-            change_cb               : change_sel_device_group_cb
-        })
-    ));
-    new_tr.append($("<th>").append(
-        create_input_el(undefined, "mother", "sel_device__", {
-            select_source           : "mother_servers mother_server",
-            add_extra_entry         : "-- clear --",
-            add_null_entry          : "-- keep --",
-            change_cb               : change_sel_device_mother_cb
-        })
-    ));
-    new_tr.append($("<th>").append(
-        create_input_el(undefined, "curl", "sel_device__", {
-            change_cb : change_sel_device_curl_cb
-        })
-    ));
-    new_tr.append($("<td>").append(
-        $("<input>").attr({
-            "type"  : "button",
-            "value" : "delete"
-        }).bind("click", function(event) {
-            var sel_list = $("table#device_tree input[id^='dev__'][id$='__sel']:checked");
-            if (sel_list.length) {
-                if (confirm("really delete selected " + sel_list.length + " devices ?")) {
-                    $(sel_list).each(function() {
-                        var cur_sel = $(this);
-                        cur_sel.parents("tr:first").find("input[value='delete']").trigger("click", ["noask"]);
-                    })
-                };
-            };
-        })
-    ));
-    new_table.append(new_tr);
-    $("div#device_table").append(new_table);
-    update_device_group_info(xml);
-    new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
-    new_table.find("input#new__device_name").focus();
-};
-
-function propagate_dg_changes(cur_el) {
-    // set new device_group names on all selects
-    $("table#device_tree select[id*='__device_group'] option[value='" + cur_el.parents("tr:first").attr("id").split("__")[1] + "']").each(function() {
-        $(this).text(cur_el.attr("value"));
-    });
-};
-
-function toggle_device(dg_pk, state) {
-    var cur_dg = $("table#device_tree tr[id='devg__" + dg_pk + "'] div[id='expand_" + dg_pk + "']");
-    if (state) {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-s");
-        $("table#device_tree tr[id^='dev__" + dg_pk + "__']").show();
-        recolor_device_group(dg_pk);
-    } else {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-e");
-        $("table#device_tree tr[id^='dev__" + dg_pk + "__']").hide();
-    };
-};
-
-function recolor_device_group(dg_pk) {
-    $("table#device_tree tr[id^='dev__" + dg_pk + "__']:even").removeClass("even odd");
-    $("table#device_tree tr[id^='dev__" + dg_pk + "__']:even").addClass("even");
-    $("table#device_tree tr[id^='dev__" + dg_pk + "__']:odd").addClass("odd");
-};
-
-function update_device_group_info(xml) {
-    if ($(xml).find("device_group[is_cdg='0']").length == 0) {
-        $("table tr[id='new_dev']").hide();
-    } else {
-        $("table tr[id='new_dev']").show();
-    };
-    $("table#device_tree tr[id^='devg__']").each(function() {
-        var cur_tr = $(this);
-        var dg_pk = cur_tr.attr("id").split("__")[1];
-        recolor_device_group(dg_pk);
-        var info_th = cur_tr.find("span[id^='devg__'][id$='__info']");
-        var num_devs = $("table#device_tree tr[id^='dev__" + dg_pk + "__']").length;
-        info_th.text(num_devs + " device" + (num_devs == 1 ? "" : "s"));
-    });
-};
-
-function reload_device_tree() {
-    $.ajax({
-        url     : "{% url device:get_xml_tree %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                TREE_XML = $(xml);
-                init_xml_change($(xml));
-                build_device_table(xml);
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            @create_device_group($(xml).find("value[name='new_entry'] device_group"))
+            )
+        ))
+        return new_tr
+    build_new_device : =>
+        # new device
+        new_tr = $("<tr>").attr({
+            "id"    : "new_dev",
+            "class" : "ui-widget ui-widget-header"
             }
-        }
-    })
-};
+        ).append(
+            $("<th>").append("new Device")
+        ).append(
+            $("<th>").append(
+                create_input_el(undefined, "name", "new")
+            )
+        )
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "comment", "new")
+        ))
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "device_type", "new", {
+                select_source           : "device_types device_type[identifier!='MD']",
+                select_source_attribute : "name"
+            })
+        ))
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "device_group", "new", {
+                select_source           : "response device_group[is_cdg='0']",
+                select_source_attribute : "name"
+            })
+        ))
+        # mother server
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "bootserver", "new", {
+                select_source  : "mother_servers mother_server",
+                add_null_entry : "not set"
+            })
+        ))
+        # cURL
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "curl", "new", {
+                new_default : "ssh://"
+            })
+        ))
+        new_tr.append($("<th>").append(
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "create"
+            }).bind("click", (event) =>
+                $(event.target).attr("disabled", "disabled")
+                new_dev_line = $("table tr#new_dev")
+                $.ajax
+                    url : "{% url base:create_object 'device' %}"
+                    data : {
+                        "dev__new"               : 1,
+                        "dev__new__name"         : new_dev_line.find("input#new__name").attr("value"),
+                        "dev__new__comment"      : new_dev_line.find("input#new__comment").attr("value"),
+                        "dev__new__device_type"  : new_dev_line.find("select#new__device_type").attr("value"),
+                        "dev__new__device_group" : new_dev_line.find("select#new__device_group").attr("value"),
+                        "dev__new__bootserver"   : new_dev_line.find("select#new__bootserver").attr("value"),
+                        "dev__new__curl"         : new_dev_line.find("input#new__curl").attr("value")
+                    }
+                    success : (xml) =>
+                        $(event.target).removeAttr("disabled")
+                        if parse_xml_response(xml)
+                            @create_device($(xml).find("value[name='new_entry'] device"))
+            )
+        ))
+        return new_tr
+    build_selected: ->
+        # selected devices
+        new_tr = $("<tr>").attr({
+            "id"    : "sel_dev",
+            "class" : "ui-widget ui-widget-header"}
+        ).append(
+            $("<th>").attr({"colspan" : "3"}
+            ).append("action on selected devices")
+        )
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "type", "sel_device__", {
+                select_source           : "device_types device_type[identifier!='MD']",
+                select_source_attribute : "name",
+                add_null_entry          : "-- keep --",
+                change_cb               : change_sel_device_type_cb
+            })
+        ))
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "device_group", "sel_device__", {
+                select_source           : "response device_group[is_cdg='0']",
+                select_source_attribute : "name",
+                add_null_entry          : "-- keep --",
+                change_cb               : change_sel_device_group_cb
+            })
+        ))
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "mother", "sel_device__", {
+                select_source           : "mother_servers mother_server",
+                add_extra_entry         : "-- clear --",
+                add_null_entry          : "-- keep --",
+                change_cb               : change_sel_device_mother_cb
+            })
+        ))
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "curl", "sel_device__", {
+                change_cb : change_sel_device_curl_cb
+            })
+        ))
+        new_tr.append($("<td>").append(
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "delete"
+            }).bind("click", (event) ->
+                sel_list = $("table#device_tree input[id^='dev__'][id$='__sel']:checked")
+                if sel_list.length
+                    if confirm("really delete selected " + sel_list.length + " devices ?")
+                        $(sel_list).each (index, cur_sel) ->
+                            cur_sel = $(cur_sel)
+                            cur_sel.parents("tr:first").find("input[value='delete']").trigger("click", ["noask"])
+            )
+        ))
+        return new_tr
 
-function add_dt_handlers() {
-    init_xml_change($("<dummy>"));
-    reload_device_tree();
-};
+root = exports ? this
+
+root.reload_device_tree = ->
+    $.ajax
+        url     : "{% url device:get_xml_tree %}"
+        error   : handle_ajax_error
+        success : (xml) ->
+            if parse_xml_response(xml)
+                new device_tree($(xml).find("response")).build_table($("div#device_table"))
+
+add_dt_handlers = ->
+    reload_device_tree()
 
 $(document).ready(add_dt_handlers);
+
+{% endinlinecoffeescript %}
 
 </script>
 

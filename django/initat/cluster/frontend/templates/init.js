@@ -518,6 +518,16 @@ function get_expand_td(line_prefix, name, title, cb_func) {
     ).bind("click", function(event) { toggle_config_line_ev(event, cb_func) ; }).mouseover(function () { $(this).addClass("highlight"); }).mouseout(function() { $(this).removeClass("highlight"); });
 };
 
+function force_expansion_state(cur_tr, state) {
+    var cur_el = cur_tr.find("div[id*='__expand__']");
+    cur_el.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
+    if (state) {
+        cur_el.addClass("ui-icon-triangle-1-s");
+    } else {
+        cur_el.addClass("ui-icon-triangle-1-e");
+    }
+}
+
 function toggle_config_line_ev(event, cb_func) {
     // get div-element
     var cur_el = $(event.target);
