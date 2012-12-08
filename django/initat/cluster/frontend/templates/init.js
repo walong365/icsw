@@ -44,9 +44,9 @@ root = exports ? this
 root.redraw_tables = () ->
     (value.draw_table() for key, value of master_array)
     
-root.draw_ds_tables = (t_div, master_array) ->
+root.draw_ds_tables = (t_div, master_array, master_xml=undefined) ->
     t_div.children().remove()
-    t_div.append (value.draw_table() for key, value of master_array)
+    t_div.append (value.draw_table(master_xml) for key, value of master_array)
     t_div.accordion
         heightStyle : "content"
         collapsible : true
@@ -62,6 +62,7 @@ class draw_setup
         @drawn = false
         @table_div = undefined
         @element_info = {}
+        @master_xml = undefined
     clean: ->
         @drawn     = false
         @table_div = undefined
@@ -84,7 +85,8 @@ class draw_setup
         dummy_div.append(head_line)
         return dummy_div.children()
     draw_table: (master_xml) ->
-        @master_xml = if master_xml? then master_xml else MASTER_XML
+        if not @master_xml
+            @master_xml = master_xml
         if @table_div
             table_div = @table_div
         else
@@ -201,7 +203,7 @@ class draw_setup
                 )
             )
         return dummy_div.children()
-    create_delete_element: (event) ->
+    create_delete_element: (event) =>
         cur_el = $(event.target)
         el_id  = cur_el.attr("id")
         lock_list = if @lock_div then lock_elements($("div#" + @lock_div)) else []
@@ -211,9 +213,9 @@ class draw_setup
                 data    : create_dict($("table#" + @postfix), el_id)
                 success : (xml) =>
                     if parse_xml_response(xml)
-                        new_period = $(xml).find(@xml_name)
-                        @master_xml.find(@xml_name_plural).append(new_period)
-                        @append_new_line(cur_el, new_period)
+                        new_element = $(xml).find(@xml_name)
+                        @master_xml.find(@xml_name_plural).append(new_element)
+                        @append_new_line(cur_el, new_element)
                         cur_el.parents("tr:first").find("td input[id$='__name']").attr("value", "")
                         redraw_tables()
                     unlock_elements(lock_list)
@@ -247,6 +249,7 @@ class draw_info
             "draw_result_cb", "trigger",
             "number", "manytomany", "add_null_entry", "css", "select_source_attribute", "password"]
             kwargs[attr_name] = @[attr_name]
+        kwargs.master_xml = @draw_setup.master_xml
         if @show_label
             kwargs.label = @label
         if @group
@@ -292,7 +295,7 @@ class draw_result
     
 get_value = (cur_el) ->
     if cur_el.is(":checkbox")
-        el_value = cur_el.is(":checked") ? "1" : "0"
+        el_value = if cur_el.is(":checked") then "1" else "0"
     else if cur_el.prop("tagName") == "TEXTAREA"
         is_textarea = true
         el_value = cur_el.text()
@@ -418,23 +421,15 @@ function create_dict(top_el, id_prefix) {
     return out_dict;
 };
 
-MASTER_XML = undefined;
-
-function init_xml_change(master_el) {
-    // set reference XML element
-    MASTER_XML = master_el;
-};
-
-function replace_xml_element(xml) {
-    // replace element in MASTER_XML
+function replace_xml_element(master_xml, xml) {
+    // replace element in master_xml
     xml.find("value[name='object'] > *").each(function() {
         var new_el = $(this);
-        // FIXME; still referencing MASTER_XML
-        MASTER_XML.find("[key='" + new_el.attr("key") + "']").replaceWith(new_el);
+        master_xml.find("[key='" + new_el.attr("key") + "']").replaceWith(new_el);
     });
 };
 
-function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts) {
+function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts, master_xml) {
     var is_textarea = false;
     var el_value = get_value(cur_el);
     reset_value = false;
@@ -465,14 +460,13 @@ function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts
         data : data_field,
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                replace_xml_element($(xml));
+                replace_xml_element(master_xml, $(xml));
                 if (callback != undefined && typeof callback == "function") {
                     callback(cur_el);
                 } else {
                     // set values
                     $(xml).find("changes change").each(function() {
                         var cur_os = $(this);
-                        console.log(cur_os.attr("id"));
                         set_value(cur_os.attr("id"), cur_os.text());
                     });
                     if (reset_value) cur_el.val("");
@@ -599,7 +593,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
     } else {
         // select input
         if (typeof(kwargs.select_source) == "string") {
-            var sel_source = (kwargs.draw_info && (kwargs.draw_info.draw_setup.master_xml || MASTER_XML) || MASTER_XML).find(kwargs.select_source);
+            var sel_source = kwargs.master_xml.find(kwargs.select_source);
         } else if (typeof(kwargs.select_source) == "function") {
             var sel_source = kwargs.select_source(xml_el);
         } else {
@@ -667,7 +661,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
             new_el.bind("change", kwargs.change_cb);
         } else {
             new_el.bind("change", function(event) {
-                submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict);
+                submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.modify_data_dict_opts, kwargs.master_xml);
             })
         };
     } else if (kwargs.change_cb) {

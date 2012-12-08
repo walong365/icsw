@@ -12,9 +12,6 @@
 
 <script type="text/javascript">
 
-// nwt XML
-NETWORK_TYPES = undefined;
-
 var master_array = {
     "nwt" : new draw_setup("NetworkType", "nwt", "network_type",
         "{% url base:create_object 'network_type' %}",
@@ -41,23 +38,17 @@ function load_nwts() {
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                NETWORK_TYPES = $(xml).find("value[name='response']");
-                init_xml_change(NETWORK_TYPES);
-                draw_tables();
+                draw_ds_tables($("div#nwt_tables"), master_array, $(xml).find("value[name='response']"));
             }
         }
     });
 }
 
 function draw_tables() {
-    draw_ds_tables($("div#nwt_tables"), master_array);
 };
 
-function add_config_handlers() {
-    load_nwts();
-};
 
-$(document).ready(add_config_handlers);
+$(document).ready(load_nwts);
 
 </script>
 

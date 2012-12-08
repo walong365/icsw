@@ -61,7 +61,6 @@ function load_devices(sel_list) {
                 success : function(xml) {
                     if (parse_xml_response(xml)) {
                         DEVICES = $(xml).find("value[name='response']");
-                        init_xml_change(DEVICES);
                         draw_tables();
                     }
                 }
@@ -186,15 +185,17 @@ function draw_device(d_el) {
                 select_source  : "mon_device_templs mon_device_templ",
                 add_null_entry : "not set",
                 css            : {width : "100px"},
-                change_cb      : d_el ? undefined : change_monitor_template
+                change_cb      : d_el ? undefined : change_monitor_template,
+                master_xml     : DEVICES
             })
         )
     ).append(
         $("<td>").append(
             create_input_el(d_el, "monitor_checks", line_prefix, {
-                boolean : 1,
-                change_cb : d_el ? undefined : change_monitor_checks
-            })
+                boolean    : true,
+                change_cb  : d_el ? undefined : change_monitor_checks,
+                master_xml : DEVICES
+           })
         )
     ).append(
         $("<td>").append(
@@ -202,14 +203,16 @@ function draw_device(d_el) {
                 select_source  : "mon_ext_hosts mon_ext_host",
                 add_null_entry : "not set",
                 css            : {width : "250px"},
-                change_cb : d_el ? undefined : change_mon_ext_host
+                change_cb      : d_el ? undefined : change_mon_ext_host,
+                master_xml     : DEVICES
             })
         )
     ).append(
         $("<td>").append(
             create_input_el(d_el, "enable_perfdata", line_prefix, {
-                boolean : 1,
-                change_cb : d_el ? undefined : change_enable_perfdata
+                boolean    : true,
+                change_cb  : d_el ? undefined : change_enable_perfdata,
+                master_xml : DEVICES
             })
         )
     ).append(
@@ -218,7 +221,8 @@ function draw_device(d_el) {
                 select_source  : MONSRV.find("devices device"),
                 add_null_entry : "default (==master)",
                 css            : {width : "150px"},
-                change_cb : d_el ? undefined : change_monitor_server
+                change_cb      : d_el ? undefined : change_monitor_server,
+                master_xml     : DEVICES
             })
         )
     );
@@ -229,7 +233,8 @@ function draw_device(d_el) {
                     select_source  : DEVICES.find("mon_host_clusters mon_host_cluster"),
                     manytomany     : true,
                     css            : {width : "150px"},
-                    ignore_missing_source : true
+                    ignore_missing_source : true,
+                    master_xml     : DEVICES
                 })
             )
         ).append(
@@ -238,7 +243,8 @@ function draw_device(d_el) {
                     select_source  : DEVICES.find("mon_service_clusters mon_service_cluster"),
                     manytomany     : true,
                     css            : {width : "150px"},
-                    ignore_missing_source : true
+                    ignore_missing_source : true,
+                    master_xml     : DEVICES
                 })
             )
         );

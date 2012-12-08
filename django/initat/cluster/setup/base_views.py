@@ -11,7 +11,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
      mon_contactgroup, get_related_models, network_device_type, network_type, device_class, \
      device_location, network, mon_device_templ, user, group, package_search, device_variable, \
-     mon_host_cluster, mon_service_cluster
+     mon_host_cluster, mon_service_cluster, config_type
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -85,7 +85,8 @@ def change_xml_entry(request):
                    "user"    : user,
                    "ps"      : package_search,
                    "group"   : group,
-                   "dv"      : device_variable
+                   "dv"      : device_variable,
+                   "ctype"   : config_type,
                    }.get(object_type, None)
         if not mod_obj:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)

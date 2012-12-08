@@ -337,29 +337,29 @@ function add_config_var_line(c_el, line_prefix, c_var) {
     var cur_td = $("<td>");
     cv_tr.append(cur_td);
     cur_td.append(
-        create_input_el(c_var, "name", line_prefix)
+        create_input_el(c_var, "name", line_prefix, {master_xml : CONFIGS})
     );
     if (c_var) {
         if (c_var.attr("type") == "bool") {
             cur_td.append(
-                create_input_el(c_var, "value", line_prefix, {boolean : true})
+                create_input_el(c_var, "value", line_prefix, {boolean : true, master_xml : CONFIGS})
             );
         } else if (c_var.attr("type") == "int") {
             cur_td.append(
-                create_input_el(c_var, "value", line_prefix, {number : true})
+                create_input_el(c_var, "value", line_prefix, {number : true, master_xml : CONFIGS})
             );
         } else {
             cur_td.append(
-                create_input_el(c_var, "value", line_prefix)
+                create_input_el(c_var, "value", line_prefix, {master_xml : CONFIGS})
             );
         };
     } else {
         cur_td.append(
-            create_input_el(c_var, "value", line_prefix)
+            create_input_el(c_var, "value", line_prefix, {master_xml : CONFIGS})
         );
     };
     cur_td.append(
-        create_input_el(c_var, "description", line_prefix)
+        create_input_el(c_var, "description", line_prefix, {master_xml : CONFIGS})
     );
     if (c_var) {
         cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<span>").text(c_var.attr("type"))));
@@ -395,17 +395,17 @@ function add_monitoring_line(c_el, line_prefix, n_com) {
     var cur_td = $("<td>");
     nc_tr.append(cur_td),
     cur_td.append(
-        create_input_el(n_com, "name", line_prefix)
+        create_input_el(n_com, "name", line_prefix, {master_xml : CONFIGS})
     ).append(
-        create_input_el(n_com, "command_line", line_prefix)
+        create_input_el(n_com, "command_line", line_prefix, {master_xml : CONFIGS})
     ).append(
-        create_input_el(n_com, "description", line_prefix)
+        create_input_el(n_com, "description", line_prefix, {master_xml : CONFIGS})
     ).append(
-        create_input_el(n_com, "enable_perfdata", line_prefix, {boolean : true})
+        create_input_el(n_com, "enable_perfdata", line_prefix, {boolean : true, master_xml : CONFIGS})
     ).append(
-        create_input_el(n_com, "mon_check_command_type", line_prefix, {select_source : CONFIGS.find("mon_check_command_types mon_check_command_type")})
+        create_input_el(n_com, "mon_check_command_type", line_prefix, {select_source : CONFIGS.find("mon_check_command_types mon_check_command_type"), master_xml : CONFIGS})
     ).append(
-        create_input_el(n_com, "mon_service_templ", line_prefix, {select_source : CONFIGS.find("mon_service_templates mon_service_templ")})
+        create_input_el(n_com, "mon_service_templ", line_prefix, {select_source : CONFIGS.find("mon_service_templates mon_service_templ"), master_xml : CONFIGS})
     );
     nc_tr.append($("<td>").append(
         $("<input>").attr({
@@ -430,15 +430,15 @@ function add_config_script_line(c_el, line_prefix, cs_com) {
     var cur_td = $("<td>");
     cs_tr.append(cur_td),
     cur_td.append(
-        create_input_el(cs_com, "name", line_prefix)
+        create_input_el(cs_com, "name", line_prefix, {master_xml : CONFIGS})
     ).append(
-        create_input_el(cs_com, "value", line_prefix, {textarea : true})
+        create_input_el(cs_com, "value", line_prefix, {textarea : true, master_xml : CONFIGS})
     ).append(
-        create_input_el(cs_com, "description", line_prefix)
+        create_input_el(cs_com, "description", line_prefix, {master_xml : CONFIGS})
     ).append(
-        create_input_el(cs_com, "priority", line_prefix, {number : true})
+        create_input_el(cs_com, "priority", line_prefix, {number : true, master_xml : CONFIGS})
     ).append(
-        create_input_el(cs_com, "enabled", line_prefix, {boolean : true})
+        create_input_el(cs_com, "enabled", line_prefix, {boolean : true, master_xml : CONFIGS})
     );
     if (cs_com) {
         cur_td.append($("<input>").attr({
@@ -566,7 +566,6 @@ function load_configs() {
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 CONFIGS = $(xml).find("value[name='response']");
-                init_xml_change(CONFIGS);
                 init_config_table();
             }
         }

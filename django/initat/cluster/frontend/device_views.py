@@ -193,7 +193,7 @@ def get_group_tree(request):
                                                                    str(device_filter)))
         extra_obj = globals()[extra_name]
         if device_filter:
-            obj_list = extra_obj.objects.filter(Q(device__in=sel_pks))
+            obj_list = extra_obj.objects.filter(Q(device__in=xml_resp.xpath(".//device/@pk")))
         else:
             obj_list = extra_obj.objects.all()
         extra_list = getattr(E, "%ss" % (extra_name))(

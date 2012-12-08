@@ -45,7 +45,6 @@ function load_devices(sel_list) {
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 DCON = $(xml).find("value[name='response']");
-                init_xml_change(DCON);
                 draw_tables();
             }
         }

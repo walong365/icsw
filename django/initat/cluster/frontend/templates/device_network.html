@@ -342,13 +342,13 @@ function add_net_ip_line(cur_dev, cur_nd, line_prefix, cur_ip) {
     }).hide();
     if (cur_nd) {
         ip_tr.append($("<td>").attr({"colspan" : "9"}).append(
-            create_input_el(cur_ip, "ip", line_prefix, {label : "IP", callback : set_network_after_change})
+            create_input_el(cur_ip, "ip", line_prefix, {label : "IP", callback : set_network_after_change, master_xml : DEVICE_NETWORKS})
         ).append(
-            create_input_el(cur_ip, "network", line_prefix, {label : "NW", select_source : DEVICE_NETWORKS.find("network_list network"), callback : set_network_after_change})
+            create_input_el(cur_ip, "network", line_prefix, {label : "NW", select_source : DEVICE_NETWORKS.find("network_list network"), callback : set_network_after_change, master_xml : DEVICE_NETWORKS})
         ).append(
-            create_input_el(cur_ip, "alias", line_prefix, {label : "Alias"})
+            create_input_el(cur_ip, "alias", line_prefix, {label : "Alias", master_xml : DEVICE_NETWORKS})
         ).append(
-            create_input_el(cur_ip, "alias_excl", line_prefix, {label : "Exclusive", boolean : true})
+            create_input_el(cur_ip, "alias_excl", line_prefix, {label : "Exclusive", boolean : true, master_xml : DEVICE_NETWORKS})
         ).append(
            $("<input>").attr({
                "type"  : "button",
@@ -390,15 +390,15 @@ function add_netdevice_line(cur_dev, cur_nd) {
     }).hide();
     hw_tr.append(
         $("<td>").attr({"colspan" : "9"}).append(
-            create_input_el(cur_nd, "driver", line_prefix, {label : "driver"})
+            create_input_el(cur_nd, "driver", line_prefix, {label : "driver", master_xml : DEVICE_NETWORKS})
         ).append(
-            create_input_el(cur_nd, "driver_options", line_prefix, {label : "driver_options"})
+            create_input_el(cur_nd, "driver_options", line_prefix, {label : "driver_options", master_xml : DEVICE_NETWORKS})
         ).append(
-            create_input_el(cur_nd, "ethtool_autoneg", line_prefix, {"select_source" : DEVICE_NETWORKS.find("ethtool_autoneg"), "label" : "autonegotiation"})
+            create_input_el(cur_nd, "ethtool_autoneg", line_prefix, {"select_source" : DEVICE_NETWORKS.find("ethtool_autoneg"), "label" : "autonegotiation", master_xml : DEVICE_NETWORKS})
         ).append(
-            create_input_el(cur_nd, "ethtool_duplex", line_prefix, {"select_source" : DEVICE_NETWORKS.find("ethtool_duplex"), label : "duplex"})
+            create_input_el(cur_nd, "ethtool_duplex", line_prefix, {"select_source" : DEVICE_NETWORKS.find("ethtool_duplex"), label : "duplex", master_xml : DEVICE_NETWORKS})
         ).append(
-            create_input_el(cur_nd, "ethtool_speed", line_prefix, {"select_source" : DEVICE_NETWORKS.find("ethtool_speed"), label : "speed"})
+            create_input_el(cur_nd, "ethtool_speed", line_prefix, {"select_source" : DEVICE_NETWORKS.find("ethtool_speed"), label : "speed", master_xml : DEVICE_NETWORKS})
         )
     );
     // MAC line
@@ -407,11 +407,11 @@ function add_netdevice_line(cur_dev, cur_nd) {
     }).hide();
     mac_tr.append(
         $("<td>").attr({"colspan" : "9"}).append(
-            create_input_el(cur_nd, "macaddr", line_prefix, {label : "MAC address", new_default : DUMMY_MAC})
+            create_input_el(cur_nd, "macaddr", line_prefix, {label : "MAC address", new_default : DUMMY_MAC, master_xml : DEVICE_NETWORKS})
         ).append(
-            create_input_el(cur_nd, "fake_macaddr", line_prefix, {label : "fake MAC address", new_default : DUMMY_MAC})
+            create_input_el(cur_nd, "fake_macaddr", line_prefix, {label : "fake MAC address", new_default : DUMMY_MAC, master_xml : DEVICE_NETWORKS})
         ).append(
-            create_input_el(cur_nd, "dhcp_device", line_prefix, {label : "force write DHCP address", "boolean" : true})
+            create_input_el(cur_nd, "dhcp_device", line_prefix, {label : "force write DHCP address", "boolean" : true, master_xml : DEVICE_NETWORKS})
         )
     );
     cur_tr.append(
@@ -501,9 +501,9 @@ function add_netdevice_line(cur_dev, cur_nd) {
             "id" : line_prefix + "__routing__base"
         }).hide();
         route_tr_base.append($("<td>").attr({"colspan" : "9"}).append(
-            create_input_el(cur_nd, "routing", line_prefix, {label : "Routing", boolean : true, callback : redraw_possible_peers})
+            create_input_el(cur_nd, "routing", line_prefix, {label : "Routing", boolean : true, callback : redraw_possible_peers, master_xml : DEVICE_NETWORKS})
         ).append(
-            create_input_el(cur_nd, "penalty", line_prefix, {label : "Penalty", number: true})
+            create_input_el(cur_nd, "penalty", line_prefix, {label : "Penalty", number: true, master_xml : DEVICE_NETWORKS})
         ));
         var route_tr_add = $("<tr>").attr({
             "id" : line_prefix + "__routing__add"
@@ -562,7 +562,6 @@ function reload_network_tree() {
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 DEVICE_NETWORKS = $(xml);
-                init_xml_change(DEVICE_NETWORKS);
                 draw_network_table();
                 reload_hopcount_info();
                 init_copy_widget();

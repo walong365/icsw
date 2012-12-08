@@ -14,6 +14,8 @@
 
 // selected devices
 CUR_DEVICES = undefined;
+// devices
+DEVICES = undefined;
 
 function update_expand_info() {
     $("table#variables tr td div[id*='__expand__']").each(function() {
@@ -112,19 +114,19 @@ function add_dv_line(c_el, line_prefix, cs_com) {
     cs_tr.append($("<td>"));
     var cur_td = $("<td>");
     cs_tr.append(cur_td);
-    var val_kwargs = {};
+    var val_kwargs = {master_xml : DEVICES};
     if (cs_com) {
         if (cs_com.attr("var_type") == "b") val_kwargs.boolean = true;
         if (cs_com.attr("var_type") == "i") val_kwargs.number = true;
     };
     cur_td.append(
-        create_input_el(cs_com, "name", line_prefix)
+        create_input_el(cs_com, "name", line_prefix, {master_xml : DEVICES})
     ).append(
         create_input_el(cs_com, "value", line_prefix, val_kwargs)
     ).append(
-        create_input_el(cs_com, "is_public", line_prefix, {boolean : true, new_default : true})
+        create_input_el(cs_com, "is_public", line_prefix, {boolean : true, new_default : true, master_xml : DEVICES})
     ).append(
-        create_input_el(cs_com, "description", line_prefix)
+        create_input_el(cs_com, "description", line_prefix, {master_xml : DEVICES})
     );
     cs_tr.append($("<td>").append(
         $("<input>").attr({
@@ -202,7 +204,6 @@ function load_variables(sel_list) {
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 DEVICES = $(xml).find("value[name='response']");
-                init_xml_change(DEVICES);
                 draw_var_table();
             }
         }

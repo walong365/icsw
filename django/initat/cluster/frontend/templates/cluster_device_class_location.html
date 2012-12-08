@@ -12,9 +12,6 @@
 
 <script type="text/javascript">
 
-// device location class XML
-DEVLC_TYPES = undefined;
-
 var master_array = {
     "dc" : new draw_setup("Device Class", "dc", "device_class",
         "{% url base:create_object 'device_class' %}",
@@ -41,17 +38,11 @@ function load_cdcls() {
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                DEVLC_TYPES = $(xml).find("value[name='response']");
-                init_xml_change(DEVLC_TYPES);
-                draw_tables();
+                draw_ds_tables($("div#cdcl_tables"), master_array, $(xml).find("value[name='response']"));
             }
         }
     });
 }
-
-function draw_tables() {
-    draw_ds_tables($("div#cdcl_tables"), master_array);
-};
 
 function add_config_handlers() {
     load_cdcls();

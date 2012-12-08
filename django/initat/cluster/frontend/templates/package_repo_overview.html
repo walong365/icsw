@@ -33,23 +33,13 @@ var master_array = {
     )
 };
 
-function draw_tables() {
-    var t_div = $("div#repo_tables");
-    t_div.children().remove();
-    for (var key in master_array) {
-        t_div.append(master_array[key].draw_table());
-    };
-};
-
 function load_repos() {
     $.ajax({
         url     : "{% url pack:repo_overview %}",
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                REPO_XML = $(xml).find("value[name='response']");
-                init_xml_change(REPO_XML);
-                draw_tables();
+                draw_ds_tables($("div#repo_tables"), master_array, $(xml).find("value[name='response']"));
             }
         }
     });

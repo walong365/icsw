@@ -133,23 +133,13 @@ function redo_search(event) {
     });
 };
 
-function draw_tables() {
-    var t_div = $("div#search_tables");
-    t_div.children().remove();
-    for (var key in master_array) {
-        t_div.append(master_array[key].draw_table(SEARCH_XML));
-    };
-};
-
 function load_searches() {
     $.ajax({
         url     : "{% url pack:search_package %}",
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                SEARCH_XML = $(xml).find("value[name='response']");
-                init_xml_change(SEARCH_XML);
-                draw_tables();
+                draw_ds_tables($("div#search_tables"), master_array, $(xml).find("value[name='response']"));
             }
         }
     });

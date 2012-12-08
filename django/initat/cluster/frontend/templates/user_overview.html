@@ -74,19 +74,13 @@ var master_array = {
     )
 };
 
-function draw_tables() {
-    draw_ds_tables($("div#ug_tables"), master_array);
-};
-
 function load_users_groups() {
     $.ajax({
         url     : "{% url user:overview 'table' %}",
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
-                UG_XML = $(xml).find("value[name='response']");
-                init_xml_change(UG_XML);
-                draw_tables();
+                draw_ds_tables($("div#ug_tables"), master_array, $(xml).find("value[name='response']"));
             }
         }
     });

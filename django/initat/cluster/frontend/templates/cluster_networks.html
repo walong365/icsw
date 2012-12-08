@@ -61,20 +61,11 @@ function load_networks() {
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 NETWORK_XML = $(xml).find("value[name='response']");
-                init_xml_change(NETWORK_XML);
-                draw_tables();
+                draw_ds_tables($("div#nw_tables"), master_array, NETWORK_XML);
             }
         }
     });
 }
-
-function draw_tables() {
-    var t_div = $("div#nw_tables");
-    t_div.children().remove();
-    for (var key in master_array) {
-        t_div.append(master_array[key].draw_table());
-    };
-};
 
 function add_config_handlers() {
     load_networks();

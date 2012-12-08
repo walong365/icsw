@@ -352,14 +352,6 @@ function change_d_sel(event) {
     };
 };
 
-function draw_package_table() {
-    var t_div = $("div#package");
-    t_div.children().remove();
-    for (var key in master_array) {
-        t_div.append(master_array[key].draw_table());
-    };
-};
-
 function load_packages() {
     $.ajax({
         url     : "{% url pack:install %}",
@@ -367,8 +359,7 @@ function load_packages() {
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 PACKAGE_XML = $(xml).find("value[name='response']");
-                init_xml_change(PACKAGE_XML);
-                draw_package_table();
+                draw_ds_tables($("div#package"), master_array, PACKAGE_XML);
             }
         }
     });
