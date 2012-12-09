@@ -143,7 +143,7 @@ def use_package(request):
 
 @login_required
 @init_logging
-def remove_package(request):
+def unuse_package(request):
     _post = request.POST
     try:
         cur_p = package.objects.get(Q(pk=_post["pk"]))
@@ -192,6 +192,7 @@ def add_package(request):
             package=package.objects.get(Q(pk=pack_pk)))
         new_pdc.save()
         request.xml_response["new_entry"] = new_pdc.get_xml()
+        request.log("added connection", xml=True)
     else:
         request.log("connection already exists", logging_tools.LOG_LEVEL_ERROR, xml=True)
     return request.xml_response.create_response()

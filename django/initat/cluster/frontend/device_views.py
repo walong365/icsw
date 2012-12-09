@@ -33,16 +33,17 @@ def device_tree(request):
 @init_logging
 def get_xml_tree(request):
     _post = request.POST
-    full_tree = device_group.objects.all().prefetch_related("device", "device_group").distinct().order_by("-cluster_device_group", "name")
+    full_tree = device_group.objects.all().prefetch_related(
+        "device",
+        "device_group",
+        "device_group__device_type").distinct().order_by("-cluster_device_group", "name")
     xml_resp = E.response()
     for cur_dg in full_tree:
-        xml_resp.append(cur_dg.get_xml(with_devices=True))
+        xml_resp.append(cur_dg.get_xml(with_devices=True, full=False))
     # add device type
     xml_resp.append(
         E.device_types(
-            *[E.device_type(name=cur_dt.description,
-                            identifier=cur_dt.identifier, pk="%d" % (cur_dt.pk))
-              for cur_dt in device_type.objects.all()]
+            *[cur_dt.get_xml() for cur_dt in device_type.objects.all()]
         )
     )
     # add mother server(s)
