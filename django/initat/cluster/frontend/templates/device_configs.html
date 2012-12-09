@@ -116,9 +116,6 @@ function draw_device(d_el) {
             "type" : "checkbox",
             "id"   : line_prefix + "__config__" + cur_conf.attr("pk")
         }).bind("click", change_config);
-        cur_tr.append($("<td>").append(
-            $("<span>").text(cur_conf.attr("name"))
-        ));
         cur_tr.append(
            $("<td>").attr({
                "class" : "center"
@@ -137,6 +134,9 @@ function draw_device(d_el) {
         } else if (DEVICE_CONFIGS.find("device_config[device='" + d_el.attr("pk") + "'][config='" + cur_conf.attr("pk") + "']").length) {
             cur_cb.attr({"checked" : "checked"});
         };
+        cur_tr.append($("<td>").append(
+            $("<span>").text(cur_conf.attr("name"))
+        ));
         cur_entries++;
         if (cur_entries == 4) {
             dummy_div.append(cur_tr);

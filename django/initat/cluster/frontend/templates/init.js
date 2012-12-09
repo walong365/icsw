@@ -41,12 +41,9 @@ $.ajaxSetup({
 
 root = exports ? this
 
-root.redraw_tables = () ->
-    (value.draw_table() for key, value of master_array)
-    
 root.draw_ds_tables = (t_div, master_array, master_xml=undefined) ->
     t_div.children().remove()
-    t_div.append (value.draw_table(master_xml) for key, value of master_array)
+    t_div.append (value.draw_table(master_xml, master_array) for key, value of master_array)
     t_div.accordion
         heightStyle : "content"
         collapsible : true
@@ -67,12 +64,15 @@ class draw_setup
         @drawn     = false
         @table_div = undefined
         @info_h3   = undefined
-    draw_head_line: ->
+    redraw_tables: =>
+        (value.draw_table() for key, value of @master_array)
+    draw_head_line: =>
         dummy_div = $("<div>")
         head_line = $("<tr>").attr
             class : "ui-widget-header ui-widget"
         cur_span = 1
         for cur_di in @draw_array
+            # exit after first newline
             if cur_di.newline
                 break
             cur_span--
@@ -84,9 +84,10 @@ class draw_setup
             head_line.append($("<th>").text("action"))
         dummy_div.append(head_line)
         return dummy_div.children()
-    draw_table: (master_xml) ->
+    draw_table: (master_xml, master_array) ->
         if not @master_xml
             @master_xml = master_xml
+            @master_array = master_array
         if @table_div
             table_div = @table_div
         else
@@ -101,7 +102,7 @@ class draw_setup
         missing_objects = []
         if @required_xml
             for cur_req in @required_xml
-                ref_obj = master_array[cur_req]
+                ref_obj = @master_array[cur_req]
                 if ref_obj
                     search_str = ref_obj.xml_name_plural + " " + ref_obj.xml_name
                 else
@@ -154,16 +155,53 @@ class draw_setup
     update_table_info: () ->
         @info_h3.find("span#info__" + @postfix).text(@master_xml.find(@xml_name_plural + " " + @xml_name).length)
     draw_line: (xml_el) ->
-        dummy_div = $("<div>")
         xml_pk = if xml_el then xml_el.attr("pk") else "new"
         line_prefix = @postfix + "__" + xml_pk
+        cur_dl = new draw_line(@)
+        return cur_dl.draw(line_prefix, xml_el, xml_pk)
+    create_delete_element: (event) =>
+        cur_el = $(event.target)
+        el_id  = cur_el.attr("id")
+        lock_list = if @lock_div then lock_elements($("div#" + @lock_div)) else []
+        if el_id.match(///new$///)
+            $.ajax
+                url     : @create_url
+                data    : create_dict(@table_div, el_id)
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        new_element = $(xml).find(@xml_name)
+                        @master_xml.find(@xml_name_plural).append(new_element)
+                        @append_new_line(cur_el, new_element)
+                        for clear_el in (@draw_array.filter (cur_di) -> cur_di.clear_after_create)
+                            @table_div.find("#" + el_id + "__" + clear_el.name).val("")
+                        @redraw_tables()
+                    unlock_elements(lock_list)
+        else
+            if confirm("really delete " + @name + " ?")
+                $.ajax
+                    url     : @delete_url
+                    data    : create_dict(@table_div, el_id)
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            @master_xml.find(@xml_name + "[pk='" + el_id.split("__")[1] + "']").remove()
+                            @delete_line(cur_el)
+                            @redraw_tables()
+                        unlock_elements(lock_list)
+            else
+                unlock_elements(lock_list)
+
+class draw_line
+    constructor: (@cur_ds) ->
+    draw: (line_prefix, xml_el, xml_pk) =>
+        @expand = true
+        dummy_div = $("<div>")
         n_line = $("<tr>").attr
             "id"    : line_prefix
             "class" : "ui-widget"
         el_list = []
         dummy_div.append(n_line)
         cur_line = n_line
-        for cur_di in @draw_array
+        for cur_di in @cur_ds.draw_array
             if cur_di.newline
                 cur_line = $("<tr>").attr
                     "id"    : line_prefix
@@ -174,24 +212,12 @@ class draw_setup
                 if cur_di.cspan
                     new_td.attr("colspan" : cur_di.cspan)
                 cur_line.append(new_td)
-            kwargs = cur_di.get_kwargs()
-            if not @create_url
-                kwargs.ro = true
-            if (cur_di.trigger and xml_el) or not cur_di.trigger
-                if cur_di.draw_conditional
-                    draw_el = cur_di.draw_conditional(xml_el)
-                else
-                    draw_el = true
-            else
-                draw_el = false
-            if draw_el
-                new_els = create_input_el(xml_el, cur_di.name, line_prefix, kwargs)
+            new_els = cur_di.draw(@, xml_el, line_prefix)
+            if new_els.length
                 el_list.push(cur_di.create_draw_result(new_els.last()))
-            else
-                new_els = []
             new_td.append(new_els)
-        @element_info[xml_pk] = el_list
-        if @create_url
+        @cur_ds.element_info[xml_pk] = el_list
+        if @cur_ds.create_url
             n_line.append(
                 $("<td>").append(
                     $("<input>").attr(
@@ -199,39 +225,13 @@ class draw_setup
                         "value" : if xml_pk == "new" then "create" else "delete"
                         "id"    : line_prefix)
                 ).bind("click", (event) =>
-                    @create_delete_element(event)
+                    @cur_ds.create_delete_element(event)
                 )
             )
+        # collapse if requested
+        if not @expand
+            dummy_div.children()[1..].hide()
         return dummy_div.children()
-    create_delete_element: (event) =>
-        cur_el = $(event.target)
-        el_id  = cur_el.attr("id")
-        lock_list = if @lock_div then lock_elements($("div#" + @lock_div)) else []
-        if el_id.match(///new$///)
-            $.ajax
-                url     : @create_url
-                data    : create_dict($("table#" + @postfix), el_id)
-                success : (xml) =>
-                    if parse_xml_response(xml)
-                        new_element = $(xml).find(@xml_name)
-                        @master_xml.find(@xml_name_plural).append(new_element)
-                        @append_new_line(cur_el, new_element)
-                        cur_el.parents("tr:first").find("td input[id$='__name']").attr("value", "")
-                        redraw_tables()
-                    unlock_elements(lock_list)
-        else
-            if confirm("really delete " + @name + " ?")
-                $.ajax
-                    url     : @delete_url
-                    data    : create_dict($("table#" + @postfix), el_id)
-                    success : (xml) =>
-                        if parse_xml_response(xml)
-                            @master_xml.find(@xml_name + "[pk='" + el_id.split("__")[1] + "']").remove()
-                            @delete_line(cur_el)
-                            redraw_tables()
-                        unlock_elements(lock_list)
-            else
-                unlock_elements(lock_list)
 
 class draw_info
     constructor: (@name, @kwargs={}) ->
@@ -240,8 +240,8 @@ class draw_info
         for attr_name in ["size", "default", "select_source", "boolean", "min", "max", "ro",
         "button", "change_cb", "trigger", "draw_result_cb", "draw_conditional",
         "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group",
-        "css", "select_source_attribute", "password", "keep_td"]
-            @[attr_name] = @kwargs[attr_name] or undefined
+        "css", "select_source_attribute", "password", "keep_td", "clear_after_create"]
+            @[attr_name] = @kwargs[attr_name] ? undefined
         @size = @kwargs.size or undefined
     get_kwargs: () ->
         kwargs = {new_default : @default}
@@ -286,8 +286,36 @@ class draw_info
             if cur_ns.attr("pk") in old_pks
                 new_opt.attr("selected", "selected")
             cur_el.append(new_opt)
+    draw: (cur_line, xml_el, line_prefix) =>
+        kwargs = @get_kwargs()
+        if not cur_line.cur_ds.create_url
+            kwargs.ro = true
+        if (@trigger and xml_el) or not @trigger
+            if @draw_conditional
+                draw_el = @draw_conditional(xml_el)
+            else
+                draw_el = true
+        else
+            draw_el = false
+        if draw_el
+            new_els = create_input_el(xml_el, @name, line_prefix, kwargs)
+        else
+            new_els = []
+        return new_els
     create_draw_result: (new_el) ->
         return new draw_result(@name, @group, new_el)
+
+class draw_collapse extends draw_info
+    constructor: (name="collapse", kwargs={}) ->
+        super(name, kwargs)
+    draw: (cur_line, xml_el, line_prefix) =>
+        cur_line.expand = @default ? true
+        return get_expand_td(line_prefix, "exp", undefined, @expand_cb, @default ? true)
+    expand_cb: (line_prefix, state, name) =>
+        if state
+            @draw_setup.table_div.find("tr[id^='" + line_prefix + "']")[1..].show()
+        else
+            @draw_setup.table_div.find("tr[id^='" + line_prefix + "']")[1..].hide()
         
 # storage node for rendered element
 class draw_result
@@ -312,6 +340,7 @@ root.get_value = get_value
 root.set_value = set_value
 root.draw_setup = draw_setup
 root.draw_info  = draw_info
+root.draw_collapse  = draw_collapse
 
 {% endinlinecoffeescript %}
 
@@ -497,10 +526,11 @@ function in_array(in_array, s_str) {
 };
 
 // get expansion list
-function get_expand_td(line_prefix, name, title, cb_func) {
+function get_expand_td(line_prefix, name, title, cb_func, initial_state) {
+    if (initial_state === undefined) initial_state = false;
     return exp_td = $("<td>").append(
         $("<div>").attr({
-            "class"   : "ui-icon ui-icon-triangle-1-e leftfloat",
+            "class"   : initial_state ? "ui-icon ui-icon-triangle-1-s leftfloat" : "ui-icon ui-icon-triangle-1-e leftfloat",
             "id"      : line_prefix + "__expand__" + name,
             "title"   : title === undefined ? "show " + name : title
         })

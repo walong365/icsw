@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n compress %}
+{% load i18n compress coffeescript %}
 
 {% block title %}{% trans "Monitoring" %}{% endblock %}
 
@@ -13,18 +13,9 @@
 
 <script type="text/javascript">
 
-function rebuild_config() {
-    $.ajax({
-        url     : "{% url mon:rebuild_config %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-            }
-        }
-    });
-};
+{% inlinecoffeescript %}
 
-var master_array = {
+master_array = {
     "monper" : new draw_setup("MonPeriod", "monper", "mon_period",
         "{% url base:create_object 'mon_period' %}",
         "{% url base:delete_object 'mon_period' %}",
@@ -144,25 +135,19 @@ var master_array = {
             "required_xml" : ["monst"]
         }
     )
-};
-
-function load_config() {
-    $.ajax({
-        url     : "{% url mon:setup %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                draw_ds_tables($("div#mon_tables"), master_array, $(xml).find("value[name='response']"));
-            }
-        }
-    });
 }
 
-function add_config_handlers() {
-    load_config();
-};
+load_config = ->
+    $.ajax
+        url     : "{% url mon:setup %}"
+        error   : handle_ajax_error
+        success : (xml) ->
+            if parse_xml_response(xml)
+                draw_ds_tables($("div#mon_tables"), master_array, $(xml).find("value[name='response']"))
 
-$(document).ready(add_config_handlers);
+$(document).ready(load_config)
+
+{% endinlinecoffeescript %}
 
 </script>
 
