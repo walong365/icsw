@@ -1375,12 +1375,6 @@ def do_etc_hosts(conf):
                 "value",
                 "d_netdevice__devname",
                 "d_netdevice__device__name")
-##    all_netdevs = [db_rec["netdevice_idx"] for db_rec in pub_stuff["node_if"]]
-##    sql_str = "SELECT DISTINCT d.name, i.ip, i.alias, i.alias_excl, nw.network_idx, n.netdevice_idx, n.devname, n.vlan_id, nt.identifier, nw.name as domain_name, nw.postfix, nw.short_names, h.value FROM " + \
-##        "device d, netip i, netdevice n, network nw, network_type nt, hopcount h WHERE nt.network_type_idx=nw.network_type AND i.network=nw.network_idx AND n.device=d.device_idx AND i.netdevice=n.netdevice_idx " + \
-##        "AND n.netdevice_idx=h.s_netdevice AND (%s) ORDER BY h.value, d.name" % (" OR ".join(["h.d_netdevice=%d" % (x) for x in all_netdevs]))
-##    db_dc.execute(sql_str)
-##    all_hosts = [[x for x in db_dc.fetchall()]]
     # list of (netdevice, ip) tuples
     all_ips, ips_used = ([], set())
     for cur_hc in all_hopcounts:
@@ -1398,11 +1392,6 @@ def do_etc_hosts(conf):
             ips_used.add(cur_ip.ip)
             # do not use IPs with no hopcount entry ? FIXME
     #        all_ips.append((cur_ip.netdevice, cur_ip))
-##    sql_str = "SELECT DISTINCT d.name, i.ip, i.alias, i.alias_excl, nw.network_idx, n.netdevice_idx, n.devname, n.vlan_id, nt.identifier, nw.name AS domain_name, nw.postfix, nw.short_names, n.penalty AS value FROM " + \
-##        "device d, netip i, netdevice n, network nw, network_type nt WHERE nt.network_type_idx=nw.network_type AND i.network=nw.network_idx AND n.device=d.device_idx AND i.netdevice=n.netdevice_idx AND " + \
-##        "d.device_idx=%d ORDER BY d.name, i.ip" % (pub_stuff["device_idx"])
-##    db_dc.execute(sql_str)
-##    all_hosts.append([x for x in db_dc.fetchall()])
     # ip addresses already written
     new_co = conf.add_file_object("/etc/hosts")
     # two iterations: at first the devices that match my local networks, than the rest
@@ -3759,6 +3748,7 @@ def main():
 ##        process_tools.fix_files(loc_config["USER_NAME"], loc_config["GROUP_NAME"], ["/var/log/cluster-config-server.out", "/tmp/cluster-config-server.out"])
 ##    dc.release()
     process_tools.renice()
+    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/cluster-config-server"])
     global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     if not global_config["DEBUG"]:
