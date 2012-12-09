@@ -1794,6 +1794,7 @@ def network_pre_save(sender, **kwargs):
         elif change_attr == "gateway":
             # do nothing
             pass
+        ip_dict["network"] = ip_dict["network"] & ip_dict["netmask"]
         # always correct gateway
         ip_dict["gateway"] = (ip_dict["gateway"] & ~ ip_dict["netmask"]) | ip_dict["network"]
         # set values
@@ -3153,6 +3154,7 @@ class group_serializer(serializers.ModelSerializer):
 def group_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "groupname")
         _check_integer(cur_inst, "gid", min_val=100, max_val=65535)
 
 @receiver(signals.post_save, sender=group)
