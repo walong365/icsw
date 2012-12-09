@@ -281,6 +281,10 @@ function handle_runlevel_links() {
             echo -e "Trying to insserv -r $sl"
             chroot /$basedir /sbin/insserv -r $sl
         fi
+        if [ -x /$basedir/bin/systemctl ] ; then
+            echo -e "adding with systemctl"
+            chroot /$basedir /bin/systemctl disable ${sl}.service
+        fi
     done
     start_levs=`get_conf_str "get_start_scripts" | cut -d " " -f 3- `
     for sl in $start_levs ; do 
@@ -294,6 +298,10 @@ function handle_runlevel_links() {
         else
             echo -e "Trying to insserv $sl"
             chroot /$basedir /sbin/insserv $sl
+        fi
+        if [ -x /$basedir/bin/systemctl ] ; then
+            echo -e "adding with systemctl"
+            chroot /$basedir /bin/systemctl enable ${sl}.service
         fi
     done
     # sleep 30

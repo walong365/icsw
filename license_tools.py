@@ -34,6 +34,7 @@ LICENSE_CAPS = [
     ("boot"   , "boot/config facility for nodes"),
     ("package", "Package installation"),
     ("rms"    , "Resource Management system"),
+    ("ganglia", "Ganglia monitoring system"),
     ("rest"   , "REST server"),
 ]
 
