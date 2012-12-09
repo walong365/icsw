@@ -39,7 +39,7 @@ try:
 except:
     config_tools = None
     
-def check_threads(name, pids):
+def check_threads(name, pids, any_ok):
     ret_state = 7
     unique_pids = dict([(key, pids.count(key)) for key in set(pids)])
     pids_found = dict([(key, 0) for key in set(pids)])
@@ -54,15 +54,15 @@ def check_threads(name, pids):
     num_started = sum(unique_pids.values()) if unique_pids else 0
     num_found   = sum(pids_found.values()) if pids_found else 0
     # check for extra Nagios2.x thread
-    if name == "monitoring" and num_started == 1 and num_found == 2:
-        num_started = 2
-    if num_started == num_found:
+    if any_ok and num_found:
+        ret_state = 0
+    elif num_started == num_found:
         ret_state = 0
     return ret_state, num_started, num_found
 
 def check_system(opt_ns):
     if not opt_ns.server and not opt_ns.node:
-        set_default_nodes, set_default_servers = (True, True)
+        set_default_nodes, set_default_servers = (True , True )
     else:
         set_default_nodes, set_default_servers = (False, False)
     if opt_ns.server == ["ALL"]:
@@ -92,9 +92,9 @@ def check_system(opt_ns):
             "snmp-relay",
             "md-config-server"]
         if os.path.isfile("/etc/init.d/icinga"):
-            opt_ns.server.append("monitoring:threads_by_pid_file:/opt/icinga/var/icinga.lock")
+            opt_ns.server.append("monitoring:threads_by_pid_file:/opt/icinga/var/icinga.lock:1")
         elif os.path.isfile("/etc/init.d/nagios"):
-            opt_ns.server.append("monitoring:threads_by_pid_file:/opt/nagios/var/nagios.lock")
+            opt_ns.server.append("monitoring:threads_by_pid_file:/opt/nagios/var/nagios.lock:1")
         opt_ns.server.extend(extra_server_tools.extra_server_file().get_server_list())
         
     check_dict, check_list = ({}, [])
@@ -109,11 +109,18 @@ def check_system(opt_ns):
                 check_type, pid_file_name = check_type.split(":", 1)
             else:
                 pid_file_name = ""
+            if pid_file_name.count(":"):
+                pid_file_name, any_ok = pid_file_name.split(":", 1)
+                any_ok = True if int(any_ok) else False
+            else:
+                any_ok = False
             check_list.append(name)
             check_dict[name] = {"type"          : c_type,
                                 "check_type"    : check_type,
                                 # pid_file_name or process_name for simple check
                                 "pid_file_name" : pid_file_name,
+                                # any number of threads OK
+                                "any_ok"        : any_ok,
                                 "init_script"   : "/etc/init.d/%s" % (name)}
     ret_dict = {}
     if check_list:
@@ -184,7 +191,7 @@ def check_system(opt_ns):
                 if os.path.isfile(pid_file_name):
                     pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
                     act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
-                    act_state, num_started, num_found = check_threads(name, act_pids)
+                    act_state, num_started, num_found = check_threads(name, act_pids, check_struct["any_ok"])
                     act_info_dict["state_info"] = (num_started, num_found, pid_time)
                 else:
                     if os.path.isfile(check_struct["init_script"]):
