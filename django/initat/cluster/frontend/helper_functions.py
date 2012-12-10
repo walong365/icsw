@@ -176,6 +176,17 @@ def keyword_check(*kwarg_list):
         return _wrapped_view
     return decorator
 
+##class rest_logging(object):
+##    def __init__(self, func):
+##        self.__name__ = func.__name__
+##        self.__logger = logging_pool.get_logger("rest")
+##        self._func = func
+##    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+##        self.__logger.log(log_level, "[%s] %s" % (self.__name__, what))
+##    def as_view(self, *args, **kwargs):
+##        print args, kwargs
+##        return self._func.as_view(*args, **kwargs)
+    
 class init_logging(object):
     def __init__(self, func):
         """ decorator for catching exceptions and logging, has to be the first decorator in the decorator queue (above login_required) to catch redirects """
@@ -285,7 +296,8 @@ class init_logging(object):
         if request.is_ajax() and ret_value["Content-Type"] == "application/json" and "callback" in request.GET:            
             # modify content with callback-function for dynatree calls
             ret_value.content = "%s(%s)" % (request.GET["callback"], ret_value.content)
-        logging_pool.free_logger(self.__logger)
+        if logging_pool:
+            logging_pool.free_logger(self.__logger)
         if self.__prev_logger:
             # copy previous logger back to struct
             request.log = self.__prev_logger

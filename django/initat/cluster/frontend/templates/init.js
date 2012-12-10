@@ -123,8 +123,11 @@ class draw_setup
         @drawn = draw
         if not @table_div
             @table_div = table_div
+            @update_table_info()
             dummy_div = $("<div>").append(@info_h3).append(table_div)
             return dummy_div.children()
+        else
+            @update_table_info()
     first_draw: (p_table) ->
         p_table.append(@draw_head_line())
         if @create_url
@@ -134,7 +137,6 @@ class draw_setup
         @info_h3.text(@name + " (").append(
             $("<span>").attr(id : "info__" + @postfix).text("---")
         ).append($("<span>").text(")"))
-        @update_table_info()
     redraw: () ->
         @table_div.find("table").find("tr[id]").each (index, cur_tr) =>
             $(cur_tr).find("select").each (index, cur_sel) =>
@@ -154,6 +156,16 @@ class draw_setup
         @update_table_info()
     update_table_info: () ->
         @info_h3.find("span#info__" + @postfix).text(@master_xml.find(@xml_name_plural + " " + @xml_name).length)
+        @recolor_table()
+    recolor_table: () =>
+        act_class = "even"
+        last_id = "x"
+        for cur_tr in @table_div.find("tr[id]")
+            $(cur_tr).removeClass("even odd")
+            if $(cur_tr).attr("id") != last_id
+                last_id = $(cur_tr).attr("id")
+                act_class = if act_class is "even" then "odd" else "even"
+            $(cur_tr).addClass(act_class)
     draw_line: (xml_el) ->
         xml_pk = if xml_el then xml_el.attr("pk") else "new"
         line_prefix = @postfix + "__" + xml_pk

@@ -20,12 +20,12 @@ ALL_FS = undefined;
 
 function load_partition_tables() {
     $.ajax({
-        url     : "{% url setup:get_all_partitions %}",
+        url     : "{% url setup:partition_overview %}",
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 ALL_PARTITIONS = $(xml).find("partitions");
-                init_xml_change(ALL_PARTITIONS);
+                //init_xml_change(ALL_PARTITIONS);
                 ALL_FS = $(xml).find("partition_fs_list");
                 show_all_partitions();
             }
@@ -35,7 +35,7 @@ function load_partition_tables() {
 
 function load_partition_tables_and_redraw(pt_pk) {
     $.ajax({
-        url     : "{% url setup:get_all_partitions %}",
+        url     : "{% url setup:partition_overview %}",
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
@@ -235,23 +235,23 @@ function create_part_line(line_prefix, pt_xml, pd_xml, part_xml) {
     var first_td = $("<td>");
     part_tr.append(first_td);
     first_td.append(
-        create_input_el(part_xml, "pnum", line_prefix, {"label" : "Partition id", number : true, min : 1, max : 16})
+        create_input_el(part_xml, "pnum", line_prefix, {"label" : "Partition id", number : true, min : 1, max : 16, master_xml: ALL_PARTITIONS})
     );
     if (part_xml) {
         first_td.append(
-            create_input_el(part_xml, "bootable", line_prefix, {"label" : "boot", boolean : true})
+            create_input_el(part_xml, "bootable", line_prefix, {"label" : "boot", boolean : true, master_xml: ALL_PARTITIONS})
         ).append(
-            create_input_el(part_xml, "size", line_prefix, {"label" : "Size", number : true, size : 8, min : 0})
+            create_input_el(part_xml, "size", line_prefix, {"label" : "Size", number : true, size : 8, min : 0, master_xml: ALL_PARTITIONS})
         );
         part_tr.append($("<td>").append(
-            create_input_el(part_xml, "mountpoint", line_prefix, {"label" : "mountpoint"})
+            create_input_el(part_xml, "mountpoint", line_prefix, {"label" : "mountpoint", master_xml: ALL_PARTITIONS})
         ).append(
-            create_input_el(part_xml, "mount_options", line_prefix, {"label" : "options"})
+            create_input_el(part_xml, "mount_options", line_prefix, {"label" : "options", master_xml: ALL_PARTITIONS})
         ));
         part_tr.append($("<td>").append(
-            create_input_el(part_xml, "fs_freq", line_prefix, {number : true, size : 2, min : 0, max: 1})
+            create_input_el(part_xml, "fs_freq", line_prefix, {number : true, size : 2, min : 0, max: 1, master_xml: ALL_PARTITIONS})
         ).append(
-            create_input_el(part_xml, "fs_passno", line_prefix, {number : true, size : 2, min : 0, max : 2})
+            create_input_el(part_xml, "fs_passno", line_prefix, {number : true, size : 2, min : 0, max : 2, master_xml: ALL_PARTITIONS})
         ));
         part_tr.find("input[id$='__mountpoint']").bind("click", fill_mountpoint);
     } else {
@@ -261,7 +261,8 @@ function create_part_line(line_prefix, pt_xml, pd_xml, part_xml) {
     part_tr.append($("<td>").append(
         create_input_el(part_xml, "partition_fs", line_prefix, {
             label         : "fstype",
-            select_source : ALL_FS.find("partition_fs")
+            select_source : ALL_FS.find("partition_fs"),
+            master_xml    : ALL_PARTITIONS
         })
     ));
     part_tr.append($("<td>").append(
@@ -289,7 +290,7 @@ function create_disc_line(line_prefix, pt_xml, pd_xml) {
     };
     var line_prefix = line_prefix + "__pdisc__" + pd_pk;
     var disc_tr = $("<tr>").append($("<td>").append(
-        create_input_el(pd_xml, "disc", line_prefix, {"label" : "Disc name"})
+        create_input_el(pd_xml, "disc", line_prefix, {"label" : "Disc name", master_xml: ALL_PARTITIONS})
     ).append(
         $("<input>").attr({
             "type"    : "button",

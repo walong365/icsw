@@ -21,27 +21,25 @@ import net_tools
 @login_required
 @init_logging
 def partition_overview(request):
-    return render_me(request, "part_overview.html", {})()
-
-@init_logging
-def get_all_partitions(request):
-    xml_resp = E.response()
-    part_list = E.partitions()
-    for cur_part in partition_table.objects.all().prefetch_related(
-        "partition_disc_set",
-        "partition_disc_set__partition_set",
-        "partition_disc_set__partition_set__partition_fs",
-        ).order_by("name"):
-        part_list.append(cur_part.get_xml(validate=True))
-    xml_resp.append(part_list)
-    xml_resp.append(
-        E.partition_fs_list(
-            *[cur_pfs.get_xml() for cur_pfs in partition_fs.objects.all()]
+    if request.method == "GET":
+        return render_me(request, "part_overview.html", {})()
+    else:
+        xml_resp = E.response()
+        part_list = E.partitions()
+        for cur_part in partition_table.objects.all().prefetch_related(
+            "partition_disc_set",
+            "partition_disc_set__partition_set",
+            "partition_disc_set__partition_set__partition_fs",
+            ).order_by("name"):
+            part_list.append(cur_part.get_xml(validate=True))
+        xml_resp.append(part_list)
+        xml_resp.append(
+            E.partition_fs_list(
+                *[cur_pfs.get_xml() for cur_pfs in partition_fs.objects.all()]
+            )
         )
-    )
-    request.xml_response["response"] = xml_resp
-    print etree.tostring(xml_resp, pretty_print=True)
-    return request.xml_response.create_response()
+        request.xml_response["response"] = xml_resp
+        return request.xml_response.create_response()
 
 @login_required
 @init_logging
@@ -111,18 +109,17 @@ def delete_partition(request):
 @login_required
 @init_logging
 def image_overview(request):
-    return render_me(request, "image_overview.html", {})()
-
-@init_logging
-def get_all_images(request):
-    xml_resp = E.response()
-    img_list = E.images()
-    for cur_img in image.objects.all():
-        img_list.append(cur_img.get_xml())
-    xml_resp.append(img_list)
-    request.xml_response["response"] = xml_resp
-    #print etree.tostring(xml_resp, pretty_print=True)
-    return request.xml_response.create_response()
+    if request.method == "GET":
+        return render_me(request, "image_overview.html", {})()
+    else:
+        xml_resp = E.response(
+            E.images(
+                *[cur_img.get_xml() for cur_img in image.objects.all()]
+            )
+        )
+        request.xml_response["response"] = xml_resp
+        #print etree.tostring(xml_resp, pretty_print=True)
+        return request.xml_response.create_response()
 
 @login_required
 @init_logging

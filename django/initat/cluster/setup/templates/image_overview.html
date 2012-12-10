@@ -20,12 +20,12 @@ ALL_IMAGES = undefined;
 
 function load_images() {
     $.ajax({
-        url     : "{% url setup:get_all_images %}",
+        url     : "{% url setup:image_overview %}",
         error   : handle_ajax_error,
         success : function(xml) {
             if (parse_xml_response(xml)) {
                 ALL_IMAGES = $(xml).find("images");
-                init_xml_change(ALL_IMAGES);
+                //init_xml_change(ALL_IMAGES);
                 show_all_images();
             }
         }

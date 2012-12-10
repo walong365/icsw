@@ -30,7 +30,7 @@ var master_array = {
             new draw_info("short_names", {boolean : 1, label : "SNames / Named / Other", span : 3}),
             new draw_info("write_bind_config", {boolean : 1}),
             new draw_info("write_other_network_config", {boolean : 1}),
-            new draw_info("network_device_type", {select_source : "network_device_types network_device_type", manytomany : 1, newline : 1, cspan : 2, show_label : true, label : "Device type :"}),
+            new draw_info("network_device_type", {select_source : "network_device_types network_device_type", manytomany : 1, newline : 1, cspan : 3, show_label : true, label : "Device type :"}),
             new draw_info("network", {default : "192.168.1.0", size : 16, cspan : 2, label : "NW", show_label : true, group : "network"}),
             new draw_info("netmask", {default : "255.255.255.0", size : 16, label : "NM", show_label : true, group : "network"}),
             new draw_info("broadcast", {default : "192.168.1.255", size : 16, label : "BC", show_label : true, group : "network"}),
