@@ -2592,7 +2592,7 @@ class partition_table(models.Model):
                 self.valid = new_valid
                 self.save()
         pt_xml = E.partition_table(
-            self.name,
+            unicode(self),
             E.partition_discs(
                 *[sub_disc.get_xml() for sub_disc in self.partition_disc_set.all()]
                 ),
@@ -2619,6 +2619,8 @@ class partition_table(models.Model):
             p_disc._validate()
         self.problems = p_list
         return self.problems + sum([cur_disc._get_problems() for cur_disc in self.partition_disc_set.all()], [])
+    def __unicode__(self):
+        return self.name
     class Meta:
         db_table = u'partition_table'
 
