@@ -1248,7 +1248,7 @@ class node_control_process(threading_tools.process_obj):
         add_flags = []
         for mach_name in nodes:
             cur_dev = machine.get_device(mach_name)
-            print "***", mach_name, cur_dev, type(cur_dev)
+            #print "***", mach_name, cur_dev, type(cur_dev)
             cur_dev.handle_mac_command(com_name)
             #dhcp_written, dhcp_write, dhcp_last_error = (
             #    cur_dev.dhcp_wrmachdat["dhcp_written"], machdat["dhcp_write"], machdat["dhcp_error"])

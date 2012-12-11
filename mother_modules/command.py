@@ -177,6 +177,8 @@ class external_command_process(threading_tools.process_obj):
         if simple_command.idle():
             self.unregister_timer(self._check_commands)
     def _hard_control(self, zmq_id, in_com, *args, **kwargs):
+        if simple_command.idle():
+            self.register_timer(self._check_commands, 1)
         in_com = server_command.srv_command(source=in_com)
         for cur_dev in in_com.xpath(None, ".//ns:device"):
             hc_command(cur_dev)
