@@ -1,30 +1,31 @@
 {% extends "main.html" %}
+
 {% load i18n %}
 
-{% block title %}{% trans "Init.at Clustersoftware Login" %}{% endblock %}
+{% block title %}{% trans "init.at login" %}{% endblock %}
 
 {% block body %}
 
 {% if login_form.err %}{{ login_form.err }}{% endif %}
-<div style="background-color:#aac8ff;margin-top:-30px;padding:0px;border-bottom:2px solid #111111;height:60px;vertical-align:middle;text-align:center;width:100%;">
+<div style="background-color:#aac8ff;margin-top:0px;padding:0px;border: 1px solid #111111;height:80px;vertical-align:middle;text-align:center;width:100%;">
     <center>
-        <h1 class="center" style="font-size:36px;vertical-align:bottom;color:#434343;margin-top:30px;">{% trans "Please enter your login credentials for the Clustersoftware" %}</h1> 
+        <h1 class="center" style="font-size:36px;vertical-align:bottom;color:#434343;margin-top:20px;">{% trans "Please enter your login credentials" %}</h1> 
     </center>
 </div>
 <form action="{{ app_path }}" method="post" id="id_login_form" name="login_form">
     <center>
-        <div style="width:461px; height:301px; text-align:right; margin-top:130px;">
-            <table border="0" align="right" style="margin-right:27px; margin-top:115px; height:100px; width:200px;">
-                <tr>
+        <div style="margin-top:130px;">
+            <table class="style2">
+                <tr class="ui-widget-header">
                     <td class="newformlabel">{% trans "Username" %}</td>
                     <td align="right">{{login_form.username}}</td>
                 </tr>
-                <tr>
+                <tr class="ui-widget-header">
                     <td class="newformlabel">{% trans "Password" %}</td>
                     <td align="right">{{login_form.password}}</td>
                 </tr>
                 <tr>
-                    <td align="right"><input type="submit" value="login"/></td>
+                    <td align="center" colspan="2"><input type="submit" value="login"/></td>
                 </tr>
             </table>
         </div>
@@ -34,10 +35,15 @@
             </div>
         {% endif %}
         <div class="loginerrors">
-            {% if login_form.non_field_errors %}<p>{% trans "Please enter a valid username and password!" %}</p>{% endif %}		
+            {% if login_form.non_field_errors %}
+                <p>
+                    <span class="error">
+                        {% trans "Please enter a valid username and password!" %}
+                    </span>
+                </p>
+            {% endif %}		
         </div>
     </center>
-<!--    <input type="hidden" name="next" value="{{ next }}"/>-->
 </form>
 
 <script type="text/javascript">
