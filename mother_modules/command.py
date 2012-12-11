@@ -96,6 +96,7 @@ class hc_command(object):
             len(cur_out)))
         for line_num, line in enumerate(cur_out.split("\n")):
             self.log(" %3d %s" % (line_num + 1, line))
+        hc_sc.terminate()
     def get_var(self, var_name, default_val=None):
         try:
             cur_var = self.cd_obj.parent.device_variable_set.get(Q(name=var_name))
