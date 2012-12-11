@@ -1,12 +1,11 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags %}
+{% load i18n extra_tags coffeescript %}
 
 {% block title %}{% trans "Partition Overview" %}{% endblock %}
 
 {% block content %}
 
-<h1 class="center">Partitions (<span id="num_partitions">???</span> defined)</h1>
 <div id="partition_list"></div>
 
 <div id="partition_table"></div>
@@ -18,21 +17,6 @@ ALL_PARTITIONS = undefined;
 // all partition_fs
 ALL_FS = undefined;
 
-function load_partition_tables() {
-    $.ajax({
-        url     : "{% url setup:partition_overview %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                ALL_PARTITIONS = $(xml).find("partitions");
-                //init_xml_change(ALL_PARTITIONS);
-                ALL_FS = $(xml).find("partition_fs_list");
-                show_all_partitions();
-            }
-        }
-    });
-};
-
 function load_partition_tables_and_redraw(pt_pk) {
     $.ajax({
         url     : "{% url setup:partition_overview %}",
@@ -41,51 +25,6 @@ function load_partition_tables_and_redraw(pt_pk) {
             if (parse_xml_response(xml)) {
                 ALL_PARTITIONS = $(xml).find("partitions");
                 redraw_partition_table(pt_pk);
-            }
-        }
-    });
-};
-
-function show_all_partitions() {
-    $("span#num_partitions").text(ALL_PARTITIONS.find("partition_table").length);
-    var new_part_list = $("<select>").attr({
-        "id"        : "all_partitions",
-        "size"      : 5}).bind("change", choose_partition_table);
-    ALL_PARTITIONS.find("partition_table").each(function() {
-        var cur_pt = $(this);
-        cur_opt = $("<option>").attr({
-            "value" : cur_pt.attr("pk")
-        });
-        var opt_str = cur_pt.attr("name") + " (" + cur_pt.find("partition_disc").length + " discs";
-        if (cur_pt.attr("valid") == 0) var opt_str = opt_str + ", not valid";
-        var opt_str = opt_str + ")";
-        cur_opt.text(opt_str);
-        new_part_list.append(cur_opt);
-    });
-    $("div#partition_table").children().remove();
-    $("div#partition_list").children().remove();
-    if (new_part_list.find("option").length) {
-        $("div#partition_list").append(new_part_list);
-    };
-    $("div#partition_list").append($("<input>").attr({
-        "type"   : "button",
-        "id"     : "add_partition_table",
-        "value"  : "add partition"}).bind("click", add_new_partition));
-};
-
-function add_new_partition() {
-    $("input#add_partition_table").attr("disabled", "disabled");
-    var answer = prompt("name of new partition table");
-    $.ajax({
-        url     : "{% url setup:create_new_partition_table %}",
-        error   : handle_ajax_error,
-        data    : {
-            "name" : answer
-        },
-        success : function(xml) {
-            $("input#add_partition_table").removeAttr("disabled");
-            if (parse_xml_response(xml)) {
-                load_partition_tables();
             }
         }
     });
@@ -218,101 +157,6 @@ function create_delete_partition(event) {
     };
 };
 
-function create_part_line(line_prefix, pt_xml, pd_xml, part_xml) {
-    var dummy_div = $("<div>");
-    if (part_xml === undefined) {
-        var part_pk = "new";
-    } else {
-        var part_pk = part_xml.attr("pk");
-        if (part_xml.find("problems problem").length) {
-            var error_tr = $("<tr>");
-            error_tr.append($("<td>").text(part_xml.find("problems problem").text()));
-            dummy_div.append(error_tr);
-        };
-    };
-    var line_prefix = line_prefix + "__part__" + part_pk;
-    var part_tr = $("<tr>");
-    var first_td = $("<td>");
-    part_tr.append(first_td);
-    first_td.append(
-        create_input_el(part_xml, "pnum", line_prefix, {"label" : "Partition id", number : true, min : 1, max : 16, master_xml: ALL_PARTITIONS})
-    );
-    if (part_xml) {
-        first_td.append(
-            create_input_el(part_xml, "bootable", line_prefix, {"label" : "boot", boolean : true, master_xml: ALL_PARTITIONS})
-        ).append(
-            create_input_el(part_xml, "size", line_prefix, {"label" : "Size", number : true, size : 8, min : 0, master_xml: ALL_PARTITIONS})
-        );
-        part_tr.append($("<td>").append(
-            create_input_el(part_xml, "mountpoint", line_prefix, {"label" : "mountpoint", master_xml: ALL_PARTITIONS})
-        ).append(
-            create_input_el(part_xml, "mount_options", line_prefix, {"label" : "options", master_xml: ALL_PARTITIONS})
-        ));
-        part_tr.append($("<td>").append(
-            create_input_el(part_xml, "fs_freq", line_prefix, {number : true, size : 2, min : 0, max: 1, master_xml: ALL_PARTITIONS})
-        ).append(
-            create_input_el(part_xml, "fs_passno", line_prefix, {number : true, size : 2, min : 0, max : 2, master_xml: ALL_PARTITIONS})
-        ));
-        part_tr.find("input[id$='__mountpoint']").bind("click", fill_mountpoint);
-    } else {
-        part_tr.append($("<td>")).append($("<td>"));
-        part_tr.find("input[id$='__pnum']").bind("click", fill_partition_number);
-    };
-    part_tr.append($("<td>").append(
-        create_input_el(part_xml, "partition_fs", line_prefix, {
-            label         : "fstype",
-            select_source : ALL_FS.find("partition_fs"),
-            master_xml    : ALL_PARTITIONS
-        })
-    ));
-    part_tr.append($("<td>").append(
-        $("<input>").attr({
-            "type"    : "button",
-            "value"   : part_xml ? "delete" : "create",
-            "id"      : line_prefix
-        }).bind("click", create_delete_partition)
-    ));
-    dummy_div.append(part_tr);
-    return dummy_div;
-};
-
-function create_disc_line(line_prefix, pt_xml, pd_xml) {
-    var dummy_div = $("<div>");
-    if (pd_xml === undefined) {
-        var pd_pk = "new";
-    } else {
-        var pd_pk = pd_xml.attr("pk");
-        if (pd_xml.find("problems problem").length) {
-            var error_tr = $("<tr>");
-            error_tr.append($("<td>").text(pd_xml.find("problems problem").text()));
-            dummy_div.append(error_tr);
-        };
-    };
-    var line_prefix = line_prefix + "__pdisc__" + pd_pk;
-    var disc_tr = $("<tr>").append($("<td>").append(
-        create_input_el(pd_xml, "disc", line_prefix, {"label" : "Disc name", master_xml: ALL_PARTITIONS})
-    ).append(
-        $("<input>").attr({
-            "type"    : "button",
-            "value"   : pd_xml ? "delete" : "create",
-            "id"      : line_prefix
-        }).bind("click", create_delete_disc)
-    ));
-    if (pd_pk == "new") {
-        disc_tr.find("input[id$='__disc']").bind("click", fill_disc_name);
-    };
-    dummy_div.append(disc_tr);
-    // partitions
-    if (pd_xml) {
-        pd_xml.find("partitions partition").each(function() {
-            var part_xml = $(this);
-            dummy_div.append(create_part_line(line_prefix, pt_xml, pd_xml, part_xml).children());
-        });
-        dummy_div.append(create_part_line(line_prefix, pt_xml, pd_xml, undefined).children());
-    };
-    return dummy_div;
-};
-
 function get_partition_table(pt_pk) {
     // returns valid HTML for given pt
     var pt_xml = ALL_PARTITIONS.find("partition_table[pk='" + pt_pk + "']");
@@ -343,11 +187,166 @@ function get_partition_table(pt_pk) {
     return dummy_div;
 };
 
-function addHandlers() {
-    load_partition_tables();
-};
+{% inlinecoffeescript %}
 
-$(document).ready(addHandlers);
+root = exports ? this
+
+# all partitions
+ALL_PARTITIONS = undefined
+# all partition_fs
+ALL_FS = undefined
+
+class partition_table
+    constructor: (@xml) ->
+    draw: (@top_div) ->
+        @top_div.children().remove()
+        @error_div = $("<div>")
+        @top_div.append(@error_div)
+        if @xml.children("problems").find("problem").length
+            error_ul = $("<ul>")
+            @error_div.append(error_ul)
+            @xml.find("problems problem").each (index, problem) =>
+                error_ul.append($("<li>").text("[" + $(problem).attr("level") + "] " + $(problem).text()))
+        line_prefix = @xml.attr("key")
+        @table = $("<table>").attr
+            "id" : line_prefix
+        @xml.find("partition_discs partition_disc").each (index, pd_xml) =>
+            @table.append(@create_disc(line_prefix, $(pd_xml)))
+        @table.append(@create_disc(line_prefix, undefined))
+        @top_div.append(@table)
+        @top_div.append(
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "revalidate"}).bind("click", @revalidate_partition)
+        )
+    revalidate_partition: (event) =>
+        console.log "rev", @xml.attr("pk")
+    create_disc: (line_prefix, pd_xml) =>
+        dummy_div = $("<div>")
+        if pd_xml is undefined
+            pd_pk = "new";
+        else
+            pd_pk = pd_xml.attr("pk")
+            if pd_xml.find("problems problem").length
+                error_tr = $("<tr>")
+                error_tr.append($("<td>").text(pd_xml.find("problems problem").text()))
+                dummy_div.append(error_tr)
+        line_prefix = line_prefix + "__pdisc__" + pd_pk
+        disc_tr = $("<tr>").append($("<td>").append(
+            create_input_el(pd_xml, "disc", line_prefix, {"label" : "Disc name", master_xml: ALL_PARTITIONS})
+        ).append(
+            $("<input>").attr({
+                "type"    : "button",
+                "value"   : if pd_xml then "delete" else "create",
+                "id"      : line_prefix
+            }).bind("click", create_delete_disc)
+        ))
+        if pd_pk == "new"
+            disc_tr.find("input[id$='__disc']").bind("click", fill_disc_name)
+        dummy_div.append(disc_tr)
+        # partitions
+        if pd_xml
+            pd_xml.find("partitions partition").each (index, part_xml) =>
+                dummy_div.append(@create_part_line(line_prefix, pd_xml, $(part_xml)))
+            dummy_div.append(@create_part_line(line_prefix, pd_xml, undefined))
+        return dummy_div.children()
+    create_part_line: (line_prefix, pd_xml, part_xml) =>
+        dummy_div = $("<div>")
+        if part_xml is undefined
+            part_pk = "new"
+        else
+            part_pk = part_xml.attr("pk")
+            if part_xml.find("problems problem").length
+                error_tr = $("<tr>")
+                error_tr.append($("<td>").text(part_xml.find("problems problem").text()))
+                dummy_div.append(error_tr)
+        line_prefix = line_prefix + "__part__" + part_pk
+        part_tr = $("<tr>")
+        first_td = $("<td>")
+        part_tr.append(first_td)
+        first_td.append(
+            create_input_el(part_xml, "pnum", line_prefix, {"label" : "Partition id", number : true, min : 1, max : 16, master_xml: ALL_PARTITIONS})
+        )
+        if part_xml
+            first_td.append(
+                create_input_el(part_xml, "bootable", line_prefix, {"label" : "boot", boolean : true, master_xml: ALL_PARTITIONS})
+            ).append(
+                create_input_el(part_xml, "size", line_prefix, {"label" : "Size", number : true, size : 8, min : 0, master_xml: ALL_PARTITIONS})
+            )
+            part_tr.append($("<td>").append(
+                create_input_el(part_xml, "mountpoint", line_prefix, {"label" : "mountpoint", master_xml: ALL_PARTITIONS})
+            ).append(
+                create_input_el(part_xml, "mount_options", line_prefix, {"label" : "options", master_xml: ALL_PARTITIONS})
+            ))
+            part_tr.append($("<td>").append(
+                create_input_el(part_xml, "fs_freq", line_prefix, {number : true, size : 2, min : 0, max: 1, master_xml: ALL_PARTITIONS})
+            ).append(
+                create_input_el(part_xml, "fs_passno", line_prefix, {number : true, size : 2, min : 0, max : 2, master_xml: ALL_PARTITIONS})
+            ))
+            part_tr.find("input[id$='__mountpoint']").bind("click", fill_mountpoint)
+        else
+            part_tr.append($("<td>")).append($("<td>"));
+            part_tr.find("input[id$='__pnum']").bind("click", fill_partition_number);
+        part_tr.append($("<td>").append(
+            create_input_el(part_xml, "partition_fs", line_prefix, {
+                label         : "fstype",
+                select_source : ALL_FS.find("partition_fs"),
+                master_xml    : ALL_PARTITIONS
+            })
+        ))
+        part_tr.append($("<td>").append(
+            $("<input>").attr({
+                "type"    : "button",
+                "value"   : if part_xml then "delete" else "create"
+                "id"      : line_prefix
+            }).bind("click", create_delete_partition)
+        ))
+        dummy_div.append(part_tr)
+        return dummy_div.children()
+
+partition_detail = (event) ->
+    pt_pk = $(event.target).attr("id").split("__")[1]
+    new partition_table(ALL_PARTITIONS.find("partition_table[pk='" + pt_pk + "']")).draw($("div#partition_table"))
+
+root.partition_detail = partition_detail
+
+master_array = {
+    "ptable" : new draw_setup("Partition Setup", "ptable", "partition_table",
+        "{% url base:create_object 'partition_table' %}",
+        "{% url base:delete_object 'partition_table' %}",
+        [
+            new draw_link("detail", {change_cb : partition_detail}),
+            new draw_info("name", {clear_after_create : true}),
+            new draw_info("description"),
+            new draw_info("enabled", {boolean : true, default : true}),
+            new draw_info("valid", {boolean : true, ro : true})
+        ]
+    )
+}
+
+show_all_partitions = ->
+    draw_ds_tables(
+        $("div#partition_list"),
+        master_array,
+        ALL_PARTITIONS)
+
+load_partition_tables = ->
+    $.ajax
+        url     : "{% url setup:partition_overview %}"
+        error   : handle_ajax_error
+        success : (xml) ->
+            if parse_xml_response(xml)
+                ALL_PARTITIONS = $(xml).find("value[name='response']")
+                ALL_FS = $(xml).find("partition_fs_list")
+                show_all_partitions()
+
+add_handlers = ->
+    load_partition_tables()
+
+$(document).ready(add_handlers)
+
+{% endinlinecoffeescript %}
+
 </script>
 
 {% endblock %}

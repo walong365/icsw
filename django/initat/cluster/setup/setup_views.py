@@ -25,7 +25,7 @@ def partition_overview(request):
         return render_me(request, "part_overview.html", {})()
     else:
         xml_resp = E.response()
-        part_list = E.partitions()
+        part_list = E.partition_tables()
         for cur_part in partition_table.objects.all().prefetch_related(
             "partition_disc_set",
             "partition_disc_set__partition_set",
@@ -40,20 +40,6 @@ def partition_overview(request):
         )
         request.xml_response["response"] = xml_resp
         return request.xml_response.create_response()
-
-@login_required
-@init_logging
-def create_new_partition_table(request):
-    _post = request.POST
-    new_pt = partition_table(
-        name=_post["name"])
-    try:
-        new_pt.save()
-    except ValidationError, what:
-        request.log("cannot create new parition table: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
-        request.log("created new parition table")
-    return request.xml_response.create_response()
 
 @login_required
 @init_logging
@@ -145,6 +131,8 @@ def scan_for_images(request):
                             **f_image.attrib)
                     )
                 request.xml_response["response"] = f_img_list
+            else:
+                request.log("no images found", logging_tools.LOG_LEVEL_WARN, xml=True)
         else:
             request.log("got empty response",
                         logging_tools.LOG_LEVEL_ERROR, xml=True)

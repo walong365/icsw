@@ -174,7 +174,7 @@ class draw_setup
     create_delete_element: (event) =>
         cur_el = $(event.target)
         el_id  = cur_el.attr("id")
-        lock_list = if @lock_div then lock_elements($("div#" + @lock_div)) else []
+        lock_list = if @lock_div then lock_elements($("div#" + @lock_div)) else undefined
         if el_id.match(///new$///)
             $.ajax
                 url     : @create_url
@@ -187,7 +187,7 @@ class draw_setup
                         for clear_el in (@draw_array.filter (cur_di) -> cur_di.clear_after_create)
                             @table_div.find("#" + el_id + "__" + clear_el.name).val("")
                         @redraw_tables()
-                    unlock_elements(lock_list)
+                    @unlock_elements(lock_list)
         else
             if confirm("really delete " + @name + " ?")
                 $.ajax
@@ -198,9 +198,12 @@ class draw_setup
                             @master_xml.find(@xml_name + "[pk='" + el_id.split("__")[1] + "']").remove()
                             @delete_line(cur_el)
                             @redraw_tables()
-                        unlock_elements(lock_list)
+                        @unlock_elements(lock_list)
             else
-                unlock_elements(lock_list)
+                @unlock_elements(lock_list)
+    unlock_elements: (el_list) =>
+        if el_list
+            el_list.removeAttr("disabled")
 
 class draw_line
     constructor: (@cur_ds) ->
@@ -329,6 +332,18 @@ class draw_collapse extends draw_info
         else
             @draw_setup.table_div.find("tr[id^='" + line_prefix + "']")[1..].hide()
         
+class draw_link extends draw_info
+    constructor: (name="link", kwargs={}) ->
+        super(name, kwargs)
+    draw: (cur_line, xml_el, line_prefix) =>
+        if xml_el
+            return $("<a>").attr({
+                "href" : "#",
+                "id"   : line_prefix + "__detail"
+            }).bind("click", (event) => @change_cb(event)).text(@name)
+        else
+            return ""
+    
 # storage node for rendered element
 class draw_result
     constructor: (@name, @group, @element) ->
@@ -352,6 +367,7 @@ root.get_value = get_value
 root.set_value = set_value
 root.draw_setup = draw_setup
 root.draw_info  = draw_info
+root.draw_link  = draw_link
 root.draw_collapse  = draw_collapse
 
 {% endinlinecoffeescript %}

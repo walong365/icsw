@@ -34,7 +34,6 @@ base_patterns = patterns(
 setup_patterns = patterns(
     "initat.cluster.setup",
     url(r"p_overview"         , "setup_views.partition_overview"        , name="partition_overview"),
-    url(r"xml/create_newpt"   , "setup_views.create_new_partition_table", name="create_new_partition_table"),
     url(r"xml/create_newd"    , "setup_views.create_part_disc"          , name="create_part_disc"),
     url(r"xml/delete_disc"    , "setup_views.delete_part_disc"          , name="delete_part_disc"),
     url(r"xml/create_part"    , "setup_views.create_partition"          , name="create_partition"),
