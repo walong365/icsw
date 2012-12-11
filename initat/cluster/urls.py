@@ -7,6 +7,8 @@ admin.autodiscover()
 
 import initat.cluster.sub_urls
 
+handler404 = "initat.cluster.frontend.main_views.index"
+
 urlpatterns = initat.cluster.sub_urls.sub_patterns
 
 urlpatterns += patterns("",
