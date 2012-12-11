@@ -14,6 +14,7 @@ import pytz
 from collections import defaultdict
 
 from django.conf import settings
+from django.db import models
 from django.core.serializers import base
 from django.utils.encoding import is_protected_type
 from django.utils import datetime_safe
@@ -137,7 +138,38 @@ class PostgresCopy(PostgresCommand):
             for row in self.data:
                 sorted_data = [row[key] for key in fields]
                 yield "%s\n" % "\t".join([self.to_postgres(value) for value in sorted_data])
-            yield "\.\n\n"
+            yield "\\.\n\n"
 
         else:
-            yield "\.\n\n"
+            yield "\\.\n\n"
+
+    def __str__(self):
+        return "<PSQL Copy '%s'>" % self.name
+
+
+class Dependencies(object):
+    def __init__(self):
+        self.done = set()
+        self.tree = []
+
+    def add_to_tree(self, model_obj):
+        self.tree.extend(self._dependency_tree(model_obj))
+        if model_obj not in self.tree:
+            self.tree.append(model_obj)
+
+    def _get_fks(self, model_obj):
+        res = []
+        for field in model_obj._meta.fields:
+            if isinstance(field, models.ForeignKey):
+                res.append(field.related.parent_model)
+        return res
+
+    def _dependency_tree(self, model_obj):
+        deps = []
+        self.done.add(model_obj)
+        fks = self._get_fks(model_obj)
+        for fk in fks:
+            if fk not in self.done:
+                deps.extend(self._dependency_tree(fk))
+                deps.append(fk)
+        return deps
