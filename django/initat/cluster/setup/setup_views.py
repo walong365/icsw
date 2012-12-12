@@ -43,6 +43,18 @@ def partition_overview(request):
 
 @login_required
 @init_logging
+def validate_partition(request):
+    _post = request.POST
+    cur_part = partition_table.objects.prefetch_related(
+        "partition_disc_set",
+        "partition_disc_set__partition_set",
+        "partition_disc_set__partition_set__partition_fs",
+        ).order_by("name").get(Q(pk=_post["pt_pk"]))
+    request.xml_response["response"] = cur_part.get_xml(validate=True)
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
 def create_part_disc(request):
     _post = request.POST
     cur_part = partition_table.objects.get(Q(pk=_post["pt_pk"]))

@@ -38,6 +38,7 @@ setup_patterns = patterns(
     url(r"xml/delete_disc"    , "setup_views.delete_part_disc"          , name="delete_part_disc"),
     url(r"xml/create_part"    , "setup_views.create_partition"          , name="create_partition"),
     url(r"xml/delete_part"    , "setup_views.delete_partition"          , name="delete_partition"),
+    url(r"xml/validate"       , "setup_views.validate_partition"        , name="validate_partition"),
     url(r"i_overview"         , "setup_views.image_overview"            , name="image_overview"),
     url(r"xml/scan_for_images", "setup_views.scan_for_images"           , name="scan_for_images"),
     url(r"xml/take_image"     , "setup_views.take_image"                , name="take_image"),
