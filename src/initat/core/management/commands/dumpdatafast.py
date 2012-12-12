@@ -105,8 +105,9 @@ class Command(BaseCommand):
         d = Dependencies()
         for cur_model in models_to_dump:
             d.add_to_tree(cur_model)
-        for i in d.tree:
-            print i._meta.db_table
+        with open(os.path.join(destination, "DEPENDENCIES"), "w") as f:
+            for i in d.tree:
+                f.write("%s\n" % i._meta.db_table)
 
     def _update_global_miss_cache(self, gmc_name, gmc_dict):
         if os.path.isfile(gmc_name):
