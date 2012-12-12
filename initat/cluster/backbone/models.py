@@ -2439,7 +2439,6 @@ class partition(models.Model):
                     p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mountpoint defined for %s" % (p_name), False))
                 if not self.mount_options.strip():
                     p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mount_options given for %s" % (p_name), False))
-                   
         self.problems = p_list
     def _get_problems(self):
         return self.problems
