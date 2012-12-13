@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n compress %}
+{% load i18n compress coffeescript %}
 
 {% block title %}{% trans "Boot" %}{% endblock %}
 
@@ -32,88 +32,6 @@ UPDATE_DEVLOG_PENDING = 0;
 OPTION_DICT = new Array();
 // XMLs for kernel, image, partition
 XML_DICT = new Array();
-
-function load_device_table() {
-    load_devices(CUR_DEVICES);
-};
-
-function load_devices(sel_list) {
-    $.ajax({
-        url     : "{% url device:get_group_tree %}",
-        error   : handle_ajax_error,
-        data    : {
-            "sel_list" : sel_list
-        },
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                DEVICES = $(xml).find("value[name='response']");
-                CUR_PURE_DEVICES = [];
-                $(xml).find("device[meta_device='0'][tree_selected='selected']").each(function() {
-                    CUR_PURE_DEVICES.push($(this).attr("name"));
-                });
-                draw_table();
-                // redraw options
-                redraw_options("h");
-                redraw_options("s");
-                redraw_options("t");
-                redraw_options("b");
-                redraw_options("k");
-                redraw_options("p");
-                redraw_options("i");
-                redraw_options("l");
-                // call update_device_info after table draw
-                update_device_info(true);
-            }
-        }
-    });
-};
-
-function draw_table() {
-    $("div#boot").children().remove();
-    b_table = $("<table>").attr({"id" : "boot"});
-    DEVICES.find("device_group").each(function() {
-        var cur_dg = $(this);
-        var new_tr = $("<tr>").attr({
-            "class" : "ui-widget ui-widget-header",
-            "btype" : "group"
-        });
-        new_tr.append($("<th>").attr({
-            "colspan" : "8"
-        }).text("device group " + cur_dg.attr("name")));
-        b_table.append(new_tr);
-        cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each(function() {
-            var cur_dev = $(this);
-            b_table.append(draw_device(cur_dev));
-        });
-    });
-    $("div#boot").append(b_table);
-};
-
-function draw_device(d_el) {
-    var dummy_div = $("<div>");
-    var line_prefix = d_el.attr("key");
-    var new_tr = $("<tr>").attr({
-        "class" : "ui-widget ui-widget-header",
-        "id"    : line_prefix,
-        "btype" : "device"
-    });
-    new_tr.append($("<th>").attr({
-        "colspan" : "1"
-    }).text(d_el.text()))
-    .append($("<td>").attr({"id" : "recv_str"}).addClass("warn").text("waiting"))
-    .append($("<td>").attr({"id" : "req_str"}).addClass("warn").text("waiting"))
-    .append($("<td>").attr({"id" : "network"}).addClass("warn").text("waiting"));
-    
-    dummy_div.append(new_tr);
-    return dummy_div.children();
-};
-
-function use_devs(dt_div) {
-    CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
-        return(value.data.key);
-    });
-    load_device_table();
-};
 
 function force_update_info(call_mother) {
     UPDATE_PENDING = 0;
@@ -471,30 +389,6 @@ function change_kernel(event) {
     });
 };
 
-function change_option(event) {
-    var el = $(event.target);
-    var opt = el.attr("id").split("_")[1];
-    var checked = el.is(":checked");
-    OPTION_DICT[opt] = checked;
-    if (checked) {
-        $.ajax({
-            url     : "{% url boot:get_addon_info %}",
-            data    : {
-                "type" : opt
-            },
-            error   : handle_ajax_error,
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    XML_DICT[opt] = xml;
-                    redraw_options(opt);
-                }
-            }
-        });
-    } else {
-        redraw_options(opt);
-    };
-};
-
 // create option lines
 function redraw_options(opt) {
     if (OPTION_DICT[opt]) {
@@ -679,42 +573,298 @@ function soft_control(event) {
     };
 };
 
-function install_options() {
-    $.ajax({
-        url     : "{% url boot:get_html_options %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                var opt_h3 = $("h3#options");
-                $(xml).find("option").each(function() {
-                    var opt = $(this);
-                    var opt_button = $("<input>").attr({
-                        "type" : "checkbox",
-                        "id"   : "opt_" + opt.attr("short")})
-                    opt_h3.append(opt_button);
-                    opt_h3.append($("<label>").attr({"for" : "opt_" + opt.attr("short")}).text(opt.text()));
-                    opt_button.bind("change", change_option);
-                });
-                opt_h3.find("input").button();
-                opt_h3.buttonset();
-            }
-        }
-    });
-};
+{% inlinecoffeescript %}
+
+root = exports ? this
+
+class boot_table
+    constructor: (@top_div, @xml) ->
+        @install_options()
+    install_options: =>
+        $.ajax
+            url     : "{% url boot:get_html_options %}"
+            error   : handle_ajax_error
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @option_dict = {}
+                    @xml_dict = {}
+                    opt_h3 = $("h3#options")
+                    $(xml).find("option").each (index, opt) =>
+                        opt = $(opt)
+                        opt_button = $("<input>").attr({
+                            "type" : "checkbox",
+                            "id"   : "opt_" + opt.attr("short")})
+                        opt_h3.append(opt_button);
+                        opt_h3.append($("<label>").attr({"for" : "opt_" + opt.attr("short")}).text(opt.text()));
+                        opt_button.bind("change", @change_option);
+                    opt_h3.find("input").button()
+                    opt_h3.buttonset()
+    change_option: (event) =>
+        el = $(event.target)
+        opt = el.attr("id").split("_")[1]
+        checked = el.is(":checked")
+        @option_dict[opt] = checked
+        if checked
+            $.ajax
+                url     : "{% url boot:get_addon_info %}"
+                data    : {
+                    "type" : opt
+                }
+                error   : handle_ajax_error
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @xml_dict[opt] = $(xml)
+                        redraw_options(opt)
+        else
+            redraw_options(opt)
+    draw: =>
+        b_table = $("<table>").attr({"id" : "boot"})
+        @xml.find("device_group").each (devg_index, cur_dg) =>
+            b_table.append(@draw_device_group($(cur_dg)))
+        @top_div.children().remove()
+        @top_div.append(b_table)
+        @table = b_table
+    draw_device_group: (cur_dg) =>
+        dummy_div = $("<div>")
+        new_tr = $("<tr>").attr({
+            "class" : "ui-widget ui-widget-header",
+            "btype" : "group"
+        })
+        new_tr.append(
+            $("<th>").attr({
+                "colspan" : "8"
+            }).text("device group " + cur_dg.attr("name"))
+        )
+        dummy_div.append(new_tr)
+        cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each (dev_index, cur_dev) =>
+            dummy_div.append(@draw_device(cur_dg, $(cur_dev)))
+        return dummy_div.children()
+    draw_device: (cur_dg, cur_dev) =>
+        dummy_div = $("<div>")
+        line_prefix = cur_dev.attr("key");
+        new_tr = $("<tr>").attr({
+            "class" : "ui-widget ui-widget-header",
+            "id"    : line_prefix,
+            "btype" : "device"
+        })
+        new_tr.append(
+            $("<th>").attr({
+                "colspan" : "1"
+            }).text(cur_dev.text())
+        ).append(
+            $("<td>").attr({
+                "id" : "recv_str"
+            }).addClass("warn").text("waiting")
+        ).append(
+            $("<td>").attr({
+                "id" : "req_str"
+            }).addClass("warn").text("waiting")
+        ).append(
+            $("<td>").attr({
+                "id" : "network"
+            }).addClass("warn").text("waiting")
+        )
+        dummy_div.append(new_tr)
+        return dummy_div.children()
+    # create option lines
+    redraw_options: (opt) =>
+        if @option_dict[opt]
+            get_info_from_server = true
+            get_devlog_info_from_server = false
+            // add lines
+            @table.find("tr[btype='device']").each (index, dev_tr) =>
+                dev_tr = $(dev_tr)
+                dev_id = dev_tr.attr("id")
+                new_tr = $("<tr>").attr({
+                    "btype" : "opt_" + opt
+                    "id"    : dev_id
+                })
+                dev_tr.after(new_tr)
+                first_td = $("<td>")
+                new_tr.append(first_td)
+                switch opt
+                    when "k"
+                        first_td.attr({"colspan" : "5"})
+                        first_td.append("kernel:")
+                        kernel_sel = $("<select>").attr({
+                            "disabled" : "disabled",
+                            "id"       : dev_id + "__new_kernel"
+                        })
+                        kernel_sel.append($("<option>").attr({"value" : "0"}).text("not set"));
+                        @xm_dict["k"].find("kernel").each (k_idx, cur_kernel) =>
+                            cur_kernel = $(cur_kernel)
+                            kernel_sel.append($("<option>").attr({"value" : cur_kernel.attr("pk")}).text(cur_kernel.attr("name")));
+                        first_td.append(kernel_sel)
+                        first_td.append(", actual kernel: ").append($("<span>").attr({
+                            "id" : dev_id + "__act_kernel"
+                        }))
+                        first_td.append(", stage 1 flavour : ")
+                        stage1_flav = $("<select>").attr({
+                            "disabled" : "disabled",
+                            "id"       : dev_id + "__kernel_flavour"
+                        })
+                        stage1_flav.append($("<option>").attr({"value" : "none"}).text("not set"))
+                        stage1_flav.append($("<option>").attr({"value" : "cpio"}).text("CPIO"))
+                        stage1_flav.append($("<option>").attr({"value" : "cramfs"}).text("CramFS"))
+                        stage1_flav.append($("<option>").attr({"value" : "lo"}).text("ext2 via Loopback"))
+                        first_td.append(stage1_flav)
+                        first_td.append(", kernel append:")
+                        first_td.append($("<input>").attr({
+                            "type"     : "text",
+                            "id"       : dev_id + "__kernel_append",
+                            "disabled" : "disabled"}))
+                    when "h"
+                        first_td.attr({"colspan" : "5"});
+                        first_td.append("hard control:");
+                        var hard_con = $("<span>").attr({
+                            "id"       : dev_id + "__hard_control",
+                            "disabled" : "disabled"
+                        }).text("waiting");
+                        first_td.append(hard_con);
+                        break;
+                    when "s"
+                        first_td.attr({"colspan" : "5"});
+                        first_td.append("soft control:");
+                        $.each(["status", "reboot", "halt", "poweroff"], function(key, value) {
+                            var radio_el = $("<input>").attr({
+                                "type"    : "radio",
+                                "name"    : dev_id + "__soft_control",
+                                "id"      : dev_id + "__" + value,
+                                "value"   : value}).bind("click", soft_control);
+                            if (key == 0) radio_el.attr("checked", "checked");
+                            first_td.append(radio_el).append($("<span>").text(value));
+                        });
+                        get_info_from_server = false;
+                        break;
+                    when "t"
+                        first_td.attr({"colspan" : "5"});
+                        first_td.append("target state:");
+                        var target_sel = $("<select>").attr({
+                            "disabled" : "disabled",
+                            "id"       : dev_id + "__target_state"
+                        });
+                        target_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
+                        $(XML_DICT["t"]).find("status").each(function() {
+                            var cur_tstate = $(this);
+                            target_sel.append($("<option>").attr({"value" : cur_tstate.attr("pk") + "__" + cur_tstate.attr("prod_net")}).text(cur_tstate.text()));
+                        });
+                        first_td.append(target_sel);
+                        break;
+                    when "b"
+                        first_td.attr({"colspan" : "5"});
+                        first_td.append("MAC Address of bootdevice ");
+                        first_td.append($("<span>").attr({
+                            "id" : dev_id + "__boot_dev_name"}).text("---"));
+                        first_td.append(":");
+                        first_td.append($("<input>").attr({
+                            "id"       : dev_id + "__boot_dev_macaddr",
+                            "type"     : "text",
+                            "disabled" : "disabled"}));
+                        first_td.append(", DHCP: ");
+                        first_td.append($("<input>").attr({
+                            "id"       : dev_id + "__write_dhcp",
+                            "type"     : "checkbox",
+                            "disabled" : "disabled"}));
+                        first_td.append(", driver: ");
+                        first_td.append($("<input>").attr({
+                            "id"       : dev_id + "__boot_dev_driver",
+                            "type"     : "text",
+                            "disabled" : "disabled"}));
+                        first_td.append(", greedy mode: ");
+                        first_td.append($("<input>").attr({
+                            "id"       : dev_id + "__greedy_mode",
+                            "type"     : "checkbox",
+                            "disabled" : "disabled"}));
+                    when "p"
+                        first_td.attr({"colspan" : "5"});
+                        first_td.append("Partition ");
+                        var part_sel = $("<select>").attr({
+                            "disabled" : "disabled",
+                            "id"       : dev_id + "__new_part"
+                        });
+                        part_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
+                        $(XML_DICT["p"]).find("partition_table").each(function() {
+                            var cur_part = $(this);
+                            var part_opt = $("<option>").attr({"value" : cur_part.attr("pk")}).text(cur_part.attr("name"));
+                            if (cur_part.attr("valid") == 0) part_opt.attr("disabled", "disabled");
+                            part_sel.append(part_opt);
+                        });
+                        first_td.append(part_sel);
+                    when "i"
+                        first_td.attr({"colspan" : "5"});
+                        first_td.append("Image ");
+                        var img_sel = $("<select>").attr({
+                            "disabled" : "disabled",
+                            "id"       : dev_id + "__new_image"
+                        });
+                        img_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
+                        $(XML_DICT["i"]).find("image").each(function() {
+                            var cur_img = $(this);
+                            var img_opt = $("<option>").attr({"value" : cur_img.attr("pk")}).text(cur_img.attr("name"));
+                            if (cur_img.attr("valid") == 0) part_opt.attr("disabled", "disabled");
+                            img_sel.append(img_opt);
+                        });
+                        first_td.append(img_sel);
+                    when "l"
+                        first_td.attr({"colspan" : "5"});
+                        first_td.append("Device log ");
+                        var dev_sel = $("<select>").attr({
+                            "id"       : dev_id + "__device_log",
+                            "disabled" : "disabled"
+                        });
+                        first_td.append(dev_sel);
+                        get_info_from_server = false;
+                        get_devlog_info_from_server = true;
+                };
+            });
+            if (get_info_from_server) force_update_info(false);
+            if (get_devlog_info_from_server) update_devlog_info(false);
+        else
+            # remove lines
+            @table.find("tr[btype='opt_" + opt + "']").remove()
     
+load_devices = (sel_list) ->
+    $.ajax
+        url     : "{% url device:get_group_tree %}"
+        error   : handle_ajax_error
+        data    : {
+            "sel_list" : sel_list
+        }
+        success : (xml) ->
+            if parse_xml_response(xml)
+                root.DEVICES = $(xml).find("value[name='response']")
+                root.CUR_PURE_DEVICES = ($(cur_dev).attr("name") for cur_dev in $(xml).find("device[meta_device='0'][tree_selected='selected']"))
+                cur_t = new boot_table($("div#boot"), DEVICES)
+                cur_t.draw()
+                # redraw options
+                redraw_options("h")
+                redraw_options("s")
+                redraw_options("t")
+                redraw_options("b")
+                redraw_options("k")
+                redraw_options("p")
+                redraw_options("i")
+                redraw_options("l")
+                # call update_device_info after table draw
+                update_device_info(true)
 
-function add_config_handlers() {
-    install_options();
-    install_devsel_link(use_devs, true);
-    $(document).everyTime(10000, "update_device_info", function(i) {
-        update_device_info(true);
-    });
-    $(document).everyTime(10000, "update_devlog_info", function(i) {
-        update_devlog_info(true);
-    });
-};
+use_devs = (dt_div) ->
+    load_devices(value.data.key for value in dt_div.dynatree("getSelectedNodes"))
 
-$(document).ready(add_config_handlers);
+
+add_config_handlers = ->
+    install_devsel_link(use_devs, true)
+    $(document).everyTime(10000, "update_device_info", ->
+        update_device_info(true)
+    )
+    $(document).everyTime(10000, "update_devlog_info", ->
+        update_devlog_info(true)
+    )
+
+
+$(document).ready(add_config_handlers)
+
+{% endinlinecoffeescript %}
 
 </script>
 

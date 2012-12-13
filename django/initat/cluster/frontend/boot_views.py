@@ -190,7 +190,7 @@ def get_boot_info(request):
     call_mother = True if int(_post["call_mother"]) else False
     # to speed up things while testing
     result = None
-    if call_mother:
+    if call_mother and False:
         srv_com = server_command.srv_command(command="status")
         srv_com["devices"] = srv_com.builder(
             "devices",
