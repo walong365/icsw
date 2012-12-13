@@ -25,14 +25,18 @@ class partition_table
         @top_div.children().remove()
         @error_div = $("<div>")
         @top_div.append(@error_div)
-        if @xml.children("problems").find("problem").length
+        if @xml.find("problems problem").length
             error_ul = $("<ul>")
             @error_div.append(error_ul)
-            @xml.find("problems problem").each (index, problem) =>
-                error_ul.append($("<li>").text("[" + $(problem).attr("level") + "] " + $(problem).text()))
+            @xml.children("problems").find("problem").each (index, problem) =>
+                error_ul.append($("<li>").append($("<span>").addClass("error").text("[" + $(problem).attr("level") + "] " + $(problem).text())))
+            @xml.find("partition_discs partition_disc").each (d_index, d_xml) =>
+                $(d_xml).find("problems problem").each (index, problem) =>
+                    error_ul.append($("<li>").append($("<span>").addClass("error").text("[" + $(problem).attr("level") + "] " + $(d_xml).attr("disc") + " : " + $(problem).text())))
         line_prefix = @xml.attr("key")
-        @table = $("<table>").attr
+        @table = $("<table>").attr({
             "id" : line_prefix
+        }).addClass("style2")
         @xml.find("partition_discs partition_disc").each (index, pd_xml) =>
             @table.append(@create_disc(line_prefix, $(pd_xml)))
         @table.append(@create_disc(line_prefix, undefined))
@@ -66,20 +70,29 @@ class partition_table
             pd_pk = "new";
         else
             pd_pk = pd_xml.attr("pk")
-            if pd_xml.find("problems problem").length
-                error_tr = $("<tr>")
-                error_tr.append($("<td>").text(pd_xml.find("problems problem").text()))
-                dummy_div.append(error_tr)
         line_prefix = line_prefix + "__pdisc__" + pd_pk
-        disc_tr = $("<tr>").append($("<td>").append(
-            create_input_el(pd_xml, "disc", line_prefix, {"label" : "Disc name", master_xml: @xml})
+        disc_tr = $("<tr>").attr({
+            "id" : line_prefix
+        }).append(
+            get_expand_td(line_prefix, "exp", undefined, @toggle_disc, true)
         ).append(
-            $("<input>").attr({
-                "type"    : "button",
-                "value"   : if pd_xml then "delete" else "create",
-                "id"      : line_prefix
-            }).bind("click", @create_delete_disc)
-        ))
+            $("<th>").attr({
+                "colspan" : 5
+            }).addClass("left").append(
+                create_input_el(pd_xml, "disc", line_prefix, {
+                    "label"    : if pd_xml then "Disc name" else "new Disc name",
+                    master_xml : @xml})
+            )
+        )
+        disc_tr.append(
+            $("<td>").append(
+                $("<input>").attr({
+                    "type"    : "button",
+                    "value"   : if pd_xml then "delete" else "create",
+                    "id"      : line_prefix
+                }).bind("click", @create_delete_disc)
+            )
+        )
         if pd_pk == "new"
             disc_tr.find("input[id$='__disc']").bind("click", @fill_disc_name)
         dummy_div.append(disc_tr)
@@ -88,7 +101,15 @@ class partition_table
             pd_xml.find("partitions partition").each (index, part_xml) =>
                 dummy_div.append(@create_part_line(line_prefix, pd_xml, $(part_xml)))
             dummy_div.append(@create_part_line(line_prefix, pd_xml, undefined))
+        dummy_div.find("tr").removeClass("even odd")
+        dummy_div.find("tr:even").addClass("even")
+        dummy_div.find("tr:odd").addClass("odd")
         return dummy_div.children()
+    toggle_disc: (line_prefix, state, name) =>
+        if state
+            @table.find("tr[id^='" + line_prefix+ "']")[1...].show()
+        else
+            @table.find("tr[id^='" + line_prefix+ "']")[1...].hide()
     create_delete_disc: (event) =>
         cur_el = $(event.target)
         cur_pt_pk = cur_el.attr("id").split("__")[1]
@@ -125,31 +146,40 @@ class partition_table
                 error_tr.append($("<td>").text(part_xml.find("problems problem").text()))
                 dummy_div.append(error_tr)
         line_prefix = line_prefix + "__part__" + part_pk
-        part_tr = $("<tr>")
+        part_tr = $("<tr>").attr("id" , line_prefix)
         first_td = $("<td>")
         part_tr.append(first_td)
         first_td.append(
             create_input_el(part_xml, "pnum", line_prefix, {"label" : "Partition id", number : true, min : 1, max : 16, master_xml: @xml})
         )
         if part_xml
-            first_td.append(
-                create_input_el(part_xml, "bootable", line_prefix, {"label" : "boot", boolean : true, master_xml: @xml})
-            ).append(
-                create_input_el(part_xml, "size", line_prefix, {"label" : "Size", number : true, size : 8, min : 0, master_xml: @xml})
+            part_tr.append(
+                $("<td>").append(
+                    create_input_el(part_xml, "bootable", line_prefix, {"label" : "boot", boolean : true, master_xml: @xml})
+                ).append(
+                    create_input_el(part_xml, "size", line_prefix, {"label" : "Size", number : true, size : 8, min : 0, master_xml: @xml})
+                )
             )
-            part_tr.append($("<td>").append(
-                create_input_el(part_xml, "mountpoint", line_prefix, {"label" : "mountpoint", master_xml: @xml})
-            ).append(
-                create_input_el(part_xml, "mount_options", line_prefix, {"label" : "options", master_xml: @xml})
-            ))
-            part_tr.append($("<td>").append(
-                create_input_el(part_xml, "fs_freq", line_prefix, {number : true, size : 2, min : 0, max: 1, master_xml: @xml})
-            ).append(
-                create_input_el(part_xml, "fs_passno", line_prefix, {number : true, size : 2, min : 0, max : 2, master_xml: @xml})
-            ))
+            part_tr.append(
+                $("<td>").append(
+                    create_input_el(part_xml, "mountpoint", line_prefix, {"label" : "mountpoint", master_xml: @xml})
+                ).append(
+                    create_input_el(part_xml, "mount_options", line_prefix, {"label" : "options", master_xml: @xml})
+                )
+            )
+            part_tr.append(
+                $("<td>").append(
+                    create_input_el(part_xml, "fs_freq", line_prefix, {number : true, size : 2, min : 0, max: 1, master_xml: @xml})
+                )
+            )
+            part_tr.append(
+                $("<td>").append(
+                    create_input_el(part_xml, "fs_passno", line_prefix, {number : true, size : 2, min : 0, max : 2,     master_xml: @xml})
+                )
+            )
             part_tr.find("input[id$='__mountpoint']").bind("click", @fill_mountpoint)
         else
-            part_tr.append($("<td>")).append($("<td>"));
+            part_tr.append($("<td>").attr("colspan", 4))
             part_tr.find("input[id$='__pnum']").bind("click", @fill_partition_number)
         part_tr.append($("<td>").append(
             create_input_el(part_xml, "partition_fs", line_prefix, {
