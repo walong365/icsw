@@ -117,7 +117,10 @@ def set_boot(request):
 def set_partition(request):
     _post = request.POST
     cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
-    cur_dev.partition_table = partition_table.objects.get(Q(pk=_post["new_part"]))
+    if not int(_post["new_part"]):
+        cur_dev.partition_table = None
+    else:
+        cur_dev.partition_table = partition_table.objects.get(Q(pk=_post["new_part"]))
     cur_dev.save()
     return request.xml_response.create_response()
 
@@ -126,7 +129,10 @@ def set_partition(request):
 def set_image(request):
     _post = request.POST
     cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
-    cur_dev.new_image = image.objects.get(Q(pk=_post["new_image"]))
+    if not int(_post["new_image"]):
+        cur_dev.new_image = None
+    else:
+        cur_dev.new_image = image.objects.get(Q(pk=_post["new_image"]))
     cur_dev.save()
     return request.xml_response.create_response()
 

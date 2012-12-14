@@ -15,127 +15,12 @@
 <div id="boot">
 </div>
 
-<input type="button" value="update info" onClick="force_update_info(true);"/>
+<input type="button" id="update_info" value="update info"/>
 
 <script type="text/javascript">
 
-// current device selection (with groups)
-CUR_DEVICES = undefined;
-// current device selection (only devices)
-CUR_PURE_DEVICES = undefined;
-// current device XML
-DEVICES = undefined;
-// flag: pending update info (and for log)
-UPDATE_PENDING = 0;
-UPDATE_DEVLOG_PENDING = 0;
-// option dict
-OPTION_DICT = new Array();
-// XMLs for kernel, image, partition
-XML_DICT = new Array();
-
-function force_update_info(call_mother) {
-    UPDATE_PENDING = 0;
-    update_device_info(call_mother);
-};
-
-function update_devlog_info() {
-    if (CUR_PURE_DEVICES.length && ! UPDATE_DEVLOG_PENDING) {
-        UPDATE_DEVLOG_PENDING = 1;
-        var send_data = {
-            "sel_list" : CUR_PURE_DEVICES
-        };
-        $.ajax({
-            url     : "{% url boot:get_devlog_info %}",
-            error   : handle_ajax_error,
-            data    : send_data,
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    UPDATE_DEVLOG_PENDING = 0;
-                    var b_table = $("table#boot");
-                    $(xml).find("device").each(function() {
-                        var cur_dev = $(this);
-                        var dev_tr = b_table.find("tr#" + cur_dev.attr("key"));
-                        var dev_id = dev_tr.attr("id");
-                        if (OPTION_DICT["l"]) {
-                            var devlog_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_l']");
-                            set_devlog_option(cur_dev, devlog_tr);
-                        };
-                    });
-                };
-            }
-        });
-    };
-};
-
-function update_device_info(call_mother) {
-    if (CUR_PURE_DEVICES.length && ! UPDATE_PENDING) {
-        UPDATE_PENDING = 1;
-        var send_data = {
-            "sel_list" : CUR_PURE_DEVICES
-        };
-        for (key in OPTION_DICT) {
-            send_data["opt_"+ key] = OPTION_DICT[key];
-        };
-        send_data["call_mother"] = call_mother ? 1 : 0;
-        $.ajax({
-            url     : "{% url boot:get_boot_info %}",
-            error   : handle_ajax_error,
-            data    : send_data,
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    UPDATE_PENDING = 0;
-                    var b_table = $("table#boot");
-                    $(xml).find("device").each(function() {
-                        var cur_dev = $(this);
-                        var dev_tr = b_table.find("tr#" + cur_dev.attr("key"));
-                        var dev_id = dev_tr.attr("id");
-                        if (call_mother) {
-                            dev_tr.find("td#recv_str").text("rcv: " + cur_dev.attr("recvstate"));
-                            dev_tr.find("td#req_str").text("req: " + cur_dev.attr("reqstate"));
-                            var net_state = cur_dev.attr("net_state");
-                            var tr_class = {"down" : "error", "unknown" : "error", "ping" : "warn", "up" : "ok"}[net_state];
-                            dev_tr.find("td#network").text(cur_dev.attr("network") + " ("+ net_state + ")");
-                            dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok error warn").addClass(tr_class);
-                        };
-                        if (OPTION_DICT["k"]) {
-                            var kernel_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_k']");
-                            set_kernel_option(cur_dev, kernel_tr);
-                        };
-                        if (OPTION_DICT["t"]) {
-                            var target_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_t']");
-                            set_target_option(cur_dev, target_tr);
-                        };
-                        if (OPTION_DICT["s"]) {
-                            var target_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_s']");
-                            set_soft_control_option(cur_dev, target_tr);
-                        };
-                        if (OPTION_DICT["h"]) {
-                            var target_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_h']");
-                            set_hard_control_option(cur_dev, target_tr);
-                        };
-                        if (OPTION_DICT["b"]) {
-                            var boot_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_b']");
-                            set_boot_option(cur_dev, boot_tr);
-                        };
-                        if (OPTION_DICT["p"]) {
-                            var part_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_p']");
-                            set_part_option(cur_dev, part_tr);
-                        };
-                        if (OPTION_DICT["i"]) {
-                            var img_tr = b_table.find("tr[id='" + dev_id + "'][btype='opt_i']");
-                            set_img_option(cur_dev, img_tr);
-                        };
-                    });
-                } else {
-                    UPDATE_PENDING = 0;
-                };
-            }
-        });
-    };
-};
-
 function set_boot_option(dev_xml, boot_tr) {
-    var dev_id = boot_tr.attr("id");
+    var dev_id = dev_xml.attr("key")
     var boot_dev_name = boot_tr.find("span#" + dev_id + "__boot_dev_name");
     var boot_dev_macaddr = boot_tr.find("input#" + dev_id + "__boot_dev_macaddr");
     var boot_dev_driver = boot_tr.find("input#" + dev_id + "__boot_dev_driver");
@@ -181,7 +66,7 @@ function set_soft_control_option(dev_xml, scon_tr) {
 };
 
 function set_hard_control_option(dev_xml, hcon_tr) {
-    var dev_id = hcon_tr.attr("id");
+    var dev_id = dev_xml.attr("key")
     var new_hcon = hcon_tr.find("span#" + dev_id + "__hard_control");
     if (new_hcon.attr("disabled") == "disabled") {
         if (dev_xml.find("cd_connection").length) {
@@ -227,7 +112,7 @@ function change_hard_control(event) {
 };
 
 function set_part_option(dev_xml, part_tr) {
-    var dev_id = part_tr.attr("id");
+    var dev_id = dev_xml.attr("key")
     var new_part = part_tr.find("select#" + dev_id + "__new_part");
     if (part_tr.find(":disabled").length) {
         new_part.val(dev_xml.attr("partition_table_id"));
@@ -238,7 +123,7 @@ function set_part_option(dev_xml, part_tr) {
 };
 
 function set_devlog_option(dev_xml, devlog_tr) {
-    var dev_id = devlog_tr.attr("id");
+    var dev_id = dev_xml.attr("key");
     var log_sel = devlog_tr.find("select#" + dev_id + "__device_log");
     if (devlog_tr.find(":disabled").length) {
         log_sel.removeAttr("disabled");
@@ -253,7 +138,7 @@ function set_devlog_option(dev_xml, devlog_tr) {
 };
 
 function set_img_option(dev_xml, img_tr) {
-    var dev_id = img_tr.attr("id");
+    var dev_id = dev_xml.attr("key");
     var new_img = img_tr.find("select#" + dev_id + "__new_image");
     if (img_tr.find(":disabled").length) {
         new_img.val(dev_xml.attr("new_image"));
@@ -266,7 +151,7 @@ function set_img_option(dev_xml, img_tr) {
 function change_image(boot) {
     var el = $(event.target);
     var img_tr = el.parents("tr:first");
-    var dev_id = img_tr.attr("id");
+    var dev_id = (img_tr.attr("id").split("__").slice(0, 2)).join("__");
     $.ajax({
         url     : "{% url boot:set_image %}",
         data    : {
@@ -284,7 +169,7 @@ function change_image(boot) {
 function change_part(boot) {
     var el = $(event.target);
     var part_tr = el.parents("tr:first");
-    var dev_id = part_tr.attr("id");
+    var dev_id = (part_tr.attr("id").split("__").slice(0, 2)).join("__");
     $.ajax({
         url     : "{% url boot:set_partition %}",
         data    : {
@@ -302,7 +187,7 @@ function change_part(boot) {
 function change_boot(event) {
     var el = $(event.target);
     var boot_tr = el.parents("tr:first");
-    var dev_id = boot_tr.attr("id");
+    var dev_id = (boot_tr.attr("id").split("__").slice(0, 2)).join("__");
     $.ajax({
         url     : "{% url boot:set_boot %}",
         data    : {
@@ -321,7 +206,7 @@ function change_boot(event) {
 };
 
 function set_target_option(dev_xml, target_tr) {
-    var dev_id = target_tr.attr("id");
+    var dev_id = dev_xml.attr("key")
     if (target_tr.find(":disabled").length) {
         var target_state = target_tr.find("select#" + dev_id + "__target_state");
         target_state.val(dev_xml.attr("full_new_state"));
@@ -334,7 +219,7 @@ function set_target_option(dev_xml, target_tr) {
 function change_target_state(event) {
     var el = $(event.target);
     var target_tr = el.parents("tr:first");
-    var dev_id = target_tr.attr("id");
+    var dev_id = (target_tr.attr("id").split("__").slice(0, 2)).join("__");
     $.ajax({
         url     : "{% url boot:set_target_state %}",
         data    : {
@@ -350,7 +235,8 @@ function change_target_state(event) {
 };
 
 function set_kernel_option(dev_xml, kernel_tr) {
-    var dev_id = kernel_tr.attr("id");
+    return false;
+    var dev_id = dev_xml.attr("key")
     // copy info from kernel_tr to table
     if (kernel_tr.find(":disabled").length) {
         var new_kernel = kernel_tr.find("select#" + dev_id + "__new_kernel");
@@ -372,7 +258,7 @@ function set_kernel_option(dev_xml, kernel_tr) {
 function change_kernel(event) {
     var el = $(event.target);
     var kernel_tr = el.parents("tr:first");
-    var dev_id = kernel_tr.attr("id");
+    var dev_id = (kernel_tr.attr("id").split("__").slice(0, 2)).join("__");
     $.ajax({
         url     : "{% url boot:set_kernel %}",
         data    : {
@@ -389,216 +275,313 @@ function change_kernel(event) {
     });
 };
 
-// create option lines
-function redraw_options(opt) {
-    if (OPTION_DICT[opt]) {
-        var get_info_from_server = true;
-        var get_devlog_info_from_server = false;
-        // add lines
-        $("table#boot").find("tr[btype='device']").each(function() {
-            var dev_tr = $(this);
-            var dev_id = dev_tr.attr("id");
-            var new_tr = $("<tr>").attr({
-                "btype" : "opt_" + opt,
-                "id"    : dev_id
-            });
-            dev_tr.after(new_tr);
-            first_td = $("<td>");
-            new_tr.append(first_td);
-            switch (opt) {
-                case "k":
-                    first_td.attr({"colspan" : "5"});
-                    first_td.append("kernel:");
-                    var kernel_sel = $("<select>").attr({
-                        "disabled" : "disabled",
-                        "id"       : dev_id + "__new_kernel"
-                    });
-                    kernel_sel.append($("<option>").attr({"value" : "0"}).text("not set"));
-                    $(XML_DICT["k"]).find("kernel").each(function() {
-                        var cur_kernel = $(this);
-                        kernel_sel.append($("<option>").attr({"value" : cur_kernel.attr("pk")}).text(cur_kernel.attr("name")));
-                    });
-                    first_td.append(kernel_sel);
-                    first_td.append(", actual kernel: ").append($("<span>").attr({
-                        "id" : dev_id + "__act_kernel"
-                    }));
-                    first_td.append(", stage 1 flavour : ");
-                    var stage1_flav = $("<select>").attr({
-                        "disabled" : "disabled",
-                        "id"       : dev_id + "__kernel_flavour"
-                    });
-                    stage1_flav.append($("<option>").attr({"value" : "none"}).text("not set"));
-                    stage1_flav.append($("<option>").attr({"value" : "cpio"}).text("CPIO"));
-                    stage1_flav.append($("<option>").attr({"value" : "cramfs"}).text("CramFS"));
-                    stage1_flav.append($("<option>").attr({"value" : "lo"}).text("ext2 via Loopback"));
-                    first_td.append(stage1_flav);
-                    first_td.append(", kernel append:");
-                    first_td.append($("<input>").attr({
-                        "type"     : "text",
-                        "id"       : dev_id + "__kernel_append",
-                        "disabled" : "disabled"}));
-                    break;
-                case "h":
-                    first_td.attr({"colspan" : "5"});
-                    first_td.append("hard control:");
-                    var hard_con = $("<span>").attr({
-                        "id"       : dev_id + "__hard_control",
-                        "disabled" : "disabled"
-                    }).text("waiting");
-                    first_td.append(hard_con);
-                    break;
-                case "s":
-                    first_td.attr({"colspan" : "5"});
-                    first_td.append("soft control:");
-                    $.each(["status", "reboot", "halt", "poweroff"], function(key, value) {
-                        var radio_el = $("<input>").attr({
-                            "type"    : "radio",
-                            "name"    : dev_id + "__soft_control",
-                            "id"      : dev_id + "__" + value,
-                            "value"   : value}).bind("click", soft_control);
-                        if (key == 0) radio_el.attr("checked", "checked");
-                        first_td.append(radio_el).append($("<span>").text(value));
-                    });
-                    get_info_from_server = false;
-                    break;
-                case "t":
-                    first_td.attr({"colspan" : "5"});
-                    first_td.append("target state:");
-                    var target_sel = $("<select>").attr({
-                        "disabled" : "disabled",
-                        "id"       : dev_id + "__target_state"
-                    });
-                    target_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
-                    $(XML_DICT["t"]).find("status").each(function() {
-                        var cur_tstate = $(this);
-                        target_sel.append($("<option>").attr({"value" : cur_tstate.attr("pk") + "__" + cur_tstate.attr("prod_net")}).text(cur_tstate.text()));
-                    });
-                    first_td.append(target_sel);
-                    break;
-                case "b":
-                    first_td.attr({"colspan" : "5"});
-                    first_td.append("MAC Address of bootdevice ");
-                    first_td.append($("<span>").attr({
-                        "id" : dev_id + "__boot_dev_name"}).text("---"));
-                    first_td.append(":");
-                    first_td.append($("<input>").attr({
-                        "id"       : dev_id + "__boot_dev_macaddr",
-                        "type"     : "text",
-                        "disabled" : "disabled"}));
-                    first_td.append(", DHCP: ");
-                    first_td.append($("<input>").attr({
-                        "id"       : dev_id + "__write_dhcp",
-                        "type"     : "checkbox",
-                        "disabled" : "disabled"}));
-                    first_td.append(", driver: ");
-                    first_td.append($("<input>").attr({
-                        "id"       : dev_id + "__boot_dev_driver",
-                        "type"     : "text",
-                        "disabled" : "disabled"}));
-                    first_td.append(", greedy mode: ");
-                    first_td.append($("<input>").attr({
-                        "id"       : dev_id + "__greedy_mode",
-                        "type"     : "checkbox",
-                        "disabled" : "disabled"}));
-                    break;
-                case "p":
-                    first_td.attr({"colspan" : "5"});
-                    first_td.append("Partition ");
-                    var part_sel = $("<select>").attr({
-                        "disabled" : "disabled",
-                        "id"       : dev_id + "__new_part"
-                    });
-                    part_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
-                    $(XML_DICT["p"]).find("partition_table").each(function() {
-                        var cur_part = $(this);
-                        var part_opt = $("<option>").attr({"value" : cur_part.attr("pk")}).text(cur_part.attr("name"));
-                        if (cur_part.attr("valid") == 0) part_opt.attr("disabled", "disabled");
-                        part_sel.append(part_opt);
-                    });
-                    first_td.append(part_sel);
-                    break;
-                case "i":
-                    first_td.attr({"colspan" : "5"});
-                    first_td.append("Image ");
-                    var img_sel = $("<select>").attr({
-                        "disabled" : "disabled",
-                        "id"       : dev_id + "__new_image"
-                    });
-                    img_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
-                    $(XML_DICT["i"]).find("image").each(function() {
-                        var cur_img = $(this);
-                        var img_opt = $("<option>").attr({"value" : cur_img.attr("pk")}).text(cur_img.attr("name"));
-                        if (cur_img.attr("valid") == 0) part_opt.attr("disabled", "disabled");
-                        img_sel.append(img_opt);
-                    });
-                    first_td.append(img_sel);
-                    break;
-                case "l":
-                    first_td.attr({"colspan" : "5"});
-                    first_td.append("Device log ");
-                    var dev_sel = $("<select>").attr({
-                        "id"       : dev_id + "__device_log",
-                        "disabled" : "disabled"
-                    });
-                    first_td.append(dev_sel);
-                    get_info_from_server = false;
-                    get_devlog_info_from_server = true;
-                    break;
-            };
-        });
-        if (get_info_from_server) force_update_info(false);
-        if (get_devlog_info_from_server) update_devlog_info(false);
-    } else {
-        // remove lines
-        $("table#boot").find("tr[btype='opt_" + opt + "']").remove();
-    };
-};
-
-function soft_control(event) {
-    var cur_el = $(event.target);
-    if (cur_el.val() != "status") {
-        $.ajax({
-            url     : "{% url boot:soft_control %}",
-            error   : handle_ajax_error,
-            data    : {
-                "key" : cur_el.attr("id")
-            },
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    cur_el.removeAttr("checked");
-                    $("input[type='radio'][id='dev__" + cur_el.attr("id").split("__")[1] + "__status']").attr("checked", "checked");
-                };
-            }
-        });
-    };
-};
-
 {% inlinecoffeescript %}
 
 root = exports ? this
 
+class option_list
+    constructor: (@dev_xml, @short) ->
+        # to proper handle dummy call for get_*info_from_server calls
+        if @dev_xml
+            @dev_key = @dev_xml.attr("key")
+            @set = false
+    get_info_from_server: ->
+        return true
+    get_devlog_info_from_server: ->
+        return false
+    draw: (boot) =>
+        return $("<td>").text("not used")
+    set_option: (cur_dev) =>
+        if not @set
+            @set = true
+            if not @_set_option
+                console.log "set_option for " + @short + " not set"
+            else:
+                @_set_option(cur_dev)
+    full_line: (cur_td) =>
+        @cur_td = cur_td
+        if not cur_td.attr("colspan")
+            cur_td.attr("colspan", 5)
+        return $("<tr>").attr("id", @dev_key + "__opt__" + @short).append(cur_td)
+    
+class kernel_option extends option_list
+    constructor: (dev_xml) ->
+        super(dev_xml, "k")
+    draw: (boot) =>
+        cur_td = $("<td>")
+        cur_td.append("kernel:")
+        kernel_sel = $("<select>").attr({
+            "disabled" : "disabled",
+            "id"       : @dev_key + "__new_kernel"
+        })
+        kernel_sel.append($("<option>").attr({"value" : "0"}).text("not set"));
+        boot.xml_dict[@short].find("kernel").each (k_idx, cur_kernel) =>
+            cur_kernel = $(cur_kernel)
+            kernel_sel.append($("<option>").attr({"value" : cur_kernel.attr("pk")}).text(cur_kernel.attr("name")));
+        cur_td.append(kernel_sel)
+        cur_td.append(", actual kernel: ").append($("<span>").attr({
+            "id" : @dev_key + "__act_kernel"
+        }))
+        cur_td.append(", stage 1 flavour : ")
+        stage1_flav = $("<select>").attr({
+            "disabled" : "disabled",
+            "id"       : @dev_key + "__kernel_flavour"
+        })
+        stage1_flav.append($("<option>").attr({"value" : "none"}).text("not set"))
+        stage1_flav.append($("<option>").attr({"value" : "cpio"}).text("CPIO"))
+        stage1_flav.append($("<option>").attr({"value" : "cramfs"}).text("CramFS"))
+        stage1_flav.append($("<option>").attr({"value" : "lo"}).text("ext2 via Loopback"))
+        cur_td.append(stage1_flav)
+        cur_td.append(", kernel append:")
+        cur_td.append($("<input>").attr({
+            "type"     : "text",
+            "id"       : @dev_key + "__kernel_append",
+            "disabled" : "disabled"}))
+        return @full_line(cur_td)
+    _set_option: (dev_xml) =>
+        new_kernel = @cur_td.find("select#" + @dev_key + "__new_kernel")
+        act_kernel = @cur_td.find("span#" + @dev_key + "__act_kernel")
+        stage1_flav = @cur_td.find("select#" + @dev_key + "__kernel_flavour")
+        kernel_append = @cur_td.find("input#" + @dev_key + "__kernel_append")
+        new_kernel.val(dev_xml.attr("new_kernel"))
+        kernel_append.val(dev_xml.attr("new_append"))
+        stage1_flav.val(dev_xml.attr("stage1_flavour"))
+        new_kernel.removeAttr("disabled")
+        stage1_flav.removeAttr("disabled")
+        kernel_append.removeAttr("disabled")
+        new_kernel.bind("change", change_kernel)
+        stage1_flav.bind("change", change_kernel)
+        kernel_append.bind("change", change_kernel)
+        return true
+            
+
+class hard_control_option extends option_list
+    constructor: (dev_xml) ->
+        super(dev_xml, "h")
+    draw: (boot) =>
+        cur_td = $("<td>")
+        cur_td.append("hard control:")
+        hard_con = $("<span>").attr({
+            "id"       : @dev_key + "__hard_control",
+            "disabled" : "disabled"
+        }).text("waiting")
+        cur_td.append(hard_con)
+        return @full_line(cur_td)
+
+class soft_control_option extends option_list
+    constructor: (dev_xml) ->
+        super(dev_xml, "s")
+    get_info_from_server: ->
+        return false
+    draw: (boot) =>
+        cur_td = $("<td>")
+        cur_td.append("soft control:")
+        for value in ["status", "reboot", "halt", "poweroff"]
+            radio_el = $("<input>").attr({
+                "type"    : "radio",
+                "name"    : @dev_key + "__soft_control",
+                "id"      : @dev_key + "__" + value,
+                "value"   : value}).bind("click", @soft_control)
+            if value == "status"
+                radio_el.attr("checked", "checked")
+            cur_td.append(radio_el).append($("<span>").text(value))
+        return @full_line(cur_td)
+    soft_control: (event) =>
+        cur_el = $(event.target)
+        if cur_el.val() != "status"
+            $.ajax
+                url     : "{% url boot:soft_control %}"
+                error   : handle_ajax_error
+                data    : {
+                    "key" : cur_el.attr("id")
+                }
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        cur_el.removeAttr("checked")
+                        $("input[type='radio'][id='" + @dev_key + "__status']").attr("checked", "checked")
+
+
+class target_state_option extends option_list
+    constructor: (dev_xml) ->
+        super(dev_xml, "t")
+    draw: (boot) =>
+        cur_td = $("<td>")
+        cur_td.append("target state:")
+        target_sel = $("<select>").attr({
+            "disabled" : "disabled",
+            "id"       : @dev_key + "__target_state"
+        })
+        target_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"))
+        boot.xml_dict[@short].find("status").each (index, cur_tstate) =>
+            cur_tstate = $(cur_tstate)
+            target_sel.append($("<option>").attr({"value" : cur_tstate.attr("pk") + "__" + cur_tstate.attr("prod_net")}).text(cur_tstate.text()))
+        cur_td.append(target_sel)
+        return @full_line(cur_td)
+
+class boot_device_option extends option_list
+    constructor: (dev_xml) ->
+        super(dev_xml, "b")
+    draw: (boot) =>
+        cur_td = $("<td>")
+        cur_td.append("MAC Address of bootdevice ")
+        cur_td.append($("<span>").attr({
+            "id" : @dev_key + "__boot_dev_name"}).text("---"))
+        cur_td.append(":")
+        cur_td.append($("<input>").attr({
+            "id"       : @dev_key + "__boot_dev_macaddr",
+            "type"     : "text",
+            "disabled" : "disabled"}));
+        cur_td.append(", DHCP: ");
+        cur_td.append($("<input>").attr({
+            "id"       : @dev_key + "__write_dhcp",
+            "type"     : "checkbox",
+            "disabled" : "disabled"}));
+        cur_td.append(", driver: ");
+        cur_td.append($("<input>").attr({
+            "id"       : @dev_key + "__boot_dev_driver",
+            "type"     : "text",
+            "disabled" : "disabled"}));
+        cur_td.append(", greedy mode: ");
+        cur_td.append($("<input>").attr({
+            "id"       : @dev_key + "__greedy_mode",
+            "type"     : "checkbox",
+            "disabled" : "disabled"}))
+        return @full_line(cur_td)
+
+class partition_option extends option_list
+    constructor: (dev_xml) ->
+        super(dev_xml, "p")
+    draw: (boot) =>
+        cur_td = $("<td>")
+        cur_td.append("Partition ");
+        part_sel = $("<select>").attr({
+            "disabled" : "disabled",
+            "id"       : @dev_key + "__new_part"
+        })
+        part_sel.append($("<option>").attr({"value" : "0"}).text("not set"));
+        boot.xml_dict[@short].find("partition_table").each (index, cur_part) =>
+            cur_part = $(cur_part)
+            part_opt = $("<option>").attr({"value" : cur_part.attr("pk")}).text(cur_part.attr("name"))
+            if cur_part.attr("valid") == 0
+                part_opt.attr("disabled", "disabled")
+            part_sel.append(part_opt)
+        cur_td.append(part_sel)
+        return @full_line(cur_td)
+
+class image_option extends option_list
+    constructor: (dev_xml) ->
+        super(dev_xml, "i")
+    draw: (boot) =>
+        cur_td = $("<td>")
+        cur_td.attr({"colspan" : "5"})
+        cur_td.append("Image ");
+        img_sel = $("<select>").attr({
+            "disabled" : "disabled",
+            "id"       : @dev_key + "__new_image"
+        })
+        img_sel.append($("<option>").attr({"value" : "0"}).text("not set"));
+        boot.xml_dict[@short].find("image").each (index, cur_img) =>
+            cur_img = $(cur_img)
+            img_opt = $("<option>").attr({"value" : cur_img.attr("pk")}).text(cur_img.attr("name"))
+            if cur_img.attr("valid") == 0
+                part_opt.attr("disabled", "disabled")
+            img_sel.append(img_opt)
+        cur_td.append(img_sel)
+        return @full_line(cur_td)
+
+class devlog_option extends option_list
+    constructor: (dev_xml) ->
+        super(dev_xml, "l")
+    get_info_from_server: ->
+        return false
+    get_devlog_info_from_server: ->
+        return true
+    draw: (boot) =>
+        cur_td = $("<td>")
+        cur_td.append("Device log ")
+        dev_sel = $("<select>").attr({
+            "id"       : @dev_key + "__device_log",
+            "disabled" : "disabled"
+        })
+        cur_td.append(dev_sel)
+        return @full_line(cur_td)
+
 class boot_table
-    constructor: (@top_div, @xml) ->
-        @install_options()
+    constructor: (@top_div) ->
+        @option_dict = {}
+        @update_pending = 0
     install_options: =>
         $.ajax
             url     : "{% url boot:get_html_options %}"
             error   : handle_ajax_error
             success : (xml) =>
                 if parse_xml_response(xml)
-                    @option_dict = {}
                     @xml_dict = {}
                     opt_h3 = $("h3#options")
+                    opt_h3.children().remove()
                     $(xml).find("option").each (index, opt) =>
                         opt = $(opt)
                         opt_button = $("<input>").attr({
                             "type" : "checkbox",
                             "id"   : "opt_" + opt.attr("short")})
+                        if opt.attr("short") in (key for key, value of @option_dict)
+                            opt_button.attr("checked", "checked")
                         opt_h3.append(opt_button);
                         opt_h3.append($("<label>").attr({"for" : "opt_" + opt.attr("short")}).text(opt.text()));
                         opt_button.bind("change", @change_option);
                     opt_h3.find("input").button()
                     opt_h3.buttonset()
+                    for key, value of @option_dict
+                        $.ajax
+                            url     : "{% url boot:get_addon_info %}"
+                            data    : {
+                                "type" : key
+                            }
+                            async   : false
+                            error   : handle_ajax_error
+                            success : (xml) =>
+                                if parse_xml_response(xml)
+                                    @xml_dict[key] = $(xml)
+                    @draw_table()
+                    @option_lut = 
+                        "k" : kernel_option
+                        "h" : hard_control_option
+                        "s" : soft_control_option
+                        "t" : target_state_option
+                        "b" : boot_device_option
+                        "p" : partition_option
+                        "i" : image_option
+                        "l" : devlog_option
+                    @device_lut = {}
+                    # redraw options
+                    for cur_opt in ["h", "s", "t", "b", "k", "p", "i", "l"]
+                        @device_lut[cur_opt] = {}
+                        @redraw_options(cur_opt, false)
+                    # call update_device_info after table draw
+                    @update_device_info(true)
+                    @update_devlog_info(true)
+        $(document).stopTime("update_device_info")
+        $(document).stopTime("update_devlog_info")
+        $(document).everyTime(10000, "update_device_info", =>
+            @update_device_info(true)
+        )
+        $(document).everyTime(10000, "update_devlog_info", =>
+            @update_devlog_info(true)
+        )
+    use_devs: (dt_div) =>
+        sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
+        $.ajax
+            url     : "{% url device:get_group_tree %}"
+            error   : handle_ajax_error
+            data    : {
+                "sel_list" : sel_list
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @draw($(xml).find("value[name='response']"))
+    force_update_info: (call_mother) =>
+        @update_pending = 0
+        @update_device_info(call_mother)
     change_option: (event) =>
         el = $(event.target)
         opt = el.attr("id").split("_")[1]
@@ -614,16 +597,20 @@ class boot_table
                 success : (xml) =>
                     if parse_xml_response(xml)
                         @xml_dict[opt] = $(xml)
-                        redraw_options(opt)
+                        @redraw_options(opt, true)
         else
-            redraw_options(opt)
-    draw: =>
+            @redraw_options(opt, true)
+    draw: (@xml) =>
+        @install_options()
+    draw_table: =>
+        @cur_pure_devices = ($(cur_dev).attr("name") for cur_dev in @xml.find("device[meta_device='0'][tree_selected='selected']"))
         b_table = $("<table>").attr({"id" : "boot"})
         @xml.find("device_group").each (devg_index, cur_dg) =>
             b_table.append(@draw_device_group($(cur_dg)))
         @top_div.children().remove()
         @top_div.append(b_table)
         @table = b_table
+        $("input#update_info").bind("click", => @force_update_info(true))
     draw_device_group: (cur_dg) =>
         dummy_div = $("<div>")
         new_tr = $("<tr>").attr({
@@ -667,200 +654,100 @@ class boot_table
         dummy_div.append(new_tr)
         return dummy_div.children()
     # create option lines
-    redraw_options: (opt) =>
+    redraw_options: (opt, call_server) =>
         if @option_dict[opt]
-            get_info_from_server = true
-            get_devlog_info_from_server = false
-            // add lines
-            @table.find("tr[btype='device']").each (index, dev_tr) =>
-                dev_tr = $(dev_tr)
-                dev_id = dev_tr.attr("id")
-                new_tr = $("<tr>").attr({
-                    "btype" : "opt_" + opt
-                    "id"    : dev_id
-                })
-                dev_tr.after(new_tr)
-                first_td = $("<td>")
-                new_tr.append(first_td)
-                switch opt
-                    when "k"
-                        first_td.attr({"colspan" : "5"})
-                        first_td.append("kernel:")
-                        kernel_sel = $("<select>").attr({
-                            "disabled" : "disabled",
-                            "id"       : dev_id + "__new_kernel"
-                        })
-                        kernel_sel.append($("<option>").attr({"value" : "0"}).text("not set"));
-                        @xm_dict["k"].find("kernel").each (k_idx, cur_kernel) =>
-                            cur_kernel = $(cur_kernel)
-                            kernel_sel.append($("<option>").attr({"value" : cur_kernel.attr("pk")}).text(cur_kernel.attr("name")));
-                        first_td.append(kernel_sel)
-                        first_td.append(", actual kernel: ").append($("<span>").attr({
-                            "id" : dev_id + "__act_kernel"
-                        }))
-                        first_td.append(", stage 1 flavour : ")
-                        stage1_flav = $("<select>").attr({
-                            "disabled" : "disabled",
-                            "id"       : dev_id + "__kernel_flavour"
-                        })
-                        stage1_flav.append($("<option>").attr({"value" : "none"}).text("not set"))
-                        stage1_flav.append($("<option>").attr({"value" : "cpio"}).text("CPIO"))
-                        stage1_flav.append($("<option>").attr({"value" : "cramfs"}).text("CramFS"))
-                        stage1_flav.append($("<option>").attr({"value" : "lo"}).text("ext2 via Loopback"))
-                        first_td.append(stage1_flav)
-                        first_td.append(", kernel append:")
-                        first_td.append($("<input>").attr({
-                            "type"     : "text",
-                            "id"       : dev_id + "__kernel_append",
-                            "disabled" : "disabled"}))
-                    when "h"
-                        first_td.attr({"colspan" : "5"});
-                        first_td.append("hard control:");
-                        var hard_con = $("<span>").attr({
-                            "id"       : dev_id + "__hard_control",
-                            "disabled" : "disabled"
-                        }).text("waiting");
-                        first_td.append(hard_con);
-                        break;
-                    when "s"
-                        first_td.attr({"colspan" : "5"});
-                        first_td.append("soft control:");
-                        $.each(["status", "reboot", "halt", "poweroff"], function(key, value) {
-                            var radio_el = $("<input>").attr({
-                                "type"    : "radio",
-                                "name"    : dev_id + "__soft_control",
-                                "id"      : dev_id + "__" + value,
-                                "value"   : value}).bind("click", soft_control);
-                            if (key == 0) radio_el.attr("checked", "checked");
-                            first_td.append(radio_el).append($("<span>").text(value));
-                        });
-                        get_info_from_server = false;
-                        break;
-                    when "t"
-                        first_td.attr({"colspan" : "5"});
-                        first_td.append("target state:");
-                        var target_sel = $("<select>").attr({
-                            "disabled" : "disabled",
-                            "id"       : dev_id + "__target_state"
-                        });
-                        target_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
-                        $(XML_DICT["t"]).find("status").each(function() {
-                            var cur_tstate = $(this);
-                            target_sel.append($("<option>").attr({"value" : cur_tstate.attr("pk") + "__" + cur_tstate.attr("prod_net")}).text(cur_tstate.text()));
-                        });
-                        first_td.append(target_sel);
-                        break;
-                    when "b"
-                        first_td.attr({"colspan" : "5"});
-                        first_td.append("MAC Address of bootdevice ");
-                        first_td.append($("<span>").attr({
-                            "id" : dev_id + "__boot_dev_name"}).text("---"));
-                        first_td.append(":");
-                        first_td.append($("<input>").attr({
-                            "id"       : dev_id + "__boot_dev_macaddr",
-                            "type"     : "text",
-                            "disabled" : "disabled"}));
-                        first_td.append(", DHCP: ");
-                        first_td.append($("<input>").attr({
-                            "id"       : dev_id + "__write_dhcp",
-                            "type"     : "checkbox",
-                            "disabled" : "disabled"}));
-                        first_td.append(", driver: ");
-                        first_td.append($("<input>").attr({
-                            "id"       : dev_id + "__boot_dev_driver",
-                            "type"     : "text",
-                            "disabled" : "disabled"}));
-                        first_td.append(", greedy mode: ");
-                        first_td.append($("<input>").attr({
-                            "id"       : dev_id + "__greedy_mode",
-                            "type"     : "checkbox",
-                            "disabled" : "disabled"}));
-                    when "p"
-                        first_td.attr({"colspan" : "5"});
-                        first_td.append("Partition ");
-                        var part_sel = $("<select>").attr({
-                            "disabled" : "disabled",
-                            "id"       : dev_id + "__new_part"
-                        });
-                        part_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
-                        $(XML_DICT["p"]).find("partition_table").each(function() {
-                            var cur_part = $(this);
-                            var part_opt = $("<option>").attr({"value" : cur_part.attr("pk")}).text(cur_part.attr("name"));
-                            if (cur_part.attr("valid") == 0) part_opt.attr("disabled", "disabled");
-                            part_sel.append(part_opt);
-                        });
-                        first_td.append(part_sel);
-                    when "i"
-                        first_td.attr({"colspan" : "5"});
-                        first_td.append("Image ");
-                        var img_sel = $("<select>").attr({
-                            "disabled" : "disabled",
-                            "id"       : dev_id + "__new_image"
-                        });
-                        img_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"));
-                        $(XML_DICT["i"]).find("image").each(function() {
-                            var cur_img = $(this);
-                            var img_opt = $("<option>").attr({"value" : cur_img.attr("pk")}).text(cur_img.attr("name"));
-                            if (cur_img.attr("valid") == 0) part_opt.attr("disabled", "disabled");
-                            img_sel.append(img_opt);
-                        });
-                        first_td.append(img_sel);
-                    when "l"
-                        first_td.attr({"colspan" : "5"});
-                        first_td.append("Device log ");
-                        var dev_sel = $("<select>").attr({
-                            "id"       : dev_id + "__device_log",
-                            "disabled" : "disabled"
-                        });
-                        first_td.append(dev_sel);
-                        get_info_from_server = false;
-                        get_devlog_info_from_server = true;
-                };
-            });
-            if (get_info_from_server) force_update_info(false);
-            if (get_devlog_info_from_server) update_devlog_info(false);
+            # add lines
+            @xml.find("devices device[tree_selected='selected'][meta_device='0']").each (index, cur_dev) =>
+                cur_dev = $(cur_dev)
+                dev_tr = @table.find("tr[id='" + cur_dev.attr("key") + "']")
+                new_opt = new @option_lut[opt](cur_dev)
+                @device_lut[opt][cur_dev.attr("key")] = new_opt
+                dev_tr.after(new_opt.draw(@))
+            if call_server
+                dummy_opt = new @option_lut[opt]()
+                if dummy_opt.get_info_from_server
+                    @force_update_info(false)
+                if dummy_opt.get_devlog_info_from_server
+                    @update_devlog_info(false)
         else
             # remove lines
-            @table.find("tr[btype='opt_" + opt + "']").remove()
-    
-load_devices = (sel_list) ->
-    $.ajax
-        url     : "{% url device:get_group_tree %}"
-        error   : handle_ajax_error
-        data    : {
-            "sel_list" : sel_list
-        }
-        success : (xml) ->
-            if parse_xml_response(xml)
-                root.DEVICES = $(xml).find("value[name='response']")
-                root.CUR_PURE_DEVICES = ($(cur_dev).attr("name") for cur_dev in $(xml).find("device[meta_device='0'][tree_selected='selected']"))
-                cur_t = new boot_table($("div#boot"), DEVICES)
-                cur_t.draw()
-                # redraw options
-                redraw_options("h")
-                redraw_options("s")
-                redraw_options("t")
-                redraw_options("b")
-                redraw_options("k")
-                redraw_options("p")
-                redraw_options("i")
-                redraw_options("l")
-                # call update_device_info after table draw
-                update_device_info(true)
-
-use_devs = (dt_div) ->
-    load_devices(value.data.key for value in dt_div.dynatree("getSelectedNodes"))
-
+            @table.find("tr[id$='__opt__" + opt + "']").remove()
+    update_device_info: (call_mother) =>
+        if @cur_pure_devices.length and not @update_pending
+            @update_pending = 1
+            send_data = {
+                "sel_list" : @cur_pure_devices
+            }
+            for key in @option_dict
+                send_data["opt_"+ key] = @option_dict[key]
+            send_data["call_mother"] = if call_mother then 1 else 0
+            $.ajax
+                url     : "{% url boot:get_boot_info %}"
+                error   : handle_ajax_error
+                data    : send_data
+                success : (xml) =>
+                    @update_pending = 0
+                    if parse_xml_response(xml)
+                        $(xml).find("device").each (dev_idx, cur_dev) =>
+                            cur_dev = $(cur_dev)
+                            dev_tr = @table.find("tr#" + cur_dev.attr("key"))
+                            dev_id = dev_tr.attr("id")
+                            if call_mother
+                                dev_tr.find("td#recv_str").text("rcv: " + cur_dev.attr("recvstate"))
+                                dev_tr.find("td#req_str").text("req: " + cur_dev.attr("reqstate"))
+                                net_state = cur_dev.attr("net_state");
+                                tr_class = {"down" : "error", "unknown" : "error", "ping" : "warn", "up" : "ok"}[net_state]
+                                dev_tr.find("td#network").text(cur_dev.attr("network") + " ("+ net_state + ")")
+                                dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok error warn").addClass(tr_class)
+                            for check_opt in ["k"]
+                                if @option_dict[check_opt]
+                                    @device_lut[check_opt][dev_id].set_option(cur_dev)
+                            if @option_dict["k"]
+                                kernel_tr = @table.find("tr[id='" + dev_id + "__opt__k']")
+                                set_kernel_option(cur_dev, kernel_tr)
+                            if @option_dict["t"]
+                                target_tr = @table.find("tr[id='" + dev_id + "__opt__t']")
+                                set_target_option(cur_dev, target_tr)
+                            if @option_dict["s"]
+                                target_tr = @table.find("tr[id='" + dev_id + "__opt__s']")
+                                set_soft_control_option(cur_dev, target_tr)
+                            if @option_dict["h"]
+                                target_tr = @table.find("tr[id='" + dev_id + "__opt__h']")
+                                set_hard_control_option(cur_dev, target_tr)
+                            if @option_dict["b"]
+                                boot_tr = @table.find("tr[id='" + dev_id + "__opt__b']")
+                                set_boot_option(cur_dev, boot_tr)
+                            if @option_dict["p"]
+                                part_tr = @table.find("tr[id='" + dev_id + "__opt__p']")
+                                set_part_option(cur_dev, part_tr)
+                            if @option_dict["i"]
+                                img_tr = @table.find("tr[id='" + dev_id + "__opt__i']")
+                                set_img_option(cur_dev, img_tr)
+    update_devlog_info: =>
+        if @cur_pure_devices.length and not @update_devlog_pending
+            @update_devlog_pending = 1
+            send_data = {
+                "sel_list" : @cur_pure_devices
+            }
+            $.ajax
+                url     : "{% url boot:get_devlog_info %}"
+                error   : handle_ajax_error
+                data    : send_data
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @update_devlog_pending = 0
+                        $(xml).find("device").each (dev_idx, cur_dev) =>
+                            cur_dev = $(cur_dev)
+                            dev_tr = @table.find("tr#" + cur_dev.attr("key"))
+                            dev_id = dev_tr.attr("id")
+                            if @option_dict["l"]
+                                devlog_tr = @table.find("tr[id='" + dev_id + "__opt__l']")
+                                set_devlog_option(cur_dev, devlog_tr)
+	 
 
 add_config_handlers = ->
-    install_devsel_link(use_devs, true)
-    $(document).everyTime(10000, "update_device_info", ->
-        update_device_info(true)
-    )
-    $(document).everyTime(10000, "update_devlog_info", ->
-        update_devlog_info(true)
-    )
-
+    cur_t = new boot_table($("div#boot"))
+    install_devsel_link(cur_t.use_devs, true)
 
 $(document).ready(add_config_handlers)
 
