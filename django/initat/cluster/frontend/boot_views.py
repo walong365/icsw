@@ -79,15 +79,19 @@ def get_addon_info(request):
     request.xml_response["response"] = addon_list
     return request.xml_response.create_response()
 
+def strip_dict(in_dict):
+    return in_dict.keys()[0].split("__")[1], dict([("__".join(key.split("__")[2:]), value) for key, value in in_dict.iteritems()])
+
 @transaction.commit_manually
 @login_required
 @init_logging
 def set_boot(request):
     _post = request.POST
-    cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
-    boot_mac = _post["boot_mac"]
-    boot_driver = _post["boot_driver"]
-    dhcp_write = True if int(_post["dhcp_write"]) else False
+    dev_id, _post = strip_dict(_post)
+    cur_dev = device.objects.get(Q(pk=dev_id))
+    boot_mac = _post["boot_dev_macaddr"]
+    boot_driver = _post["boot_dev_driver"]
+    dhcp_write = True if int(_post["write_dhcp"]) else False
     dhcp_mac   = True if int(_post["greedy_mode"]) else False
     any_error = False
     cur_dev.dhcp_mac = dhcp_mac
@@ -141,7 +145,8 @@ def set_image(request):
 @init_logging
 def set_kernel(request):
     _post = request.POST
-    cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
+    dev_id, _post = strip_dict(_post)
+    cur_dev = device.objects.get(Q(pk=dev_id))
     if int(_post["new_kernel"]) == 0:
         cur_dev.new_kernel = None
     else:
