@@ -65,6 +65,7 @@ class machine(object):
             init_logger=True)
         self.log("added client, type is %s" % (self.device.device_type.identifier))
         self.additional_lut_keys = set()
+        self.ip_dict = {}
         self.init()
     def init(self):
         pass
@@ -192,6 +193,7 @@ class machine(object):
                 ping_list.append(srv_com.builder("ping", cur_id_str, pk="%d" % (cur_dev.pk)))
         srv_com["ping_list"] = ping_list
         machine.ping_id = cur_id
+        return True if len(ping_list) else False
     @staticmethod
     def interpret_result(srv_com, id_str, res_dict):
         node = srv_com.xpath(None, ".//ns:ping[text() = '%s']" % (id_str))[0]
@@ -1148,14 +1150,18 @@ class node_control_process(threading_tools.process_obj):
         self.log("got soft_control from id %s" % (zmq_id))
         in_com = server_command.srv_command(source=in_com)
         in_com["command"].attrib["zmq_id"] = zmq_id
-        machine.ping(in_com)
-        self.pending_list.append(in_com)
+        if not machine.ping(in_com):
+            self._add_ping_info(in_com)
+        else:
+            self.pending_list.append(in_com)
     def _status(self, zmq_id, in_com, *args, **kwargs):
         self.log("got status from id %s" % (zmq_id))
         in_com = server_command.srv_command(source=in_com)
         in_com["command"].attrib["zmq_id"] = zmq_id
-        machine.ping(in_com)
-        self.pending_list.append(in_com)
+        if not machine.ping(in_com):
+            self._add_ping_info(in_com)
+        else:
+            self.pending_list.append(in_com)
         #self.send_pool_message("send_return", zmq_id, unicode(in_com))
     def _ping_result(self, id_str, res_dict, **kwargs):
         new_pending = []
@@ -1164,14 +1170,16 @@ class node_control_process(threading_tools.process_obj):
             if len(cur_com.xpath(None, ".//ns:ping[text() = '%s']" % (id_str))):
                 machine.interpret_result(cur_com, id_str, res_dict)
                 if not cur_com.xpath(None, ".//ns:ping_list"):
-                    machine.iterate_xml(cur_com, "add_ping_info")
-                    #print "**", cur_com.pretty_print()
-                    self.send_pool_message("send_return", cur_com.xpath(None, ".//ns:command/@zmq_id")[0], unicode(cur_com))
+                    self._add_ping_info(cur_com)
                 else:
                     new_pending.append(cur_com)
             else:
                 new_pending.append(cur_com)
         self.pending_list = new_pending
+    def _add_ping_info(self, cur_com):
+        machine.iterate_xml(cur_com, "add_ping_info")
+        #print "**", cur_com.pretty_print()
+        self.send_pool_message("send_return", cur_com.xpath(None, ".//ns:command/@zmq_id")[0], unicode(cur_com))
     def _nodeinfo(self, id_str, node_text, **kwargs):
         node_id, instance = id_str.split(":", 1)
         cur_dev = machine.get_device(node_id)
@@ -1249,7 +1257,8 @@ class node_control_process(threading_tools.process_obj):
         for mach_name in nodes:
             cur_dev = machine.get_device(mach_name)
             #print "***", mach_name, cur_dev, type(cur_dev)
-            cur_dev.handle_mac_command(com_name)
+            if cur_dev:
+                cur_dev.handle_mac_command(com_name)
             #dhcp_written, dhcp_write, dhcp_last_error = (
             #    cur_dev.dhcp_wrmachdat["dhcp_written"], machdat["dhcp_write"], machdat["dhcp_error"])
             # list of om_shell commands
