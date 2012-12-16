@@ -53,7 +53,7 @@ def search_package(request):
 def create_search(request):
     _post = request.POST
     pn_prefix = "ps__new__"
-    in_dict = dict([(key[len(pn_prefix) : ], _post[key]) for key in _post.keys() if key.startswith(pn_prefix)])
+    in_dict = dict([(key[len(pn_prefix):], _post[key]) for key in _post.keys() if key.startswith(pn_prefix)])
     request.log("creating package_search with search_string '%s'" % (in_dict["search_string"]))
     new_search = package_search(
         search_string=in_dict["search_string"],
@@ -231,5 +231,17 @@ def change_package_flag(request):
     setattr(cur_pdc, flag_name, value)
     cur_pdc.save()
     # signal package-server
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def synchronize(request):
+    srv_com = server_command.srv_command(command="new_config")
+    result = net_tools.zmq_connection("pack_webfrontend", timeout=10).add_connection("tcp://localhost:8007", srv_com)
+    if not result:
+        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        #print result.pretty_print()
+        request.log("sent sync to server", xml=True)
     return request.xml_response.create_response()
     

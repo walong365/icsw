@@ -163,6 +163,7 @@ pack_patterns = patterns(
     url("pack/remove"          , "pack_views.remove_package"     , name="remove_package"     ),
     url("pack/change_tstate"   , "pack_views.change_target_state", name="change_target_state"),
     url("pack/change_pflag"    , "pack_views.change_package_flag", name="change_package_flag"),
+    url("pack/sync"            , "pack_views.synchronize"        , name="synchronize"        ),
 )
 
 main_patterns = patterns(

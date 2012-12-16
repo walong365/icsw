@@ -62,17 +62,18 @@ class device_table
                         cur_sel.val(t_state).trigger("change")
     remove_package: (event) =>
         cur_el = $(event.target)
-        pack_key = cur_el.attr("id").split("__")[0...2].join("__")
-        pack_pk = pack_key.split("__")[1]
-        # get all devices which have the current package not set
-        @xml.find("device_group devices device[meta_device='0']").each (index, dev_xml) =>
-            dev_xml = $(dev_xml)
-            dev_key = dev_xml.attr("key")
-            # device is selected
-            if @table.find("input[id='" + dev_key + "__sel']").prop("checked")
-                cur_pdc = @xml.find("package_device_connections package_device_connection[package='" + pack_pk + "'][device='" + dev_xml.attr("pk") + "']")
-                if cur_pdc.length
-                    @remove_package_xml(cur_pdc)
+        if confirm("really remove package ?")
+            pack_key = cur_el.attr("id").split("__")[0...2].join("__")
+            pack_pk = pack_key.split("__")[1]
+            # get all devices which have the current package not set
+            @xml.find("device_group devices device[meta_device='0']").each (index, dev_xml) =>
+                dev_xml = $(dev_xml)
+                dev_key = dev_xml.attr("key")
+                # device is selected
+                if @table.find("input[id='" + dev_key + "__sel']").prop("checked")
+                    cur_pdc = @xml.find("package_device_connections package_device_connection[package='" + pack_pk + "'][device='" + dev_xml.attr("pk") + "']")
+                    if cur_pdc.length
+                        @remove_package_xml(cur_pdc)
     remove_package_xml: (cur_pdc) =>
         $.ajax
             url     : "{% url pack:remove_package %}"
@@ -132,23 +133,30 @@ class device_table
         @update_device_info()
         @top_div.children().remove()
         @top_div.append(d_table)
-        @top_div.append($("<span>").text("selection: "))
         @top_div.append(
+            $("<span>").text("selection: ")
+        ).append(
             $("<input>").attr({
                 "type"  : "button",
                 "value" : "toggle"
-            }).bind(
-                "click", (event) =>
-                    @change_global_sel(event)
-            )
+            }).bind("click", @change_global_sel)
         ).append(
             $("<input>").attr({
                 "type"  : "button",
                 "value" : "clear"
-            }).bind(
-                "click", (event) =>
-                    @clear_all_sel(event)
-            )
+            }).bind("click", @clear_all_sel)
+        ).append(
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "all"
+            }).bind("click", @set_all_sel)
+        ).append(
+            $("<span>").text(", server: ")
+        ).append(
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "synchronize"
+            }).bind("click", @sync_server)
         )
     draw_device_group: (cur_dg) =>
         dummy_div = $("<div>")
@@ -195,6 +203,22 @@ class device_table
         # then all pdcs
         @table.find("input[id^='pdc__'][id$='__sel']:checked").each (index, cur_el) =>
             $(cur_el).trigger("click")
+    set_all_sel: (event) =>
+        # at first set all device groups
+        @table.find("input[id^='devg__'][id$='__sel']:not(:checked)").each (index, cur_el) =>
+            $(cur_el).trigger("click")
+        # then set all devices
+        @table.find("input[id^='dev__'][id$='__sel']:not(:checked)").each (index, cur_el) =>
+            $(cur_el).trigger("click")
+        # then all pdcs
+        @table.find("input[id^='pdc__'][id$='__sel']:not(:checked)").each (index, cur_el) =>
+            $(cur_el).trigger("click")
+    sync_server: (event) =>
+        $.ajax
+            url     : "{% url pack:synchronize %}"
+            error   : handle_ajax_error
+            success : (xml) =>
+                parse_xml_response(xml)
     change_global_sel: (event) =>
         @xml.find("device_group").each (idx, cur_dg) =>
             cur_dg = $(cur_dg)
@@ -294,7 +318,8 @@ class device_table
             "id"    : pdc_xml.attr("key"),
             "type"  : "button",
             "value" : "remove"}).bind("click", (event) =>
-                @remove_package_xml(@xml.find("package_device_connection[key='" + $(event.target).attr("id") + "']")))
+                if confirm("really remove ?")
+                    @remove_package_xml(@xml.find("package_device_connection[key='" + $(event.target).attr("id") + "']")))
     draw_tstate: (pdc_xml) =>
         cur_ts = $("<select>").attr({
             "id" : pdc_xml.attr("key") + "__tstate"

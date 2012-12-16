@@ -393,8 +393,6 @@ def generate_config(request):
             cur_dev = dev_dict[int(dev_node.attrib["pk"])]
             # build tree
             cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)))
-            print unicode(cur_tree)
-            print etree.tostring(cur_tree.get_xml(), pretty_print=True)
             res_node.append(cur_tree.get_xml())
             request.xml_response["result"].append(res_node)
         request.log("build done", xml=True)
