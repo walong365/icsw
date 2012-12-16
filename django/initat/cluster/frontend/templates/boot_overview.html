@@ -120,6 +120,7 @@ class hard_control_option extends option_list
         return @full_line(cur_td)
     _set_option: (dev_xml) =>
         new_hcon = @cur_td.find("span#" + @dev_key + "__hard_control");
+        console.log $(dev_xml).find("cd_connection").length
         if dev_xml.find("cd_connection").length
             new_hcon.text("")
             dev_xml.find("cd_connection").each (index, new_cd) =>
@@ -564,8 +565,8 @@ class boot_table
             send_data = {
                 "sel_list" : @cur_pure_devices
             }
-            for key in @option_dict
-                send_data["opt_"+ key] = @option_dict[key]
+            for key, value of @option_dict
+                send_data["opt_" + key] = @option_dict[key]
             send_data["call_mother"] = if call_mother then 1 else 0
             $.ajax
                 url     : "{% url boot:get_boot_info %}"
