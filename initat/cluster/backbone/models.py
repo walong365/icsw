@@ -777,7 +777,10 @@ class device_variable(models.Model):
     val_time = models.TextField(blank=True, null=True) # This field type is a guess.
     date = models.DateTimeField(auto_now_add=True)
     def set_value(self, value):
-        if value.isdigit():
+        if type(value) == datetime.datetime:
+            self.var_type = "d"
+            self.val_date = cluster_timezone.localize(value)
+        elif type(value) in [int, long] or (type(value) in [str, unicode] and value.isdigit()):
             self.var_type = "i"
             self.val_int = int(value)
         else:
@@ -1171,7 +1174,7 @@ class package(models.Model):
             package_repo="%d" % (self.package_repo_id)
         )
     def __unicode__(self):
-        return self.name
+        return "%s-%s" % (self.name, self.version)
     class Meta:
         db_table = u'package'
         unique_together = (("name", "version", "arch", "kind",),)
@@ -1182,7 +1185,7 @@ class package_device_connection(models.Model):
     package = models.ForeignKey(package)
     # target state
     target_state = models.CharField(max_length=8, choices=(
-        ("keep", "keep"),
+        ("keep"   , "keep"),
         ("install", "install"),
         ("upgrade", "upgrade"),
         ("erase"  , "erase")), default="keep")
@@ -1193,8 +1196,13 @@ class package_device_connection(models.Model):
     force_flag = models.BooleanField(default=False)
     nodeps_flag = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.package_device_connection(
+    response_type = models.CharField(max_length=16, choices=(
+        ("zypper_xml", "zypper_xml"),
+        ("unknown"   , "unknown"),
+        ), default="zypper_xml")
+    response_str = models.TextField(max_length=65535, default="")
+    def get_xml(self, with_package=False):
+        pdc_xml = E.package_device_connection(
             pk="%d" % (self.pk),
             key="pdc__%d" % (self.pk),
             device="%d" % (self.device_id),
@@ -1204,6 +1212,33 @@ class package_device_connection(models.Model):
             force_flag="1" if self.force_flag else "0",
             nodeps_flag="1" if self.nodeps_flag else "0",
         )
+        if with_package:
+            pdc_xml.append(self.package.get_xml())
+        return pdc_xml
+    def interpret_response(self):
+        if self.response_type == "zypper_xml":
+            xml = etree.fromstring(self.response_str)
+            if xml[0].tag == "info":
+                # short when target_state ="keep"
+                self.installed = "u"
+            else:
+                # full stream
+                install_summary = xml.xpath(".//install-summary")[0]
+                if not len(install_summary):
+                    # nohting to do, set according to target state
+                    self.installed = {"keep" : "u",
+                                      "install" : "y",
+                                      "upgrade" : "y",
+                                      "erase"   : "n"}[self.target_state]
+                else:
+                    if len(install_summary.xpath(".//to-install")):
+                        self.installed = "y"
+                    elif len(install_summary.xpath(".//to-remove")):
+                        self.installed = "n"
+                    else:
+                        self.installed = "u"
+        else:
+            self.installed = "u"
     class Meta:
         pass
 
