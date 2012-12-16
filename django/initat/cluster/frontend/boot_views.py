@@ -195,7 +195,6 @@ def set_target_state(request):
 @init_logging
 def get_boot_info(request):
     _post = request.POST
-    pprint.pprint(_post)
     option_dict = dict([(short, True if _post.get("opt_%s" % (short)) in ["true"] else False) for short, long_opt, t_class in OPTION_LIST])
     sel_list = _post.getlist("sel_list[]")
     dev_result = device.objects.filter(Q(name__in=sel_list))
