@@ -869,12 +869,12 @@ class devicelog(models.Model):
         db_table = u'devicelog'
         ordering = ("date",)
 
-class distribution(models.Model):
-    idx = models.AutoField(db_column="distribution_idx", primary_key=True)
-    distribution = models.TextField()
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'distribution'
+##class distribution(models.Model):
+##    idx = models.AutoField(db_column="distribution_idx", primary_key=True)
+##    distribution = models.TextField()
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'distribution'
 
 class dmi_entry(models.Model):
     idx = models.AutoField(db_column="dmi_entry_idx", primary_key=True)
@@ -1242,34 +1242,34 @@ class package_device_connection(models.Model):
     class Meta:
         pass
 
-class inst_package(models.Model):
-    idx = models.AutoField(db_column="inst_package_idx", primary_key=True)
-    package = models.ForeignKey("package")
-    location = models.TextField()
-    native = models.BooleanField()
-    last_build = models.IntegerField(null=True, blank=True)
-    present_on_disk = models.BooleanField()
-    #package_set = models.ForeignKey("package_set", null=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'inst_package'
+##class inst_package(models.Model):
+##    idx = models.AutoField(db_column="inst_package_idx", primary_key=True)
+##    package = models.ForeignKey("package")
+##    location = models.TextField()
+##    native = models.BooleanField()
+##    last_build = models.IntegerField(null=True, blank=True)
+##    present_on_disk = models.BooleanField()
+##    #package_set = models.ForeignKey("package_set", null=True)
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'inst_package'
 
-class instp_device(models.Model):
-    idx = models.AutoField(db_column="instp_device_idx", primary_key=True)
-    inst_package = models.ForeignKey("inst_package")
-    device = models.ForeignKey("device")
-    install = models.BooleanField()
-    upgrade = models.BooleanField()
-    del_field = models.BooleanField(db_column='del') # Field renamed because it was a Python reserved word. Field name made lowercase.
-    nodeps = models.BooleanField()
-    forceflag = models.BooleanField()
-    status = models.TextField()
-    install_time = models.DateTimeField(null=True, blank=True)
-    error_line_num = models.IntegerField(null=True, blank=True)
-    error_lines = models.TextField()
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'instp_device'
+##class instp_device(models.Model):
+##    idx = models.AutoField(db_column="instp_device_idx", primary_key=True)
+##    inst_package = models.ForeignKey("inst_package")
+##    device = models.ForeignKey("device")
+##    install = models.BooleanField()
+##    upgrade = models.BooleanField()
+##    del_field = models.BooleanField(db_column='del') # Field renamed because it was a Python reserved word. Field name made lowercase.
+##    nodeps = models.BooleanField()
+##    forceflag = models.BooleanField()
+##    status = models.TextField()
+##    install_time = models.DateTimeField(null=True, blank=True)
+##    error_line_num = models.IntegerField(null=True, blank=True)
+##    error_lines = models.TextField()
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'instp_device'
 
 class kernel(models.Model):
     idx = models.AutoField(db_column="kernel_idx", primary_key=True)
