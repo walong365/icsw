@@ -179,6 +179,19 @@ def install(request):
 
 @login_required
 @init_logging
+def refresh(request):
+    _post = request.POST
+    dev_list = [key.split("__")[1] for key in _post.getlist("sel_list[]")]
+    xml_resp = E.response(
+        E.package_device_connections(
+            *[cur_pdc.get_xml() for cur_pdc in package_device_connection.objects.filter(Q(device__in=dev_list))]
+        )
+    )
+    request.xml_response["response"] = xml_resp
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
 def add_package(request):
     _post = request.POST
     dev_pk, pack_pk = (

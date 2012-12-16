@@ -19,7 +19,7 @@
 
 class device_table
     constructor: (@xml) ->
-    build_table: (@top_div) =>
+    build_table: (@top_div, @sel_list) =>
         $.ajax
             url     : "{% url pack:install %}"
             error   : handle_ajax_error
@@ -47,6 +47,19 @@ class device_table
                     }
                     draw_ds_tables($("div#package"), master_array, @pack_xml)
                     @load_packages()
+                    $(document).everyTime(5000, "refresh_package_info", @refresh_package_info)
+    refresh_package_info: =>
+        $.ajax
+            url     : "{% url pack:refresh %}"
+            error   : handle_ajax_error
+            data    : {"sel_list" : @sel_list}
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    $(xml).find("package_device_connection").each (index, cur_pdc) =>
+                        cur_pdc = $(cur_pdc)
+                        @xml.find("package_device_connections package_device_connection[key='" + cur_pdc.attr("key") + "']").attr("installed", cur_pdc.attr("installed"))
+                        @table.find("span#" + cur_pdc.attr("key") + "__installed").text(cur_pdc.attr("installed"))
+                    @update_device_info()
     change_target_state: (event) =>
         cur_el = $(event.target)
         pack_key = cur_el.attr("id").split("__")[0...2].join("__")
@@ -78,7 +91,7 @@ class device_table
         $.ajax
             url     : "{% url pack:remove_package %}"
             data    : {
-                "pdc_key"  : cur_pdc.attr("key")
+                "pdc_key" : cur_pdc.attr("key")
             }
             error   : handle_ajax_error
             success : (xml) =>
@@ -187,7 +200,15 @@ class device_table
             @recolor_device(dev_tr)
             info_th = dev_tr.find("span[id$='__pinfo']")
             pdc_list = @xml.find("package_device_connections package_device_connection[device='" + dev_pk + "']")
-            info_th.text(", " + pdc_list.length)
+            total = pdc_list.length
+            installed = removed = 0
+            for cur_entry in pdc_list
+                switch $(cur_entry).attr("installed")
+                    when "y"
+                        installed++
+                    when "n"
+                        removed++
+            info_th.text(", " + total + " total, " + installed + " installed, " + removed + " removed")
     recolor_device: (dev_tr) =>
         pdc_lines = @get_pdc_lines(dev_tr)
         (line.removeClass("even odd") for line in pdc_lines)
@@ -304,7 +325,9 @@ class device_table
         ).append(
             $("<td>").append(@draw_tstate(pdc_xml))
         ).append(
-            $("<td>").text(pdc_xml.attr("installed"))
+            $("<td>").append(
+                $("<span>").attr("id", pdc_xml.attr("key") + "__installed").text("?")
+            )
         ).append(
             $("<td>").append(@draw_pflag(pdc_xml, "force_flag"))
         ).append(
@@ -362,18 +385,19 @@ class device_table
         return cur_ts
 
 use_devs = ->
+    sel_list = (entry.data.key for idx, entry of $("div#sidebar_tree").dynatree("getSelectedNodes"))
     $.ajax
         url     : "{% url device:get_group_tree %}"
         error   : handle_ajax_error
         data    : {
-            "sel_list"            : (entry.data.key for idx, entry of $("div#sidebar_tree").dynatree("getSelectedNodes"))
+            "sel_list"            : sel_list
             "ignore_meta_devices" : 1
             "extra_t0"            : "package_device_connection"
             "extra_t0_device"     : 1
         }
         success : (xml) ->
             if parse_xml_response(xml)
-                new device_table($(xml).find("value[name='response']")).build_table($("div#device"))
+                new device_table($(xml).find("value[name='response']")).build_table($("div#device"), sel_list)
 
 add_install_handlers = ->
     install_devsel_link(use_devs, true)

@@ -159,6 +159,7 @@ pack_patterns = patterns(
     url("search/use_package"   , "pack_views.use_package"        , name="use_package"        ),
     url("search/unuse_package" , "pack_views.unuse_package"      , name="unuse_package"      ),
     url("install"              , "pack_views.install"            , name="install"            ),
+    url("refresh"              , "pack_views.refresh"            , name="refresh"            ),
     url("pack/add"             , "pack_views.add_package"        , name="add_package"        ),
     url("pack/remove"          , "pack_views.remove_package"     , name="remove_package"     ),
     url("pack/change_tstate"   , "pack_views.change_target_state", name="change_target_state"),
