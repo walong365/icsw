@@ -1200,7 +1200,9 @@ elif [ "$do_mount" = "1" ] ; then
 # fixing fstab
         rm -f /$basedir/etc/fstab /$basedir/etc/mtab
         cat /conf/pinfo/fstab > /$basedir/etc/fstab
-        touch /$basedir/etc/mtab
+        # /etc/mtab is now a link to /proc/self/mounts
+        # /etc/mtab is now a link to /proc/self/mounts
+        #touch /$basedir/etc/mtab
 # force kernel install
         rm -f /conf/.kernel /conf/.kversion
     # go back to root-dir
@@ -1240,7 +1242,7 @@ elif [ "$do_mount" = "1" ] ; then
             echo -e "Partition type is $pinfo"
             rm -f /$basedir/etc/fstab /$basedir/etc/mtab
             cat /conf/pinfo/fstab > /$basedir/etc/fstab
-            touch /$basedir/etc/mtab
+            #touch /$basedir/etc/mtab
             
         fi
     fi

@@ -203,7 +203,7 @@ if [ "`echo $COMPRESSIONTYPE | grep gz 2> /dev/null`" ] ; then
     tar_flags='-czf'
 elif [ "`echo $COMPRESSIONTYPE | grep bz2 2> /dev/null`" ] ; then
     imcomptype='bz2'
-    tar_flags='-czf'
+    tar_flags='-cjf'
 else
     imcomptype='xz'
     tar_flags='-cJf'
@@ -389,6 +389,12 @@ if [ "$BUILD" = "1" ] ; then
 
     rm -rf boot/vmlinu* boot/System*
     rm -rf lib/modules/*
+
+    if [ -d ${sysdir}/etc/zypp/repos.d ] ; then
+        echo "clearing repo info"
+        rm -rf ${sysdir}/etc/zypp/repos.d/*
+    fi
+
     if [ "$MODIFY_IMAGE" = "1" ] ; then
         chroot . depmod -a 2> /dev/null
 
