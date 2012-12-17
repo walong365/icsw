@@ -447,14 +447,15 @@ class server_process(threading_tools.process_pool):
     def _disable_syslog_ng(self):
         self.log("not implemented", logging_tools.LOG_LEVEL_CRITICAL)
     def _enable_rsyslog(self):
+        """ do not forget to enclose the local ruleset in $RuleSet local / $DefaultRuleset local """
         rsyslog_lines = [
             '# UDP Syslog Server:',
-            '$ModLoad imudp.so         # provides UDP syslog reception',
-            '$UDPServerRun 514         # start a UDP syslog server at standard port 514',
+             '$ModLoad imudp.so         # provides UDP syslog reception',
             '',
             '$template prog_log,"%s/%%HOSTNAME%%/%%$YEAR%%/%%$MONTH%%/%%$DAY%%/%%programname%%"' % (global_config["SYSLOG_DIR"]),
             '$template full_log,"%s/%%HOSTNAME%%/%%$YEAR%%/%%$MONTH%%/%%$DAY%%/log"' % (global_config["SYSLOG_DIR"]),
             '',
+            '$RuleSet remote',
             '$DirCreateMode 0755',
             '',
             '$FileCreateMode 0644',
@@ -462,6 +463,11 @@ class server_process(threading_tools.process_pool):
             '',
             '$FileCreateMode 0644',
             '*.* ?full_log',
+            '',
+            '$InputUDPServerBindRuleset remote',
+            '$UDPServerRun 514         # start a UDP syslog server at standard port 514',
+            '',
+            '$RuleSet RSYSLOG_DefaultRuleset',
         ]
         slcn = "/etc/rsyslog.d/logcheck_server.conf"
         file(slcn, "w").write("\n".join(rsyslog_lines))
@@ -759,6 +765,7 @@ def main():
         sys.stderr.write(" %s is no syslog-server, exiting..." % (long_host_name))
         sys.exit(5)
     cluster_location.read_config_from_db(global_config, "syslog_server", [
+        ("SERVER_SHORT_NAME"      , configfile.str_c_var(mach_name)),
         ("SYSLOG_DIR"             , configfile.str_c_var("/var/log/hosts")),
         ("COMPORT"                , configfile.int_c_var(SERVER_PORT)),
         ("KEEP_LOGS_UNCOMPRESSED" , configfile.int_c_var(2)),
