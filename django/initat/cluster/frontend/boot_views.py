@@ -206,7 +206,7 @@ def get_boot_info(request):
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_result])
-        result = net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+        result = net_tools.zmq_connection("boot_full_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
         if not result:
             request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
         else:
