@@ -282,7 +282,7 @@ function handle_runlevel_links() {
             chroot /$basedir /sbin/insserv -r $sl
         fi
         if [ -x /$basedir/bin/systemctl ] ; then
-            echo -e "adding with systemctl"
+            echo -e "disabling with systemctl"
             chroot /$basedir /bin/systemctl disable ${sl}.service
         fi
     done
@@ -300,7 +300,7 @@ function handle_runlevel_links() {
             chroot /$basedir /sbin/insserv $sl
         fi
         if [ -x /$basedir/bin/systemctl ] ; then
-            echo -e "adding with systemctl"
+            echo -e "enabling with systemctl"
             chroot /$basedir /bin/systemctl enable ${sl}.service
         fi
     done
