@@ -1480,19 +1480,21 @@ class process_pool(object):
                             self.log("loop exit")
                             self["run_flag"] = False
                 else:
-                    for do_loop in self.loop_function():
-                        if not do_loop:
-                            self["exit_requested"] = True
-                        if self["exit_requested"]:
-                            self.stop_running_processes()
-                        cur_time = time.time()
-                        if self.__next_timeout and cur_time > self.__next_timeout:
-                            self._handle_timer(cur_time)
-                        if not self["exit_requested"] or self.__processes_running:
-                            self._poll()
-                        if self["exit_requested"] and not self.__processes_running:
-                            self.log("loop exit")
-                            break
+                    while self["run_flag"]:
+                        for do_loop in self.loop_function():
+                            if not do_loop:
+                                self["exit_requested"] = True
+                            if self["exit_requested"]:
+                                self.stop_running_processes()
+                            cur_time = time.time()
+                            if self.__next_timeout and cur_time > self.__next_timeout:
+                                self._handle_timer(cur_time)
+                            if not self["exit_requested"] or self.__processes_running:
+                                self._poll()
+                            if self["exit_requested"] and not self.__processes_running:
+                                self.log("loop exit")
+                                self["run_flag"] = False
+                                break
                 self.loop_end()
                 excepted = False
             except:
