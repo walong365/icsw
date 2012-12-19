@@ -41,6 +41,7 @@ import server_command
 import threading_tools
 import config_tools
 import codecs
+from initat.md_config_server.config import global_config
 from initat.md_config_server import special_commands
 try:
     from md_config_server.version import VERSION_STRING
@@ -1556,8 +1557,8 @@ class build_process(threading_tools.process_obj):
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
             self.log("queries issued: %d" % (tot_query_count))
-            for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
-                self.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
+            #for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
+            #    self.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
     def _create_general_config(self):
         start_time = time.time()
         self._check_image_maps()
@@ -1936,10 +1937,11 @@ class build_process(threading_tools.process_obj):
                                     if special:
                                         sc_array = []
                                         try:
-                                            cur_special = getattr(special_commands, "special_%s" % (special.lower()))(self, dc, s_check, host, valid_ip, global_config)
+                                            cur_special = getattr(special_commands, "special_%s" % (special.lower()))(self, s_check, host, valid_ip, global_config)
                                         except:
-                                            self.log("unable to initialize special '%s': %s" % (special,
-                                                                                                process_tools.get_except_info()),
+                                            self.log("unable to initialize special '%s': %s" % (
+                                                special,
+                                                process_tools.get_except_info()),
                                                      logging_tools.LOG_LEVEL_CRITICAL)
                                         else:
                                             # calling handle to return a list of checks with format
@@ -2617,8 +2619,6 @@ class server_process(threading_tools.process_pool):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()

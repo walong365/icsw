@@ -25,11 +25,13 @@ import sys
 import pprint
 import re
 import logging_tools
-import struct
 import os
 import process_tools
-import server_command
+from initat.md_config_server.config import global_config
 from host_monitoring import ipc_comtools
+from initat.cluster.backbone.models import partition, partition_disc, partition_table, partition_fs, \
+     netdevice, net_ip, network
+from django.db.models import Q
 import time
 import bz2
 import base64
@@ -65,18 +67,17 @@ class special_base(object):
         # number of retries in case of error
         retries = 1
         timeout = 15
-    def __init__(self, build_proc, dc, s_check, host, valid_ip, global_config):
+    def __init__(self, build_proc, s_check, host, valid_ip, global_config):
         for key in dir(special_base.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(special_base.Meta, key))
         self.build_process = build_proc
-        self.dc = dc
         self.s_check = s_check
         self.host = host
         self.valid_ip = valid_ip
         self.global_config = global_config
     def _cache_name(self):
-        return "/tmp/.md-config-server/%s_%s" % (self.host["name"],
+        return "/tmp/.md-config-server/%s_%s" % (self.host.name,
                                                  self.valid_ip)
     def _store_cache(self):
         c_name = self._cache_name()
@@ -158,7 +159,7 @@ class special_base(object):
         return srv_reply
     def __call__(self):
         s_name = self.__class__.__name__.split("_", 1)[1]
-        self.log("starting %s for %s" % (s_name, self.host["name"]))
+        self.log("starting %s for %s" % (s_name, self.host.name))
         s_time = time.time()
         self._load_cache()
         # init result list and number of server calls
@@ -176,7 +177,7 @@ class special_openvpn(special_base):
     def _call(self):
         sc_array = []
         exp_dict = parse_expected()
-        if exp_dict.has_key(self.host["name"]):
+        if exp_dict.has_key(self.host.name):
             exp_dict = {}#exp_dict[host["name"]]
         else:
             exp_dict = {}
@@ -210,24 +211,29 @@ class special_disc_all(special_base):
 class special_disc(special_base):
     def _call(self):
         sc_array = []
-        sql_str = "SELECT pt.name, pt.partition_table_idx, pt.valid, pd.*, p.*, ps.name AS psname FROM partition_table pt INNER JOIN device d LEFT JOIN partition_disc pd ON pd.partition_table=pt.partition_table_idx " + \
-            "LEFT JOIN partition p ON p.partition_disc=pd.partition_disc_idx LEFT JOIN partition_fs ps ON ps.partition_fs_idx=p.partition_fs WHERE d.device_idx=%d AND d.act_partition_table=pt.partition_table_idx ORDER BY pd.priority DESC, p.pnum" % (self.host["device_idx"])
-        self.dc.execute(sql_str)
-        part_dev = self.host["partdev"]
-        df_settings_dir = "%s/etc/df_settings" % (self.global_config["MD_BASEDIR"])
+        #if self.host.act_partition_table:
+        #sql_str = "SELECT pt.name, pt.partition_table_idx, pt.valid, pd.*, p.*, ps.name AS psname FROM partition_table pt INNER JOIN device d LEFT JOIN partition_disc pd ON pd.partition_table=pt.partition_table_idx " + \
+        #    "LEFT JOIN partition p ON p.partition_disc=pd.partition_disc_idx LEFT JOIN partition_fs ps ON ps.partition_fs_idx=p.partition_fs WHERE d.device_idx=%d AND d.act_partition_table=pt.partition_table_idx ORDER BY pd.priority DESC, p.pnum" % (self.host["device_idx"])
+        #self.dc.execute(sql_str)
+        part_dev = self.host.partdev
+        df_settings_dir = "%s/etc/df_settings" % (global_config["MD_BASEDIR"])
         df_sd_ok = os.path.isdir(df_settings_dir)
-        self.log("part_dev '%s', df_settings_dir is '%s' (%s)" % (part_dev or "NOT SET",
-                                                                  df_settings_dir,
-                                                                  "OK" if df_sd_ok else "not reachable"))
+        self.log("part_dev '%s', df_settings_dir is '%s' (%s)" % (
+            part_dev or "NOT SET",
+            df_settings_dir,
+            "OK" if df_sd_ok else "not reachable"))
         first_disc = None
-        all_parts = [x for x in self.dc.fetchall() if x["disc"] and x["mountpoint"]]
+        #all_parts = [x for x in self.dc.fetchall() if x["disc"] and x["mountpoint"]]
         part_list = []
-        for part_p in all_parts:
-            if part_p["partition_hex"] == "82":
+        for part_p in partition.objects.filter(Q(partition_disc__partition_table=self.host.act_partition_table)).select_related(
+            "partition_fs").order_by(
+                "partition_disc__disc",
+                "pnum"):
+            if part_p.partition_fs.hexid == "82":
                 # swap partiton
                 pass
             else:
-                act_disc, act_pnum = (part_p["disc"], part_p["pnum"])
+                act_disc, act_pnum = (part_p.partition_disc.disc, part_p.pnum)
                 if not first_disc:
                     first_disc = act_disc
                 if act_disc == first_disc and part_dev:
@@ -237,40 +243,41 @@ class special_disc(special_base):
                 # which partition to check
                 check_part = act_part
                 # check for lut_blob
-                lut_blob = part_p.get("lut_blob", None)
-                if lut_blob:
-                    lut_blob = process_tools.net_to_sys(lut_blob)
-                    if lut_blob:
-                        if lut_blob.has_key("id"):
-                            scsi_id = [act_id for act_id in lut_blob["id"] if act_id.startswith("scsi")]
-                            if scsi_id:
-                                scsi_id = scsi_id[0]
-                                check_part = "/dev/disk/by-id/%s" % (scsi_id)
+                lut_blob = None#part_p.get("lut_blob", None)
+                #if lut_blob:
+                #    lut_blob = process_tools.net_to_sys(lut_blob)
+                #    if lut_blob:
+                #        if lut_blob.has_key("id"):
+                #            scsi_id = [act_id for act_id in lut_blob["id"] if act_id.startswith("scsi")]
+                #            if scsi_id:
+                #                scsi_id = scsi_id[0]
+                #                check_part = "/dev/disk/by-id/%s" % (scsi_id)
                 if check_part.startswith("/"):
-                    warn_level, crit_level = (part_p.get("warn_threshold", 0),
-                                              part_p.get("crit_threshold", 0))
+                    warn_level, crit_level = (part_p.warn_threshold,
+                                              part_p.crit_threshold)
                     warn_level_str, crit_level_str = ("%d" % (warn_level) if warn_level else "",
                                                       "%d" % (crit_level) if crit_level else "")
-                    part_list.append((part_p["mountpoint"],
+                    part_list.append((part_p.mountpoint,
                                       check_part, warn_level_str, crit_level_str))
                 else:
                     self.log("Diskcheck on host %s requested an illegal partition %s -> skipped" % (self.host["name"], act_part), logging_tools.LOG_LEVEL_WARN)
         # LVM-partitions
-        sql_str = "SELECT lv.mountpoint, lv.warn_threshold, lv.crit_threshold, lv.name AS lvname, vg.name AS vgname FROM lvm_lv lv, lvm_vg vg, partition_table pt, device d WHERE lv.partition_table=pt.partition_table_idx AND d.act_partition_table=pt.partition_table_idx AND lv.lvm_vg=vg.lvm_vg_idx " + \
-                "AND d.device_idx=%d ORDER BY lv.mountpoint" % (self.host["device_idx"])
-        self.dc.execute(sql_str)
-        for part_p in self.dc.fetchall():
-            if part_p["mountpoint"]:
-                warn_level, crit_level = (part_p.get("warn_threshold", 0),
-                                          part_p.get("crit_threshold", 0))
-                warn_level_str, crit_level_str = ("%d" % (warn_level) if warn_level else "",
-                                                  "%d" % (crit_level) if crit_level else "")
-                part_list.append(("%s (LVM)" % (part_p["mountpoint"]), "/dev/mapper/%s-%s" % (part_p["vgname"], part_p["lvname"].replace("-", "--")),
-                                  warn_level_str, crit_level_str))
+        if False:
+            sql_str = "SELECT lv.mountpoint, lv.warn_threshold, lv.crit_threshold, lv.name AS lvname, vg.name AS vgname FROM lvm_lv lv, lvm_vg vg, partition_table pt, device d WHERE lv.partition_table=pt.partition_table_idx AND d.act_partition_table=pt.partition_table_idx AND lv.lvm_vg=vg.lvm_vg_idx " + \
+                    "AND d.device_idx=%d ORDER BY lv.mountpoint" % (self.host["device_idx"])
+            self.dc.execute(sql_str)
+            for part_p in self.dc.fetchall():
+                if part_p["mountpoint"]:
+                    warn_level, crit_level = (part_p.get("warn_threshold", 0),
+                                              part_p.get("crit_threshold", 0))
+                    warn_level_str, crit_level_str = ("%d" % (warn_level) if warn_level else "",
+                                                      "%d" % (crit_level) if crit_level else "")
+                    part_list.append(("%s (LVM)" % (part_p["mountpoint"]), "/dev/mapper/%s-%s" % (part_p["vgname"], part_p["lvname"].replace("-", "--")),
+                                      warn_level_str, crit_level_str))
         # manual setting-dict for df
         set_dict = {}
-        if df_sd_ok and os.path.isfile("%s/%s" % (df_settings_dir, self.host["name"])):
-            lines = [line for line in file("%s/%s" % (df_settings_dir, self.host["name"]), "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
+        if df_sd_ok and os.path.isfile("%s/%s" % (df_settings_dir, self.host.name)):
+            lines = [line for line in file("%s/%s" % (df_settings_dir, self.host.name), "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
             for line in lines:
                 parts = line.strip().split()
                 if len(parts) == 3:
@@ -292,37 +299,30 @@ class special_net(special_base):
     def _call(self):
         sc_array = []
         eth_check = re.match(".*ethtool.*", self.s_check["command_name"])
+        virt_check = re.compile("^.*:\S+$")
         self.log("eth_check is %s" % ("on" if eth_check else "off"))
         # never check duplex and stuff for a loopback-device
         if eth_check:
-            if self.host["xen_guest"]:
-                # no ethtool_checks for xen_guests
-                net_check_sql_str = "(0)"
-            else:
-                net_check_sql_str = "(ns.check_via_ethtool=1 AND n.devname != 'lo')"
+            nd_list = netdevice.objects.exclude(Q(devname='lo')).filter(Q(device=self.host) & Q(netdevice_speed__check_via_ethtool=True)).order_by("devname").select_related("netdevice_speed")
         else:
-            if self.host["xen_guest"]:
-                # no ethtool_checks for xen_guests
-                net_check_sql_str = "(1)"
-            else:
-                net_check_sql_str = "(ns.check_via_ethtool=0 OR n.devname = 'lo')"
-        self.dc.execute("SELECT n.devname, n.speed, ns.speed_bps, n.description, ns.full_duplex FROM netdevice n, netdevice_speed ns WHERE ns.netdevice_speed_idx=n.netdevice_speed AND n.device=%d AND %s" % (
-            self.host["device_idx"],
-            net_check_sql_str))
-        all_net_devs = [x for x in self.dc.fetchall() if not re.match("^.*:\S+$", x["devname"])]
-        for net_dev in all_net_devs:
-            name_with_descr = "%s%s" % (net_dev["devname"],
-                                        " (%s)" % (net_dev["description"]) if net_dev["description"] else "")
-            eth_opts = []
-            if eth_check:
-                eth_opts.extend([net_dev["full_duplex"] and "full" or "half", "%d" % (net_dev["speed_bps"])])
-            eth_opts.extend(["%.0f" % (net_dev["speed_bps"] * 0.9),
-                             "%.0f" % (net_dev["speed_bps"] * 0.95)])
-            eth_opts.append(net_dev["devname"])
-            self.log(" - netdevice %s with %s: %s" % (name_with_descr,
-                                                      logging_tools.get_plural("option", len(eth_opts) - 1),
-                                                      ", ".join(eth_opts[:-1])))
-            sc_array.append((name_with_descr, eth_opts))
+            nd_list = netdevice.objects.filter(Q(device=self.host) & (Q(devname='lo') | Q(netdevice_speed__check_via_ethtool=False)))
+        for net_dev in nd_list:
+            if not virt_check.match(net_dev.devname):
+                name_with_descr = "%s%s" % (
+                    net_dev.devname,
+                    " (%s)" % (net_dev.description) if net_dev.description else "")
+                eth_opts = []
+                if eth_check:
+                    eth_opts.extend([net_dev.netdevice_speed.full_duplex and "full" or "half"
+                                     "%d" % (net_dev.netdevice_speed.speed_bps)])
+                eth_opts.extend(["%.0f" % (net_dev.netdevice_speed.speed_bps * 0.9),
+                                 "%.0f" % (net_dev.netdevice_speed.speed_bps * 0.95)])
+                eth_opts.append(net_dev.devname)
+                self.log(" - netdevice %s with %s: %s" % (
+                    name_with_descr,
+                    logging_tools.get_plural("option", len(eth_opts) - 1),
+                    ", ".join(eth_opts[:-1])))
+                sc_array.append((name_with_descr, eth_opts))
         return sc_array
 
 class special_libvirt(special_base):
