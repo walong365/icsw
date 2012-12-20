@@ -36,14 +36,45 @@ import config_tools
 import threading_tools
 import logging_tools
 import time
+import subprocess
 from django.db import connection
+from lxml import etree
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 VERSION_STRING = "1.2"
 
+class package_check(object):
+    NEEDED_PACKAGES = [
+        "python-init",
+        "ethtool-init",
+        "host-monitoring",
+        "meta-server",
+        "logging-server",
+        "package-client",
+        "loadmodules",
+        "python-modules-base",
+        "child"]
+    def __init__(self, log_com, img_obj):
+        self.__log_com = log_com
+        self.__image = img_obj
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[pc] %s" % (what), log_level)
+    def check(self):
+        self.log("checking image at path %s" % (self.__image.source))
+        res_str = self._call("zypper -x -R %s search -i | xmllint --recover - 2>/dev/null " % (self.__image.source))
+        #print type(res_str), res_str
+        res_xml = etree.fromstring(res_str)
+        all_packs = set(res_xml.xpath(".//solvable[@status='installed' and @kind='package']/@name"))
+        missing_packages = set(package_check.NEEDED_PACKAGES) - all_packs
+        return missing_packages
+    def _call(self, cmd_string):
+        self.log("calling '%s'" % (cmd_string))
+        return subprocess.check_output(cmd_string, shell=True)
+
 class build_process(threading_tools.process_obj):
     def process_init(self):
+        self.__verbose = global_config["VERBOSE"]
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -53,17 +84,17 @@ class build_process(threading_tools.process_obj):
         connection.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
-        if global_config["VERBOSE"]:
+        if self.__verbose:
             print "[%4s.%-10s] %s" % (logging_tools.get_log_level_str(log_level), self.name, what)
     def loop_post(self):
         self.__log_template.close()
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
+        self.__verbose = global_config["VERBOSE"]
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(
-            self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"], 
-            blocking_loop=False
+            self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"]
         )
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
@@ -78,6 +109,9 @@ class server_process(threading_tools.process_pool):
             self.log("image server is '%s'" % (unicode(self.device) if self.device else "---"))
             for cur_num in xrange(global_config["BUILDERS"]):
                 self.add_process(build_process("builder_%d" % (cur_num)), start=True)
+        connection.close()
+        self.__build_lock = False
+        self.init_build()
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -85,7 +119,7 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
-        if global_config["VERBOSE"]:
+        if self.__verbose:
             print "[%4s.%-10s] %s" % (logging_tools.get_log_level_str(lev), self.name, what)
     def _log_config(self):
         self.log("Config info:")
@@ -101,35 +135,92 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("exit requested: %s" % (err_cause), logging_tools.LOG_LEVEL_ERROR)
             self["exit_requested"] = True
+            print "exit because of %s" % (err_cause)
     def loop_post(self):
+        if self.__build_lock:
+            self.log("removing buildlock")
+            cur_img = self._get_image()
+            cur_img.build_lock = False
+            cur_img.save()
         self.__log_template.close()
-    def loop_function(self):
-        cur_img = self.check_build_lock()
-        yield True
-        if cur_img:
+    def init_build(self):
+        try:
+            cur_img = self.check_build_lock()
             if not cur_img.builds:
                 cur_img.builds = 0
             cur_img.builds += 1
             cur_img.save()
             self.log("setting build number to %d" % (cur_img.builds))
-        yield True
-        if global_config["BUILD_IMAGE"]:
-            self.log("building image")
-            print "*"
-        yield False
-        #time.sleep(10)
+            self._check_dirs(cur_img)
+            self._check_packages(cur_img)
+            if global_config["BUILD_IMAGE"]:
+                self.log("building image from %s" % (cur_img.source))
+                self._generate_dir_list(cur_img)
+        except:
+            self._int_error("build failed: %s" % (process_tools.get_except_info()))
+        else:
+            self._int_error("done")
+    def _check_packages(self, cur_img):
+        cur_pc = package_check(self.log, cur_img)
+        missing = cur_pc.check()
+        if missing:
+            self.log("missing packages: %s" % (", ".join(sorted(list(missing)))), logging_tools.LOG_LEVEL_ERROR)
+            if not global_config["IGNORE_ERRORS"]:
+                raise ValueError, "packages missing (%s)" % (", ".join(missing))
+        else:
+            self.log("all packages installed")
+    def _generate_dir_list(self, cur_img):
+        self.__dir_list = set([cur_entry for cur_entry in os.listdir(cur_img.source) if cur_entry not in ["media", "mnt", "proc", "sys"] and not os.path.islink(os.path.join(cur_img.source, cur_entry))])
+        self.log("directory list is %s" % (", ".join(sorted(list(self.__dir_list)))))
+    def _check_dirs(self, cur_img):
+        self.__image_dir = os.path.join("/tftpboot", "images", cur_img.name)
+        self.__system_dir = os.path.join(self.__image_dir, "system")
+        for c_dir, create in [
+            (cur_img.source, False),
+            (os.path.join(cur_img.source, "bin"), False),
+            (os.path.join(cur_img.source, "sbin"), False),
+            (self.__image_dir, True),
+            (self.__system_dir, True),
+            ]:
+            if not os.path.isdir(c_dir):
+                if create:
+                    try:
+                        os.makedirs(c_dir)
+                    except:
+                        raise
+                    else:
+                        self.log("created %s" % (c_dir))
+                else:
+                    raise ValueError, "%s is not a directory" % (c_dir)
+            else:
+                self.log("%s checked (is_dir)" % (c_dir))
+        if os.path.isdir(self.__system_dir):
+            self._clean_directory(self.__system_dir)
+    def _clean_directory(self, t_dir):
+        self.log("cleaning directory %s" % (t_dir))
+        for entry in os.listdir(t_dir):
+            f_path = os.path.join(t_dir, entry)
+            try:
+                os.unlink(f_path)
+            except:
+                raise
+            else:
+                self.log("removed %s" % (f_path))
+    def _get_image(self):
+        return image.objects.get(Q(name=global_config["IMAGE_NAME"]))
     def check_build_lock(self):
-        img = image.objects.get(Q(name=global_config["IMAGE_NAME"]))
+        img = self._get_image()
         if img.build_lock:
             if global_config["OVERRIDE"]:
                 self.log("image is locked, overriding (ignoring) lock")
+                self.__build_lock = True
             else:
-                self._int_error("image is locked")
-                img = None
+                raise ValueError, "image is locked"
         else:
             self.log("setting build lock")
             img.build_lock = True
             img.save()
+            self.__build_lock = True
         return img
 
 def main():
