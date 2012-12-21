@@ -36,37 +36,59 @@ import config_tools
 import threading_tools
 import logging_tools
 import time
+import shutil
 import subprocess
 from django.db import connection
 from lxml import etree
+import stat
+import statvfs
+import tempfile
+import pprint
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 VERSION_STRING = "1.2"
+SLASH_NAME = "slash"
 
+NEEDED_PACKAGES = [
+    "python-init",
+    "ethtool-init",
+    "host-monitoring",
+    "meta-server",
+    "logging-server",
+    "package-client",
+    "loadmodules",
+    "python-modules-base",
+    "child",
+]
+
+START_SCRIPTS = [
+    "loadmodules",
+    "logging-server",
+    "meta-server",
+    "host-monitoring",
+    "gmond",
+    "package-client",
+]
+
+COMPRESS_MAP = {
+    "gz"  : "z",
+    "bz2" : "j",
+    "xz"  : "J"}
+    
 class package_check(object):
-    NEEDED_PACKAGES = [
-        "python-init",
-        "ethtool-init",
-        "host-monitoring",
-        "meta-server",
-        "logging-server",
-        "package-client",
-        "loadmodules",
-        "python-modules-base",
-        "child"]
     def __init__(self, log_com, img_obj):
         self.__log_com = log_com
         self.__image = img_obj
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[pc] %s" % (what), log_level)
-    def check(self):
+    def check(self, pack_list):
         self.log("checking image at path %s" % (self.__image.source))
         res_str = self._call("zypper -x -R %s search -i | xmllint --recover - 2>/dev/null " % (self.__image.source))
         #print type(res_str), res_str
         res_xml = etree.fromstring(res_str)
         all_packs = set(res_xml.xpath(".//solvable[@status='installed' and @kind='package']/@name"))
-        missing_packages = set(package_check.NEEDED_PACKAGES) - all_packs
+        missing_packages = set(pack_list) - all_packs
         return missing_packages
     def _call(self, cmd_string):
         self.log("calling '%s'" % (cmd_string))
@@ -82,15 +104,60 @@ class build_process(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True)
         connection.close()
+        self.register_func("compress", self._compress)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
         if self.__verbose:
             print "[%4s.%-10s] %s" % (logging_tools.get_log_level_str(log_level), self.name, what)
     def loop_post(self):
         self.__log_template.close()
+    def _compress(self, *args, **kwargs):
+        s_time = time.time()
+        cur_img = image.objects.get(Q(name=global_config["IMAGE_NAME"]))
+        target_dir, system_dir, image_dir = args[0:3]
+        if target_dir == SLASH_NAME:
+            file_list = args[3]
+            self.log("compressing files '%s' (from dir %s to %s)" % (", ".join(file_list), system_dir, image_dir))
+            t_size = sum([os.stat(os.path.join(system_dir, entry))[stat.ST_SIZE] for entry in file_list])
+        else:
+            file_list = []
+            self.log("compressing directory '%s' (from dir %s to %s)" % (target_dir, system_dir, image_dir))
+            t_size = int(self._call("du -sb %s" % (os.path.join(system_dir, target_dir))).split()[0])
+        t_file = os.path.join(image_dir, "%s.tar.%s" % (target_dir,
+                                                        global_config["COMPRESSION"]))
+        self.log("size is %s (target file is %s)" % (logging_tools.get_size_str(t_size),
+                                                     t_file))
+        c_flag = COMPRESS_MAP[global_config["COMPRESSION"]]
+        self._call("cd %s ; tar -c%sf %s --preserve-permissions --preserve-order %s" % (
+            system_dir,
+            c_flag,
+            t_file,
+            " ".join(file_list) if file_list else target_dir,
+        ))
+        new_size = os.stat(t_file)[stat.ST_SIZE]
+        self.log("target size is %s (compression %.2f%%)" % (
+            logging_tools.get_size_str(new_size),
+            100. * new_size / t_size if t_size else 0,
+        ))
+        e_time = time.time()
+        self.log("compressing %s took %s" % (target_dir, logging_tools.get_diff_time_str(e_time - s_time)))
+        self.send_pool_message("compress_done", target_dir)
+    def _call(self, cmd, **kwargs):
+        self.log("calling '%s' in image" % (cmd))
+        cmd_string = "%s 2>&1" % (cmd)
+        try:
+            result = subprocess.check_output(cmd_string, shell=True)
+        except subprocess.CalledProcessError, what:
+            self.log("result (%d): %s" % (what.returncode, unicode(what)), logging_tools.LOG_LEVEL_ERROR)
+            result = what.output
+        for line_num, line in enumerate(result.strip().split("\n"), 1):
+            if line.rstrip():
+                self.log("  line %2d: %s" % (line_num, line.rstrip()))
+        return result
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
+        self.__start_time = time.time()
         self.__verbose = global_config["VERBOSE"]
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(
@@ -98,6 +165,7 @@ class server_process(threading_tools.process_pool):
         )
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
+        self.register_func("compress_done", self._compress_done)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # log config
         self._log_config()
@@ -107,8 +175,11 @@ class server_process(threading_tools.process_pool):
             self._int_error("not an image server")
         else:
             self.log("image server is '%s'" % (unicode(self.device) if self.device else "---"))
+            self.__builder_names = []
             for cur_num in xrange(global_config["BUILDERS"]):
-                self.add_process(build_process("builder_%d" % (cur_num)), start=True)
+                builder_name = "builder_%d" % (cur_num)
+                self.__builder_names.append(builder_name)
+                self.add_process(build_process(builder_name), start=True)
         connection.close()
         self.__build_lock = False
         self.init_build()
@@ -142,8 +213,11 @@ class server_process(threading_tools.process_pool):
             cur_img = self._get_image()
             cur_img.build_lock = False
             cur_img.save()
+        e_time = time.time()
+        self.log("build took %s" % (logging_tools.get_diff_time_str(e_time - self.__start_time)))
         self.__log_template.close()
     def init_build(self):
+        exit = True
         try:
             cur_img = self.check_build_lock()
             if not cur_img.builds:
@@ -153,16 +227,144 @@ class server_process(threading_tools.process_pool):
             self.log("setting build number to %d" % (cur_img.builds))
             self._check_dirs(cur_img)
             self._check_packages(cur_img)
+            self._umount_dirs(cur_img)
+            self._check_size(cur_img)
             if global_config["BUILD_IMAGE"]:
+                # get image from database (in case something has changed)
+                cur_img = self._get_image()
                 self.log("building image from %s" % (cur_img.source))
                 self._generate_dir_list(cur_img)
+                self._copy_image(cur_img)
+                self._clean_image(cur_img)
+                self._init_compress_image()
+                exit = False
         except:
             self._int_error("build failed: %s" % (process_tools.get_except_info()))
         else:
+            if exit:
+                self._int_error("done")
+    def _compress_done(self, *args, **kwargs):
+        b_name, b_pid, dir_name = args
+        self.__pending[b_name] = False
+        self.log("compression of %s finished" % (dir_name))
+        self._next_compress()
+        if not self.__pending_dirs and not self.__pending_files and not any(self.__pending.values()):
+            self._create_tdir()
+            self._clean_system_dir()
+            self._call(None, "sync")
             self._int_error("done")
+    def _clean_system_dir(self):
+        """ cleaning system dir """
+        self._clean_directory(self.__system_dir, remove_directory=True)
+    def _create_tdir(self):
+        self.log("creating tdir file")
+        temp_dir = tempfile.mkdtemp()
+        self.log("tempdir is '%s'" % (temp_dir))
+        targ_file = os.path.join(self.__image_dir, ".tdir.tar.%s" % (global_config["COMPRESSION"]))
+        for targ_dir in self.__dir_list:
+            t_file = os.path.join(temp_dir, targ_dir)
+            s_dir = os.path.join(self.__system_dir, targ_dir)
+            file(t_file, "w").close()
+            os.chmod(t_file, os.stat(s_dir)[stat.ST_MODE])
+            os.chown(t_file, os.stat(s_dir)[stat.ST_UID], os.stat(s_dir)[stat.ST_GID])
+        self._call(None, "cd %s ; tar -c%sf %s *" % (
+            temp_dir,
+            COMPRESS_MAP[global_config["COMPRESSION"]],
+            targ_file,
+        ))
+        self.log("removing '%s'" % (temp_dir))
+        shutil.rmtree(temp_dir)
+    def _init_compress_image(self):
+        """ compressing image """
+        for cur_file in os.listdir(self.__image_dir):
+            full_path = os.path.join(self.__image_dir, cur_file)
+            if os.path.isfile(full_path):
+                if cur_file.lower().count(".tar"):
+                    self.log("removing %s" % (full_path))
+                    os.unlink(full_path)
+        self.__pending_dirs = [entry for entry in self.__dir_list]
+        self.__pending_files = [entry for entry in self.__file_list]
+        self.__pending = dict([(builder_name, False) for builder_name in self.__builder_names])
+        for idx in xrange(global_config["BUILDERS"]):
+            self._next_compress()
+    def _next_compress(self):
+        if self.__pending_dirs or self.__pending_files:
+            if self.__pending_dirs:
+                next_dir = self.__pending_dirs.pop(0)
+                s_files = []
+            else:
+                next_dir = SLASH_NAME
+                s_files = [entry for entry in self.__pending_files]
+                self.__pending_files = []
+            free_builder = [key for key, value in self.__pending.iteritems() if not value][0]
+            self.__pending[free_builder] = True
+            self.send_to_process(
+                free_builder,
+                "compress",
+                next_dir,
+                self.__system_dir,
+                self.__image_dir,
+                s_files,
+            )
+        else:
+            self.log("no dirs or files pending")
+    def _copy_image(self, cur_img):
+        """ copy image """
+        self.log("copying %s" % (logging_tools.get_plural("directory", len(self.__dir_list))))
+        for cur_dir in self.__dir_list:
+            s_time = time.time()
+            self._call(cur_img, "cp -a %s %s" % (
+                os.path.join(cur_img.source, cur_dir),
+                os.path.join(self.__system_dir, cur_dir)))
+            e_time = time.time()
+            self.log("copied directory %s in %s" % (
+                cur_dir,
+                logging_tools.get_diff_time_str(e_time - s_time)))
+        for cur_file in self.__file_list:
+            s_time = time.time()
+            self._call(cur_img, "cp -a %s %s" % (
+                os.path.join(cur_img.source, cur_file),
+                os.path.join(self.__system_dir, cur_file)))
+            e_time = time.time()
+            self.log("copied filed %s in %s" % (
+                cur_file,
+                logging_tools.get_diff_time_str(e_time - s_time)))
+    def _clean_image(self, cur_img):
+        """ clean system after copy """
+        self.log("cleaning image")
+        self._clean_directory(os.path.join(self.__system_dir, "lib", "modules"))
+        for cur_entry in os.listdir(os.path.join(self.__system_dir, "boot")):
+            if any([cur_entry.lower().startswith(prefix) for prefix in ["system", "vmlinu", "init"]]):
+                full_path = os.path.join(self.__system_dir, "boot", cur_entry)
+                self.log("removing %s" % (full_path))
+                os.unlink(full_path)
+        self._clean_directory(os.path.join(self.__system_dir, "etc", "zypp", "repos.d"), )
+        # call SuSEconfig, FIXME
+        # check init-scripts, FIXME
+    def _check_size(self, cur_img):
+        """ check size of target directory """
+        target_free_size = os.statvfs(self.__image_dir)[statvfs.F_BFREE] * os.statvfs(self.__image_dir)[statvfs.F_BSIZE]
+        orig_size = int(self._call(cur_img, "du -sb %s" % (cur_img.source)).split()[0])
+        self.log("size of image is %s, free space is %s (at %s)" % (
+            logging_tools.get_size_str(orig_size),
+            logging_tools.get_size_str(target_free_size),
+            self.__image_dir,
+        ))
+        cur_img.size = orig_size / (1024 * 1024)
+        cur_img.save()
+        if orig_size * 1.2 > target_free_size:
+            raise ValueError, "not enough free space (%s, image has %s)" % (
+                logging_tools.get_size_str(target_free_size),
+                logging_tools.get_size_str(orig_size),
+            )
+    def _umount_dirs(self, cur_img):
+        """ umount directories """
+        for um_dir in ["proc", "sys"]:
+            self._call(cur_img, "umount /%s" % (um_dir), chroot=True)
     def _check_packages(self, cur_img):
+        """ check packages in image """
         cur_pc = package_check(self.log, cur_img)
-        missing = cur_pc.check()
+        missing = cur_pc.check(NEEDED_PACKAGES)
         if missing:
             self.log("missing packages: %s" % (", ".join(sorted(list(missing)))), logging_tools.LOG_LEVEL_ERROR)
             if not global_config["IGNORE_ERRORS"]:
@@ -170,8 +372,11 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("all packages installed")
     def _generate_dir_list(self, cur_img):
-        self.__dir_list = set([cur_entry for cur_entry in os.listdir(cur_img.source) if cur_entry not in ["media", "mnt", "proc", "sys"] and not os.path.islink(os.path.join(cur_img.source, cur_entry))])
+        self.__dir_list = set([cur_entry for cur_entry in os.listdir(cur_img.source) if cur_entry not in ["media", "mnt", "proc", "sys"] and os.path.isdir(os.path.join(cur_img.source, cur_entry)) and not os.path.islink(os.path.join(cur_img.source, cur_entry))])
+        self.__file_list = set([cur_entry for cur_entry in os.listdir(cur_img.source) if os.path.isfile(os.path.join(cur_img.source, cur_entry))])
+        self.__dir_list -= set(["usr", "var"])
         self.log("directory list is %s" % (", ".join(sorted(list(self.__dir_list)))))
+        self.log("file list is %s" % (", ".join(sorted(list(self.__file_list))) or "<EMPTY>"))
     def _check_dirs(self, cur_img):
         self.__image_dir = os.path.join("/tftpboot", "images", cur_img.name)
         self.__system_dir = os.path.join(self.__image_dir, "system")
@@ -196,16 +401,25 @@ class server_process(threading_tools.process_pool):
                 self.log("%s checked (is_dir)" % (c_dir))
         if os.path.isdir(self.__system_dir):
             self._clean_directory(self.__system_dir)
-    def _clean_directory(self, t_dir):
-        self.log("cleaning directory %s" % (t_dir))
-        for entry in os.listdir(t_dir):
-            f_path = os.path.join(t_dir, entry)
-            try:
-                os.unlink(f_path)
-            except:
-                raise
-            else:
-                self.log("removed %s" % (f_path))
+    def _clean_directory(self, t_dir, **kwargs):
+        if os.path.isdir(t_dir):
+            self.log("cleaning directory %s" % (t_dir))
+            for entry in os.listdir(t_dir):
+                f_path = os.path.join(t_dir, entry)
+                if os.path.isfile(f_path):
+                    os.unlink(f_path)
+                else:
+                    try:
+                        shutil.rmtree(f_path)
+                    except:
+                        raise
+                    else:
+                        self.log("removed %s" % (f_path))
+            if kwargs.get("remove_directory", False):
+                os.rmdir(t_dir)
+                self.log("removed %s" % (t_dir))
+        else:
+            self.log("directory '%s' does not exist" % (t_dir))
     def _get_image(self):
         return image.objects.get(Q(name=global_config["IMAGE_NAME"]))
     def check_build_lock(self):
@@ -222,7 +436,21 @@ class server_process(threading_tools.process_pool):
             img.save()
             self.__build_lock = True
         return img
-
+    def _call(self, cur_img, cmd, **kwargs):
+        self.log("calling '%s'%s" % (cmd, " in image" if kwargs.get("chroot", False) else ""))
+        cmd_string = "%s 2>&1" % (cmd)
+        if kwargs.get("chroot", False):
+            cmd_string = "chroot %s %s" % (cur_img.source, cmd_string)
+        try:
+            result = subprocess.check_output(cmd_string, shell=True)
+        except subprocess.CalledProcessError, what:
+            self.log("result (%d): %s" % (what.returncode, unicode(what)), logging_tools.LOG_LEVEL_ERROR)
+            result = what.output
+        for line_num, line in enumerate(result.strip().split("\n"), 1):
+            if line.rstrip():
+                self.log("  line %2d: %s" % (line_num, line.rstrip()))
+        return result
+        
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
@@ -233,7 +461,7 @@ def main():
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("COMPRESSION"         , configfile.str_c_var("bz2", help_string="compression method [%(default)s]", choices=["bz2", "gz", "xz"])),
+        ("COMPRESSION"         , configfile.str_c_var("xz", help_string="compression method [%(default)s]", choices=["bz2", "gz", "xz"])),
         ("VERBOSE"             , configfile.bool_c_var(False, help_string="be verbose [%(default)s]", action="store_true", only_commandline=True, short_options="v")),
         ("IMAGE_NAME"          , configfile.str_c_var(all_imgs[0], help_string="image to build [%(default)s]", choices=all_imgs)),
         ("MODIFY_IMAGE"        , configfile.bool_c_var(True, short_options="m", help_string="do not modify image (no chroot calls) [%(default)s]", action="store_false")),
@@ -246,6 +474,7 @@ def main():
         ("BUILD_IMAGE"         , configfile.bool_c_var(False, help_string="build image [%(default)s]", action="store_true")),
             ])
     global_config.parse_file()
+    process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
     options = global_config.handle_commandline(
         description="%s, version is %s" % (
             prog_name,

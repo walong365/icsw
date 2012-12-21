@@ -362,7 +362,7 @@ if [ "$BUILD" = "1" ] ; then
     else
     echo "should be enough"
     fi
-
+	d
 # dlist2=""
     flist=`cd "$imsource" ; find ./{,.}* -type d -prune -o -print`
 
