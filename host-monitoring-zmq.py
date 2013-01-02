@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2011,2012,2013	 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,8 +23,10 @@
 
 """ host-monitoring, with 0MQ and twisted support """
 
-from twisted.internet import reactor
-from twisted.internet.protocol import ClientFactory, Protocol, DatagramProtocol
+from icmp_twisted import install
+
+reactor = install()
+
 from twisted.python import log
 import zmq
 import sys
@@ -34,11 +36,9 @@ import socket
 import time
 import logging_tools
 import process_tools
-import mail_tools
 import threading_tools
 import configfile
 import server_command
-import stat
 import net_tools
 from host_monitoring import limits, hm_classes
 import argparse
@@ -51,12 +51,13 @@ import difflib
 from lxml import etree
 from lxml.builder import E
 import netifaces
+from twisted.internet.protocol import ClientFactory, Protocol
 
 try:
     from host_monitoring_version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
-
+    
 MAX_USED_MEM = 148
 TIME_FORMAT = "%.3f"
 
@@ -704,7 +705,8 @@ class twisted_process(threading_tools.process_obj):
         self.__extra_twisted_threads = 0
         if self.start_kwargs.get("icmp", True):
             self.icmp_protocol = hm_icmp_protocol(self, self.__log_template)
-            reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
+            #reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
+            reactor.listen_ICMP(self.icmp_protocol)
             self.register_func("ping", self._ping)
     def _connection(self, src_id, srv_com, *args, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
