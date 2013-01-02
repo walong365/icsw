@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012 Andreas Lang-Nevyjel
+# Copyright (C) 2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,9 +28,22 @@ import struct
 import os
 import array
 import errno
-from twisted.internet import protocol, base, interfaces, error, address
+from twisted.internet.selectreactor import SelectReactor
+from twisted.internet import protocol, base, interfaces, error, address, udp
 from zope.interface import implements, Interface
 import logging_tools
+
+class extended_select_reactor(SelectReactor):
+    def listen_ICMP(self, protocol, interface="", maxPacketSize=8192):
+        cur_p = icmp_port(protocol, interface, maxPacketSize, self)
+        cur_p.startListening()
+        return cur_p
+
+def install():
+    reactor = extended_select_reactor()
+    from twisted.internet.main import installReactor
+    installReactor(reactor)
+    return reactor
 
 def _octets_to_hex(octets):
     return ".".join(["%02x" % (ord(byte)) for byte in octets])
@@ -227,7 +240,7 @@ class icmp_transport(Interface):
     def stopListening(self):
         pass
 
-class icmp_port(base.BasePort):
+class icmp_port(udp.Port):
     addressFamily = socket.AF_INET
     socketType = socket.SOCK_RAW
     implements(icmp_transport, interfaces.ISystemHandle)
