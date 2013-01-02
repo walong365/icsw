@@ -22,6 +22,10 @@
 #
 """ mother daemon """
 
+from icmp_twisted import install
+
+reactor = install()
+
 import sys
 import os
 

@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -40,7 +40,6 @@ import re
 import ipvx_tools
 from lxml import etree
 from django.db import connection
-from twisted.internet import reactor
 from twisted.python import log
 from twisted.internet.error import CannotListenError
 from initat.cluster.backbone.models import kernel, device, hopcount, \
@@ -49,6 +48,7 @@ from initat.cluster.backbone.models import kernel, device, hopcount, \
 from django.db.models import Q
 import process_tools
 from mother_modules.command_tools import simple_command
+from twisted.internet import reactor
 
 class machine(object):
     # store important device-related settings
@@ -1052,7 +1052,7 @@ class twisted_process(threading_tools.process_obj):
         self.__extra_twisted_threads = 0
         self.icmp_protocol = hm_icmp_protocol(self, self.__log_template)
         try:
-            reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
+            reactor.listen_ICMP(self.icmp_protocol)
         except CannotListenError:
             self.log("cannot listen on ICMP socket: %s" % (process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)

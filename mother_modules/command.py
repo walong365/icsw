@@ -22,7 +22,6 @@
 #
 """ external commands (dhcp, ipmi) parts of mother """
 
-
 import threading_tools
 import logging_tools
 from mother_modules.config import global_config
