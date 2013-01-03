@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009,2010,2011,2012 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
+# Copyright (C) 2009,2010,2011,2012,2013 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -183,9 +183,10 @@ class log_receiver(threading_tools.process_obj):
         self.__log_cache = []
     def _feed_error(self, in_dict):
         try:
-            self.__eg_dict.setdefault(in_dict["pid"], {"last_update" : time.time(),
-                                                       "errors"      : [],
-                                                       "proc_dict"   : in_dict})["errors"].append(in_dict["error_str"].rstrip())
+            self.__eg_dict.setdefault(in_dict["pid"], {
+                "last_update" : time.time(),
+                "errors"      : [],
+                "proc_dict"   : in_dict})["errors"].append(in_dict["error_str"].rstrip())
             # log to err_py
             try:
                 uname = pwd.getpwuid(in_dict.get("uid", -1))[0]
@@ -195,15 +196,17 @@ class log_receiver(threading_tools.process_obj):
                 gname = grp.getgrgid(in_dict.get("gid", -1))[0]
             except:
                 gname = "<unknown>"
-            pid_str = "%s (uid %d [%s], gid %d [%s])" % (in_dict.get("name", "N/A"),
-                                                         in_dict.get("uid", 0),
-                                                         uname,
-                                                         in_dict.get("gid", 0),
-                                                         gname)
+            pid_str = "%s (uid %d [%s], gid %d [%s])" % (
+                in_dict.get("name", "N/A"),
+                in_dict.get("uid", 0),
+                uname,
+                in_dict.get("gid", 0),
+                gname)
             for err_line in in_dict["error_str"].rstrip().split("\n"):
-                self.log("from pid %d (%s): %s" % (in_dict.get("pid", 0),
-                                                   pid_str,
-                                                   err_line.rstrip()),
+                self.log("from pid %d (%s): %s" % (
+                    in_dict.get("pid", 0),
+                    pid_str,
+                    err_line.rstrip()),
                          logging_tools.LOG_LEVEL_ERROR,
                          "err_py")
         except:
@@ -211,10 +214,11 @@ class log_receiver(threading_tools.process_obj):
                      logging_tools.LOG_LEVEL_ERROR)
     def _get_process_info(self, es_dict):
         p_dict = es_dict.get("proc_dict", {})
-        return "name %s, ppid %d, uid %d, gid %d" % (p_dict.get("name", "N/A"),
-                                                     p_dict.get("ppid", 0),
-                                                     p_dict.get("uid", -1),
-                                                     p_dict.get("gid", -1))
+        return "name %s, ppid %d, uid %d, gid %d" % (
+            p_dict.get("name", "N/A"),
+            p_dict.get("ppid", 0),
+            p_dict.get("uid", -1),
+            p_dict.get("gid", -1))
     def _check_error_dict(self, force=False):
         c_name = process_tools.get_cluster_name()
         mails_sent = 0
@@ -257,10 +261,11 @@ class log_receiver(threading_tools.process_obj):
         self.__num_write += 1
         if not self.__last_stat_time or abs(act_time - self.__last_stat_time) > self.__stat_timer or self.__num_write % 10000 == 0:
             self.__last_stat_time = act_time
-            self.log("logstat (open/close/written): %d / %d / %d, mem_used is %s" % (self.__num_open,
-                                                                                     self.__num_close,
-                                                                                     self.__num_write,
-                                                                                     process_tools.beautify_mem_info()))
+            self.log("logstat (open/close/written): %d / %d / %d, mem_used is %s" % (
+                self.__num_open,
+                self.__num_close,
+                self.__num_write,
+                process_tools.beautify_mem_info()))
             self.__num_open, self.__num_close, self.__num_write = (0, 0, 0)
     def remove_handle(self, h_name):
         self.log("closing handle %s" % (h_name))
@@ -401,10 +406,11 @@ class log_receiver(threading_tools.process_obj):
             self.__handles[h_name] = logger
             logger.info(SEP_STR)
             logger.info("opened %s (file %s in %s) by pid %s" % (full_name, base_name, base_dir, self.pid))
-            self.log("added handle %s (file %s in dir %s), total open: %s" % (h_name,
-                                                                              base_name,
-                                                                              base_dir,
-                                                                              logging_tools.get_plural("handle", len(self.__handles.keys()))))
+            self.log("added handle %s (file %s in dir %s), total open: %s" % (
+                h_name,
+                base_name,
+                base_dir,
+                logging_tools.get_plural("handle", len(self.__handles.keys()))))
         return self.__handles[h_name]
     def _log_recv(self, in_str, **kwargs):
         self.any_message_received()
@@ -420,13 +426,14 @@ class log_receiver(threading_tools.process_obj):
             if log_com:
                 if not python_log_com:
                     # seldom used, remove ? FIXME
-                    new_log_com = logging.LogRecord(log_com.get_name(with_sub_names=1),
-                                                    logging_tools.map_old_to_new_level(log_com.get_log_level()),
-                                                    "not set",
-                                                    1,
-                                                    log_com.get_log_str(),
-                                                    (),
-                                                    None)
+                    new_log_com = logging.LogRecord(
+                        log_com.get_name(with_sub_names=1),
+                        logging_tools.map_old_to_new_level(log_com.get_log_level()),
+                        "not set",
+                        1,
+                        log_com.get_log_str(),
+                        (),
+                        None)
                     new_log_com.host = log_com.get_host()
                     new_log_com.threadName = log_com.get_thread()
                     log_com.close()
