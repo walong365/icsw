@@ -62,9 +62,9 @@ MAX_USED_MEM = 148
 TIME_FORMAT = "%.3f"
 
 CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
-MAPPING_FILE_IDS = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
+MAPPING_FILE_IDS   = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
 MAPPING_FILE_TYPES = os.path.join(CONFIG_DIR, "0mq_clients")
-MASTER_FILE_NAME = os.path.join(CONFIG_DIR, "monitor_master")
+MASTER_FILE_NAME   = os.path.join(CONFIG_DIR, "monitor_master")
 
 def client_code():
     from host_monitoring import modules
