@@ -14,7 +14,7 @@ else
     . /etc/rc.status_suse
 fi
 
-for server in logcheck-server package-server mother rrd-server-collector rrd-server-writer rrd-server-grapher sge-server cluster-server cluster-config-server host-relay snmp-relay nagios-config-server ; do
+for server in logcheck-server package-server mother sge-server cluster-server cluster-config-server host-relay snmp-relay md-config-server ; do
     rc_reset
     if [ -f /etc/init.d/$server ] ; then
         /etc/init.d/$server $stop_arg
