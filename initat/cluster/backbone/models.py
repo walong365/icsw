@@ -992,6 +992,8 @@ class image(models.Model):
     #device = models.ForeignKey("device", null=True)
     device = models.IntegerField(null=True)
     build_lock = models.BooleanField(default=False)
+    # size in mbyte
+    size = models.IntegerField(default=0)
     size_string = models.TextField(blank=True, default="")
     sys_vendor = models.CharField(max_length=192, blank=True)
     sys_version = models.CharField(max_length=192, blank=True)
@@ -1226,7 +1228,7 @@ class package_device_connection(models.Model):
                 install_summary = xml.xpath(".//install-summary")[0]
                 if not len(install_summary):
                     # nohting to do, set according to target state
-                    self.installed = {"keep" : "u",
+                    self.installed = {"keep"    : "u",
                                       "install" : "y",
                                       "upgrade" : "y",
                                       "erase"   : "n"}[self.target_state]
