@@ -1713,6 +1713,10 @@ def net_ip_pre_save(sender, **kwargs):
             ipv_addr = ipvx_tools.ipv4(cur_inst.ip)
         except:
             raise ValidationError("not a valid IPv4 address")
+        if not cur_inst.network_id:
+            match_list = ipv_addr.find_matching_network(network.objects.all())
+            if len(match_list):
+                cur_inst.network = match_list[0][1]
         if not ipv_addr.network_matches(cur_inst.network):
             match_list = ipv_addr.find_matching_network(network.objects.all())
             if match_list:

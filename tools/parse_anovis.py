@@ -26,8 +26,323 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+import csv
+import logging_tools
+import configfile
+import process_tools
+import threading_tools
+import zmq
+import time
+import pprint
+import ipvx_tools
+import net_tools
+from lxml import etree
+from lxml.builder import E
+from django.db.models import Q
+from initat.cluster.backbone.models import device, device_group, device_type, \
+     netdevice, device_class, netdevice_speed, net_ip, peer_information, \
+     mon_host_cluster, mon_service_cluster, mon_service_templ
+import server_command
+
+VERSION_STRING = "0.2"
+
+global_config = configfile.get_global_config(process_tools.get_programm_name())
+
+class anovis_site(object):
+    def __init__(self, log_com, csv_line):
+        self.__log_com = log_com
+        # object dict
+        self.site_xml = E.site()
+        # db cache
+        self.__db_cache = {}
+        self.parsed = 0
+        for key, value in csv_line.iteritems():
+            self.feed(key, value)
+            self.parsed += 1
+        self.log("init site (%d keys parsed)" % (self.parsed))
+        self.validate()
+    def get_db_obj(self, obj_name, search_spec, **kwargs):
+        obj_class = globals()[obj_name]
+        self.__db_cache.setdefault(obj_name, {})
+        if kwargs.get("pk", None) in self.__db_cache[obj_name]:
+            return self.__db_cache[obj_name][kwargs["pk"]]
+        cur_obj = obj_class.objects.get(search_spec)
+        self.__db_cache[obj_name][cur_obj.pk] = cur_obj
+        return cur_obj
+    def validate(self):
+        for obj_name, keys_needed in [
+            ("fw_service", set(["name", "ip"])),
+            ("firewall"  , set(["name", "ip"])),
+            ("host"      , set(["name", "ip", "service"]))]:
+            obj_list = self.site_xml.findall(".//%s" % (obj_name))
+            if not len(obj_list):
+                raise KeyError, "no %s objects found in site '%s'" % (obj_name, self.name)
+            for cur_obj in obj_list:
+                found_keys = set(cur_obj.attrib.keys()) & keys_needed
+                if found_keys != keys_needed:
+                    raise KeyError, "some keys missing for object '%s' in site '%s'" % (obj_name, self.name)
+                if obj_name == "host":
+                    # reformat services
+                    for service_name in cur_obj.attrib["service"].split("/"):
+                        cur_obj.append(E.service(service_name))
+                if "ip" in keys_needed:
+                    cur_obj.append(E.network(E.netdevice(E.ip(cur_obj.attrib["ip"]), devname="eth0")))
+            self.log("validated %s" % (logging_tools.get_plural(obj_name, len(obj_list))))
+    def _log_xml(self, info_str):
+        self.log("content of XML (%s)" % (info_str))
+        for line in etree.tostring(self.site_xml, pretty_print=True).split("\n"):
+            self.log(line)
+    def ensure_nodes(self, xpath_str):
+        # only works for top-level elements
+        if not len(self.site_xml.xpath(xpath_str)):
+            self.site_xml.append(getattr(E, xpath_str)())
+    def add_object(self, xpath_str, **kwargs):
+        f_list = self.site_xml.xpath("%s%s" % (
+            xpath_str,
+            "[%s]" % (" and ".join(["@%s='%s'" % (key, str(value)) for key, value in kwargs.iteritems()])) if kwargs else ""))
+        if len(f_list):
+            return f_list[0]
+        else:
+            c_obj_name = xpath_str.split("/")[-1].split("[")[0]
+            new_obj = getattr(E, c_obj_name)()
+            for key, value in kwargs.iteritems():
+                new_obj.attrib[key] = str(value)
+            if xpath_str.count("/"):
+                self.site_xml.find("/".join(xpath_str.split("/")[:-1])).append(new_obj)
+            else:
+                self.site_xml.append(new_obj)
+            return new_obj
+    def feed(self, key, value):
+        parts = key.split("_")
+        if key == "site_name":
+            self.name = value
+        elif key.startswith("site_fw_service"):
+            if parts[-1] in ["name", "ip"] and len(parts) == 4:
+                service_obj = self.add_object("fw_service")
+                service_obj.attrib[parts[-1]] = str(value)
+            else:
+                raise ValueError, "unknown site_fw_service key '%s' (%s)" (key, value)
+        elif key.startswith("site_host"):
+            host_num = int(parts[-1])
+            if len(parts) == 4 and parts[2] in ["name", "ip", "service"]:
+                self.ensure_nodes("hosts")
+                host_obj = self.add_object("hosts/host", num=host_num)
+                host_obj.attrib[parts[2]] = str(value)
+            else:
+                raise ValueError, "unknown site_host key '%s' (%s)" % (key, value)
+        elif key.startswith("site_fw_box"):
+            fw_num = int(parts[-1])
+            if len(parts) == 5 and parts[3] in ["name", "ip"]:
+                self.ensure_nodes("firewalls")
+                fw_obj = self.add_object("firewalls/firewall", num=fw_num)
+                fw_obj.attrib[parts[3]] = str(value)
+            else:
+                raise ValueError, "unknown site_fw_box key '%s' (%s)" % (key, value)
+        else:
+            raise KeyError, "unknown key '%s' (%s)" % (key, value)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[as %s] %s" % (self.name, what), log_level)
+    def _update_object(self, db_obj, **kwargs):
+        changed = []
+        for key, value in kwargs.iteritems():
+            if getattr(db_obj, key) != value:
+                setattr(db_obj, key, value)
+                changed.append(key)
+        if changed:
+            db_obj.save()
+    def db_sync(self):
+        """ database sync """
+        self.log("start syncing")
+        self._log_xml("before sync")
+        con_dev = device.objects.prefetch_related("netdevice_set").get(Q(name=global_config["CONNECT_DEVICE"]))
+        con_nd = [cur_nd for cur_nd in con_dev.netdevice_set.all() if cur_nd.devname.startswith("eth")]
+        if not con_nd:
+            raise ValueError, "no valid netdevices found"
+        con_nd = con_nd[0]
+        self.log("connecting to netdevice %s (device %s)" % (unicode(con_nd), unicode(con_nd.device)))
+        my_devg = device_group.objects.get(Q(name=global_config["DEVICE_GROUP"]))
+        my_devt = device_type.objects.get(Q(identifier="H"))
+        my_devc = device_class.objects.get(Q(pk=1))
+        my_nd_speed = netdevice_speed.objects.get(Q(full_duplex=True) & Q(speed_bps=1000000000))
+        hc_srv_template = mon_service_templ.objects.get(Q(name=global_config["HC_TEMPLATE"]))
+        # iterate over devices
+        for dev_xpath in ["fw_service", "firewall", "host"]:
+            dev_list = self.site_xml.findall(".//%s" % (dev_xpath))
+            for cur_dev in dev_list:
+                try:
+                    db_dev = self.get_db_obj("device", Q(name=cur_dev.attrib["name"]))
+                except device.DoesNotExist:
+                    db_dev = device(
+                        name=cur_dev.attrib["name"],
+                        device_group=my_devg,
+                        device_type=my_devt,
+                        device_class=my_devc,
+                    )
+                    db_dev.save()
+                cur_dev.attrib["pk"] = str(db_dev.pk)
+                self._update_object(db_dev, comment=self.name)
+                for cur_nd in cur_dev.findall(".//netdevice"):
+                    try:
+                        cur_ndev = self.get_db_obj("netdevice", Q(devname=cur_nd.attrib["devname"]) & Q(device=db_dev))
+                    except netdevice.DoesNotExist:
+                        cur_ndev = netdevice(
+                            device=db_dev,
+                            devname=cur_nd.attrib["devname"],
+                            netdevice_speed=my_nd_speed,
+                        )
+                        cur_ndev.save()
+                    self._update_object(cur_ndev, routing=dev_xpath in ["firewall"])
+                    cur_nd.attrib["pk"] = str(cur_ndev.pk)
+                    cur_ip = cur_nd.find("ip")
+                    try:
+                        db_ip = self.get_db_obj("net_ip", Q(netdevice=cur_ndev))
+                    except net_ip.DoesNotExist:
+                        db_ip = net_ip(
+                            netdevice=cur_ndev,
+                            ip=cur_ip.text,
+                        )
+                        db_ip.save()
+                    cur_ip.attrib["pk"] = str(db_ip.pk)
+        # get all pks
+        nd_pks = self.site_xml.xpath(".//netdevice[@pk]/@pk")
+        # generate a list of (source_ndev, target_ndev) tuples
+        conn_pairs = [(con_nd, self.get_db_obj("netdevice", None, pk=int(cur_obj.attrib["pk"]))) for cur_obj in self.site_xml.xpath(".//firewall//netdevice")] + \
+            sum([[(self.get_db_obj("netdevice", None, pk=int(fw_obj.attrib["pk"])), self.get_db_obj("netdevice", None, pk=int(other_obj.attrib["pk"]))) for fw_obj in self.site_xml.xpath(".//firewall//netdevice")] for other_obj in self.site_xml.xpath(".//fw_service//netdevice|.//host//netdevice")], [])
+        pure_list = [(s_nd.pk, d_nd.pk) for s_nd, d_nd in conn_pairs]
+        present_cons = peer_information.objects.filter(Q(s_netdevice__in=nd_pks) | Q(d_netdevice__in=nd_pks))
+        present_cons_pure = [(cur_pi.s_netdevice_id, cur_pi.d_netdevice_id) for cur_pi in present_cons]
+        created, deleted = (0, 0)
+        for s_nd, d_nd in conn_pairs:
+            if (s_nd.pk, d_nd.pk) in present_cons_pure or (d_nd.pk, s_nd.pk) in present_cons_pure:
+                pass
+            else:
+                created += 1
+                peer_information(
+                    s_netdevice=s_nd,
+                    d_netdevice=d_nd,
+                    penalty=1).save()
+        for cur_pi in present_cons:
+            if (cur_pi.s_netdevice_id, cur_pi.d_netdevice_id) not in pure_list:
+                deleted += 1
+                cur_pi.delete()
+        self.pi_created, self.pi_deleted = (created, deleted)
+        self.log("netdevices created / deleted: %d / %d" % (created, deleted))
+        # host cluster
+        try:
+            cur_hc = self.get_db_obj("mon_host_cluster", Q(name=self.name))
+        except mon_host_cluster.DoesNotExist:
+            cur_hc = mon_host_cluster(
+                name=self.name,
+                main_device=con_dev,
+                mon_service_templ=hc_srv_template,
+            )
+            cur_hc.save()
+        self._update_object(cur_hc, description=self.name)
+        #present_hc_devs = cur_hc.devices.all()
+        for del_dev in cur_hc.devices.all():
+            cur_hc.devices.remove(del_dev)
+        new_hc_devs = [self.get_db_obj("device", None, pk=int(fw_obj.attrib["pk"])) for fw_obj in self.site_xml.xpath(".//firewall")]
+        for new_dev in new_hc_devs:
+            cur_hc.devices.add(new_dev)
+        self._update_object(cur_hc, main_device=con_dev, mon_service_templ=hc_srv_template)
+        self._log_xml("after sync")
+        self.log("done")
+        
+class anvois_parser(object):
+    def __init__(self):
+        self.zmq_context = zmq.Context()
+        self.__verbose = global_config["VERBOSE"]
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+            init_logger=True)
+        self.log("init parser")
+        self.__start_time = time.time()
+        self.__key_mapping = None
+        self.__site_list = []
+    def parse(self):
+        self.__ret_state = 0
+        self.log("start parsing")
+        try:
+            csv_lines = list(csv.DictReader(file(global_config["SOURCE"], "r"), delimiter=";"))
+            csv_lines = self._fix_lines(csv_lines)
+            for csv_line in csv_lines:
+                self.__site_list.append(anovis_site(self.log, csv_line))
+            self.log("parsed and validated %s" % (logging_tools.get_plural("site", len(csv_lines))))
+            # start creation of DB-objects
+            [an_site.db_sync() for an_site in self.__site_list]
+            pi_created = sum([cur_site.pi_created for cur_site in self.__site_list])
+            pi_deleted = sum([cur_site.pi_deleted for cur_site in self.__site_list])
+            self.log("pi(s) created / deleted: %d / %d" % (pi_created, pi_deleted))
+            if pi_created or pi_deleted:
+                self._contact_server(8004, "rebuild_hopcount")
+            else:
+                self.log("peer_information not changed", logging_tools.LOG_LEVEL_WARN)
+            self._contact_server(8010, "rebuild_host_config")
+            srv_com = server_command.srv_command(command="rebuild_host_config")
+        except:
+            self.log("something bad happened: %s" % (process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_CRITICAL)
+            exc_info = process_tools.exception_info()
+            for line in exc_info.log_lines:
+                self.log("    %s" % (line), logging_tools.LOG_LEVEL_CRITICAL)
+            self.__ret_state = 1
+        return self.__ret_state
+    def _contact_server(self, dst_port, command):
+        self.log("sending command '%s' to localhost (port %d)" % (command, dst_port))
+        srv_com = server_command.srv_command(command=command)
+        dst_addr = "tcp://localhost:%d" % (dst_port)
+        result = net_tools.zmq_connection("parse_anovis", timeout=5).add_connection(dst_addr, srv_com)
+        if not result:
+            self.log("error contacting server", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("sent %s to %s" % (command, dst_addr))
+    def _fix_lines(self, in_lines):
+        return [self._fix_line(in_line) for in_line in in_lines]
+    def _fix_line(self, in_line):
+        if not self.__key_mapping:
+            # generate key mapping
+            _map = {}
+            for key in set(in_line.keys()):
+                parts = [{"firewall"  : "fw"}.get(part, part) for part in key.lower().split()]
+                t_key = "_".join(parts)
+                _map[key] = t_key
+            self.__key_mapping = _map
+        ret_dict = dict([(self.__key_mapping[key], value) for key, value in in_line.iteritems()])
+        # check ips
+        ret_dict = dict([(key, ipvx_tools.ipv4(value) if key.count("_ip") else value) for key, value in ret_dict.iteritems()])
+        return ret_dict
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+        if self.__verbose:
+            print "[%-5s] %s" % (logging_tools.get_log_level_str(log_level), what)
+    def close(self):
+        self.__end_time = time.time()
+        self.log("run took %s" % (logging_tools.get_diff_time_str(self.__end_time - self.__start_time)))
+        self.__log_template.close()
+        self.zmq_context.term()
+            
 def main():
-    pass
+    prog_name = global_config.name()
+    global_config.add_config_entries([
+        ("SOURCE"              , configfile.str_c_var("", help_string="file to parse [%(default)s]")),
+        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
+        ("VERBOSE"             , configfile.bool_c_var(False, help_string="be verbose [%(default)s]")),
+        ("DEVICE_GROUP"        , configfile.str_c_var("nodes", help_string="name of device_group [%(default)s]")),
+        ("CONNECT_DEVICE"      , configfile.str_c_var("server", help_string="device to connect to [%(default)s]")),
+        ("HC_TEMPLATE"         , configfile.str_c_var("notset", help_string="serivce template for host cluster [%(default)s]")),
+    ])
+    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
+                                                                                  VERSION_STRING),
+                                               add_writeback_option=False,
+                                               positional_arguments=False)
+    my_parser = anvois_parser()
+    ret_state = my_parser.parse()
+    my_parser.close()
+    sys.exit(ret_state)
 
 if __name__ == "__main__":
     main()
