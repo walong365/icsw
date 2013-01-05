@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -34,7 +34,7 @@ class ipv4(object):
                 self.inv_parts.reverse()
                 #print "+",in_value, self.parts, self.inv_parts, "*<br>"
             else:
-                raise ValueError
+                raise ValueError, "error parsing IP address '%s'" % (in_value)
         elif type(in_value) == type([]):
             if type(in_value[0]) in [type(0), type(0L)]:
                 # value is a list of integer
