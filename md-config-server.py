@@ -1975,7 +1975,7 @@ class build_process(threading_tools.process_obj):
                                     serv_temp = serv_templates[mhc_check.mon_service_templ_id]
                                     serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
                                     sub_list = self.get_service(
-                                        host, act_host, s_check, [(s_check.get_description(), [mhc_check.description, mhc_check.warn_value, mhc_check.error_value, dev_names])],
+                                        host, act_host, s_check, [("%s %s" % (s_check.get_description(), mhc_check.description), [mhc_check.description, mhc_check.warn_value, mhc_check.error_value, dev_names])],
                                         act_def_serv, serv_cgs, checks_are_active,
                                         serv_temp, cur_gc, dev_variables)
                                     service_nc.extend(sub_list)
@@ -2671,6 +2671,7 @@ def main():
         ("ENABLE_PNP"                  , configfile.bool_c_var(False)),
         ("ENABLE_LIVESTATUS"           , configfile.bool_c_var(True)),
         ("ENABLE_NDO"                  , configfile.bool_c_var(False)),
+        ("ENABLE_NAGVIS"               , configfile.bool_c_var(False)),
         ("PNP_DIR"                     , configfile.str_c_var("/opt/pnp4nagios")),
         ("PNP_URL"                     , configfile.str_c_var("/pnp4nagios")),
         ("NONE_CONTACT_GROUP"          , configfile.str_c_var("none_group")),
