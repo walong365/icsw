@@ -1033,7 +1033,12 @@ class relay_process(threading_tools.process_pool):
                 # map localhost to something 0MQ can handle
                 target = process_tools.get_machine_name()
             # step 1: resolve to ip
-            ip_addr = socket.gethostbyname(target)
+            try:
+                ip_addr = socket.gethostbyname(target)
+            except:
+                self.log("cannot resolve target '%s': %s" % (target, process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_CRITICAL)
+                raise
             try:
                 # step 2: try to get full name
                 full_name, aliases, ip_addrs = socket.gethostbyaddr(ip_addr)
