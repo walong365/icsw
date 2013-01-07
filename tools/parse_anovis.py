@@ -64,8 +64,11 @@ class anovis_site(object):
     def get_db_obj(self, obj_name, search_spec, **kwargs):
         obj_class = globals()[obj_name]
         self.__db_cache.setdefault(obj_name, {})
-        if kwargs.get("pk", None) in self.__db_cache[obj_name]:
-            return self.__db_cache[obj_name][kwargs["pk"]]
+        kw_pk = kwargs.get("pk", None)
+        if kw_pk:
+            if kw_pk not in self.__db_cache[obj_name]:
+                self.__db_cache[obj_name][kw_pk] = obj_class.objects.get(pk=kw_pk)
+            return self.__db_cache[obj_name][kw_pk]
         cur_obj = obj_class.objects.get(search_spec)
         self.__db_cache[obj_name][cur_obj.pk] = cur_obj
         return cur_obj
