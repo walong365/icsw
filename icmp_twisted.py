@@ -251,6 +251,7 @@ class icmp_port(udp.Port):
         self.protocol = proto
         self.max_packet_size= max_packet_size
         self.interface = interface
+        self.logstr = "icmp_port"
     def getHandle(self):
         return self.socket
     def startListening(self):
