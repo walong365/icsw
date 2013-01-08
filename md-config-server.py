@@ -2020,6 +2020,7 @@ class build_process(threading_tools.process_obj):
                     checks_are_active = False
             #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
             self.__cached_mach_name = host.name
+            self.mach_log("-------- %s ---------" % ("master" if cur_gc.master else "slave %s" % (cur_gc.slave_name)))
             glob_log_str = "Starting build of config for device %20s (%s)" % (
                 host.name,
                 "active" if checks_are_active else "passive"
