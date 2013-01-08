@@ -41,7 +41,7 @@ from lxml.builder import E
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_type, \
      netdevice, device_class, netdevice_speed, net_ip, peer_information, \
-     mon_host_cluster, mon_service_cluster, mon_service_templ
+     mon_host_cluster, mon_service_cluster, mon_service_templ, device_config, config
 import server_command
 
 VERSION_STRING = "0.2"
@@ -158,6 +158,14 @@ class anovis_site(object):
         self.log("start syncing")
         self._log_xml("before sync")
         con_dev = device.objects.prefetch_related("netdevice_set").get(Q(name=global_config["CONNECT_DEVICE"]))
+        # check if conn_dev is a monitoring_slave
+        try:
+            device_config.objects.get(Q(config__name="monitor_slave") & Q(device=con_dev))
+        except device_config.DoesNotExist:
+            mon_master = None
+        else:
+            mon_master = con_dev
+        self.log("monitoring_master is '%s'" % (unicode(mon_master)))
         con_nd = [cur_nd for cur_nd in con_dev.netdevice_set.all() if cur_nd.devname.startswith("eth")]
         if not con_nd:
             raise ValueError, "no valid netdevices found"
@@ -183,7 +191,7 @@ class anovis_site(object):
                     )
                     db_dev.save()
                 cur_dev.attrib["pk"] = str(db_dev.pk)
-                self._update_object(db_dev, comment=self.name)
+                self._update_object(db_dev, comment=self.name, monitor_server=mon_master, device_group=my_devg)
                 for cur_nd in cur_dev.findall(".//netdevice"):
                     try:
                         cur_ndev = self.get_db_obj("netdevice", Q(devname=cur_nd.attrib["devname"]) & Q(device=db_dev))

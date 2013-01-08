@@ -2974,10 +2974,10 @@ class status(models.Model):
     def __unicode__(self):
         return u"%s (%s)%s" % (self.status,
                              ",".join([short for short, attr_name in [
-                                 ("link", "prod_link"),
-                                 ("mem", "memory_test"),
-                                 ("loc", "boot_local"),
-                                 ("ins", "do_install"),
+                                 ("link" , "prod_link"),
+                                 ("mem"  , "memory_test"),
+                                 ("loc"  , "boot_local"),
+                                 ("ins"  , "do_install"),
                                  ("clean", "is_clean")] if getattr(self, attr_name)]),
                              "(*)" if self.allow_boolean_modify else "")
     def get_xml(self, prod_net=None):
