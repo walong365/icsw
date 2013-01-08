@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -OtW default
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -41,6 +41,7 @@ import server_command
 import threading_tools
 import config_tools
 import codecs
+import sqlite3
 from initat.md_config_server.config import global_config
 from initat.md_config_server import special_commands
 try:
@@ -58,6 +59,9 @@ from django.conf import settings
 import base64
 import uuid_tools
 import stat
+import ConfigParser
+import hashlib
+import binascii
 
 # nagios constants
 NAG_HOST_UNKNOWN     = -1
@@ -182,6 +186,9 @@ class main_config(object):
         self._create_directories()
         self._clear_etc_dir()
         self._create_base_config_entries()
+        # write nagvis config on master
+        if global_config["ENABLE_NAGVIS"] and not self.__slave_name:
+            self._create_nagvis_base_entries()
         self._write_entries()
     def is_valid(self):
         ht_conf_names = [key for key, value in self.__dict.iteritems() if isinstance(value, host_type_config)]
@@ -276,6 +283,268 @@ class main_config(object):
                 except:
                     self.log("Cannot delete file %s: %s" % (full_path, process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_ERROR)
+    def _create_nagvis_base_entries(self):
+        if os.path.isdir(global_config["NAGVIS_DIR"]):
+            self.log("creating base entries for nagvis (under %s)" % (global_config["NAGVIS_DIR"]))
+            # 
+            nagvis_main_cfg = ConfigParser.RawConfigParser(allow_no_value=True)
+            for sect_name, var_list in [
+                ("global", [
+                    ("audit_log", 1),
+                    ("authmodule", "CoreAuthModSQLite"),
+                    ("authorisationmodule", "CoreAuthorisationModSQLite"),
+                    ("controls_size", 10),
+                    ("dateformat", "Y-m-d H:i:s"),
+                    ("dialog_ack_sticky", 1),
+                    ("dialog_ack_notify", 1),
+                    ("dialog_ack_persist", 0),
+                    #("file_group", ""),
+                    ("file_mode", "660"),
+                    #("http_proxy", ""),
+                    ("http_timeout", 10),
+                    ("language_detection", "user,session,browser,config"),
+                    ("language", "en_US"),
+                    ("logonmodule", "LogonMixed"),
+                    ("logonenvvar", "REMOTE_USER"),
+                    ("logonenvcreateuser", 1),
+                    ("logonenvcreaterole", "Guests"),
+                    ("refreshtime", 60),
+                    ("sesscookiedomain", "auto-detect"),
+                    ("sesscookiepath", "/nagvis"),
+                    ("sesscookieduration", "86400"),
+                    ("startmodule", "Overview"),
+                    ("startaction", "view"),
+                    ("startshow", ""),
+                    ]),
+                ("paths", [
+                    ("base", "%s/"% (os.path.normpath(global_config["NAGVIS_DIR"]))),
+                    ("htmlbase", global_config["NAGVIS_URL"]),
+                    ("htmlcgi", "/icinga/cgi-bin"),
+                    ]),
+                ("defaults", [
+                    ("backend", "live_1"),
+                    ("backgroundcolor", "#ffffff"),
+                    ("contextmenu", 1),
+                    ("contexttemplate", "default"),
+                    ("event_on_load", 0),
+                    ("event_repeat_interval", 0),
+                    ("event_repeat_duration", -1),
+                    ("eventbackground", 0),
+                    ("eventhighlight", 1),
+                    ("eventhighlightduration", 10000),
+                    ("eventhighlightinterval", 500),
+                    ("eventlog", 0),
+                    ("eventloglevel", "info"),
+                    ("eventlogevents", 24),
+                    ("eventlogheight", 75),
+                    ("eventloghidden", 1),
+                    ("eventscroll", 1),
+                    ("eventsound", 1),
+                    ("headermenu", 1),
+                    ("headertemplate", "default"),
+                    ("headerfade", 1),
+                    ("hovermenu", 1),
+                    ("hovertemplate", "default"),
+                    ("hoverdelay", 0),
+                    ("hoverchildsshow", 1),
+                    ("hoverchildslimit", 10),
+                    ("hoverchildsorder", "asc"),
+                    ("hoverchildssort", "s"),
+                    ("icons", "std_medium"),
+                    ("onlyhardstates", 0),
+                    ("recognizeservices", 1),
+                    ("showinlists", 1),
+                    ("showinmultisite", 1),
+                    #("stylesheet", ""),
+                    ("urltarget", "_self"),
+                    ("hosturl", "[htmlcgi]/status.cgi?host=[host_name]"),
+                    ("hostgroupurl", "[htmlcgi]/status.cgi?hostgroup=[hostgroup_name]"),
+                    ("serviceurl", "[htmlcgi]/extinfo.cgi?type=2&host=[host_name]&service=[service_description]"),
+                    ("servicegroupurl", "[htmlcgi]/status.cgi?servicegroup=[servicegroup_name]&style=detail"),
+                    ("mapurl", "[htmlbase]/index.php?mod=Map&act=view&show=[map_name]"),
+                    ("view_template", "default"),
+                    ("label_show", 0),
+                    ("line_weather_colors", "10:#8c00ff,25:#2020ff,40:#00c0ff,55:#00f000,70:#f0f000,85:#ffc000,100:#ff0000"),
+                    ]),
+                ("index", [
+                    ("backgroundcolor", "#ffffff"),
+                    ("cellsperrow", 4),
+                    ("headermenu", 1),
+                    ("headertemplate", "default"),
+                    ("showmaps", 1),
+                    ("showgeomap", 0),
+                    ("showrotations", 1),
+                    ("showmapthumbs", 0),
+                    ]),
+                ("automap", [
+                    ("defaultparams", "&childLayers=2"),
+                    ("defaultroot", ""),
+                    ("graphvizpath", "/opt/cluster/bin/"),
+                    ]),
+                ("wui", [
+                   ("maplocktime", 5),
+                   ("grid_show", 0),
+                   ("grid_color", "#D5DCEF"),
+                   ("grid_steps", 32),
+                   ]),
+                ("worker", [
+                    ("interval", "10"),
+                    ("requestmaxparams", 0),
+                    ("requestmaxlength", 1900),
+                    ("updateobjectstates", 30),
+                    ]),
+                ("backend_live_1", [
+                    ("backendtype", "mklivestatus"),
+                    ("statushost", ""),
+                    ("socket", "unix:/opt/icinga/var/live"),
+                    ]),
+                ("backend_ndomy_1", [
+                    ("backendtype", "ndomy"),
+                    ("statushost", ""),
+                    ("dbhost", "localhost"),
+                    ("dbport", 3306),
+                    ("dbname", "nagios"),
+                    ("dbuser", "root"),
+                    ("dbpass", ""),
+                    ("dbprefix", "nagios_"),
+                    ("dbinstancename", "default"),
+                    ("maxtimewithoutupdate", 180),
+                    ("htmlcgi", "/nagios/cgi-bin"),
+                    ]),
+                ("backend_merlinmy_1", [
+                    ("backendtype", "merlinmy"),
+                    ("dbhost", "localhost"),
+                    ("dbport", 3306),
+                    ("dbname", "merlin"),
+                    ("dbuser", "merlin"),
+                    ("dbpass", "merlin"),
+                    ("maxtimewithoutupdate", 180),
+                    ("htmlcgi", "/nagios/cgi-bin"),
+                    ]),
+                ("rotation_demo", [
+                    ("maps", "demo-germany,demo-ham-racks,demo-load,demo-muc-srv1,demo-geomap,demo-automap"),
+                    ("interval", 15),
+                    ]),
+                ("states", [
+                    ("down", 10),
+                    ("down_ack", 6),
+                    ("down_downtime", 6),
+                    ("unreachable", 9),
+                    ("unreachable_ack", 6),
+                    ("unreachable_downtime", 6),
+                    ("critical", 8),
+                    ("critical_ack", 6),
+                    ("critical_downtime", 6),
+                    ("warning", 7),
+                    ("warning_ack", 5),
+                    ("warning_downtime", 5),
+                    ("unknown", 4),
+                    ("unknown_ack", 3),
+                    ("unknown_downtime", 3),
+                    ("error", 4),
+                    ("error_ack", 3),
+                    ("error_downtime", 3),
+                    ("up", 2),
+                    ("ok", 1),
+                    ("unchecked", 0),
+                    ("pending", 0),
+                    ("unreachable_bgcolor", "#F1811B"),
+                    ("unreachable_color", "#F1811B"),
+                    #("unreachable_ack_bgcolor", ""),
+                    #("unreachable_downtime_bgcolor", ""),
+                    ("down_bgcolor", "#FF0000"),
+                    ("down_color", "#FF0000"),
+                    #("down_ack_bgcolor", ""),
+                    #("down_downtime_bgcolor", ""),
+                    ("critical_bgcolor", "#FF0000"),
+                    ("critical_color", "#FF0000"),
+                    #("critical_ack_bgcolor", ""),
+                    #("critical_downtime_bgcolor", ""),
+                    ("warning_bgcolor", "#FFFF00"),
+                    ("warning_color", "#FFFF00"),
+                    #("warning_ack_bgcolor", ""),
+                    #("warning_downtime_bgcolor", ""),
+                    ("unknown_bgcolor", "#FFCC66"),
+                    ("unknown_color", "#FFCC66"),
+                    #("unknown_ack_bgcolor", ""),
+                    #("unknown_downtime_bgcolor", ""),
+                    ("error_bgcolor", "#0000FF"),
+                    ("error_color", "#0000FF"),
+                    ("up_bgcolor", "#00FF00"),
+                    ("up_color", "#00FF00"),
+                    ("ok_bgcolor", "#00FF00"),
+                    ("ok_color", "#00FF00"),
+                    ("unchecked_bgcolor", "#C0C0C0"),
+                    ("unchecked_color", "#C0C0C0"),
+                    ("pending_bgcolor", "#C0C0C0"),
+                    ("pending_color", "#C0C0C0"),
+                    ("unreachable_sound", "std_unreachable.mp3"),
+                    ("down_sound", "std_down.mp3"),
+                    ("critical_sound", "std_critical.mp3"),
+                    ("warning_sound", "std_warning.mp3"),
+                    #("unknown_sound", ""),
+                    #("error_sound", ""),
+                    #("up_sound", ""),
+                    #("ok_sound", ""),
+                    #("unchecked_sound", ""),
+                    #("pending_sound", ""),
+
+                ])
+                ]:
+                nagvis_main_cfg.add_section(sect_name)
+                for key, value in var_list:
+                    nagvis_main_cfg.set(sect_name, key, unicode(value))
+            with open(os.path.join(global_config["NAGVIS_DIR"], "etc", "nagvis.ini.php")	, "wb") as nvm_file:
+                nvm_file.write("; <?php return 1; ?>\n")
+                nagvis_main_cfg.write(nvm_file)
+            # clear SALT
+            config_php = os.path.join(global_config["NAGVIS_DIR"], "share", "server", "core", "defines", "global.php")
+            lines = file(config_php, "r").read().split("\n")
+            new_lines, save = ([], False)
+            for cur_line in lines:
+                if cur_line.lower().count("auth_password_salt") and len(cur_line) > 60:
+                    # remove salt
+                    cur_line = "define('AUTH_PASSWORD_SALT', '');"
+                    save = True
+                new_lines.append(cur_line)
+            if save:
+                self.log("saving %s" % (config_php))
+                file(config_php, "w").write("\n".join(new_lines))
+            # modify auth.db
+            auth_db = os.path.join(global_config["NAGVIS_DIR"], "etc", "auth.db")
+            self.log("modifying authentication info in %s" % (auth_db))
+            try:
+                conn = sqlite3.connect(auth_db)
+            except:
+                self.log("cannot create connection: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+            else:
+                cur_c = conn.cursor()
+                cur_c.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+                # tables
+                all_tables = [value[0] for value in cur_c.fetchall()]
+                self.log("found %s: %s" % (logging_tools.get_plural("table", len(all_tables)),
+                                           ", ".join(sorted(all_tables))))
+                # delete previous users
+                cur_c.execute("DELETE FROM users2roles")
+                cur_c.execute("DELETE FROM users")
+                role_dict = dict([(cur_role[1].lower().split()[0], cur_role[0]) for cur_role in cur_c.execute("SELECT * FROM roles")])
+                self.log("role dict: %s" % (", ".join(["%s=%d" % (key, value) for key, value in role_dict.iteritems()])))
+                for cur_u in user.objects.filter(Q(active=True)):
+                    target_role = "users"
+                    self.log("creating user '%s' with role %s" % (unicode(cur_u),
+                                                                  target_role))
+                    new_userid = cur_c.execute("INSERT INTO users VALUES(Null, '%s', '%s')" % (
+                        cur_u.login,
+                        binascii.hexlify(base64.b64decode(cur_u.password.split(":", 1)[1])),
+                    )).lastrowid
+                    cur_c.execute("INSERT INTO users2roles VALUES(%d, %d)" % (
+                        new_userid,
+                        role_dict[target_role],
+                    ))
+                conn.commit()
+                conn.close()
+        else:
+            self.log("no nagvis_directory '%s' found" % (global_config["NAGVIS_DIR"]), logging_tools.LOG_LEVEL_ERROR)
     def _create_base_config_entries(self):
         # read sql info
         sql_file = "/etc/sysconfig/cluster/mysql.cf"
@@ -2100,138 +2369,6 @@ class build_process(threading_tools.process_obj):
         else:
             valid_ips = (",".join([",".join([y for y in net_devices[x]]) for x in targ_netdev_idxs])).split(",")
         return valid_ips, traces
-
-class command_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config, db_con, log_queue):
-        #self.__db_con = db_con
-        self.__log_queue = log_queue
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        threading_tools.thread_obj.__init__(self, "command", queue_size=100)
-        self.register_func("set_queue_dict", self._set_queue_dict)
-        self.register_func("com_con", self._com_con)
-        self.register_func("rebuild_config", self._rebuild_config)
-        self.register_func("config_rebuilt", self._config_rebuilt)
-        self.register_func("set_net_stuff", self._set_net_stuff)
-        self.__net_server = None
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (self.name, what, lev)))
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        # pending ... config requests sent to build_thread
-        # waiting ... config requests waiting to be sent to the built_thread
-        self.__hosts_pending, self.__hosts_waiting = (set(), set())
-    def loop_end(self):
-        self.send_pool_message(("remove_pid", (self.name, self.pid)))
-    def _set_queue_dict(self, q_dict):
-        self.__queue_dict = q_dict
-    def _set_net_stuff(self, (net_server)):
-        self.log("Got net_server")
-        self.__net_server = net_server
-    def _com_con(self, tcp_obj):
-        in_data = tcp_obj.get_decoded_in_str()
-        try:
-            server_com = server_command.server_command(in_data)
-        except:
-            tcp_obj.add_to_out_buffer("error no valid server_command")
-            self.log("Got invalid data from host %s (port %d): %s" % (tcp_obj.get_src_host(),
-                                                                      tcp_obj.get_src_port(),
-                                                                      in_data[0:20]),
-                     logging_tools.LOG_LEVEL_WARN)
-        else:
-            srv_com_name = server_com.get_command()
-            call_func = {"status"                : self._status,
-                         "reload_config"         : self._reload_config,
-                         "rebuild_host_config"   : self._rebuild_host_config,
-                         "host_config_done"      : self._host_config_done}.get(srv_com_name, None)
-            if call_func:
-                call_func(tcp_obj, server_com)
-            else:
-                self.log("Got unknown server_command '%s' from host %s (port %d)" % (srv_com_name,
-                                                                                     tcp_obj.get_src_host(),
-                                                                                     tcp_obj.get_src_port()),
-                         logging_tools.LOG_LEVEL_WARN)
-                res_str = "unknown command %s" % (srv_com_name)
-                tcp_obj.add_to_out_buffer(server_command.server_reply(state=server_command.SRV_REPLY_STATE_ERROR, result=res_str),
-                                          res_str)
-    def _status(self, tcp_obj, s_com):
-        tp = self.get_thread_pool()
-        num_threads, num_ok = (tp.num_threads(False),
-                               tp.num_threads_running(False))
-        if num_ok == num_threads:
-            ret_str = "ok all %d threads running, version %s" % (num_ok, self.__loc_config["VERSION_STRING"])
-        else:
-            ret_str = "error only %d of %d threads running, version %s" % (num_ok, num_threads, self.__loc_config["VERSION_STRING"])
-        server_reply = server_command.server_reply()
-        server_reply.set_ok_result(ret_str)
-        tcp_obj.add_to_out_buffer(server_reply, "status")
-    def _reload_config(self, tcp_obj, s_com):
-        tcp_obj.add_to_out_buffer(server_command.server_reply(state=server_command.SRV_REPLY_STATE_OK,
-                                                   result="ok reloading config"),
-                                  "reload_config")
-    def _rebuild_host_config(self, tcp_obj, s_com):
-        tcp_obj.add_to_out_buffer(server_command.server_reply(state=server_command.SRV_REPLY_STATE_OK,
-                                                   result="ok rebuilding config"),
-                                  "rebuild_host_config")
-        self._rebuild_config(s_com.get_nodes())
-    def _host_config_done(self, tcp_obj, s_com):
-        tcp_obj.add_to_out_buffer(server_command.server_reply(state=server_command.SRV_REPLY_STATE_OK,
-                                                   result="ok rebuilding config"),
-                                  "rebuild_config")
-        self._rebuild_config(s_com.get_nodes())
-    def _rebuild_config(self, hosts):
-        if hosts:
-            self.log("Got rebuild config for %s: %s" % (logging_tools.get_plural("host", len(hosts)),
-                                                        logging_tools.compress_list(hosts)))
-        else:
-            self.log("Got rebuild config for all hosts")
-            hosts = [self.__loc_config["ALL_HOSTS_NAME"]]
-        self._enqueue_rebuild_request(hosts)
-    def _enqueue_rebuild_request(self, hosts):
-        self.__hosts_waiting.update(hosts)
-        if self.__hosts_pending:
-            self.log(" ... waiting list has now %s: %s" % (logging_tools.get_plural("entry", len(self.__hosts_waiting)),
-                                                           logging_tools.compress_list(self.__hosts_waiting)))
-        else:
-            self.__hosts_pending = set([x for x in self.__hosts_waiting])
-            self.__hosts_waiting = set()
-            if self.__hosts_pending:
-                self._send_build_requests()
-    def _send_build_requests(self):
-        if self.__loc_config["ALL_HOSTS_NAME"] in self.__hosts_pending:
-            self.__hosts_pending = set([self.__loc_config["ALL_HOSTS_NAME"]])
-        self.__queue_dict["build_queue"].put(("rebuild_config", self.__hosts_pending))
-    def _config_rebuilt(self, h_list):
-        done_list = [x for x in h_list if x     in self.__hosts_pending]
-        err_list  = [x for x in h_list if x not in self.__hosts_pending]
-        self.__hosts_pending.difference_update(h_list)
-        if done_list:
-            self.log("Reconfigured Nagios with the following %s: '%s'" % (logging_tools.get_plural("host", len(done_list)),
-                                                                          logging_tools.compress_list(done_list)))
-        if err_list:
-            self.log("Strange: Reconfigured Nagios with %s: '%s'" % (logging_tools.get_plural("unknown host", len(err_list)),
-                                                                     logging_tools.compress_list(err_list)),
-                     logging_tools.LOG_LEVEL_WARN)
-        self._enqueue_rebuild_request([])
-
-#class db_verify_process(threading_tools.process_obj):
-    #def process_init(self):
-        #self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
-        #self.register_func("validate", self._validate_db)
-        #connection.close()
-    #def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        #self.__log_template.log(log_level, what)
-    #def _validate_db(self, **kwargs):
-        #dc = db_con.get_connection(SQL_ACCESS)
-        #self.log("starting to validate database")
-        #sql_file = "/etc/sysconfig/cluster/mysql.cf"
-        #sql_suc, sql_dict = configfile.readconfig(sql_file, 1)
-        #dbv_struct = mysql_tools.db_validate(self.log, dc, database=sql_dict["NAGIOS_DATABASE"])
-        #dbv_struct.repair_tables()
-        #del dbv_struct
-        #dc.release()
-        #del db_con
-    #def loop_post(self):
-        #self.__log_template.close()
         
 class server_process(threading_tools.process_pool):
     def __init__(self):
@@ -2413,7 +2550,6 @@ class server_process(threading_tools.process_pool):
             if has_snmp_relayer:
                 global_config.add_config_entries([("HAS_SNMP_RELAYER", configfile.bool_c_var(True))])
                 self.log("host-relay package has snmp-relayer, rewriting database entries for nagios")
-                self._rewrite_nagios_snmp()
         # device_variable local to the server
         if relay_version == "unknown":
             self.log("No installed host-relay found", logging_tools.LOG_LEVEL_WARN)
@@ -2421,31 +2557,6 @@ class server_process(threading_tools.process_pool):
             self.log("Discovered installed host-relay version %s" % (relay_version))
         end_time = time.time()
         self.log("host-relay version discovery took %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
-    def _rewrite_nagios_snmp(self):
-        return
-        # step 1: host-relay to snmp-relay
-        dc.execute("SELECT * FROM ng_check_command")
-        for db_rec in dc.fetchall():
-            comline = db_rec["command_line"]
-            if comline.startswith("$USER2$") and comline.count(" snmp "):
-                new_comline = comline.replace("USER2", "USER3").replace("snmp -S ", "").replace("--arg0=", "").replace("--arg0 ", "-w ").replace("--arg1 ", "-c ")
-                self.log("rewriting comline for %s (step 1)" % (db_rec["name"]))
-                dc.execute("UPDATE ng_check_command SET command_line=%s WHERE ng_check_command_idx=%s", (new_comline,
-                                                                                                         db_rec["ng_check_command_idx"]))
-        # step 2: insert community and version
-        dc.execute("SELECT * FROM ng_check_command")
-        for db_rec in dc.fetchall():
-            comline = db_rec["command_line"]
-            com_parts = comline.split()
-            if com_parts[0] == "$USER3$" and com_parts[3] != "-C":
-                # shift arguments by 2
-                new_comline = comline
-                for arg_num in xrange(11, 2, -1):
-                    new_comline = new_comline.replace("ARG%d" % (arg_num - 2), "ARG%d" % (arg_num))
-                new_comline = new_comline.replace("$HOSTADDRESS$", "$HOSTADDRESS$ -C ${ARG1:SNMP_COMMUNITY:public} -V ${ARG2:SNMP_VERSION:2}")
-                self.log("rewriting comline for %s (step 2)" % (db_rec["name"]))
-                dc.execute("UPDATE ng_check_command SET command_line=%s WHERE ng_check_command_idx=%s", (new_comline,
-                                                                                                         db_rec["ng_check_command_idx"]))
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -2674,6 +2785,8 @@ def main():
         ("ENABLE_NAGVIS"               , configfile.bool_c_var(False)),
         ("PNP_DIR"                     , configfile.str_c_var("/opt/pnp4nagios")),
         ("PNP_URL"                     , configfile.str_c_var("/pnp4nagios")),
+        ("NAGVIS_DIR"                  , configfile.str_c_var("/opt/nagvis4icinga")),
+        ("NAGVIS_URL"                  , configfile.str_c_var("/nagvis")),
         ("NONE_CONTACT_GROUP"          , configfile.str_c_var("none_group")),
         ("FROM_ADDR"                   , configfile.str_c_var(long_host_name)),
         ("MAIN_LOOP_TIMEOUT"           , configfile.int_c_var(30)),
@@ -2692,6 +2805,11 @@ def main():
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/md-config-server"])
     global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
+    if global_config["ENABLE_NAGVIS"]:
+        process_tools.fix_files(global_config["USER"], global_config["GROUP"], [
+            os.path.join(global_config["NAGVIS_DIR"], "etc", "auth.db"),
+            os.path.join(global_config["NAGVIS_DIR"], "share", "server", "core", "defines", "global.php"),
+        ])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
         process_tools.become_daemon()
