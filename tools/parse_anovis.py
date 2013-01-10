@@ -57,7 +57,11 @@ class anovis_site(object):
         self.__db_cache = {}
         self.parsed = 0
         for key, value in csv_line.iteritems():
-            self.feed(key, value)
+            try:
+                self.feed(key, value)
+            except:
+                self.log("error while feeding key %s (value %s): %s" % (key, value, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                raise
             self.parsed += 1
         self.log("init site (%d keys parsed)" % (self.parsed))
         self.validate()
@@ -73,21 +77,25 @@ class anovis_site(object):
         self.__db_cache[obj_name][cur_obj.pk] = cur_obj
         return cur_obj
     def validate(self):
-        for obj_name, keys_needed in [
-            ("fw_service", set(["name", "ip"])),
-            ("firewall"  , set(["name", "ip"])),
-            ("host"      , set(["name", "ip", "service"]))]:
+        for obj_name, keys_needed, sub_el_needed in [
+            ("fw_service", set(["name", "ip", "check_template"])       , set()),
+            ("firewall"  , set(["name", "ip", "num", "check_template"]), set()),
+            ("host"      , set(["name", "ip", "num", "check_template"]), set()),
+            ("general"   , set()                                       , set(["customer", "relayer", "nagvis_template", "usergroup"]))]:
             obj_list = self.site_xml.findall(".//%s" % (obj_name))
             if not len(obj_list):
                 raise KeyError, "no %s objects found in site '%s'" % (obj_name, self.name)
             for cur_obj in obj_list:
-                found_keys = set(cur_obj.attrib.keys()) & keys_needed
+                found_keys = set(cur_obj.attrib.keys())
                 if found_keys != keys_needed:
-                    raise KeyError, "some keys missing for object '%s' in site '%s'" % (obj_name, self.name)
-                if obj_name == "host":
+                    raise KeyError, "keys mismatch for object '%s' in site '%s': %s" % (obj_name, self.name, ", ".join(list(keys_needed ^ found_keys)))
+                #if obj_name == "host":
                     # reformat services
-                    for service_name in cur_obj.attrib["service"].split("/"):
-                        cur_obj.append(E.service(service_name))
+                    #for service_name in cur_obj.attrib["service"].split("/"):
+                    #    cur_obj.append(E.service(service_name))
+                for sub_el in sub_el_needed:
+                    if not len(cur_obj.findall(sub_el)):
+                        raise KeyError, "sub_element '%s' not found beneath %s" % (sub_el, obj_name)
                 if "ip" in keys_needed:
                     cur_obj.append(E.network(E.netdevice(E.ip(cur_obj.attrib["ip"]), devname="eth0")))
             self.log("validated %s" % (logging_tools.get_plural(obj_name, len(obj_list))))
@@ -115,34 +123,51 @@ class anovis_site(object):
             else:
                 self.site_xml.append(new_obj)
             return new_obj
-    def feed(self, key, value):
-        parts = key.split("_")
-        if key == "site_name":
-            self.name = value
-        elif key.startswith("site_fw_service"):
-            if parts[-1] in ["name", "ip"] and len(parts) == 4:
-                service_obj = self.add_object("fw_service")
-                service_obj.attrib[parts[-1]] = str(value)
+    def feed(self, in_key, in_value):
+        self.__last_key = None
+        for key_num, (key, value) in enumerate(zip(in_key.split(":"), unicode(in_value).split(":"))):
+            if key_num:
+                # store key as sub_key and use last_key as key
+                sub_key = key
+                key = self.__last_key
             else:
-                raise ValueError, "unknown site_fw_service key '%s' (%s)" (key, value)
-        elif key.startswith("site_host"):
-            host_num = int(parts[-1])
-            if len(parts) == 4 and parts[2] in ["name", "ip", "service"]:
-                self.ensure_nodes("hosts")
-                host_obj = self.add_object("hosts/host", num=host_num)
-                host_obj.attrib[parts[2]] = str(value)
+                sub_key = None
+            print key, sub_key, value
+            parts = key.split("_")
+            if key == "site_name":
+                self.name = value
+            elif key in ["customer", "relayer", "nagvis_template", "usergroup"]:
+                self.ensure_nodes("general")
+                gen_obj = self.add_object("general/%s" % (key))
+                gen_obj.text = value
+            elif key.startswith("site_fw_service"):
+                lut_key = sub_key or parts[-1] 
+                if lut_key in ["name", "ip", "check_template"] and len(parts) == 4:
+                    service_obj = self.add_object("fw_service")
+                    service_obj.attrib[lut_key] = str(value)
+                else:
+                    raise ValueError, "unknown site_fw_service key '%s' (%s, %s)" % (key, value, unicode(sub_key))
+            elif key.startswith("site_host"):
+                host_num = int(parts[-1])
+                lut_key = sub_key or parts[2] 
+                if len(parts) == 4 and lut_key in ["name", "ip", "service", "check_template"]:
+                    self.ensure_nodes("hosts")
+                    host_obj = self.add_object("hosts/host", num=host_num)
+                    host_obj.attrib[lut_key] = str(value)
+                else:
+                    raise ValueError, "unknown site_host key '%s' (%s, %s)" % (key, value, unicode(sub_key))
+            elif key.startswith("site_fw_box"):
+                fw_num = int(parts[-1])
+                lut_key = sub_key or parts[3]
+                if len(parts) == 5 and lut_key in ["name", "ip", "check_template"]:
+                    self.ensure_nodes("firewalls")
+                    fw_obj = self.add_object("firewalls/firewall", num=fw_num)
+                    fw_obj.attrib[lut_key] = str(value)
+                else:
+                    raise ValueError, "unknown site_fw_box key '%s' (%s, %s)" % (key, value, unicode(sub_key))
             else:
-                raise ValueError, "unknown site_host key '%s' (%s)" % (key, value)
-        elif key.startswith("site_fw_box"):
-            fw_num = int(parts[-1])
-            if len(parts) == 5 and parts[3] in ["name", "ip"]:
-                self.ensure_nodes("firewalls")
-                fw_obj = self.add_object("firewalls/firewall", num=fw_num)
-                fw_obj.attrib[parts[3]] = str(value)
-            else:
-                raise ValueError, "unknown site_fw_box key '%s' (%s)" % (key, value)
-        else:
-            raise KeyError, "unknown key '%s' (%s)" % (key, value)
+                raise KeyError, "unknown key '%s' (%s)" % (key, value)
+            self.__last_key = key
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[as %s] %s" % (self.name, what), log_level)
     def _update_object(self, db_obj, **kwargs):
@@ -317,10 +342,15 @@ class anvois_parser(object):
             # generate key mapping
             _map = {}
             for key in set(in_line.keys()):
+                orig_key = key
+                key = key.split("(=")[0]
                 parts = [{"firewall"  : "fw"}.get(part, part) for part in key.lower().split()]
                 t_key = "_".join(parts)
-                _map[key] = t_key
+                t_key = t_key.replace(":_", ":").replace("_:", ":")
+                _map[orig_key] = t_key
             self.__key_mapping = _map
+            for key in sorted(_map):
+                self.log("key %-64s => %s" % (key, self.__key_mapping[key]))
         ret_dict = dict([(self.__key_mapping[key], value) for key, value in in_line.iteritems()])
         # check ips
         ret_dict = dict([(key, ipvx_tools.ipv4(value) if key.count("_ip") else value) for key, value in ret_dict.iteritems()])
