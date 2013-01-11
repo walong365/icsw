@@ -313,7 +313,7 @@ class special_net(special_base):
                     " (%s)" % (net_dev.description) if net_dev.description else "")
                 eth_opts = []
                 if eth_check:
-                    eth_opts.extend([net_dev.netdevice_speed.full_duplex and "full" or "half"
+                    eth_opts.extend([net_dev.netdevice_speed.full_duplex and "full" or "half",
                                      "%d" % (net_dev.netdevice_speed.speed_bps)])
                 eth_opts.extend(["%.0f" % (net_dev.netdevice_speed.speed_bps * 0.9),
                                  "%.0f" % (net_dev.netdevice_speed.speed_bps * 0.95)])

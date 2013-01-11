@@ -190,6 +190,9 @@ class main_config(object):
         if global_config["ENABLE_NAGVIS"] and not self.__slave_name:
             self._create_nagvis_base_entries()
         self._write_entries()
+    @property
+    def slave_name(self):
+        return self.__slave_name
     def is_valid(self):
         ht_conf_names = [key for key, value in self.__dict.iteritems() if isinstance(value, host_type_config)]
         invalid = sorted([key for key in ht_conf_names if not self[key].is_valid()])
