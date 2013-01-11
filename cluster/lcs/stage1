@@ -415,6 +415,8 @@ while true ; do
         [ "${valid_net}" = "${nbd}" ] && break
         ifconfig ${net} 0.0.0.0 down
     done
+    # in case no netdevices are defined
+    sleep 1
 
     if [ "$valid_net" = "None" ] ; then
         wait_time=$(($wait_time + 5))
