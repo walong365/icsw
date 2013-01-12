@@ -132,24 +132,6 @@ class _general(hm_classes.hm_module):
                 mvect["net.%s.txdrop"  % (key)] = self.dev_dict[key]["txdrop"]
                 mvect["net.%s.carrier" % (key)] = self.dev_dict[key]["carrier"]
         return
-        # check for ping_hosts
-        if not self._mvect_phd_synced:
-            self._mvect_phd_synced = True
-            for key in self._mvect_phd:
-                r_key = key.replace(".", "_")
-                for s_key in ["min", "mean", "max"]:
-                    mvect.reg_entry("ping.%s.%s" % (r_key, s_key), 0.0, "%s latency for %s" % (s_key, self.ping_hosts[key]) , "s", 1000)
-        for key, res in self._mvect_phd.iteritems():
-            r_key = key.replace(".", "_")
-            for s_key in ["min", "mean", "max"]:
-                mvect.reg_update(logger, "ping.%s.%s" % (r_key, s_key), res["latency_%s" % (s_key)] if res["reached"] else None)
-        if self.ping_hosts:
-            self.ping_object.add_icmp_client(net_tools.icmp_client(host_list=self.ping_hosts.keys(),
-                                                                   num_ping=3,
-                                                                   timeout=5.0,
-                                                                   fast_mode=False,
-                                                                   finish_call=self._icmp_finish,
-                                                                   flood_ping=False))
     def _check_for_bridges(self):
         b_dict = {}
         virt_dir = "/sys/devices/virtual/net"
@@ -530,7 +512,7 @@ class net_device(object):
             # add bonding info if present
             try:
                 result.append(
-                    srv_com.builder("bond_info", file("/proc/net/bonding/%s" % (net_device), "r").read())
+                    srv_com.builder("bond_info", file("/proc/net/bonding/%s" % (self.name), "r").read())
                 )
             except:
                 pass
@@ -579,20 +561,6 @@ class netspeed(object):
     def is_xen_host(self):
         return self.__is_xen_host
     def make_speed_dict(self):
-##        r_dict = {}
-##        for ifn, s_list in self.nst.iteritems():
-##            speed = dict([(k, 0) for k in self.__keys])
-##            num = len(s_list) - 1
-##            if not num:
-##                if self.nst[ifn]:
-##                    speed = s_list[0]
-##            else:
-##                while len(s_list) > 1:
-##                    act_speed = s_list.pop(0)
-##                    for k in self.__keys:
-##                        speed[k] += act_speed[k] / num
-##            r_dict[ifn] = speed
-##        return r_dict
         return dict([(key, self[key].get_speed()) for key in self.keys()])
     def update(self):
         ntime = time.time()
@@ -611,89 +579,6 @@ class netspeed(object):
                         self[key] = net_device(key, self.nd_mapping, self.ethtool_path)
                     self[key].feed(value)
                     self[key].update_ethtool()
-            self.__a_time = ntime
-        return
-        if False:
-            if False:
-                self.__o_stat, self.__o_time = (self.__a_stat,
-                                                self.__a_time)
-                self.__a_stat, self.__a_time = (dict([(key, dict([(x, value[y]) for x, y in self.__idx_dict.iteritems()])) for key, value in ndev_dict.iteritems()]),
-                                                ntime)
-                # handle bonding devices, FIXME, take from /sys/class
-##                if self.__b_array:
-##                    for bdn, bdl in self.__b_array.iteritems():
-##                        add = True
-##                        b_vals = dict([(x, 0L) for x in self.__keys])
-##                        for bdl_e in bdl:
-##                            if not self.__a_stat.has_key(bdl_e):
-##                                add = False
-##                                break
-##                            else:
-##                                for k in self.__keys:
-##                                    b_vals[k] += self.__a_stat[bdl_e][k]
-##                        if add:
-##                            self.__a_stat[bdn] = b_vals
-                t_diff = self.__a_time - self.__o_time
-                for if_name, act_io in self.__a_stat.iteritems():
-                    if [True for key in NET_DEVICES if if_name.startswith(key)]:
-                        if if_name in self.__o_stat:
-##                            if if_name.startswith("eth") and self.__o_stat.has_key("p%s" % (if_name)) and self.__a_stat.has_key("p%s" % (if_name)):
-##                                old_io, act_io = (self.__o_stat["p%s" % (if_name)],
-##                                                  self.__a_stat["p%s" % (if_name)])
-##                            else:
-                            old_io = self.__o_stat[if_name]
-                            speed = {}
-                            for d_name in self.__keys:
-                                sub = act_io[d_name] - old_io[d_name]
-                                while sub < 0:
-                                    sub += sys.maxint
-                                # cap insane values (above 1 TByte)
-                                if sub > max(sys.maxint / 8, 1000 * 1000 * 1000 * 1000):
-                                    sub = 0
-                                speed[d_name] = int(sub / t_diff)
-                            if if_name not in self.nst:
-                                self.nst[if_name] = []
-                            if len(self.nst[if_name]) > self.nst_size:
-                                self.nst[if_name].pop(0)
-                            self.nst[if_name].append(speed)
-                    elif [True for x in XEN_DEVICES if if_name.startswith(x)]:
-                        self.__is_xen_host = True
-                # remove unknown netdevices from speed_dict
-                self.ethtool_dict, self.extra_dict = ({}, {})
-                for ifn in self.__a_stat.keys():
-                    etht_dict = {}
-                    if [True for check_name in ETHTOOL_DEVICES if ifn.startswith(check_name)]:
-                        if self.ethtool_path:
-                            if ifn.startswith("eth") and self.__a_stat.has_key("p%s" % (ifn)):
-                                stat, out = commands.getstatusoutput("%s p%s" % (self.ethtool_path, ifn))
-                            else:
-                                stat, out = commands.getstatusoutput("%s %s" % (self.ethtool_path, ifn))
-                        else:
-                            stat, out = (1, "ethtool_path not set")
-                        if not stat:
-                            etht_dict = dict([(k.lower().strip(), v.lower().strip()) for k, v in [y for y in [x.strip().split(":", 1) for x in out.split("\n")] if len(y) == 2] if len(v) and k.lower() in ["speed", "duplex", "link detected"]])
-                    elif ifn.startswith("ib"):
-                        # simple mapping, FIXME
-                        if ifn[2:].isdigit():
-                            port_dir = "/sys/class/infiniband/mthca0/ports/%d" % (int(ifn[2]) + 1)
-                            if os.path.isdir(port_dir):
-                                for entry in os.listdir(port_dir):
-                                    if entry in ["state", "phys_state", "rate"]:
-                                        etht_dict[entry] = open("%s/%s" % (port_dir, entry), "r").read().strip()
-                                counter_path = "%s/counters" % (port_dir)
-                                if os.path.isdir(counter_path):
-                                    ex_dict = {}
-                                    for entry in os.listdir(counter_path):
-                                        try:
-                                            ex_dict[entry] = int(open("%s/%s" % (counter_path, entry), "r").read().strip())
-                                        except:
-                                            pass
-                                    if ex_dict:
-                                        self.extra_dict[ifn] = ex_dict
-                    if etht_dict:
-                        self.ethtool_dict[ifn] = etht_dict
-                #pprint.pprint(self.nst)
-        else:
             self.__a_time = ntime
 
 class ping_sp_struct(hm_classes.subprocess_struct):
@@ -833,6 +718,9 @@ class net_command(hm_classes.hm_command):
             if post.endswith("/s"):
                 per_sec = True
                 post = post[:-2]
+            elif post == "bps":
+                per_sec = True
+                post = post[:-2]
             else:
                 per_sec = False
             if post in ["byte", "bytes"]:
@@ -895,39 +783,96 @@ class net_command(hm_classes.hm_command):
             if not any([dev_name.startswith(prefix) for prefix in ETHTOOL_DEVICES]):
                 # not a ethtool-capable device
                 if dev_name.startswith("bond"):
-                    # interpret bond info
-                    pass
-                pass
+                    bond_info  = srv_com["device:device_%s" % (dev_name)].findtext(".//ns0:bond_info", namespaces={"ns0" : server_command.XML_NS})
+                    if bond_info:
+                        bond_dict = {}
+                        cur_dict = bond_dict
+                        # parse bond dict
+                        for line in bond_info.split("\n"):
+                            if line.strip() and line.count(":"):
+                                key, value = line.strip().split(":", 1)
+                                value = value.strip()
+                                if value.isdigit():
+                                    value = int(value)
+                                key = key.strip().lower().replace(" ", "_")
+                                if key == "slave_interface":
+                                    cur_dict = {}
+                                    bond_dict.setdefault("slaves", {}).setdefault(value, cur_dict)
+                                else:
+                                    if key == "speed":
+                                        value = self._parse_speed_str(value)
+                                    elif key == "duplex":
+                                        value = self._parse_duplex_str(value)
+                                    cur_dict[key] = value
+                        if "slaves" in bond_dict:
+                            add_oks.append("%s found: %s" % (logging_tools.get_plural("slave", len(bond_dict["slaves"])),
+                                                             ", ".join(sorted(bond_dict["slaves"].keys()))))
+                            for slave_name in sorted(bond_dict["slaves"]):
+                                slave_dict = bond_dict["slaves"][slave_name]
+                                ret_state = self._check_speed(slave_name, cur_ns, slave_dict["speed"], add_oks, add_errors, ret_state)
+                                ret_state = self._check_duplex(slave_name, cur_ns, slave_dict["duplex"], add_oks, add_errors, ret_state)
+                        else:
+                            add_errors.append("no slaves found")
+                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             else:
                 if cur_ns.speed:
-                    target_speed = self._parse_speed_str(cur_ns.speed)
-                    if ethtool_dict.get("speed", -1) != -1:
-                        if target_speed == ethtool_dict["speed"]:
-                            add_oks.append("target_speed %s" % (self.beautify_speed(ethtool_dict["speed"])))
-                        else:
-                            add_errors.append("target_speed differ: %s (target) != %s (measured)" % (self.beautify_speed(target_speed), self.beautify_speed(ethtool_dict["speed"])))
-                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                    else:
-                        add_errors.append("Cannot check target_speed: no ethtool information")
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    #target_speed = self._parse_speed_str(cur_ns.speed)
+                    #if ethtool_dict.get("speed", -1) != -1:
+                    #    if target_speed == ethtool_dict["speed"]:
+                    #        add_oks.append("target_speed %s" % (self.beautify_speed(ethtool_dict["speed"])))
+                    #    else:
+                    #        add_errors.append("target_speed differ: %s (target) != %s (measured)" % (self.beautify_speed(target_speed), self.beautify_speed(ethtool_dict["speed"])))
+                    #        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    #else:
+                    #    add_errors.append("Cannot check target_speed: no ethtool information")
+                    #    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ret_state = self._check_speed(None, cur_ns, ethtool_dict.get("speed", -1), add_oks, add_errors, ret_state)
                 if cur_ns.duplex:
-                    if "duplex" in ethtool_dict:
-                        ethtool_duplex = self._parse_duplex_str(ethtool_dict["duplex"])
-                        target_duplex = self._parse_duplex_str(cur_ns.duplex)
-                        if target_duplex == ethtool_duplex:
-                            add_oks.append("duplex is %s" % (target_duplex))
-                        else:
-                            add_errors.append("duplex differs: %s (target) != %s (measured)" % (target_duplex, ethtool_duplex))
-                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                    else:
-                        add_errors.append("Cannot check duplex mode: not present in ethtool information")
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ret_state = self._check_duplex(None, cur_ns, ethtool_dict.get("duplex", None), add_oks, add_errors, ret_state)
+                    #if "duplex" in ethtool_dict:
+                    #    ethtool_duplex = self._parse_duplex_str(ethtool_dict["duplex"])
+                    #    target_duplex = self._parse_duplex_str(cur_ns.duplex)
+                    #    if target_duplex == ethtool_duplex:
+                    #        add_oks.append("duplex is %s" % (target_duplex))
+                    #    else:
+                    #        add_errors.append("duplex differs: %s (target) != %s (measured)" % (target_duplex, ethtool_duplex))
+                    #        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    #else:
+                    #    add_errors.append("Cannot check duplex mode: not present in ethtool information")
+                    #    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state, "%s, %s rx; %s tx%s%s" % (
             dev_name,
             self.beautify_speed(value_dict["rx"]),
             self.beautify_speed(value_dict["tx"]),
             add_oks and "; %s" % ("; ".join(add_oks)) or "",
             add_errors and "; %s" % ("; ".join(add_errors)) or "")
+    def _check_speed(self, dev_name, cur_ns, dev_str, add_oks, add_errors, ret_state):
+        str_prefix = "%s: " % (dev_name) if dev_name else ""
+        target_speed = self._parse_speed_str(cur_ns.speed)
+        if dev_str != -1:
+            if target_speed == dev_str:
+                add_oks.append("%starget_speed %s" % (str_prefix, self.beautify_speed(dev_str)))
+            else:
+                add_errors.append("%starget_speed differ: %s (target) != %s (measured)" % (str_prefix, self.beautify_speed(target_speed), self.beautify_speed(dev_str)))
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        else:
+            add_errors.append("%sCannot check target_speed: no ethtool information" % (str_prefix))
+            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        return ret_state
+    def _check_duplex(self, dev_name, cur_ns, duplex_str, add_oks, add_errors, ret_state):
+        str_prefix = "%s: " % (dev_name) if dev_name else ""
+        if duplex_str != None:
+            ethtool_duplex = self._parse_duplex_str(duplex_str)
+            target_duplex = self._parse_duplex_str(cur_ns.duplex)
+            if target_duplex == ethtool_duplex:
+                add_oks.append("%sduplex is %s" % (str_prefix, target_duplex))
+            else:
+                add_errors.append("%sduplex differs: %s (target) != %s (measured)" % (str_prefix, target_duplex, ethtool_duplex))
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        else:
+            add_errors.append("%sCannot check duplex mode: not present in ethtool information" % (str_prefix))
+            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        return ret_state
     def interpret_old(self, result, parsed_coms):
         def b_str(i_val):
             f_val = float(i_val)
