@@ -526,6 +526,14 @@ class net_device(object):
                     *[srv_com.builder("value", value, name=key) for key, value in self.ethtool_results.iteritems()]
                 )
             )
+        if self.name.startswith("bond"):
+            # add bonding info if present
+            try:
+                result.append(
+                    srv_com.builder("bond_info", file("/proc/net/bonding/%s" % (net_device), "r").read())
+                )
+            except:
+                pass
         return result
         
 class netspeed(object):
@@ -884,29 +892,36 @@ class net_command(hm_classes.hm_command):
             add_errors.append("No cable connected?")
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
         else:
-            if cur_ns.speed:
-                target_speed = self._parse_speed_str(cur_ns.speed)
-                if ethtool_dict.get("speed", -1) != -1:
-                    if target_speed == ethtool_dict["speed"]:
-                        add_oks.append("target_speed %s" % (self.beautify_speed(ethtool_dict["speed"])))
+            if not any([dev_name.startswith(prefix) for prefix in ETHTOOL_DEVICES]):
+                # not a ethtool-capable device
+                if dev_name.startswith("bond"):
+                    # interpret bond info
+                    pass
+                pass
+            else:
+                if cur_ns.speed:
+                    target_speed = self._parse_speed_str(cur_ns.speed)
+                    if ethtool_dict.get("speed", -1) != -1:
+                        if target_speed == ethtool_dict["speed"]:
+                            add_oks.append("target_speed %s" % (self.beautify_speed(ethtool_dict["speed"])))
+                        else:
+                            add_errors.append("target_speed differ: %s (target) != %s (measured)" % (self.beautify_speed(target_speed), self.beautify_speed(ethtool_dict["speed"])))
+                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                     else:
-                        add_errors.append("target_speed differ: %s (target) != %s (measured)" % (self.beautify_speed(target_speed), self.beautify_speed(ethtool_dict["speed"])))
+                        add_errors.append("Cannot check target_speed: no ethtool information")
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                else:
-                    add_errors.append("Cannot check target_speed: no ethtool information")
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-            if cur_ns.duplex:
-                if "duplex" in ethtool_dict:
-                    ethtool_duplex = self._parse_duplex_str(ethtool_dict["duplex"])
-                    target_duplex = self._parse_duplex_str(cur_ns.duplex)
-                    if target_duplex == ethtool_duplex:
-                        add_oks.append("duplex is %s" % (target_duplex))
+                if cur_ns.duplex:
+                    if "duplex" in ethtool_dict:
+                        ethtool_duplex = self._parse_duplex_str(ethtool_dict["duplex"])
+                        target_duplex = self._parse_duplex_str(cur_ns.duplex)
+                        if target_duplex == ethtool_duplex:
+                            add_oks.append("duplex is %s" % (target_duplex))
+                        else:
+                            add_errors.append("duplex differs: %s (target) != %s (measured)" % (target_duplex, ethtool_duplex))
+                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                     else:
-                        add_errors.append("duplex differs: %s (target) != %s (measured)" % (target_duplex, ethtool_duplex))
+                        add_errors.append("Cannot check duplex mode: not present in ethtool information")
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                else:
-                    add_errors.append("Cannot check duplex mode: not present in ethtool information")
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state, "%s, %s rx; %s tx%s%s" % (
             dev_name,
             self.beautify_speed(value_dict["rx"]),

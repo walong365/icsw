@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -36,10 +36,6 @@ import bz2
 
 TW_EXEC = "/sbin/tw_cli"
 ARCCONF_BIN = "/usr/sbin/arcconf"
-
-# WTF ?
-def get_short_state(in_state):
-    return in_state.lower()
 
 def get_size(in_str):
     try:
@@ -510,7 +506,7 @@ class ctrl_type_ips(ctrl_type):
                     log_field.append("ld%d: %s (%s, %s)" % (l_num,
                                                             logging_tools.get_size_str(int(l_stuff["size"].split()[0]) * 1000000, divider=1000).strip(),
                                                             "RAID%s" % (l_stuff["raid_level"]) if l_stuff.has_key("raid_level") else "RAID?",
-                                                            get_short_state(l_stuff[sold_name])))
+                                                            l_stuff[sold_name].lower()))
                     if l_stuff[sold_name].lower() in ["degraded"]:
                         num_error += 1
                     elif l_stuff[sold_name].lower() not in ["optimal", "okay"]:
@@ -520,7 +516,7 @@ class ctrl_type_ips(ctrl_type):
                 phys_dict = {}
                 for phys in c_stuff["physical"]:
                     if phys.has_key("size"):
-                        s_state = get_short_state(phys["state"])
+                        s_state = phys["state"].lower()
                         if s_state == "sby":
                             # ignore empty standby bays
                             pass
@@ -582,7 +578,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return [("%s -ldInfo -Lall -a%d" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
+        return [("%s -LdPdInfo -a%d" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
                [("%s -AdpBbuCmd -GetBbuStatus -a%d" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list]
     def scan_ctrl(self):
         cur_stat, cur_lines = self.exec_command(" -AdpAllInfo -aAll", post="strip")
@@ -600,8 +596,16 @@ class ctrl_type_megaraid_sas(ctrl_type):
         com_line, ctrl_id, run_type = ccs.run_info["command"]
         ctrl_stuff = self._dict[ctrl_id]
         if run_type == "ld":
+            cur_mode, mode_sense = (None, True)
             log_drive_num = None
-            for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n") if cur_line.strip()]:
+            for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n")]:
+                empty_line = not line.strip()
+                if empty_line:
+                    mode_sense = True
+                else:
+                    if mode_sense == True:
+                        mode_sense = False
+                        
                 if line.lower().count("virtual disk:") or line.lower().count("virtual drive:"):
                     log_drive_num = int(line.strip().split()[2])
                     ctrl_stuff["logical_lines"][log_drive_num] = []
