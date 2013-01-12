@@ -37,6 +37,13 @@ import bz2
 TW_EXEC = "/sbin/tw_cli"
 ARCCONF_BIN = "/usr/sbin/arcconf"
 
+SAS_OK_KEYS = {
+    "adp"  : set(),
+    "virt" : set(["virtual_drive", "raid_level", "name", "size", "state", "strip_size",
+                  "number_of_drives"]),
+    "pd"   : set(["slot_number", "pd_type", "raw_size"])
+}
+
 def get_size(in_str):
     try:
         s_p, p_p = in_str.split()
@@ -596,22 +603,53 @@ class ctrl_type_megaraid_sas(ctrl_type):
         com_line, ctrl_id, run_type = ccs.run_info["command"]
         ctrl_stuff = self._dict[ctrl_id]
         if run_type == "ld":
-            cur_mode, mode_sense = (None, True)
+            cur_mode, mode_sense, count_dict = (None, True, {})
             log_drive_num = None
             for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n")]:
                 empty_line = not line.strip()
+                parts = line.lower().strip().split()
                 if empty_line:
                     mode_sense = True
                 else:
                     if mode_sense == True:
+                        if (parts[0], cur_mode) == ("adapter", None):
+                            cur_mode = "adp"
+                            count_dict = {"adp"  : count_dict.get("adp", -1) + 1,
+                                          "virt" : -1,
+                                          "pd"   : 0}
+                        elif (parts[0], cur_mode) == ("number", "adp"):
+                            cur_mode = "virt"
+                            count_dict[cur_mode] += 1
+                            count_dict["pd"] = -1
+                            cur_dict = {"lines": []}
+                            ctrl_stuff.setdefault("virt", {})[count_dict["virt"]] = cur_dict
+                        elif (parts[0], cur_mode) in [("pd:", "virt"), ("pd:", "pd")]:
+                            cur_mode = "pd"
+                            count_dict[cur_mode] += 1
+                            cur_dict = {"lines" : []}
+                            ctrl_stuff["virt"][count_dict["virt"]].setdefault("pd", {})[count_dict[cur_mode]] = cur_dict
+                        elif parts[0] in ["exit"]:
+                            # last line, pass
+                            pass
+                        else:
+                            # unknown mode
+                            raise ValueError, "cannot parse mode , ctrl_type_megaraid_sas: %s" % (str(line))
                         mode_sense = False
-                        
-                if line.lower().count("virtual disk:") or line.lower().count("virtual drive:"):
-                    log_drive_num = int(line.strip().split()[2])
-                    ctrl_stuff["logical_lines"][log_drive_num] = []
-                if log_drive_num is not None:
-                    if line.count(":"):
-                        ctrl_stuff["logical_lines"][log_drive_num].append([part.strip() for part in line.split(":", 1)])
+                        #print cur_mode, mode_sense, count_dict, line
+                    else:
+                        if line.count(":"):
+                            key, value = line.split(":", 1)
+                            key = key.lower().strip().replace(" ", "_")
+                            if key in SAS_OK_KEYS[cur_mode]:
+                                value = value.strip()
+                                cur_dict["lines"].append((key, value))
+            #pprint.pprint(ctrl_stuff)
+            #if line.lower().count("virtual disk:") or line.lower().count("virtual drive:"):
+            #    log_drive_num = int(line.strip().split()[2])
+            #    ctrl_stuff["logical_lines"][log_drive_num] = []
+            #if log_drive_num is not None:
+            #    if line.count(":"):
+            #        ctrl_stuff["logical_lines"][log_drive_num].append([part.strip() for part in line.split(":", 1)])
         elif run_type == "bbu":
             ctrl_stuff["bbu_keys"] = {}
             main_key = "main"
@@ -645,17 +683,28 @@ class ctrl_type_megaraid_sas(ctrl_type):
         ret_state = limits.nag_STATE_OK
         drive_stats = []
         for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
-            for log_num, log_stuff in ctrl_stuff.get("logical_lines", {}).iteritems():
-                log_dict = dict([(key.lower(), value) for key, value in log_stuff])
+            for log_num, log_stuff in ctrl_stuff.get("virt", {}).iteritems():
+                #pprint.pprint(log_dict)
+                log_dict = dict(log_stuff["lines"])
                 num_d += 1
+                num_drives = int(log_dict["number_of_drives"])
                 if "state" in log_dict:
                     status = log_dict["state"]
                     if status.lower() != "optimal":
                         num_e += 1
-                    drive_stats.append("ld %d (ctrl %d, %s): %s" % (log_num,
-                                                                    ctrl_num,
-                                                                    log_dict.get("size", "???"),
-                                                                    status))
+                    drive_stats.append("ld %d (ctrl %d, %s, %s): %s" % (
+                        log_num,
+                        ctrl_num,
+                        log_dict.get("size", "???"),
+                        logging_tools.get_plural("disc", num_drives),
+                        status))
+                drives_missing = []
+                for pd_num in xrange(num_drives):
+                    if not log_stuff["pd"].get(pd_num, {}).get("lines", None):
+                        drives_missing.append(pd_num)
+                if drives_missing:
+                    num_e += 1
+                    drive_stats.append("drives missing: %s" % (", ".join(["%d" % (m_drive) for m_drive in drives_missing])))
         if num_e:
             ret_state = limits.nag_STATE_CRITICAL
         return ret_state, "%s: %s on %s, %s" % (limits.get_state_str(ret_state),
