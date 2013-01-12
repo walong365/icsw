@@ -814,6 +814,9 @@ class net_command(hm_classes.hm_command):
                         else:
                             add_errors.append("no slaves found")
                             ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    else:
+                        add_errors.append("no bonding info found")
+                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             else:
                 if cur_ns.speed:
                     #target_speed = self._parse_speed_str(cur_ns.speed)
