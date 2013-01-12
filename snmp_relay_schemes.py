@@ -416,11 +416,11 @@ class linux_memory_scheme(snmp_scheme):
                                                                               k_str(all_total))
 
 class snmp_info_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "snmp_info", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "snmp_info", **kwargs)
         # T for table, G for get
         self.requests = snmp_oid("1.3.6.1.2.1.1", cache=True)
-        self.parse_options(args["options"])
+        self.parse_options(kwargs["options"])
     def process_return(self):
         simple_dict = self.snmp_dict.values()[0]
         self._check_for_missing_keys(simple_dict, needed_keys=set([(4, 0), (5, 0), (6, 0)]))
@@ -452,8 +452,8 @@ class qos_cfg(object):
                                                               ", ".join([str(value) for value in self.class_dict.itervalues()]) if self.class_dict else "<NC>")
     
 class check_snmp_qos_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "check_snmp_qos", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "check_snmp_qos", **kwargs)
         self.oid_dict = {"if_name"                 : (1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1),
                          "if_alias"                : (1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 18),
                          "cb_qos_policy_direction" : (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 1, 1, 1, 3),
@@ -466,7 +466,7 @@ class check_snmp_qos_scheme(snmp_scheme):
                          "cb_qos_dropper_rate"     : (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 15, 1, 1, 18)}
         self.parser.add_option("-k", type="str", dest="key", help="QOS keys [%default]", default="1")
         self.parser.add_option("-z", type="str", dest="qos_ids", help="QOS Ids [%default]", default="")
-        self.parse_options(args["options"])
+        self.parse_options(kwargs["options"])
         self.transform_single_key = True
         if self.opts.key.count(","):
             self.qos_key, self.if_idx = [int(value) for value in self.opts.key.split(",")]
@@ -531,11 +531,11 @@ class check_snmp_qos_scheme(snmp_scheme):
         return ret_value, "\n".join(ret_lines)
     
 class eonstor_object(object):
-    def __init__(self, type_str, in_dict, **args):
+    def __init__(self, type_str, in_dict, **kwargs):
         #print time.ctime(), "new eonstor_object"
         self.type_str = type_str
         self.name = in_dict[8]
-        self.state = int(in_dict[args.get("state_key", 13)])
+        self.state = int(in_dict[kwargs.get("state_key", 13)])
         # default values
         self.nag_state, self.state_strs = (limits.nag_STATE_OK, [])
         self.out_string = ""
@@ -551,8 +551,8 @@ class eonstor_object(object):
         self.state_strs.append(warn_str)
     def get_state_str(self):
         return ", ".join(self.state_strs) or "ok"
-    def get_ret_str(self, **args):
-        out_str = self.long_string if (self.long_string and args.get("long_version", False)) else self.out_string
+    def get_ret_str(self, **kwargs):
+        out_str = self.long_string if (self.long_string and kwargs.get("long_version", False)) else self.out_string
         if self.nag_state == limits.nag_STATE_OK and out_str:
             return "%s: %s" % (self.name,
                                out_str)
@@ -815,9 +815,9 @@ class eonstor_voltage(eonstor_object):
         return "voltage %s, state 0x%x (%d, %s), %s" % (self.name, self.state, self.nag_state, self.get_state_str(), self.out_string)
     
 class eonstor_info_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "eonstor_info", **args)
-        net_obj = args["net_obj"]
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "eonstor_info", **kwargs)
+        net_obj = kwargs["net_obj"]
         if not hasattr(net_obj, "eonstor_version"):
             net_obj.eonstor_version = 1
         if net_obj.eonstor_version == 1:
@@ -871,9 +871,9 @@ class eonstor_info_scheme(snmp_scheme):
                                       "; ".join(ret_field) or "no errors or warnings")
 
 class eonstor_proto_scheme(snmp_scheme):
-    def __init__(self, name, **args):
-        snmp_scheme.__init__(self, name, **args)
-        net_obj = args["net_obj"]
+    def __init__(self, name, **kwargs):
+        snmp_scheme.__init__(self, name, **kwargs)
+        net_obj = kwargs["net_obj"]
         if not hasattr(net_obj, "eonstor_version"):
             net_obj.eonstor_version = 1
         eonstor_version = getattr(net_obj, "eonstor_version", 1)
@@ -887,11 +887,11 @@ class eonstor_proto_scheme(snmp_scheme):
             self.disc_oid = (1, 3, 6, 1, 4, 1, 1714, 1, 1, 6, 1)
             self.max_disc_oid = (1, 3, 6, 1, 4, 1, 1714, 1, 1, 6, 1, 20)
             self.ld_oid   = (1, 3, 6, 1, 4, 1, 1714, 1, 1, 2, 1)
-        if args.get("ld_table", False):
+        if kwargs.get("ld_table", False):
             self.requests = snmp_oid(self.ld_oid  , cache=True, cache_timeout=EONSTOR_TIMEOUT)
-        if args.get("disc_table", False):
+        if kwargs.get("disc_table", False):
             self.requests = snmp_oid(self.disc_oid, cache=True, cache_timeout=EONSTOR_TIMEOUT, max_oid=self.max_disc_oid)
-        if args.get("sys_table", False):
+        if kwargs.get("sys_table", False):
             self.requests = snmp_oid(self.sys_oid , cache=True, cache_timeout=EONSTOR_TIMEOUT)
     def error(self):
         if len(self.get_missing_headers()) == len(self.requests):
@@ -902,8 +902,8 @@ class eonstor_proto_scheme(snmp_scheme):
         pre_dict = self._reorder_dict(self.snmp_dict[tuple(self.requests[0])])
         return self._generate_return(self.handle_dict(pre_dict))
     def _generate_return(self, dev_dict):
-        if self.args:
-            dev_idx = self.args[0]
+        if self.kwargs:
+            dev_idx = self.kwargs[0]
         else:
             dev_idx = 0
         ret_state, ret_field = (limits.nag_STATE_OK, [])
@@ -935,72 +935,72 @@ class eonstor_proto_scheme(snmp_scheme):
                                           "; ".join(ret_field) or "no errors or warnings")
         
 class eonstor_ld_info_scheme(eonstor_proto_scheme):
-    def __init__(self, **args):
-        eonstor_proto_scheme.__init__(self, "eonstor_ld_info", ld_table=True, **args)
-        self.parse_options(args["options"], one_integer_arg_allowed=True)
+    def __init__(self, **kwargs):
+        eonstor_proto_scheme.__init__(self, "eonstor_ld_info", ld_table=True, **kwargs)
+        self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
     def handle_dict(self, pre_dict):
         return dict([(dev_idx, eonstor_ld(dev_stuff)) for dev_idx, dev_stuff in pre_dict.iteritems()])
 
 class eonstor_fan_info_scheme(eonstor_proto_scheme):
-    def __init__(self, **args):
-        eonstor_proto_scheme.__init__(self, "eonstor_fan_info", sys_table=True, **args)
-        self.parse_options(args["options"], one_integer_arg_allowed=True)
+    def __init__(self, **kwargs):
+        eonstor_proto_scheme.__init__(self, "eonstor_fan_info", sys_table=True, **kwargs)
+        self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
     def handle_dict(self, pre_dict):
         return dict([(dev_idx, eonstor_fan(dev_stuff)) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 2])
 
 class eonstor_temperature_info_scheme(eonstor_proto_scheme):
-    def __init__(self, **args):
-        eonstor_proto_scheme.__init__(self, "eonstor_temperature_info", sys_table=True, **args)
-        self.parse_options(args["options"], one_integer_arg_allowed=True)
+    def __init__(self, **kwargs):
+        eonstor_proto_scheme.__init__(self, "eonstor_temperature_info", sys_table=True, **kwargs)
+        self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
     def handle_dict(self, pre_dict):
         return dict([(dev_idx, eonstor_temperature(dev_stuff, self.net_obj)) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 3])
 
 class eonstor_ups_info_scheme(eonstor_proto_scheme):
-    def __init__(self, **args):
-        eonstor_proto_scheme.__init__(self, "eonstor_ups_info", sys_table=True, **args)
-        self.parse_options(args["options"], one_integer_arg_allowed=True)
+    def __init__(self, **kwargs):
+        eonstor_proto_scheme.__init__(self, "eonstor_ups_info", sys_table=True, **kwargs)
+        self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
     def handle_dict(self, pre_dict):
         return dict([(dev_idx, eonstor_ups(dev_stuff)) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 4])
 
 class eonstor_bbu_info_scheme(eonstor_proto_scheme):
-    def __init__(self, **args):
-        eonstor_proto_scheme.__init__(self, "eonstor_bbu_info", sys_table=True, **args)
-        self.parse_options(args["options"], one_integer_arg_allowed=True)
+    def __init__(self, **kwargs):
+        eonstor_proto_scheme.__init__(self, "eonstor_bbu_info", sys_table=True, **kwargs)
+        self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
     def handle_dict(self, pre_dict):
         return dict([(dev_idx, eonstor_bbu(dev_stuff)) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 11])
 
 class eonstor_voltage_info_scheme(eonstor_proto_scheme):
-    def __init__(self, **args):
-        eonstor_proto_scheme.__init__(self, "eonstor_voltage_info", sys_table=True, **args)
-        self.parse_options(args["options"], one_integer_arg_allowed=True)
+    def __init__(self, **kwargs):
+        eonstor_proto_scheme.__init__(self, "eonstor_voltage_info", sys_table=True, **kwargs)
+        self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
     def handle_dict(self, pre_dict):
         return dict([(dev_idx, eonstor_voltage(dev_stuff)) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 5])
 
 class eonstor_slot_info_scheme(eonstor_proto_scheme):
-    def __init__(self, **args):
-        eonstor_proto_scheme.__init__(self, "eonstor_slot_info", sys_table=True, **args)
-        self.parse_options(args["options"], one_integer_arg_allowed=True)
+    def __init__(self, **kwargs):
+        eonstor_proto_scheme.__init__(self, "eonstor_slot_info", sys_table=True, **kwargs)
+        self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
     def handle_dict(self, pre_dict):
         return dict([(dev_idx, eonstor_slot(dev_stuff)) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 17])
 
 class eonstor_disc_info_scheme(eonstor_proto_scheme):
-    def __init__(self, **args):
-        eonstor_proto_scheme.__init__(self, "eonstor_disc_info", disc_table=True, **args)
-        self.parse_options(args["options"], one_integer_arg_allowed=True)
+    def __init__(self, **kwargs):
+        eonstor_proto_scheme.__init__(self, "eonstor_disc_info", disc_table=True, **kwargs)
+        self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
     def handle_dict(self, pre_dict):
         return dict([(dev_idx, eonstor_disc(dev_stuff)) for dev_idx, dev_stuff in pre_dict.iteritems()])
 
 class eonstor_psu_info_scheme(eonstor_proto_scheme):
-    def __init__(self, **args):
-        eonstor_proto_scheme.__init__(self, "eonstor_psu_info", sys_table=True, **args)
-        self.parse_options(args["options"], one_integer_arg_allowed=True)
+    def __init__(self, **kwargs):
+        eonstor_proto_scheme.__init__(self, "eonstor_psu_info", sys_table=True, **kwargs)
+        self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
     def handle_dict(self, pre_dict):
         return dict([(dev_idx, eonstor_psu(dev_stuff)) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 1])
 
 class eonstor_get_counter_scheme(eonstor_proto_scheme):
-    def __init__(self, **args):
-        eonstor_proto_scheme.__init__(self, "eonstor_get_counter", sys_table=True, disc_table=True, ld_table=True, **args)
-        self.parse_options(args["options"])
+    def __init__(self, **kwargs):
+        eonstor_proto_scheme.__init__(self, "eonstor_get_counter", sys_table=True, disc_table=True, ld_table=True, **kwargs)
+        self.parse_options(kwargs["options"])
     def process_return(self):
         sys_dict, disc_dict = (self._reorder_dict(self.snmp_dict[self.sys_oid]),
                                self._reorder_dict(self.snmp_dict[self.disc_oid]))
@@ -1098,8 +1098,8 @@ class trunk_info_scheme(snmp_scheme):
             limits.nag_STATE_OK, "no trunks"
 
 class apc_rpdu_load_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "apc_rpdu_load", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "apc_rpdu_load", **kwargs)
         # T for table, G for get
         self.requests = snmp_oid("1.3.6.1.4.1.318.1.1.12.2.3.1.1")
     def process_return(self):
@@ -1115,8 +1115,8 @@ class apc_rpdu_load_scheme(snmp_scheme):
                                                        float(act_load) / 10.)
 
 class usv_apc_load_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "usv_apc_load", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "usv_apc_load", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 4, 2), cache=True)
     def process_return(self):
         WARN_LOAD, CRIT_LOAD = (70, 85)
@@ -1138,8 +1138,8 @@ class usv_apc_load_scheme(snmp_scheme):
                                                        ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class usv_apc_output_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "usv_apc_output", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "usv_apc_output", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 4, 2), cache=True)
     def process_return(self):
         MIN_HZ, MAX_HZ = (49, 52)
@@ -1162,8 +1162,8 @@ class usv_apc_output_scheme(snmp_scheme):
                                                              ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class usv_apc_input_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "usv_apc_input", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "usv_apc_input", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 3, 2), cache=True)
     def process_return(self):
         MIN_HZ, MAX_HZ = (49, 52)
@@ -1186,12 +1186,12 @@ class usv_apc_input_scheme(snmp_scheme):
                                                             ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class usv_apc_battery_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "usv_apc_battery", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "usv_apc_battery", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 2, 2), cache=True)
         self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=35.0)
         self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=40.0)
-        self.parse_options(args["options"])
+        self.parse_options(kwargs["options"])
     def process_return(self):
         warn_temp = int(self.opts.warn)
         crit_temp = int(self.opts.crit)
@@ -1234,13 +1234,13 @@ class usv_apc_battery_scheme(snmp_scheme):
                                                                                                       ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class ibm_bc_blade_status_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "ibm_bc_blade_status", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "ibm_bc_blade_status", **kwargs)
         self.__blade_oids = dict([(key,  (1, 3, 6, 1, 4, 1, 2, 3, 51, 2, 22, 1, 5, 1, 1, idx + 1)) for idx, key in enumerate(
             ["idx", "id", "exists", "power_state", "health_state", "name"])])
         for value in self.__blade_oids.values():
             self.requests = snmp_oid(value, cache=True)
-        self.parse_options(args["options"])
+        self.parse_options(kwargs["options"])
     def process_return(self):
         all_blades = self.snmp_dict[self.__blade_oids["idx"]].values()
         ret_state, state_dict = (limits.nag_STATE_OK, {})
@@ -1270,13 +1270,13 @@ class ibm_bc_blade_status_scheme(snmp_scheme):
                                           "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
 
 class ibm_bc_storage_status_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "ibm_bc_storage_status", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "ibm_bc_storage_status", **kwargs)
         self.__blade_oids = dict([(key,  (1, 3, 6, 1, 4, 1, 2, 3, 51, 2, 22, 6, 1, 1, 1, idx + 1)) for idx, key in enumerate(
             ["idx", "module", "status", "name"])])
         for value in self.__blade_oids.values():
             self.requests = snmp_oid(value, cache=True)
-        self.parse_options(args["options"])
+        self.parse_options(kwargs["options"])
     def process_return(self):
         store_dict = {}
         for key, value in self.__blade_oids.iteritems():
@@ -1298,12 +1298,12 @@ class ibm_bc_storage_status_scheme(snmp_scheme):
                                           "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
         
 class temperature_probe_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "temperature_probe_scheme", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "temperature_probe_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 22626, 1, 2, 1, 1), cache=True)
         self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=35.0)
         self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=40.0)
-        self.parse_options(args["options"])
+        self.parse_options(kwargs["options"])
     def process_return(self):
         warn_temp = int(self.opts.warn)
         crit_temp = int(self.opts.crit)
@@ -1321,12 +1321,12 @@ class temperature_probe_scheme(snmp_scheme):
             cur_temp)
 
 class temperature_probe_hum_scheme(snmp_scheme):
-    def __init__(self, **args):
-        snmp_scheme.__init__(self, "temperature_probe_scheme_hum", **args)
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "temperature_probe_hum_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 22626, 1, 2, 1, 2), cache=True)
         self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=80.0)
         self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=95.0)
-        self.parse_options(args["options"])
+        self.parse_options(kwargs["options"])
     def process_return(self):
         warn_hum = int(self.opts.warn)
         crit_hum = int(self.opts.crit)
@@ -1342,6 +1342,30 @@ class temperature_probe_hum_scheme(snmp_scheme):
             limits.get_state_str(cur_state),
             cur_hum,
             cur_hum)
+
+class temperature_knurr_scheme(snmp_scheme):
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "temperature_knurr_scheme", **kwargs)
+        self.parser.add_option("--type", type="choice", dest="sensor_type", choices=["outlet", "inlet"], help="temperature probe [%default]", default="outlet")
+        self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 1), cache=True, cache_timeout=10)
+        self.parse_options(kwargs["options"])
+    def process_return(self):
+        sensor_type = self.opts.sensor_type
+        lut_id = {"outlet" : 1,
+                  "inlet"  : 2}[sensor_type]
+        new_dict = self._simplify_keys(dict([(key[1], float(value) / 10.) for key, value in self.snmp_dict.values()[0].iteritems() if key[0] == lut_id]))
+        warn_val, crit_val = (new_dict[5], new_dict[6])
+        cur_val = new_dict[3]
+        if cur_val > crit_val:
+            cur_state = limits.nag_STATE_CRITICAL
+        elif cur_val > warn_val:
+            cur_state = limits.nag_STATE_WARNING
+        else:
+            cur_state = limits.nag_STATE_OK
+        return cur_state, "%s: temperature %.2f C | temp=%.2f" % (
+            limits.get_state_str(cur_state),
+            cur_val,
+            cur_val)
         
 if __name__ == "__main__":
     print "Loadable module, exiting"
