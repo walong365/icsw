@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n compress %}
+{% load i18n compress coffeescript %}
 
 {% block title %}{% trans "Package Search" %}{% endblock %}
 
@@ -18,12 +18,66 @@
 
 <script type="text/javascript">
 
-// search XML
-SEARCH_XML = undefined;
-// result XML
-RESULT_XML = undefined;
+{% inlinecoffeescript %}
 
-var master_array = {
+root = exports ? this
+
+root.draw_result_element = (xml_el, d_div) ->
+    if xml_el
+        span_text = d_div.find("span").text()
+        if span_text != "0"
+            el_id = d_div.find("span").attr("id")
+            d_div.children().remove()
+            d_div.append($("<span>").append($("<a>").attr({
+                "href" : "#",
+                "id"   : el_id
+            }).text(span_text).bind("click", root.show_result)))
+    return d_div
+
+root.show_result = (event) ->
+    targ_el = $(event.target)
+    $.ajax
+        url     : "{% url pack:get_search_result %}"
+        data    : {
+            "pk" : targ_el.attr("id").split("__")[1]
+        }
+        error   : handle_ajax_error
+        success : (xml) ->
+            if parse_xml_response(xml)
+                search_array["psr"].clean()
+                draw_ds_tables($("div#search_result_table"), search_array, $(xml).find("value[name='response']"));
+
+root.check_copied_flag = (cur_xml) ->
+    if cur_xml
+        return if cur_xml.attr("copied") == "1" then false else true
+    else
+        return false
+
+root.use_package = (event) ->
+    targ_el = $(event.target)
+    $.ajax
+        url     : "{% url pack:use_package %}"
+        data    : {
+            "pk" : targ_el.attr("id").split("__")[1]
+        }
+        error   : handle_ajax_error
+        success : (xml) ->
+            if parse_xml_response(xml)
+                targ_el.remove()
+
+root.redo_search = (event) ->
+    cur_el = $(event.target)
+    redo_search_pk = cur_el.attr("id").split("__")[1]
+    $.ajax
+        url     : "{% url pack:retry_search %}"
+        data    : {
+            "pk" : redo_search_pk
+        }
+        error   : handle_ajax_error
+        success : (xml) ->
+            parse_xml_response(xml)
+
+master_array = {
     "ps" : new draw_setup("Package search", "ps", "package_search",
         "{% url pack:create_search %}",
         "{% url pack:delete_search %}",
@@ -35,14 +89,14 @@ var master_array = {
             new draw_info("retry", {change_cb : redo_search, button : true, trigger : true}),
             new draw_info("last_search_string", {ro : true}),
             new draw_info("last_search", {ro : true}),
-            new draw_info("results", {ro : true, number : 1, min: 0, max : 10000, draw_result_cb : draw_result_element})
+            new draw_info("results", {ro : true, number : 1, min: 0, max : 10000, draw_result_cb : root.draw_result_element})
         ], {
             lock_div : "search_tables"
         }
     )
-};
+}
 
-var search_array = {
+root.search_array = {
     "psr" : new draw_setup("Package search result", "ps", "package_search_result",
         undefined,
         undefined,
@@ -57,99 +111,17 @@ var search_array = {
     )
 }
 
-function check_copied_flag(cur_xml) {
-    if (cur_xml !== undefined) {
-        return cur_xml.attr("copied") == "1" ? false : true;
-    } else {
-        return false ;
-    }
-};
+load_searches = ->
+    $.ajax
+        url     : "{% url pack:search_package %}"
+        error   : handle_ajax_error
+        success : (xml) ->
+            if parse_xml_response(xml)
+                draw_ds_tables($("div#search_tables"), master_array, $(xml).find("value[name='response']"))
 
-function draw_result_element(xml_el, d_div) {
-    if (xml_el) {
-        var span_text = d_div.find("span").text();
-        if (span_text != "0") {
-            var el_id = d_div.find("span").attr("id");
-            d_div.children().remove();
-            d_div.append($("<span>").append($("<a>").attr({
-                "href" : "#",
-                "id"   : el_id
-            }).text(span_text).bind("click", show_result)));
-        };
-    };
-    return d_div;
-};
+$(document).ready(load_searches)
 
-function show_result(event) {
-    var targ_el = $(event.target);
-    $.ajax({
-        url     : "{% url pack:get_search_result %}",
-        data    : {
-            "pk" : targ_el.attr("id").split("__")[1]
-        },
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                RESULT_XML = $(xml).find("value[name='response']");
-                var result_div = $("div#search_result_table");
-                result_div.children().remove();
-                var cur_ds = search_array["psr"];
-                cur_ds.clean();
-                result_div.append(cur_ds.draw_table(RESULT_XML));
-            }
-        }
-    });
-};
-
-function use_package(event) {
-    var targ_el = $(event.target);
-    $.ajax({
-        url     : "{% url pack:use_package %}",
-        data    : {
-            "pk" : targ_el.attr("id").split("__")[1]
-        },
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                targ_el.remove();
-            }
-        }
-    });
-};
-
-function redo_search(event) {
-    var cur_el = $(event.target);
-    var redo_search_pk = cur_el.attr("id").split("__")[1];
-    $.ajax({
-        url     : "{% url pack:retry_search %}",
-        data    : {
-            "pk" : redo_search_pk
-        },
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-            }
-        }
-    });
-};
-
-function load_searches() {
-    $.ajax({
-        url     : "{% url pack:search_package %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                draw_ds_tables($("div#search_tables"), master_array, $(xml).find("value[name='response']"));
-            }
-        }
-    });
-}
-
-function add_config_handlers() {
-    load_searches();
-};
-
-$(document).ready(add_config_handlers);
+{% endinlinecoffeescript %}
 
 </script>
 

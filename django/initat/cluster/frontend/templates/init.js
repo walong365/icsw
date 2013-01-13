@@ -61,9 +61,10 @@ class draw_setup
         @element_info = {}
         @master_xml = undefined
     clean: ->
-        @drawn     = false
-        @table_div = undefined
-        @info_h3   = undefined
+        @drawn      = false
+        @table_div  = undefined
+        @info_h3    = undefined
+        @master_xml = undefined
     redraw_tables: =>
         (value.draw_table() for key, value of @master_array)
     draw_head_line: =>

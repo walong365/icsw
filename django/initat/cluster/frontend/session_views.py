@@ -61,4 +61,3 @@ def sess_login(request):
         login_form = authentication_form()
     return render_me(request, "login.html", {"login_form" : login_form,
                                              "app_path"   : reverse("session:login")})()
-
