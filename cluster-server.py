@@ -46,6 +46,7 @@ import config_tools
 import cluster_location
 import zmq
 import cluster_server
+import io_stream_helper
 from django.db.models import Q
 from host_monitoring import hm_classes
 from django.core.handlers.wsgi import WSGIHandler
@@ -1284,6 +1285,10 @@ class server_process(threading_tools.process_pool):
                                 "reply" : "error %s" % (process_tools.get_except_info(exc_info.except_info)),
                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
                             })
+                            # write to logging-server
+                            err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
+                            err_h.write("\n".join(exc_info.log_lines))
+                            err_h.close()
                         else:
                             if result is not None:
                                 self.log("command got an (unexpected) result: '%s'" % (str(result)),

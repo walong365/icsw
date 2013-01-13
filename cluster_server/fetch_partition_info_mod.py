@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2008,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2008,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -120,6 +120,7 @@ class fetch_partition_info(cs_base_class.server_com):
 ##                                                                                                       partition_info))
 ##                    partition_idx = self.dc.insert_id()
                     for dev, dev_stuff in dev_dict.iteritems():
+                        self.log("handling device %s" % (dev))
                         new_disc = partition_disc(partition_table=new_part_table,
                                                   disc=dev)
                         new_disc.save()
@@ -127,7 +128,8 @@ class fetch_partition_info(cs_base_class.server_com):
 ##                                                                                                              dev))
 ##                        disc_idx = self.dc.insert_id()
                         for part, part_stuff in dev_stuff.iteritems():
-                            hextype = part_stuff["hextype"][2:].lower()
+                            self.log("   handling partition %s" % (part))
+                            hex_type = part_stuff["hextype"][2:].lower()
                             if part.startswith("p"):
                                 part = part[1:]
                             if part_stuff.has_key("mountpoint"):
@@ -141,37 +143,45 @@ class fetch_partition_info(cs_base_class.server_com):
 ##                                    fs_stuff = fs_dict[fs_idx]
 ##                                else:
 ##                                    fs_stuff = None
-                                new_part = partition(
-                                    partition_disc=new_disc,
-                                    mountpoint=part_stuff["mountpoint"],
-                                    size=part_stuff["size"],
-                                    pnum=part,
-                                    mount_options=part_stuff["options"] or "defaults",
-                                    fs_freq=part_stuff["dump"],
-                                    fs_passno=part_stuff["fsck"],
-                                    partition_fs=fs_stuff,
-                                    lut_blob=server_command.sys_to_net(part_stuff.get("lut", None))
-                                )
-                            else:
-                                if fs_dict.has_key(hextype):
+                                if fs_stuff is not None:
                                     new_part = partition(
                                         partition_disc=new_disc,
-                                        partition_hex=hextype,
+                                        mountpoint=part_stuff["mountpoint"],
                                         size=part_stuff["size"],
                                         pnum=part,
-                                        partition=fs_dict[hex_type],
-                                        mount_options="defaults",
+                                        mount_options=part_stuff["options"] or "defaults",
+                                        fs_freq=part_stuff["dump"],
+                                        fs_passno=part_stuff["fsck"],
+                                        partition_fs=fs_stuff,
+                                        lut_blob=server_command.sys_to_net(part_stuff.get("lut", None))
                                     )
                                 else:
+                                    self.log("skipping partition because fs_stuff is None", logging_tools.LOG_LEVEL_WARN)
+                                    new_part = None
+                            else:
+                                if fs_dict.has_key(hex_type):
                                     new_part = partition(
                                         partition_disc=new_disc,
-                                        partition_hex=hextype,
+                                        partition_hex=hex_type,
+                                        size=part_stuff["size"],
+                                        pnum=part,
+                                        #partition_fs=fs_dict[hex_type],
+                                        mount_options="defaults",
+                                    )
+                                    new_part = None
+                                else:
+                                    print "**", part_stuff
+                                    new_part = partition(
+                                        partition_disc=new_disc,
+                                        partition_hex=hex_type,
                                         size=part_stuff["size"],
                                         pnum=part,
                                     )
-                            new_part.save()
+                            if new_part is not None:
+                                new_part.save()
                             part_name = "%s%s" % (dev, part)
                     for part, part_stuff in sys_dict.iteritems():
+                        self.log("handling part %s (sys)" % (part))
                         if type(part_stuff) == type({}):
                             part_stuff = [part_stuff]
                         for p_stuff in part_stuff:
@@ -182,26 +192,22 @@ class fetch_partition_info(cs_base_class.server_com):
                                 new_sys = sys_partition(
                                     partition_table=new_part_table,
                                     name=p_stuff["fstype"] if part == "none" else part,
-                                    mountpoint=part_stuff["mountpoint"],
-                                    mount_options=part_stuff["options"],
+                                    mountpoint=p_stuff["mountpoint"],
+                                    mount_options=p_stuff["options"],
                                 )
                                 new_sys.save()
-##                                self.dc.execute("INSERT INTO sys_partition SET partition_table=%s, name=%s, mountpoint=%s, mount_options=%s", (
-##                                    partition_idx,
-##                                    part == "none" and p_stuff["fstype"] or part,
-##                                    p_stuff["mountpoint"],
-##                                    p_stuff["options"]))
                     if lvm_info.lvm_present:
+                        self.log("LVM info is present")
                         # lvm save
                         for vg_name, v_group in lvm_info.lv_dict.get("vg", {}).iteritems():
+                            self.log("handling VG %s" % (vg_name))
                             new_vg = lvm_vg(
                                 partition_table=new_part_table,
                                 name=v_group["name"])
                             new_vg.save()
-##                            self.dc.execute("INSERT INTO lvm_vg SET partition_table=%s, name=%s", (partition_idx,
-##                                                                                                          v_group["name"]))
                             v_group["db"] = new_vg
                         for lv_name, lv_stuff in lvm_info.lv_dict.get("lv", {}).iteritems():
+                            self.log("handling LV %s" % (lv_name))
                             mount_options = lv_stuff.get("mount_options", {"dump"       : 0,
                                                                            "fsck"       : 0,
                                                                            "mountpoint" : "",
@@ -210,12 +216,12 @@ class fetch_partition_info(cs_base_class.server_com):
                             mount_options["fstype_idx"] = None
                             if mount_options["fstype"]:
                                 mount_options["fstype_idx"] = fs_dict.get("83", {}).get(mount_options["fstype"].lower(), None)
-##                                for fs_stuff in fs_dict["83"]:
-##                                    if fs_stuff["name"].lower() == mount_options["fstype"].lower():
-##                                        mount_options["fstype_idx"] = fs_stuff["partition_fs_idx"]
+                                ##                                for fs_stuff in fs_dict["83"]:
+                                ##                                    if fs_stuff["name"].lower() == mount_options["fstype"].lower():
+                                ##                                        mount_options["fstype_idx"] = fs_stuff["partition_fs_idx"]
                             new_lv = lvm_lv(
                                 partition_table=new_part_table,
-                                lvm_vg=lvm_info.lv_dict.get("vg", {})[lv_stuff["vg_name"]]["db_idx"],
+                                lvm_vg=lvm_info.lv_dict.get("vg", {})[lv_stuff["vg_name"]]["db"],
                                 name=lv_stuff["name"],
                                 size=lv_stuff["size"],
                                 mountpoint=mount_options["mountpoint"],
@@ -251,11 +257,12 @@ class fetch_partition_info(cs_base_class.server_com):
 ##                    if self.dc.rowcount:
 ##                        device_idx = self.dc.fetchone()["device_idx"]
 ##                        self.dc.execute("UPDATE device SET act_partition_table=%d, partdev='' WHERE device_idx=%d" % (partition_idx, device_idx))
-                ret_f.append("%s: %s, %s, %s and %s" % (target_dev,
-                                                        logging_tools.get_plural("disc", len(dev_dict.keys())),
-                                                        logging_tools.get_plural("sys_partition", len(sys_dict.keys())),
-                                                        logging_tools.get_plural("volumegroup", len(lvm_info.lv_dict.get("vg", {}).keys())),
-                                                        logging_tools.get_plural("logical volume", len(lvm_info.lv_dict.get("lv", {}).keys()))))
+                ret_f.append("%s: %s, %s, %s and %s" % (
+                    target_dev,
+                    logging_tools.get_plural("disc", len(dev_dict.keys())),
+                    logging_tools.get_plural("sys_partition", len(sys_dict.keys())),
+                    logging_tools.get_plural("volumegroup", len(lvm_info.lv_dict.get("vg", {}).keys())),
+                    logging_tools.get_plural("logical volume", len(lvm_info.lv_dict.get("lv", {}).keys()))))
         if num_errors:
             self.srv_com["result"].attrib.update({
                 "reply" : "ok %s" % (";".join(ret_f)),
