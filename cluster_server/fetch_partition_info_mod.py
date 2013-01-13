@@ -27,8 +27,8 @@ import pprint
 import partition_tools
 import process_tools
 from django.db.models import Q
-from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, partition_fs, \
-     lvm_lv, lvm_vg, sys_partition
+from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
+     partition_fs, lvm_lv, lvm_vg, sys_partition, get_related_models
 
 class fetch_partition_info(cs_base_class.server_com):
     class Meta:
@@ -92,19 +92,26 @@ class fetch_partition_info(cs_base_class.server_com):
                     partition_name, partition_info = ("%s_part" % (target_dev),
                                                       "generated partition_setup from device '%s'" % (target_dev))
                     # any old partitions?
-                    partition_table.objects.filter(Q(name=partition_name)).delete()
-##                    #self.dc.execute("SELECT * FROM partition_table WHERE name=%s", partition_name)
-##                    if len(old_parts):#self.dc.rowcount:
-##                        old_parts = [x["partition_table_idx"] for x in self.dc.fetchall()]
-##                        self.dc.execute("SELECT * FROM partition_disc WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
-##                        if self.dc.rowcount:
-##                            old_discs = [x["partition_disc_idx"] for x in self.dc.fetchall()]
-##                            self.dc.execute("DELETE FROM partition WHERE %s" % (" OR ".join(["partition_disc=%d" % (x) for x in old_discs])))
-##                            self.dc.execute("DELETE FROM partition_disc WHERE %s" % (" OR ".join(["partition_disc_idx=%d" % (x) for x in old_discs])))
-##                            self.dc.execute("DELETE FROM sys_partition WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
-##                        self.dc.execute("DELETE FROM partition_table WHERE %s" % (" OR ".join(["partition_table_idx=%d" % (x) for x in old_parts])))
-##                        self.dc.execute("DELETE FROM lvm_lv WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
-##                        self.dc.execute("DELETE FROM lvm_vg WHERE %s" % (" OR ".join(["partition_table=%d" % (x) for x in old_parts])))
+                    try:
+                        cur_pt = partition_table.objects.get(Q(name=partition_name))
+                    except partition_table.DoesNotExist:
+                        pass
+                    else:
+                        for rel_obj in cur_pt._meta.get_all_related_objects():
+                            if rel_obj.name in [
+                                "backbone:partition_disc",
+                                "backbone:lvm_lv",
+                                "backbone:lvm_vg",
+                                "backbone:sys_partition"]:
+                                pass
+                            elif rel_obj.name == "backbone:device":
+                                for ref_obj in  rel_obj.model.objects.filter(Q(**{rel_obj.field.name : cur_pt})):
+                                    self.log("cleaning %s of %s" % (rel_obj.field.name, unicode(ref_obj)))
+                                    setattr(ref_obj, rel_obj.field.name, None)
+                                    ref_obj.save()
+                            else:
+                                raise ValueError, "unknown related object %s for partition_info" % (rel_obj.name)
+                        cur_pt.delete()
                     # fetch partition_fs
                     fs_dict = {}
                     for db_rec in partition_fs.objects.all():
@@ -127,7 +134,8 @@ class fetch_partition_info(cs_base_class.server_com):
 ##                        self.dc.execute("INSERT INTO partition_disc SET partition_table=%s, disc=%s", (partition_idx,
 ##                                                                                                              dev))
 ##                        disc_idx = self.dc.insert_id()
-                        for part, part_stuff in dev_stuff.iteritems():
+                        for part in sorted(dev_stuff):
+                            part_stuff = dev_stuff[part]
                             self.log("   handling partition %s" % (part))
                             hex_type = part_stuff["hextype"][2:].lower()
                             if part.startswith("p"):
@@ -168,9 +176,9 @@ class fetch_partition_info(cs_base_class.server_com):
                                         #partition_fs=fs_dict[hex_type],
                                         mount_options="defaults",
                                     )
+                                    self.log("skipping partition because no mountpoint and no matching fs_dict (hex_type %s)" % (hex_type), logging_tools.LOG_LEVEL_ERROR)
                                     new_part = None
                                 else:
-                                    print "**", part_stuff
                                     new_part = partition(
                                         partition_disc=new_disc,
                                         partition_hex=hex_type,
@@ -208,14 +216,16 @@ class fetch_partition_info(cs_base_class.server_com):
                             v_group["db"] = new_vg
                         for lv_name, lv_stuff in lvm_info.lv_dict.get("lv", {}).iteritems():
                             self.log("handling LV %s" % (lv_name))
-                            mount_options = lv_stuff.get("mount_options", {"dump"       : 0,
-                                                                           "fsck"       : 0,
-                                                                           "mountpoint" : "",
-                                                                           "options"    : "",
-                                                                           "fstype"     : ""})
+                            mount_options = lv_stuff.get(
+                                "mount_options", {
+                                    "dump"       : 0,
+                                    "fsck"       : 0,
+                                    "mountpoint" : "",
+                                    "options"    : "",
+                                    "fstype"     : ""})
                             mount_options["fstype_idx"] = None
                             if mount_options["fstype"]:
-                                mount_options["fstype_idx"] = fs_dict.get("82", {}).get(mount_options["fstype"].lower(), None)
+                                mount_options["fstype_idx"] = fs_dict.get("83", {}).get(mount_options["fstype"].lower(), None)
                                 ##                                for fs_stuff in fs_dict["83"]:
                                 ##                                    if fs_stuff["name"].lower() == mount_options["fstype"].lower():
                                 ##                                        mount_options["fstype_idx"] = fs_stuff["partition_fs_idx"]
