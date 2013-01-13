@@ -1435,8 +1435,8 @@ class lvm_lv(models.Model):
     fs_passno = models.IntegerField(null=True, blank=True)
     name = models.CharField(max_length=192)
     partition_fs = models.ForeignKey("partition_fs")
-    warn_threshold = models.IntegerField(null=True, blank=True)
-    crit_threshold = models.IntegerField(null=True, blank=True)
+    warn_threshold = models.IntegerField(null=True, blank=True, default=0)
+    crit_threshold = models.IntegerField(null=True, blank=True, default=0)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'lvm_lv'
