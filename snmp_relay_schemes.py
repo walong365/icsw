@@ -902,8 +902,8 @@ class eonstor_proto_scheme(snmp_scheme):
         pre_dict = self._reorder_dict(self.snmp_dict[tuple(self.requests[0])])
         return self._generate_return(self.handle_dict(pre_dict))
     def _generate_return(self, dev_dict):
-        if self.kwargs:
-            dev_idx = self.kwargs[0]
+        if self.args:
+            dev_idx = self.args[0]
         else:
             dev_idx = 0
         ret_state, ret_field = (limits.nag_STATE_OK, [])
