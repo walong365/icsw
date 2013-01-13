@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009,2010,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008,2009,2010,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of nagios-config-server
 #
@@ -30,7 +30,7 @@ import process_tools
 from initat.md_config_server.config import global_config
 from host_monitoring import ipc_comtools
 from initat.cluster.backbone.models import partition, partition_disc, partition_table, partition_fs, \
-     netdevice, net_ip, network
+     netdevice, net_ip, network, lvm_vg, lvm_lv
 from django.db.models import Q
 import time
 import bz2
@@ -98,7 +98,6 @@ class special_base(object):
                 c_content = c_content[b64_len + 8:]
             self.log("loaded cache from %s" % (c_name))
     def cleanup(self):
-        self.dc = None
         self.build_process = None
         self.global_config = None
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -211,19 +210,14 @@ class special_disc_all(special_base):
 class special_disc(special_base):
     def _call(self):
         sc_array = []
-        #if self.host.act_partition_table:
-        #sql_str = "SELECT pt.name, pt.partition_table_idx, pt.valid, pd.*, p.*, ps.name AS psname FROM partition_table pt INNER JOIN device d LEFT JOIN partition_disc pd ON pd.partition_table=pt.partition_table_idx " + \
-        #    "LEFT JOIN partition p ON p.partition_disc=pd.partition_disc_idx LEFT JOIN partition_fs ps ON ps.partition_fs_idx=p.partition_fs WHERE d.device_idx=%d AND d.act_partition_table=pt.partition_table_idx ORDER BY pd.priority DESC, p.pnum" % (self.host["device_idx"])
-        #self.dc.execute(sql_str)
         part_dev = self.host.partdev
         df_settings_dir = "%s/etc/df_settings" % (global_config["MD_BASEDIR"])
         df_sd_ok = os.path.isdir(df_settings_dir)
         self.log("part_dev '%s', df_settings_dir is '%s' (%s)" % (
-            part_dev or "NOT SET",
+            part_dev or "NOT SET (Empty)",
             df_settings_dir,
             "OK" if df_sd_ok else "not reachable"))
         first_disc = None
-        #all_parts = [x for x in self.dc.fetchall() if x["disc"] and x["mountpoint"]]
         part_list = []
         for part_p in partition.objects.filter(Q(partition_disc__partition_table=self.host.act_partition_table)).select_related(
             "partition_fs").order_by(
@@ -253,27 +247,29 @@ class special_disc(special_base):
                 #                scsi_id = scsi_id[0]
                 #                check_part = "/dev/disk/by-id/%s" % (scsi_id)
                 if check_part.startswith("/"):
-                    warn_level, crit_level = (part_p.warn_threshold,
-                                              part_p.crit_threshold)
-                    warn_level_str, crit_level_str = ("%d" % (warn_level) if warn_level else "",
-                                                      "%d" % (crit_level) if crit_level else "")
+                    warn_level, crit_level = (
+                        part_p.warn_threshold,
+                        part_p.crit_threshold)
+                    # if not set use 100 as warn/crit level
+                    warn_level_str, crit_level_str = (
+                        "%d" % (warn_level if warn_level else 100),
+                        "%d" % (crit_level if crit_level else 100))
                     part_list.append((part_p.mountpoint,
                                       check_part, warn_level_str, crit_level_str))
                 else:
                     self.log("Diskcheck on host %s requested an illegal partition %s -> skipped" % (self.host["name"], act_part), logging_tools.LOG_LEVEL_WARN)
         # LVM-partitions
-        if False:
-            sql_str = "SELECT lv.mountpoint, lv.warn_threshold, lv.crit_threshold, lv.name AS lvname, vg.name AS vgname FROM lvm_lv lv, lvm_vg vg, partition_table pt, device d WHERE lv.partition_table=pt.partition_table_idx AND d.act_partition_table=pt.partition_table_idx AND lv.lvm_vg=vg.lvm_vg_idx " + \
-                    "AND d.device_idx=%d ORDER BY lv.mountpoint" % (self.host["device_idx"])
-            self.dc.execute(sql_str)
-            for part_p in self.dc.fetchall():
-                if part_p["mountpoint"]:
-                    warn_level, crit_level = (part_p.get("warn_threshold", 0),
-                                              part_p.get("crit_threshold", 0))
-                    warn_level_str, crit_level_str = ("%d" % (warn_level) if warn_level else "",
-                                                      "%d" % (crit_level) if crit_level else "")
-                    part_list.append(("%s (LVM)" % (part_p["mountpoint"]), "/dev/mapper/%s-%s" % (part_p["vgname"], part_p["lvname"].replace("-", "--")),
-                                      warn_level_str, crit_level_str))
+        for lvm_part in lvm_lv.objects.filter(Q(lvm_vg__partition_table=self.host.act_partition_table)).select_related("lvm_vg").order_by("name"):
+            if lvm_part.mountpoint:
+                warn_level, crit_level = (lvm_part.warn_threshold or 0,
+                                          lvm_part.crit_threshold or 0)
+                warn_level_str, crit_level_str = ("%d" % (warn_level if warn_level else 100),
+                                                  "%d" % (crit_level if crit_level else 100))
+                part_list.append((
+                    "%s (LVM)" % (lvm_part.mountpoint),
+                    "/dev/mapper/%s-%s" % (lvm_part.lvm_vg.name, lvm_part.name),
+                    warn_level_str,
+                    crit_level_str))
         # manual setting-dict for df
         set_dict = {}
         if df_sd_ok and os.path.isfile("%s/%s" % (df_settings_dir, self.host.name)):

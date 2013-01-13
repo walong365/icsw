@@ -1314,7 +1314,7 @@ class all_contacts(host_type_config):
             self.__dict[contact.pk] = nag_conf
         # add all contacts not used in mon_contacts but somehow related to a device (and active)
         for std_user in user.objects.filter(Q(mon_contact=None) & (Q(active=True))):
-            devg_ok = std_user.allowed_device_groups.all()
+            devg_ok = len(std_user.allowed_device_groups.all()) > 0 or User.objects.get(Q(username=std_user.login)).has_perm("backbone.all_devices")
             if devg_ok:
                 full_name = ("%s %s" % (std_user.first_name, std_user.last_name)).strip().replace(" ", "_") or std_user.login
                 nag_conf = nag_config(
@@ -1907,7 +1907,7 @@ class build_process(threading_tools.process_obj):
     def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack):
         start_time = time.time()
         # get contacts with access to all devices
-        all_access = list(user.objects.filter(Q(login__in=[cur_u.username for cur_u in User.objects.all() if cur_u.has_perm("all_devices")])).values_list("login", flat=True))
+        all_access = list(user.objects.filter(Q(login__in=[cur_u.username for cur_u in User.objects.all() if cur_u.has_perm("backbone.all_devices")])).values_list("login", flat=True))
         self.log("users with access to all devices: %s" % (", ".join(sorted(all_access))))
         server_idxs = [cur_gc.monitor_server.pk]
         # get netip-idxs of own host
