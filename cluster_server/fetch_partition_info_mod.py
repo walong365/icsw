@@ -215,7 +215,7 @@ class fetch_partition_info(cs_base_class.server_com):
                                                                            "fstype"     : ""})
                             mount_options["fstype_idx"] = None
                             if mount_options["fstype"]:
-                                mount_options["fstype_idx"] = fs_dict.get("83", {}).get(mount_options["fstype"].lower(), None)
+                                mount_options["fstype_idx"] = fs_dict.get("82", {}).get(mount_options["fstype"].lower(), None)
                                 ##                                for fs_stuff in fs_dict["83"]:
                                 ##                                    if fs_stuff["name"].lower() == mount_options["fstype"].lower():
                                 ##                                        mount_options["fstype_idx"] = fs_stuff["partition_fs_idx"]
