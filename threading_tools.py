@@ -529,7 +529,7 @@ class thread_pool(object):
                     out_lines.append(" - %d : %s" % (line_no, line))
             out_lines.append(except_info)
             # write to logging-server
-            #err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err")
+            #err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
             #err_h.write("\n".join(out_lines))
             #err_h.close()
             self.log("waiting for 1 second",
@@ -1023,7 +1023,7 @@ class process_obj(multiprocessing.Process):
                     self.log("caught unknown exception %s (%s), traceback" % (exc_type, except_info),
                              logging_tools.LOG_LEVEL_CRITICAL)
                     tb = self._exc_info[2]
-                    out_lines = ["Exception in thread '%s'" % (self.name)]
+                    out_lines = ["Exception in process '%s'" % (self.name)]
                     for file_name, line_no, name, line in traceback.extract_tb(tb):
                         self.log("File '%s', line %d, in %s" % (file_name, line_no, name),
                                  logging_tools.LOG_LEVEL_CRITICAL)
@@ -1033,6 +1033,10 @@ class process_obj(multiprocessing.Process):
                                      logging_tools.LOG_LEVEL_CRITICAL)
                             out_lines.append(" - %d : %s" % (line_no, line))
                     out_lines.append(except_info)
+                    # write to logging-server
+                    err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
+                    err_h.write("\n".join(out_lines))
+                    err_h.close()
                     print "process_obj.loop() %s: %s" % (self.name,
                                                          process_tools.get_except_info())
                     raise
@@ -1387,9 +1391,9 @@ class process_pool(object):
                     out_lines.append(" - %d : %s" % (line_no, line))
             out_lines.append(except_info)
             # write to logging-server
-            #err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err")
-            #err_h.write("\n".join(out_lines))
-            #err_h.close()
+            err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
+            err_h.write("\n".join(out_lines))
+            err_h.close()
             self.log("waiting for 1 second",
                      logging_tools.LOG_LEVEL_WARN)
             time.sleep(1)
