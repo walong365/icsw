@@ -11,17 +11,21 @@
 
 <div id="ug_tables"></div>
 
-<input type="button" value="Sync Users" onClick="sync_users();"/>
+<input type="button" id="sync_users" value="Sync Users" onClick="sync_users();"/>
 
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
 
-sync_users = ->
+root = exports ? this
+
+root.sync_users = ->
+    $("input#sync_users").attr("disable", "disable")
     $.ajax
         url     : "{% url user:sync_users %}"
         error   : handle_ajax_error,
         success : (xml) ->
+            $("input#sync_users").removeAttr("disable")
             parse_xml_response(xml)
 
 master_array = {

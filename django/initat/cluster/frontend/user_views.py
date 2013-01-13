@@ -75,4 +75,3 @@ def sync_users(request):
         res_node = result.xpath(None, ".//ns:result")[0]
         request.log(res_node.attrib["reply"], int(res_node.attrib["state"]), xml=True)
     return request.xml_response.create_response()
-
