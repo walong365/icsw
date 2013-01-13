@@ -617,12 +617,15 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             count_dict = {"adp"  : count_dict.get("adp", -1) + 1,
                                           "virt" : -1,
                                           "pd"   : 0}
-                        elif (parts[0], cur_mode) == ("number", "adp"):
+                        elif (parts[0], cur_mode) in [("number", "adp"), ("virtual", "pd")]:
                             cur_mode = "virt"
                             count_dict[cur_mode] += 1
                             count_dict["pd"] = -1
                             cur_dict = {"lines": []}
                             ctrl_stuff.setdefault("virt", {})[count_dict["virt"]] = cur_dict
+                        elif (parts[0], cur_mode) in [("is", "virt"), ("raw", "pd")]:
+                            # continuation, no change
+                            pass
                         elif (parts[0], cur_mode) in [("pd:", "virt"), ("pd:", "pd")]:
                             cur_mode = "pd"
                             count_dict[cur_mode] += 1
@@ -633,7 +636,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             pass
                         else:
                             # unknown mode
-                            raise ValueError, "cannot parse mode , ctrl_type_megaraid_sas: %s" % (str(line))
+                            raise ValueError, "cannot parse mode, ctrl_type_megaraid_sas: %s" % (str(line))
                         mode_sense = False
                         #print cur_mode, mode_sense, count_dict, line
                     else:

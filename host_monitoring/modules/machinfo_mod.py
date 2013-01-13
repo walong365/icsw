@@ -501,9 +501,10 @@ class _general(hm_classes.hm_module):
                                 dev_name = "/dev/%s" % (dev_name)
                                 if not dev_dict.has_key(dev_name):
                                     dev_dict[dev_name] = {}
-                                dev_dict[dev_name]["%d" % (part_num)] = {"size"    : part_size / 1024,
-                                                                         "hextype" : "0x00",
-                                                                         "info"    : ""}
+                                dev_dict[dev_name]["%d" % (part_num)] = {
+                                    "size"    : part_size / 1024,
+                                    "hextype" : "0x00",
+                                    "info"    : ""}
                                 part_lut["/dev/%s" % (part_name)] = (dev_name, "%d" % (part_num))
                     # automount mointpoints
                     auto_mps = []
@@ -547,10 +548,11 @@ class _general(hm_classes.hm_module):
                                             else:
                                                 #print self.local_lvm_info
                                                 act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
-                                                act_lv["mount_options"] = {"mountpoint" : mp,
-                                                                           "fstype"     : fstype,
-                                                                           "options"    : opts,
-                                                                           "dump"       : int(dump),
+                                                act_lv["mount_options"] = {
+                                                    "mountpoint" : mp,
+                                                    "fstype"     : fstype,
+                                                    "options"    : opts,
+                                                    "dump"       : int(dump),
                                                                            "fsck"       : int(fsck)}
                                         else:
                                             dev, part_num = part_lut[part]
