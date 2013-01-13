@@ -461,7 +461,7 @@ class server_process(threading_tools.process_pool):
             '$FileCreateMode 0644',
             '*.* ?prog_log',
             '',
-            '$FileCreateMode 0644',
+            '$FileCreateMode 0644', 
             '*.* ?full_log',
             '',
             '$InputUDPServerBindRuleset remote',
