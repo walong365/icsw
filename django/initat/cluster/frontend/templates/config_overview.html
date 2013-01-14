@@ -481,7 +481,9 @@ function draw_config(c_el) {
     ).append(
         create_input_el(c_el, "description", line_prefix, {label : "Description"})
     ).append(
-        create_input_el(c_el, "config_type", line_prefix, {label : "Type" , select_source : CONFIGS.find("config_types config_type")})
+        create_input_el(c_el, "config_type", line_prefix, {label : "Type" , select_source : CONFIGS.find("config_types config_type"), master_xml : CONFIGS})
+    ).append(
+        create_input_el(c_el, "parent_config", line_prefix, {label : "Parent" , select_source : CONFIGS.find("config"), add_null_entry : "none", select_source_attribute : "name", master_xml : CONFIGS})
     ));
     if (c_el) {
         c_line.append(get_expand_td(line_prefix, "var", undefined, toggle_config_line));

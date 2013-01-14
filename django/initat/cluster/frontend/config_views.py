@@ -32,9 +32,16 @@ def show_config_types(request):
     else:
         xml_resp = E.response()
         request.xml_response["response"] = xml_resp
-        xml_resp.append(
-            E.config_types(
-                *[cur_ct.get_xml() for cur_ct in config_type.objects.all()]))
+        xml_resp.extend(
+            [
+                E.config_types(
+                    *[cur_ct.get_xml() for cur_ct in config_type.objects.all()]
+                    ),
+                E.mon_check_command_types(
+                    *[cur_mt.get_xml() for cur_mt in mon_check_command_type.objects.all()]
+                )
+            ]
+        )
         return request.xml_response.create_response()
 
 @login_required
@@ -389,11 +396,12 @@ def generate_config(request):
         request.xml_response["result"] = E.devices()
         for dev_node in result.xpath(None, ".//ns:device"):
             res_node = E.device(dev_node.text, **dev_node.attrib)
-            #if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
-            cur_dev = dev_dict[int(dev_node.attrib["pk"])]
-            # build tree
-            cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)))
-            res_node.append(cur_tree.get_xml())
+            if int(dev_node.attrib["state_level"]) < logging_tools.LOG_LEVEL_ERROR:
+                #if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
+                cur_dev = dev_dict[int(dev_node.attrib["pk"])]
+                # build tree
+                cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)))
+                res_node.append(cur_tree.get_xml())
             request.xml_response["result"].append(res_node)
         request.log("build done", xml=True)
     #print etree.tostring(request.xml_response.build_response(), pretty_print=True)

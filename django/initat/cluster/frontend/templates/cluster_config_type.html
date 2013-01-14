@@ -24,6 +24,14 @@ var master_array = {
             new draw_info("description")
         ],
         {lock_div : "ct_tables"}
+    ),
+    "ngcct" : new draw_setup("Monitor command type", "ngcct", "mon_check_command_type",
+        "{% url base:create_object 'mon_check_command_type' %}",
+        "{% url base:delete_object 'mon_check_command_type' %}",
+        [
+            new draw_info("name"),
+        ],
+        {lock_div : "ct_tables"}
     )
 };   
 
