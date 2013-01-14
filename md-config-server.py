@@ -54,7 +54,7 @@ from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_service, mon_ext_host, mon_check_command, mon_check_command_type, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, hopcount, \
-     user, mon_host_cluster, mon_service_cluster
+     user, mon_host_cluster, mon_service_cluster, config
 from django.conf import settings
 import base64
 import uuid_tools
@@ -1930,6 +1930,10 @@ class build_process(threading_tools.process_obj):
         else:
             check_for_passive_checks = False
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
+        # dictionary with all parent / slave relations
+        ps_dict = {}
+        for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):
+            ps_dict[ps_config.name] = ps_config.parent_config.name
         check_hosts = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(h_filter)])
         meta_devices = dict([(md.device_group.pk, md) for md in device.objects.filter(Q(device_type__identifier='MD')).prefetch_related("device_config_set", "device_config_set__config").select_related("device_group")])
         all_configs = {}
@@ -1937,6 +1941,13 @@ class build_process(threading_tools.process_obj):
             loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
             if cur_dev.device_group_id in meta_devices:
                 loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
+            # expand with parent
+            while True:
+                new_confs = set([ps_dict[cur_name] for cur_name in loc_config if cur_name in ps_dict]) - set(loc_config)
+                if new_confs:
+                    loc_config.extend(list(new_confs))
+                else:
+                    break
             all_configs[cur_dev.name] = loc_config
         # get config variables
 ##        sql_str = "SELECT d.name, dc.new_config FROM new_config c INNER JOIN device d INNER JOIN device_group dg INNER JOIN device_config dc LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND dc.new_config=c.new_config_idx AND %s ORDER BY d.name" % (sel_str)
