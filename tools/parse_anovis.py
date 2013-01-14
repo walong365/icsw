@@ -70,6 +70,7 @@ class anovis_site(object):
         self.__db_cache.setdefault(obj_name, {})
         kw_pk = kwargs.get("pk", None)
         if kw_pk:
+            kw_pk = int(kw_pk)
             if kw_pk not in self.__db_cache[obj_name]:
                 self.__db_cache[obj_name][kw_pk] = obj_class.objects.get(pk=kw_pk)
             return self.__db_cache[obj_name][kw_pk]
@@ -281,6 +282,21 @@ class anovis_site(object):
         for new_dev in new_hc_devs:
             cur_hc.devices.add(new_dev)
         self._update_object(cur_hc, main_device=con_dev, mon_service_templ=hc_srv_template)
+        # get configs
+        for dev_struct in self.site_xml.xpath(".//firewall|.//fw_service|.//host"):
+            if "pk" in dev_struct.attrib and "check_template" in dev_struct.attrib:
+                cur_dev = self.get_db_obj("device", None, pk=dev_struct.attrib["pk"])
+                # delete previous configs
+                cur_dev.device_config_set.all().delete()
+                self.log("adding check '%s' to %s" % (
+                    dev_struct.attrib["check_template"],
+                    unicode(cur_dev)))
+                device_config(
+                    device=cur_dev,
+                    config=config.objects.get(Q(name=dev_struct.attrib["check_template"].strip().replace("-", "_")))
+                    ).save()
+            else:
+                self.log("pk or check_template attribute missing in %s" % (dev_struct.tag), logging_tools.LOG_LEVEL_ERROR)
         self._log_xml("after sync")
         self.log("done")
         
