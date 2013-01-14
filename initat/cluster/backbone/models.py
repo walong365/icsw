@@ -1917,6 +1917,7 @@ class config(models.Model):
     description = models.CharField(max_length=765)
     priority = models.IntegerField(null=True, default=0)
     config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
+    parent_config = models.ForeignKey("config", null=True)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self, full=True):
         r_xml = E.config(
@@ -1925,7 +1926,8 @@ class config(models.Model):
             name=unicode(self.name),
             description=unicode(self.description or ""),
             priority="%d" % (self.priority or 0),
-            config_type="%d" % (self.config_type_id)
+            config_type="%d" % (self.config_type_id),
+            parent_config="%d" % (self.parent_config_id or 0),
         )
         if full:
             r_xml.extend([
@@ -1958,8 +1960,8 @@ def config_pre_save(sender, **kwargs):
 @receiver(signals.post_save, sender=config)
 def config_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
+        cur_inst = kwargs["instance"]
         if kwargs["created"]:
-            cur_inst = kwargs["instance"]
             add_list = []
             if cur_inst.name.count("export"):
                 if cur_inst.name.count("home"):
@@ -2017,6 +2019,8 @@ def config_post_save(sender, **kwargs):
             for cur_var in add_list:
                 cur_var.config = cur_inst
                 cur_var.save()
+        if cur_inst.parent_config_id == cur_inst.pk and cur_inst.pk:
+            raise ValidationError("cannot be my own parent")
                 
 
 class config_type(models.Model):
