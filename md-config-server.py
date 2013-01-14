@@ -1246,14 +1246,15 @@ class all_commands(host_type_config):
             while True:
                 if ngc_name not in command_names:
                     break
-                elif "%s_%d" % (ngc_name, name_postfix) in command_names:
-                    name_postfix += 1
                 else:
-                    break
+                    name_postfix += 1
+                    if "%s_%d" % (ngc_name, name_postfix) not in command_names:
+                        break
             if name_postfix:
                 ngc_name = "%s_%d" % (ngc_name, name_postfix)
             command_names.add(ngc_name)
-            cc_s = check_command(ngc_name, ngc.command_line,
+            cc_s = check_command(ngc_name,
+                                 ngc.command_line,
                                  ngc.config.name if ngc.config_id else None,
                                  ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
                                  ngc.description,
