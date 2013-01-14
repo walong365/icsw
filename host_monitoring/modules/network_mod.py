@@ -582,9 +582,12 @@ class netspeed(object):
             self.__a_time = ntime
 
 class ping_sp_struct(hm_classes.subprocess_struct):
-    class Meta:
-        id_str = "ping"
     seq_num = 0
+    class Meta:
+        max_usage = 128
+        twisted = True
+        use_popen = False
+        id_str = "ping"
     def __init__(self, srv_com, target_host, num_pings, timeout):
         hm_classes.subprocess_struct.__init__(self, srv_com, "")
         self.target_host, self.num_pings, self.timeout = (target_host, num_pings, timeout)
@@ -606,10 +609,6 @@ class ping_sp_struct(hm_classes.subprocess_struct):
                                        num_received="%d" % (num_received))
         self.send_return()
         self.terminated = True
-    class Meta:
-        max_usage = 128
-        twisted = True
-        use_popen = False
  
 class ping_command(hm_classes.hm_command):
     info_str = "ping command"
