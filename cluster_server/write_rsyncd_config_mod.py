@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -18,27 +18,34 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+""" create rsync config """
+
 import sys
 import cs_base_class
 import process_tools
 import logging_tools
 import re
 import os
+from django.db.models import Q
+import server_command
+from initat.cluster.backbone.models import image
 
 class write_rsyncd_config(cs_base_class.server_com):
-    def __init__(self):
-        cs_base_class.server_com.__init__(self)
-    def call_it(self, opt_dict, call_params):
+    class Meta:
+        needed_configs = ["rsync_server"]
+    def _call(self):
         rsyncd_cf_name = "/etc/rsyncd.conf"
-        not_full = opt_dict.get("not_full", 0)
-        def_lines = ["uid = 0",
-                     "gid = 0",
-                     "read only = true",
-                     "use chroot = true",
-                     "transfer logging = false",
-                     "log format = %h %o %f %l %b",
-                     "log file = /var/log/rsyncd.log",
-                     "slp refresh = 300"]
+        #print self.srv_com.pretty_print()
+        #not_full = opt_dict.get("not_full", 0)
+        def_lines = [
+            "uid = 0",
+            "gid = 0",
+            "read only = true",
+            "use chroot = true",
+            "transfer logging = false",
+            "log format = %h %o %f %l %b",
+            "log file = /var/log/rsyncd.log",
+            "slp refresh = 300"]
         # aer_post_lines
         ae_post_lines = []
         try:
@@ -57,7 +64,7 @@ class write_rsyncd_config(cs_base_class.server_com):
                         ae_post_lines.append(line)
         # empty image list
         im_list = []
-        if not_full:
+        if False:#not_full:
             if os.path.isfile(rsyncd_cf_name):
                 im_re = re.compile("^.*\[(?P<image_name>.*)\].*$")
                 com_re = re.compile("^\s*(?P<key>\S+)\s*=\s*(?P<value>.*)$")
@@ -80,23 +87,19 @@ class write_rsyncd_config(cs_base_class.server_com):
                     im_list = [("root", im_dict["root"].get("path", "/"), im_dict["root"]["exclude"] and im_dict["root"]["exclude"].split() or ["/proc/", "/sys/"])]
         num_images, num_rsync = (0, 0)
         if not im_list:
-            im_list = [("root", "/", ["/proc/", "/sys/"] + opt_dict.get("exclude_dirs", "").split(":"))]
+            im_list = [("root", "/", ["/proc/", "/sys/"]),]# + opt_dict.get("exclude_dirs", "").split(":"))]
             extra_info = ""
         else:
             extra_info = " (root kept)"
-        server_idxs = [call_params.get_server_idx()]
-        # get additional idx if host is virtual server
-        is_server, serv_idx, server_type, server_str, config_idx, real_server_name = process_tools.is_server(call_params.dc, "package_server", True, False)
-        if is_server and serv_idx != call_params.get_server_idx():
-            server_idxs.append(serv_idx)
+        server_idxs = [self.server_idx]
         # check for rsync
-        call_params.dc.execute("SELECT cs.value, cs.name, c.name AS config_name FROM device_config dc LEFT JOIN new_config c ON dc.new_config=c.new_config_idx INNER JOIN config_str cs ON cs.new_config=c.new_config_idx AND c.name LIKE('%%rsync%%') AND (%s)" % (" OR ".join(["dc.device=%d" % (x) for x in server_idxs])))
+        #call_params.dc.execute("SELECT cs.value, cs.name, c.name AS config_name FROM device_config dc LEFT JOIN new_config c ON dc.new_config=c.new_config_idx INNER JOIN config_str cs ON cs.new_config=c.new_config_idx AND c.name LIKE('%%rsync%%') AND (%s)" % (" OR ".join(["dc.device=%d" % (x) for x in server_idxs])))
         rsync_dict = {}
-        for db_rec in call_params.dc.fetchall():
-            rsync_dict.setdefault(db_rec["config_name"], {})[db_rec["name"]] = db_rec["value"]
+        #for db_rec in call_params.dc.fetchall():
+        #    rsync_dict.setdefault(db_rec["config_name"], {})[db_rec["name"]] = db_rec["value"]
         rsync_keys = sorted(rsync_dict.keys())
-        call_params.log("found %s: %s" % (logging_tools.get_plural("rsync entry", len(rsync_keys)),
-                                          ", ".join(rsync_keys) or "---"))
+        self.log("found %s: %s" % (logging_tools.get_plural("rsync entry", len(rsync_keys)),
+                                   ", ".join(rsync_keys) or "---"))
         # check for validity
         needed_keys = ["export_rsync", "rsync_name"]
         rsync_del_keys = []
@@ -105,12 +108,12 @@ class write_rsyncd_config(cs_base_class.server_com):
                 rsync_del_keys.append(rs_key)
                 del rsync_dict[rs_key]
         if rsync_del_keys:
-            call_params.log("deleting %s because of missing keys: %s" % (logging_tools.get_plural("rsync", len(rsync_del_keys)),
-                                                                         ", ".join(rsync_del_keys)),
-                            logging_tools.LOG_LEVEL_WARN)
+            self.log("deleting %s because of missing keys: %s" % (logging_tools.get_plural("rsync", len(rsync_del_keys)),
+                                                                  ", ".join(rsync_del_keys)),
+                     logging_tools.LOG_LEVEL_WARN)
             rsync_keys = [x for x in rsync_keys if x not in rsync_del_keys]
-        call_params.dc.execute("SELECT * FROM image")
-        im_list.extend([(x["name"], x["source"], []) for x in call_params.dc.fetchall()])
+        #self.dc.execute("SELECT * FROM image")
+        im_list.extend([(cur_img.name, cur_img.source, []) for cur_img in image.objects.filter(Q(enabled=True))])
         for im_name, im_source, im_exclude in im_list:
             num_images += 1
             def_lines.extend(["",
@@ -134,17 +137,26 @@ class write_rsyncd_config(cs_base_class.server_com):
         try:
             file(rsyncd_cf_name, "w").write("\n".join(def_lines))
         except IOError:
-            ret_str = "error creating %s" % (rsyncd_cf_name)
+            rest_
+            ret_state, ret_str = (server_command.SRV_REPLY_STATE_ERROR, "error creating %s" % (rsyncd_cf_name))
         else:
             cstat, log_f = process_tools.submit_at_command("/etc/init.d/rsyncd restart", 1)
             for log_line in log_f:
-                call_params.log(log_f)
+                self.log(log_f)
             if cstat:
-                ret_str = "error unable to submit at-command (%d, see logs) to restart rsyncd" % (cstat)
+                ret_state, ret_str = (
+                    server_command.SRV_REPLY_STATE_ERROR,
+                    "error unable to submit at-command (%d, see logs) to restart rsyncd" % (cstat))
             else:
-                ret_str = "ok wrote rsyncd-config file %s for %s%s, %s" % (rsyncd_cf_name, logging_tools.get_plural("image", num_images), extra_info,
-                                                                           logging_tools.get_plural("rsync", num_rsync))
-        return ret_str
+                ret_state, ret_str = (
+                    server_command.SRV_REPLY_STATE_OK,
+                    "ok wrote rsyncd-config file %s for %s%s, %s" % (
+                        rsyncd_cf_name, logging_tools.get_plural("image", num_images), extra_info,
+                        logging_tools.get_plural("rsync", num_rsync))
+                )
+        self.srv_com["result"].attrib.update({
+            "reply" : ret_str,
+            "state" : "%d" % (ret_state)})
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
