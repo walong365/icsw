@@ -2625,7 +2625,7 @@ class build_process(threading_tools.process_obj):
                 if not act_prod_net:
                     cur_c.log("invalid production link", logging_tools.LOG_LEVEL_ERROR, state="done")
                 else:
-                    ips_in_prod = [cur_ip.ip for cur_ip in dev_sc.identifier_ip_lut["p"]]
+                    ips_in_prod = [cur_ip.ip for cur_ip in dev_sc.identifier_ip_lut.get("p", [])]
                     if ips_in_prod:
                         netdevices_in_net = [dev_sc.ip_netdevice_lut[ip] for ip in ips_in_prod]
                         if b_dev.bootnetdevice_id and b_dev.bootnetdevice:
@@ -2727,11 +2727,18 @@ class build_process(threading_tools.process_obj):
 ##                        act_prod_net["image"] = dc.fetchone()
 ##                    else:
 ##                        act_prod_net["image"] = {}
-            config_pks = config.objects.filter(
+            config_pks = list(config.objects.filter(
                 Q(device_config__device=b_dev) | 
                 (Q(device_config__device__device_group=b_dev.device_group_id) & 
                  Q(device_config__device__device_type__identifier="MD"))). \
-                order_by("priority", "name").distinct().values_list("pk", flat=True)
+                              order_by("priority", "name").distinct().values_list("pk", flat=True))
+            parent_pks = []
+            while True:
+                new_pks = set(config.objects.exclude(parent_config=None).filter(Q(pk__in=config_pks + parent_pks)).values_list("parent_config", flat=True)) - set(config_pks + parent_pks)
+                if new_pks:
+                    parent_pks.extend(list(new_pks))
+                else:
+                    break
             pseudo_config_list = config.objects.all(). \
                 prefetch_related("config_str_set", "config_int_set", "config_bool_set", "config_blob_set", "config_script_set"). \
                 order_by("priority", "name")
@@ -2744,9 +2751,13 @@ class build_process(threading_tools.process_obj):
             for cur_conf in pseudo_config_list:
                 #cur_conf.show_variables(cur_c.log, detail=global_config["DEBUG"])
                 pass
-            cur_c.log("%s found: %s" % (
+            cur_c.log("%s found: %s, %s found: %s" % (
                 logging_tools.get_plural("config", len(config_pks)),
-                ", ".join([config_dict[pk].name for pk in config_pks]) if config_pks else "no configs"))
+                ", ".join([config_dict[pk].name for pk in config_pks]) if config_pks else "no configs",
+                logging_tools.get_plural("parent config", len(parent_pks)),
+                ", ".join([config_dict[pk].name for pk in parent_pks]) if parent_pks else "no parent configs"))
+            # extend with parent pks
+            config_pks.extend(list(parent_pks))
             # node interfaces
             conf_dict["node_if"] = []
             taken_list, not_taken_list = ([], [])
