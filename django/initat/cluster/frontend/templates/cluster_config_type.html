@@ -1,26 +1,25 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags %}
+{% load i18n extra_tags coffeescript %}
 
 {% block title %}Config types{% endblock %}
 
 {% block content %}
 
-<h1>Config types</h1>
+<h1>Config types / Monitoring command groups</h1>
 
 <div id="ct_tables"></div>
 
 <script type="text/javascript">
 
-// config type location class XML
-CT_XML = undefined;
+{% inlinecoffeescript %}
 
-var master_array = {
+master_array = {
     "ctype" : new draw_setup("Config Type", "ctype", "config_type",
         "{% url base:create_object 'config_type' %}",
         "{% url base:delete_object 'config_type' %}",
         [
-            new draw_info("name"),
+            new draw_info("name", { clear_after_create : true }),
             new draw_info("description")
         ],
         {lock_div : "ct_tables"}
@@ -29,25 +28,23 @@ var master_array = {
         "{% url base:create_object 'mon_check_command_type' %}",
         "{% url base:delete_object 'mon_check_command_type' %}",
         [
-            new draw_info("name"),
+            new draw_info("name", { clear_after_create : true }),
         ],
         {lock_div : "ct_tables"}
     )
-};   
+};  
 
-function add_config_handlers() {
-    $.ajax({
-        url     : "{% url config:show_config_types %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                draw_ds_tables($("div#ct_tables"), master_array, $(xml).find("value[name='response']"));
-            }
-        }
-    });
-};
+add_config_handlers = ->
+    $.ajax
+        url     : "{% url config:show_config_types %}"
+        error   : handle_ajax_error
+        success : (xml) =>
+            if parse_xml_response(xml)
+                draw_ds_tables($("div#ct_tables"), master_array, $(xml).find("value[name='response']"))
 
-$(document).ready(add_config_handlers);
+$(document).ready(add_config_handlers)
+
+{% endinlinecoffeescript %}
 
 </script>
 

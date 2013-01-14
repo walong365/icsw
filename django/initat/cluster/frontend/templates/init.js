@@ -654,7 +654,7 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
         if (typeof(kwargs.select_source) == "string") {
             var sel_source = kwargs.master_xml.find(kwargs.select_source);
         } else if (typeof(kwargs.select_source) == "function") {
-            var sel_source = kwargs.select_source(xml_el);
+            var sel_source = kwargs.select_source(xml_el, kwargs);
         } else {
             var sel_source = kwargs.select_source;
         };

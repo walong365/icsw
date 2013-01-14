@@ -1,18 +1,22 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags %}
+{% load i18n extra_tags coffeescript %}
 
-{% block title %}Cluster network types{% endblock %}
+{% block title %}Cluster network (device) types{% endblock %}
 
 {% block content %}
 
-<h1>Network types</h1>
+<h1>Network (device) types</h1>
 
 <div id="nwt_tables"></div>
 
 <script type="text/javascript">
 
-var master_array = {
+{% inlinecoffeescript %}
+
+root = exports ? this
+
+master_array = {
     "nwt" : new draw_setup("NetworkType", "nwt", "network_type",
         "{% url base:create_object 'network_type' %}",
         "{% url base:delete_object 'network_type' %}",
@@ -25,30 +29,24 @@ var master_array = {
         "{% url base:create_object 'network_device_type' %}",
         "{% url base:delete_object 'network_device_type' %}",
         [
-            new draw_info("identifier"),
+            new draw_info("identifier", {clear_after_create : true }),
             new draw_info("description"),
             new draw_info("mac_bytes", {label : "MAC size", min : 6, max : 20, number : 1, default : 6})
         ],
         {"lock_div" : "nwt_tables"}),
-};   
+};  
 
-function load_nwts() {
-    $.ajax({
-        url     : "{% url network:show_network_d_types %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                draw_ds_tables($("div#nwt_tables"), master_array, $(xml).find("value[name='response']"));
-            }
-        }
-    });
-}
+load_nwts = ->
+    $.ajax
+        url     : "{% url network:show_network_d_types %}"
+        error   : handle_ajax_error
+        success : (xml) =>
+            if parse_xml_response(xml)
+                draw_ds_tables($("div#nwt_tables"), master_array, $(xml).find("value[name='response']"))
 
-function draw_tables() {
-};
+$(document).ready(load_nwts)
 
-
-$(document).ready(load_nwts);
+{% endinlinecoffeescript %}
 
 </script>
 

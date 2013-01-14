@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags %}
+{% load i18n extra_tags coffeescript %}
 
 {% block title %}Cluster networks{% endblock %}
 
@@ -12,10 +12,25 @@
 
 <script type="text/javascript">
 
-// nwt XML
-NETWORK_XML = undefined;
+{% inlinecoffeescript %}
 
-var master_array = {
+root = exports ? this
+
+root.get_master_networks = (cur_el, kwargs) ->
+    master_xml = kwargs.master_xml
+    prod_id = master_xml.find("network_types network_type[identifier='p']").attr("pk")
+    ret_field = $("<networks>");
+    master_xml.find("networks network[network_type='" + prod_id + "']").each (index, element) =>
+        cur_nw = $(element)
+        ret_field.append(
+            $("<network>").attr({
+                "pk"  : cur_nw.attr("pk"),
+                "key" : cur_nw.attr("key")
+            }).text(cur_nw.text())
+        )
+    return ret_field.find("network")
+
+root.master_array = {
     "nw" : new draw_setup("Network", "nw", "network",
         "{% url base:create_object 'network' %}",
         "{% url base:delete_object 'network' %}",
@@ -26,7 +41,7 @@ var master_array = {
             new draw_info("postfix", {default : "", size : 3}),
             new draw_info("name"),
             new draw_info("network_type", {select_source : "network_types network_type"} ),
-            new draw_info("master_network", {select_source : get_master_networks, add_null_entry : "not set"} ),
+            new draw_info("master_network", {select_source : root.get_master_networks, add_null_entry : "not set"} ),
             new draw_info("short_names", {boolean : 1, label : "SNames / Named / Other", span : 3}),
             new draw_info("write_bind_config", {boolean : 1}),
             new draw_info("write_other_network_config", {boolean : 1}),
@@ -38,41 +53,19 @@ var master_array = {
             new draw_info("ip_count", {number : 1, ro : true})
         ],
         {"lock_div" : "nw_tables"})
-};   
-
-function get_master_networks() {
-    var prod_id = NETWORK_XML.find("network_types network_type[identifier='p']").attr("pk");
-    var ret_field = $("<networks>");
-    NETWORK_XML.find("networks network").each(function() {
-        var cur_nw = $(this);
-        if (cur_nw.attr("network_type") == prod_id) {
-            ret_field.append($("<network>").attr({
-                "pk"  : cur_nw.attr("pk"),
-                "key" : cur_nw.attr("key")
-            }).text(cur_nw.text()));
-        };
-    });
-    return ret_field.find("network");
-};
-
-function load_networks() {
-    $.ajax({
-        url     : "{% url network:show_networks %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                NETWORK_XML = $(xml).find("value[name='response']");
-                draw_ds_tables($("div#nw_tables"), master_array, NETWORK_XML);
-            }
-        }
-    });
 }
 
-function add_config_handlers() {
-    load_networks();
-};
+add_config_handlers = ->
+    $.ajax
+        url     : "{% url network:show_networks %}"
+        error   : handle_ajax_error
+        success : (xml) =>
+            if parse_xml_response(xml)
+                draw_ds_tables($("div#nw_tables"), master_array, $(xml).find("value[name='response']"))
 
-$(document).ready(add_config_handlers);
+$(document).ready(add_config_handlers)
+
+{% endinlinecoffeescript %}
 
 </script>
 
