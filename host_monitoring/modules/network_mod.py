@@ -582,6 +582,8 @@ class netspeed(object):
             self.__a_time = ntime
 
 class ping_sp_struct(hm_classes.subprocess_struct):
+    class Meta:
+        id_str = "ping"
     seq_num = 0
     def __init__(self, srv_com, target_host, num_pings, timeout):
         hm_classes.subprocess_struct.__init__(self, srv_com, "")

@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011,2012,2013	 Andreas Lang-Nevyjel
+# Copyright (C) 2011,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -1775,7 +1775,7 @@ class server_process(threading_tools.process_pool):
     def _twisted_ping_result(self, src_proc, src_id, *args):
         ping_id = args[0]
         for cur_del in self.__delayed:
-            if cur_del.seq_str == ping_id:
+            if cur_del.Meta.id_str == "ping" and cur_del.seq_str == ping_id:
                 cur_del.process(*args)
     def _show_config(self):
         try:

@@ -175,6 +175,7 @@ class ctrl_type(object):
 class ctrl_check_struct(hm_classes.subprocess_struct):
     class Meta:
         verbose = True
+        id_str = "raid_ctrl"
     def __init__(self, log_com, srv_com, ct_struct, ctrl_list=[]):
         self.__log_com = log_com
         hm_classes.subprocess_struct.__init__(self, srv_com, ct_struct.get_exec_list(ctrl_list), ct_struct.process)

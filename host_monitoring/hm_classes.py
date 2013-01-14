@@ -51,6 +51,7 @@ class subprocess_struct(object):
         max_runtime = 300
         use_popen = True
         verbose = False
+        id_str = "not_set"
     def __init__(self, srv_com, com_line, cb_func=None):
         # copy Meta keys
         for key in dir(subprocess_struct.Meta):
