@@ -41,7 +41,7 @@ SAS_OK_KEYS = {
     "adp"  : set(),
     "virt" : set(["virtual_drive", "raid_level", "name", "size", "state", "strip_size",
                   "number_of_drives"]),
-    "pd"   : set(["slot_number", "pd_type", "raw_size"])
+    "pd"   : set(["slot_number", "pd_type", "raw_size", "firmware_state"])
 }
 
 def get_size(in_str):
@@ -683,7 +683,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             return False
     def _interpret(self, ctrl_dict, cur_ns):
-        num_c, num_d, num_e = (len(ctrl_dict.keys()), 0, 0)
+        num_c, num_d, num_e, num_w = (len(ctrl_dict.keys()), 0, 0, 0)
         ret_state = limits.nag_STATE_OK
         drive_stats = []
         for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
@@ -706,11 +706,19 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 for pd_num in xrange(num_drives):
                     if not log_stuff["pd"].get(pd_num, {}).get("lines", None):
                         drives_missing.append(pd_num)
+                    else:
+                        pd_dict = dict(log_stuff["pd"][pd_num]["lines"])
+                        cur_state = pd_dict.get("firmware_state", "unknown")
+                        if cur_state.lower() not in ["online, spun up"]:
+                            drive_stats.append("drive %d: %s" % (pd_num, cur_state))
+                            num_w += 1
                 if drives_missing:
                     num_e += 1
                     drive_stats.append("drives missing: %s" % (", ".join(["%d" % (m_drive) for m_drive in drives_missing])))
         if num_e:
             ret_state = limits.nag_STATE_CRITICAL
+        elif num_w:
+            ret_state = limits.nag_STATE_WARNING
         return ret_state, "%s: %s on %s, %s" % (limits.get_state_str(ret_state),
                                                 logging_tools.get_plural("logical drive", num_d),
                                                 logging_tools.get_plural("controller", num_c),
