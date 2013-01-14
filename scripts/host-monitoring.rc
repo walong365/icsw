@@ -4,7 +4,7 @@
 #
 #
 # RedHat stuff
-# chkconfig: 2345 14 86
+# chkconfig: 35 14 86
 # description: host-monitoring services
 #
 ### BEGIN INIT INFO
