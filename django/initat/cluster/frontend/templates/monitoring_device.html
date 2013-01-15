@@ -145,6 +145,13 @@ function change_enable_perfdata(event) {
     });
 };
 
+function change_automap_root_nagvis(event) {
+    var d_table = $("table#config");
+    d_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each(function() { 
+        $(this).parents("tr:first").find("input[id$='__automap_root_nagvis']").trigger("click");
+    });
+};
+
 function draw_device(d_el) {
     var dummy_div = $("<div>");
     if (d_el) {
@@ -201,6 +208,14 @@ function draw_device(d_el) {
             create_input_el(d_el, "enable_perfdata", line_prefix, {
                 boolean    : true,
                 change_cb  : d_el ? undefined : change_enable_perfdata,
+                master_xml : DEVICES
+            })
+        )
+    ).append(
+        $("<td>").append(
+            create_input_el(d_el, "automap_root_nagvis", line_prefix, {
+                boolean    : true,
+                change_cb  : d_el ? undefined : change_automap_root_nagvis,
                 master_xml : DEVICES
             })
         )
@@ -264,7 +279,7 @@ function draw_tables() {
             )
         ).append(
             $("<th>").attr({
-            "colspan" : "8"
+            "colspan" : "9"
         }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")));
         c_table.append(new_tr);
         // at first append metadevice
@@ -284,7 +299,7 @@ function draw_tables() {
         });
         new_tr.append(
             $("<th>").attr({
-            "colspan" : "9"
+            "colspan" : "10"
         }).addClass("ui-widget ui-widget-header").text("all devices"));
         c_table.append(new_tr);
         c_table.append(draw_device(undefined));
