@@ -1302,33 +1302,6 @@ def kill_running_processes(p_name=None, **kwargs):
         time.sleep(wait_time)
     return log_lines
 
-def get_all_log_sources(dc):
-    log_sources = {}
-    dc.execute("SELECT * FROM log_source")
-    for db_rec in dc.fetchall():
-        log_id = db_rec["identifier"]
-        if log_id in log_sources:
-            if type(log_sources[log_id]) != type([]):
-                log_sources[log_id] = [log_sources[log_id]]
-            log_sources[log_id].append(db_rec)
-        else:
-            log_sources[log_id] = db_rec
-    return log_sources
-
-def get_all_log_status(dc):
-    dc.execute("SELECT * FROM log_status")
-    log_status = dict([(x["identifier"], x) for x in dc.fetchall()])
-    if not log_status:
-        # create entries
-        dc.execute("INSERT INTO log_status VALUES%s" % (",".join(["(0, '%s', %d, '%s', null)" % (st, sev, lt) for st, sev, lt in [("c", 200, "critical"),
-                                                                                                                                  ("e", 100, "error"   ),
-                                                                                                                                  ("w",  50, "warning" ),
-                                                                                                                                  ("i",   0, "info"    ),
-                                                                                                                                  ("n", -50, "notice"  )]])))
-        dc.execute("SELECT * FROM log_status")
-        log_status = dict([(x["identifier"], x) for x in dc.fetchall()])
-    return log_status
-
 def fd_change((uid, gid), d_name, files):
     os.chown("%s" % (d_name), uid, gid)
     for f_name in files:
