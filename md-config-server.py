@@ -186,9 +186,6 @@ class main_config(object):
         self._create_directories()
         self._clear_etc_dir()
         self._create_base_config_entries()
-        # write nagvis config on master
-        if global_config["ENABLE_NAGVIS"] and not self.__slave_name:
-            self._create_nagvis_base_entries()
         self._write_entries()
     @property
     def slave_name(self):
@@ -513,39 +510,6 @@ class main_config(object):
             if save:
                 self.log("saving %s" % (config_php))
                 file(config_php, "w").write("\n".join(new_lines))
-            # modify auth.db
-            auth_db = os.path.join(global_config["NAGVIS_DIR"], "etc", "auth.db")
-            self.log("modifying authentication info in %s" % (auth_db))
-            try:
-                conn = sqlite3.connect(auth_db)
-            except:
-                self.log("cannot create connection: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
-            else:
-                cur_c = conn.cursor()
-                cur_c.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-                # tables
-                all_tables = [value[0] for value in cur_c.fetchall()]
-                self.log("found %s: %s" % (logging_tools.get_plural("table", len(all_tables)),
-                                           ", ".join(sorted(all_tables))))
-                # delete previous users
-                cur_c.execute("DELETE FROM users2roles")
-                cur_c.execute("DELETE FROM users")
-                role_dict = dict([(cur_role[1].lower().split()[0], cur_role[0]) for cur_role in cur_c.execute("SELECT * FROM roles")])
-                self.log("role dict: %s" % (", ".join(["%s=%d" % (key, value) for key, value in role_dict.iteritems()])))
-                for cur_u in user.objects.filter(Q(active=True)):
-                    target_role = "users"
-                    self.log("creating user '%s' with role %s" % (unicode(cur_u),
-                                                                  target_role))
-                    new_userid = cur_c.execute("INSERT INTO users VALUES(Null, '%s', '%s')" % (
-                        cur_u.login,
-                        binascii.hexlify(base64.b64decode(cur_u.password.split(":", 1)[1])),
-                    )).lastrowid
-                    cur_c.execute("INSERT INTO users2roles VALUES(%d, %d)" % (
-                        new_userid,
-                        role_dict[target_role],
-                    ))
-                conn.commit()
-                conn.close()
         else:
             self.log("no nagvis_directory '%s' found" % (global_config["NAGVIS_DIR"]), logging_tools.LOG_LEVEL_ERROR)
     def _create_base_config_entries(self):
@@ -812,12 +776,55 @@ class main_config(object):
                     #("route"           , "^/icinga/cgi-bin basicauth:Monitor,init:init"),
                 ])
             self[wsgi_config.get_name()] = wsgi_config
+        if global_config["ENABLE_NAGVIS"] and self.master:
+            self._create_nagvis_base_entries()
+    def _create_access_entries(self):
+        if self.master:
+            self.log("creating http_users.cfg file")
             # create htpasswd
             htp_file = os.path.join(self.__r_dir_dict["etc"], "http_users.cfg")
             file(htp_file, "w").write("\n".join(
                 ["%s:{SSHA}%s" % (
                     cur_u.login,
                     cur_u.password_ssha.split(":", 1)[1]) for cur_u in user.objects.filter(Q(active=True))] + [""]))
+            if global_config["ENABLE_NAGVIS"]:
+                # modify auth.db
+                auth_db = os.path.join(global_config["NAGVIS_DIR"], "etc", "auth.db")
+                self.log("modifying authentication info in %s" % (auth_db))
+                try:
+                    conn = sqlite3.connect(auth_db)
+                except:
+                    self.log("cannot create connection: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                else:
+                    cur_c = conn.cursor()
+                    cur_c.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+                    # tables
+                    all_tables = [value[0] for value in cur_c.fetchall()]
+                    self.log("found %s: %s" % (logging_tools.get_plural("table", len(all_tables)),
+                                               ", ".join(sorted(all_tables))))
+                    # delete previous users
+                    cur_c.execute("DELETE FROM users2roles")
+                    cur_c.execute("DELETE FROM users")
+                    role_dict = dict([(cur_role[1].lower().split()[0], cur_role[0]) for cur_role in cur_c.execute("SELECT * FROM roles")])
+                    self.log("role dict: %s" % (", ".join(["%s=%d" % (key, value) for key, value in role_dict.iteritems()])))
+                    for cur_u in user.objects.filter(Q(active=True)):
+                        # check for admin
+                        if User.objects.get(Q(username=cur_u.login)).has_perm("backbone.all_devices"):
+                            target_role = "administrators"
+                        else:
+                            target_role = "users"
+                        self.log("creating user '%s' with role %s" % (unicode(cur_u),
+                                                                      target_role))
+                        new_userid = cur_c.execute("INSERT INTO users VALUES(Null, '%s', '%s')" % (
+                            cur_u.login,
+                            binascii.hexlify(base64.b64decode(cur_u.password.split(":", 1)[1])),
+                        )).lastrowid
+                        cur_c.execute("INSERT INTO users2roles VALUES(%d, %d)" % (
+                            new_userid,
+                            role_dict[target_role],
+                        ))
+                    conn.commit()
+                    conn.close()
     def _write_entries(self):
         cfg_written, empty_cfg_written = ([], [])
         start_time = time.time()
@@ -899,8 +906,6 @@ class base_config(object):
         self.old_content = self.act_content
         c_lines = []
         last_key = None
-#         if self.__name == "cgi":
-#             print key_list
         for key in self.__key_list:
             if last_key:
                 if last_key[0] != key[0]:
@@ -1533,10 +1538,6 @@ class check_command(object):
                 out_list.append("%d" % (item))
             else:
                 out_list.append(item)
-        #if out_list:
-        #    print "*", self.__name, "-"*20
-        #    print "i", in_list, dev_variables
-        #    print "o", out_list
         return out_list
     def get_nag_config(self):
         return nag_config(self.__name,
@@ -1697,7 +1698,6 @@ class build_process(threading_tools.process_obj):
                 global_config["MD_TYPE"],
                 c_stat),
                      logging_tools.LOG_LEVEL_ERROR)
-            #print out
             ret_stat = 0
         else:
             self.log("Checking the %s-configuration returned no error" % (global_config["MD_TYPE"]))
@@ -1816,6 +1816,9 @@ class build_process(threading_tools.process_obj):
             if bc_valid:
                 for cur_gc in [self.__gen_config] + self.__slave_configs.values():
                     self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack)
+                    if cur_gc.master:
+                        # recreate access files
+                        cur_gc._create_access_entries()
                     # refresh implies _write_entries
                     cur_gc.refresh()
                     if not cur_gc.master:
@@ -1908,7 +1911,7 @@ class build_process(threading_tools.process_obj):
     def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack):
         start_time = time.time()
         # get contacts with access to all devices
-        all_access = list(user.objects.filter(Q(login__in=[cur_u.username for cur_u in User.objects.all() if cur_u.has_perm("backbone.all_devices")])).values_list("login", flat=True))
+        all_access = list(user.objects.filter(Q(login__in=[cur_u.username for cur_u in User.objects.filter(is_active=True) if cur_u.has_perm("backbone.all_devices")])).values_list("login", flat=True))
         self.log("users with access to all devices: %s" % (", ".join(sorted(all_access))))
         server_idxs = [cur_gc.monitor_server.pk]
         # get netip-idxs of own host
@@ -2008,7 +2011,6 @@ class build_process(threading_tools.process_obj):
         all_ib_connections = {}
         #for db_rec in dc.fetchall():
         #    all_ib_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
-        #print all_net_devices
         host_nc, service_nc  = (cur_gc["host"], cur_gc["service"])
         hostext_nc = cur_gc["hostextinfo"]
         # delete host if already present in host_table
@@ -2096,7 +2098,8 @@ class build_process(threading_tools.process_obj):
                             act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
                             if host.enable_perfdata:
                                 act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (global_config["PNP_URL"])
-                        c_list = all_access
+                        # deep copy needed here
+                        c_list = [entry for entry in all_access]
                         # set alias
                         if host.device_group.user_set.all():
                             c_list.extend([cur_u.login for cur_u in host.device_group.user_set.all()])
@@ -2392,6 +2395,10 @@ class server_process(threading_tools.process_pool):
         self.__pid_name = global_config["PID_NAME"]
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        if not global_config["DEBUG"]:
+            process_tools.set_handles({"out" : (1, "md-config-server.out"),
+                                       "err" : (0, "/var/lib/logging-server/py_err_zmq")},
+                                      zmq_context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
         connection.close()
         #self.register_func("new_pid", self._new_pid)
@@ -2822,15 +2829,17 @@ def main():
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/md-config-server"])
     global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     if global_config["ENABLE_NAGVIS"]:
+        process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [
+            os.path.join(global_config["NAGVIS_DIR"], "etc"),
+        ])
         process_tools.fix_files(global_config["USER"], global_config["GROUP"], [
             os.path.join(global_config["NAGVIS_DIR"], "etc", "auth.db"),
+            os.path.join(global_config["NAGVIS_DIR"], "etc", "nagvis.ini.php"),
             os.path.join(global_config["NAGVIS_DIR"], "share", "server", "core", "defines", "global.php"),
         ])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
         process_tools.become_daemon()
-        process_tools.set_handles({"out" : (1, "md-config-server.out"),
-                                   "err" : (0, "/var/lib/logging-server/py_err")})
     else:
         print "Debugging md-config-server on %s" % (long_host_name)
     ret_state = server_process().loop()
