@@ -13,6 +13,8 @@
 <div id="config">
 </div>
 
+{% include "generate_monitoring_config.html" %}
+
 {% include "generate_config.html" %}
 
 <script type="text/javascript">
@@ -20,8 +22,8 @@
 DEVICES = undefined;
 CONFIGS = undefined;
 DEVICE_CONFIGS = undefined;
-CUR_FILTER = undefined;
 SHOW_LIST = undefined;
+CUR_FILTER = undefined;
 // which conigs to display
 DISPLAY_LIST = undefined;
 // current device selection

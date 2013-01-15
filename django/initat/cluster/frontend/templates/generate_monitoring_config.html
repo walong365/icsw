@@ -1,0 +1,20 @@
+{% load i18n coffeescript %}
+
+<input type="button" id="g<input type="button" onClick="create_monitoring_config();" value="generate monitoring config"/><br/>
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+root = exports ? this
+
+root.create_monitoring_config = ->
+    $.ajax
+        url     : "{% url mon:create_config %}"
+        error   : handle_ajax_error
+        success : (xml) =>
+            parse_xml_response(xml)
+            
+{% endinlinecoffeescript %}
+
+</script>

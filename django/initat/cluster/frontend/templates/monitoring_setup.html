@@ -11,9 +11,13 @@
 
 <div id="mon_tables"></div>
 
+{% include "generate_monitoring_config.html" %}
+
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
+
+root = exports ? this
 
 master_array = {
     "monper" : new draw_setup("MonPeriod", "monper", "mon_period",
