@@ -3252,13 +3252,6 @@ class user_var(models.Model):
     class Meta:
         db_table = u'user_var'
 
-##class vendor(models.Model):
-##    idx = models.AutoField(db_column="vendor_idx", primary_key=True)
-##    vendor = models.TextField()
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'vendor'
-
 class tree_node(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("device", default=None)

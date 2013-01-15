@@ -41,7 +41,8 @@ from lxml.builder import E
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_type, \
      netdevice, device_class, netdevice_speed, net_ip, peer_information, \
-     mon_host_cluster, mon_service_cluster, mon_service_templ, device_config, config
+     mon_host_cluster, mon_service_cluster, mon_service_templ, device_config, config, \
+     user, group
 import server_command
 
 VERSION_STRING = "0.2"
@@ -183,7 +184,9 @@ class anovis_site(object):
         """ database sync """
         self.log("start syncing")
         self._log_xml("before sync")
-        con_dev = device.objects.prefetch_related("netdevice_set").get(Q(name=global_config["CONNECT_DEVICE"]))
+        relayer_name = self.site_xml.findtext(".//general/relayer")
+        self.log("relayer is specified by '%s'" % (relayer_name))
+        con_dev = device.objects.prefetch_related("netdevice_set").get(Q(name=relayer_name) | Q(netdevice__net_ip__ip=relayer_name))
         # check if conn_dev is a monitoring_slave
         try:
             device_config.objects.get(Q(config__name="monitor_slave") & Q(device=con_dev))
@@ -197,7 +200,43 @@ class anovis_site(object):
             raise ValueError, "no valid netdevices found"
         con_nd = con_nd[0]
         self.log("connecting to netdevice %s (device %s)" % (unicode(con_nd), unicode(con_nd.device)))
-        my_devg = device_group.objects.get(Q(name=global_config["DEVICE_GROUP"]))
+        # user access
+        user_spec = self.site_xml.findtext(".//general/usergroup")
+        if user_spec.count("/"):
+            group_name, user_name = user_spec.split("/")
+        else:
+            group_name, user_name = (None, user_spec)
+        self.log("groupname/username is '%s'/'%s'" % (group_name, user_name))
+        try:
+            my_group = group.objects.get(Q(groupname=group_name))
+        except group.DoesNotExist:
+            raise ValueError, "group '%s' not found" % (group_name)
+        try:
+            my_user = user.objects.get(Q(login=user_name))
+        except user.DoesNotExist:
+            my_user = user(
+                login=user_name,
+                active=True,
+                uid=max(list(user.objects.all().values_list("uid", flat=True))) + 1,
+                group=my_group,
+                first_name="",
+                last_name="",
+            )
+            my_user.save()
+        my_user.password = user_name
+        my_user.save()
+        self.log("group / user is %s / %s" % (unicode(my_group), unicode(my_user)))
+        try:
+            my_devg = device_group.objects.get(Q(name=global_config["DEVICE_GROUP"]))
+        except device_group.DoesNotExist:
+            self.log("creating device_group")
+            my_devg = device_group(
+                name=global_config["DEVICE_GROUP"],
+                description="auto created by script")
+            my_devg.save()
+        if my_devg.pk not in my_user.allowed_device_groups.all().values_list("pk", flat=True):
+            self.log("adding device_group %s to user" % (unicode(my_devg)))
+            my_user.allowed_device_groups.add(my_devg)
         my_devt = device_type.objects.get(Q(identifier="H"))
         my_devc = device_class.objects.get(Q(pk=1))
         my_nd_speed = netdevice_speed.objects.get(Q(full_duplex=True) & Q(speed_bps=1000000000))
@@ -389,7 +428,6 @@ def main():
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("VERBOSE"             , configfile.bool_c_var(False, help_string="be verbose [%(default)s]")),
         ("DEVICE_GROUP"        , configfile.str_c_var("nodes", help_string="name of device_group [%(default)s]")),
-        ("CONNECT_DEVICE"      , configfile.str_c_var("server", help_string="device to connect to [%(default)s]")),
         ("HC_TEMPLATE"         , configfile.str_c_var("notset", help_string="serivce template for host cluster [%(default)s]")),
     ])
     options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
