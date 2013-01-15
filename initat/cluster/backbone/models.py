@@ -404,6 +404,8 @@ class device(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     # slaves
     master_connections = models.ManyToManyField("self", through="cd_connection", symmetrical=False, related_name="slave_connections")
+    # automap root for nagvis
+    automap_root_nagvis = models.BooleanField(default=False)
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
@@ -454,6 +456,7 @@ class device(models.Model):
             mon_ext_host="%d" % (self.mon_ext_host_id or 0),
             curl=unicode(self.curl),
             enable_perfdata="1" if self.enable_perfdata else "0",
+            automap_root_nagvis="1" if self.automap_root_nagvis else "0",
         )
         if kwargs.get("with_monitoring", False):
             r_xml.attrib.update(
