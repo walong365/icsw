@@ -64,6 +64,8 @@ class anovis_site(object):
                 self.log("error while feeding key %s (value %s): %s" % (key, value, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 raise
             self.parsed += 1
+        self.feed("root_name", self.name.lower().replace(" ", "_").replace("-", "_"))
+        self.feed("root_ip", "0.0.0.0")
         self.log("init site (%d keys parsed)" % (self.parsed))
         self.validate()
     def get_db_obj(self, obj_name, search_spec, **kwargs):
@@ -80,6 +82,7 @@ class anovis_site(object):
         return cur_obj
     def validate(self):
         for obj_name, keys_needed, sub_el_needed in [
+            ("root"      , set(["name", "ip"])                         , set()),
             ("fw_service", set(["name", "ip", "check_template"])       , set()),
             ("firewall"  , set(["name", "ip", "num", "check_template"]), set()),
             ("host"      , set(["name", "ip", "num", "check_template"]), set()),
@@ -134,7 +137,6 @@ class anovis_site(object):
                 key = self.__last_key
             else:
                 sub_key = None
-            print key, sub_key, value
             parts = key.split("_")
             if key == "site_name":
                 self.name = value
@@ -142,6 +144,11 @@ class anovis_site(object):
                 self.ensure_nodes("general")
                 gen_obj = self.add_object("general/%s" % (key))
                 gen_obj.text = value
+            elif key.startswith("root"):
+                fw_obj = self.add_object("root")
+                lut_key = parts[-1]
+                if len(parts) == 2 and lut_key in ["name", "ip"]:
+                    fw_obj.attrib[lut_key] = str(value)
             elif key.startswith("site_fw_service"):
                 lut_key = sub_key or parts[-1] 
                 if lut_key in ["name", "ip", "check_template"] and len(parts) == 4:
@@ -176,6 +183,12 @@ class anovis_site(object):
         changed = []
         for key, value in kwargs.iteritems():
             if getattr(db_obj, key) != value:
+                self.log("changing %s of %s '%s' from '%s' to '%s'" % (
+                    key,
+                    db_obj._meta.object_name,
+                    unicode(db_obj),
+                    unicode(getattr(db_obj, key)),
+                    unicode(value)))
                 setattr(db_obj, key, value)
                 changed.append(key)
         if changed:
@@ -242,7 +255,7 @@ class anovis_site(object):
         my_nd_speed = netdevice_speed.objects.get(Q(full_duplex=True) & Q(speed_bps=1000000000))
         hc_srv_template = mon_service_templ.objects.get(Q(name=global_config["HC_TEMPLATE"]))
         # iterate over devices
-        for dev_xpath in ["fw_service", "firewall", "host"]:
+        for dev_xpath in ["fw_service", "firewall", "host", "root"]:
             dev_list = self.site_xml.findall(".//%s" % (dev_xpath))
             for cur_dev in dev_list:
                 try:
@@ -267,7 +280,7 @@ class anovis_site(object):
                             netdevice_speed=my_nd_speed,
                         )
                         cur_ndev.save()
-                    self._update_object(cur_ndev, routing=dev_xpath in ["firewall"])
+                    self._update_object(cur_ndev, routing=dev_xpath in ["firewall", "root"])
                     cur_nd.attrib["pk"] = str(cur_ndev.pk)
                     cur_ip = cur_nd.find("ip")
                     try:
@@ -279,11 +292,29 @@ class anovis_site(object):
                         )
                         db_ip.save()
                     cur_ip.attrib["pk"] = str(db_ip.pk)
+        # root device
+        root_dev = self.get_db_obj("device", None, pk=self.site_xml.find(".//root").attrib["pk"])
+        self.log("root device is '%s'" % (unicode(root_dev)))
         # get all pks
         nd_pks = self.site_xml.xpath(".//netdevice[@pk]/@pk")
         # generate a list of (source_ndev, target_ndev) tuples
-        conn_pairs = [(con_nd, self.get_db_obj("netdevice", None, pk=int(cur_obj.attrib["pk"]))) for cur_obj in self.site_xml.xpath(".//firewall//netdevice")] + \
+        conn_pairs = [
+            # connections from fw to monitoring server
+            #con_nd, self.get_db_obj("netdevice", None, pk=int(cur_obj.attrib["pk"]))) for cur_obj in self.site_xml.xpath(".//firewall//netdevice")
+        ]
+        root_nd = self.get_db_obj("netdevice", None, pk=int(self.site_xml.find(".//root//netdevice").attrib["pk"]))
+        # connection from root to monitoring server
+        conn_pairs.append(
+            (con_nd, root_nd)
+        )
+        # connections from fw to root
+        conn_pairs.extend(
+            [(root_nd, self.get_db_obj("netdevice", None, pk=int(cur_obj.attrib["pk"]))) for cur_obj in self.site_xml.xpath(".//firewall//netdevice")]
+        )
+        # connections from devices to firewalls
+        conn_pairs.extend(
             sum([[(self.get_db_obj("netdevice", None, pk=int(fw_obj.attrib["pk"])), self.get_db_obj("netdevice", None, pk=int(other_obj.attrib["pk"]))) for fw_obj in self.site_xml.xpath(".//firewall//netdevice")] for other_obj in self.site_xml.xpath(".//fw_service//netdevice|.//host//netdevice")], [])
+        )
         pure_list = [(s_nd.pk, d_nd.pk) for s_nd, d_nd in conn_pairs]
         present_cons = peer_information.objects.filter(Q(s_netdevice__in=nd_pks) | Q(d_netdevice__in=nd_pks))
         present_cons_pure = [(cur_pi.s_netdevice_id, cur_pi.d_netdevice_id) for cur_pi in present_cons]
@@ -309,18 +340,17 @@ class anovis_site(object):
         except mon_host_cluster.DoesNotExist:
             cur_hc = mon_host_cluster(
                 name=self.name,
-                main_device=con_dev,
+                main_device=root_dev,
                 mon_service_templ=hc_srv_template,
             )
             cur_hc.save()
-        self._update_object(cur_hc, description=self.name)
         #present_hc_devs = cur_hc.devices.all()
         for del_dev in cur_hc.devices.all():
             cur_hc.devices.remove(del_dev)
         new_hc_devs = [self.get_db_obj("device", None, pk=int(fw_obj.attrib["pk"])) for fw_obj in self.site_xml.xpath(".//firewall")]
         for new_dev in new_hc_devs:
             cur_hc.devices.add(new_dev)
-        self._update_object(cur_hc, main_device=con_dev, mon_service_templ=hc_srv_template)
+        self._update_object(cur_hc, description=self.name, main_device=root_dev, mon_service_templ=hc_srv_template)
         # get configs
         for dev_struct in self.site_xml.xpath(".//firewall|.//fw_service|.//host"):
             if "pk" in dev_struct.attrib and "check_template" in dev_struct.attrib:

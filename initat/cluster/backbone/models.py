@@ -2303,8 +2303,7 @@ class mon_ext_host(models.Model):
             icon_image="%s" % (self.icon_image)
         )
         if with_images:
-            cur_xml.attrib["data-image"] = "/%s/icinga/share/images/logos/%s" % (
-                settings.REL_SITE_ROOT,
+            cur_xml.attrib["data-image"] = "/icinga/share/images/logos/%s" % (
                 self.icon_image)
         return cur_xml
     def __unicode__(self):
