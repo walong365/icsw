@@ -827,6 +827,11 @@ class main_config(object):
                             target_role = cur_u.login
                             role_dict[target_role] = cur_c.execute("INSERT INTO roles VALUES(Null, '%s')" % (cur_u.login)).lastrowid
                             self.log("creating new role '%s'" % (target_role))	
+                            # add perms
+                            for new_perm in ["auth.logout.*", "overview.view.*"]:
+                                cur_c.execute("INSERT INTO roles2perms VALUES(%d, %d)" % (
+                                    role_dict[target_role],
+                                    perms_dict[new_perm]))
                         self.log("creating user '%s' with role %s" % (unicode(cur_u),
                                                                       target_role))
                         new_userid = cur_c.execute("INSERT INTO users VALUES(Null, '%s', '%s')" % (
