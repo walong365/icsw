@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n compress %}
+{% load i18n compress coffeescript %}
 
 {% block title %}{% trans "Monitoring / device" %}{% endblock %}
 
@@ -15,307 +15,229 @@
 
 <script type="text/javascript">
 
-// Devices XML
-DEVICES = undefined;
+{% inlinecoffeescript %}
 
-// monitoring server XML
-MONSRV = undefined;
-
-function use_devs(dt_div) {
-    CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
-        return(value.data.key);
-    });
-    load_devices(CUR_DEVICES);
-};
-
-function load_devices(sel_list) {
-    //console.log(sel_list);
-    $.ajax({
-        url     : "{% url mon:device_config %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            MONSRV = $(xml).find("value[name='response']");
-            $.ajax({
-                url     : "{% url device:get_group_tree %}",
-                error   : handle_ajax_error,
-                data    : {
-                    "sel_list"            : sel_list,
-                    "extra_t0"            : "mon_device_templ",
-                    "extra_t1"            : "mon_ext_host",
-                    "extra_t2"            : "mon_host_cluster",
-                    "extra_t3"            : "mon_service_cluster",
-                    "ignore_meta_devices" : 1,
-                    "with_monitoring"     : 1
-                },
-                success : function(xml) {
-                    if (parse_xml_response(xml)) {
-                        DEVICES = $(xml).find("value[name='response']");
-                        draw_tables();
-                    }
-                }
-            });
-        }
-    });
-};
-
-function toggle_config_line(line_prefix, state, line_spec) {
-    var conf_line = $("table#config tr[id='" + line_prefix + "']");
-    var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
-    var cur_dg = conf_line.find("span[id$='__expand_" + line_spec + "']");
-    if (state) {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-s");
-        exp_line.show();
-    } else {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-e");
-        exp_line.hide();
-    };
-};
-
-function change_d_sel(event) {
-    var cur_el = $(event.target);
-    var d_table = $("table#config");
-};
-
-function change_dg_sel(event) {
-    var cur_el = $(event.target);
-    var d_table = $("table#config");
-    var sel_tr = cur_el.parents("tr:first");
-    while (true) {
-        var sel_tr = sel_tr.next();
-        if (sel_tr && sel_tr.attr("id") && sel_tr.attr("id").match(/^dev__/)) {
-            sel_tr.find("input[id$='__sel']").trigger("click");
-        } else {
-            break;
-        };
-    };
-};
-
-function change_global_sel(event) {
-    var d_table = $("table#config");
-    d_table.find("tr th input[id^='devg__'][id$='__sel']").each(function() {
-        var sel_box = $(this);
-        sel_box.trigger("click");
-    });
-};
-
-function change_monitor_template(event) {
-    var d_table = $("table#config");
-    var mon_val = $(event.target).val();
-    d_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each(function() { 
-        var sel_el = $(this).parents("tr:first").find("select[id$='__mon_device_templ']");
-        if (sel_el.val() != mon_val) sel_el.val(mon_val).trigger("change");
-    });
-    $(event.target).val(0);
-};
-    
-function change_mon_ext_host(event) {
-    var d_table = $("table#config");
-    var mon_val = $(event.target).val();
-    d_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each(function() { 
-        var sel_el = $(this).parents("tr:first").find("select[id$='__mon_ext_host']");
-        if (sel_el.val() != mon_val) sel_el.val(mon_val).trigger("change");
-    });
-    // not working
-    //$(event.target).val(0);
-};
-    
-function change_monitor_server(event) {
-    var d_table = $("table#config");
-    var mon_val = $(event.target).val();
-    d_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each(function() { 
-        var sel_el = $(this).parents("tr:first").find("select[id$='__monitor_server']");
-        if (sel_el.val() != mon_val) sel_el.val(mon_val).trigger("change");
-    });
-    $(event.target).val(0);
-};
-    
-function change_monitor_checks(event) {
-    var d_table = $("table#config");
-    d_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each(function() { 
-        $(this).parents("tr:first").find("input[id$='__monitor_checks']").trigger("click");
-    });
-};
-
-function change_enable_perfdata(event) {
-    var d_table = $("table#config");
-    d_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each(function() { 
-        $(this).parents("tr:first").find("input[id$='__enable_perfdata']").trigger("click");
-    });
-};
-
-function change_automap_root_nagvis(event) {
-    var d_table = $("table#config");
-    d_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each(function() { 
-        $(this).parents("tr:first").find("input[id$='__automap_root_nagvis']").trigger("click");
-    });
-};
-
-function draw_device(d_el) {
-    var dummy_div = $("<div>");
-    if (d_el) {
-        var line_prefix = d_el.attr("key");
-        var is_meta = d_el.attr("meta_device") == "1";
-    } else {
-        var line_prefix = "new";
-        var is_meta = false;
-    };
-    var new_tr = $("<tr>").attr({
-        "class" : "ui-widget ui-widget-header",
-        "id"    : line_prefix
-    });
-    new_tr.append(
-        $("<td>").append(
-            $("<input>").attr({
-                "type" : "checkbox",
-                "id"   : line_prefix + "__sel"
-            }).bind("click", d_el ? change_d_sel : change_global_sel)
-        )
-    ).append(
-        $("<td>").attr({
-        }).text((is_meta ? "Meta device" : "device") + " " + (d_el ? d_el.text() : "global"))
-    ).append(
-        $("<td>").append(
-            create_input_el(d_el, "mon_device_templ", line_prefix, {
-                select_source  : "mon_device_templs mon_device_templ",
-                add_null_entry : "not set",
-                css            : {width : "100px"},
-                change_cb      : d_el ? undefined : change_monitor_template,
-                master_xml     : DEVICES
+class config_table
+    constructor: (@top_div) ->
+    use_devs: (dt_div) =>
+        sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
+        $.ajax
+            url     : "{% url mon:device_config %}",
+            error   : handle_ajax_error,
+            success : (xml) =>
+                @mon_srv = $(xml).find("value[name='response']")
+                $.ajax
+                    url     : "{% url device:get_group_tree %}"
+                    error   : handle_ajax_error
+                    data    : {
+                        "sel_list"            : sel_list,
+                        "extra_t0"            : "mon_device_templ",
+                        "extra_t1"            : "mon_ext_host",
+                        "extra_t2"            : "mon_host_cluster",
+                        "extra_t3"            : "mon_service_cluster",
+                        "ignore_meta_devices" : 1,
+                        "with_monitoring"     : 1
+                    },
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            @devices = $(xml).find("value[name='response']")
+                            @draw_tables()
+    draw_tables: () =>
+        @top_div.children().remove()
+        c_table = $("<table>").attr({"id" : "config"})
+        @c_table = c_table
+        @devices.find("device_group").each (devg_index, cur_dg) =>
+            cur_dg = $(cur_dg)
+            line_prefix = cur_dg.attr("key")
+            new_tr = $("<tr>").attr({
+                "class"   : "ui-widget ui-widget-header"
             })
-        )
-    ).append(
-        $("<td>").append(
-            create_input_el(d_el, "monitor_checks", line_prefix, {
-                boolean    : true,
-                change_cb  : d_el ? undefined : change_monitor_checks,
-                master_xml : DEVICES
-           })
-        )
-    ).append(
-        $("<td>").append(
-            create_input_el(d_el, "mon_ext_host", line_prefix, {
-                select_source  : "mon_ext_hosts mon_ext_host",
-                add_null_entry : "not set",
-                css            : {width : "250px"},
-                change_cb      : d_el ? undefined : change_mon_ext_host,
-                master_xml     : DEVICES
+            new_tr.append(
+                $("<th>").append(
+                    $("<input>").attr({
+                        "type" : "checkbox",
+                        "id"   : line_prefix + "__sel"
+                    }).bind("click", @change_dg_sel)
+                )
+            ).append(
+                $("<th>").attr({
+                    "colspan" : "9"
+                }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")))
+            c_table.append(new_tr)
+            # at first append metadevice
+            cur_dg.find("devices device[tree_selected='selected'][meta_device='1']").each (md_idx, md_dev) =>
+                c_table.append(@draw_device($(md_dev)))
+            cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each (dev_idx, cur_dev) =>
+                c_table.append(@draw_device($(cur_dev)))
+        if @devices.find("device_group").length
+            new_tr = $("<tr>").attr({
+                "class"   : "ui-widget ui-widget-header"
             })
-        )
-    ).append(
-        $("<td>").append(
-            create_input_el(d_el, "enable_perfdata", line_prefix, {
-                boolean    : true,
-                change_cb  : d_el ? undefined : change_enable_perfdata,
-                master_xml : DEVICES
-            })
-        )
-    ).append(
-        $("<td>").append(
-            create_input_el(d_el, "automap_root_nagvis", line_prefix, {
-                boolean    : true,
-                change_cb  : d_el ? undefined : change_automap_root_nagvis,
-                master_xml : DEVICES
-            })
-        )
-    ).append(
-        $("<td>").append(
-            create_input_el(d_el, "monitor_server", line_prefix, {
-                select_source  : MONSRV.find("devices device"),
-                add_null_entry : "default (==master)",
-                css            : {width : "150px"},
-                change_cb      : d_el ? undefined : change_monitor_server,
-                master_xml     : DEVICES
-            })
-        )
-    );
-    if (d_el) {
+            new_tr.append(
+                $("<th>").attr({
+                    "colspan" : "10"
+                }).addClass("ui-widget ui-widget-header").text("all devices"))
+            c_table.append(new_tr)
+            c_table.append(@draw_device(undefined))
+        @top_div.append(c_table);
+        c_table.find("select[id$='mon_ext_host']").msDropdown({
+            useSprite : "smallIcons",
+            visibleRows : 15
+        })
+    draw_device: (d_el) =>
+        dummy_div = $("<div>")
+        if d_el
+            line_prefix = d_el.attr("key")
+            is_meta = if d_el.attr("meta_device") == "1" then true else false
+        else
+            line_prefix = "new"
+            is_meta = false
+        new_tr = $("<tr>").attr({
+            "class" : "ui-widget ui-widget-header",
+            "id"    : line_prefix
+        })
         new_tr.append(
             $("<td>").append(
-                create_input_el(d_el, "devs_mon_host_cluster", line_prefix, {
-                    select_source  : DEVICES.find("mon_host_clusters mon_host_cluster"),
-                    manytomany     : true,
-                    css            : {width : "150px"},
-                    ignore_missing_source : true,
-                    master_xml     : DEVICES
-                })
-            )
-        ).append(
-            $("<td>").append(
-                create_input_el(d_el, "devs_mon_service_cluster", line_prefix, {
-                    select_source  : DEVICES.find("mon_service_clusters mon_service_cluster"),
-                    manytomany     : true,
-                    css            : {width : "150px"},
-                    ignore_missing_source : true,
-                    master_xml     : DEVICES
-                })
-            )
-        );
-    } else {
-        new_tr.append($("<td>"));
-        new_tr.append($("<td>"));
-    };
-    dummy_div.append(new_tr);
-    return dummy_div.children();
-};
-
-function draw_tables() {
-    var d_div = $("div#mon_tables");
-    d_div.children().remove();
-    c_table = $("<table>").attr({"id" : "config"});
-    DEVICES.find("device_group").each(function() {
-        var cur_dg = $(this);
-        var line_prefix = cur_dg.attr("key");
-        var new_tr = $("<tr>").attr({
-            "class"   : "ui-widget ui-widget-header"
-        });
-        new_tr.append(
-            $("<th>").append(
                 $("<input>").attr({
                     "type" : "checkbox",
                     "id"   : line_prefix + "__sel"
-                }).bind("click", change_dg_sel)
+                }).bind("click", if d_el then @change_d_sel else @change_global_sel)
             )
         ).append(
-            $("<th>").attr({
-            "colspan" : "9"
-        }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")));
-        c_table.append(new_tr);
-        // at first append metadevice
-        cur_dg.find("devices device[tree_selected='selected'][meta_device='1']").each(function() {
-            var cur_dev = $(this);
-            c_table.append(draw_device(cur_dev));
-        });
-        cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each(function() {
-            var cur_dev = $(this);
-            c_table.append(draw_device(cur_dev));
-        });
-    });
-    // global change
-    if (DEVICES.find("device_group").length) {
-        var new_tr = $("<tr>").attr({
-            "class"   : "ui-widget ui-widget-header"
-        });
-        new_tr.append(
-            $("<th>").attr({
-            "colspan" : "10"
-        }).addClass("ui-widget ui-widget-header").text("all devices"));
-        c_table.append(new_tr);
-        c_table.append(draw_device(undefined));
-    };
-    d_div.append(c_table);
-    c_table.find("select[id$='mon_ext_host']").msDropdown({
-        useSprite : "smallIcons",
-        visibleRows : 15
-    });
-};
+            $("<td>").attr({
+            }).text((if is_meta then "Meta device" else "device") + " " + (if d_el then d_el.text() else "global"))
+        ).append(
+            $("<td>").append(
+                create_input_el(d_el, "mon_device_templ", line_prefix, {
+                    select_source  : "mon_device_templs mon_device_templ",
+                    add_null_entry : "not set",
+                    css            : {width : "100px"},
+                    change_cb      : if d_el then undefined else @change_monitor_template,
+                    master_xml     : @devices
+                })
+            )
+        ).append(
+            $("<td>").append(
+                create_input_el(d_el, "monitor_checks", line_prefix, {
+                    boolean    : true,
+                    change_cb  : if d_el then undefined else @change_monitor_checks,
+                    master_xml : @devices,
+                })
+            )
+        ).append(
+            $("<td>").append(
+                create_input_el(d_el, "mon_ext_host", line_prefix, {
+                    select_source  : "mon_ext_hosts mon_ext_host",
+                    add_null_entry : "not set",
+                    css            : {width : "250px"},
+                    change_cb      : if d_el then undefined else @change_mon_ext_host,
+                    master_xml     : @devices
+                })
+            )
+        ).append(
+            $("<td>").append(
+                create_input_el(d_el, "enable_perfdata", line_prefix, {
+                    boolean    : true,
+                    change_cb  : if d_el then undefined else @change_enable_perfdata,
+                    master_xml : @devices
+                })
+            )
+        ).append(
+            $("<td>").append(
+                create_input_el(d_el, "automap_root_nagvis", line_prefix, {
+                    boolean    : true,
+                    change_cb  : if d_el then undefined else @change_automap_root_nagvis,
+                    master_xml : @devices
+                })
+            )
+        ).append(
+            $("<td>").append(
+                create_input_el(d_el, "monitor_server", line_prefix, {
+                    select_source  : @mon_srv.find("devices device"),
+                    add_null_entry : "default (==master)",
+                    css            : {width : "150px"},
+                    change_cb      : if d_el then undefined else @change_monitor_server,
+                    master_xml     : @devices
+                })
+            )
+        )
+        if d_el
+            new_tr.append(
+                $("<td>").append(
+                    create_input_el(d_el, "devs_mon_host_cluster", line_prefix, {
+                        select_source         : @devices.find("mon_host_clusters mon_host_cluster"),
+                        manytomany            : true,
+                        css                   : {width : "150px"},
+                        ignore_missing_source : true,
+                        master_xml            : @devices
+                    })
+                )
+            ).append(
+                $("<td>").append(
+                    create_input_el(d_el, "devs_mon_service_cluster", line_prefix, {
+                        select_source         : @devices.find("mon_service_clusters mon_service_cluster"),
+                        manytomany            : true,
+                        css                   : {width : "150px"},
+                        ignore_missing_source : true,
+                        master_xml            : @devices
+                    })
+                )
+            )
+        else
+            new_tr.append($("<td>"))
+            new_tr.append($("<td>"))
+        dummy_div.append(new_tr)
+        return dummy_div.children()
+    change_d_sel : (event) =>
+    change_dg_sel : (event) =>
+        cur_el = $(event.target)
+        sel_tr = cur_el.parents("tr:first")
+        while true
+            sel_tr = sel_tr.next()
+            if sel_tr && sel_tr.attr("id") && sel_tr.attr("id").match(/^dev__/)
+                sel_tr.find("input[id$='__sel']").trigger("click")
+            else
+                break
+    change_global_sel : (event) =>
+        @c_table.find("tr th input[id^='devg__'][id$='__sel']").each (idx, sel_box) =>
+            $(sel_box).trigger("click")
+    change_monitor_template : (event) =>
+        mon_val = $(event.target).val()
+        @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
+            sel_el = $(sel_el).parents("tr:first").find("select[id$='__mon_device_templ']")
+            if sel_el.val() != mon_val
+                sel_el.val(mon_val).trigger("change")
+        $(event.target).val(0)
+    change_mon_ext_host : (event) =>
+        mon_val = $(event.target).val()
+        @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
+            sel_el = $(sel_el).parents("tr:first").find("select[id$='__mon_ext_host']")
+            if sel_el.val() != mon_val
+                sel_el.val(mon_val).trigger("change")
+    change_monitor_server : (event) =>
+        mon_val = $(event.target).val()
+        @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
+            sel_el = $(sel_el).parents("tr:first").find("select[id$='__monitor_server']")
+            if sel_el.val() != mon_val
+                sel_el.val(mon_val).trigger("change")
+        $(event.target).val(0)
+    change_monitor_checks : (event) =>
+        @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
+            $(sel_el).parents("tr:first").find("input[id$='__monitor_checks']").trigger("click")
+    change_enable_perfdata : (event) =>
+        @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
+            $(sel_el).parents("tr:first").find("input[id$='__enable_perfdata']").trigger("click")
+    change_automap_root_nagvis : (event) =>
+        @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
+            $(sel_el).parents("tr:first").find("input[id$='__automap_root_nagvis']").trigger("click")
 
-function add_dcon_handlers() {
-    install_devsel_link(use_devs, true);
-};
+add_dcon_handlers = ->
+    conf_t = new config_table($("div#mon_tables"))
+    install_devsel_link(conf_t.use_devs, true)
 
-$(document).ready(add_dcon_handlers);
+$(document).ready(add_dcon_handlers)
+
+{% endinlinecoffeescript %}
 
 </script>
 

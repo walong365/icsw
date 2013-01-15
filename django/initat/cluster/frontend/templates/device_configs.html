@@ -7,11 +7,10 @@
 {% block content %}
 
 <h1 class="center">Device configuration, <span id="config_info">none defined</span>, filter:
-<input type="text" id="filter" value="" onKeyUp="apply_filter(false);"/>
-<input type="button" value="clear" onClick="clear_filter();"/></h1>
+<input type="text" id="filter" value=""/>
+<input type="button" id="filter_clear" value="clear"/></h1>
 
-<div id="config">
-</div>
+<div id="config"></div>
 
 {% include "generate_monitoring_config.html" %}
 
@@ -19,267 +18,209 @@
 
 <script type="text/javascript">
 
-DEVICES = undefined;
-CONFIGS = undefined;
-DEVICE_CONFIGS = undefined;
-SHOW_LIST = undefined;
-CUR_FILTER = undefined;
-// which conigs to display
-DISPLAY_LIST = undefined;
-// current device selection
-CUR_DEVICES = undefined;
-
-function clear_filter() {
-    $("input#filter").val("");
-    apply_filter(false);
-};
-
-function apply_filter(force_reload) {
-    var cur_text = $("input#filter").attr("value");
-    if (cur_text != CUR_FILTER || force_reload) {
-        CUR_FILTER = cur_text;
-        var cur_re = new RegExp("^.*" + CUR_FILTER + ".*$");
-        var disp_list = new Array();
-        // get keys/pks for current filter
-        CONFIGS.find("config").each(function() {
-            var c_config = $(this);
-            if (c_config.attr("name").match(cur_re)) {
-                disp_list.push(c_config.attr("key"));
-            };
-        });
-        // not working, FIXME
-        if (SHOW_LIST != disp_list || force_reload) {
-            DISPLAY_LIST = _.map(disp_list, function(name) { return CONFIGS.find("config[key='" + name + "']")[0]; });
-            update_config_info(disp_list.length);
-            var cur_exp_list = get_expand_list();
-            draw_tables();
-            restore_expansion(cur_exp_list);
-        };
-        SHOW_LIST = disp_list;
-    };
-};
-
-function update_config_info(num_shown) {
-    var info_str = "configs defined: " + CONFIGS.find("config").length;
-    if (num_shown === undefined || num_shown === CONFIGS.find("config").length) {
-        info_str += ", all shown";
-    } else {
-        info_str += ", " + num_shown + " shown";
-    };
-    $("span#config_info").text(info_str);
-};
-
-function get_expand_list() {
-    return _.map($("table#config tr span[id*='__expand__'][class*='-1-s']"), function(cur_el) { return $(cur_el).attr("id"); });
-};
-
-function restore_expansion(exp_list) {
-    $.each(exp_list, function(idx, cur_val) {
-        toggle_config_line(cur_val.split("__")[0] + "__" + cur_val.split("__")[1], true, "config");
-    });
-};
-
-function toggle_config_line(line_prefix, state, line_spec) {
-    var conf_line = $("table#config tr[id='" + line_prefix + "']");
-    var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
-    if (state) {
-        exp_line.show();
-    } else {
-        exp_line.hide();
-    };
-};
-
-function draw_device(d_el) {
-    var dummy_div = $("<div>");
-    var line_prefix = d_el.attr("key");
-    var new_tr = $("<tr>").attr({
-        "class" : "ui-widget ui-widget-header",
-        "id"    : line_prefix
-    });
-    var is_meta = d_el.attr("meta_device") == "1";
-    new_tr.append(get_expand_td(line_prefix, "config", "config", toggle_config_line));
-    new_tr.append($("<th>").attr({
-        "class"   : "left",
-        "colspan" : "8"
-    }).text((is_meta ? "Meta device" : "device") + " " + d_el.text()));
-    dummy_div.append(new_tr);
-    var cur_entries = 0;
-    var cur_tr;
-    var run_idx = 1;
-    $(DISPLAY_LIST).each(function() {
-        if (!cur_entries) {
-            cur_tr = $("<tr>").attr({
-                "id" : line_prefix + "__config__" + run_idx
-            }).hide();
-            cur_tr.append($("<td>"));
-        };
-        var cur_conf = $(this);
-        var cur_cb = $("<input>").attr({
-            "type" : "checkbox",
-            "id"   : line_prefix + "__config__" + cur_conf.attr("pk")
-        }).bind("click", change_config);
-        cur_tr.append(
-           $("<td>").attr({
-               "class" : "center"
-            }
-        ).append(
-            $("<span>").text("")
-        ).append(
-            cur_cb
-        ).append(
-            $("<span>").text("")
-        ));
-        if (DEVICE_CONFIGS.find("device_config[device='" + d_el.attr("pk") + "'][config='" + cur_conf.attr("pk") + "'][meta='1']").length) {
-            cur_cb.attr({"checked" : "checked"});
-            cur_cb.prev().text("(");
-            cur_cb.next().text(")");
-        } else if (DEVICE_CONFIGS.find("device_config[device='" + d_el.attr("pk") + "'][config='" + cur_conf.attr("pk") + "']").length) {
-            cur_cb.attr({"checked" : "checked"});
-        };
-        cur_tr.append($("<td>").append(
-            $("<span>").text(cur_conf.attr("name"))
-        ));
-        cur_entries++;
-        if (cur_entries == 4) {
-            dummy_div.append(cur_tr);
-            cur_entries = 0;
-            run_idx += 1;
-        };
-    });
-    if (cur_entries) {
-        dummy_div.append(cur_tr);
-    };
-    return dummy_div.children();
-};
-
-function change_config(event) {
-    var cur_cb = $(event.target);
-    var lock_list = lock_elements($("table#config"));
-    $.ajax({
-        url : "{% url config:alter_config_cb %}",
-        data : {
-            "id"    : cur_cb.attr("id"),
-            "value" : cur_cb.is(":checked") ? "1" : "0"
-        },
-        success : function(xml) {
-            parse_xml_response(xml);
-            var res_xml = $(xml);
-            //console.log(res_xml);
-            var conf_pk = res_xml.find("device_configs config").attr("pk");
-            res_xml.find("devices device").each(function() {
-                // deselect all checkboxes
-                var cur_dev = $(this);
-                var cur_cb = $("table#config input[id='dev__" + cur_dev.attr("pk") + "__config__" + conf_pk + "']");
-                cur_cb.removeAttr("checked");
-                cur_cb.prev().text("");
-                cur_cb.next().text("");
-            });
-            res_xml.find("device_configs device_config").each(function() {
-                var cur_dc = $(this);
-                var cur_cb = $("table#config input[id='dev__" + cur_dc.attr("device") + "__config__" + conf_pk + "']");
-                cur_cb.attr("checked", "checked");
-                if (cur_dc.attr("meta") == "1") {
-                    cur_cb.prev().text("(");
-                    cur_cb.next().text(")");
-                };
-            });
-            unlock_elements(lock_list);
-        }
-    });
-};
-
-function draw_tables() {
-    $("div#config").children().remove();
-    c_table = $("<table>").attr({"id" : "config"});
-    DEVICES.find("device_group").each(function() {
-        var cur_dg = $(this);
-        var new_tr = $("<tr>").attr({
-            "class"   : "ui-widget ui-widget-header"
-        });
-        new_tr.append($("<th>").css({
-            "padding" : "5px",
-            "border"  : "1px solid black"
-        }).attr({
-            "colspan" : "9"
-        }).text("device group " + cur_dg.attr("name")));
-        c_table.append(new_tr);
-        // at first append metadevice
-        cur_dg.find("devices device[selected='selected'][meta_device='1']").each(function() {
-            var cur_dev = $(this);
-            c_table.append(draw_device(cur_dev));
-        });
-        cur_dg.find("devices device[selected='selected'][meta_device='0']").each(function() {
-            var cur_dev = $(this);
-            c_table.append(draw_device(cur_dev));
-        });
-    });
-    $("div#config").append(c_table);
-};
-
-function use_devs(dt_div) {
-    CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
-        return(value.data.key);
-    });
-    notify_generate_link();
-    load_devices(CUR_DEVICES);
-};
-
-function load_devices(sel_list) {
-    //console.log(sel_list);
-    $.ajax({
-        url     : "{% url device:get_group_tree %}",
-        error   : handle_ajax_error,
-        data    : {
-            "sel_list" : sel_list
-        },
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                DEVICES = $(xml).find("value[name='response']");
-                load_device_configs(sel_list);
-            }
-        }
-    });
-};
-
-function load_device_configs(sel_list) {
-    $.ajax({
-        url     : "{% url config:get_device_configs %}",
-        error   : handle_ajax_error,
-        data    : {
-            "sel_list" : sel_list
-        },
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                DEVICE_CONFIGS = $(xml).find("value[name='response']");
-                load_configs();
-            }
-        }
-    });
-};
-
-function load_configs() {
-    $.ajax({
-        url     : "{% url config:get_configs %}",
-        error   : handle_ajax_error,
-        data    : {
-            "mode" : "simple"
-        },
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                CONFIGS = $(xml).find("value[name='response']");
-                apply_filter(true);
-            }
-        }
-    });
-};
-
-function add_dcon_handlers() {
-    install_devsel_link(use_devs, true);
-};
-
-$(document).ready(add_dcon_handlers);
-
 {% inlinecoffeescript %}
+
+class config_table
+    constructor: (@top_div) ->
+        @cur_filter = ""
+        @show_list = ""
+    use_devs: (dt_div) =>
+        sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
+        notify_generate_link(sel_list)
+        $.ajax
+            url     : "{% url device:get_group_tree %}"
+            error   : handle_ajax_error
+            data    : {
+                "sel_list" : sel_list
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @devices = $(xml).find("value[name='response']")
+                    @load_device_configs(sel_list)
+    load_device_configs : (sel_list) =>
+        $.ajax
+            url     : "{% url config:get_device_configs %}"
+            error   : handle_ajax_error
+            data    : {
+                "sel_list" : sel_list
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @device_configs = $(xml).find("value[name='response']")
+                    @load_configs()
+    load_configs : () =>
+        $.ajax
+            url     : "{% url config:get_configs %}"
+            error   : handle_ajax_error
+            data    : {
+                "mode" : "simple"
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @configs = $(xml).find("value[name='response']")
+                    @apply_filter(true)
+    apply_filter : (force_reload) =>
+        cur_text = $("input#filter").attr("value")
+        if (cur_text != @cur_filter) or force_reload
+            @cur_filter = cur_text
+            cur_re = new RegExp("^.*" + @cur_filter+ ".*$")
+            console.log cur_re
+            disp_list = new Array()
+            # get keys/pks for current filter
+            @configs.find("config").each (idx, c_config) =>
+                c_config = $(c_config)
+                if c_config.attr("name").match(cur_re)
+                    disp_list.push(c_config.attr("key"))
+            console.log disp_list
+            # not working, FIXME
+            if (@show_list != disp_list) or force_reload
+                @display_list = (@configs.find("config[key='" + name + "']")[0] for name in disp_list)
+                console.log @display_list
+                @update_config_info(disp_list.length);
+                cur_exp_list = @get_expand_list()
+                @draw_tables()
+                @restore_expansion(cur_exp_list)
+            @show_list = disp_list
+    get_expand_list : =>
+        ret_list = ($(cur_el).attr("id") for cur_el in @c_table.find("tr span[id*='__expand__'][class*='-1-s']"))
+        console.log "rl", ret_list
+        return ret_list
+    update_config_info : (num_shown) =>
+        info_str = "configs defined: " + @configs.find("config").length
+        if num_shown == @configs.find("config").length
+            info_str += ", all shown"
+        else
+            info_str += ", " + num_shown + " shown"
+        $("span#config_info").text(info_str)
+    clear_filter : =>
+        $("input#filter").val("")
+        @apply_filter(false)
+    draw_tables : =>
+        @top_div.children().remove();
+        c_table = $("<table>").attr({"id" : "config"})
+        @devices.find("device_group").each (idx, cur_dg) =>
+            cur_dg = $(cur_dg)
+            new_tr = $("<tr>").attr({
+                "class"   : "ui-widget ui-widget-header"
+            })
+            new_tr.append($("<th>").css({
+                "padding" : "5px",
+                "border"  : "1px solid black"
+            }).attr({
+                "colspan" : "9"
+            }).text("device group " + cur_dg.attr("name")))
+            c_table.append(new_tr)
+            # at first append metadevice
+            cur_dg.find("devices device[selected='selected'][meta_device='1']").each (meta_idx, meta_dev) =>
+                c_table.append(@draw_device($(meta_dev)))
+            cur_dg.find("devices device[selected='selected'][meta_device='0']").each (dev_idx, cur_dev) =>
+                c_table.append(@draw_device($(cur_dev)))
+        @top_div.append(c_table)
+        @c_table = c_table
+    draw_device : (d_el) =>
+        dummy_div = $("<div>")
+        line_prefix = d_el.attr("key")
+        new_tr = $("<tr>").attr({
+            "class" : "ui-widget ui-widget-header",
+            "id"    : line_prefix
+        })
+        is_meta = d_el.attr("meta_device") == "1"
+        new_tr.append(get_expand_td(line_prefix, "config", "config", @toggle_config_line))
+        new_tr.append($("<th>").attr({
+            "class"   : "left",
+            "colspan" : "8"
+        }).text((if is_meta then "Meta device" else "device") + " " + d_el.text()))
+        dummy_div.append(new_tr)
+        cur_entries = 0
+        run_idx = 1
+        for cur_conf in @display_list
+            console.log cur_conf
+            cur_conf = $(cur_conf)
+            if !cur_entries
+                cur_tr = $("<tr>").attr({
+                    "id" : line_prefix + "__config__" + run_idx
+                }).hide()
+                cur_tr.append($("<td>"))
+            cur_cb = $("<input>").attr({
+                "type" : "checkbox",
+                "id"   : line_prefix + "__config__" + cur_conf.attr("pk")
+            }).bind("click", @change_config)
+
+            cur_tr.append(
+                $("<td>").attr({
+                   "class" : "center"
+                }).append(
+                    $("<span>").text("")
+                ).append(
+                    cur_cb
+                ).append(
+                    $("<span>").text("")
+                )
+            )
+            if @device_configs.find("device_config[device='" + d_el.attr("pk") + "'][config='" + cur_conf.attr("pk") + "'][meta='1']").length
+                cur_cb.attr({"checked" : "checked"})
+                cur_cb.prev().text("(")
+                cur_cb.next().text(")")
+            else if @device_configs.find("device_config[device='" + d_el.attr("pk") + "'][config='" + cur_conf.attr("pk") + "']").length
+                cur_cb.attr({"checked" : "checked"})
+            cur_tr.append($("<td>").append(
+                $("<span>").text(cur_conf.attr("name"))
+            ))
+            cur_entries++
+            if cur_entries == 4
+                dummy_div.append(cur_tr)
+                cur_entries = 0
+                run_idx += 1
+        if cur_entries
+            dummy_div.append(cur_tr)
+        return dummy_div.children()
+    restore_expansion : (exp_list) =>
+        for cur_val in exp_list
+            @toggle_config_line(cur_val.split("__")[0] + "__" + cur_val.split("__")[1], true, "config")
+    toggle_config_line : (line_prefix, state, line_spec) =>
+        conf_line = @c_table.find("tr[id='" + line_prefix + "']")
+        exp_line  = @c_table.find("tr[id^='" + line_prefix + "__" + line_spec + "']")
+        if state
+            exp_line.show()
+        else
+            exp_line.hide()
+    change_config : (event) =>
+        cur_cb = $(event.target)
+        lock_list = lock_elements(@c_table)
+        $.ajax
+            url : "{% url config:alter_config_cb %}"
+            data : {
+                "id"    : cur_cb.attr("id")
+                "value" : if cur_cb.is(":checked") then "1" else "0"
+            },
+            success : (xml) =>
+                parse_xml_response(xml)
+                res_xml = $(xml)
+                # console.log(res_xml);
+                conf_pk = res_xml.find("device_configs config").attr("pk")
+                res_xml.find("devices device").each (xml_idx, cur_dev) =>
+                    # deselect all checkboxes
+                    cur_dev = $(cur_dev)
+                    cur_cb = @c_table.find("input[id='dev__" + cur_dev.attr("pk") + "__config__" + conf_pk + "']")
+                    cur_cb.removeAttr("checked")
+                    cur_cb.prev().text("")
+                    cur_cb.next().text("")
+                res_xml.find("device_configs device_config").each (xml_idx, cur_dc) =>
+                    cur_dc = $(cur_dc)
+                    cur_cb = @c_table.find("input[id='dev__" + cur_dc.attr("device") + "__config__" + conf_pk + "']")
+                    cur_cb.attr("checked", "checked")
+                    if cur_dc.attr("meta") == "1"
+                        cur_cb.prev().text("(")
+                        cur_cb.next().text(")")
+                unlock_elements(lock_list)
+
+add_dcon_handlers = ->
+    conf_t = new config_table($("div#config"))
+    $("input#filter").bind("keyup", => conf_t.apply_filter(false))
+    $("input#filter_clear").bind("click", => conf_t.clear_filter())
+    install_devsel_link(conf_t.use_devs, true)
+
+$(document).ready(add_dcon_handlers)
 
 {% endinlinecoffeescript %}
 

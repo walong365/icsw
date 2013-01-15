@@ -90,8 +90,8 @@ function draw_tree_xml() {
     top_div.tabs();
 };
 
-function notify_generate_link() {
-    $("span#generate_info").text(resolve_device_keys(CUR_DEVICES));
+function notify_generate_link(sel_list) {
+    $("span#generate_info").text(resolve_device_keys(sel_list ? sel_list : CUR_DEVICES));
 };
 
 function generate_configs() {
