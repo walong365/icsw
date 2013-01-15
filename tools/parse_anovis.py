@@ -42,7 +42,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_type, \
      netdevice, device_class, netdevice_speed, net_ip, peer_information, \
      mon_host_cluster, mon_service_cluster, mon_service_templ, device_config, config, \
-     user, group
+     user, group, mon_ext_host
 import server_command
 
 VERSION_STRING = "0.2"
@@ -269,7 +269,18 @@ class anovis_site(object):
                     )
                     db_dev.save()
                 cur_dev.attrib["pk"] = str(db_dev.pk)
-                self._update_object(db_dev, comment=self.name, monitor_server=mon_master, device_group=my_devg)
+                # get mon_ext_host
+                img_name = {"fw_service" : "linux40",
+                            "firewall"   : "firewall",
+                            "host"       : "my_server",
+                            "root"       : "hub"}.get(dev_xpath, None)
+                if img_name:
+                    try:
+                        new_meh = mon_ext_host.objects.get(Q(name=img_name))
+                    except mon_ext_host.DoesNotExist:
+                        self.log("image with name '%s' not found" % (img_name))
+                        new_meh = None
+                self._update_object(db_dev, comment=self.name, monitor_server=mon_master, device_group=my_devg, automap_root_nagvis=dev_xpath in ["root"], mon_ext_host=new_meh)
                 for cur_nd in cur_dev.findall(".//netdevice"):
                     try:
                         cur_ndev = self.get_db_obj("netdevice", Q(devname=cur_nd.attrib["devname"]) & Q(device=db_dev))
