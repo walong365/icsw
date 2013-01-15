@@ -805,14 +805,28 @@ class main_config(object):
                     # delete previous users
                     cur_c.execute("DELETE FROM users2roles")
                     cur_c.execute("DELETE FROM users")
+                    cur_c.execute("DELETE FROM roles")
+                    cur_c.execute("DELETE FROM roles2perms")
+                    admin_role_id = cur_c.execute("INSERT INTO roles VALUES(Null, 'admins')").lastrowid
+                    perms_dict = dict([("%s.%s.%s" % (
+                        cur_perm[1].lower(),
+                        cur_perm[2].lower(),
+                        cur_perm[3].lower()), cur_perm[0]) for cur_perm in cur_c.execute("SELECT * FROM perms")])
+                    #pprint.pprint(perms_dict)
+                    cur_c.execute("INSERT INTO roles2perms VALUES(%d, %d)" % (
+                        admin_role_id,
+                        perms_dict["*.*.*"]))
                     role_dict = dict([(cur_role[1].lower().split()[0], cur_role[0]) for cur_role in cur_c.execute("SELECT * FROM roles")])
                     self.log("role dict: %s" % (", ".join(["%s=%d" % (key, value) for key, value in role_dict.iteritems()])))
                     for cur_u in user.objects.filter(Q(active=True)):
                         # check for admin
                         if User.objects.get(Q(username=cur_u.login)).has_perm("backbone.all_devices"):
-                            target_role = "administrators"
+                            target_role = "admins"
                         else:
-                            target_role = "users"
+                            # create special role
+                            target_role = cur_u.login
+                            role_dict[target_role] = cur_c.execute("INSERT INTO roles VALUES(Null, '%s')" % (cur_u.login)).lastrowid
+                            self.log("creating new role '%s'" % (target_role))	
                         self.log("creating user '%s' with role %s" % (unicode(cur_u),
                                                                       target_role))
                         new_userid = cur_c.execute("INSERT INTO users VALUES(Null, '%s', '%s')" % (
@@ -1212,6 +1226,18 @@ class all_commands(host_type_config):
                     global_config["CHECK_HOST_ALIVE_TIMEOUT"]),
                 description="Check-host-alive command via ping",
                 enable_perfdata=global_config["ENABLE_PNP"],
+                ),
+            mon_check_command(
+                name="check-host-ok",
+                command_line="$USER1$/check_dummy 0 up",
+                description="Check-host-ok, always up",
+                enable_perfdata=False,
+                ),
+            mon_check_command(
+                name="check-host-down",
+                command_line="$USER1$/check_dummy 2 down",
+                description="Check-host-down, always down",
+                enable_perfdata=False,
                 ),
             mon_check_command(
                 name="check-host-alive-2",
@@ -2169,7 +2195,11 @@ class build_process(threading_tools.process_obj):
                         self.mach_log("contact groups for host: %s" % (
                             ", ".join(sorted(host_groups)) or "none"))
                         if host.monitor_checks:
-                            act_host["check_command"]             = act_def_dev.ccommand
+                            if valid_ip == "0.0.0.0":
+                                self.mach_log("IP address is '%s', host is assumed to be always up" % (unicode(valid_ip)))
+                                act_host["check_command"] = "check-host-ok"
+                            else:
+                                act_host["check_command"]             = act_def_dev.ccommand
                             # check for notification options
                             not_a = []
                             for what, shortcut in [("nrecovery", "r"), ("ndown", "d"), ("nunreachable", "u")]:
@@ -2311,7 +2341,7 @@ class build_process(threading_tools.process_obj):
                             break
                 del host["possible_parents"]
                 if parent_list:
-                    host["parents"] = ",".join(parent_list)
+                    host["parents"] = ",".join(set(parent_list))
                     self.mach_log("Setting parent to %s" % (", ".join(parent_list)), logging_tools.LOG_LEVEL_OK, host["name"])
         end_time = time.time()
         self.log("created configs for %s hosts in %s" % (host_info_str,
