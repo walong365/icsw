@@ -251,7 +251,8 @@ class main_config(object):
         else:
             self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
     def _create_directories(self):
-        dir_names = ["",
+        dir_names = [
+            "",
             "etc",
             "var",
             "share",
@@ -263,7 +264,6 @@ class main_config(object):
             "lib64",
             "var/spool",
             "var/spool/checkresults"]
-
         # dir dict for writing on disk
         self.__w_dir_dict = dict([(dir_name, os.path.normpath(os.path.join(self.__main_dir, self.__dir_offset, dir_name))) for dir_name in dir_names])
         # dir dict for referencing
@@ -421,10 +421,10 @@ class main_config(object):
                     ("maxtimewithoutupdate", 180),
                     ("htmlcgi", "/nagios/cgi-bin"),
                     ]),
-                ("rotation_demo", [
-                    ("maps", "demo-germany,demo-ham-racks,demo-load,demo-muc-srv1,demo-geomap,demo-automap"),
-                    ("interval", 15),
-                    ]),
+                #("rotation_demo", [
+                #    ("maps", "demo-germany,demo-ham-racks,demo-load,demo-muc-srv1,demo-geomap,demo-automap"),
+                #    ("interval", 15),
+                #    ]),
                 ("states", [
                     ("down", 10),
                     ("down_ack", 6),
@@ -818,7 +818,14 @@ class main_config(object):
                         perms_dict["*.*.*"]))
                     role_dict = dict([(cur_role[1].lower().split()[0], cur_role[0]) for cur_role in cur_c.execute("SELECT * FROM roles")])
                     self.log("role dict: %s" % (", ".join(["%s=%d" % (key, value) for key, value in role_dict.iteritems()])))
-                    for cur_u in user.objects.filter(Q(active=True)):
+                    # get nagivs root points
+                    nagvis_rds = device.objects.filter(Q(automap_root_nagvis=True)).select_related("device_group")
+                    self.log("%s: %s" % (logging_tools.get_plural("NagVIS root device", len(nagvis_rds)),
+                                         ", ".join([unicode(cur_dev) for cur_dev in nagvis_rds])))
+                    devg_lut = {}
+                    for cur_dev in nagvis_rds:
+                        devg_lut.setdefault(cur_dev.device_group.pk, []).append(cur_dev.name)
+                    for cur_u in user.objects.filter(Q(active=True)).prefetch_related("allowed_device_groups"):
                         # check for admin
                         if User.objects.get(Q(username=cur_u.login)).has_perm("backbone.all_devices"):
                             target_role = "admins"
@@ -826,14 +833,31 @@ class main_config(object):
                             # create special role
                             target_role = cur_u.login
                             role_dict[target_role] = cur_c.execute("INSERT INTO roles VALUES(Null, '%s')" % (cur_u.login)).lastrowid
-                            self.log("creating new role '%s'" % (target_role))	
+                            add_perms = ["auth.logout.*", "overview.view.*", "general.*.*", "user.setoption.*"]
+                            for cur_devg in cur_u.allowed_device_groups.values_list("pk", flat=True):
+                                for dev_name in devg_lut.get(cur_devg, []):
+                                    perm_name = "map.view.%s" % (dev_name)
+                                    if perm_name not in perms_dict:
+                                        perms_dict[perm_name] = cur_c.execute("INSERT INTO perms VALUES(Null, '%s', '%s', '%s')" % (
+                                            perm_name.split(".")[0].title(),
+                                            perm_name.split(".")[1],
+                                            perm_name.split(".")[2]
+                                        )).lastrowid
+                                        self.log("permission '%s' has id %d" % (perm_name, perms_dict[perm_name]))
+                                    add_perms.append(perm_name)
                             # add perms
-                            for new_perm in ["auth.logout.*", "overview.view.*"]:
+                            for new_perm in add_perms:
                                 cur_c.execute("INSERT INTO roles2perms VALUES(%d, %d)" % (
                                     role_dict[target_role],
                                     perms_dict[new_perm]))
-                        self.log("creating user '%s' with role %s" % (unicode(cur_u),
-                                                                      target_role))
+                            self.log("creating new role '%s' with perms %s" % (
+                                target_role,
+                                ", ".join(add_perms)
+                            ))
+                        self.log("creating user '%s' with role %s" % (
+                            unicode(cur_u),
+                            target_role,
+                        ))
                         new_userid = cur_c.execute("INSERT INTO users VALUES(Null, '%s', '%s')" % (
                             cur_u.login,
                             binascii.hexlify(base64.b64decode(cur_u.password.split(":", 1)[1])),
@@ -2205,6 +2229,43 @@ class build_process(threading_tools.process_obj):
                                 act_host["check_command"] = "check-host-ok"
                             else:
                                 act_host["check_command"]             = act_def_dev.ccommand
+                            # check for nagvis map
+                            if host.automap_root_nagvis:
+                                map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.name))
+                                map_dict = {
+                                    "sources"      : "automap",
+                                    "alias"        : host.comment or host.name,
+                                    "parent_map"   : "",
+                                    "iconset"      : "std_big",
+                                    "child_layers" : 10,
+                                    "backend_id"   : "live_1",
+                                    "root"         : host.name,
+                                    "label_show"   : "1",
+                                    "label_border" : "transparent",
+                                    "render_mode"  : "directed",
+                                    "rankdir"      : "TB",
+                                    "width"        : 800,
+                                    "height"       : 600,
+                                    "header_menu"  : True,
+                                    "hover_menu"   : True,
+                                    "context_menu" : True,
+                                }
+                                try:
+                                    map_h = open(map_file, "w")
+                                except:
+                                    self.mach_log("cannot open %s: %s" % (map_file,
+                                                                          process_tools.get_except_info()),
+                                                  logging_tools.LOG_LEVEL_CRITICAL)
+                                else:
+                                    map_h.write("define global {\n")
+                                    for key, value in map_dict.iteritems():
+                                        if type(value) == bool:
+                                            value = "1" if value else "0"
+                                        elif type(value) in [int, long]:
+                                            value = "%d" % (value)
+                                        map_h.write("    %s=%s\n" % (key, value))
+                                    map_h.write("}\n")
+                                    map_h.close()
                             # check for notification options
                             not_a = []
                             for what, shortcut in [("nrecovery", "r"), ("ndown", "d"), ("nunreachable", "u")]:
@@ -2865,7 +2926,10 @@ def main():
     global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     if global_config["ENABLE_NAGVIS"]:
         process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [
-            os.path.join(global_config["NAGVIS_DIR"], "etc"),
+            {"name"     : os.path.join(global_config["NAGVIS_DIR"], "etc"),
+             "walk_dir" : False},
+            {"name"     : os.path.join(global_config["NAGVIS_DIR"], "etc", "maps"),
+             "walk_dir" : False}
         ])
         process_tools.fix_files(global_config["USER"], global_config["GROUP"], [
             os.path.join(global_config["NAGVIS_DIR"], "etc", "auth.db"),
