@@ -379,6 +379,7 @@ class sge_info(object):
                                   c_name)
     def _execute_command(self, command, **kwargs):
         # fancy, fancy
+        os.environ["SGE_ROOT"] = self.__sge_dict["SGE_ROOT"]
         os.environ["SGE_CELL"] = self.__sge_dict["SGE_CELL"]
         os.environ["SGE_SINGLE_LINE"] = "1"
         s_time = time.time()
