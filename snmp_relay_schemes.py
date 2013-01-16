@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2009,2010,2011 Andreas Lang-Nevyjel
+# Copyright (C) 2009,2010,2011,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -1366,6 +1366,52 @@ class temperature_knurr_scheme(snmp_scheme):
             limits.get_state_str(cur_state),
             cur_val,
             cur_val)
+
+class humidity_knurr_scheme(snmp_scheme):
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "humidity_knurr_scheme", **kwargs)
+        self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 1, 7), cache=True, cache_timeout=10)
+        self.parse_options(kwargs["options"])
+    def process_return(self):
+        new_dict = self._simplify_keys(dict([(key[0], float(value) / 10.) for key, value in self.snmp_dict.values()[0].iteritems()]))
+        low_crit, high_crit = (new_dict[3], new_dict[4])
+        cur_val = new_dict[2]
+        if cur_val > high_crit or cur_val < low_crit:
+            cur_state = limits.nag_STATE_CRITICAL
+        else:
+            cur_state = limits.nag_STATE_OK
+        return cur_state, "%s: humidity %.2f %% [%.2f - %.2f] | humidity=%.2f" % (
+            limits.get_state_str(cur_state),
+            cur_val,
+            low_crit,
+            high_crit,
+            cur_val)
+        
+class environment_knurr_scheme(snmp_scheme):
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "environment_knurr_scheme", **kwargs)
+        self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 2, 4), cache=True, cache_timeout=10)
+        self.parse_options(kwargs["options"])
+    def process_return(self):
+        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
+        del new_dict[4]
+        if max(new_dict.values()) == 0:
+            cur_state = limits.nag_STATE_OK
+        else:
+            cur_state = limits.nag_STATE_CRITICAL
+        info_dict = {
+            1 : "fan1",
+            2 : "fan2",
+            3 : "fan3",
+            5 : "water",
+            6 : "smoke",
+            7 : "PSA",
+            8 : "PSB",
+            }
+        return cur_state, "%s: %s" % (
+            limits.get_state_str(cur_state),
+            ", ".join(["%s: %s" % (info_dict[key], {0 : "OK", 1 : "faild"}[new_dict[key]]) for key in sorted(new_dict.keys())])
+            )
         
 if __name__ == "__main__":
     print "Loadable module, exiting"
