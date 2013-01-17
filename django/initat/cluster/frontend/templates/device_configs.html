@@ -64,26 +64,25 @@ class config_table
         if (cur_text != @cur_filter) or force_reload
             @cur_filter = cur_text
             cur_re = new RegExp("^.*" + @cur_filter+ ".*$")
-            console.log cur_re
             disp_list = new Array()
             # get keys/pks for current filter
             @configs.find("config").each (idx, c_config) =>
                 c_config = $(c_config)
                 if c_config.attr("name").match(cur_re)
                     disp_list.push(c_config.attr("key"))
-            console.log disp_list
             # not working, FIXME
             if (@show_list != disp_list) or force_reload
                 @display_list = (@configs.find("config[key='" + name + "']")[0] for name in disp_list)
-                console.log @display_list
                 @update_config_info(disp_list.length);
                 cur_exp_list = @get_expand_list()
                 @draw_tables()
                 @restore_expansion(cur_exp_list)
             @show_list = disp_list
     get_expand_list : =>
-        ret_list = ($(cur_el).attr("id") for cur_el in @c_table.find("tr span[id*='__expand__'][class*='-1-s']"))
-        console.log "rl", ret_list
+        if @c_table
+            ret_list = ($(cur_el).attr("id") for cur_el in @c_table.find("tr span[id*='__expand__'][class*='-1-s']"))
+        else
+            ret_list = []
         return ret_list
     update_config_info : (num_shown) =>
         info_str = "configs defined: " + @configs.find("config").length
@@ -134,7 +133,6 @@ class config_table
         cur_entries = 0
         run_idx = 1
         for cur_conf in @display_list
-            console.log cur_conf
             cur_conf = $(cur_conf)
             if !cur_entries
                 cur_tr = $("<tr>").attr({
@@ -196,7 +194,6 @@ class config_table
             success : (xml) =>
                 parse_xml_response(xml)
                 res_xml = $(xml)
-                # console.log(res_xml);
                 conf_pk = res_xml.find("device_configs config").attr("pk")
                 res_xml.find("devices device").each (xml_idx, cur_dev) =>
                     # deselect all checkboxes
