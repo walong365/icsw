@@ -374,7 +374,6 @@ class server_process(threading_tools.process_pool):
     def _generate_dir_list(self, cur_img):
         self.__dir_list = set([cur_entry for cur_entry in os.listdir(cur_img.source) if cur_entry not in ["media", "mnt", "proc", "sys"] and os.path.isdir(os.path.join(cur_img.source, cur_entry)) and not os.path.islink(os.path.join(cur_img.source, cur_entry))])
         self.__file_list = set([cur_entry for cur_entry in os.listdir(cur_img.source) if os.path.isfile(os.path.join(cur_img.source, cur_entry))])
-        self.__dir_list -= set(["usr", "var"])
         self.log("directory list is %s" % (", ".join(sorted(list(self.__dir_list)))))
         self.log("file list is %s" % (", ".join(sorted(list(self.__file_list))) or "<EMPTY>"))
     def _check_dirs(self, cur_img):
