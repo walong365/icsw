@@ -383,13 +383,17 @@ class client(object):
         srv_com["package_list"] = resp
     def _get_package_info(self, srv_com):
         pdc_xml = srv_com.xpath(None, ".//package_device_connection")[0]
-        info_xml = srv_com.xpath(None, ".//result")[0]
-        cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=pdc_xml.attrib["pk"]))
-        self.log("got package_info for %s" % (unicode(cur_pdc.package)))
-        cur_pdc.response_type = pdc_xml.attrib["response_type"]
-        cur_pdc.response_str = etree.tostring(info_xml)
-        cur_pdc.interpret_response()
-        cur_pdc.save(update_fields=["response_type", "response_str", "installed"])
+        info_xml = srv_com.xpath(None, ".//result")
+        if len(info_xml):
+            info_xml = info_xml[0]
+            cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=pdc_xml.attrib["pk"]))
+            self.log("got package_info for %s" % (unicode(cur_pdc.package)))
+            cur_pdc.response_type = pdc_xml.attrib["response_type"]
+            cur_pdc.response_str = etree.tostring(info_xml)
+            cur_pdc.interpret_response()
+            cur_pdc.save(update_fields=["response_type", "response_str", "installed"])
+        else:
+            self.log("got package_info without result", logging_tools.LOG_LEVEL_WARN)
     def new_command(self, srv_com):
         s_time = time.time()
         cur_com = srv_com["command"].text
