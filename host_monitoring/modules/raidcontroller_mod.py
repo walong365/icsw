@@ -587,7 +587,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
         return [("%s -LdPdInfo -a%d" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
-               [("%s -AdpBbuCmd -GetBbuStatus -a%d" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list]
+               [("%s -AdpBbuCmd -GetBbuStatus -a%d" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list] + \
+               [("%s -EncStatus -a%d" % (self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list]
     def scan_ctrl(self):
         cur_stat, cur_lines = self.exec_command(" -AdpAllInfo -aAll", post="strip")
         if not cur_stat:
@@ -654,6 +655,36 @@ class ctrl_type_megaraid_sas(ctrl_type):
             #if log_drive_num is not None:
             #    if line.count(":"):
             #        ctrl_stuff["logical_lines"][log_drive_num].append([part.strip() for part in line.split(":", 1)])
+        elif run_type == "enc":
+            cur_mode, mode_sense, count_dict = (None, True, {})
+            for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n")]:
+                empty_line = not line.strip()
+                parts = line.lower().strip().split()
+                if empty_line:
+                    mode_sense = True
+                else:
+                    if mode_sense == True:
+                        if (parts[0], cur_mode) in [("enclosure", None), ("enclosure", "run")]:
+                            cur_mode = "enc"
+                            count_dict = {"enc" : count_dict.get("enc", -1) + 1}
+                            cur_dict = {}
+                            ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"]] = cur_dict
+                        elif (parts[0], cur_mode) in [("number", "enc"), ("number", "run")]:
+                            cur_dict = {"num"   : int(parts[-1])}
+                            count_dict["sub_key"] = "_".join(parts[2:-2])
+                            ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"]][count_dict["sub_key"]] = cur_dict
+                            cur_mode = "run"
+                        elif parts[0] == "exit":
+                            pass
+                        elif cur_mode == "run":
+                            cur_dict = {"lines" : []}
+                            ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"]][count_dict["sub_key"]][int(parts[-1])] = cur_dict
+                        mode_sense = False
+                    else:
+                        if line.count(":"):
+                            key, value = line.split(":", 1)
+                            key = key.lower().strip().replace(" ", "_")
+                            cur_dict["lines"].append((key, value.strip()))
         elif run_type == "bbu":
             ctrl_stuff["bbu_keys"] = {}
             main_key = "main"
@@ -686,6 +717,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
         num_c, num_d, num_e, num_w = (len(ctrl_dict.keys()), 0, 0, 0)
         ret_state = limits.nag_STATE_OK
         drive_stats = []
+        num_enc = 0
         for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
             for log_num, log_stuff in ctrl_stuff.get("virt", {}).iteritems():
                 #pprint.pprint(log_dict)
@@ -715,14 +747,55 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 if drives_missing:
                     num_e += 1
                     drive_stats.append("drives missing: %s" % (", ".join(["%d" % (m_drive) for m_drive in drives_missing])))
+            if "enclosures" in ctrl_stuff:
+                for enc_num in sorted(ctrl_stuff["enclosures"].keys()):
+                    num_enc += 1
+                    enc_dict = ctrl_stuff["enclosures"][enc_num]
+                    enc_fields = []
+                    for key in sorted(enc_dict.keys()):
+                        s_key = {"fans"                : "fan",
+                                 "alarms"              : "alarm",
+                                 "power_supplies"      : "PS",
+                                 "temperature_sensors" : "temp",
+                                 "slots"               : "slot"}.get(key, key)
+                        cur_num = int(enc_dict[key].get("num", "0"))
+                        if cur_num:
+                            loc_problems = 0
+                            for cur_idx in xrange(cur_num):
+                                cur_stat = enc_dict[key][cur_idx]["lines"][0][1]
+                                if key.count("temperature"):
+                                    if int(cur_stat) > 50:
+                                        problem = True
+                                    else:
+                                        problem = False
+                                elif cur_stat.lower() in ["ok", "not installed", "unknown"]:
+                                    problem = False
+                                else:
+                                    problem = True
+                                if problem:
+                                    loc_problems += 1
+                                    num_e += 1
+                                    enc_fields.append("%s %d: %s" % (
+                                        s_key,
+                                        cur_idx,
+                                        cur_stat))
+                            if cur_num > loc_problems:
+                                enc_fields.append("%s ok" % (
+                                    logging_tools.get_plural(s_key, cur_num - loc_problems)
+                                ))
+                    drive_stats.append("enc%d: %s" % (
+                        enc_num,
+                        ", ".join(enc_fields)
+                    ))
         if num_e:
             ret_state = limits.nag_STATE_CRITICAL
         elif num_w:
             ret_state = limits.nag_STATE_WARNING
-        return ret_state, "%s: %s on %s, %s" % (limits.get_state_str(ret_state),
-                                                logging_tools.get_plural("logical drive", num_d),
-                                                logging_tools.get_plural("controller", num_c),
-                                                ", ".join(drive_stats))
+        return ret_state, "%s on %s (%s), %s" % (
+            logging_tools.get_plural("logical drive", num_d),
+            logging_tools.get_plural("controller", num_c),
+            logging_tools.get_plural("enclosure", num_enc),
+            ", ".join(drive_stats))
 
 class ctrl_type_megaraid(ctrl_type):
     class Meta:
