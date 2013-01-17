@@ -249,6 +249,7 @@ class install_process(threading_tools.process_obj):
         self.log("pdc done")
         keep_pdc = False
         if xml_info is not None:
+            cur_pdc.append(E.result(xml_info))
             # check for out-of date repositories
             warn_text = (" ".join([cur_el.text for cur_el in xml_info.findall(".//message[@type='warning']")])).strip().lower()
             info_text = (" ".join([cur_el.text for cur_el in xml_info.findall(".//message[@type='info']")])).strip().lower()
