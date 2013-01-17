@@ -208,20 +208,26 @@ class install_process(threading_tools.process_obj):
                 self.pdc_done(cur_init, E.info("nothing to do"))
     def build_command(self, cur_pdc):
         #print etree.tostring(cur_pdc, pretty_print=True)
-        if cur_pdc.attrib["target_state"] == "keep":
-            # nothing to do
-            zypper_com = None
+        if cur_pdc.tag == "special_command":
+            if cur_pdc.attrib["command"] == "refresh":
+                zypper_com = "/usr/bin/zypper -q -x refresh"
+            else:
+                zypper_com = None
         else:
-            pack_xml = cur_pdc[0]
-            zypper_com = {"install" : "in",
-                          "upgrade" : "up",
-                          "erase"   : "rm"}.get(cur_pdc.attrib["target_state"])
-            zypper_com = "/usr/bin/zypper -q -x -n --no-refresh %s %s-%s" % (
-                zypper_com,
-                pack_xml.attrib["name"],
-                pack_xml.attrib["version"],
-            )
-            self.log("transformed pdc to '%s'" % (zypper_com))
+            if cur_pdc.attrib["target_state"] == "keep":
+                # nothing to do
+                zypper_com = None
+            else:
+                pack_xml = cur_pdc[0]
+                zypper_com = {"install" : "in",
+                              "upgrade" : "up",
+                              "erase"   : "rm"}.get(cur_pdc.attrib["target_state"])
+                zypper_com = "/usr/bin/zypper -x -n %s %s-%s" % (
+                    zypper_com,
+                    pack_xml.attrib["name"],
+                    pack_xml.attrib["version"],
+                )
+                self.log("transformed pdc to '%s'" % (zypper_com))
         return zypper_com
     def _command_done(self, hc_sc):
         cur_out = hc_sc.read()
@@ -241,17 +247,34 @@ class install_process(threading_tools.process_obj):
         del hc_sc
     def pdc_done(self, cur_pdc, xml_info):
         self.log("pdc done")
+        keep_pdc = False
         if xml_info is not None:
-            cur_pdc.append(E.result(xml_info))
+            # check for out-of date repositories
+            warn_text = (" ".join([cur_el.text for cur_el in xml_info.findall(".//message[@type='warning']")])).strip().lower()
+            info_text = (" ".join([cur_el.text for cur_el in xml_info.findall(".//message[@type='info']")])).strip().lower()
+            if info_text.count("already installed"):
+                pass
+            elif warn_text.count("outdated") and not len(xml_info.findall(".//to-install")):
+                if int(cur_pdc.get("retry_count", "0")) > 2:
+                    self.log("retried too often, ingoring warning", logging_tools.LOG_LEVEL_WARN)
+                else:
+                    self.log("repository is outdated, forcing refresh and keeping pdc", logging_tools.LOG_LEVEL_WARN)
+                    keep_pdc = True
+                    cur_pdc.attrib["init"] = "0"
+                    cur_pdc.attrib["retry_count"] = "%d" % (int(cur_pdc.attrib["retry_count"]) + 1)
+                    self.package_commands.insert(0, E.special_command(send_return="0", command="refresh", init="0"))
             cur_pdc.attrib["response_type"] = "zypper_xml"
         else:
             cur_pdc.attrib["response_type"] = "unknown"
-        srv_com = server_command.srv_command(
-            command="package_info",
-            info=cur_pdc)
-        self.send_to_server(srv_com)
-        new_list = [cur_com for cur_com in self.package_commands if cur_com != cur_pdc]
-        self.package_commands = new_list
+        if int(cur_pdc.attrib["send_return"]):
+            srv_com = server_command.srv_command(
+                command="package_info",
+                info=cur_pdc)
+            self.send_to_server(srv_com)
+        if not keep_pdc:
+            # remove pdc
+            new_list = [cur_com for cur_com in self.package_commands if cur_com != cur_pdc]
+            self.package_commands = new_list
         self._process_commands()
     def handle_pending_commands(self):
         while self.pending_commands and not self.package_commands:
@@ -267,6 +290,10 @@ class install_process(threading_tools.process_obj):
                     for cur_pdc in first_com.xpath(None, ".//ns:packages/package_device_connection"):
                         # set flag to not init
                         cur_pdc.attrib["init"] = "0"
+                        # flag to send return to server
+                        cur_pdc.attrib["send_return"] = "1"
+                        # retry count
+                        cur_pdc.attrib["retry_count"] = "0"
                         self.package_commands.append(cur_pdc)
                     self.log(logging_tools.get_plural("package command", len(self.package_commands)))
                     self._process_commands()
