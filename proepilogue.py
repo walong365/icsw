@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2011,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,6 +24,10 @@
 """ pro/epilogue script """
 
 import sys
+
+# clean sys.path
+sys.path = [entry for entry in sys.path if entry.startswith("/opt")]
+
 import pwd, grp
 import time
 import stat
