@@ -75,7 +75,9 @@ def check_system(opt_ns):
             "logging-server",
             "meta-server",
             "host-monitoring",
-            "package-client"]
+            "package-client",
+            "gmond:simple:gmond",
+        ]
     if set_default_servers:
         opt_ns.server = [
             "logcheck-server",
