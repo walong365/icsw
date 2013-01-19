@@ -171,6 +171,45 @@ class special_base(object):
         if len(self.__server_results) == self.__server_calls and self.__server_calls:
             self._store_cache()
         return cur_ret
+    def get_arg_template(self, *args, **kwargs):
+        return arg_template(self, *args, **kwargs)
+    
+class arg_template(dict):
+    def __init__(self, s_base, *args, **kwargs):
+        dict.__init__(self)
+        self.info = args[0]
+        if s_base is not None:
+            self.__arg_lut, self.__arg_list = s_base.s_check.arg_ll
+        else:
+            self.__arg_lut, self.__arg_list = ({}, [])
+        # set defaults
+        self.argument_names = sorted(list(set(self.__arg_list) | set(self.__arg_lut.values())))
+        for arg_name in self.argument_names:
+            dict.__setitem__(self, arg_name, "")
+        for key, value in kwargs.iteritems():
+            self[key] = value
+    def __setitem__(self, key, value):
+        l_key = key.lower()
+        if l_key.startswith("arg"):
+            if l_key.startswith("arg_"):
+                key = "arg%d" % (len(self.argument_names) + 1 - int(l_key[4:]))
+            if key.upper() not in self.argument_names:
+                raise KeyError, "key '%s' not defined in arg_list (%s)" % (
+                    key,
+                    self.info)
+            else:
+                dict.__setitem__(self, key.upper(), value)
+        else:
+            if key in self.__arg_lut:
+                dict.__setitem__(self, self.__arg_lut[key].upper(), value)
+            elif "-%s" % (key) in self.__arg_lut:
+                dict.__setitem__(self, self.__arg_lut["-%s" % (key)].upper(), value)
+            elif "--%s" % (key) in self.__arg_lut:
+                dict.__setitem__(self, self.__arg_lut["--%s" % (key)].upper(), value)
+            else:
+                raise KeyError, "key '%s' not defined in arg_list (%s)" % (
+                    key,
+                    self.info)
 
 class special_openvpn(special_base):
     def _call(self):
@@ -194,22 +233,20 @@ class special_openvpn(special_base):
         if exp_dict:
             for inst_name in sorted(exp_dict):
                 for peer_name in sorted(exp_dict[inst_name]):
-                    sc_array.append(("OpenVPN peer %s on %s" % (peer_name, inst_name), [inst_name, peer_name]))
+                    sc_array.append(self.get_arg_template("OpenVPN peer %s on %s" % (peer_name, inst_name),
+                                                          arg1=inst_name,
+                                                          arg2=peer_name))
         if not sc_array:
-            sc_array.append(("OpenVPN", ["ALL", "ALL"]))
+            sc_array.append(self.get_arg_template("OpenVPN", arg1="ALL", arg2="ALL"))
         return sc_array
     
 class special_disc_all(special_base):
     def _call(self):
-        sc_array = []
-        sc_array.append(("All partitions", ["",
-                                            "",
-                                            "ALL"]))
+        sc_array = [self.get_arg_template("All partitions", arg3="ALL")]
         return sc_array
-        
+
 class special_disc(special_base):
     def _call(self):
-        sc_array = []
         part_dev = self.host.partdev
         df_settings_dir = "%s/etc/df_settings" % (global_config["MD_BASEDIR"])
         df_sd_ok = os.path.isdir(df_settings_dir)
@@ -263,8 +300,9 @@ class special_disc(special_base):
             if lvm_part.mountpoint:
                 warn_level, crit_level = (lvm_part.warn_threshold or 0,
                                           lvm_part.crit_threshold or 0)
-                warn_level_str, crit_level_str = ("%d" % (warn_level if warn_level else 100),
-                                                  "%d" % (crit_level if crit_level else 100))
+                warn_level_str, crit_level_str = (
+                    "%d" % (warn_level if warn_level else 100),
+                    "%d" % (crit_level if crit_level else 100))
                 part_list.append((
                     "%s (LVM)" % (lvm_part.mountpoint),
                     "/dev/mapper/%s-%s" % (lvm_part.lvm_vg.name, lvm_part.name),
@@ -279,22 +317,24 @@ class special_disc(special_base):
                 if len(parts) == 3:
                     if parts[0].startswith("/") and parts[1].isdigit() and parts[2].isdigit():
                         set_dict[parts[0]] = (int(parts[1]), int(parts[2]))
+        sc_array = []
         for info_name, p_name, w_lev, c_lev in part_list:
             if p_name in set_dict:
                 w_lev, c_lev = set_dict[p_name]
                 self.log("    setting w/c to %d/%d" % (w_lev, c_lev))
                 w_lev, c_lev = (str(w_lev) if w_lev > 0 else "", str(c_lev) if c_lev > 0 else "")
-            self.log("  P: %-40s: %-40s (w: %-5s, c: %-5s)" % (info_name,
-                                                                          p_name,
-                                                                          w_lev or "N/S",
-                                                                          c_lev or "N/S"))
-            sc_array.append((info_name, [w_lev, c_lev, p_name]))
+            self.log("  P: %-40s: %-40s (w: %-5s, c: %-5s)" % (
+                info_name,
+                p_name,
+                w_lev or "N/S",
+                c_lev or "N/S"))
+            sc_array.append(self.get_arg_template(info_name, arg3=p_name, w=w_lev, c=c_lev))
         return sc_array
     
 class special_net(special_base):
     def _call(self):
         sc_array = []
-        eth_check = re.match(".*ethtool.*", self.s_check["command_name"])
+        eth_check = True if re.match(".*ethtool.*", self.s_check["command_name"]) else False
         virt_check = re.compile("^.*:\S+$")
         self.log("eth_check is %s" % ("on" if eth_check else "off"))
         # never check duplex and stuff for a loopback-device
@@ -307,18 +347,21 @@ class special_net(special_base):
                 name_with_descr = "%s%s" % (
                     net_dev.devname,
                     " (%s)" % (net_dev.description) if net_dev.description else "")
-                eth_opts = []
+                cur_temp = self.get_arg_template(
+                    name_with_descr,
+                    w="%.0f" % (net_dev.netdevice_speed.speed_bps * 0.9),
+                    c="%.0f" % (net_dev.netdevice_speed.speed_bps * 0.95),
+                    arg_1=net_dev.devname,
+                )
                 if eth_check:
-                    eth_opts.extend([net_dev.netdevice_speed.full_duplex and "full" or "half",
-                                     "%d" % (net_dev.netdevice_speed.speed_bps)])
-                eth_opts.extend(["%.0f" % (net_dev.netdevice_speed.speed_bps * 0.9),
-                                 "%.0f" % (net_dev.netdevice_speed.speed_bps * 0.95)])
-                eth_opts.append(net_dev.devname)
+                    cur_temp["duplex"] = net_dev.netdevice_speed.full_duplex and "full" or "half"
+                    cur_temp["s"]      = "%d" % (net_dev.netdevice_speed.speed_bps)
                 self.log(" - netdevice %s with %s: %s" % (
                     name_with_descr,
-                    logging_tools.get_plural("option", len(eth_opts) - 1),
-                    ", ".join(eth_opts[:-1])))
-                sc_array.append((name_with_descr, eth_opts))
+                    logging_tools.get_plural("option", len(cur_temp.argument_names)),
+                    ", ".join(cur_temp.argument_names)))
+                sc_array.append(cur_temp)
+                #sc_array.append((name_with_descr, eth_opts))
         return sc_array
 
 class special_libvirt(special_base):
@@ -333,8 +376,11 @@ class special_libvirt(special_base):
                 # build sc_array
                 for inst_id in domain_info:
                     d_dict = domain_info[inst_id]
-                    sc_array.append(("Domain %s" % (d_dict["name"]),
-                                     [d_dict["name"]]))
+                    sc_array.append(
+                        self.get_arg_template(
+                            "Domain %s" % (d_dict["name"]),
+                            arg1=d_dict["name"])
+                    )
         return sc_array
         
 class special_eonstor(special_base):
@@ -383,10 +429,16 @@ class special_eonstor(special_base):
                     if add_check:
                         if not nag_name.lower().startswith(env_dict_name):
                             nag_name = "%s %s" % (env_dict_name, nag_name)
-                        sc_array.append((nag_name,
-                                         ["eonstor_%s_info" % (env_dict_name), "%d" % (idx)]))
+                        sc_array.append(
+                            self.get_arg_template(
+                                nag_name,
+                                # not correct, fixme
+                                arg1="eonstor_%s_info" % (env_dict_name),
+                                arg2="%d" % (idx)
+                            )
+                        )
         # rewrite sc_array to include community and version
-        sc_array = [(name, ["", ""] + var_list) for name, var_list in sc_array]
+        #sc_array = [(name, ["", ""] + var_list) for name, var_list in sc_array]
         self.log("sc_array has %s" % (logging_tools.get_plural("entry", len(sc_array))))
         return sc_array
         

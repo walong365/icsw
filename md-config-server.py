@@ -1169,6 +1169,7 @@ class all_servicegroups(host_type_config):
     
 class all_commands(host_type_config):
     def __init__(self, gen_conf, build_proc):
+        check_command.gen_conf = gen_conf
         host_type_config.__init__(self, build_proc)
         self.__obj_list, self.__dict = ([], {})
         self._add_notify_commands()
@@ -1553,51 +1554,115 @@ class check_command(object):
         self.enable_perfdata = kwargs.get("enable_perfdata", False)
         self.__special = special
         self._generate_md_com_line()
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        check_command.gen_conf.log("[cc %s] %s" % (self.__name, what), log_level)
+    @property
+    def command_line(self):
+        return self.__com_line
+    @property
+    def md_command_line(self):
+        return self.__md_com_line
     def get_num_args(self):
         return self.__num_args
     def get_default_value(self, arg_name, def_value):
         return self.__default_values.get(arg_name, def_value)
     def _generate_md_com_line(self):
+        """
+        parses command line, also builds argument lut
+        lut format: commandline switch -> ARG#
+        list format : ARG#, ARG#, ...
+        """
         self.__num_args, self.__default_values = (0, {})
+        arg_lut, arg_list = ({}, [])
         # parse command_line
-        com_parts, new_parts = (self.__com_line.split(), [])
+        com_parts, new_parts = (self.command_line.split(), [])
+        prev_part = None
         for com_part in com_parts:
             try:
-                if com_part.startswith("${") and com_part.endswith("}"):
-                    arg_name, var_name, default_value = com_part[2:-1].split(":")
+                """
+                handle the various input formats:
+                
+                ${ARG#:var_name:default}
+                ${ARG#:var_name:default}$
+                ${ARG#:default}
+                ${ARG#:default}$
+                """
+                if com_part.startswith("${") and (com_part.endswith("}") or com_part.endswith("}$")):
+                    if com_part.endswith("}$"):
+                        com_part = com_part[2:-2]
+                    else:
+                        com_part = com_part[2:-1]
+                    if com_part.count(":") == 2:
+                        arg_name, var_name, default_value = com_part.split(":")
+                    elif com_part.count(":") == 1:
+                        arg_name, default_value = com_part.split(":")
+                        var_name = None
+                    else:
+                        arg_name = com_part
+                        default_value, var_name = (None, None)
+                    if prev_part:
+                        arg_lut[prev_part] = arg_name
+                    else:
+                        arg_list.append(arg_name)
                     new_parts.append("$%s$" % (arg_name))
-                    self.__default_values[arg_name] = (var_name, default_value)
+                    if var_name:
+                        self.__default_values[arg_name] = (var_name, default_value)
+                    elif default_value is not None:
+                        self.__default_values[arg_name] = default_value
                     self.__num_args += 1
+                    prev_part = None
                 elif com_part.startswith("$ARG") and com_part.endswith("$"):
+                    arg_name = com_part[1:-1]
+                    if prev_part:
+                        arg_lut[prev_part] = arg_name
+                    else:
+                        arg_list.append(arg_name)
                     new_parts.append(com_part)
                     self.__num_args += 1
+                    prev_part = None
                 else:
                     new_parts.append(com_part)
+                    prev_part = com_part
             except:
                 # need some logging, FIXME
                 new_parts.append(com_part)
         self.__md_com_line = " ".join(new_parts)
-    def correct_argument_list(self, in_list, dev_variables):
-        if not in_list and self.__num_args:
-            in_list = [""] * self.__num_args
+        self.log("command_line in  is '%s'" % (self.command_line))
+        self.log("command_line out is '%s'" % (self.md_command_line))
+        self.log("lut : %s; %s" % (
+            logging_tools.get_plural("key", len(arg_lut)),
+            ", ".join(["'%s' => '%s'" % (key, value) for key, value in arg_lut.iteritems()])
+        ))
+        self.log("list: %s; %s" % (
+            logging_tools.get_plural("item", len(arg_list)),
+            ", ".join(arg_list)
+        ))
+        self.__arg_lut, self.__arg_list = (arg_lut, arg_list)
+    def correct_argument_list(self, arg_temp, dev_variables):
         out_list = []
-        for idx, item in zip(xrange(1, len(in_list) + 1), in_list):
-            arg_name = "ARG%d" % (idx)
-            if self.__default_values.has_key(arg_name) and not item:
-                var_name = self.__default_values[arg_name][0]
-                if dev_variables.has_key(var_name):
-                    item = dev_variables[var_name]
+        for arg_name in arg_temp.argument_names:
+            value = arg_temp[arg_name]
+            if self.__default_values.has_key(arg_name) and not value:
+                dv_value = self.__default_values[arg_name]
+                if type(dv_value) == tuple:
+                    # var_name and default_value
+                    var_name = self.__default_values[arg_name][0]
+                    if dev_variables.has_key(var_name):
+                        value = dev_variables[var_name]
+                    else:
+                        value = self.__default_values[arg_name][1]
                 else:
-                    item = self.__default_values[arg_name][1]
-            if type(item) in [int, long]:
-                out_list.append("%d" % (item))
+                    # only default_value
+                    value = self.__default_values[arg_name]
+            if type(value) in [int, long]:
+                out_list.append("%d" % (value))
             else:
-                out_list.append(item)
+                out_list.append(value)
         return out_list
     def get_nag_config(self):
         return nag_config(self.__name,
                           command_name=self.__name,
-                          command_line=self.__md_com_line)
+                          command_line=self.md_command_line)
     def __getitem__(self, k):
         if k == "command_name":
             return self.__name
@@ -1617,8 +1682,17 @@ class check_command(object):
             return self.__descr
         else:
             return self.__name
+    @property
+    def name(self):
+        return self.__name
+    @property
+    def arg_ll(self):
+        """
+        returns lut and list 
+        """
+        return (self.__arg_lut, self.__arg_list)
     def __repr__(self):
-        return "%s (%s)" % (self.__name, self.__com_line)
+        return "%s [%s]" % (self.__name, self.command_line)
         
 class device_templates(dict):
     def __init__(self, build_proc):
@@ -2306,17 +2380,17 @@ class build_process(threading_tools.process_obj):
                             # now conf_dict is a list of all service-checks defined for this host
                             #pprint.pprint(conf_dict)
                             # list of already used checks
-                            used_checks = []
+                            used_checks = set()
                             conf_names = sorted(conf_dict.keys())
                             for conf_name in conf_names:
                                 s_check = conf_dict[conf_name]
-                                if s_check.get_description() in used_checks:
-                                    self.mach_log("Check %s (%s) already used, ignoring .... (CHECK CONFIG !)" % (
+                                if s_check.name in used_checks:
+                                    self.mach_log("%s (%s) already used, ignoring .... (CHECK CONFIG !)" % (
                                         s_check.get_description(),
                                         s_check["command_name"]), logging_tools.LOG_LEVEL_WARN)
                                     num_warning += 1
                                 else:
-                                    used_checks.append(s_check.get_description())
+                                    used_checks.add(s_check.name)
                                     special = s_check.get_special()
                                     if special:
                                         sc_array = []
@@ -2331,7 +2405,7 @@ class build_process(threading_tools.process_obj):
                                             # calling handle to return a list of checks with format
                                             # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
                                             try:
-                                                sc_array = cur_special()#.handle(s_check, host, dc, self, valid_ip, global_config=global_config)
+                                                sc_array = cur_special()
                                             except:
                                                 exc_info = process_tools.exception_info()
                                                 self.log("error calling special %s:" % (special),
@@ -2342,7 +2416,7 @@ class build_process(threading_tools.process_obj):
                                             finally:
                                                 cur_special.cleanup()
                                     else:
-                                        sc_array = [(s_check.get_description(), [])]
+                                        sc_array = [special_commands.arg_template(None, s_check.get_description())]
                                         # contact_group is only written if contact_group is responsible for the host and the service_template
                                     serv_temp = serv_templates[s_check.get_template(act_def_serv.name)]
                                     serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
@@ -2419,11 +2493,12 @@ class build_process(threading_tools.process_obj):
             s_check.get_template(act_def_serv.name),
             "cg: %s" % (", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs"))
         ret_field = []
-        for sc_name, sc in sc_array:
-            act_serv = nag_config(sc_name)
+        #for sc_name, sc in sc_array:
+        for arg_temp in sc_array:
+            act_serv = nag_config(arg_temp.info)
             act_serv["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
             act_serv["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
-            act_serv["service_description"]   = sc_name.replace("(", "[").replace(")", "]")
+            act_serv["service_description"]   = arg_temp.info.replace("(", "[").replace(")", "]")
             act_serv["host_name"]             = host.name
             act_serv["is_volatile"]           = serv_temp.volatile
             act_serv["check_period"]          = cur_gc["timeperiod"][serv_temp.nsc_period_id]["name"]
@@ -2449,7 +2524,7 @@ class build_process(threading_tools.process_obj):
                     act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (global_config["PNP_URL"])
             act_serv["servicegroups"]         = s_check.servicegroup_name
             cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
-            act_serv["check_command"]         = "!".join([s_check["command_name"]] + s_check.correct_argument_list(sc, dev_variables))
+            act_serv["check_command"]         = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, dev_variables))
             if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
                 self.mach_log("   removing command %s because of %s" % (s_check["command_name"],
                                                                         act_host["check_command"]))
