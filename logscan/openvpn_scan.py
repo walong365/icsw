@@ -5,6 +5,7 @@ import os
 import bz2
 import datetime
 import pprint
+import process_tools
 
 class vpn_con(object):
     def __init__(self, name, src_ip, src_port):
@@ -42,18 +43,21 @@ class scan_container(object):
             pass
         else:
             if parts[5].startswith("us="):
-                content = " ".join(parts[6:])
-                if content.lower().count("peer connection"):
-                    self._handle_peer_con(cur_ts, parts[6:])
-                    #print cur_ts, content
-                elif content.lower().count("connection reset"):
-                    self._close_peer_con(cur_ts, parts[6:])
-                elif content.lower().count("client-instance restarting"):
-                    self._close_peer_con(cur_ts, parts[6:])
-                elif content.lower().count("inactivity timeout"):
-                    print cur_ts, content
-                elif content.lower().count("restarting"):
-                    print cur_ts, content
+                try:
+                    content = " ".join(parts[6:])
+                    if content.lower().count("peer connection"):
+                        self._handle_peer_con(cur_ts, parts[6:])
+                        #print cur_ts, content
+                    elif content.lower().count("connection reset"):
+                        self._close_peer_con(cur_ts, parts[6:])
+                    elif content.lower().count("client-instance restarting"):
+                        self._close_peer_con(cur_ts, parts[6:])
+                    elif content.lower().count("inactivity timeout"):
+                        print cur_ts, content
+                    elif content.lower().count("restarting"):
+                        print cur_ts, content
+                except:
+                    print "error parsing line %s: %s" % (line, process_tools.get_except_info())
     def _handle_peer_con(self, cur_ts, parts):
         c_name, src_ipp = (parts[1][1:-1], parts[0])
         src_ip, src_port = src_ipp.split(":")
