@@ -107,7 +107,7 @@ class draw_setup
                 if ref_obj
                     search_str = ref_obj.xml_name_plural + " " + ref_obj.xml_name
                 else
-                    search_str = cur_req + "s " + cur_req
+                    search_str = "#{cur_req}s#{cur_req}"
                 if not @master_xml.find(search_str).length
                     missing_objects.push(if ref_obj then ref_obj.name else cur_req)
                     draw = false
@@ -329,9 +329,9 @@ class draw_collapse extends draw_info
         return get_expand_td(line_prefix, "exp", undefined, @expand_cb, @default ? true)
     expand_cb: (line_prefix, state, name) =>
         if state
-            @draw_setup.table_div.find("tr[id^='" + line_prefix + "']")[1..].show()
+            @draw_setup.table_div.find("tr[id^='#{line_prefix}']")[1..].show()
         else
-            @draw_setup.table_div.find("tr[id^='" + line_prefix + "']")[1..].hide()
+            @draw_setup.table_div.find("tr[id^='#{line_prefix}']")[1..].hide()
         
 class draw_link extends draw_info
     constructor: (name="link", kwargs={}) ->
@@ -340,7 +340,7 @@ class draw_link extends draw_info
         if xml_el
             return $("<a>").attr({
                 "href" : "#",
-                "id"   : line_prefix + "__detail"
+                "id"   : "#{line_prefix}__detail"
             }).bind("click", (event) => @change_cb(event)).text(@name)
         else
             return ""
