@@ -30,7 +30,7 @@ import process_tools
 from initat.md_config_server.config import global_config
 from host_monitoring import ipc_comtools
 from initat.cluster.backbone.models import partition, partition_disc, partition_table, partition_fs, \
-     netdevice, net_ip, network, lvm_vg, lvm_lv
+     netdevice, net_ip, network, lvm_vg, lvm_lv, device, device_variable
 from django.db.models import Q
 import time
 import bz2
@@ -75,7 +75,6 @@ class special_base(object):
         self.s_check = s_check
         self.host = host
         self.valid_ip = valid_ip
-        self.global_config = global_config
     def _cache_name(self):
         return "/tmp/.md-config-server/%s_%s" % (self.host.name,
                                                  self.valid_ip)
@@ -99,13 +98,24 @@ class special_base(object):
             self.log("loaded cache from %s" % (c_name))
     def cleanup(self):
         self.build_process = None
-        self.global_config = None
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.build_process.mach_log("[sc] %s" % (what), log_level)
-    def _call_collrelay(self, command, *args):
-        return self._call_server(command, "collrelay", *args)
-    def _call_snmprelay(self, command, *args, **kwargs):
-        return self._call_server(command, "snmp_relay", *args, snmp_community=kwargs.get("snmp_community", "public"), snmp_version=kwargs.get("snmp_version", 1))
+    def collrelay(self, command, *args, **kwargs):
+        return self._call_server(
+            command,
+            "collrelay",
+            *args,
+            **kwargs
+        )
+    def snmprelay(self, command, *args, **kwargs):
+        return self._call_server(
+            command,
+            "snmp_relay",
+            *args,
+            snmp_community=kwargs.pop("snmp_community", "public"),
+            snmp_version=kwargs.pop("snmp_version", 1),
+            **kwargs
+        )
     def _call_server(self, command, server_name, *args, **kwargs):
         self.log("calling server '%s' for %s, command is '%s', %s, %s" % (
             server_name,
@@ -151,11 +161,53 @@ class special_base(object):
         if self.__use_cache:
             if len(self.__cache) > self.__server_calls:
                 srv_reply = self.__cache[self.__server_calls]
-                self.log("take result from cache [index %d]" % (self.__server_calls))
+                self.log("take result from cache [index %d]" % (
+                    self.__server_calls
+                ))
             else:
-                self.log("cache too small", logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "cache too small (%d <= %d)" % (
+                        len(self.__cache),
+                        self.__server_calls),
+                    logging_tools.LOG_LEVEL_WARN)
         self.__server_calls += 1
         return srv_reply
+    def get_parameter(self, para_name, xpath_str, command, *args, **kwargs):
+        self.collrelay("openvpn_status")
+        """
+        get a paramter, by default as device_variable
+        """
+        server_type = kwargs.pop("target_server", "collrelay")
+        var_type = kwargs.pop("var_type", "s")
+        r_para_name = "{MDC}_%s" % (para_name)
+        try:
+            cur_var = device_variable.objects.get(Q(device=self.host) & Q(name=r_para_name))
+        except device_variable.DoesNotExist:
+            srv_result = getattr(self, server_type)(command, *args)
+            if srv_result is None:
+                self.log("no result, returning None vor parameter %s" % (para_name), 
+                         logging_tools.LOG_LEVEL_ERROR)
+                cur_var = None
+            else:
+                self.log("requested parameter %s from device via %s" % (para_name, server_type))
+                cur_val = srv_result.xpath(None, xpath_str)[0].text
+                if var_type == "i":
+                    cur_val = int(cur_val)
+                cur_var = device_variable(
+                    device=self.host,
+                    is_public=True,
+                    name=r_para_name,
+                    description="requested from md-config-server",
+                    var_type=var_type,
+                )
+                cur_var.set_value(cur_val)
+                cur_var.save()
+        else:
+            self.log("read parameter %s from database" % (para_name))
+        if cur_var is None:
+            return cur_var
+        else:
+            return cur_var.get_value()
     def __call__(self):
         s_name = self.__class__.__name__.split("_", 1)[1]
         self.log("starting %s for %s" % (s_name, self.host.name))
@@ -221,7 +273,7 @@ class special_openvpn(special_base):
             exp_dict = {}
         if not exp_dict:
             # no expected_dict found, try to get the actual config from the server
-            srv_result = self._call_collrelay("openvpn_status")
+            srv_result = self.collrelay("openvpn_status")
             if srv_result is not None:
                 if "openvpn_instances" in srv_result:
                     ovpn_dict = srv_result["openvpn_instances"]
@@ -256,6 +308,8 @@ class special_disc(special_base):
             "OK" if df_sd_ok else "not reachable"))
         first_disc = None
         part_list = []
+        #print self.get_parameter("num_discs", "df", "/dev/sda1")
+        #print self.get_parameter("num_discs", ".//ns:load1", "load")
         for part_p in partition.objects.filter(Q(partition_disc__partition_table=self.host.act_partition_table)).select_related(
             "partition_fs").order_by(
                 "partition_disc__disc",
@@ -367,7 +421,7 @@ class special_net(special_base):
 class special_libvirt(special_base):
     def _call(self):
         sc_array = []
-        srv_result = self._call_collrelay("domain_overview")
+        srv_result = self.collrelay("domain_overview")
         if srv_result is not None:
             if "domain_overview" in srv_result:
                 domain_info = srv_result["domain_overview"]
@@ -388,9 +442,10 @@ class special_eonstor(special_base):
         retries = 4
     def _call(self):
         sc_array = []
-        srv_reply = self._call_snmprelay("eonstor_get_counter",
-                                         snmp_community="public",
-                                         snmp_version="1")
+        srv_reply = self.snmprelay(
+            "eonstor_get_counter",
+            snmp_community="public",
+            snmp_version="1")
         if srv_reply and "eonstor_info" in srv_reply:
             info_dict = srv_reply["eonstor_info"]
             # disks
@@ -408,10 +463,11 @@ class special_eonstor(special_base):
                     # get info for certain environment types
                     if env_dict_name in ["ups", "bbu"]:
                         act_com = "eonstor_%s_info" % (env_dict_name)
-                        srv_reply = self._call_snmprelay(act_com,
-                                                         "%d" % (idx),
-                                                         snmp_version="1",
-                                                         snmp_community="public")
+                        srv_reply = self.snmprelay(
+                            act_com,
+                            "%d" % (idx),
+                            snmp_version="1",
+                            snmp_community="public")
                         if srv_reply and "eonstor_info:state" in srv_reply:
                             act_state = int(srv_reply["eonstor_info:state"].text)
                             self.log("state for %s:%d is %d" % (act_com, idx, act_state))
