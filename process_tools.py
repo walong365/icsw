@@ -151,13 +151,15 @@ def get_zmq_ipc_name(name, **kwargs):
             s_name = s_name[:-3]
         if s_name.endswith("_zmq"):
             s_name = s_name[:-4]
+    # flag: connect to root instance
+    ctri = kwargs.get("connect_to_root_instance", False)
     #print __name__, globals()
-    if os.getuid():
+    if os.getuid() and not ctri:
         # non-root call
         root_dir = LOCAL_ZMQ_DIR
         atexit.register(remove_zmq_dirs, root_dir)
     else:
-        if ALLOW_MULTIPLE_INSTANCES:
+        if ALLOW_MULTIPLE_INSTANCES and not ctri:
             root_dir = os.path.join(LOCAL_ROOT_ZMQ_DIR, INIT_ZMQ_DIR_PID)
         else:
             root_dir = LOCAL_ROOT_ZMQ_DIR

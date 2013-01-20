@@ -309,6 +309,15 @@ class srv_command(object):
         return etree.tostring(self.__tree, encoding=unicode)
     def tostring(self, **kwargs):
         return etree.tostring(self.__tree, **kwargs)
+    def get_log_tuple(self):
+        # returns the reply / state attribute, mapped to logging_tool levels
+        res_node = self.xpath(None, ".//ns:result")[0]
+        ret_str, ret_state = res_node.attrib["reply"], int(res_node.attrib["state"])
+        ret_state = {0 : 20,
+                     1 : 30,
+                     2 : 40,
+                     3 : 50}.get(ret_state, 50)
+        return ret_str, ret_state
     def __del__(self):
         srv_command.srvc_open -= 1
         
