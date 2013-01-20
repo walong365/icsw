@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -55,44 +55,6 @@ class server_com(object):
         for key in dir(server_com.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(server_com.Meta, key))
-##        cl_name = str(self.__class__).split(".")[-1]
-##        while True:
-##            if cl_name[-1] in [">", "'"]:
-##                cl_name = cl_name[:-1]
-##            else:
-##                break
-##        self.name = cl_name
-        #self.set_act_config()
-        #self.set_write_log()
-        #self.set_config()
-        #self.set_blocking_mode()
-##    def set_public_via_net(self, pub=True):
-##        self.__public_via_net = pub
-##    def get_public_via_net(self):
-##        return self.__public_via_net
-##    def set_is_restartable(self, rs=0):
-##        self.is_restartable = rs
-##    def get_is_restartable(self):
-##        return self.is_restartable
-##    def set_used_config_keys(self, keys=[]):
-##        self.used_config_keys = keys
-##    def get_used_config_keys(self):
-##        return self.used_config_keys and ", ".join(self.used_config_keys) or "<none>"
-##    def set_needed_option_keys(self, keys = []):
-##        self.needed_option_keys = keys
-##    def get_needed_option_keys(self):
-##        return self.needed_option_keys and ", ".join(self.needed_option_keys) or "<none>"
-##    def set_config(self, conf=[]):
-##        self.config = conf
-##    def get_config(self):
-##        if self.config:
-##            return ", ".join(self.config)
-##        else:
-##            return "<not set>"
-##    def get_config_list(self):
-##        return self.config
-    #def set_config_type(self, conf_type=[]):
-    #    self.config_type = conf_type
     def link(self, process_pool):
         self.process_pool = process_pool
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -157,11 +119,6 @@ class server_com(object):
         if self.Meta.write_log:
             # FIXME
             pass
-            #ins_id = mysql_tools.device_log_entry(self.dc, self.__server_idx, self.__loc_config["LOG_SOURCE_IDX"], 0, self.__loc_config["LOG_STATUS"]["i"]["log_status_idx"], "command %s from %s, result: %s" % (self.server_com.get_command(), self.src_host, self.ret_str))
-            #mysql_tools.ext_device_log_entry(self.dc, ins_id, self.__loc_config["LOG_SOURCE_IDX"], 0, "cluster-server", "Cluster-Server entry", "\n".join(["From    : %s" % (self.src_host),
-            #                                                                                                                                               "Command : %s" % (self.server_com.get_command()),
-            #                                                                                                                                               "Options : %s" % (self.opt_str),
-            #                                                                                                                                               "Result  : %s" % (self.ret_str), ""]))
         
 if __name__ == "__main__":
     print "Loadable module, exiting ..."

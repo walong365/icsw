@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -22,7 +22,7 @@ import re
 
 def hostname_expand(hname, in_str):
     host_re = re.compile("^(?P<pre>.*)(?P<type>%h)(?P<post>.*)$")
-    hre = 1
+    hre = True
     while hre:
         hre = host_re.match(in_str)
         if hre:

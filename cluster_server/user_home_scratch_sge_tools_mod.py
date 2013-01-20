@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -26,6 +26,9 @@ import cs_tools
 import tempfile
 import shutil
 import server_command
+import process_tools
+from django.db.models import Q
+from initat.cluster.backbone.models import user, group, config, device_config, config_str
 
 class create_user_home(cs_base_class.server_com):
     class Meta:
@@ -36,78 +39,115 @@ class create_user_home(cs_base_class.server_com):
             for entry in entries:
                 fname = "%s/%s" % (act_dir, entry)
                 os.chown(fname, uid, gid)
-        user = self.option_dict["username"]
-        self.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='homeexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
-        if self.dc.rowcount == 1:
-            os.umask(0022)
-            dset = self.dc.fetchone()
-            # check for skeleton directory
-            skel_dir = None
-            for skel_dir in ["/usr/local/cluster/skel", "/etc/skel"]:
-                if os.path.isdir(skel_dir):
-                    skel_dir = skel_dir
-                    break
-            home_start = cs_tools.hostname_expand(self.global_config["SERVER_SHORT_NAME"], dset["value"])
-            uid = dset["uid"]
-            gid = dset["gid"]
-            if not os.path.isdir(home_start):
-                try:
-                    os.makedirs(home_start)
-                except:
-                    pass
-            if os.path.isdir(home_start):
-                full_home = os.path.normpath("%s/%s" % (home_start, dset["home"]))
-                hdir_ok = 1
-                if os.path.exists(full_home):
-                    hdir_ok, hdir_err_str = (0, "path %s already exists" % (full_home))
-                else:
-                    if skel_dir:
-                        try:
-                            shutil.copytree(skel_dir, full_home, 1)
-                        except:
-                            exc_info = sys.exc_info()
-                            hdir_ok, hdir_err_str = (0, "cannot create home-directory %s from skeleton '%s': %s, %s" % (full_home, skel_dir, str(exc_info[0]), str(exc_info[1])))
-                        else:
-                            pass
-                    else:
-                        try:
-                            os.mkdir(full_home)
-                        except:
-                            exc_info = sys.exc_info()
-                            hdir_ok, hdir_err_str = (0, "cannot create home-directory %s: %s, %s" % (full_home, str(exc_info[0]), str(exc_info[1])))
-                        else:
-                            pass
-                if hdir_ok:
-                    os.chown(full_home, uid, gid)
-                    os.path.walk(full_home, change_own, (uid, gid))
+        try:
+            cur_user = user.objects.select_related("group").get(Q(login=self.option_dict["username"]))
+        except user.DoesNotExist:
+            self.srv_com["result"].attrib.update({
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply" : "error cannot find user '%s'" % (self.option_dict["username"])
+            })
+        else:
+            # get homedir export
+            try:
+                hd_export = config_str.objects.get(Q(name="homeexport") & Q(config__device_config=cur_user.export))
+            except config_str.DoesNotExist:
+                self.srv_com["result"].attrib.update({
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply" : "no homeexport found for user '%s'" % (self.option_dict["username"])
+                })
+            else:
+                homestart = hd_export.value
+                # check for skeleton directory
+                skel_dir = None
+                for skel_dir in ["opt/cluster/skel", "/etc/skel"]:
+                    if os.path.isdir(skel_dir):
+                        skel_dir = skel_dir
+                        break
+                # get export directory
+                
+                home_start = cs_tools.hostname_expand(
+                    self.global_config["SERVER_SHORT_NAME"],
+                    homestart,
+                )
+                uid, gid = (cur_user.uid, cur_user.group.gid)
+                self.log("homestart is '%s', skel_dir '%s', uid/gid is %d/%d" % (
+                    home_start,
+                    skel_dir,
+                    uid,
+                    gid,
+                ))
+                if not os.path.isdir(home_start):
                     try:
-                        os.chmod(full_home, 0755)
+                        os.makedirs(home_start)
                     except:
                         pass
-                    post_create_user_command = "/etc/sysconfig/post_create_user"
-                    if os.path.isfile(post_create_user_command):
-                        pcun_args = "0 %d %d %s %s" % (uid, gid, user, full_home)
-                        pc_stat, pc_out = commands.getstatusoutput("%s %s" % (post_create_user_command, pcun_args))
-                        self.log("Calling '%s %s' gave (%d): %s" % (post_create_user_command, pcun_args, pc_stat, pc_out))
-                    self.srv_com["result"].attrib.update({
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                        "reply" : "ok created homedirectory '%s' for user '%s" % (full_home, user)
-                        })
+                if os.path.isdir(home_start):
+                    full_home = os.path.normpath("%s/%s" % (home_start, cur_user.home or cur_user.login))
+                    hdir_ok = 1
+                    if os.path.exists(full_home):
+                        hdir_ok, hdir_err_str = (0, "path %s already exists" % (full_home))
+                    else:
+                        if skel_dir:
+                            try:
+                                shutil.copytree(skel_dir, full_home, 1)
+                            except:
+                                exc_info = sys.exc_info()
+                                hdir_ok, hdir_err_str = (
+                                    0,
+                                    "cannot create home-directory %s from skeleton '%s': %s" % (
+                                        full_home,
+                                        skel_dir,
+                                        process_tools.get_except_info()
+                                    )
+                                )
+                            else:
+                                pass
+                        else:
+                            try:
+                                os.mkdir(full_home)
+                            except:
+                                exc_info = sys.exc_info()
+                                hdir_ok, hdir_err_str = (
+                                    0,
+                                    "cannot create home-directory %s: %s" % (
+                                        full_home,
+                                        process_tools.get_except_info()
+                                    )
+                                )
+                            else:
+                                pass
+                    if hdir_ok:
+                        os.chown(full_home, uid, gid)
+                        os.path.walk(full_home, change_own, (uid, gid))
+                        try:
+                            os.chmod(full_home, 0755)
+                        except:
+                            pass
+                        post_create_user_command = "/etc/sysconfig/post_create_user"
+                        if os.path.isfile(post_create_user_command):
+                            pcun_args = "0 %d %d %s %s" % (uid, gid, user, full_home)
+                            pc_stat, pc_out = commands.getstatusoutput("%s %s" % (post_create_user_command, pcun_args))
+                            self.log("Calling '%s %s' gave (%d): %s" % (
+                                post_create_user_command,
+                                pcun_args,
+                                pc_stat,
+                                pc_out))
+                        cur_user.home_dir_created = True
+                        cur_user.save()
+                        self.srv_com["result"].attrib.update({
+                            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                            "reply" : "ok created homedirectory '%s' for user '%s" % (full_home, user)
+                            })
+                    else:
+                        self.srv_com["result"].attrib.update({
+                            "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                            "reply" : "error %s" % (hdir_err_str)
+                            })
                 else:
                     self.srv_com["result"].attrib.update({
                         "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                        "reply" : "error %s" % (hdir_err_str)
-                        })
-            else:
-                self.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "error no homestart directory '%s'" % (home_start)
-                })
-        else:
-            self.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error cannot find user '%s'" % (user)
-            })
+                        "reply" : "error no homestart directory '%s'" % (home_start)
+                    })
 
 class delete_user_home(cs_base_class.server_com):
     class Meta:
