@@ -3032,6 +3032,7 @@ class user(models.Model):
     lm_password = models.CharField(max_length=255, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     allowed_device_groups = models.ManyToManyField(device_group)
+    home_dir_created = models.BooleanField(default=False)
     def get_permissions(self):
         return ", ".join([cur_perm.name for cur_perm in Permission.objects.filter(Q(user__username=self.login))]) or "nothing"
     def set_permissions(self, new_perms):
@@ -3059,6 +3060,7 @@ class user(models.Model):
             active="1" if self.active else "0",
             export="%d" % (self.export_id or 0),
             allowed_device_groups="::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)]),
+            home_dir_created="1" if self.home_dir_created else "0",
         )
         if with_permissions:
             user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(user__username=self.login))])
