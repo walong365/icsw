@@ -1,4 +1,26 @@
-# user views
+#!/usr/bin/python -Ot
+#
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012,2013 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+""" user views """
 
 import os
 from django.http import HttpResponse
@@ -67,11 +89,22 @@ def overview(request, *args, **kwargs):
 @login_required
 @init_logging
 def sync_users(request):
+    # create homedirs
+    create_user_list = user.objects.filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True))
+    request.log("user homes to create: %d" % (len(create_user_list)))
+    for create_user in create_user_list:
+        request.log("trying to create user_home for '%s'" % (unicode(create_user)))
+        srv_com = server_command.srv_command(command="create_user_home")
+        srv_com["server_key:username"] = create_user.login
+        result = net_tools.zmq_connection("webfrontend", timeout=30).add_connection("tcp://localhost:8004", srv_com)
+        if result is not None:
+            request.log(*result.get_log_tuple())
+        else:
+            request.log("no server result", logging_tools.LOG_LEVEL_ERROR)
     srv_com = server_command.srv_command(command="sync_ldap_config")
     result = net_tools.zmq_connection("webfrontend", timeout=30).add_connection("tcp://localhost:8004", srv_com)
     if not result:
         request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
-        res_node = result.xpath(None, ".//ns:result")[0]
-        request.log(res_node.attrib["reply"], int(res_node.attrib["state"]), xml=True)
+        request.log(*result.get_log_tuple(), xml=True)
     return request.xml_response.create_response()
