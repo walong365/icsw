@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import os
+import math
+import resource
 import time
 import datetime
 import logging_tools
@@ -807,3 +809,43 @@ def xlsx_export_append(xlsx_dict, export_list, start_row=0):
             c_count = c_count + 1
         r_count = r_count + 1
     return {"xlsx": wb, "col_index": col_index, "col_names": col_names}
+
+
+class MemoryProfile(object):
+    """
+    Collect information on maximum memory usage. Use repeated calls to measure()
+    and the max_usage attribute.
+    """
+    def __init__(self):
+        self.max_usage = 0
+
+    def _memory_usage(self):
+        """ Return memory usage in kB"""
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+
+    def measure(self):
+        mem = self._memory_usage()
+        #print mem
+        if mem > self.max_usage:
+            self.max_usage = mem
+            #print "Found new max: %s" % mem
+
+
+def sql_iterator(queryset, step=1000):
+    """
+    Iterate over queryset returning step items at a time. Set step to a callable
+    to calculate the step size based on the queryset length.
+    """
+    def func():
+        length = queryset.count()
+        if callable(step):
+            step_size = step(length)
+        else:
+            step_size = step
+        steps = int(math.ceil(length / float(step_size)))
+        for start, stop in [(i * step_size, (i + 1) * step_size) for i in range(steps)]:
+            yield queryset[start:stop]
+
+    for queryset_slice in func():
+        for element in queryset_slice:
+            yield element
