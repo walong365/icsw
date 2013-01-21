@@ -334,6 +334,9 @@ def hash_cert_number(in_str):
 
 
 class unicode_writer(object):
+    """
+    A CSV unicode writer. Use with csv module from stdlib.
+    """
     def __init__(self, func, dialect=csv.excel, encoding="utf-8", **kwds):
         # Redirect output to a queue
         self.queue = cStringIO.StringIO()
