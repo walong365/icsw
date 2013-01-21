@@ -140,12 +140,18 @@ class smcipmi_command(hm_classes.hm_command):
             ret_state = limits.nag_STATE_OK
         else:
             ret_state = limits.nag_STATE_CRITICAL
-        return ret_state, "PS '%s' is %s, temp: %.2f C, fan1/2: %d/%d" % (
+        cur_temp = float(in_dict["temp."].split("/")[0][:-1])
+        cur_ac = float(in_dict["ac"][:-1])
+        return ret_state, "PS '%s' is %s, temp: %.2f C, fan1/2: %d/%d, %.2f A | temp=%.2f amps=%.2f" % (
             in_dict["ps"],
             in_dict["power"],
-            float(in_dict["temp."].split("/")[0][:-1]),
+            cur_temp,
             int(in_dict["fan 1"]),
-            int(in_dict["fan 2"]))
+            int(in_dict["fan 2"]),
+            cur_ac,
+            cur_temp, 
+            cur_ac,
+        )
     def _handle_blade(self, in_dict):
         if in_dict["power"] == "on" or in_dict["error"]:
             ret_state = limits.nag_STATE_OK

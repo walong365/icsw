@@ -768,7 +768,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                         problem = True
                                     else:
                                         problem = False
-                                elif cur_stat.lower() in ["ok", "not installed", "unknown"]:
+                                elif cur_stat.lower() in set(["ok", "not installed", "unknown", "medium speed", "normal speed", "low speed", "high speed"]):
                                     problem = False
                                 else:
                                     problem = True
