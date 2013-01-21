@@ -29,6 +29,7 @@ import os
 import process_tools
 from initat.md_config_server.config import global_config
 from host_monitoring import ipc_comtools
+from host_monitoring.modules import supermicro_mod
 from initat.cluster.backbone.models import partition, partition_disc, partition_table, partition_fs, \
      netdevice, net_ip, network, lvm_vg, lvm_lv, device, device_variable
 from django.db.models import Q
@@ -124,11 +125,13 @@ class special_base(object):
             "args is '%s'" % (", ".join([str(value) for value in args])) if args else "no arguments",
             ", ".join(["%s='%s'" % (key, value) for key, value in kwargs.iteritems()]) if kwargs else "no kwargs"
         ))
+        connect_to_localhost = kwargs.pop("connect_to_localhost", False)
+        conn_ip = "127.0.0.1" if connect_to_localhost else self.valid_ip
         for cur_iter in xrange(self.Meta.retries):
             self.log("iteration %d of %d" % (cur_iter, self.Meta.retries))
             try:
                 srv_reply = ipc_comtools.send_and_receive_zmq(
-                    self.valid_ip,
+                    conn_ip,
                     command,
                     *args,
                     server=server_name,
@@ -138,7 +141,7 @@ class special_base(object):
             except:
                 self.log("error connecting to '%s' (%s, %s): %s" % (
                     server_name,
-                    self.valid_ip,
+                    conn_ip,
                     command,
                     process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
@@ -146,8 +149,9 @@ class special_base(object):
             else:
                 srv_error = srv_reply.xpath(None, ".//ns:result[@state != '0']")
                 if srv_error:
-                    self.log("got an error (%d): %s" % (int(srv_error[0].attrib["state"]),
-                                                        srv_error[0].attrib["reply"]),
+                    self.log("got an error (%d): %s" % (
+                        int(srv_error[0].attrib["state"]),
+                        srv_error[0].attrib["reply"]),
                              logging_tools.LOG_LEVEL_ERROR)
                     srv_reply = None
                 else:
@@ -172,14 +176,15 @@ class special_base(object):
                     logging_tools.LOG_LEVEL_WARN)
         self.__server_calls += 1
         return srv_reply
+    def real_parameter_name(self, in_name):
+        return "{MDC}_%s" % (in_name)
     def get_parameter(self, para_name, xpath_str, command, *args, **kwargs):
-        self.collrelay("openvpn_status")
         """
         get a paramter, by default as device_variable
         """
         server_type = kwargs.pop("target_server", "collrelay")
         var_type = kwargs.pop("var_type", "s")
-        r_para_name = "{MDC}_%s" % (para_name)
+        r_para_name = self.real_parameter_name(para_name)
         try:
             cur_var = device_variable.objects.get(Q(device=self.host) & Q(name=r_para_name))
         except device_variable.DoesNotExist:
@@ -290,6 +295,65 @@ class special_openvpn(special_base):
                                                           arg2=peer_name))
         if not sc_array:
             sc_array.append(self.get_arg_template("OpenVPN", arg1="ALL", arg2="ALL"))
+        return sc_array
+
+class special_supermicro(special_base):
+    def _call(self):
+        # parameter list
+        para_list = ["num_ibqdr", "num_power", "num_gigabit", "num_blade", "num_cmm"]
+        para_dict = {}
+        for para_name in para_list:
+            r_para_name = self.real_parameter_name(para_name)
+            try:
+                cur_var = device_variable.objects.get(Q(device=self.host) & Q(name=r_para_name))
+            except device_variable.DoesNotExist:
+                self.log("variable %s does not exist, requesting info from BMC" % (r_para_name), logging_tools.LOG_LEVEL_WARN)
+                break
+            else:
+                para_dict[para_name] = cur_var.get_value()
+        if len(para_list) != len(para_dict):
+            self.log("updating info from BMC")
+            srv_result = self.collrelay("smcipmi",  "--ip", self.valid_ip, "counter", connect_to_localhost=True)
+            # xpath string origins in supermiro_mod, server part (scmipmi_struct)
+            r_dict = supermicro_mod.generate_dict(srv_result.xpath(None, ".//ns:output/text()")[0].split("\n"))
+            for para_name in para_list:
+                r_para_name = self.real_parameter_name(para_name)
+                s_name = para_name.split("_", 1)[1]
+                if s_name in r_dict:
+                    v_val = r_dict[s_name]["present"]
+                    self.log("parameter %s: %d" % (para_name, v_val))
+                else:
+                    v_val = 0
+                    self.log("parameter %s: %d (not found in dict)" % (para_name, v_val), logging_tools.LOG_LEVEL_WARN)
+                try:
+                    cur_var = device_variable.objects.get(Q(device=self.host) & Q(name=r_para_name))
+                except device_variable.DoesNotExist:
+                    cur_var = device_variable(
+                        device=self.host,
+                        name=r_para_name,
+                        is_public=True,
+                        description="Read from BMC",
+                        var_type="i",
+                        val_int=v_val)
+                else:
+                    cur_var.set_value(v_val)
+                cur_var.save()
+                para_dict[para_name] = cur_var.get_value()
+        self.log("para_dict: %s" % (", ".join(["%s=%d" % (key, value) for key, value in para_dict.iteritems()])))
+        sc_array = []
+        sc_array.append(self.get_arg_template("Overview", arg1="counter"))
+        for ps_num in xrange(para_dict.get("num_power", 0)):
+            sc_array.append(self.get_arg_template(
+                "Power supply %d" % (ps_num + 1),
+                arg1="power %d" % (ps_num + 1)
+            )
+                            )
+        for blade_num in xrange(para_dict.get("num_blade", 0)):
+            sc_array.append(self.get_arg_template(
+                "Blade %d" % (blade_num + 1),
+                arg1="blade %d" % (blade_num + 1)
+            )
+                            )
         return sc_array
     
 class special_disc_all(special_base):
