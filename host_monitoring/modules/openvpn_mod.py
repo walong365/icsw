@@ -435,9 +435,6 @@ class openvpn_status_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         inst_dict = srv_com["openvpn_instances"]
         return self._interpret(inst_dict, cur_ns, srv_com["host"].text)
-    def interpret_old(self, result, parsed_coms):
-        inst_dict = hm_classes.net_to_sys(result[3:])
-        return self._interpret(inst_dict, parsed_coms, self.NOGOOD_srv_com["host"].text)
     def _interpret(self, res_dict, cur_ns, host):
         inst_name = cur_ns.instance
         peer_name = cur_ns.peer

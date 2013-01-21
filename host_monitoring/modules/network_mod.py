@@ -625,8 +625,9 @@ class ping_command(hm_classes.hm_command):
             target_host = args[0]
             num_pings, timeout = (3, 5)
         else:
-            srv_com["result"].attrib.update({"reply" : "wrong number of arguments (%d)" % (len(args)),
-                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com["result"].attrib.update({
+                "reply" : "wrong number of arguments (%d)" % (len(args)),
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             cur_sps, target_host = (None, None)
         if target_host:
             num_pings, timeout = (min(32, max(1, int(num_pings))),

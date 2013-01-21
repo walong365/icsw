@@ -1021,6 +1021,7 @@ class eonstor_get_counter_scheme(eonstor_proto_scheme):
             self.srv_com["eonstor_info"] = info_dict
             return limits.nag_STATE_OK, "ok got info"
         else:
+            # FIXME
             return limits.nag_STATE_OK, process_tools.sys_to_net(info_dict)
 
 class port_info_scheme(snmp_scheme):

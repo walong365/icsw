@@ -107,7 +107,10 @@ class subprocess_struct(object):
         else:
             self.run_info["result"] = self.popen.poll()
             if self.Meta.verbose:
-                self.log("finished with %s" % (str(self.run_info["result"])))
+                if self.run_info["result"] is None:
+                    self.log("not finished")
+                else:
+                    self.log("finished with %s" % (str(self.run_info["result"])))
             fin = False
             if self.run_info["result"] is not None:
                 self.process()
