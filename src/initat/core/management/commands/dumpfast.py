@@ -63,7 +63,7 @@ class Command(BaseCommand):
         make_option('-b', "--bz2", action="store_true", help="bzip2 the resulting"
                     " postgres dumps"),
         make_option("-p", "--progress", action="store_true", help="Print progress"
-                    " information (a . every 1000 dumped entries, a linebreak every 30000)"),
+                    " bar"),
     )
     help = "Output the contents of the database in PostgreSQL dump format. "
     args = '[appname appname.ModelName ...]'
@@ -94,7 +94,7 @@ class Command(BaseCommand):
             iterator.name = "Builtin django queryset iterator()"
 
         log("Started with options: %s" % options)
-        log("app labels: %s" % app_labels)
+        log("app labels: %s" % ",".join(app_labels))
 
         excluded_apps = set()
         excluded_models = set()
