@@ -107,7 +107,7 @@ class draw_setup
                 if ref_obj
                     search_str = ref_obj.xml_name_plural + " " + ref_obj.xml_name
                 else
-                    search_str = "#{cur_req}s#{cur_req}"
+                    search_str = "#{cur_req}s #{cur_req}"
                 if not @master_xml.find(search_str).length
                     missing_objects.push(if ref_obj then ref_obj.name else cur_req)
                     draw = false
