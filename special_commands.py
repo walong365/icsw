@@ -344,13 +344,13 @@ class special_supermicro(special_base):
         sc_array.append(self.get_arg_template("Overview", arg1="counter"))
         for ps_num in xrange(para_dict.get("num_power", 0)):
             sc_array.append(self.get_arg_template(
-                "Power supply %d" % (ps_num + 1),
+                "Power supply %2d" % (ps_num + 1),
                 arg1="power %d" % (ps_num + 1)
             )
                             )
         for blade_num in xrange(para_dict.get("num_blade", 0)):
             sc_array.append(self.get_arg_template(
-                "Blade %d" % (blade_num + 1),
+                "Blade %2d" % (blade_num + 1),
                 arg1="blade %d" % (blade_num + 1)
             )
                             )
