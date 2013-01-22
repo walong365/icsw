@@ -47,16 +47,19 @@ class create_user_home(cs_base_class.server_com):
                 "reply" : "error cannot find user '%s'" % (self.option_dict["username"])
             })
         else:
-            # get homedir export
-            try:
-                hd_export = config_str.objects.get(Q(name="homeexport") & Q(config__device_config=cur_user.export))
-            except config_str.DoesNotExist:
+            # get homedir and / or createdir of export entry
+            hd_exports = config_str.objects.filter(
+                (Q(name="homeexport") | Q(name="createdir")) &
+                Q(config__device_config=cur_user.export))
+            if not len(hd_exports):
                 self.srv_com["result"].attrib.update({
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "no homeexport found for user '%s'" % (self.option_dict["username"])
+                    "reply" : "no createdir / homeexport found for user '%s'" % (self.option_dict["username"])
                 })
             else:
-                homestart = hd_export.value
+                exp_dict = dict([(hd_export.name, hd_export.value) for hd_export in hd_exports])
+                self.log("export dict: %s" %  (", ".join(["%s='%s'" % (key, value) for key, value in exp_dict.iteritems()])))
+                homestart = exp_dict.get("createdir", exp_dict["homeexport"])
                 # check for skeleton directory
                 skel_dir = None
                 for skel_dir in ["opt/cluster/skel", "/etc/skel"]:
