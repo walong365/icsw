@@ -224,8 +224,13 @@ INSTALLED_APPS = (
     "south",
     "compressor",
     "coffeescript",
+    "crispy_forms",
     # cluster
 )
+
+# crispy settings
+CRISPY_TEMPLATE_PACK = "uni_form"
+CRISPY_FAIL_SILENTLY = not DEBUG
 
 # coffee settings
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
