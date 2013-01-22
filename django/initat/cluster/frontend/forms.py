@@ -6,13 +6,14 @@ from django.forms.widgets import TextInput, PasswordInput
 from django.forms import Form, ValidationError, CharField
 from django.contrib.auth import authenticate
 from django.utils.translation import ugettext_lazy as _
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Submit
+from django.core.urlresolvers import reverse
 
 class authentication_form(Form):
     username = CharField(label=_("Username"),
-                         max_length=30,
-                         widget=TextInput(attrs={"class" : "logininput"}))
-    password = CharField(label=_("Password"),
-                         widget=PasswordInput(attrs={"class" : "logininput"}))
+                         max_length=30)
+    password = CharField(label=_("Password"))
     def __init__(self, request=None, *args, **kwargs):
         """
         If request is passed in, the form will validate that cookies are
@@ -20,6 +21,11 @@ class authentication_form(Form):
         cookie with the key TEST_COOKIE_NAME and value TEST_COOKIE_VALUE before
         running this validation.
         """
+        self.helper = FormHelper()
+        self.helper.form_id = "id_login_form"
+        self.helper.form_method = "post"
+        self.helper.form_action = reverse("session:login")
+        self.helper.add_input(Submit("submit", "Submit"))
         self.request = request
         self.user_cache = None
         super(authentication_form, self).__init__(*args, **kwargs)

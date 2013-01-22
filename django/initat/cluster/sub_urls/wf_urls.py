@@ -198,12 +198,22 @@ if settings.CLUSTER_LICENSE["rest"]:
 
 url_patterns = patterns(
     "",
-    url(r"^%s/media/frontend/(?P<path>.*)$" % (settings.REL_SITE_ROOT)    , "django.views.static.serve", {
-        "document_root" : os.path.join(settings.FILE_ROOT, "frontend", "media")}),
-    url(r"^%s/static/initat/core/(?P<path>.*)$" % (settings.REL_SITE_ROOT), "django.views.static.serve", {
-        "document_root" : os.path.join(settings.FILE_ROOT, "..", "core")}),
-    url(r"^%s/static/rest_framework/(?P<path>.*)$" % (settings.REL_SITE_ROOT), "django.views.static.serve", {
-        "document_root" : "/opt/python-init/lib/python/site-packages/rest_framework/static/rest_framework"}),
+    url(r"^%s/media/frontend/(?P<path>.*)$" % (settings.REL_SITE_ROOT)    ,
+        "django.views.static.serve", {
+            "document_root" : os.path.join(settings.FILE_ROOT, "frontend", "media")
+            }),
+    url(r"^%s/static/initat/core/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
+        "django.views.static.serve", {
+            "document_root" : os.path.join(settings.FILE_ROOT, "..", "core")
+            }),
+    url(r"^%s/static/rest_framework/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
+        "django.views.static.serve", {
+            "document_root" : "/opt/python-init/lib/python/site-packages/rest_framework/static/rest_framework"
+            }),
+    url(r"^%s/media/uni_form/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
+        "django.views.static.serve", {
+            "document_root" : "/opt/python-init/lib/python/site-packages/crispy_forms/static/uni_form"
+            }),
     url(r"^%s/" % (settings.REL_SITE_ROOT)                                , include(my_url_patterns)),
     url(r"^$", "initat.cluster.frontend.session_views.redirect_to_main"),
 )

@@ -1,57 +1,31 @@
 {% extends "main.html" %}
 
-{% load i18n %}
+{% load i18n crispy_forms_tags %}
 
 {% block title %}{% trans "init.at login" %}{% endblock %}
 
 {% block body %}
 
 {% if login_form.err %}{{ login_form.err }}{% endif %}
+
 <div style="background-color:#aac8ff;margin-top:0px;padding:0px;border: 1px solid #111111;height:80px;vertical-align:middle;text-align:center;width:100%;">
     <center>
         <h1 class="center" style="font-size:36px;vertical-align:bottom;color:#434343;margin-top:20px;">{% trans "Please enter your login credentials" %}</h1> 
     </center>
 </div>
-<form action="{{ app_path }}" method="post" id="id_login_form" name="login_form">
-    <center>
-        <div style="margin-top:130px;">
-            <table class="style2">
-                <tr class="ui-widget-header">
-                    <td class="newformlabel">{% trans "Username" %}</td>
-                    <td align="right">{{login_form.username}}</td>
-                </tr>
-                <tr class="ui-widget-header">
-                    <td class="newformlabel">{% trans "Password" %}</td>
-                    <td align="right">{{login_form.password}}</td>
-                </tr>
-                <tr>
-                    <td align="center" colspan="2"><input type="submit" value="login"/></td>
-                </tr>
-            </table>
-        </div>
-        {% if from_logout %}
-            <div class="loginerrors">
-                <h1 class="center" style="font-size:20px;">{% trans "Thank you for using the Clustersoftware" %}</h1>
-            </div>
-        {% endif %}
-        <div class="loginerrors">
-            {% if login_form.non_field_errors %}
-                <p>
-                    <span class="error">
-                        {% trans "Please enter a valid username and password!" %}
-                    </span>
-                </p>
-            {% endif %}		
-        </div>
-    </center>
-</form>
+
+<div style="margin-top:130px; width:600px; margin-left:auto; margin-right:auto;">
+    {% crispy login_form login_form.helper %}
+</div>
 
 <script type="text/javascript">
+
 function addHandlers() {
-    $("#id_username").focus();
+    $("form#uniForm").uniform();
 }
 
 $(document).ready(addHandlers);
+
 </script>
 
 {% endblock %}
