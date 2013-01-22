@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2001-2004,2006,2012 Andreas Lang-Nevyjel init.at
+# Copyright (c) 2001-2004,2006,2012,2013 Andreas Lang-Nevyjel init.at
 #
 #
 # RedHat stuff
@@ -8,10 +8,10 @@
 #
 ### BEGIN INIT INFO
 # Provides:      loadmodules
-# Required-Start:
+# Required-Start: $syslog
 # Required-Stop: $network
 # Default-Start: 2 3 5
-# Default-Stop:
+# Default-Stop: 0 1 6
 # Description:   load modules at startup
 ### END INIT INFO
 
