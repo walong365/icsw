@@ -39,6 +39,10 @@ class create_user_home(cs_base_class.server_com):
             for entry in entries:
                 fname = "%s/%s" % (act_dir, entry)
                 os.chown(fname, uid, gid)
+        # to entries possible:
+        # homeexport: used for automounter maps
+        # createdir : used for creation
+        # when using NFSv4 createdir can be different from homeexport (homeexport is for instance relative to nfsv4root)
         try:
             cur_user = user.objects.select_related("group").get(Q(login=self.option_dict["username"]))
         except user.DoesNotExist:
