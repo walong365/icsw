@@ -3302,8 +3302,17 @@ class wc_files(models.Model):
     content = models.TextField(blank=True, default="")
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
+        try:
+            # stupid hack, FIXME
+            E.content(
+                self.content
+            )
+        except:
+            c_str = "<BINARY>"
+        else:
+            c_str = self.content
         return E.content(
-            self.content,
+            c_str,
             run_number="%d" % (self.run_number),
             uid="%d" % (self.uid),
             gid="%d" % (self.gid),
