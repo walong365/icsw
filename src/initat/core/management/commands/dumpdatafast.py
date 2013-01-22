@@ -46,7 +46,7 @@ from optparse import make_option
 
 from initat.core.utils import init_base_object, sql_iterator, MemoryProfile
 
-BASE_OBJECT = init_base_object("dumpdatafast")
+BASE_OBJECT = init_base_object("dumpdatafast_new")
 TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
 
