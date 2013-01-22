@@ -67,7 +67,10 @@ case "$1" in
         rc_status -v
         /sbin/lsmod
         ;;
-    *)      echo "Usage: $0 {start|stop|status}"
+    *)
+        echo "Usage: $0 {start|stop|status}"
+        exit 1
+        ;;
 esac
 
 rc_exit
