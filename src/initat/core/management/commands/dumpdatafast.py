@@ -1,21 +1,35 @@
 # -*- coding: utf-8 -*-
 """
-Efficiently dump data form Django models to PostgreSQL dump format.
+Dump data from Django models to PostgreSQL dump format.
+
+Some measurements:
+  Stupidly writing out the data:
+
+    with codecs.open("/tmp/outfile", "w", "utf-8") as f:
+        for obj in email_log.objects.select_related("certificate", "user", "email_to_user").iterator():
+            f.write(smart_unicode(obj.__dict__) + "\n")
+
+  takes ~20s on email_log.objects.count() == 152982.
+
+  The same operation with dumpdatafast takes about ~30s, because of the rather expensive
+  datetime operations and some conversion overhead.
 """
 
+import array
+import base64
+import bz2
 import cProfile
 import pstats
 import os
 import sys
 # For profiling
-os.environ["DJANGO_SETTINGS_MODULE"] = "settings"
-sys.path.append(".")
+#os.environ["DJANGO_SETTINGS_MODULE"] = "settings"
+#sys.path.append(".")
 import subprocess
 import datetime
 import pytz
 import codecs
 import time
-from collections import defaultdict
 from logging_tools import LOG_LEVEL_OK, LOG_LEVEL_ERROR
 from functools import partial
 
@@ -25,14 +39,15 @@ from django.db import DEFAULT_DB_ALIAS, connection
 from django.utils.datastructures import SortedDict
 from django.conf import settings
 from django.utils import datetime_safe
+from django.db.models import ForeignKey, OneToOneField, Model
 from django.utils.encoding import smart_unicode
-from django.db.models import ForeignKey
 
 from optparse import make_option
 
 from initat.core.utils import init_base_object, sql_iterator, MemoryProfile
 
-BASE_OBJECT = init_base_object("dumpfast")
+BASE_OBJECT = init_base_object("dumpdatafast_new")
+TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
 
 def log(x):
@@ -80,18 +95,21 @@ class Command(BaseCommand):
 
         using = options.get('database')
         excludes = options.get('exclude')
-        directory = options.get('directory')
-        stats = options.get('stats')
         iterator = options.get("iterator")
-        count = options.get("count")
-        bz2 = options.get("bz2")
-        progress = options.get("progress")
+
+        # pylint: disable-msg=W0201
+        self.directory = options.get('directory')
+        self.stats = options.get('stats')
+        self.count = options.get("count")
+        self.bz2 = options.get("bz2")
+        self.progress = options.get("progress")
+
         if iterator:
-            iterator = partial(sql_iterator, step=lambda x: max(x / 10, 5000))
-            iterator.name = "Custom SQL iterator"
+            self.iterator = partial(sql_iterator, step=lambda x: max(x / 10, 5000))
+            self.iterator.name = "Custom SQL iterator"
         else:
-            iterator = lambda x: x.iterator()
-            iterator.name = "Builtin django queryset iterator()"
+            self.iterator = lambda x: x.iterator()
+            self.iterator.name = "Builtin django queryset iterator()"
 
         log("Started with options: %s" % options)
         log("app labels: %s" % ",".join(app_labels))
@@ -168,117 +186,143 @@ class Command(BaseCommand):
 
         for model in models:
             deps.add_to_tree(model)
-            pg_copy = PostgresCopy(model)
-            model_file = os.path.join(directory, model._meta.object_name)
-
-            # For --stats
-            mem_profile = MemoryProfile()
-            time_start = time.time()
-            db_queries = len(connection.queries)
-
-            queryset = model.objects.select_related(*pg_copy.foreign_keys)
-            if count > 0:
-                queryset = queryset[:count]
-            obj_count = queryset.count()
-            # The min is necessary to avoid 1 / 0 on small --count
-            # arguments
-            progress_break = min(obj_count, 30)
-
-            msg = "%s (%s)" % (model._meta.object_name, obj_count)
-            log(msg)
-            if progress:
-                print msg
-
-            with codecs.open(model_file, "w", "utf-8") as f:
-                f.write(pg_copy.header())
-                loop_count = 0
-                progress_string = ""
-                for obj in iterator(queryset):
-                    f.write(pg_copy.entry(obj))
-                    mem_profile.measure()
-                    loop_count += 1
-                    if progress:
-                        if (loop_count % (obj_count / progress_break)) == 0:
-                            progress_string += "."
-                            sys.stdout.write("[%s" % (progress_string) .ljust(progress_break) + "]\r")
-                            sys.stdout.flush()
-                f.write(pg_copy.footer())
-
-            for m2m in pg_copy.many_to_many:
+            many_to_many = self.dump_model(model)
+            for m2m in many_to_many:
                 if m2m not in models:
                     models.append(m2m)
 
-            time_bz_start = time.time()
-            if bz2:
-                subprocess.check_call(["bzip2", "-f", model_file])
+        with open(os.path.join(self.directory, "DEPENDENCIES"), "w") as f:
+            f.writelines(["%s_%s" % (m._meta.app_label, m._meta.object_name) + "\n" for m in deps.tree])
 
-            if stats:
-                if progress:
-                    print
-                print "    Iterator: %s" % iterator.name
-                print "    Count: %s" % obj_count
-                print "    DB Queries: %s" % (len(connection.queries) - db_queries)
-                print "    Time : %6.2f s" % (time.time() - time_start)
-                if bz2:
-                    print "    Time bz: %6.2f s" % (time.time() - time_bz_start)
-                print "    RAM  : %6.2f MB" % (mem_profile.max_usage / 1024.0)
+    def dump_model(self, model):
+        """
+        Dump a model to file and return the related m2m models.
+        """
+        def convert(obj):
+            """
+            Convert to Postgres data representation.
+            """
+            converted_values = []
+            for key in pg_copy.fields:
+                value = getattr(obj, key)
 
-        with open(os.path.join(directory, "DEPENDENCIES"), "w") as f:
-            f.writelines([m._meta.object_name + "\n" for m in deps.tree])
+                if isinstance(value, bool):
+                    new_value = u"t" if value else u"f"
+                # ForeignKey or OneToOne
+                elif isinstance(value, Model):
+                    new_value = smart_unicode(value.pk)
+                elif isinstance(value, datetime.datetime):
+                    # Adding TZ info is costly, but we can't just append a fixed
+                    # distance from UTC to our datestrings because of daylight
+                    # savings time.
+                    if value.tzinfo is None:
+                        value = TIMEZONE.localize(value)
+
+                    # Not much difference between formating a datetime or
+                    # creating a datetime_safe and then formatting it.
+                    # Each opertion is quite costly
+                    new_value = datetime_safe.new_datetime(value).strftime("%Y-%m-%d %H:%M:%S%z")
+                    new_value = smart_unicode(new_value)
+                elif isinstance(value, datetime.date):
+                    new_value = datetime_safe.new_date(value).strftime("%Y-%m-%d")
+                    new_value = smart_unicode(new_value)
+                elif isinstance(value, (int, float)):
+                    new_value = smart_unicode(value)
+                # Handle binary_field
+                elif isinstance(value, array.array):
+                    new_value = smart_unicode(base64.b64encode(bz2.compress(value.tostring())))
+                elif value is None:
+                    new_value = ur"\N"
+                else:
+                    # Escape all backslashes, tab, newline and CR
+                    value = value.replace("\\", r"\\")
+                    value = value.replace("\t", r"\t").replace("\n", r"\n").replace("\r", r"\r")
+                    new_value = smart_unicode(value)
+                converted_values.append(new_value)
+
+            return u"%s\n" % u"\t".join(converted_values)
+
+        pg_copy = PostgresCopy(model)
+        model_file = os.path.join(self.directory, "%s_%s" % (model._meta.app_label, model._meta.object_name))
+
+        # For --stats
+        mem_profile = MemoryProfile()
+        time_start = time.time()
+        db_queries = len(connection.queries)
+
+        # We have to explicitly pass all ForeignKey and OneToOne fields, because
+        # select_related() without params does not follow FKs with null=True
+        queryset = model.objects.select_related(*pg_copy.foreign_keys)
+        if self.count > 0:
+            queryset = queryset[:self.count]
+        obj_count = queryset.count()
+
+        # The min is necessary to avoid 1 / 0 on small --count
+        # arguments
+        progress_break = min(obj_count, 30)
+
+        msg = "%s (%s)" % (model._meta.object_name, obj_count)
+        log(msg)
+        if self.progress:
+            print msg
+
+        with codecs.open(model_file, "w", "utf-8") as f:
+            f.write(pg_copy.header())
+            loop_count = 0
+            progress_string = ""
+            for obj in self.iterator(queryset):
+                f.write(convert(obj))
+                mem_profile.measure()
+                loop_count += 1
+                if self.progress:
+                    if (loop_count % (obj_count / progress_break)) == 0:
+                        progress_string += "."
+                        sys.stdout.write("[%s" % (progress_string) .ljust(progress_break) + "]\r")
+                        sys.stdout.flush()
+            f.write(pg_copy.footer())
+
+        time_bz_start = time.time()
+        if self.bz2:
+            subprocess.check_call(["bzip2", "-f", model_file])
+
+        if self.stats:
+            if self.progress:
+                print
+            print "    Iterator: %s" % self.iterator.name
+            print "    Count: %s" % obj_count
+            print "    DB Queries: %s" % (len(connection.queries) - db_queries)
+            print "    Time : %6.2f s" % (time.time() - time_start)
+            if self.bz2:
+                print "    Time bz: %6.2f s" % (time.time() - time_bz_start)
+            print "    RAM  : %6.2f MB" % (mem_profile.max_usage / 1024.0)
+
+        return pg_copy.many_to_many
 
 
 class PostgresCommand(object):
     def __init__(self, model):
         self.model = model
         self.table = model._meta.db_table
+        self.columns = [f.column for f in model._meta.fields]
         self.fields = [f.name for f in model._meta.fields]
         self.foreign_keys = [f.name for f in model._meta.fields if isinstance(f, ForeignKey)]
+        self.foreign_keys.extend([f.name for f in model._meta.fields if isinstance(f, OneToOneField)])
         self.many_to_many = []
         for m2m in self.model._meta.many_to_many:
             self.many_to_many.append(m2m.rel.through)
 
-    def quote(self, value):
+    @staticmethod
+    def quote(value):
         return "\"%s\"" % value
-
-    def to_postgres(self, value):
-        def escape(value):
-            value = smart_unicode(value, "utf-8")
-            # Escape all backslashes
-            value = value.replace("\\", r"\\")
-            # Tab, newline and carriage return
-            value = value.replace("\t", r"\t").replace("\n", r"\n").replace("\r", r"\r")
-            return value
-
-        def timezone_datetime(value):
-            if value.tzinfo is None:
-                timezone = pytz.timezone(settings.TIME_ZONE)
-                value = timezone.localize(value)
-
-            return datetime_safe.new_datetime(value).strftime("%Y-%m-%d %H:%M:%S%z")
-
-        lookup = defaultdict(lambda: escape)
-        #lookup = {}
-        lookup.update({
-            bool: lambda x: "t" if x else "f",
-            datetime.datetime: timezone_datetime,
-            datetime.date: lambda x: datetime_safe.new_date(x).strftime("%Y-%m-%d"),
-            None.__class__: lambda x: r"\N"
-        })
-
-        return lookup[value.__class__](value)
 
 
 class PostgresCopy(PostgresCommand):
     def header(self):
         return u"COPY %s (%s) FROM stdin;\n" % (self.quote(self.table),
-                                                ",".join((self.quote(x) for x in self.fields)))
+                                                ",".join((self.quote(x) for x in self.columns)))
 
-    def entry(self, obj):
-        #return u"%s\n" % "\t".join([self.to_postgres(getattr(obj, key)) for key in self.fields])
-        # Little bit faster
-        return u"%s\n" % "\t".join([self.to_postgres(obj.__dict__.get(key)) for key in self.fields])
-
-    def footer(self):
+    @staticmethod
+    def footer():
         return u"\\.\n\n"
 
     def __str__(self):
@@ -295,10 +339,11 @@ class Dependencies(object):
         if model_obj not in self.tree:
             self.tree.append(model_obj)
 
-    def _get_fks(self, model_obj):
+    @staticmethod
+    def _get_fks(model_obj):
         res = []
         for field in model_obj._meta.fields:
-            if isinstance(field, ForeignKey):
+            if isinstance(field, (ForeignKey, OneToOneField)):
                 res.append(field.related.parent_model)
         return res
 
@@ -312,9 +357,10 @@ class Dependencies(object):
                 deps.append(fk)
         return deps
 
+
 if __name__ == "__main__":
     # Run profiling
-    if True:
+    if False:
         CODE = """
 c = Command()
 opts = {'count': '10000', 'stats': True, 'bz2': True, 'iterator': False,
