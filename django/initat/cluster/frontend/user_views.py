@@ -56,11 +56,14 @@ def overview(request, *args, **kwargs):
             E.homedir_export("none", pk="0")
         )
         home_exp = device_config.objects.filter(
-            Q(config__name__icontains="homedir") & Q(config__name__icontains="export") & Q(config__config_str__name="homeexport")).select_related("device", "config").prefetch_related("config__config_str_set")
+            Q(config__name__icontains="homedir") &
+            Q(config__name__icontains="export") &
+            Q(config__config_str__name="homeexport")).select_related("device", "config").prefetch_related("config__config_str_set")
         for cur_exp in home_exp:
             exp_list.append(
-                E.homedir_export("%s on %s" % (cur_exp.config.config_str_set.get(Q(name="homeexport")).value,
-                                               unicode(cur_exp.device)),
+                E.homedir_export("%s on %s" % (
+                    cur_exp.config.config_str_set.get(Q(name="homeexport")).value,
+                    unicode(cur_exp.device)),
                                  pk="%d" % (cur_exp.pk))
             )
         # all permissions
