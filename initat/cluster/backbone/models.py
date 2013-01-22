@@ -1973,8 +1973,12 @@ def config_post_save(sender, **kwargs):
                     add_list = [
                         config_str(
                             name="homeexport",
-                            description="export path",
+                            description="export path for automounter maps",
                             value="/export_change_me"),
+                        config_str(
+                            name="createdir",
+                            description="create path for directory creation",
+                            value="/create_change_me"),
                         config_str(
                             name="options",
                             description="Options",
