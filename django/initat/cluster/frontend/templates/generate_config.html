@@ -1,6 +1,6 @@
 {% load i18n %}
 
-<input type="button" id="generate_button" value="generate" onClick="generate_configs();"/><span id="generate_info"></span>
+<input type="button" id="generate_button" value="generate device config" onClick="generate_configs();"/><span id="generate_info"></span>
 
 <div id="generated_config">
 </div>
@@ -8,6 +8,7 @@
 <script type="text/javascript">
 
 TREE_XML = undefined;
+GENERATE_DEV_LIST = undefined;
 
 function iterate_tree(nest_lev, top_node) {
     var content = nest_lev.find("content:first");
@@ -25,18 +26,19 @@ function iterate_tree(nest_lev, top_node) {
     };
     var node_str = node_str + "lvl=" + nest_lev.attr("depth");
     if (content.attr("error_flag") == "1") {
-        var node_str = node_str + ", E";
+        var node_str = node_str + ", Error";
     };
     var node_str = node_str + ")";
-    var cur_node = $("<li>").attr({"id" : nest_lev.attr("node_id")}).text(node_str);
-    top_node.append(cur_node);
+    var cur_node = top_node.addChild({
+        title      : node_str,
+        isLazy     : false,
+        key        : nest_lev.attr("node_id")
+    });
     if (nest_lev.attr("is_dir") == "1") {
         var sub_nodes = nest_lev.find("tree[depth='" + (parseInt(nest_lev.attr("depth")) + 1) + "']");
-        cur_node.addClass("folder");
-        var sub_ul = $("<ul>");
-        cur_node.append(sub_ul);
+        cur_node.data.isFolder = true;
         $.each(sub_nodes, function(idx, sub_node) {
-            iterate_tree($(sub_node), sub_ul);
+            iterate_tree($(sub_node), cur_node);
         });
     };
 };
@@ -67,13 +69,12 @@ function draw_tree_xml() {
         var content_div = $("<div>").attr({
             "id" : "cont__dev__" + cur_dev.attr("pk")
         });
-        var top_node = $("<ul>");
         error_div.text(cur_dev.attr("info_str"));
         new_div.append(error_div);
         new_div.append(tree_div);
         new_div.append(content_div);
-        tree_div.append(top_node);
-        iterate_tree(cur_dev.find("tree[depth='0']"), top_node);
+        <!--var top_node = $("<ul>");-->
+        <!--tree_div.append(top_node);-->
         tree_div.dynatree({
             onActivate : function(dtnode) {
                 if (! dtnode.hasChildren()) {
@@ -81,8 +82,9 @@ function draw_tree_xml() {
                     content_div.html(c_node.find("content").text().replace(/\n/g, "<br>"));
                 };
             },
-            debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
+            debuglevel : {% if DEBUG %}10{% else %}0{% endif %}
         });
+        iterate_tree(cur_dev.find("tree[depth='0']"), tree_div.dynatree("getRoot"));//top_node);
         top_div.append(new_div);
     });
     $("div#generated_config").children().remove();
@@ -91,6 +93,11 @@ function draw_tree_xml() {
 };
 
 function notify_generate_link(sel_list) {
+    if (sel_list) {
+        GENERATE_DEV_LIST = sel_list;
+    } else {
+        sel_list = CUR_DEVICES;
+    };
     $("span#generate_info").text(resolve_device_keys(sel_list ? sel_list : CUR_DEVICES));
 };
 
@@ -99,7 +106,7 @@ function generate_configs() {
     $.ajax({
         url : "{% url config:generate_config %}",
         data : {
-            "sel_list" : CUR_DEVICES
+            "sel_list" : GENERATE_DEV_LIST
         },
         success : function(xml) {
             $("input#generate_button").removeAttr("disabled");

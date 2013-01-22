@@ -13,7 +13,8 @@ from django.core.urlresolvers import reverse
 class authentication_form(Form):
     username = CharField(label=_("Username"),
                          max_length=30)
-    password = CharField(label=_("Password"))
+    password = CharField(label=_("Password"),
+                         widget=PasswordInput)
     def __init__(self, request=None, *args, **kwargs):
         """
         If request is passed in, the form will validate that cookies are
