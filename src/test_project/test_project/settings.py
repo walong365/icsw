@@ -159,7 +159,3 @@ LOGGING = {
         },
     }
 }
-
-SERIALIZATION_MODULES = {
-    "postgres_dump": "initat.core.postgres_dump_serializer"
-}
