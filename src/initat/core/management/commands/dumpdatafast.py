@@ -15,6 +15,9 @@ Some measurements:
   datetime operations and some conversion overhead.
 """
 
+import array
+import base64
+import bz2
 import cProfile
 import pstats
 import os
@@ -225,6 +228,9 @@ class Command(BaseCommand):
                     new_value = smart_unicode(new_value)
                 elif isinstance(value, (int, float)):
                     new_value = smart_unicode(value)
+                # Handle binary_field
+                elif isinstance(value, array.array):
+                    new_value = smart_unicode(base64.b64encode(bz2.compress(value.tostring())))
                 elif value is None:
                     new_value = ur"\N"
                 else:
