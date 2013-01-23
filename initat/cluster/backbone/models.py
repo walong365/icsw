@@ -3269,6 +3269,18 @@ class tree_node(models.Model):
     # is an intermediate node is has not to be created
     intermediate = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
+    def __cmp__(self, other):
+        if self.is_dir == other.is_dir:
+            if self.wc_files.dest < other.wc_files.dest:
+                return -1
+            elif self.wc_files.dest > other.wc_files.dest:
+                return 1
+            else:
+                return 0
+        elif self.is_dir:
+            return -1
+        else:
+            return +1
     def get_type_str(self):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
     def __unicode__(self):
@@ -3277,7 +3289,7 @@ class tree_node(models.Model):
 class wc_files(models.Model):
     idx = models.AutoField(db_column="wc_files_idx", primary_key=True)
     device = models.ForeignKey("device")
-    tree_node = models.ForeignKey("tree_node", null=True, default=None)
+    tree_node = models.OneToOneField("tree_node", null=True, default=None)
     run_number = models.IntegerField(default=0)
     config = models.ManyToManyField("config")
     #config = models.CharField(max_length=255, blank=True)
