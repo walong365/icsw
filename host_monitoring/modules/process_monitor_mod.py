@@ -68,8 +68,12 @@ class _general(hm_classes.hm_module):
             if n_dict.has_key(p_stuff["state"]):
                 n_dict[p_stuff["state"]] += 1
             else:
-                logger.log(logging_tools.LOG_LEVEL_ERROR,
-                           "*** unknown process state '%s' for process %s (pid %d)" % (p_stuff["state"], p_stuff["name"], p_stuff["pid"]))
+                self.log(
+                    "*** unknown process state '%s' for process %s (pid %d)" % (
+                        p_stuff["state"],
+                        p_stuff["name"],
+                        p_stuff["pid"]),
+                logging_tools.LOG_LEVEL_ERROR)
             if p_stuff.get("name", "") in mem_mon_procs:
                 mem_found_procs.setdefault(p_stuff["name"], []).append(p_stuff["pid"])
 ##         print "-"
