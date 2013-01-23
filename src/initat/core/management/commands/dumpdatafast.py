@@ -79,6 +79,8 @@ class Command(BaseCommand):
                     " postgres dumps"),
         make_option("-p", "--progress", action="store_true", help="Print progress"
                     " bar"),
+        make_option("-z", "--step-size", action="store", type=int, default=3000,
+                    help="Iterator step size (default %(step_size)s)"),
     )
     help = "Output the contents of the database in PostgreSQL dump format. "
     args = '[appname appname.ModelName ...]'
@@ -96,6 +98,7 @@ class Command(BaseCommand):
         using = options.get('database')
         excludes = options.get('exclude')
         iterator = options.get("iterator")
+        step_size = options.get("step_size")
 
         # pylint: disable-msg=W0201
         self.directory = options.get('directory')
@@ -105,7 +108,8 @@ class Command(BaseCommand):
         self.progress = options.get("progress")
 
         if iterator:
-            self.iterator = partial(sql_iterator, step=lambda x: max(x / 10, 5000))
+            #self.iterator = partial(sql_iterator, step=lambda x: max(x / 100, 2000))
+            self.iterator = partial(sql_iterator, step=step_size)
             self.iterator.name = "Custom SQL iterator"
         else:
             self.iterator = lambda x: x.iterator()
