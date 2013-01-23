@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -99,7 +99,7 @@ class kernel_sync_process(threading_tools.process_obj):
         if reply_now:
             srv_com.set_result("starting check of kernel_dir '%s'" % (global_config["KERNEL_DIR"]))
             # send return, FIXME
-        print srv_com.pretty_print()
+        #print srv_com.pretty_print()
         #if reply_now:
         #    srv_reply.set_ok_result("starting check of kernel_dir")
         #    if srv_com.get_queue():
@@ -173,7 +173,7 @@ class kernel_sync_process(threading_tools.process_obj):
         # send reply after term-message
         #if srv_com.get_queue() and not reply_now:
         #    srv_com.get_queue().put(("result_ready", (srv_com, srv_reply)))
-        print srv_com.pretty_print()
+        #print srv_com.pretty_print()
     def thread_running(self):
         self.log("my role is %s" % (self.__config["SYNCER_ROLE"]))
         # dicts for sync info

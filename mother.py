@@ -3224,12 +3224,12 @@ class server_process(threading_tools.process_pool):
             ""]
         slcn = "/etc/rsyslog.d/mother.conf"
         file(slcn, "w").write("\n".join(rsyslog_lines))
-        self._restart_syslog()
+        self._reload_syslog()
     def _disable_rsyslog(self):
         slcn = "/etc/rsyslog.d/mother.conf"
         if os.path.isfile(slcn):
             os.unlink(slcn)
-        self._restart_syslog()
+        self._reload_syslog()
     def _enable_syslog_ng(self):
         slcn = "/etc/syslog-ng/syslog-ng.conf"
         if os.path.isfile(slcn):
@@ -3294,7 +3294,7 @@ class server_process(threading_tools.process_pool):
                 self.log("Something went wrong while trying to modify '%s', help..." % (slcn), logging_tools.LOG_LEVEL_CRITICAL)
         else:
             self.log("config file '%s' not present" % (slcn), logging_tools.LOG_LEVEL_WARN)
-        self._restart_syslog()
+        self._reload_syslog()
     def _disable_syslog_ng(self):
         self.log("Trying to rewrite syslog-ng.conf for normal operation ...")
         slcn = "/etc/syslog-ng/syslog-ng.conf"
@@ -3327,13 +3327,13 @@ class server_process(threading_tools.process_pool):
             self.log("Something went wrong while trying to modify '%s': %s, help..." % (slcn,
                                                                                         process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
-        self._restart_syslog()
-    def _restart_syslog(self):
+        self._reload_syslog()
+    def _reload_syslog(self):
         for syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng"]:
             if os.path.isfile(syslog_rc):
                 break
-        stat, out_f = process_tools.submit_at_command("%s restart" % (syslog_rc), 0)
-        self.log("restarting %s gave %d:" % (syslog_rc, stat))
+        stat, out_f = process_tools.submit_at_command("%s reload" % (syslog_rc), 0)
+        self.log("reloading %s gave %d:" % (syslog_rc, stat))
         for line in out_f:
             self.log(line)
     def _check_netboot_functionality(self):
