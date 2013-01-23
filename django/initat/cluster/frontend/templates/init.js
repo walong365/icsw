@@ -285,12 +285,12 @@ class draw_info
                 in_dict[other_id] = get_value(other_dr.element)
         in_dict.other_list = other_list.join("::")
         in_dict.lock_list = lock_list
-    sync_select_from_xml: (cur_el) ->
+    sync_select_from_xml: (cur_el) =>
         old_pks = ($(cur_sub).attr("value") for cur_sub in cur_el.find("option:selected"))
         if typeof(@select_source) == "string"
             sel_source = @draw_setup.master_xml.find(@select_source)
         else if typeof(@select_source) == "function"
-            sel_source = @select_source(undefined)
+            sel_source = @select_source(cur_el, @get_kwargs())
         else
             sel_source = @select_source
         cur_el.children().remove()
