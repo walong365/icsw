@@ -67,6 +67,8 @@ class anovis_site(object):
         self.feed("root_name", self.name.lower().replace(" ", "_").replace("-", "_"))
         self.feed("root_ip", "0.0.0.0")
         self.log("init site (%d keys parsed)" % (self.parsed))
+        self.remove_empty_objects()
+        self._log_xml("before validate")
         self.validate()
     def get_db_obj(self, obj_name, search_spec, **kwargs):
         obj_class = globals()[obj_name]
@@ -80,15 +82,32 @@ class anovis_site(object):
         cur_obj = obj_class.objects.get(search_spec)
         self.__db_cache[obj_name][cur_obj.pk] = cur_obj
         return cur_obj
+    def remove_empty_objects(self):
+        removed = 0
+        for xpath_str in [
+            ".//hosts/host[@name='']",
+            ".//firewalls/firewall[@name='']",
+            ".//isp/routers/router[@name='']",
+            ".//isp/fws/fw[@name='']",
+            ]:
+            for cur_del in self.site_xml.xpath(xpath_str):
+                while True:
+                    removed += 1
+                    cur_parent = cur_del.getparent()
+                    cur_parent.remove(cur_del)
+                    cur_del = cur_parent
+                    if len(cur_del):
+                        break
+        self.log("removed %s" % (logging_tools.get_plural("element", removed)))
     def validate(self):
-        for obj_name, keys_needed, sub_el_needed in [
-            ("root"      , set(["name", "ip"])                         , set()),
-            ("fw_service", set(["name", "ip", "check_template"])       , set()),
-            ("firewall"  , set(["name", "ip", "num", "check_template"]), set()),
-            ("host"      , set(["name", "ip", "num", "check_template"]), set()),
-            ("general"   , set()                                       , set(["customer", "relayer", "nagvis_template", "usergroup"]))]:
+        for obj_name, keys_needed, sub_el_needed, obj_needed in [
+            ("root"      , set(["name", "ip"])                         , set(), True),
+            ("fw_service", set(["name", "ip", "check_template"])       , set(), True),
+            ("firewall"  , set(["name", "ip", "num", "check_template"]), set(), False),
+            ("host"      , set(["name", "ip", "num", "check_template"]), set(), True),
+            ("general"   , set()                                       , set(["customer", "relayer", "nagvis_template", "usergroup"]), True)]:
             obj_list = self.site_xml.findall(".//%s" % (obj_name))
-            if not len(obj_list):
+            if not len(obj_list) and obj_needed:
                 raise KeyError, "no %s objects found in site '%s'" % (obj_name, self.name)
             for cur_obj in obj_list:
                 found_keys = set(cur_obj.attrib.keys())
@@ -103,16 +122,29 @@ class anovis_site(object):
                         raise KeyError, "sub_element '%s' not found beneath %s" % (sub_el, obj_name)
                 if "ip" in keys_needed:
                     cur_obj.append(E.network(E.netdevice(E.ip(cur_obj.attrib["ip"]), devname="eth0")))
-            self.log("validated %s" % (logging_tools.get_plural(obj_name, len(obj_list))))
+            self.log("validated %s" % (
+                logging_tools.get_plural(
+                    "%s %s object" % (
+                        "needed" if obj_needed else "optional",
+                        obj_name), len(obj_list))))
     def _log_xml(self, info_str):
-        self.log("content of XML (%s)" % (info_str))
-        for line in etree.tostring(self.site_xml, pretty_print=True).split("\n"):
-            self.log(line)
-    def ensure_nodes(self, xpath_str):
-        # only works for top-level elements
-        if not len(self.site_xml.xpath(xpath_str)):
-            self.site_xml.append(getattr(E, xpath_str)())
+        if global_config["SHOW_XML"]:
+            self.log("content of XML (%s)" % (info_str))
+            for line in etree.tostring(self.site_xml, pretty_print=True).split("\n"):
+                self.log(line)
     def add_object(self, xpath_str, **kwargs):
+        create_parents_mode = kwargs.pop("create_parents_mode", False)
+        if not create_parents_mode:
+            parent_list = xpath_str.split("/")[:-1]
+            p_list = []
+            for cur_p in parent_list:
+                if not p_list:
+                    p_list.append(cur_p)
+                else:
+                    p_list.append("%s/%s" % (p_list[-1], cur_p))
+            for entry in p_list:
+                self.add_object(entry, create_parents_mode=True)
+            #print xpath_str, parent_list
         f_list = self.site_xml.xpath("%s%s" % (
             xpath_str,
             "[%s]" % (" and ".join(["@%s='%s'" % (key, str(value)) for key, value in kwargs.iteritems()])) if kwargs else ""))
@@ -128,20 +160,12 @@ class anovis_site(object):
             else:
                 self.site_xml.append(new_obj)
             return new_obj
-    def feed(self, in_key, in_value):
-        self.__last_key = None
-        for key_num, (key, value) in enumerate(zip(in_key.split(":"), unicode(in_value).split(":"))):
-            if key_num:
-                # store key as sub_key and use last_key as key
-                sub_key = key
-                key = self.__last_key
-            else:
-                sub_key = None
-            parts = key.split("_")
+    def feed(self, key, value):
+        parts = key.split("_")
+        try:
             if key == "site_name":
                 self.name = value
             elif key in ["customer", "relayer", "nagvis_template", "usergroup"]:
-                self.ensure_nodes("general")
                 gen_obj = self.add_object("general/%s" % (key))
                 gen_obj.text = value
             elif key.startswith("root"):
@@ -149,34 +173,47 @@ class anovis_site(object):
                 lut_key = parts[-1]
                 if len(parts) == 2 and lut_key in ["name", "ip"]:
                     fw_obj.attrib[lut_key] = str(value)
-            elif key.startswith("site_fw_service"):
-                lut_key = sub_key or parts[-1] 
-                if lut_key in ["name", "ip", "check_template"] and len(parts) == 4:
-                    service_obj = self.add_object("fw_service")
-                    service_obj.attrib[lut_key] = str(value)
+            elif parts[0] == "isp":
+                obj_num = parts[-1]
+                if parts[1] in ["router", "fw"]:
+                    lut_key = parts[-2]
+                    if lut_key in ["name", "ip"]:
+                        self.add_object("%s/%ss/%s" % (parts[0], parts[1], parts[1]), num=obj_num).attrib[lut_key] = unicode(value)
+                    else:
+                        raise KeyError
+            elif key.startswith("check_template"):
+                if parts[2] == "service":
+                    ref_spec = "fw_service"
+                    obj_num = None
                 else:
-                    raise ValueError, "unknown site_fw_service key '%s' (%s, %s)" % (key, value, unicode(sub_key))
+                    obj_num = parts.pop(-1)
+                    ref_spec = {("box",) : "firewalls/firewall",
+                                ("site", "host") : "hosts/host"}[tuple(parts[2:])]
+                self.add_object(ref_spec, **({"num" : obj_num} if obj_num else {})).attrib["check_template"] = value
+            elif key.startswith("site_fw_service"):
+                lut_key = parts[-1] 
+                if lut_key in ["name", "ip"] and len(parts) == 4:
+                    self.add_object("fw_service").attrib[lut_key] = str(value)
+                else:
+                    raise KeyError
             elif key.startswith("site_host"):
                 host_num = int(parts[-1])
-                lut_key = sub_key or parts[2] 
-                if len(parts) == 4 and lut_key in ["name", "ip", "service", "check_template"]:
-                    self.ensure_nodes("hosts")
-                    host_obj = self.add_object("hosts/host", num=host_num)
-                    host_obj.attrib[lut_key] = str(value)
+                lut_key = parts[2] 
+                if len(parts) == 4 and lut_key in ["name", "ip", "service"]:
+                    self.add_object("hosts/host", num=host_num).attrib[lut_key] = str(value)
                 else:
-                    raise ValueError, "unknown site_host key '%s' (%s, %s)" % (key, value, unicode(sub_key))
+                    raise KeyError
             elif key.startswith("site_fw_box"):
                 fw_num = int(parts[-1])
-                lut_key = sub_key or parts[3]
-                if len(parts) == 5 and lut_key in ["name", "ip", "check_template"]:
-                    self.ensure_nodes("firewalls")
-                    fw_obj = self.add_object("firewalls/firewall", num=fw_num)
-                    fw_obj.attrib[lut_key] = str(value)
+                lut_key = parts[3]
+                if len(parts) == 5 and lut_key in ["name", "ip"]:
+                    self.add_object("firewalls/firewall", num=fw_num).attrib[lut_key] = str(value)
                 else:
-                    raise ValueError, "unknown site_fw_box key '%s' (%s, %s)" % (key, value, unicode(sub_key))
+                    raise KeyError
             else:
-                raise KeyError, "unknown key '%s' (%s)" % (key, value)
-            self.__last_key = key
+                raise KeyError
+        except KeyError:
+            raise KeyError, "unknown key '%s' (value=%s)" % (key, value)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[as %s] %s" % (self.name, what), log_level)
     def _update_object(self, db_obj, **kwargs):
@@ -199,14 +236,26 @@ class anovis_site(object):
         self._log_xml("before sync")
         relayer_name = self.site_xml.findtext(".//general/relayer")
         self.log("relayer is specified by '%s'" % (relayer_name))
-        con_dev = device.objects.prefetch_related("netdevice_set").get(Q(name=relayer_name) | Q(netdevice__net_ip__ip=relayer_name))
-        # check if conn_dev is a monitoring_slave
         try:
-            device_config.objects.get(Q(config__name="monitor_slave") & Q(device=con_dev))
-        except device_config.DoesNotExist:
-            mon_master = None
+            con_dev = device.objects.prefetch_related("netdevice_set").get(Q(name=relayer_name) | Q(netdevice__net_ip__ip=relayer_name))
+        except device.DoesNotExist:
+            self.log("relayer specified by '%s' does not exist, connecting to master" % (relayer_name), logging_tools.LOG_LEVEL_CRITICAL)
+            con_dev = None
+        # check if conn_dev is a monitoring_slave
+        if con_dev is not None:
+            try:
+                device_config.objects.get(Q(config__name="monitor_slave") & Q(device=con_dev))
+            except device_config.DoesNotExist:
+                mon_master = None
+            else:
+                mon_master = con_dev
         else:
-            mon_master = con_dev
+            mon_master = None
+        if mon_master is None:
+            mon_master = device.objects.get(Q(device_config__config__name="monitor_server") | Q(device_config__config__name="monitor_master"))
+            if con_dev is None:
+                self.log("also using monitor_master '%s' als con_dev" % (unicode(mon_master)), logging_tools.LOG_LEVEL_WARN)
+                con_dev = mon_master
         self.log("monitoring_master is '%s'" % (unicode(mon_master)))
         con_nd = [cur_nd for cur_nd in con_dev.netdevice_set.all() if cur_nd.devname.startswith("eth")]
         if not con_nd:
@@ -214,42 +263,45 @@ class anovis_site(object):
         con_nd = con_nd[0]
         self.log("connecting to netdevice %s (device %s)" % (unicode(con_nd), unicode(con_nd.device)))
         # user access
-        user_spec = self.site_xml.findtext(".//general/usergroup")
-        if user_spec.count("/"):
-            group_name, user_name = user_spec.split("/")
-        else:
-            group_name, user_name = (None, user_spec)
-        self.log("groupname/username is '%s'/'%s'" % (group_name, user_name))
-        try:
-            my_group = group.objects.get(Q(groupname=group_name))
-        except group.DoesNotExist:
-            raise ValueError, "group '%s' not found" % (group_name)
-        try:
-            my_user = user.objects.get(Q(login=user_name))
-        except user.DoesNotExist:
-            my_user = user(
-                login=user_name,
-                active=True,
-                uid=max(list(user.objects.all().values_list("uid", flat=True))) + 1,
-                group=my_group,
-                first_name="",
-                last_name="",
-            )
+        user_name = self.site_xml.findtext(".//general/usergroup")
+        if user_name.strip():
+            group_name = global_config["GROUP_NAME"]
+            self.log("groupname/username is '%s' / '%s'" % (group_name, user_name))
+            try:
+                my_group = group.objects.get(Q(groupname=group_name))
+            except group.DoesNotExist:
+                raise ValueError, "group '%s' not found" % (group_name)
+            try:
+                my_user = user.objects.get(Q(login=user_name))
+            except user.DoesNotExist:
+                my_user = user(
+                    login=user_name,
+                    active=True,
+                    uid=max(list(user.objects.all().values_list("uid", flat=True))) + 1,
+                    group=my_group,
+                    first_name="",
+                    last_name="",
+                )
+                my_user.save()
+            my_user.password = user_name
             my_user.save()
-        my_user.password = user_name
-        my_user.save()
-        self.log("group / user is %s / %s" % (unicode(my_group), unicode(my_user)))
+            self.log("group / user is %s / %s" % (unicode(my_group), unicode(my_user)))
+        else:
+            self.log("username is empty, skipping user creation", logging_tools.LOG_LEVEL_WARN)
+            my_user = None
+        devg_name = self.site_xml.findtext(".//general/customer").lower().replace(" ", "_")
         try:
-            my_devg = device_group.objects.get(Q(name=global_config["DEVICE_GROUP"]))
+            my_devg = device_group.objects.get(Q(name=devg_name))
         except device_group.DoesNotExist:
             self.log("creating device_group")
             my_devg = device_group(
-                name=global_config["DEVICE_GROUP"],
+                name=devg_name,
                 description="auto created by script")
             my_devg.save()
-        if my_devg.pk not in my_user.allowed_device_groups.all().values_list("pk", flat=True):
-            self.log("adding device_group %s to user" % (unicode(my_devg)))
-            my_user.allowed_device_groups.add(my_devg)
+        if my_user is not None:
+            if my_devg.pk not in my_user.allowed_device_groups.all().values_list("pk", flat=True):
+                self.log("adding device_group %s to user" % (unicode(my_devg)))
+                my_user.allowed_device_groups.add(my_devg)
         my_devt = device_type.objects.get(Q(identifier="H"))
         my_devc = device_class.objects.get(Q(pk=1))
         my_nd_speed = netdevice_speed.objects.get(Q(full_duplex=True) & Q(speed_bps=1000000000))
@@ -368,13 +420,19 @@ class anovis_site(object):
                 cur_dev = self.get_db_obj("device", None, pk=dev_struct.attrib["pk"])
                 # delete previous configs
                 cur_dev.device_config_set.all().delete()
-                self.log("adding check '%s' to %s" % (
-                    dev_struct.attrib["check_template"],
-                    unicode(cur_dev)))
-                device_config(
-                    device=cur_dev,
-                    config=config.objects.get(Q(name=dev_struct.attrib["check_template"].strip().replace("-", "_")))
-                    ).save()
+                conf_name = dev_struct.attrib["check_template"].strip().replace("-", "_")
+                try:
+                    cur_conf = config.objects.get(Q(name=conf_name))
+                except config.DoesNotExist:
+                    self.log("no config with name '%s' found" % (conf_name), logging_tools.LOG_LEVEL_CRITICAL)
+                else:
+                    device_config(
+                        device=cur_dev,
+                        config=cur_conf,
+                        ).save()
+                    self.log("adding check '%s' to %s" % (
+                        dev_struct.attrib["check_template"],
+                        unicode(cur_dev)))
             else:
                 self.log("pk or check_template attribute missing in %s" % (dev_struct.tag), logging_tools.LOG_LEVEL_ERROR)
         self._log_xml("after sync")
@@ -402,18 +460,7 @@ class anvois_parser(object):
             csv_lines = self._fix_lines(csv_lines)
             for csv_line in csv_lines:
                 self.__site_list.append(anovis_site(self.log, csv_line))
-            self.log("parsed and validated %s" % (logging_tools.get_plural("site", len(csv_lines))))
-            # start creation of DB-objects
-            [an_site.db_sync() for an_site in self.__site_list]
-            pi_created = sum([cur_site.pi_created for cur_site in self.__site_list])
-            pi_deleted = sum([cur_site.pi_deleted for cur_site in self.__site_list])
-            self.log("pi(s) created / deleted: %d / %d" % (pi_created, pi_deleted))
-            if pi_created or pi_deleted:
-                self._contact_server(8004, "rebuild_hopcount")
-            else:
-                self.log("peer_information not changed", logging_tools.LOG_LEVEL_WARN)
-            self._contact_server(8010, "rebuild_host_config")
-            srv_com = server_command.srv_command(command="rebuild_host_config")
+                self.log("parsed %s" % (logging_tools.get_plural("site", len(csv_lines))))
         except:
             self.log("something bad happened: %s" % (process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_CRITICAL)
@@ -422,6 +469,21 @@ class anvois_parser(object):
                 self.log("    %s" % (line), logging_tools.LOG_LEVEL_CRITICAL)
             self.__ret_state = 1
         return self.__ret_state
+    def db_sync(self):
+        self.log("starting db_sync for %s" % (logging_tools.get_plural("site", len(self.__site_list))))
+        # start creation of DB-objects
+        [an_site.db_sync() for an_site in self.__site_list]
+        self.log("validated %s" % (logging_tools.get_plural("site", len(self.__site_list))))
+        pi_created = sum([cur_site.pi_created for cur_site in self.__site_list])
+        pi_deleted = sum([cur_site.pi_deleted for cur_site in self.__site_list])
+        self.log("pi(s) created / deleted: %d / %d" % (pi_created, pi_deleted))
+        self.pi_created, self.pi_deleted = (pi_created, pi_deleted)
+    def notify_servers(self):
+        if self.pi_created or self.pi_deleted:
+            self._contact_server(8004, "rebuild_hopcount")
+        else:
+            self.log("peer_information not changed", logging_tools.LOG_LEVEL_WARN)
+        self._contact_server(8010, "rebuild_host_config")
     def _contact_server(self, dst_port, command):
         self.log("sending command '%s' to localhost (port %d)" % (command, dst_port))
         srv_com = server_command.srv_command(command=command)
@@ -442,14 +504,14 @@ class anvois_parser(object):
                 key = key.split("(=")[0]
                 parts = [{"firewall"  : "fw"}.get(part, part) for part in key.lower().split()]
                 t_key = "_".join(parts)
-                t_key = t_key.replace(":_", ":").replace("_:", ":")
+                t_key = t_key.replace("-", "_").replace(":_", ":").replace("_:", ":")
                 _map[orig_key] = t_key
             self.__key_mapping = _map
             for key in sorted(_map):
                 self.log("key %-64s => %s" % (key, self.__key_mapping[key]))
         ret_dict = dict([(self.__key_mapping[key], value) for key, value in in_line.iteritems()])
         # check ips
-        ret_dict = dict([(key, ipvx_tools.ipv4(value) if key.count("_ip") else value) for key, value in ret_dict.iteritems()])
+        ret_dict = dict([(key, (ipvx_tools.ipv4(value) if value.strip() != "" else "") if key.count("_ip") else value) for key, value in ret_dict.iteritems()])
         return ret_dict
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -464,19 +526,28 @@ class anvois_parser(object):
 def main():
     prog_name = global_config.name()
     global_config.add_config_entries([
-        ("SOURCE"              , configfile.str_c_var("", help_string="file to parse [%(default)s]")),
-        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
-        ("VERBOSE"             , configfile.bool_c_var(False, help_string="be verbose [%(default)s]")),
-        ("DEVICE_GROUP"        , configfile.str_c_var("nodes", help_string="name of device_group [%(default)s]")),
-        ("HC_TEMPLATE"         , configfile.str_c_var("notset", help_string="serivce template for host cluster [%(default)s]")),
+        ("SOURCE"         , configfile.str_c_var("", help_string="file to parse [%(default)s]")),
+        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"       , configfile.str_c_var(prog_name)),
+        ("VERBOSE"        , configfile.bool_c_var(False, help_string="be verbose [%(default)s]")),
+        ("HC_TEMPLATE"    , configfile.str_c_var("notset", help_string="serivce template for host cluster [%(default)s]", choices=mon_service_templ.objects.all().values_list("name", flat=True))),
+        ("DB_SYNC"        , configfile.bool_c_var(False, help_string="sync to database [%(default)s]", action="store_true")),
+        ("NOTIFY"         , configfile.bool_c_var(False, help_string="notify servers [%(default)s]", action="store_true")),
+        ("GROUP_NAME"     , configfile.str_c_var("", help_string="name of group [%(default)s]", action="store_true")),
+        ("SHOW_XML"       , configfile.bool_c_var(False, help_string="show XML-structures [%(default)s]", action="store_true")),
     ])
-    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
-                                                                                  VERSION_STRING),
-                                               add_writeback_option=False,
-                                               positional_arguments=False)
+    options = global_config.handle_commandline(
+        description="%s, version is %s" % (
+            prog_name,
+            VERSION_STRING),
+        add_writeback_option=False,
+        positional_arguments=False)
     my_parser = anvois_parser()
     ret_state = my_parser.parse()
+    if not ret_state and global_config["DB_SYNC"]:
+        my_parser.db_sync()
+        if global_config["NOTIFY"]:
+            my_parser.notify_servers()
     my_parser.close()
     sys.exit(ret_state)
 
