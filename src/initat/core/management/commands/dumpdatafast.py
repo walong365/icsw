@@ -185,6 +185,8 @@ class Command(BaseCommand):
         models = list(models)
 
         for model in models:
+            if model in excluded_models:
+                continue
             deps.add_to_tree(model)
             many_to_many = self.dump_model(model)
             for m2m in many_to_many:
@@ -272,7 +274,6 @@ class Command(BaseCommand):
             progress_string = ""
             for obj in self.iterator(queryset):
                 f.write(convert(obj))
-                mem_profile.measure()
                 loop_count += 1
                 if self.progress:
                     if (loop_count % (obj_count / progress_break)) == 0:
@@ -280,6 +281,7 @@ class Command(BaseCommand):
                         sys.stdout.write("[%s" % (progress_string) .ljust(progress_break) + "]\r")
                         sys.stdout.flush()
             f.write(pg_copy.footer())
+            mem_profile.measure()
 
         time_bz_start = time.time()
         if self.bz2:
