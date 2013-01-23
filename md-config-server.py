@@ -2302,7 +2302,7 @@ class build_process(threading_tools.process_obj):
                                 self.mach_log("IP address is '%s', host is assumed to be always up" % (unicode(valid_ip)))
                                 act_host["check_command"] = "check-host-ok"
                             else:
-                                act_host["check_command"]             = act_def_dev.ccommand
+                                act_host["check_command"] = act_def_dev.ccommand
                             # check for nagvis map
                             if host.automap_root_nagvis:
                                 map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.name))
@@ -2437,12 +2437,12 @@ class build_process(threading_tools.process_obj):
                                         act_host,
                                         s_check,
                                         [special_commands.arg_template(
-                                            None,
+                                            s_check,
                                             "%s %s" % (s_check.get_description(), mhc_check.description),
-                                            mhc_check.description,
-                                            mhc_check.warn_value,
-                                            mhc_check.error_value,
-                                            dev_names)
+                                            arg1=mhc_check.description,
+                                            arg2=mhc_check.warn_value,
+                                            arg3=mhc_check.error_value,
+                                            arg4=dev_names)
                                          ],
                                         act_def_serv,
                                         serv_cgs,
@@ -2467,12 +2467,12 @@ class build_process(threading_tools.process_obj):
                                         act_host,
                                         s_check,
                                         [special_commands.arg_template(
-                                            None,
+                                            s_check,
                                             s_check.get_description(), 
-                                            msc_check.description,
-                                            msc_check.warn_value,
-                                            msc_check.error_value,
-                                            dev_names)
+                                            arg1=msc_check.description,
+                                            arg2=msc_check.warn_value,
+                                            arg3=msc_check.error_value,
+                                            arg4=dev_names)
                                          ],
                                         act_def_serv,
                                         serv_cgs,

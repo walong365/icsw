@@ -236,7 +236,10 @@ class arg_template(dict):
         dict.__init__(self)
         self.info = args[0]
         if s_base is not None:
-            self.__arg_lut, self.__arg_list = s_base.s_check.arg_ll
+            if s_base.__class__.__name__ == "check_command":
+                self.__arg_lut, self.__arg_list = s_base.arg_ll
+            else:
+                self.__arg_lut, self.__arg_list = s_base.s_check.arg_ll
         else:
             self.__arg_lut, self.__arg_list = ({}, [])
         # set defaults
