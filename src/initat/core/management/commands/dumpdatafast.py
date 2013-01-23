@@ -241,9 +241,10 @@ class Command(BaseCommand):
                     new_value = ur"\N"
                 else:
                     # Escape all backslashes, tab, newline and CR
-                    value = value.replace("\\", r"\\")
-                    value = value.replace("\t", r"\t").replace("\n", r"\n").replace("\r", r"\r")
-                    new_value = smart_unicode(value)
+                    value = smart_unicode(value)
+                    value = value.replace("\\", ur"\\")
+                    value = value.replace("\t", ur"\t").replace("\n", ur"\n").replace("\r", ur"\r")
+
                 converted_values.append(new_value)
 
             return u"%s\n" % u"\t".join(converted_values)
