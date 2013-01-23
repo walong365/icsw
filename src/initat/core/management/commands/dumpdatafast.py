@@ -72,14 +72,14 @@ class Command(BaseCommand):
         make_option('-s', '--stats', action='store_true', help='Show stats for '
                     'each dumped model'),
         make_option('-i', '--iterator', action="store_true", help="Use custom "
-                    "QuerySet iterator. (Saves RAM, takes more time and DB queries)"),
+                    "QuerySet iterator. (Saves RAM, takes more time)"),
         make_option('-c', '--count', action="store", default=None, type=int, help="Maximum count"
                     "of objects to dump per model"),
         make_option('-b', "--bz2", action="store_true", help="bzip2 the resulting"
                     " postgres dumps"),
         make_option("-p", "--progress", action="store_true", help="Print progress"
                     " bar"),
-        make_option("-z", "--step-size", action="store", type=int, default=3000,
+        make_option("-z", "--step-size", action="store", type=int, default=2000,
                     help="Iterator step size (default %(step_size)s)"),
     )
     help = "Output the contents of the database in PostgreSQL dump format. "
@@ -279,6 +279,7 @@ class Command(BaseCommand):
             progress_string = ""
             for obj in self.iterator(queryset):
                 f.write(convert(obj))
+                mem_profile.measure()
                 loop_count += 1
                 if self.progress:
                     if (loop_count % (obj_count / progress_break)) == 0:
@@ -295,7 +296,8 @@ class Command(BaseCommand):
         if self.stats:
             if self.progress:
                 print
-            print "    Iterator: %s" % self.iterator.name
+            if self.iterator is not None:
+                print "    Iterator: %s" % self.iterator.name
             print "    Count: %s" % obj_count
             print "    DB Queries: %s" % (len(connection.queries) - db_queries)
             print "    Time : %6.2f s" % (time.time() - time_start)

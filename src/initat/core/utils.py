@@ -820,7 +820,7 @@ class MemoryProfile(object):
         self.max_usage = 0
 
     def _memory_usage(self):
-        """ Return memory usage in kB"""
+        """ Return memory usage in kB (according to 'man 2 getrusage'"""
         return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
     def measure(self):
@@ -831,21 +831,18 @@ class MemoryProfile(object):
             #print "Found new max: %s" % mem
 
 
-def sql_iterator(queryset, step=1000):
+def sql_iterator(queryset, step=2000):
     """
-    Iterate over queryset returning step items at a time. Set step to a callable
+    Iterate over queryset in *step* sized chunks. Set *step* to a callable
     to calculate the step size based on the queryset length.
     """
-    def func():
-        length = queryset.count()
-        if callable(step):
-            step_size = step(length)
-        else:
-            step_size = step
-        steps = int(math.ceil(length / float(step_size)))
-        for start, stop in [(i * step_size, (i + 1) * step_size) for i in range(steps)]:
-            yield queryset[start:stop]
+    length = queryset.count()
+    if callable(step):
+        step_size = step(length)
+    else:
+        step_size = step
+    steps = int(math.ceil(length / float(step_size)))
 
-    for queryset_slice in func():
-        for element in queryset_slice:
-            yield element
+    for i in xrange(steps):
+        for obj in queryset[i * step_size:(i + 1) * step_size]:
+            yield obj
