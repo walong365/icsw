@@ -251,9 +251,11 @@ class arg_template(dict):
             if l_key.startswith("arg_"):
                 key = "arg%d" % (len(self.argument_names) + 1 - int(l_key[4:]))
             if key.upper() not in self.argument_names:
-                raise KeyError, "key '%s' not defined in arg_list (%s)" % (
+                raise KeyError, "key '%s' not defined in arg_list (%s, %s)" % (
                     key,
-                    self.info)
+                    self.info,
+                    ", ".join(self.argument_names)
+                )
             else:
                 dict.__setitem__(self, key.upper(), value)
         else:

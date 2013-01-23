@@ -2433,11 +2433,25 @@ class build_process(threading_tools.process_obj):
                                     serv_temp = serv_templates[mhc_check.mon_service_templ_id]
                                     serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
                                     sub_list = self.get_service(
-                                        host, act_host, s_check, [("%s %s" % (s_check.get_description(), mhc_check.description), [mhc_check.description, mhc_check.warn_value, mhc_check.error_value, dev_names])],
-                                        act_def_serv, serv_cgs, checks_are_active,
-                                        serv_temp, cur_gc, dev_variables)
+                                        host,
+                                        act_host,
+                                        s_check,
+                                        [special_commands.arg_template(
+                                            None,
+                                            "%s %s" % (s_check.get_description(), mhc_check.description),
+                                            mhc_check.description,
+                                            mhc_check.warn_value,
+                                            mhc_check.error_value,
+                                            dev_names)
+                                         ],
+                                        act_def_serv,
+                                        serv_cgs,
+                                        checks_are_active,
+                                        serv_temp,
+                                        cur_gc,
+                                        dev_variables)
                                     service_nc.extend(sub_list)
-                                    num_ok += len(sc_list)
+                                    num_ok += len(sub_list)
                             # add service checks
                             msc_checks = host.main_mon_service_cluster.all().prefetch_related("devices")
                             if len(msc_checks):
@@ -2449,11 +2463,25 @@ class build_process(threading_tools.process_obj):
                                     serv_temp = serv_templates[msc_check.mon_service_templ_id]
                                     serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
                                     sub_list = self.get_service(
-                                        host, act_host, s_check, [(s_check.get_description(), [msc_check.description, msc_check.warn_value, msc_check.error_value, dev_names])],
-                                        act_def_serv, serv_cgs, checks_are_active,
-                                        serv_temp, cur_gc, dev_variables)
+                                        host,
+                                        act_host,
+                                        s_check,
+                                        [special_commands.arg_template(
+                                            None,
+                                            s_check.get_description(), 
+                                            msc_check.description,
+                                            msc_check.warn_value,
+                                            msc_check.error_value,
+                                            dev_names)
+                                         ],
+                                        act_def_serv,
+                                        serv_cgs,
+                                        checks_are_active,
+                                        serv_temp,
+                                        cur_gc,
+                                        dev_variables)
                                     service_nc.extend(sub_list)
-                                    num_ok += len(sc_list)
+                                    num_ok += len(sub_list)
                             host_nc[act_host["name"]] = act_host
                         else:
                             self.mach_log("Host %s is disabled" % (host.name))
