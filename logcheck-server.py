@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2011,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2011,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -471,18 +471,18 @@ class server_process(threading_tools.process_pool):
         ]
         slcn = "/etc/rsyslog.d/logcheck_server.conf"
         file(slcn, "w").write("\n".join(rsyslog_lines))
-        self._restart_syslog()
+        self._reload_syslog()
     def _disable_rsyslog(self):
         slcn = "/etc/rsyslog.d/logcheck_server.conf"
         if os.path.isfile(slcn):
             os.unlink(slcn)
-        self._restart_syslog()
-    def _restart_syslog(self):
+        self._reload_syslog()
+    def _reload_syslog(self):
         for syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng"]:
             if os.path.isfile(syslog_rc):
                 break
-        stat, out_f = process_tools.submit_at_command("%s restart" % (syslog_rc), 0)
-        self.log("restarting %s gave %d:" % (syslog_rc, stat))
+        stat, out_f = process_tools.submit_at_command("%s reload" % (syslog_rc), 0)
+        self.log("reloading %s gave %d:" % (syslog_rc, stat))
         for line in out_f:
             self.log(line)
         
@@ -499,7 +499,6 @@ class server_thread_pool(threading_tools.thread_pool):
         self.register_func("new_pid", self._new_pid)
         self.register_func("remove_pid", self._remove_pid)
         self.register_func("request_exit", self._request_exit)
-        self.register_func("restart_syslog", self._restart_syslog_ng)
         # syslog_check_counter
         self.__syslog_check_counter, self.__syslog_check_num = (0, self.__glob_config["SYSLOG_CHECK_ERROR"])
         self.__bind_state_dict = {}
@@ -572,159 +571,6 @@ class server_thread_pool(threading_tools.thread_pool):
             # clear bind_state dict
             for k in self.__bind_state_dict.keys():
                 del self.__bind_state_dict[k]
-    #def _enable_syslog_config(self):
-        #LOCAL_FILTER_NAME = "f_messages"
-        #my_name = threading.currentThread().getName()
-        #slcn = "/etc/syslog-ng/syslog-ng.conf"
-        #if os.path.isfile(slcn):
-            ## start of shiny new modification code, right now only used to get the name of the /dev/log source
-            #dev_log_source_name = "src"
-            #try:
-                #act_conf = logging_tools.syslog_ng_config()
-            #except:
-                #self.log("Unable to parse config: %s, using '%s' as /dev/log-source" % (process_tools.get_except_info(),
-                                                                                        #dev_log_source_name),
-                         #logging_tools.LOG_LEVEL_ERROR)
-            #else:
-                #source_key = "/dev/log"
-                #source_dict = act_conf.get_dict_sort(act_conf.get_multi_object("source"))
-                #if source_dict.has_key(source_key):
-                    #dev_log_source_name = source_dict[source_key][0]
-                    #self.log("'%s'-key in config, using '%s' as /dev/log-source" % (source_key,
-                                                                                    #dev_log_source_name))
-                #else:
-                    #self.log("'%s'-key not in config, using '%s' as /dev/log-source" % (source_key,
-                                                                                        #dev_log_source_name),
-                             #logging_tools.LOG_LEVEL_WARN)
-            #self.log("Trying to rewrite syslog-ng.conf for logcheck-server ...")
-            #try:
-                #act_conf = [x.rstrip() for x in file(slcn, "r").readlines()]
-                ## remove net-related loglines (to ensure that throttle-messages are always sent to logcheck-server at first)
-                #orig_conf = []
-                #for line in act_conf:
-                    #if not re.match(".*destination\(hosts.*", line):
-                        #orig_conf.append(line)
-                ## check for logcheck-server-lines and/or dhcp-lines
-                #opt_list = ["throttle", "logcheck_server", "throttle_filter", "net_source", "host_dest", "host_log", "threadcheck_filter", "local_log"]
-                #opt_dict = dict([(x, 0) for x in opt_list])
-                #for line in orig_conf:
-                    #if re.match("^.*destination.logcheck.*$", line):
-                        #opt_dict["logcheck_server"] = True
-                    #if re.match("^.*filter f_throttle.*$", line):
-                        #opt_dict["throttle_filter"] = True
-                    #if re.match("^.*filter f_threadcheck.*$", line):
-                        #opt_dict["threadcheck_filter"] = True
-                    #if re.match("^.*source net.*$", line):
-                        #opt_dict["net_source"] = True
-                    #if re.match("^.*destination hosts.*$", line):
-                        #opt_dict["host_dest"] = True
-                    #if re.match("^.*destination\(hosts.*$", line):
-                        #opt_dict["host_log"] = True
-                    #if re.match("^.*log.*source.*%s.*filter%s.*$" % (dev_log_source_name, LOCAL_FILTER_NAME), line):
-                        #opt_dict["local_log"] = True
-                #self.log("after parsing: %s" % (", ".join(["%s: %d" % (x, opt_dict[x]) for x in opt_list])))
-                #logcheck_server_lines = []
-                #if not opt_dict["throttle_filter"]:
-                    #logcheck_server_lines.extend(["",
-                                                  #'filter f_throttle   { facility(kern) and message("CPU");};'])
-                #if not opt_dict["threadcheck_filter"]:
-                    #logcheck_server_lines.extend(["",
-                                                  #'filter f_threadcheck   { message("%s");};' % (SYSLOG_THREAD_STR)])
-                #if not opt_dict["net_source"]:
-                    #logcheck_server_lines.extend(["",
-                                                  #'source net { udp(ip("0.0.0.0") port(514));};'])
-                #if not opt_dict["host_dest"]:
-                    #logcheck_server_lines.extend(["",
-                                                  #'destination hosts_web { file("%s/$HOST/$YEAR/$MONTH/$DAY/log"       dir_perm(0755) perm(0644) create_dirs(yes) ); };' % (self.__glob_config["SYSLOG_DIR"]),
-                                                  #'destination hosts     { file("%s/$HOST/$YEAR/$MONTH/$DAY/$FACILITY" dir_perm(0755)            create_dirs(yes) ); };' % (self.__glob_config["SYSLOG_DIR"])])
-                #if not opt_dict["host_log"]:
-                    #logcheck_server_lines.extend(["",
-                                                  #'log { source(net); destination(hosts)    ; };',
-                                                  #'log { source(net); destination(hosts_web); };'])
-                #if not opt_dict["logcheck_server"]:
-                    #logcheck_server_lines.extend(["",
-                                                  #'destination logcheck { unix-dgram("%s") ;};' % (self.__glob_config["SYSLOG_SOCKET"]),
-                                                  #"",
-                                                  #'log {           source(%s); source(net); filter(f_threadcheck); destination(logcheck);};' % (dev_log_source_name),
-                                                  #'log {           source(%s); source(net); filter(f_throttle)   ; destination(logcheck);};' % (dev_log_source_name),
-                                                  #""])
-                #if not opt_dict["local_log"]:
-                    #logcheck_server_lines.extend(["",
-                                                  #'log { source(%s); filter(%s); destination(hosts);     };' % (dev_log_source_name, LOCAL_FILTER_NAME),
-                                                  #'log { source(%s); filter(%s); destination(hosts_web); };' % (dev_log_source_name, LOCAL_FILTER_NAME),
-                                                  #""])
-                #if logcheck_server_lines:
-                    #out_str = "\n".join([x.strip() for x in logcheck_server_lines])
-                    #while out_str.count("\n\n\n"):
-                        #out_str = out_str.replace("\n\n\n", "\n\n")
-                    #logcheck_server_lines = out_str.split("\n")
-                    #for ml in logcheck_server_lines:
-                        #self.log("adding line to %s : %s" % (slcn, ml))
-                    #out_str = "\n".join([x.strip() for x in orig_conf + logcheck_server_lines + [""]])
-                    ## eliminate double-rets
-                    #while out_str.count("\n\n\n"):
-                        #out_str = out_str.replace("\n\n\n", "\n\n")
-                    #file(slcn, "w").write(out_str)
-                    #self._restart_syslog_ng()
-                #else:
-                    #self.log("%s seems to be OK, leaving unchanged..." % (slcn))
-                #self.log("... done")
-            #except:
-                #self.log("Something went wrong while trying to modify '%s' : %s, help..." % (slcn, process_tools.get_except_info()),
-                         #logging_tools.LOG_LEVEL_ERROR)
-        #else:
-            #self.log("config file '%s' not present" % (slcn),
-                     #logging_tools.LOG_LEVEL_ERROR)
-    #def get_syslog_rc_script(self):
-        #for scr_name in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng"]:
-            #if os.path.isfile(scr_name):
-                #break
-        #return scr_name
-    #def _restart_syslog_ng(self):
-        #old_pids = [key for key, value in process_tools.get_proc_list().iteritems() if value["name"] == "syslog-ng"]
-        #stat, out = commands.getstatusoutput("%s stop" % (self.get_syslog_rc_script()))
-        #self.log("stopping syslog-ng gave (%d) %s" % (stat, out))
-        #new_pids = [key for key, value in process_tools.get_proc_list().iteritems() if value["name"] == "syslog-ng"]
-        #if old_pids == new_pids:
-            #self.log("cannot stop syslog-ng, killing via 9", logging_tools.LOG_LEVEL_ERROR)
-            #for old_pid in old_pids:
-                #os.kill(old_pid, 9)
-        #rv, log_parts = process_tools.submit_at_command("%s start" % (self.get_syslog_rc_script()), 0)
-        #for lp in log_parts:
-            #self.log(" - %s" % (lp))
-    #def _disable_syslog_config(self):
-        #self.log("Trying to rewrite syslog-ng.conf for normal operation ...")
-        #slcn = "/etc/syslog-ng/syslog-ng.conf"
-        #try:
-            #orig_conf = [x.rstrip() for x in file(slcn, "r").readlines()]
-            #new_conf = []
-            #del_lines = []
-            #for line in orig_conf:
-                #if re.match("^.*destination.logcheck.*$", line):
-                    #del_lines.append(line)
-                #else:
-                    #new_conf.append(line)
-            #if del_lines:
-                #self.log("Found %s:" % (logging_tools.get_plural("logcheck-server-related line", len(del_lines))))
-                #for dl in del_lines:
-                    #self.log("  removing : %s" % (dl))
-                ## remove double empty-lines
-                #new_conf_2, last_line = ([], None)
-                #for line in new_conf:
-                    #if line == last_line and last_line == "":
-                        #pass
-                    #else:
-                        #new_conf_2.append(line)
-                    #last_line = line
-                #file(slcn, "w").write("\n".join(new_conf_2))
-                #self._restart_syslog_ng()
-            #else:
-                #self.log("Found no logcheck-server-related lines, leaving %s untouched" % (slcn),
-                         #logging_tools.LOG_LEVELERROR)
-            #self.log("... done")
-        #except:
-            #self.log("Something went wrong while trying to modify '%s', help..." % (slcn),
-                     #logging_tools.LOG_LEVEL_ERROR)
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
