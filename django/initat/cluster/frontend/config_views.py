@@ -329,25 +329,24 @@ def alter_config_cb(request):
     return request.xml_response.create_response()
 
 class tree_struct(object):
-    def __init__(self, cur_dev, node_list, node=None, depth=0, wcf_dict={}):
+    def __init__(self, cur_dev, node_list, node=None, depth=0):
         self.dev_pk = cur_dev.pk
         self.depth = depth
         if not node:
             if node_list:
                 self.node = [entry for entry in node_list if not entry.parent_id][0]
-                wcf_dict = dict([(cur_wc.tree_node_id, cur_wc) for cur_wc in wc_files.objects.filter(Q(device=self.node.device_id))])
             else:
                 self.node = None
         else:
             self.node = node
         if self.node is not None:
-            self.wc_file = wcf_dict.get(self.node.pk, None)
+            self.wc_file = self.node.wc_files
             self.childs = [tree_struct(
                 cur_dev,
                 node_list,
                 node=cur_node,
                 depth=self.depth + 1,
-                wcf_dict=wcf_dict) for cur_node in node_list if cur_node.parent_id == self.node.pk]
+                ) for cur_node in sorted(node_list) if cur_node.parent_id == self.node.pk]
         else:
             self.wc_file = None
             self.childs = []
@@ -400,7 +399,7 @@ def generate_config(request):
                 #if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
                 cur_dev = dev_dict[int(dev_node.attrib["pk"])]
                 # build tree
-                cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)))
+                cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)).select_related("wc_files"))
                 res_node.append(cur_tree.get_xml())
             request.xml_response["result"].append(res_node)
         request.log("build done", xml=True)

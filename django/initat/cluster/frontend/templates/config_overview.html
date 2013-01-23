@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n compress %}
+{% load i18n compress coffeescript %}
 
 {% block title %}{% trans "Configurations" %}{% endblock %}
 
@@ -29,9 +29,11 @@
 
 {% block content %}
 
-<h1 class="center">Configurations, <span id="config_info">none defined</span></h1>
+<h1 class="center">Configurations, <span id="config_info">none defined</span>
 
-<input type="text" id="filter" value="" onKeyUp="apply_filter();"/>
+filter: <input type="text" id="filter" value="" onKeyUp="apply_filter();" />
+
+</h1>
 
 <div id="config">
 </div>
@@ -580,7 +582,7 @@ function use_devs(dt_div) {
     CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
         return(value.data.key);
     });
-    notify_generate_link();
+    notify_generate_link(CUR_DEVICES);
 };
 
 function add_config_handlers() {
