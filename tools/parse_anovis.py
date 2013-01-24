@@ -99,7 +99,7 @@ class anovis_site(object):
                     # check for empty child list
                     if len(cur_del):
                         break
-        self.log("removed %s" % (logging_tools.get_plural("element", removed)))
+        self.log("recursive removed %s" % (logging_tools.get_plural("empty element", removed)))
     def validate(self):
         for obj_name, keys_needed, sub_el_needed, obj_needed in [
             ("root"      , set(["name", "ip"])                         , set(), True),
@@ -231,6 +231,11 @@ class anovis_site(object):
                 changed.append(key)
         if changed:
             db_obj.save()
+    def _safe_name(self, in_str):
+        in_str = in_str.replace("/", "_").replace(" ", "_")
+        while in_str.count("__"):
+            in_str = in_str.replace("__", "_")
+        return in_str
     def db_sync(self):
         """ database sync """
         self.log("start syncing")
@@ -403,22 +408,55 @@ class anovis_site(object):
         self.pi_created, self.pi_deleted = (created, deleted)
         self.log("connections created / deleted: %d / %d" % (created, deleted))
         # host cluster
+        hc_name = "%s / %s" % (self.name, self.site_xml.find(".//fw_service").attrib["name"])
+        hc_s_name = self._safe_name(hc_name)
         try:
-            cur_hc = self.get_db_obj("mon_host_cluster", Q(name=self.name))
+            cur_hc = self.get_db_obj("mon_host_cluster", Q(name=hc_s_name))
         except mon_host_cluster.DoesNotExist:
+            self.log("creating host_cluster '%s'" % (hc_s_name))
             cur_hc = mon_host_cluster(
-                name=self.name,
+                name=hc_s_name,
                 main_device=root_dev,
                 mon_service_templ=hc_srv_template,
             )
             cur_hc.save()
+        else:
+            self.log("host_cluster '%s' already exists" % (hc_s_name))
         #present_hc_devs = cur_hc.devices.all()
-        for del_dev in cur_hc.devices.all():
-            cur_hc.devices.remove(del_dev)
+        present_devs = set([cur_dev.pk for cur_dev in cur_hc.devices.all()])
+        #for del_dev in cur_hc.devices.all():
+        #    cur_hc.devices.remove(del_dev)
         new_hc_devs = [self.get_db_obj("device", None, pk=int(fw_obj.attrib["pk"])) for fw_obj in self.site_xml.xpath(".//firewall")]
+        if len(new_hc_devs) > 1:
+            # at least to devices
+            num_warn, num_error = (0, 1)
+        else:
+            # only one device
+            num_warn, num_error = (0, 0)
         for new_dev in new_hc_devs:
-            cur_hc.devices.add(new_dev)
-        self._update_object(cur_hc, description=self.name, main_device=root_dev, mon_service_templ=hc_srv_template)
+            # check for old host clusters
+            if new_dev.pk not in present_devs:
+                self.log("adding device '%s' to host_cluster" % (unicode(new_dev)))
+                cur_hc.devices.add(new_dev)
+            for dev_hc in new_dev.devs_mon_host_cluster.all():
+                if dev_hc.pk != cur_hc.pk:
+                    self.log("removing device '%s' from host_cluster '%s'" % (
+                        unicode(new_dev),
+                        unicode(dev_hc)), logging_tools.LOG_LEVEL_WARN)
+                    dev_hc.devices.remove(new_dev)
+        del_devs = present_devs - set([cur_dev.pk for cur_dev in new_hc_devs])
+        if del_devs:
+            self.log("removing %s from host_cluster" % (logging_tools.get_plural("device", len(del_devs))))
+            [cur_hc.devices.remove(self.get_db_obj("device", None, pk=del_dev)) for del_dev in del_devs]
+        self._update_object(cur_hc, description=hc_name, main_device=root_dev, mon_service_templ=hc_srv_template,
+                            warn_value=num_warn,
+                            error_value=num_error)
+        # check for empty host-clusters
+        empty_clusters = mon_host_cluster.objects.filter(Q(devices=None))
+        if empty_clusters:
+            self.log("removing %s: %s" % (logging_tools.get_plural("empty host_cluter", len(empty_clusters)),
+                                          ", ".join([unicode(del_mhc) for del_mhc in empty_clusters])))
+            [del_mhc.delete() for del_mhc in empty_clusters]
         # get configs
         for dev_struct in self.site_xml.xpath(".//firewall|.//fw_service|.//host"):
             if "pk" in dev_struct.attrib and "check_template" in dev_struct.attrib:
