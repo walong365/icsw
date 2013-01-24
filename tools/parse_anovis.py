@@ -96,6 +96,7 @@ class anovis_site(object):
                     cur_parent = cur_del.getparent()
                     cur_parent.remove(cur_del)
                     cur_del = cur_parent
+                    # check for empty child list
                     if len(cur_del):
                         break
         self.log("removed %s" % (logging_tools.get_plural("element", removed)))
@@ -215,7 +216,7 @@ class anovis_site(object):
         except KeyError:
             raise KeyError, "unknown key '%s' (value=%s)" % (key, value)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[as %s] %s" % (self.name, what), log_level)
+        self.__log_com("[site %s] %s" % (self.name, what), log_level)
     def _update_object(self, db_obj, **kwargs):
         changed = []
         for key, value in kwargs.iteritems():
@@ -393,10 +394,14 @@ class anovis_site(object):
                     penalty=1).save()
         for cur_pi in present_cons:
             if (cur_pi.s_netdevice_id, cur_pi.d_netdevice_id) not in pure_list:
-                deleted += 1
-                cur_pi.delete()
+                if cur_pi.s_netdevice_id == root_nd.pk:
+                    # do not remove connections from root_device downwards, may be other sites
+                    self.log("skipping pi deletion (multi-line site CSV ?)", logging_tools.LOG_LEVEL_WARN)
+                else:
+                    deleted += 1
+                    cur_pi.delete()
         self.pi_created, self.pi_deleted = (created, deleted)
-        self.log("netdevices created / deleted: %d / %d" % (created, deleted))
+        self.log("connections created / deleted: %d / %d" % (created, deleted))
         # host cluster
         try:
             cur_hc = self.get_db_obj("mon_host_cluster", Q(name=self.name))
@@ -456,11 +461,16 @@ class anvois_parser(object):
         self.__ret_state = 0
         self.log("start parsing")
         try:
-            csv_lines = list(csv.DictReader(file(global_config["SOURCE"], "r"), delimiter=";"))
-            csv_lines = self._fix_lines(csv_lines)
-            for csv_line in csv_lines:
-                self.__site_list.append(anovis_site(self.log, csv_line))
-                self.log("parsed %s" % (logging_tools.get_plural("site", len(csv_lines))))
+            dict_reader = csv.DictReader(file(global_config["SOURCE"], "r"), delimiter=";")
+            sites_parsed, sites_skipped = (0, 0)
+            for csv_line in dict_reader:
+                if not csv_line[dict_reader.fieldnames[0]].strip().startswith("#"):
+                    sites_parsed += 1
+                    csv_line = self._fix_line(csv_line)
+                    self.__site_list.append(anovis_site(self.log, csv_line))
+                else:
+                    sites_skipped += 1
+            self.log("parsed %s (skipped %d)" % (logging_tools.get_plural("site", sites_parsed), sites_skipped))
         except:
             self.log("something bad happened: %s" % (process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_CRITICAL)
@@ -493,8 +503,6 @@ class anvois_parser(object):
             self.log("error contacting server", logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("sent %s to %s" % (command, dst_addr))
-    def _fix_lines(self, in_lines):
-        return [self._fix_line(in_line) for in_line in in_lines]
     def _fix_line(self, in_line):
         if not self.__key_mapping:
             # generate key mapping
