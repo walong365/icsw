@@ -304,10 +304,15 @@ def create_object(request, *args, **kwargs):
 def delete_object(request, *args, **kwargs):
     _post = request.POST
     obj_name = kwargs["obj_name"]
+    force_delete = _post.get("force_delete", "false").lower() == "true"
     del_obj_class = globals()[obj_name]
     key_pf = min([(len(key), key) for key in _post.iterkeys() if key.count("__")])[1]
     del_index = int(_post.get("delete_index", "1"))
-    request.log("obj_name for delete_object is '%s' (delete_index is %d)" % (obj_name, del_index))
+    request.log("obj_name for delete_object is '%s' (delete_index is %d), force_delete flag is %s" % (
+        obj_name,
+        del_index,
+        str(force_delete),
+    ))
     del_pk = int(key_pf.split("__")[del_index])
     request.log("removing item with pk %d" % (del_pk))
     try:
@@ -321,7 +326,7 @@ def delete_object(request, *args, **kwargs):
             if del_obj.device_id:
                 min_ref = 1
         num_ref = get_related_models(del_obj)
-        if num_ref > min_ref:
+        if num_ref > min_ref and not force_delete:
             request.log("cannot delete %s '%s': %s" % (
                 del_obj._meta.object_name,
                 unicode(del_obj),

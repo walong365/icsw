@@ -10,7 +10,7 @@
 
 <div id="device_table"></div>
 
-<input type="button" value="reload" onclick="reload_device_tree();" />
+<input type="button" value="reload" onclick="reload_device_tree();" />, force delete (handle with care): <input type="checkbox" value="force" id="force_delete"/>
 
 <script type="text/javascript">
 
@@ -122,10 +122,11 @@ class device_tree
                 }).bind("click", (event) =>
                     data = {}
                     data[line_prefix] = "1"
+                    data["force_delete"] = $("input#force_delete").is(":checked")
                     if confirm("really delete device_group " + cur_dg.attr("name") + " ?")
                         $.ajax
-                            url : "{% url base:delete_object 'device_group' %}"
-                            data : data
+                            url     : "{% url base:delete_object 'device_group' %}"
+                            data    : data
                             success : (xml) =>
                                 if parse_xml_response(xml)
                                     @delete_device_group(cur_dg.attr("pk"))
