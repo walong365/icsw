@@ -45,7 +45,7 @@ root.show_result = (event) ->
         success : (xml) ->
             if parse_xml_response(xml)
                 search_array["psr"].clean()
-                draw_ds_tables($("div#search_result_table"), search_array, $(xml).find("value[name='response']"));
+                draw_ds_tables($("div#search_result_table"), search_array, $(xml).find("value[name='response']"))
 
 root.check_copied_flag = (cur_xml) ->
     if cur_xml
@@ -77,6 +77,18 @@ root.redo_search = (event) ->
         success : (xml) ->
             parse_xml_response(xml)
 
+root.redraw_search = (cur_ds) ->
+    $.ajax
+        url     : "{% url pack:search_package %}"
+        error   : handle_ajax_error
+        success : (xml) ->
+            if parse_xml_response(xml)
+                $(xml).find("package_search").each (index, cur_s) =>
+                    cur_s = $(cur_s)
+                    cur_p = cur_ds.master_xml.find("package_search[key='" + cur_s.attr("key") + "']")
+                    if cur_s.attr("current_state") != "done" or cur_s.attr("num_searches") != cur_p.attr("num_searches")
+                        cur_ds.redraw_line(cur_s.attr("key"), cur_s)
+
 master_array = {
     "ps" : new draw_setup("Package search", "ps", "package_search",
         "{% url pack:create_search %}",
@@ -91,7 +103,9 @@ master_array = {
             new draw_info("last_search", {ro : true}),
             new draw_info("results", {ro : true, number : 1, min: 0, max : 10000, draw_result_cb : root.draw_result_element})
         ], {
-            lock_div : "search_tables"
+            lock_div       : "search_tables",
+            timer_callback : root.redraw_search,
+            timer_timeout  : 4
         }
     )
 }

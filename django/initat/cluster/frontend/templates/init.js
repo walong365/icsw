@@ -55,6 +55,9 @@ class draw_setup
         @lock_div = @kwargs.lock_div or ""
         for draw_entry in @draw_array
             draw_entry.draw_setup = @
+        # timer events
+        @timer_callback = @kwargs.timer_callback or ""
+        @timer_timeout = @kwargs.timer_timeout or 0
         # flags
         @drawn = false
         @table_div = undefined
@@ -130,6 +133,10 @@ class draw_setup
         else
             @update_table_info()
     first_draw: (p_table) ->
+        if @timer_callback
+            $(document).everyTime(@timer_timeout * 1000, "table_draw_timer", (idx) =>
+                @timer_callback(@)
+            )
         p_table.append(@draw_head_line())
         if @create_url
             p_table.append(@draw_line())
@@ -145,6 +152,11 @@ class draw_setup
                     cur_re = new RegExp("__" + cur_di.name + "$")
                     if $(cur_sel).attr("id").match(cur_re)
                         cur_di.sync_select_from_xml($(cur_sel))
+    redraw_line: (line_id, new_xml) ->
+        # todo: replace master_xml with new element
+        cur_line = @table_div.find("table").find("tr[id='#{line_id}']")
+        cur_line.replaceWith(@draw_line(new_xml))
+        @recolor_table()
     append_new_line: (cur_el, new_xml) ->
         @table_div.find("table:first").append(@draw_line(new_xml))
         @update_table_info()
