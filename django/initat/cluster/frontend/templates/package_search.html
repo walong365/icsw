@@ -15,115 +15,116 @@
     <div id="search_result_table"></div>
 </div>
 
-
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
 
-root = exports ? this
-
-root.draw_result_element = (xml_el, d_div) ->
-    if xml_el
-        span_text = d_div.find("span").text()
-        if span_text != "0"
-            el_id = d_div.find("span").attr("id")
-            d_div.children().remove()
-            d_div.append($("<span>").append($("<a>").attr({
-                "href" : "#",
-                "id"   : el_id
-            }).text(span_text).bind("click", root.show_result)))
-    return d_div
-
-root.show_result = (event) ->
-    targ_el = $(event.target)
-    $.ajax
-        url     : "{% url pack:get_search_result %}"
-        data    : {
-            "pk" : targ_el.attr("id").split("__")[1]
+class search_table
+    constructor: (@top_div, @master_xml) ->
+    draw: () ->
+        master_array = {
+            "ps" : new draw_setup("Package search", "ps", "package_search",
+                "{% url pack:create_search %}",
+                "{% url pack:delete_search %}",
+                [
+                    new draw_info("search_string", {size : 40}),
+                    new draw_info("user", {ro : true, select_source : "users user"}),
+                    new draw_info("current_state", {ro : true}),
+                    new draw_info("num_searches", {ro : true, number : true, min : 1, max : 1000}),
+                    new draw_info("retry", {change_cb : @redo_search, button : true, trigger : true}),
+                    new draw_info("last_search_string", {ro : true}),
+                    new draw_info("last_search", {ro : true}),
+                    new draw_info("results", {ro : true, number : 1, min: 0, max : 10000, draw_result_cb : @draw_result_element})
+                ], {
+                    lock_div       : "search_tables",
+                    timer_callback : @redraw_search,
+                    timer_timeout  : 4
+                }
+            )
         }
-        error   : handle_ajax_error
-        success : (xml) ->
-            if parse_xml_response(xml)
-                search_array["psr"].clean()
-                draw_ds_tables($("div#search_result_table"), search_array, $(xml).find("value[name='response']"))
-
-root.check_copied_flag = (cur_xml) ->
-    if cur_xml
-        return if cur_xml.attr("copied") == "1" then false else true
-    else
-        return false
-
-root.use_package = (event) ->
-    targ_el = $(event.target)
-    $.ajax
-        url     : "{% url pack:use_package %}"
-        data    : {
-            "pk" : targ_el.attr("id").split("__")[1]
+        draw_ds_tables(@top_div, master_array, @master_xml)
+    redo_search: (event) =>
+        cur_el = $(event.target)
+        redo_search_pk = cur_el.attr("id").split("__")[1]
+        cur_xml = @master_xml.find("package_search[pk='#{redo_search_pk}']")
+        cur_xml.attr("current_state", "redo")
+        $.ajax
+            url     : "{% url pack:retry_search %}"
+            data    : {
+                "pk" : redo_search_pk
+            }
+            error   : handle_ajax_error
+            success : (xml) ->
+                parse_xml_response(xml)
+    redraw_search: (cur_ds) =>
+        check_server = false
+        @master_xml.find("package_search").each (index, cur_s) =>
+            if $(cur_s).attr("current_state") != "done"
+                check_server = true
+        if check_server
+            $.ajax
+                url     : "{% url pack:search_package %}"
+                error   : handle_ajax_error
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        $(xml).find("package_search").each (index, cur_s) =>
+                            cur_s = $(cur_s)
+                            cur_p = @master_xml.find("package_search[key='" + cur_s.attr("key") + "']")
+                            if cur_s.attr("current_state") != "done" or cur_p.attr("current_state") != "done" or cur_s.attr("num_searches") != cur_p.attr("num_searches")
+                                cur_ds.redraw_line(cur_s)
+    draw_result_element: (xml_el, d_div) =>
+        if xml_el
+            span_text = d_div.find("span").text()
+            if span_text != "0"
+                el_id = d_div.find("span").attr("id")
+                d_div.children().remove()
+                d_div.append($("<span>").append($("<a>").attr({
+                    "href" : "#",
+                    "id"   : el_id
+                }).text(span_text).bind("click", @show_result)))
+        return d_div
+    show_result: (event) =>
+        targ_el = $(event.target)
+        search_array = {
+            "psr" : new draw_setup("Package search result", "ps", "package_search_result",
+                undefined,
+                undefined,
+                [
+                    new draw_info("name"),
+                    new draw_info("kind"),
+                    new draw_info("arch"),
+                    new draw_info("version"),
+                    new draw_info("package_repo", {select_source : "package_repos package_repo"}),
+                    new draw_info("use", {change_cb : @use_package, button : true, trigger : true, draw_conditional: @check_copied_flag})
+                ]
+            )
         }
-        error   : handle_ajax_error
-        success : (xml) ->
-            if parse_xml_response(xml)
-                targ_el.remove()
-
-root.redo_search = (event) ->
-    cur_el = $(event.target)
-    redo_search_pk = cur_el.attr("id").split("__")[1]
-    $.ajax
-        url     : "{% url pack:retry_search %}"
-        data    : {
-            "pk" : redo_search_pk
-        }
-        error   : handle_ajax_error
-        success : (xml) ->
-            parse_xml_response(xml)
-
-root.redraw_search = (cur_ds) ->
-    $.ajax
-        url     : "{% url pack:search_package %}"
-        error   : handle_ajax_error
-        success : (xml) ->
-            if parse_xml_response(xml)
-                $(xml).find("package_search").each (index, cur_s) =>
-                    cur_s = $(cur_s)
-                    cur_p = cur_ds.master_xml.find("package_search[key='" + cur_s.attr("key") + "']")
-                    if cur_s.attr("current_state") != "done" or cur_s.attr("num_searches") != cur_p.attr("num_searches")
-                        cur_ds.redraw_line(cur_s.attr("key"), cur_s)
-
-master_array = {
-    "ps" : new draw_setup("Package search", "ps", "package_search",
-        "{% url pack:create_search %}",
-        "{% url pack:delete_search %}",
-        [
-            new draw_info("search_string", {size : 40}),
-            new draw_info("user", {ro : true, select_source : "users user"}),
-            new draw_info("current_state", {ro : true}),
-            new draw_info("num_searches", {ro : true, number : true, min : 1, max : 1000}),
-            new draw_info("retry", {change_cb : redo_search, button : true, trigger : true}),
-            new draw_info("last_search_string", {ro : true}),
-            new draw_info("last_search", {ro : true}),
-            new draw_info("results", {ro : true, number : 1, min: 0, max : 10000, draw_result_cb : root.draw_result_element})
-        ], {
-            lock_div       : "search_tables",
-            timer_callback : root.redraw_search,
-            timer_timeout  : 4
-        }
-    )
-}
-
-root.search_array = {
-    "psr" : new draw_setup("Package search result", "ps", "package_search_result",
-        undefined,
-        undefined,
-        [
-            new draw_info("name"),
-            new draw_info("kind"),
-            new draw_info("arch"),
-            new draw_info("version"),
-            new draw_info("package_repo", {select_source : "package_repos package_repo"}),
-            new draw_info("use", {change_cb : use_package, button : true, trigger : true, draw_conditional: check_copied_flag})
-        ]
-    )
-}
+        $.ajax
+            url     : "{% url pack:get_search_result %}"
+            data    : {
+                "pk" : targ_el.attr("id").split("__")[1]
+            }
+            error   : handle_ajax_error
+            success : (xml) ->
+                if parse_xml_response(xml)
+                    search_array["psr"].clean()
+                    draw_ds_tables($("div#search_result_table"), search_array, $(xml).find("value[name='response']"))
+    check_copied_flag: (cur_xml) ->
+        if cur_xml
+            return if cur_xml.attr("copied") == "1" then false else true
+        else
+            return false
+    use_package: (event) ->
+        targ_el = $(event.target)
+        $.ajax
+            url     : "{% url pack:use_package %}"
+            data    : {
+                "pk" : targ_el.attr("id").split("__")[1]
+            }
+            error   : handle_ajax_error
+            success : (xml) ->
+                if parse_xml_response(xml)
+                    targ_el.remove()
 
 load_searches = ->
     $.ajax
@@ -131,7 +132,8 @@ load_searches = ->
         error   : handle_ajax_error
         success : (xml) ->
             if parse_xml_response(xml)
-                draw_ds_tables($("div#search_tables"), master_array, $(xml).find("value[name='response']"))
+                cur_st = new search_table($("div#search_tables"), $(xml).find("value[name='response']"))
+                cur_st.draw()
 
 $(document).ready(load_searches)
 

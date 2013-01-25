@@ -152,10 +152,11 @@ class draw_setup
                     cur_re = new RegExp("__" + cur_di.name + "$")
                     if $(cur_sel).attr("id").match(cur_re)
                         cur_di.sync_select_from_xml($(cur_sel))
-    redraw_line: (line_id, new_xml) ->
-        # todo: replace master_xml with new element
+    redraw_line: (new_xml) ->
+        line_id = new_xml.attr("key")
+        @master_xml.find("*[key='" + new_xml.attr("key") + "']").replaceWith(new_xml)
         cur_line = @table_div.find("table").find("tr[id='#{line_id}']")
-        cur_line.replaceWith(@draw_line(new_xml))
+        cur_line.replaceWith(@draw_line(@master_xml.find("*[key='" + new_xml.attr("key") + "']")))
         @recolor_table()
     append_new_line: (cur_el, new_xml) ->
         @table_div.find("table:first").append(@draw_line(new_xml))
@@ -376,12 +377,12 @@ get_value = (cur_el) ->
 set_value = (el_id, el_value) ->
     $("#" + el_id).val(el_value)
 
-root.get_value = get_value
-root.set_value = set_value
-root.draw_setup = draw_setup
-root.draw_info  = draw_info
-root.draw_link  = draw_link
-root.draw_collapse  = draw_collapse
+root.get_value     = get_value
+root.set_value     = set_value
+root.draw_setup    = draw_setup
+root.draw_info     = draw_info
+root.draw_link     = draw_link
+root.draw_collapse = draw_collapse
 
 {% endinlinecoffeescript %}
 
