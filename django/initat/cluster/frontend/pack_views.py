@@ -42,7 +42,7 @@ def search_package(request):
     else:
         xml_resp = E.response(
             E.package_searchs(*[cur_r.get_xml() for cur_r in package_search.objects.filter(Q(deleted=False))]),
-            E.users(*[cur_u.get_xml() for cur_u in user.objects.all()])
+            E.users(*[cur_u.get_xml(with_allowed_device_groups=False) for cur_u in user.objects.all()])
         )
         request.xml_response["response"] = xml_resp
         return request.xml_response.create_response()

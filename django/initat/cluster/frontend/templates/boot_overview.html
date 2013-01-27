@@ -37,17 +37,25 @@ class option_list
         if not @set
             @set = true
             if not @_set_option
-                console.log "set_option for " + @short + " not set"
+                console.log "set_option for #{@short} not set"
             else:
                 @_set_option(cur_dev)
         else
             if @_set_option_again
                 @_set_option_again(cur_dev)
+    tr_id: () =>
+        return @dev_key + "__opt__" + @short
+    dummy_line: () =>
+        return $("<tr>").attr({
+            "id" : @tr_id()
+        })
     full_line: (cur_td) =>
         @cur_td = cur_td
         if not cur_td.attr("colspan")
             cur_td.attr("colspan", 5)
-        return $("<tr>").attr("id", @dev_key + "__opt__" + @short).append(cur_td)
+        return $("<tr>").attr({
+            "id"  : @tr_id()
+            }).append(cur_td)
     
 class kernel_option extends option_list
     constructor: (dev_xml) ->
@@ -120,7 +128,6 @@ class hard_control_option extends option_list
         return @full_line(cur_td)
     _set_option: (dev_xml) =>
         new_hcon = @cur_td.find("span#" + @dev_key + "__hard_control");
-        console.log $(dev_xml).find("cd_connection").length
         if dev_xml.find("cd_connection").length
             new_hcon.text("")
             dev_xml.find("cd_connection").each (index, new_cd) =>
@@ -395,14 +402,17 @@ class devlog_option extends option_list
 
 class boot_table
     constructor: (@top_div) ->
-        @option_dict = {}
-        @update_pending = 0
+        @options_used = {}
+        @update_pending = false
     install_options: =>
+        # this is called every time use_selection is pressed (or on init)
         $.ajax
             url     : "{% url boot:get_html_options %}"
             error   : handle_ajax_error
             success : (xml) =>
+                @option_list = []
                 if parse_xml_response(xml)
+                    @html_option_xml = $(xml).find("options")
                     @xml_dict = {}
                     opt_h3 = $("h3#options")
                     opt_h3.children().remove()
@@ -411,14 +421,17 @@ class boot_table
                         opt_button = $("<input>").attr({
                             "type" : "checkbox",
                             "id"   : "opt_" + opt.attr("short")})
-                        if opt.attr("short") in (key for key, value of @option_dict)
+                        if @options_used[opt.attr("short")]
                             opt_button.attr("checked", "checked")
-                        opt_h3.append(opt_button);
-                        opt_h3.append($("<label>").attr({"for" : "opt_" + opt.attr("short")}).text(opt.text()));
-                        opt_button.bind("change", @change_option);
+                        opt_h3.append(opt_button)
+                        opt_h3.append($("<label>").attr({"for" : "opt_" + opt.attr("short")}).text(opt.text()))
+                        opt_button.bind("change", @change_option)
+                        @option_list.push(opt.attr("short"))
                     opt_h3.find("input").button()
                     opt_h3.buttonset()
-                    for key, value of @option_dict
+                    # set number of devices
+                    @num_devices = @xml.find("devices device[tree_selected='selected'][meta_device='0']").length
+                    for key, value of @options_used
                         $.ajax
                             url     : "{% url boot:get_addon_info %}"
                             data    : {
@@ -429,6 +442,7 @@ class boot_table
                             success : (xml) =>
                                 if parse_xml_response(xml)
                                     @xml_dict[key] = $(xml)
+                    @device_lut = {}
                     @draw_table()
                     @option_lut = 
                         "k" : kernel_option
@@ -439,11 +453,11 @@ class boot_table
                         "p" : partition_option
                         "i" : image_option
                         "l" : devlog_option
-                    @device_lut = {}
-                    # redraw options
-                    for cur_opt in ["h", "s", "t", "b", "k", "p", "i", "l"]
+                    # redraw options, build it in reverse order because we use $.after()
+                    for cur_opt in @option_list.reverse()
+                        func = @option_lut[cur_opt]
                         @device_lut[cur_opt] = {}
-                        @redraw_options(cur_opt, false)
+                        @redraw_options(cur_opt, false, true)
                     # call update_device_info after table draw
                     @update_device_info(true)
                     @update_devlog_info(true)
@@ -467,13 +481,13 @@ class boot_table
                 if parse_xml_response(xml)
                     @draw($(xml).find("value[name='response']"))
     force_update_info: (call_mother) =>
-        @update_pending = 0
+        @update_pending = false
         @update_device_info(call_mother)
     change_option: (event) =>
         el = $(event.target)
         opt = el.attr("id").split("_")[1]
         checked = el.is(":checked")
-        @option_dict[opt] = checked
+        @options_used[opt] = checked
         if checked
             $.ajax
                 url     : "{% url boot:get_addon_info %}"
@@ -484,24 +498,43 @@ class boot_table
                 success : (xml) =>
                     if parse_xml_response(xml)
                         @xml_dict[opt] = $(xml)
-                        @redraw_options(opt, true)
+                        @redraw_options(opt, true, false)
         else
-            @redraw_options(opt, true)
+            @redraw_options(opt, true, false)
     draw: (@xml) =>
         @install_options()
     draw_table: =>
         @cur_pure_devices = ($(cur_dev).attr("name") for cur_dev in @xml.find("device[meta_device='0'][tree_selected='selected']"))
-        b_table = $("<table>").attr({"id" : "boot"})
+        b_table = $("<table>").attr({"id" : "boot"}).addClass("devboot")
+        # overview table for all devices
+        ov_table = $("<table>").attr({"id" : "overview"}).addClass("devboot")
+        if @num_devices < 2
+            ov_table.hide()
+        else
+            ov_table.show()
         @xml.find("device_group").each (devg_index, cur_dg) =>
             b_table.append(@draw_device_group($(cur_dg)))
+        ov_table.append(@draw_overview_header())
         @top_div.children().remove()
         @top_div.append(b_table)
+        @top_div.append(ov_table)
         @table = b_table
+        @ov_table = ov_table
         $("input#update_info").bind("click", => @force_update_info(true))
+    draw_overview_header: =>
+        new_tr = $("<tr>").attr({
+            "class" : "ui-widget ui-widget-header devgroup"
+        })
+        new_tr.append(
+            $("<th>").attr({
+                "colspan" : "8"
+            }).text("Overview")
+        )
+        return new_tr
     draw_device_group: (cur_dg) =>
         dummy_div = $("<div>")
         new_tr = $("<tr>").attr({
-            "class" : "ui-widget ui-widget-header",
+            "class" : "ui-widget ui-widget-header devgroup",
             "btype" : "group"
         })
         new_tr.append(
@@ -541,39 +574,78 @@ class boot_table
         dummy_div.append(new_tr)
         return dummy_div.children()
     # create option lines
-    redraw_options: (opt, call_server) =>
-        if @option_dict[opt]
-            # add lines
-            @xml.find("devices device[tree_selected='selected'][meta_device='0']").each (index, cur_dev) =>
-                cur_dev = $(cur_dev)
-                dev_tr = @table.find("tr[id='" + cur_dev.attr("key") + "']")
+    redraw_options: (opt, call_server, create_dummy_line) =>
+        @xml.find("devices device[tree_selected='selected'][meta_device='0']").each (index, cur_dev) =>
+            cur_dev = $(cur_dev)
+            if create_dummy_line and not @options_used[opt]
+                # init options
                 new_opt = new @option_lut[opt](cur_dev)
                 @device_lut[opt][cur_dev.attr("key")] = new_opt
-                dev_tr.after(new_opt.draw(@))
-            if call_server
-                dummy_opt = new @option_lut[opt]()
-                if dummy_opt.get_info_from_server
-                    @force_update_info(false)
-                if dummy_opt.get_devlog_info_from_server
-                    @update_devlog_info(false)
+                new_tr = new_opt.dummy_line()
+                line_mode = "append_hide"
+            else
+                if @options_used[opt]
+                    # add lines
+                    if @device_lut[opt][cur_dev.attr("key")]
+                        # this code gets executed on use_selection when the option is initially activated
+                        new_opt = @device_lut[opt][cur_dev.attr("key")]
+                        line_mode = "replace"
+                    else
+                        # this code gets executed on reload (use_selection)
+                        new_opt = new @option_lut[opt](cur_dev)
+                        line_mode = "append_show"
+                    @device_lut[opt][cur_dev.attr("key")] = new_opt
+                    new_tr = new_opt.draw(@)
+                else
+                    line_mode = "hide"
+                    new_tr = @table.find("tr[id$='__opt__#{opt}']")
+            if line_mode == "append_hide"
+                @table.find("tr[id='" + new_opt.dev_key + "']").after(new_tr)
+                new_tr.hide()
+            else if line_mode == "append_show"
+                @table.find("tr[id='" + new_opt.dev_key + "']").after(new_tr)
+                new_tr.show()
+            else if line_mode == "replace"
+                @table.find("tr[id='" + new_tr.attr("id") + "']").replaceWith(new_tr)
+                new_tr.show()
+            else if line_mode == "hide"
+                new_tr.hide()
+        if not create_dummy_line and @options_used[opt] and call_server
+            dummy_opt = new @option_lut[opt]()
+            if dummy_opt.get_info_from_server
+                @force_update_info(false)
+            if dummy_opt.get_devlog_info_from_server
+                @update_devlog_info(false)
+        @recolor_table()
+    recolor_table: () =>
+        act_class = "even"
+        @xml.find("devices device[tree_selected='selected'][meta_device='0']").each (index, cur_dev) =>
+            cur_dev = $(cur_dev)
+            dev_key = cur_dev.attr("key")
+            for cur_tr in @table.find("tr[id^='" + dev_key + "']:visible")
+                if $(cur_tr).attr("id") != dev_key
+                    $(cur_tr).removeClass("even odd").addClass(act_class).on("hover", $(cur_tr), @hover)
+            act_class = if act_class == "odd" then "even" else "odd"
+    hover: (event, targ_tr) ->
+        if event.type == "mouseenter"
+            $(event.data).addClass("highlight")
         else
-            # remove lines
-            @table.find("tr[id$='__opt__" + opt + "']").remove()
+            $(event.data).removeClass("highlight")
     update_device_info: (call_mother) =>
         if @cur_pure_devices.length and not @update_pending
-            @update_pending = 1
+            @update_pending = true
             send_data = {
                 "sel_list" : @cur_pure_devices
             }
-            for key, value of @option_dict
-                send_data["opt_" + key] = @option_dict[key]
+            for key, value of @options_used
+                send_data["opt_" + key] = @options_used[key]
             send_data["call_mother"] = if call_mother then 1 else 0
             $.ajax
                 url     : "{% url boot:get_boot_info %}"
                 error   : handle_ajax_error
                 data    : send_data
                 success : (xml) =>
-                    @update_pending = 0
+                    @update_pending = false
                     if parse_xml_response(xml)
                         $(xml).find("device").each (dev_idx, cur_dev) =>
                             cur_dev = $(cur_dev)
@@ -586,8 +658,8 @@ class boot_table
                                 tr_class = {"down" : "error", "unknown" : "error", "ping" : "warn", "up" : "ok"}[net_state]
                                 dev_tr.find("td#network").text(cur_dev.attr("network") + " ("+ net_state + ")")
                                 dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok error warn").addClass(tr_class)
-                            for check_opt in ["k", "h", "s", "t", "b", "p", "i"]
-                                if @option_dict[check_opt]
+                            for check_opt in @option_list.reverse()
+                                if @options_used[check_opt]
                                     @device_lut[check_opt][dev_id].set_option(cur_dev)
     update_devlog_info: =>
         if @cur_pure_devices.length and not @update_devlog_pending
@@ -607,7 +679,7 @@ class boot_table
                             dev_tr = @table.find("tr#" + cur_dev.attr("key"))
                             dev_id = dev_tr.attr("id")
                             for check_opt in ["l"]
-                                if @option_dict[check_opt]
+                                if @options_used[check_opt]
                                     @device_lut[check_opt][dev_id].set_option(cur_dev)
 
 add_config_handlers = ->

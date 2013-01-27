@@ -49,14 +49,17 @@ def show_boot(request):
         request, "boot_overview.html",
     )()
 
-OPTION_LIST = [("h", "hard control", None),
-               ("s", "soft control", None),
-               ("t", "target state", None),
-               ("k", "kernel"      , kernel),
-               ("i", "image"       , image),
-               ("b", "bootdevice"  , None),
-               ("p", "partition"   , None),
-               ("l", "devicelog"   , None)]
+# ordering is important
+OPTION_LIST = [
+    ("t", "target state", None  ),
+    ("s", "soft control", None  ),
+    ("h", "hard control", None  ),
+    ("b", "bootdevice"  , None  ),
+    ("k", "kernel"      , kernel),
+    ("i", "image"       , image ),
+    ("p", "partition"   , None  ),
+    ("l", "devicelog"   , None  ),
+]
 
 @login_required
 @init_logging
