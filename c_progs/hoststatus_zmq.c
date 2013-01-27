@@ -94,7 +94,7 @@ int main (int argc, char** argv) {
         if (ret < 0) break;
         switch (ret) {
             case 'h':
-                printf("Usage: %s [ -h ] [ -v ] [-d] [-i SRC_IP]\n", basename(argv[0]));
+                printf("Usage: %s [ -h ] [ -v ] [-d] [-i SRC_IP]\n", argv[0]);
                 printf("  where -d specifies non-daemon mode\n");
                 exit(-1);
                 break;
@@ -186,6 +186,8 @@ int main (int argc, char** argv) {
         // handle command
         if (!strncmp(msg_text, "status", 6) && strlen(msg_text) == 6) {
             //printf ("%d ,  %s %d\n", num, inbuff, sizeof(inbuff));
+            // recreate FNAME according to current runlevel, not beautifull but working
+            system("echo 'up to runlevel' $(/sbin/runlevel |cut -d ' ' -f 2) >"FNAME);
             file = open(FNAME, 0);
             if (file < 0) {
                 fprintf(stderr, "File not found");
