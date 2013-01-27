@@ -93,11 +93,17 @@ def main():
             print "reply was: %s" % (recv_str)
         else:
             if args.verbose:
+                print
                 print "XML response:"
-                print etree.tostring(srv_reply.tree, pretty_print=True)
+                print
+                print srv_reply.pretty_print()
+                print
             if "result" in srv_reply:
                 print srv_reply["result"].attrib["reply"]
                 ret_state = int(srv_reply["result"].attrib["state"])
+            elif len(srv_reply.xpath(None, ".//nodestatus")):
+                print srv_reply.xpath(None, ".//nodestatus")[0].text
+                ret_state = 0
             else:
                 print "no result tag found in reply"
                 ret_state = -1
