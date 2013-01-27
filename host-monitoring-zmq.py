@@ -1217,7 +1217,8 @@ class relay_process(threading_tools.process_pool):
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
         if id_discovery.has_mapping(conn_str):
-            cur_hc = host_connection.get_hc_0mq(conn_str, id_discovery.get_mapping(conn_str))
+            id_str = id_discovery.get_mapping(conn_str)
+            cur_hc = host_connection.get_hc_0mq(conn_str, id_str)
             com_name = srv_com["command"].text
             cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
             if com_name in self.modules.command_dict:
@@ -1549,8 +1550,29 @@ class server_process(threading_tools.process_pool):
     def _init_network_sockets(self):
         self.socket_list = []
         zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
+        my_0mq_id = uuid_tools.get_uuid().get_urn()
+        create_0mq = False
         if not os.path.isfile(zmq_id_name):
+            create_0mq = True
+        else:
+            # compare 0mq from cluster with host-monitoring 0mq_id
             my_0mq_id = uuid_tools.get_uuid().get_urn()
+            try:
+                hm_0mq_id = etree.fromstring(file(zmq_id_name, "r").read()).xpath(".//zmq_id[@bind_address='*']")[0].text
+            except:
+                self.log("error reading from %s: %s" % (zmq_id_name, process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+                create_0mq = True
+            else:
+                if my_0mq_id != hm_0mq_id:
+                    self.log("0MQ id from cluster (%s) differs from host-monitoring 0MQ id (%s)" % (
+                        my_0mq_id,
+                        hm_0mq_id))
+                    create_0mq = True
+                else:
+                    self.log("0MQ id from cluster (%s) matchces host-monitoring 0MQid" % (my_0mq_id))
+        if create_0mq:
+            self.log("creating host-monitoring 0MQ id file %s" % (zmq_id_name))
             zmq_id_xml = E.bind_info(
                 E.zmq_id(my_0mq_id, bind_address="*"))
             file(zmq_id_name, "w").write(etree.tostring(zmq_id_xml, pretty_print=True, xml_declaration=True, encoding="utf-8"))
