@@ -3052,7 +3052,7 @@ class user(models.Model):
             for add_perm in new_perms - cur_perms:
                 dj_user.user_permissions.add(Permission.objects.get(Q(pk=add_perm)))
     permissions = property(get_permissions, set_permissions)
-    def get_xml(self, with_permissions=False):
+    def get_xml(self, with_permissions=False, with_allowed_device_groups=True):
         user_xml = E.user(
             unicode(self),
             pk="%d" % (self.pk),
@@ -3063,9 +3063,10 @@ class user(models.Model):
             aliases=self.aliases or "",
             active="1" if self.active else "0",
             export="%d" % (self.export_id or 0),
-            allowed_device_groups="::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)]),
             home_dir_created="1" if self.home_dir_created else "0",
         )
+        if with_allowed_device_groups:
+            user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)]),
         if with_permissions:
             user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(user__username=self.login))])
         else:
