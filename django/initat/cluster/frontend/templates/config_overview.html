@@ -173,7 +173,19 @@ class config_table
             cur_conf.find("config_scripts").children().each (idx, cur_script) =>
                 conf_div.append(@add_config_script_line(cur_conf, line_prefix, $(cur_script)))
             dummy_div.append($("<tr>").attr("id", "#{line_prefix}__cscript").append($("<td>").append(conf_div)).hide())
+            for cur_t in dummy_div.find("table")
+                @recolor_table(cur_t)
         return dummy_div.children()
+    recolor_table: (cur_t) =>
+        act_class = "even"
+        for cur_tr in $(cur_t).find("tr")
+            $(cur_tr).removeClass("even odd").addClass(act_class).on("hover", $(cur_tr), @hover)
+            act_class = if act_class == "odd" then "even" else "odd"
+    hover: (event, targ_tr) ->
+        if event.type == "mouseenter"
+            $(event.data).addClass("highlight")
+        else
+            $(event.data).removeClass("highlight")
     create_delete_config: (event) =>
         cur_el = $(event.target)
         el_id = cur_el.attr("id")
@@ -209,6 +221,7 @@ class config_table
         new_config_lines = @draw_config(new_el)
         header_tr.after(new_config_lines)
         @init_textarea(new_config_lines.find("textarea"))
+        @recolor_table(header_tr.parents("table:first"))
         @update_expand_info()
     remove_config_line: (del_id) =>
         @table.find("tr[id^='#{del_id}']").remove()
@@ -231,48 +244,26 @@ class config_table
             )
         return cv_tr
     add_config_var_line: (cur_conf, line_prefix, c_var) =>
-        if !c_var
-            cv_key = "var_new"
-        else
-            cv_key = c_var.attr("key")
+        cv_key = if c_var then c_var.attr("key") else "var_new"
         line_prefix = "#{line_prefix}__#{cv_key}"
         cv_tr = $("<tr>").attr({
             "id" : line_prefix
         })
-        cv_tr.append(
-            $("<td>").append(
-                create_input_el(c_var, "name", line_prefix, {master_xml : @configs})
-            )
-        )
+        var_dict = {
+            master_xml : @configs,
+            enclose_td  :true
+        }
         if c_var
             if c_var.attr("type") == "bool"
-                cv_tr.append(
-                    $("<td>").append(
-                        create_input_el(c_var, "value", line_prefix, {boolean : true, master_xml : @configs})
-                    )
-                )
+                var_dict.boolean = true
             else if c_var.attr("type") == "int"
-                cv_tr.append(
-                    $("<td>").append(
-                        create_input_el(c_var, "value", line_prefix, {number : true, master_xml : @configs})
-                    )
-                )
-            else
-                cv_tr.append(
-                    $("<td>").append(
-                        create_input_el(c_var, "value", line_prefix, {master_xml : @configs})
-                    )
-                )
-        else
-            cv_tr.append(
-                $("<td>").append(
-                    create_input_el(c_var, "value", line_prefix, {master_xml : @configs})
-                )
-            )
+                var_dict.number = true
         cv_tr.append(
-            $("<td>").append(
-                create_input_el(c_var, "description", line_prefix, {master_xml : @configs})
-            )
+            create_input_el(c_var, "name", line_prefix, {master_xml : @configs, enclose_td : true})
+        ).append(
+            create_input_el(c_var, "value", line_prefix, var_dict)
+        ).append(
+            create_input_el(c_var, "description", line_prefix, {master_xml : @configs, enclose_td : true})
         )
         if c_var
             cv_tr.append($("<td>").addClass("center").append($("<span>").text(c_var.attr("type"))))
@@ -321,6 +312,7 @@ class config_table
         cur_config = @configs.find("config[pk='" + new_var.attr("config") + "']")
         header_tr.find("input[id$='__name']").attr("value", "")
         header_tr.after(@add_config_var_line(cur_config, "conf__" + new_var.attr("config"), new_var).show())
+        @recolor_table(header_tr.parents("table:first"))
         @update_expand_info()
     remove_config_var_line: (cur_el) =>
         var_line = $("table#config tr[id^='" + cur_el.attr("id") + "']")
@@ -339,29 +331,17 @@ class config_table
             "id"  : line_prefix
         })
         nc_tr.append(
-            $("<td>").append(
-                create_input_el(n_com, "name", line_prefix, {master_xml : @configs})
-            )
+            create_input_el(n_com, "name", line_prefix, {master_xml : @configs, enclose_td : true})
         ).append(
-            $("<td>").append(
-                create_input_el(n_com, "command_line", line_prefix, {master_xml : @configs})
-            )
+            create_input_el(n_com, "command_line", line_prefix, {master_xml : @configs, enclose_td : true})
         ).append(
-            $("<td>").append(
-                create_input_el(n_com, "description", line_prefix, {master_xml : @configs})
-            )
+            create_input_el(n_com, "description", line_prefix, {master_xml : @configs, enclose_td : true})
         ).append(
-            $("<td>").append(
-                create_input_el(n_com, "enable_perfdata", line_prefix, {boolean : true, master_xml : @configs})
-            )
+            create_input_el(n_com, "enable_perfdata", line_prefix, {boolean : true, master_xml : @configs, enclose_td : true})
         ).append(
-            $("<td>").append(
-                create_input_el(n_com, "mon_check_command_type", line_prefix, {select_source : @configs.find("mon_check_command_types mon_check_command_type"), master_xml : @configs})
-            )
+            create_input_el(n_com, "mon_check_command_type", line_prefix, {select_source : @configs.find("mon_check_command_types mon_check_command_type"), master_xml : @configs, enclose_td : true})
         ).append(
-            $("<td>").append(
-                create_input_el(n_com, "mon_service_templ", line_prefix, {select_source : @configs.find("mon_service_templates mon_service_templ"), master_xml : @configs})
-            )
+            create_input_el(n_com, "mon_service_templ", line_prefix, {select_source : @configs.find("mon_service_templates mon_service_templ"), master_xml : @configs, enclose_td : true})
         ).append(
             $("<td>").append(
                 $("<input>").attr({
@@ -399,6 +379,7 @@ class config_table
         cur_config = @configs.find("config[pk='" + new_nc.attr("config") + "']");
         header_tr.find("input[id$='__name']").attr("value", "")
         header_tr.after(@add_monitoring_line(cur_config, "conf__" + new_nc.attr("config"), new_nc).show())
+        @recolor_table(header_tr.parents("table:first"))
         @update_expand_info()
     remove_monitoring_command_line: (cur_el) =>
         nc_line = $("table#config tr[id^='" + cur_el.attr("id") + "']")
@@ -418,21 +399,13 @@ class config_table
             "id"  : line_prefix
         })
         cs_tr.append(
-            $("<td>").append(
-                create_input_el(cs_com, "name", line_prefix, {master_xml : @configs})
-            )
+            create_input_el(cs_com, "name", line_prefix, {master_xml : @configs, enclose_td : true})
         ).append(
-            $("<td>").append(
-                create_input_el(cs_com, "description", line_prefix, {master_xml : @configs})
-            )
+            create_input_el(cs_com, "description", line_prefix, {master_xml : @configs, enclose_td : true})
         ).append(
-            $("<td>").append(
-                create_input_el(cs_com, "priority", line_prefix, {number : true, master_xml : @configs})
-            )
+            create_input_el(cs_com, "priority", line_prefix, {number : true, master_xml : @configs, enclose_td : true})
         ).append(
-            $("<td>").append(
-                create_input_el(cs_com, "enabled", line_prefix, {boolean : true, master_xml : @configs})
-            )
+            create_input_el(cs_com, "enabled", line_prefix, {boolean : true, master_xml : @configs, enclose_td : true})
         )
         if cs_com
             cs_tr.append(
@@ -457,6 +430,7 @@ class config_table
             )
         )
         cs_div.append(cs_tr)
+        # editor line
         cs_div.append(
             $("<tr>").append(
                 $("<td>").attr({    
@@ -499,6 +473,7 @@ class config_table
         new_lines = @add_config_script_line(cur_config, "conf__" + new_cs.attr("config"), new_cs).show()
         header_tr.next().after(new_lines)
         @init_textarea(new_lines.find("textarea"))
+        @recolor_table(header_tr.parents("table:first"))
         @update_expand_info()
     remove_config_script_line: (cur_el) =>
         cs_line = $("table#config tr[id^='" + cur_el.attr("id") + "']")

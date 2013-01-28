@@ -616,9 +616,6 @@ function toggle_config_line_ev(event, cb_func) {
 function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
     var dummy_div = $("<div>");
     kwargs = kwargs || {};
-    if (kwargs["label"]) {
-        dummy_div.append($("<label>").attr({"for" : attr_name}).text(kwargs["label"]));
-    };
     if (kwargs["select_source"] === undefined) {
         if (kwargs.button) {
             // manual callback
@@ -742,8 +739,17 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
     if (kwargs && kwargs.ro && new_el.get(0).tagName != "SPAN" && ! kwargs.trigger) {
         new_el.attr("disabled", "disabled");
     };
+    if (kwargs["label"]) {
+        dummy_div.append($("<label>").attr({"for" : attr_name}).text(kwargs["label"]));
+    };
     dummy_div.append(new_el);
     if (kwargs && kwargs.draw_result_cb) dummy_div = kwargs.draw_result_cb(xml_el, dummy_div);
+    if (kwargs.enclose_td) {
+        // will not work when draw_result_cb or a label is used
+        var enc_td = $("<td>");
+        enc_td.append(new_el);
+        dummy_div.append(enc_td);
+    };
     return dummy_div.children();
 };
 
