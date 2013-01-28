@@ -8,7 +8,6 @@ from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
-from django.utils.functional import memoize
 import uuid
 import re
 import time
@@ -22,6 +21,7 @@ import base64
 import os
 from django.conf import settings
 from rest_framework import serializers
+from django.utils.functional import memoize
 
 def only_wf_perms(in_list):
     return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
@@ -845,6 +845,10 @@ class devicelog(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     @staticmethod
     def new_log(cur_dev, log_src, log_stat, text, **kwargs):
+        if log_src and type(log_src) in [int, long]:
+            log_src = cached_short_log_source(log_src)
+        if log_stat and type(log_stat) in [int, long]:
+            log_stat = cached_log_status(log_stat)
         cur_log = devicelog(
             device=cur_dev,
             log_source=log_src or cluster_log_source,
@@ -1404,7 +1408,11 @@ class log_source(models.Model):
 def log_source_lookup(identifier, log_dev):
     return log_source.objects.get(Q(identifier=identifier) & Q(device=log_dev))
 
+def short_log_source_lookup(idx):
+    return log_source.objects.get(Q(pk=idx))
+
 cached_log_source = memoize(log_source_lookup, {}, 2)
+cached_short_log_source = memoize(short_log_source_lookup, {}, 2)
 
 class log_status(models.Model):
     idx = models.AutoField(db_column="log_status_idx", primary_key=True)
