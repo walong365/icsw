@@ -374,6 +374,7 @@ class image_option extends option_list
 class devlog_option extends option_list
     constructor: (dev_xml) ->
         super(dev_xml, "l")
+        @latest_log_pk = 0
     get_info_from_server: ->
         return false
     get_devlog_info_from_server: ->
@@ -393,6 +394,7 @@ class devlog_option extends option_list
         log_sel.attr("multiple", "6")
         @_set_option_again(dev_xml)
     _set_option_again: (dev_xml) =>
+        console.log "yy"
         log_sel = @cur_td.find("select#" + @dev_key + "__device_log")
         log_sel.children().remove()
         dev_xml.find("devicelogs devicelog").each (index, cur_log) =>
@@ -659,10 +661,12 @@ class boot_table
                                 dev_tr.find("td#network").text(cur_dev.attr("network") + " ("+ net_state + ")")
                                 dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok error warn").addClass(tr_class)
                             for check_opt in @option_list.reverse()
-                                if @options_used[check_opt]
+                                if check_opt != "l" and @options_used[check_opt]
+                                    console.log check_opt
                                     @device_lut[check_opt][dev_id].set_option(cur_dev)
     update_devlog_info: =>
         if @cur_pure_devices.length and not @update_devlog_pending
+            check_opt = "l"
             @update_devlog_pending = 1
             send_data = {
                 "sel_list" : @cur_pure_devices
@@ -678,9 +682,8 @@ class boot_table
                             cur_dev = $(cur_dev)
                             dev_tr = @table.find("tr#" + cur_dev.attr("key"))
                             dev_id = dev_tr.attr("id")
-                            for check_opt in ["l"]
-                                if @options_used[check_opt]
-                                    @device_lut[check_opt][dev_id].set_option(cur_dev)
+                            if @options_used[check_opt]
+                                @device_lut[check_opt][dev_id].set_option(cur_dev)
 
 add_config_handlers = ->
     cur_t = new boot_table($("div#boot"))
