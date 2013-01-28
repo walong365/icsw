@@ -353,7 +353,7 @@ class load_scheme(snmp_scheme):
         self.requests = snmp_oid("1.3.6.1.4.1.2021.10.1.3", cache=True)
         self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=5.0)
         self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=10.0)
-        self.parse_options(args["options"])
+        self.parse_options(kwargs["options"])
     def process_return(self):
         simple_dict = self._simplify_keys(self.snmp_dict.values()[0])
         load_array = [float(simple_dict[key]) for key in [1, 2, 3]]
