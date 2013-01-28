@@ -96,11 +96,11 @@ class config_table
         @apply_filter(false)
     draw_tables : =>
         @top_div.children().remove();
-        c_table = $("<table>").attr({"id" : "config"})
+        c_table = $("<table>").attr({"id" : "config"}).addClass("devicelist")
         @devices.find("device_group").each (idx, cur_dg) =>
             cur_dg = $(cur_dg)
             new_tr = $("<tr>").attr({
-                "class"   : "ui-widget ui-widget-header"
+                "class"   : "ui-widget ui-widget-header devicegroup"
             })
             new_tr.append($("<th>").css({
                 "padding" : "5px",
@@ -128,10 +128,12 @@ class config_table
         new_tr.append($("<th>").attr({
             "class"   : "left",
             "colspan" : "8"
-        }).text((if is_meta then "Meta device" else "device") + " " + d_el.text()))
+        }))
+        dev_str = (if is_meta then "Meta device" else "device") + " " + d_el.text()
         dummy_div.append(new_tr)
         cur_entries = 0
         run_idx = 1
+        selected = meta_selected = 0
         for cur_conf in @display_list
             cur_conf = $(cur_conf)
             if !cur_entries
@@ -147,7 +149,7 @@ class config_table
             cur_tr.append(
                 $("<td>").attr({
                    "class" : "center"
-                }).append(
+                }).on("hover", $(cur_cb), @hover).append(
                     $("<span>").text("")
                 ).append(
                     cur_cb
@@ -159,9 +161,11 @@ class config_table
                 cur_cb.attr({"checked" : "checked"})
                 cur_cb.prev().text("(")
                 cur_cb.next().text(")")
+                meta_selected++
             else if @device_configs.find("device_config[device='" + d_el.attr("pk") + "'][config='" + cur_conf.attr("pk") + "']").length
                 cur_cb.attr({"checked" : "checked"})
-            cur_tr.append($("<td>").append(
+                selected++
+            cur_tr.append($("<td>").on("hover", $(cur_cb), @hover).append(
                 $("<span>").text(cur_conf.attr("name"))
             ))
             cur_entries++
@@ -169,9 +173,22 @@ class config_table
                 dummy_div.append(cur_tr)
                 cur_entries = 0
                 run_idx += 1
+        if selected
+            dev_str = "#{dev_str}, #{selected} selected"
+        if meta_selected
+            dev_str = "#{dev_str}, #{meta_selected} via meta"
+        new_tr.find("th").text(dev_str)
         if cur_entries
             dummy_div.append(cur_tr)
         return dummy_div.children()
+    hover: (event) ->
+        target = $(event.data).parents("td:first")
+        if event.type == "mouseenter"
+            target.addClass("highlight")
+            target.next().addClass("highlight")
+        else
+            target.removeClass("highlight")
+            target.next().removeClass("highlight")
     restore_expansion : (exp_list) =>
         for cur_val in exp_list
             @toggle_config_line(cur_val.split("__")[0] + "__" + cur_val.split("__")[1], true, "config")

@@ -20,7 +20,7 @@ table.style2 {
     padding:2px ;
 }
 
-table.devboot {
+table.devicelist {
     border-color:#000000 ;
     color:#000000 ;
     background-color:#ffffe2 ;
@@ -30,18 +30,18 @@ table.devboot {
     padding:2px ;
 }
 
-table.devboot * th {
+table.devicelist * th {
     font-size: 14px;
     padding: 3px;
     border: 1px solid #222222;
     font-weight: normal;
 }
 
-table.devboot * tr.devgroup > th {
+table.devicelist * tr.devicegroup > th {
     font-size: 16px;
     padding: 4px;
     border: 1px solid #222222;
-    font-weight: bold;
+    font-style: italic;
 }
 
 body {

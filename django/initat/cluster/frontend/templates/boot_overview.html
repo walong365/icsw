@@ -505,9 +505,9 @@ class boot_table
         @install_options()
     draw_table: =>
         @cur_pure_devices = ($(cur_dev).attr("name") for cur_dev in @xml.find("device[meta_device='0'][tree_selected='selected']"))
-        b_table = $("<table>").attr({"id" : "boot"}).addClass("devboot")
+        b_table = $("<table>").attr({"id" : "boot"}).addClass("devicelist")
         # overview table for all devices
-        ov_table = $("<table>").attr({"id" : "overview"}).addClass("devboot")
+        ov_table = $("<table>").attr({"id" : "overview"}).addClass("devicelist")
         if @num_devices < 2
             ov_table.hide()
         else
@@ -523,7 +523,7 @@ class boot_table
         $("input#update_info").bind("click", => @force_update_info(true))
     draw_overview_header: =>
         new_tr = $("<tr>").attr({
-            "class" : "ui-widget ui-widget-header devgroup"
+            "class" : "ui-widget ui-widget-header devicegroup"
         })
         new_tr.append(
             $("<th>").attr({

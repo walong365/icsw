@@ -10,12 +10,15 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/codemirror.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/python.js"></script>
 {% endcompress %}
+
 {% endblock %}
 
 {% block extra_stylesheets %}
+
 {% compress css %}
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/codemirror.css" />
 {% endcompress %}
+
 <style type="text/css">
 .CodeMirror {border-top: 1px solid black; border-bottom: 1px solid black;}
 .activeline {background: #e8f2ff !important;}
@@ -25,14 +28,13 @@
     overflow-x : auto;
 }
 </style>
+
 {% endblock %}
 
 {% block content %}
 
-<h1 class="center">Configurations, <span id="config_info">none defined</span>
-
-filter: <input type="text" id="filter" value="" onKeyUp="apply_filter();" />
-
+<h1 class="center">
+    Configurations, <span id="config_info">none defined</span>, filter: <input type="text" id="filter" value=""/>
 </h1>
 
 <div id="config">
@@ -44,553 +46,470 @@ filter: <input type="text" id="filter" value="" onKeyUp="apply_filter();" />
 
 <script type="text/javascript">
 
-CONFIGS = undefined;
-CUR_FILTER = undefined;
-CODEMIRROR_DICT = new Object();
-// current device selection
-CUR_DEVICES = undefined;
-TR_LUT = new Array();
+{% inlinecoffeescript %}
 
-function update_expand_info() {
-    $("table#config tr td div[id*='__expand__']").each(function() {
-        var cur_div = $(this);
-        var div_id = cur_div.attr("id");
-        if (!div_id.match(/__info$/)) {
-            var num_tr = $("table#config tr[id^='" + div_id.replace(/^(conf__\d+__)[a-z]+__(.*)$/, "$1$2") + "']").length - 1;
-            cur_div.next().text(num_tr);
-        };
-    });
-};
-
-function toggle_config_line(line_prefix, state, line_spec, conf_line) {
-    if (conf_line === undefined) {
-        var conf_line = $("table#config tr[id='" + line_prefix + "']");
-    };
-    var exp_line  = $("table#config tr[id^='" + line_prefix + "__" + line_spec + "']");
-    if (state) {
-        exp_line.show();
-        exp_line.find("textarea").each(function() {
-            var cur_id = $(this).attr("id");
-            if (cur_id) {
-                CODEMIRROR_DICT[cur_id].editor.refresh();
-            };
-        });
-    } else {
-        exp_line.hide();
-    };
-};
-
-function create_delete_config(event) {
-    var cur_el = $(event.target);
-    var el_id = cur_el.attr("id");
-    var lock_list = lock_elements($("table#config"));
-    if (el_id.match(/new$/)) {
-        // create element
-        $.ajax({
-            url  : "{%url config:create_config %}",
-            data : create_dict($("table#config"), el_id),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    var new_config = $(xml).find("config");
-                    CONFIGS.find("config_list").append(new_config);
-                    inject_config_line(new_config);
-                    cur_el.parents("tr:first").find("td input[id$='__name']").attr("value", "");
-                    update_config_info();
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    } else {
-        if (confirm("really delete configuration ?")) {
-            $.ajax({
-                url  : "{% url config:delete_config %}",
-                data : create_dict($("table#config"), el_id),
-                success : function(xml) {
-                    if (parse_xml_response(xml)) {
-                        CONFIGS.find("config[pk='" + el_id.split("__")[1] + "']").remove();
-                        remove_config_line(el_id);
-                        update_config_info();
-                    };
-                    unlock_elements(lock_list);
-                }
-            });
-        } else {
-            unlock_elements(lock_list);
-        };
-    };
-};
-
-function apply_filter() {
-    var cur_text = $("input#filter").attr("value");
-    if (cur_text != CUR_FILTER) {
-        CUR_FILTER = cur_text;
-        var cur_re = new RegExp("^.*" + CUR_FILTER + ".*$");
-        var disp_list = new Array();
-        // get keys/pks for current filter
-        CONFIGS.find("config").each(function() {
-            var c_config = $(this);
-            if (c_config.attr("name").match(cur_re)) {
-                disp_list.push(c_config.attr("key"));
-            };
-        });
-        // collapse all expanded trs
-        $("table#config").find("tr td div[id*='__expand__'].ui-icon-triangle-1-s").each(function() {
-            var cur_tr = $(this).parents("tr:first");
-            toggle_config_line(cur_tr.attr("id"), false, "var", cur_tr);
-            toggle_config_line(cur_tr.attr("id"), false, "moncc", cur_tr);
-            toggle_config_line(cur_tr.attr("id"), false, "cscript", cur_tr);
-        });
-        // we start at -1 because of the new config
-        var num_shown = -1;
-        $("table#config").find("tr").each(function() {
-            var cur_tr = $(this);
-            if (cur_tr.attr("id").split("__").length == 2) {
-                var show = cur_tr.attr("id").match(/^conf__new/) || ($.inArray(cur_tr.attr("id"), disp_list) >= 0);
-                if (show && cur_tr.attr("id").split("__")[0] + "__" + cur_tr.attr("id").split("__")[1] == cur_tr.attr("id")) num_shown++;
-                if (show && ! cur_tr.is(":visible")) {
-                    cur_tr.show();
-                } else if (! show && cur_tr.is(":visible")) {
-                    cur_tr.hide();
-                };
-            };
-        });
-        update_config_info(num_shown);
-    };
-};
-
-function update_config_info(num_shown) {
-    var info_str = "configs defined: " + CONFIGS.find("config").length;
-    if (num_shown === undefined) {
-        info_str += ", all shown";
-    } else {
-        info_str += ", " + num_shown + " shown";
-    };
-    $("span#config_info").text(info_str);
-};
-
-function inject_config_line(new_el) {
-    var header_tr = $("table#config tr[id='conf__new']");
-    var new_config_lines = draw_config(new_el);
-    header_tr.after(new_config_lines);
-    init_textarea(new_config_lines.find("textarea"));
-    update_expand_info();
-};
-
-function remove_config_line(del_id) {
-    $("table#config tr[id^='" + del_id + "']").remove();
-    update_expand_info();
-};
-
-function inject_config_var_line(new_var) {
-    var header_tr = $("table#config tr[id$='conf__" + new_var.attr("config") + "__var_new']");
-    var cur_config = CONFIGS.find("config[pk='" + new_var.attr("config") + "']");
-    header_tr.find("input[id$='__name']").attr("value", "")
-    header_tr.after(add_config_var_line(cur_config, "conf__" + new_var.attr("config"), new_var).show());
-    update_expand_info();
-};
-
-function remove_config_var_line(cur_el) {
-    var var_line = $("table#config tr[id^='" + cur_el.attr("id") + "']");
-    var_line.remove();
-    update_expand_info();
-};
-
-function inject_monitoring_command_line(new_nc) {
-    var header_tr = $("table#config tr[id$='conf__" + new_nc.attr("config") + "__moncc_new']");
-    var cur_config = CONFIGS.find("config[pk='" + new_nc.attr("config") + "']");
-    header_tr.find("input[id$='__name']").attr("value", "")
-    header_tr.after(add_monitoring_line(cur_config, "conf__" + new_nc.attr("config"), new_nc).show());
-    update_expand_info();
-};
-
-function remove_monitoring_command_line(cur_el) {
-    var nc_line = $("table#config tr[id^='" + cur_el.attr("id") + "']");
-    nc_line.remove();
-    update_expand_info();
-};
-
-function inject_config_script_line(new_cs) {
-    var header_tr = $("table#config tr[id$='conf__" + new_cs.attr("config") + "__cscript_new']");
-    var cur_config = CONFIGS.find("config[pk='" + new_cs.attr("config") + "']");
-    header_tr.find("input[id$='__name']").attr("value", "")
-    var new_lines = add_config_script_line(cur_config, "conf__" + new_cs.attr("config"), new_cs).show();
-    header_tr.after(new_lines);
-    init_textarea(new_lines.find("textarea"));
-    update_expand_info();
-};
-
-function remove_config_script_line(cur_el) {
-    var cs_line = $("table#config tr[id^='" + cur_el.attr("id") + "']");
-    cs_line.remove();
-    update_expand_info();
-};
-
-function create_delete_config_script(event) {
-    var cur_el = $(event.target);
-    var lock_list = lock_elements($("table#config"));
-    if (cur_el.attr("id").match(/new$/)) {
-        // copy textarea
-        var cur_ta = cur_el.parents("tr:first").find("textarea");
-        cur_ta.text(CODEMIRROR_DICT[cur_ta.attr("id")].editor.getValue());
-        console.log(cur_ta.text());
-        // create element
-        $.ajax({
-            url  : "{% url config:create_script %}",
-            data : create_dict($("table#config"), cur_el.attr("id")),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    var new_cs = $(xml).find("value[name='new_config_script']").children();
-                    inject_config_script_line(new_cs);
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    } else {
-        // delete
-        $.ajax({
-            url  : "{% url config:delete_script %}",
-            data : create_dict($("table#config"), cur_el.attr("id")),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    remove_config_script_line(cur_el);
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    };
-};
-
-function create_delete_monitoring_command(event) {
-    var cur_el = $(event.target);
-<!--    var cur_conf = CONFIGS.find("config[pk='" + cur_el.attr("id").split("__")[1] + "']");-->
-<!--    console.log(cur_conf);-->
-    var lock_list = lock_elements($("table#config"));
-    if (cur_el.attr("id").match(/new$/)) {
-        // create element
-        $.ajax({
-            url  : "{% url mon:create_command %}",
-            data : create_dict($("table#config"), cur_el.attr("id")),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    var new_nc = $(xml).find("value[name='new_monitoring_command']").children();
-                    inject_monitoring_command_line(new_nc);
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    } else {
-        // delete
-        $.ajax({
-            url  : "{% url mon:delete_command %}",
-            data : create_dict($("table#config"), cur_el.attr("id")),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    remove_monitoring_command_line(cur_el);
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    };
-};
-
-function create_delete_config_var(event) {
-    var cur_el = $(event.target);
-    var cur_conf = CONFIGS.find("config[pk='" + cur_el.attr("id").split("__")[1] + "']");
-    console.log(cur_conf);
-    var lock_list = lock_elements($("table#config"));
-    if (cur_el.attr("id").match(/new$/)) {
-        // create element
-        $.ajax({
-            url  : "{% url config:create_var %}",
-            data : create_dict($("table#config"), cur_el.attr("id")),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    var new_var = $(xml).find("value[name='new_var']").children();
-                    console.log(new_var);
-                    inject_config_var_line(new_var);
-                    //inject_net_ip_line(cur_dev, $(xml).find("response values value net_ip"));
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    } else {
-        // delete
-        $.ajax({
-            url  : "{% url config:delete_var %}",
-            data : create_dict($("table#config"), cur_el.attr("id")),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    remove_config_var_line(cur_el);
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    };
-};
-
-function add_config_var_line(c_el, line_prefix, c_var) {
-    if (c_var === undefined) {
-        var cv_key = "var_new";
-    } else {
-        var cv_key = c_var.attr("key");
-    };
-    var line_prefix = line_prefix + "__" + cv_key;
-    var cv_tr = $("<tr>").attr({
-        "id" : line_prefix
-    }).hide();
-    var cur_td = $("<td>");
-    cv_tr.append(cur_td);
-    cur_td.append(
-        create_input_el(c_var, "name", line_prefix, {master_xml : CONFIGS})
-    );
-    if (c_var) {
-        if (c_var.attr("type") == "bool") {
-            cur_td.append(
-                create_input_el(c_var, "value", line_prefix, {boolean : true, master_xml : CONFIGS})
-            );
-        } else if (c_var.attr("type") == "int") {
-            cur_td.append(
-                create_input_el(c_var, "value", line_prefix, {number : true, master_xml : CONFIGS})
-            );
-        } else {
-            cur_td.append(
-                create_input_el(c_var, "value", line_prefix, {master_xml : CONFIGS})
-            );
-        };
-    } else {
-        cur_td.append(
-            create_input_el(c_var, "value", line_prefix, {master_xml : CONFIGS})
-        );
-    };
-    cur_td.append(
-        create_input_el(c_var, "description", line_prefix, {master_xml : CONFIGS})
-    );
-    if (c_var) {
-        cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<span>").text(c_var.attr("type"))));
-    } else {
-        cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<select>").attr({"id" : line_prefix + "__type"}).
-            append($("<option>").attr("value", "str").text("string")).
-            append($("<option>").attr("value", "int").text("integer")).
-            append($("<option>").attr("value", "bool").text("boolean")).
-            append($("<option>").attr("value", "blob").text("blob"))
+class config_table
+    constructor: (@top_div) ->
+        @cur_filter = ""
+        @codemirror_dict = {}
+    use_devs: (dt_div) =>
+        sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
+        notify_generate_link(sel_list)
+    load_configs: =>
+        $.ajax
+            url     : "{% url config:get_configs %}"
+            error   : handle_ajax_error
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @configs = $(xml).find("value[name='response']")
+                    @init_table()
+    init_table: =>
+        @update_config_info()
+        @top_div.children().remove()
+        c_table = $("<table>").attr({"id" : "config"})
+        c_table.append(@draw_config())
+        @configs.find("config").each (idx, cur_conf) =>
+            c_table.append(@draw_config($(cur_conf)))
+        @table = c_table
+        $("div#config").append(@table)
+        # activate codemirrors
+        @top_div.find("textarea").each (idx, cur_ta) =>
+            @init_textarea($(cur_ta))
+        @update_expand_info()
+    
+    # filter function
+    
+    apply_filter: =>
+        cur_text = $("input#filter").attr("value")
+        if cur_text != @cur_filter
+            @cur_filter = cur_text
+            cur_re = new RegExp("^.*#{@cur_filter}.*$")
+            disp_list = []
+            # get keys/pks for current filter
+            @configs.find("config").each (idx, c_config) =>
+                c_config = $(c_config)
+                if c_config.attr("name").match(cur_re)
+                    disp_list.push(c_config.attr("key"))
+            # collapse all expanded trs
+            @table.find("tr td div[id*='__expand__'].ui-icon-triangle-1-s").each (idx, cur_tr) =>
+                cur_tr = $(cur_tr).parents("tr:first")
+                @toggle_config_line(cur_tr.attr("id"), false, "var", cur_tr)
+                @toggle_config_line(cur_tr.attr("id"), false, "moncc", cur_tr)
+                @toggle_config_line(cur_tr.attr("id"), false, "cscript", cur_tr)
+            # we start at -1 because of the new config
+            num_shown = -1
+            @table.find("tr").each (idx, cur_tr) =>
+                cur_tr = $(cur_tr)
+                if cur_tr.attr("id").split("__").length == 2
+                    show = cur_tr.attr("id").match(/^conf__new/) or cur_tr.attr("id") in disp_list
+                    console.log 
+                    if show and cur_tr.attr("id").split("__")[0...2].join("__") == cur_tr.attr("id")
+                        num_shown++
+                    if show and not cur_tr.is(":visible")
+                        cur_tr.show()
+                    else if not show and cur_tr.is(":visible")
+                        cur_tr.hide()
+            @update_config_info(num_shown)
+    
+    # config functions
+    
+    draw_config: (cur_conf) =>
+        dummy_div = $("<div>")
+        if cur_conf
+            conf_pk = cur_conf.attr("pk")
+        else
+            conf_pk = "new"
+        line_prefix = "conf__#{conf_pk}"
+        c_line = $("<tr>").attr
+            "id"    : line_prefix,
+            "class" : "ui-widget ui-widget-header"
+        c_line.append($("<td>").append(
+            create_input_el(cur_conf, "name", line_prefix, {label : "Name", master_xml: @configs})
+        ).append(
+            create_input_el(cur_conf, "priority", line_prefix, {label : "Priority", number : true, master_xml: @configs})
+        ).append(
+            create_input_el(cur_conf, "description", line_prefix, {label : "Description", master_xml: @configs})
+        ).append(
+            create_input_el(cur_conf, "config_type", line_prefix, {label : "Type" , select_source : @configs.find("config_types config_type"), master_xml : @configs})
+        ).append(
+            create_input_el(cur_conf, "parent_config", line_prefix, {label : "Parent" , select_source : @configs.find("config"), add_null_entry : "none", select_source_attribute : "name", master_xml : @configs})
         ))
-    };
-    cv_tr.append($("<td>").append(
-        $("<input>").attr({
-            "type"  : "button",
-            "value" : c_var ? "delete" : "create",
-            "id"    : line_prefix
-        }).bind("click", create_delete_config_var)
+        if cur_conf
+            c_line.append(get_expand_td(line_prefix, "var", undefined, @toggle_config_line));
+            c_line.append(get_expand_td(line_prefix, "moncc", undefined, @toggle_config_line));
+            c_line.append(get_expand_td(line_prefix, "cscript", undefined, @toggle_config_line));
+        else
+            c_line.append($("<td>").attr({"colspan" : "3"}))
+        c_line.append(
+            $("<td>").append(
+                $("<input>").attr({
+                    "type"  : "button",
+                    "value" : if conf_pk == "new" then "create" else "delete",
+                    "id"    : line_prefix
+                }).bind("click", @create_delete_config)
+            )
         )
-    );
-    return cv_tr;
-};
-
-function add_monitoring_line(c_el, line_prefix, n_com) {
-    if (n_com === undefined) {
-        var nc_key = "moncc_new";
-    } else {
-        var nc_key = n_com.attr("key");
-    };
-    var line_prefix = line_prefix + "__" + nc_key;
-    var nc_tr = $("<tr>").attr({
-        "id"  : line_prefix
-    }).hide();
-    var cur_td = $("<td>");
-    nc_tr.append(cur_td),
-    cur_td.append(
-        create_input_el(n_com, "name", line_prefix, {master_xml : CONFIGS})
-    ).append(
-        create_input_el(n_com, "command_line", line_prefix, {master_xml : CONFIGS})
-    ).append(
-        create_input_el(n_com, "description", line_prefix, {master_xml : CONFIGS})
-    ).append(
-        create_input_el(n_com, "enable_perfdata", line_prefix, {boolean : true, master_xml : CONFIGS})
-    ).append(
-        create_input_el(n_com, "mon_check_command_type", line_prefix, {select_source : CONFIGS.find("mon_check_command_types mon_check_command_type"), master_xml : CONFIGS})
-    ).append(
-        create_input_el(n_com, "mon_service_templ", line_prefix, {select_source : CONFIGS.find("mon_service_templates mon_service_templ"), master_xml : CONFIGS})
-    );
-    nc_tr.append($("<td>").append(
-        $("<input>").attr({
-            "type"  : "button",
-            "value" : n_com ? "delete" : "create",
-            "id"    : line_prefix
-        }).bind("click", create_delete_monitoring_command)
-    ));
-    return nc_tr;
-};
-
-function add_config_script_line(c_el, line_prefix, cs_com) {
-    if (cs_com === undefined) {
-        var cs_key = "cscript_new";
-    } else {
-        var cs_key = cs_com.attr("key");
-    };
-    var line_prefix = line_prefix + "__" + cs_key;
-    var cs_tr = $("<tr>").attr({
-        "id"  : line_prefix
-    }).hide();
-    var cur_td = $("<td>");
-    cs_tr.append(cur_td),
-    cur_td.append(
-        create_input_el(cs_com, "name", line_prefix, {master_xml : CONFIGS})
-    ).append(
-        create_input_el(cs_com, "value", line_prefix, {textarea : true, master_xml : CONFIGS})
-    ).append(
-        create_input_el(cs_com, "description", line_prefix, {master_xml : CONFIGS})
-    ).append(
-        create_input_el(cs_com, "priority", line_prefix, {number : true, master_xml : CONFIGS})
-    ).append(
-        create_input_el(cs_com, "enabled", line_prefix, {boolean : true, master_xml : CONFIGS})
-    );
-    if (cs_com) {
-        cur_td.append($("<input>").attr({
-            "type"  : "button",
-            "value" : "save"}).bind("click", save_textarea));
-    };
-    cs_tr.append($("<td>").append(
-        $("<input>").attr({
-            "type"  : "button",
-            "value" : cs_com ? "delete" : "create",
-            "id"    : line_prefix
-        }).bind("click", create_delete_config_script)
+        dummy_div.append(c_line)
+        if cur_conf
+            # add config vars
+            dummy_div.append(@add_config_var_line(cur_conf, line_prefix))
+            cur_conf.find("config_vars").children().each (idx, cur_var) =>
+                dummy_div.append(@add_config_var_line(cur_conf, line_prefix, $(cur_var)))
+            # add monitoring commands
+            dummy_div.append(@add_monitoring_line(cur_conf, line_prefix));
+            cur_conf.find("mon_check_commands").children().each (idx, cur_mon) =>
+                dummy_div.append(@add_monitoring_line(cur_conf, line_prefix, $(cur_mon)))
+            # add config scripts
+            dummy_div.append(@add_config_script_line(cur_conf, line_prefix))
+            cur_conf.find("config_scripts").children().each (idx, cur_script) =>
+                dummy_div.append(@add_config_script_line(cur_conf, line_prefix, $(cur_script)))
+        return dummy_div.children()
+    create_delete_config: (event) =>
+        cur_el = $(event.target)
+        el_id = cur_el.attr("id")
+        lock_list = lock_elements(@table)
+        if el_id.match(/new$/)
+            # create element
+            $.ajax
+                url     : "{%url config:create_config %}"
+                data    : create_dict(@table, el_id)
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        new_config = $(xml).find("config")
+                        @configs.find("config_list").append(new_config)
+                        @inject_config_line(new_config)
+                        cur_el.parents("tr:first").find("td input[id$='__name']").attr("value", "")
+                        @update_config_info()
+                    unlock_elements(lock_list)
+        else
+            if confirm("really delete configuration ?")
+                $.ajax
+                    url     : "{% url config:delete_config %}"
+                    data    : create_dict(@table, el_id),
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            @configs.find("config[pk='" + el_id.split("__")[1] + "']").remove()
+                            @remove_config_line(el_id)
+                            @update_config_info()
+                        unlock_elements(lock_list)
+            else 
+                unlock_elements(lock_list)
+    inject_config_line: (new_el) =>
+        header_tr = @table.find("tr[id='conf__new']")
+        new_config_lines = @draw_config(new_el)
+        header_tr.after(new_config_lines)
+        @init_textarea(new_config_lines.find("textarea"))
+        @update_expand_info()
+    remove_config_line: (del_id) =>
+        @table.find("tr[id^='#{del_id}']").remove()
+        @update_expand_info()
+    
+    # variable functions
+    
+    add_config_var_line: (cur_conf, line_prefix, c_var) =>
+        if !c_var
+            cv_key = "var_new"
+        else
+            cv_key = c_var.attr("key")
+        line_prefix = "#{line_prefix}__#{cv_key}"
+        cv_tr = $("<tr>").attr({
+            "id" : line_prefix
+        }).hide()
+        cur_td = $("<td>")
+        cv_tr.append(cur_td)
+        cur_td.append(
+            create_input_el(c_var, "name", line_prefix, {master_xml : @configs})
         )
-    );
-    return cs_tr;
-};
+        if c_var
+            if c_var.attr("type") == "bool"
+                cur_td.append(
+                    create_input_el(c_var, "value", line_prefix, {boolean : true, master_xml : @configs})
+                )
+            else if c_var.attr("type") == "int"
+                cur_td.append(
+                    create_input_el(c_var, "value", line_prefix, {number : true, master_xml : @configs})
+                )
+            else
+                cur_td.append(
+                    create_input_el(c_var, "value", line_prefix, {master_xml : @configs})
+                )
+        else
+            cur_td.append(
+                create_input_el(c_var, "value", line_prefix, {master_xml : @configs})
+            )
+        cur_td.append(
+            create_input_el(c_var, "description", line_prefix, {master_xml : @configs})
+        )
+        if c_var
+            cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<span>").text(c_var.attr("type"))))
+        else
+            cv_tr.append($("<td>").attr({"colspan" : "3"}).addClass("center").append($("<select>").attr({"id" : line_prefix + "__type"}).
+                append($("<option>").attr("value", "str").text("string")).
+                append($("<option>").attr("value", "int").text("integer")).
+                append($("<option>").attr("value", "bool").text("boolean")).
+                append($("<option>").attr("value", "blob").text("blob"))
+            ))
+        cv_tr.append(
+            $("<td>").append(
+                $("<input>").attr({
+                    "type"  : "button",
+                    "value" : if c_var then "delete" else "create",
+                    "id"    : line_prefix
+                }).bind("click", @create_delete_config_var)
+            )
+        )
+        return cv_tr
+    create_delete_config_var: (event) =>
+        cur_el = $(event.target)
+        cur_conf = @configs.find("config[pk='" + cur_el.attr("id").split("__")[1] + "']")
+        lock_list = lock_elements(@table)
+        if cur_el.attr("id").match(/new$/)
+            # create element
+            $.ajax
+                url     : "{% url config:create_var %}"
+                data    : create_dict(@table, cur_el.attr("id"))
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        new_var = $(xml).find("value[name='new_var']").children()
+                        @inject_config_var_line(new_var)
+                    unlock_elements(lock_list)
+        else
+            # delete
+            $.ajax
+                url     : "{% url config:delete_var %}"
+                data    : create_dict(@table, cur_el.attr("id"))
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @remove_config_var_line(cur_el)
+                    unlock_elements(lock_list)
+    inject_config_var_line: (new_var) =>
+        header_tr = @table.find("tr[id$='conf__" + new_var.attr("config") + "__var_new']")
+        cur_config = @configs.find("config[pk='" + new_var.attr("config") + "']")
+        header_tr.find("input[id$='__name']").attr("value", "")
+        header_tr.after(@add_config_var_line(cur_config, "conf__" + new_var.attr("config"), new_var).show())
+        @update_expand_info()
+    remove_config_var_line: (cur_el) =>
+        var_line = $("table#config tr[id^='" + cur_el.attr("id") + "']")
+        var_line.remove()
+        @update_expand_info()
+    
+    # monitoring functions
+    
+    add_monitoring_line: (c_el, line_prefix, n_com) =>
+        if !n_com
+            nc_key = "moncc_new"
+        else
+            nc_key = n_com.attr("key")
+        line_prefix = "#{line_prefix}__#{nc_key}"
+        nc_tr = $("<tr>").attr({
+            "id"  : line_prefix
+        }).hide()
+        cur_td = $("<td>")
+        nc_tr.append(cur_td)
+        cur_td.append(
+            create_input_el(n_com, "name", line_prefix, {master_xml : @configs})
+        ).append(
+            create_input_el(n_com, "command_line", line_prefix, {master_xml : @configs})
+        ).append(
+            create_input_el(n_com, "description", line_prefix, {master_xml : @configs})
+        ).append(
+            create_input_el(n_com, "enable_perfdata", line_prefix, {boolean : true, master_xml : @configs})
+        ).append(
+            create_input_el(n_com, "mon_check_command_type", line_prefix, {select_source : @configs.find("mon_check_command_types mon_check_command_type"), master_xml : @configs})
+        ).append(
+            create_input_el(n_com, "mon_service_templ", line_prefix, {select_source : @configs.find("mon_service_templates mon_service_templ"), master_xml : @configs})
+        )
+        nc_tr.append(
+            $("<td>").append(
+                $("<input>").attr({
+                    "type"  : "button",
+                    "value" : if n_com then "delete" else "create",
+                    "id"    : line_prefix
+                }).bind("click", @create_delete_monitoring_command)
+            )
+        )
+        return nc_tr
+    create_delete_monitoring_command: (event) =>
+        cur_el = $(event.target)
+        lock_list = lock_elements(@table)
+        if cur_el.attr("id").match(/new$/)
+            # create monitoring command
+            $.ajax
+                url     : "{% url mon:create_command %}"
+                data    : create_dict(@table, cur_el.attr("id"))
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        new_nc = $(xml).find("value[name='new_monitoring_command']").children()
+                        @inject_monitoring_command_line(new_nc)
+                    unlock_elements(lock_list)
+        else
+            # delete monitoring command
+            $.ajax
+                url     : "{% url mon:delete_command %}"
+                data    : create_dict(@table, cur_el.attr("id"))
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @remove_monitoring_command_line(cur_el)
+                    unlock_elements(lock_list)
+    inject_monitoring_command_line: (new_nc) =>
+        header_tr = @table.find("tr[id$='conf__" + new_nc.attr("config") + "__moncc_new']")
+        cur_config = @configs.find("config[pk='" + new_nc.attr("config") + "']");
+        header_tr.find("input[id$='__name']").attr("value", "")
+        header_tr.after(@add_monitoring_line(cur_config, "conf__" + new_nc.attr("config"), new_nc).show())
+        @update_expand_info()
+    remove_monitoring_command_line: (cur_el) =>
+        nc_line = $("table#config tr[id^='" + cur_el.attr("id") + "']")
+        nc_line.remove()
+        @update_expand_info()
+    
+    # config script functions
+    
+    add_config_script_line: (c_el, line_prefix, cs_com) =>
+        if !cs_com
+            cs_key = "cscript_new"
+        else
+            cs_key = cs_com.attr("key")
+        line_prefix = "#{line_prefix}__#{cs_key}"
+        cs_tr = $("<tr>").attr({
+            "id"  : line_prefix
+        }).hide()
+        cur_td = $("<td>")
+        cs_tr.append(cur_td)
+        cur_td.append(
+            create_input_el(cs_com, "name", line_prefix, {master_xml : @configs})
+        ).append(
+            create_input_el(cs_com, "value", line_prefix, {textarea : true, master_xml : @configs})
+        ).append(
+            create_input_el(cs_com, "description", line_prefix, {master_xml : @configs})
+        ).append(
+            create_input_el(cs_com, "priority", line_prefix, {number : true, master_xml : @configs})
+        ).append(
+            create_input_el(cs_com, "enabled", line_prefix, {boolean : true, master_xml : @configs})
+        )
+        if cs_com
+            cur_td.append(
+                $("<input>").attr({
+                    "type"  : "button",
+                    "value" : "save"
+                }).bind("click", @save_textarea)
+            )
+        cs_tr.append(
+            $("<td>").append(
+                $("<input>").attr({
+                    "type"  : "button",
+                    "value" : if cs_com then "delete" else "create",
+                    "id"    : line_prefix
+                }).bind("click", @create_delete_config_script)
+            )
+        )
+        return cs_tr
+    create_delete_config_script: (event) =>
+        cur_el = $(event.target)
+        lock_list = lock_elements(@table)
+        if cur_el.attr("id").match(/new$/)
+            # copy textarea
+            cur_ta = cur_el.parents("tr:first").find("textarea")
+            cur_ta.text(@codemirror_dict[cur_ta.attr("id")].editor.getValue())
+            # create config script
+            $.ajax
+                url     : "{% url config:create_script %}"
+                data    : create_dict(@table, cur_el.attr("id"))
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        new_cs = $(xml).find("value[name='new_config_script']").children()
+                        @inject_config_script_line(new_cs)
+                    unlock_elements(lock_list)
+        else
+            # delete config script
+            $.ajax
+                url     : "{% url config:delete_script %}"
+                data    : create_dict($("table#config"), cur_el.attr("id"))
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @remove_config_script_line(cur_el)
+                    unlock_elements(lock_list)
+    inject_config_script_line: (new_cs) =>
+        header_tr = @table.find("tr[id$='conf__" + new_cs.attr("config") + "__cscript_new']");
+        cur_config = @configs.find("config[pk='" + new_cs.attr("config") + "']")
+        header_tr.find("input[id$='__name']").attr("value", "")
+        new_lines = @add_config_script_line(cur_config, "conf__" + new_cs.attr("config"), new_cs).show()
+        header_tr.after(new_lines)
+        @init_textarea(new_lines.find("textarea"))
+        @update_expand_info()
+    remove_config_script_line: (cur_el) =>
+        cs_line = $("table#config tr[id^='" + cur_el.attr("id") + "']")
+        cs_line.remove()
+        @update_expand_info()
 
-function save_textarea(event) {
-    var cur_ta = $(event.target).parents("tr:first").find("textarea");
-    cur_ta.text(CODEMIRROR_DICT[cur_ta.attr("id")].editor.getValue());
-    cur_ta.trigger("change");
-};
-
-function draw_config(c_el) {
-    var dummy_div = $("<div>");
-    if (c_el === undefined) {
-        var conf_pk = "new";
-    } else {
-        var conf_pk = c_el.attr("pk");
-    };
-    var line_prefix = "conf__" + conf_pk;
-    var c_line = $("<tr>").attr({
-        "id"    : line_prefix,
-        "class" : "ui-widget ui-widget-header"
-    });
-    c_line.append($("<td>").append(
-        create_input_el(c_el, "name", line_prefix, {label : "Name"})
-    ).append(
-        create_input_el(c_el, "priority", line_prefix, {label : "Priority", number : true})
-    ).append(
-        create_input_el(c_el, "description", line_prefix, {label : "Description"})
-    ).append(
-        create_input_el(c_el, "config_type", line_prefix, {label : "Type" , select_source : CONFIGS.find("config_types config_type"), master_xml : CONFIGS})
-    ).append(
-        create_input_el(c_el, "parent_config", line_prefix, {label : "Parent" , select_source : CONFIGS.find("config"), add_null_entry : "none", select_source_attribute : "name", master_xml : CONFIGS})
-    ));
-    if (c_el) {
-        c_line.append(get_expand_td(line_prefix, "var", undefined, toggle_config_line));
-        c_line.append(get_expand_td(line_prefix, "moncc", undefined, toggle_config_line));
-        c_line.append(get_expand_td(line_prefix, "cscript", undefined, toggle_config_line));
-    } else {
-        c_line.append($("<td>").attr({"colspan" : "3"}));
-    };
-    c_line.append(
-        $("<td>").append(
-        $("<input>").attr({
-            "type"  : "button",
-            "value" : conf_pk == "new" ? "create" : "delete",
-            "id"    : line_prefix
-        }).bind("click", create_delete_config)
-    ));
-    dummy_div.append(c_line);
-    if (c_el) {
-        // add config vars
-        dummy_div.append(add_config_var_line(c_el, line_prefix));
-        c_el.find("config_vars").children().each(function() {
-            dummy_div.append(add_config_var_line(c_el, line_prefix, $(this)));
-        });
-        // add monitoring commands
-        dummy_div.append(add_monitoring_line(c_el, line_prefix));
-        c_el.find("mon_check_commands").children().each(function() {
-            dummy_div.append(add_monitoring_line(c_el, line_prefix, $(this)));
-        });
-        // add config scripts
-        dummy_div.append(add_config_script_line(c_el, line_prefix));
-        c_el.find("config_scripts").children().each(function() {
-            dummy_div.append(add_config_script_line(c_el, line_prefix, $(this)));
-        });
-    };
-    return dummy_div.children();
-};
-
-function init_config_table() {
-    update_config_info();
-    $("div#config").children().remove();
-    c_table = $("<table>").attr({"id" : "config"});
-    c_table.append(draw_config());
-    CONFIGS.find("config").each(function() {
-        c_table.append(draw_config($(this)));
-    });
-    $("div#config").append(c_table);
-    // activate codemirrors
-    $("div#config textarea").each(function() {
-        init_textarea($(this));
+    # textarea functions
+    
+    save_textarea: (event) =>
+        cur_ta = $(event.target).parents("tr:first").find("textarea")
+        cur_ta.text(@codemirror_dict[cur_ta.attr("id")].editor.getValue())
+        cur_ta.trigger("change")
+    init_textarea: (cur_ta) =>
+        cur_id = cur_ta.attr("id")
+        cur_ed = CodeMirror.fromTextArea(document.getElementById(cur_id), {
+            "mode"         : {
+                "name"    : "python",
+                "version" : "2"
+            },
+            "lineNumbers"  : true,
+            "lineWrapping" : true,
+            "indentUnit"   : 4,
+            "onCursorActivity" : (cur_ed) =>
+                cur_struct = @codemirror_dict[cur_id];
+                cur_struct.editor.setLineClass(cur_struct.line, null, null);
+                cur_struct.line = cur_struct.editor.setLineClass(cur_struct.editor.getCursor().line, null, "activeline");
+        })
+        cur_ed.setSize(1024, null)
+        @codemirror_dict[cur_id] = {
+            "editor" : cur_ed,
+            "line"   : cur_ed.setLineClass(0, "activeline")
+        }
+    
+    # info / helper functions
+    
+    toggle_config_line: (line_prefix, state, line_spec, conf_line) =>
+        if !conf_line
+            conf_line = @table.find("tr[id='#{line_prefix}']")
+        exp_line  = @table.find("tr[id^='#{line_prefix}__#{line_spec}']")
+        if state
+            exp_line.show()
+            exp_line.find("textarea").each (idx, cur_ta) =>
+                cur_id = $(cur_ta).attr("id")
+                if cur_id
+                    @codemirror_dict[cur_id].editor.refresh()
+        else
+            # collapse expansion marks
+            force_expansion_state(conf_line, false)
+            exp_line.hide()
+    update_expand_info: =>
+        @table.find("tr td div[id*='__expand__']").each (idx, cur_div) =>
+            cur_div = $(cur_div)
+            div_id = cur_div.attr("id");
+            if !div_id.match(/__info$/)
+                num_tr = @table.find("tr[id^='" + div_id.replace(/^(conf__\d+__)[a-z]+__(.*)$/, "$1$2") + "']").length - 1
+                cur_div.next().text(num_tr)
+    update_config_info: (num_shown) =>
+        num_confs = @configs.find("config").length
+        info_str = "configs defined: #{num_confs}" 
+        if !num_shown? or num_shown == num_confs
+            info_str += ", all shown"
+        else
+            info_str += ", #{num_shown} shown"
+        $("span#config_info").text(info_str)
         
-    });
-    update_expand_info();
-};
 
-function init_textarea(cur_ta) {
-    var cur_id = cur_ta.attr("id");
-    var cur_ed = CodeMirror.fromTextArea(document.getElementById(cur_id), {
-        "mode"         : {
-            "name"    : "python",
-            "version" : "2"
-        },
-        "lineNumbers"  : true,
-        "lineWrapping" : true,
-        "indentUnit"   : 4,
-        "onCursorActivity" : function(cur_ed) {
-            var cur_struct = CODEMIRROR_DICT[cur_id];
-            cur_struct.editor.setLineClass(cur_struct.line, null, null);
-            cur_struct.line = cur_struct.editor.setLineClass(cur_struct.editor.getCursor().line, null, "activeline");
-        }
-    });
-    cur_ed.setSize(1024, null);
-    CODEMIRROR_DICT[cur_id] = {
-        "editor" : cur_ed,
-        "line"   : cur_ed.setLineClass(0, "activeline")
-    };
-};
+add_config_handlers = ->
+    conf_t = new config_table($("div#config"))
+    install_devsel_link(conf_t.use_devs, true)
+    conf_t.load_configs()
+    $("input#filter").bind("keyup", => conf_t.apply_filter())
 
-function load_configs() {
-    $.ajax({
-        url     : "{% url config:get_configs %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                CONFIGS = $(xml).find("value[name='response']");
-                init_config_table();
-            }
-        }
-    });
-};
+$(document).ready(add_config_handlers)
 
-function use_devs(dt_div) {
-    CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
-        return(value.data.key);
-    });
-    notify_generate_link(CUR_DEVICES);
-};
-
-function add_config_handlers() {
-    install_devsel_link(use_devs, true);
-    load_configs();
-};
-
-$(document).ready(add_config_handlers);
+{% endinlinecoffeescript %}
 
 </script>
 
