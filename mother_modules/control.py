@@ -878,9 +878,10 @@ class host(machine):
                 err_m = error_re.match(line)
                 if err_m:
                     error_str = err_m.group("why")
-                    self.log("an error occured: %s (%s, %s)" % (line,
-                                                                err_m.group("what"),
-                                                                err_m.group("why")),
+                    self.log("an error occured: %s (%s, %s)" % (
+                        line,
+                        err_m.group("what"),
+                        err_m.group("why")),
                              logging_tools.LOG_LEVEL_ERROR)
         update_obj = False
         if error_str:
@@ -891,11 +892,13 @@ class host(machine):
             else:
                 # unknown
                 new_dhcp_written = None
+            self.device.add_log(global_config["LOG_SOURCE_IDX"], logging_tools.LOG_LEVEL_ERROR, "DHCP: %s" % (error_str)).save()
         else:
             if om_sc.info == "write":
                 new_dhcp_written = True
             elif om_sc.info == "delete":
                 new_dhcp_written = False
+            self.device.add_log(global_config["LOG_SOURCE_IDX"], logging_tools.LOG_LEVEL_OK, "DHCP %s ok" % (om_sc.info)).save()
         if new_dhcp_written is None:
             new_dhcp_written = self.device.dhcp_written
         # selective update
