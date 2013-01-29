@@ -267,19 +267,29 @@ def get_boot_info(request):
 @init_logging
 def get_devlog_info(request):
     _post = request.POST
-    sel_list = _post.getlist("sel_list[]")
-    dev_result = device.objects.filter(Q(name__in=sel_list))
-    xml_resp = E.boot_info()
+    lp_dict = dict([(int(key.split("__")[1]), int(_post[key])) for key in _post.keys() if key.startswith("dev__")])
+    dev_result = device.objects.filter(Q(pk__in=lp_dict.keys()))
+    oldest_pk = min(lp_dict.values() + [0])
+    request.log("request devlogs for %s, oldest devlog_pk is %d" % (
+        logging_tools.get_plural("device", len(lp_dict)),
+        oldest_pk))
+    xml_resp = E.devlog_info()
     # lut for device_logs
-    dev_lut = {}
+    dev_lut, dev_dict = ({}, {})
     for cur_dev in dev_result:
         # recv/reqstate are written by mother, here we 'salt' this information with the device XML (pingstate)
         dev_info = cur_dev.get_xml(full=False)
         dev_lut[cur_dev.pk] = dev_info
+        dev_dict[cur_dev.pk] = cur_dev
         xml_resp.append(dev_info)
-    dev_logs = devicelog.objects.filter(Q(device__in=dev_result)).select_related("log_source", "log_status", "user")
+    dev_logs = devicelog.objects.filter(Q(pk__gt=oldest_pk) & Q(device__in=dev_result)).select_related("log_source", "log_status", "user")
+    logs_transfered = dict([(key, 0) for key in lp_dict.iterkeys()])
     for dev_log in dev_logs:
-        dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
+        if dev_log.pk > lp_dict[dev_log.device_id]:
+            logs_transfered[dev_log.device_id] += 1
+            dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
+    logs_transfered = dict([(key, value) for key, value in logs_transfered.iteritems() if value])
+    request.log("transfered logs: %s" % (", ".join(["%s: %d" % (unicode(dev_dict[pk]), logs_transfered[pk]) for pk in logs_transfered.iterkeys()]) or "none"))
     request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
 

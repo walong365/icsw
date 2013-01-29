@@ -389,17 +389,19 @@ class devlog_option extends option_list
         cur_td.append(dev_sel)
         return @full_line(cur_td)
     _set_option: (dev_xml) =>
-        log_sel = @cur_td.find("select#" + @dev_key + "__device_log")
+        log_sel = @cur_td.find("select##{@dev_key}__device_log")
         log_sel.removeAttr("disabled")
         log_sel.attr("multiple", "6")
         @_set_option_again(dev_xml)
     _set_option_again: (dev_xml) =>
-        console.log "yy"
-        log_sel = @cur_td.find("select#" + @dev_key + "__device_log")
-        log_sel.children().remove()
+        log_sel = @cur_td.find("select##{@dev_key}__device_log")
+        #log_sel.children().remove()
         dev_xml.find("devicelogs devicelog").each (index, cur_log) =>
             cur_log = $(cur_log)
-            new_opt = $("<option>").text(cur_log.attr("date") + " :: " + cur_log.attr("text"))
+            log_pk = parseInt(cur_log.attr("pk"))
+            if log_pk > @latest_log_pk
+                @latest_log_pk = log_pk
+            new_opt = $("<option>").text([cur_log.attr("date"), cur_log.attr("log_status_name"), cur_log.attr("log_source_name"), cur_log.attr("text")].join(" :: "))
             log_sel.prepend(new_opt)
 
 class boot_table
@@ -668,9 +670,10 @@ class boot_table
         if @cur_pure_devices.length and not @update_devlog_pending
             check_opt = "l"
             @update_devlog_pending = 1
-            send_data = {
-                "sel_list" : @cur_pure_devices
-            }
+            send_data = {}
+            # set latest log pks
+            for dev_id, dev_struct of @device_lut["l"]
+                send_data[dev_struct.dev_key] = dev_struct.latest_log_pk
             $.ajax
                 url     : "{% url boot:get_devlog_info %}"
                 error   : handle_ajax_error
