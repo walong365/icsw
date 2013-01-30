@@ -27,6 +27,7 @@ import copy
 from host_monitoring import hm_classes
 import net_tools
 import os.path
+import subprocess
 import commands
 import process_tools
 import server_command
@@ -67,6 +68,12 @@ class _general(hm_classes.hm_module):
         else:
             self.log("not ethtool found", logging_tools.LOG_LEVEL_WARN)
         self.ethtool_path = ethtool_path
+        iptables_path = process_tools.find_file("iptables")
+        if iptables_path:
+            self.log("iptables found at %s" % (iptables_path))
+        else:
+            self.log("no iptables found", logging_tools.LOG_LEVEL_WARN)
+        self.iptables_path = iptables_path
     def init_machine_vector(self, mv):
         self.act_nds = netspeed(self.ethtool_path)#self.bonding_devices)
     def update_machine_vector(self, mv):
@@ -77,6 +84,42 @@ class _general(hm_classes.hm_module):
                      logging_tools.LOG_LEVEL_ERROR)
             for log_line in process_tools.exception_info().log_lines:
                 self.log(" - %s" % (log_line), logging_tools.LOG_LEVEL_ERROR)
+    def _check_iptables(self, req_chain):
+        """ req_chain can be:
+        None ............. return everything
+        <type> ........... only chains of a given type
+        <type>.<chain> ... exactly specified chain
+        """
+        res_dict = {"required_chain" : req_chain}
+        if req_chain.count("."):
+            req_c_name = req_chain.split(".")[1].upper()
+            res_dict["detail_level"] = 2
+        else:
+            req_c_name = ""
+            res_dict["detail_level"] = 1 if req_chain else 0
+        if self.iptables_path:
+            for t_type in ["filter", "nat", "mangle", "raw", "security"]:
+                if not req_chain or req_chain.startswith(t_type):
+                    c_com = "%s -t %s -L -n" % (self.iptables_path, t_type)
+                    t_dict = {}
+                    res_dict[t_type] = t_dict
+                    for line in subprocess.check_output(c_com, shell=True).split("\n"):
+                        if line.startswith("Chain"):
+                            parts = line.strip().split()
+                            c_name = parts[1]
+                            if not req_c_name or c_name.startswith(req_c_name):
+                                use_chain = True
+                            else:
+                                use_chain = False
+                            if use_chain:
+                                t_dict[c_name] = {"policy" : parts[-1][:-1],
+                                                  "lines"  : -1}
+                        elif line.strip():
+                            if use_chain:
+                                t_dict[c_name]["lines"] += 1
+                    if not res_dict[t_type]:
+                        del res_dict[t_type]
+        return res_dict
     def _net_int(self, mvect):
         act_time = time.time()
         time_diff = act_time - self.last_update
@@ -1088,6 +1131,38 @@ class network_info_command(hm_classes.hm_command):
         return limits.nag_STATE_OK, "found %s:\n%s" % (logging_tools.get_plural("network device", len(net_names)),
                                                        str(out_list))
         
+class iptables_info_command(hm_classes.hm_command):
+    info_str = "iptables information"
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        self.parser.add_argument("-w", dest="warn", type=str)
+        self.parser.add_argument("-c", dest="crit", type=str)
+    def __call__(self, srv_com, cur_ns):
+        if "arguments:arg0" in srv_com:
+            req_chain = srv_com["arguments:arg0"].text.strip()
+        else:
+            req_chain = ""
+        srv_com["rules_stat"] = self.module._check_iptables(req_chain)
+    def interpret(self, srv_com, cur_ns):
+        res_dict = srv_com["rules_stat"]
+        detail_level, required_chain = (res_dict.pop("detail_level"), res_dict.pop("required_chain"))
+        if not res_dict:
+            return limits.nag_STATE_CRITICAL, "No chains found according to filter (%s, %d)" % (required_chain, detail_level)
+        else:
+            ret_state = limits.nag_STATE_OK
+            all_chains = sum([c_dict.keys() for c_dict in res_dict.itervalues()], [])
+            num_lines = sum([sum([c_dict["lines"] for c_key, c_dict in t_dict.iteritems()], 0) for t_key, t_dict in res_dict.iteritems()], 0)
+            if cur_ns.crit is not None and num_lines < cur_ns.crit:
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            elif cur_ns.warn is not None and num_lines < cur_ns.warn:
+                ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            return ret_state, "%s%s (%s, %d): %s" % (
+                logging_tools.get_plural("chain", len(all_chains)),
+                " (%s)" % (all_chains[0]) if len(all_chains) == 1 else "",
+                required_chain or "ALL",
+                detail_level,
+                logging_tools.get_plural("rule", num_lines))
+
 if __name__ == "__main__":
     print "This is a loadable module."
     sys.exit(0)
