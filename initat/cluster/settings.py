@@ -239,6 +239,7 @@ COFFEESCRIPT_USE_CACHE = False
 # add all applications, including backbone
 
 INSTALLED_APPS = list(INSTALLED_APPS)
+ADDITIONAL_MENU_FILES = []
 
 if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
     # add everything below cluster
@@ -249,6 +250,12 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
             if any([entry.endswith("views.py") for entry in os.listdir(full_path)]):
                 add_app = "initat.cluster.%s" % (sub_dir)
                 if add_app not in INSTALLED_APPS:
+                    # search for menu file
+                    templ_dir = os.path.join(full_path, "templates")
+                    if os.path.isdir(templ_dir):
+                        for templ_name in os.listdir(templ_dir):
+                            if templ_name.endswith("_menu.html"):
+                                ADDITIONAL_MENU_FILES.append(templ_name)
                     INSTALLED_APPS.append(add_app)
     for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
         add_app = os.environ[add_app_key]
@@ -257,6 +264,7 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
     INSTALLED_APPS.append("initat.core")
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
+print INSTALLED_APPS, ADDITIONAL_MENU_FILES
 
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
