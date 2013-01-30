@@ -84,6 +84,10 @@
         </ul>
     </li>
     {% endif %}
+    {# additional menus #}
+    {% for add_menu in settings.ADDITIONAL_MENU_FILES %}
+        {% include add_menu %}
+    {% endfor %}
     <li>
         <a>{% trans "Session" %}</a>
         <ul>
