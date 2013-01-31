@@ -264,7 +264,6 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
     INSTALLED_APPS.append("initat.core")
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
-print INSTALLED_APPS, ADDITIONAL_MENU_FILES
 
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
