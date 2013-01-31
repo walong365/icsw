@@ -49,7 +49,9 @@ case "$1" in
     stop)
     
         echo "Shutting down webfrontend"
-        kill $(cat ${PID_FILE})
+        if [ -f ${PID_FILE} ] ; then
+            kill $(cat ${PID_FILE})
+        fi
     
         rc_status -v
         ;;
