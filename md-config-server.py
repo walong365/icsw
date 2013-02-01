@@ -19,7 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" server to configure the nagios or icinga monitoring daemon, now for 0MQ clients """
+""" server to configure the nagios or icinga monitoring daemon	 """
 
 import sys
 import os
@@ -62,6 +62,7 @@ import stat
 import ConfigParser
 import hashlib
 import binascii
+import operator
 
 # nagios constants
 NAG_HOST_UNKNOWN     = -1
@@ -1943,8 +1944,10 @@ class build_process(threading_tools.process_obj):
                 else:
                     bc_valid = False
             if bc_valid:
+                # build distance map
+                cur_dmap = self._build_distance_map(self.__gen_config.monitor_server)
                 for cur_gc in [self.__gen_config] + self.__slave_configs.values():
-                    self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack)
+                    self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap)
                     if cur_gc.master:
                         # recreate access files
                         cur_gc._create_access_entries()
@@ -1964,6 +1967,69 @@ class build_process(threading_tools.process_obj):
             self.log("queries issued: %d" % (tot_query_count))
             #for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
             #    self.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
+    def _build_distance_map(self, root_node):
+        self.log("building distance map, root node is '%s'" % (root_node))
+        # exclude all without attached netdevices
+        dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.exclude(netdevice=None).prefetch_related("netdevice_set", "netdevice_set")])
+        nd_dict = dict([(pk, set(cur_dev.netdevice_set.all().values_list("pk", flat=True))) for pk, cur_dev in dm_dict.iteritems()])
+        for cur_dev in dm_dict.itervalues():
+            # set 0 for root_node, -1 for all other devices
+            cur_dev.md_dist_level = 0 if cur_dev.pk == root_node.pk else -1
+        all_pks = set(dm_dict.keys())
+        max_level = 0
+        # limit for loop
+        for cur_iter in xrange(128):
+            self.log("dm_run %d" % (cur_iter))
+            run_again = False
+            # iterate until all nodes have a valid dist_level set
+            src_nodes = set([key for key, value in dm_dict.iteritems() if value.md_dist_level >= 0])
+            dst_nodes = all_pks - src_nodes
+            self.log("%s, %s" % (logging_tools.get_plural("source node", len(src_nodes)),
+                                 logging_tools.get_plural("dest node", len(dst_nodes))))
+            src_nds = reduce(operator.ior, [nd_dict[key] for key in src_nodes], set())
+            dst_nds = reduce(operator.ior, [nd_dict[key] for key in dst_nodes], set())
+            for cur_hc in hopcount.objects.filter(Q(s_netdevice__in=src_nds) & Q(d_netdevice__in=dst_nds)):
+                if cur_hc.s_netdevice_id == cur_hc.d_netdevice_id:
+                    # loop, skip
+                    pass
+                else:
+                    #dst_nds = [val for val in [cur_hc.s_netdevice_id, cur_hc.d_netdevice_id] if val not in src_nds]
+                    trace = [int(val) for val in cur_hc.trace.split(":")]
+                    if len(trace) == 2:
+                        # direct attached
+                        if trace[0] in src_nodes:
+                            src_dev, dst_dev = (dm_dict[trace[0]], dm_dict[trace[1]])
+                        else:
+                            src_dev, dst_dev = (dm_dict[trace[1]], dm_dict[trace[0]])
+                        new_level = src_dev.md_dist_level + 1
+                        if dst_dev.md_dist_level >= 0 and new_level > dst_dev.md_dist_level:
+                            self.log("pushing node %s farther away from root (%d => %d)" % (
+                                unicode(dst_dev),
+                                dst_dev.md_dist_level,
+                                new_level))
+                        dst_dev.md_dist_level = max(dst_dev.md_dist_level, new_level)
+                        max_level = max(max_level, dst_dev.md_dist_level)
+                        run_again = True
+                    else:
+                        # more than one hop away, skip
+                        pass
+            if not run_again:
+                break
+        self.log("max distance level: %d" % (max_level))
+        nodes_ur = [unicode(value) for value in dm_dict.itervalues() if value.md_dist_level < 0]
+        if nodes_ur:
+            self.log("%s: %s" % (
+                logging_tools.get_plural("unroutable node", len(nodes_ur)),
+                ", ".join(sorted(nodes_ur))
+            )
+                     )
+        for level in xrange(max_level + 1):
+            self.log("nodes in level %d: %s" % (
+                level,
+                len([True for value in dm_dict.itervalues() if value.md_dist_level == level])
+            )
+                     )
+        return dict([(key, value.md_dist_level) for key, value in dm_dict.iteritems()])
     def _create_general_config(self):
         start_time = time.time()
         self._check_image_maps()
@@ -2037,7 +2103,10 @@ class build_process(threading_tools.process_obj):
             return ("%%%dd" % (size)) % (i_val)
         else:
             return ("%%%ds" % (size)) % ("-")
-    def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack):
+    def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map):
+        """
+        d_map : distance map
+        """
         start_time = time.time()
         # get contacts with access to all devices
         all_access = list(user.objects.filter(Q(login__in=[cur_u.username for cur_u in User.objects.filter(is_active=True) if cur_u.has_perm("backbone.all_devices")])).values_list("login", flat=True))
@@ -2098,8 +2167,6 @@ class build_process(threading_tools.process_obj):
             host_info_str = "all"
             ct_groups = mon_contactgroup.objects.all()
         ct_group = ct_groups.prefetch_related("device_groups", "device_groups__device")
-        #sql_str = "SELECT ndc.ng_contactgroup, d.name FROM device d, ng_contactgroup nc, device_group dg LEFT JOIN ng_device_contact ndc ON ndc.device_group=dg.device_group_idx WHERE d.device_group = dg.device_group_idx AND ndc.ng_contactgroup=nc.ng_contactgroup_idx AND (%s) ORDER BY dg.device_group_idx" % (sel_str)
-        #dc.execute(sql_str)
         for ct_group in ct_groups:
             if cur_gc["contactgroup"].has_key(ct_group.pk):
                 cg_name = cur_gc["contactgroup"][ct_group.pk]["name"]
@@ -2167,9 +2234,10 @@ class build_process(threading_tools.process_obj):
             #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
             self.__cached_mach_name = host.name
             self.mach_log("-------- %s ---------" % ("master" if cur_gc.master else "slave %s" % (cur_gc.slave_name)))
-            glob_log_str = "Starting build of config for device %20s (%s)" % (
+            glob_log_str = "Starting build of config for device %20s (%s), distance level is %d" % (
                 host.name,
-                "active" if checks_are_active else "passive"
+                "active" if checks_are_active else "passive",
+                d_map.get(host_pk, -1),
             )
             self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.name)
             num_ok, num_warning, num_error = (0, 0, 0)
@@ -2501,11 +2569,16 @@ class build_process(threading_tools.process_obj):
                 p_parents = host["possible_parents"]
                 #print "*", p_parents
                 for p_val, p_list in p_parents:
+                    # skip first host (is self)
+                    host_pk = p_list.pop(0)
                     for parent_idx in p_list:
-                        parent = all_hosts_dict[parent_idx].name
-                        if parent in host_names and parent != host["name"]:
-                            parent_list.append(parent)
-                            # exit inner loop
+                        if d_map[host_pk] > d_map[parent_idx]:
+                            parent = all_hosts_dict[parent_idx].name
+                            if parent in host_names and parent != host["name"]:
+                                parent_list.append(parent)
+                                # exit inner loop
+                                break
+                        else:
                             break
                 del host["possible_parents"]
                 if parent_list:
@@ -3014,8 +3087,8 @@ def main():
         ("MAIN_LOOP_TIMEOUT"           , configfile.int_c_var(30)),
         ("RETAIN_HOST_STATUS"          , configfile.int_c_var(1)),
         ("RETAIN_SERVICE_STATUS"       , configfile.int_c_var(1)),
-        ("NDO_DATA_PROCESSING_OPTIONS" , configfile.int_c_var(2 ** 26 - 1 - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA))),
-        ("EVENT_BROKER_OPTIONS"        , configfile.int_c_var(2 ** 20 - 1 - (BROKER_TIMED_EVENTS + BROKER_SERVICE_CHECKS + BROKER_HOST_CHECKS))),
+        ("NDO_DATA_PROCESSING_OPTIONS" , configfile.int_c_var((2 ** 26 - 1) - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA))),
+        ("EVENT_BROKER_OPTIONS"        , configfile.int_c_var((2 ** 20 - 1) - (BROKER_TIMED_EVENTS + BROKER_SERVICE_CHECKS + BROKER_HOST_CHECKS))),
         ("CCOLLCLIENT_TIMEOUT"         , configfile.int_c_var(6)),
         ("CSNMPCLIENT_TIMEOUT"         , configfile.int_c_var(20)),
         ("MAX_SERVICE_CHECK_SPREAD"    , configfile.int_c_var(5)),
