@@ -23,6 +23,15 @@ from django.conf import settings
 from rest_framework import serializers
 from django.utils.functional import memoize
 
+class cs_timer(object):
+    def __init__(self):
+        self.start_time = time.time()
+    def __call__(self, what):
+        cur_time = time.time()
+        log_str = "%s in %s" % (what, logging_tools.get_diff_time_str(cur_time - self.start_time))
+        self.start_time = cur_time
+        return log_str
+
 def only_wf_perms(in_list):
     return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
 
@@ -941,6 +950,13 @@ class hopcount(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'hopcount'
+    def __unicode__(self):
+        return "%d -- %d (%d, %s)" % (
+            self.s_netdevice_id,
+            self.d_netdevice_id,
+            self.value,
+            self.trace,
+        )
 
 class hw_entry(models.Model):
     idx = models.AutoField(db_column="hw_entry_idx", primary_key=True)
@@ -1519,7 +1535,7 @@ class netdevice(models.Model):
     netdevice_speed = models.ForeignKey("netdevice_speed")
     driver = models.CharField(max_length=384, blank=True)
     routing = models.BooleanField(default=False)
-    penalty = models.IntegerField(null=True, blank=True, default=0)
+    penalty = models.IntegerField(null=True, blank=True, default=1)
     dhcp_device = models.NullBooleanField(null=True, blank=True, default=False)
     ethtool_options = models.IntegerField(null=True, blank=True, default=0)
     fake_macaddr = models.CharField(db_column="fake_macadr", max_length=177, blank=True)
