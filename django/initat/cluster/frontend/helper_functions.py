@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 
-""" helper functions for the oekotex certificate software """
+""" helper functions for the init.at clustersoftware """
 
 import sys
 import os
