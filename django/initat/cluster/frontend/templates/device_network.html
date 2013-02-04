@@ -1,645 +1,529 @@
 {% extends "main.html" %}
 
-{% load i18n %}
+{% load i18n coffeescript %}
 
 {% block title %}{% trans "Device network settings" %}{% endblock %}
 
 {% block content %}
 
-<h1 class="center">Device network settings, hopcount info: <span id="hopcount_rebuild_info">unknown</span>, <input type="button" value="rebuild hopcount" onClick="trigger_hopcount_rebuild(); "/></h1>
+<h1 class="center">Device network settings, hopcount info: <span id="hopcount_rebuild_info">unknown</span>, <input type="button" value="rebuild hopcount" id="rebuild_hopcount"/></h1>
 
 <div id="network_table"></div>
 
 <div id="network_copy">Set all networks from <select id="network_copy"></select></div>
+
 <script type="text/javascript">
 
-DEVICE_NETWORKS = undefined;
-DUMMY_MAC ="00:00:00:00:00:00";
-SELECTED_DEVICES = undefined;
+{% inlinecoffeescript %}
 
-function modify_rowspan(cur_el, diff) {
-    cur_el.attr({"rowspan" : parseInt(cur_el.attr("rowspan")) + diff});
-};
-
-function remove_peer_lines(peer_pk) {
-    $("div#network_table tr[id$='__routing__" + peer_pk + "']").each(function() {
-        var peer_line = $(this);
-        var header_tr = $("div#network_table tr[id='nd__" + peer_line.attr("id").split("__")[1] + "__new']");
-        if (peer_line.is(":visible")) modify_rowspan(header_tr.find("td[id$='__devname']"), -1);
-        peer_line.remove();
-    });
-};
-
-function delete_peer(event) {
-    var peer_id = $(event.target).attr("id");
-    $.ajax({
-        url     : "{% url network:delete_peer %}",
-        error   : handle_ajax_error,
-        data    : {
-            "id" : peer_id
-        },
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                // remove all peer lines
-                remove_peer_lines(peer_id.split("__")[4]);
-            }
-        }
-    });
-};
-
-function create_peer_line(cur_nd, cur_peer, line_prefix) {
-    var line_prefix = line_prefix + "__" + cur_peer.attr("pk");
-    new_tr = $("<tr>").attr({
-        "id" : line_prefix
-    }).hide();
-    new_tr.append($("<td>").attr({
-        "colspan" : "9"
-    }).append(
-        $("<span>").text("from " + cur_peer.attr("from_devname") + " [" + cur_peer.attr("from_penalty") + "] on " + cur_peer.attr("from_device"))
-    ).append(
-        $("<input>").attr({
-            "id"    : line_prefix + "__penalty",
-            "type"  : "number",
-            "value" : cur_peer.attr("penalty")
-        })
-    ).bind("change", function(event) {
-        submit_change($(event.target));
-    }).append(
-        $("<span>").text("to " + cur_peer.attr("to_devname") + " [" + cur_peer.attr("to_penalty") + "] on " + cur_peer.attr("to_device"))
-    ).append(
-        $("<input>").attr({
-            "id"    : line_prefix,
-            "type"  : "button",
-            "value" : "delete"
-        }).bind("click", delete_peer)
-    ));
-    return new_tr;
-};
-
-function inject_peer(new_peer, attr_name) {
-    var cur_nd = DEVICE_NETWORKS.find("netdevice[pk='" + new_peer.attr(attr_name) + "']");
-    cur_nd.find("peers").append(new_peer.clone());
-    var line_prefix = "nd__" + cur_nd.attr("device") + "__" + cur_nd.attr("pk") + "__routing";
-    var header_peer_line = $("div#network_table tr[id='" + line_prefix + "__add']");
-    var peer_line = create_peer_line(cur_nd, new_peer, line_prefix);
-    header_peer_line.after(peer_line);
-    if (header_peer_line.is(":visible")) {
-        peer_line.show();
-        modify_rowspan($("div#network_table tr[id='nd__" + cur_nd.attr("device") + "__new'] td[id$='__devname']"), 1);
-    };
-};
-
-function redraw_possible_peers() {
-    $.ajax({
-        url     : "{% url network:get_valid_peers %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                DEVICE_NETWORKS.find("valid_peers").replaceWith($(xml).find("valid_peers"));
-                $("div#network_table tr[id$='__routing__add']").each(function() {
-                    var cur_tr = $(this);
-                    var line_prefix = "nd__" + cur_tr.attr("id").split("__")[1] + "__" + cur_tr.attr("id").split("__")[2];
-                    add_valid_peers(line_prefix, cur_tr);
-                });
-            }
-        }
-    });
-};
-
-function create_new_peer(event) {
-    var cur_sel = $(event.target);
-    var new_p = parseInt(cur_sel.attr("value"));
-    if (new_p) {
-        $.ajax({
-            url     : "{% url network:create_new_peer %}",
-            error   : handle_ajax_error,
+class network_table
+    constructor: (@top_div) ->
+        $("input#rebuild_hopcount").bind("click", @trigger_hopcount_rebuild)
+        @DUMMY_MAC ="00:00:00:00:00:00";
+    use_devs: (dt_div) =>
+        @SELECTED_DEVICES = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
+        @reload_network_tree()
+    reload_network_tree: (sel_list) =>
+        $.ajax
+            url     : "{% url network:get_network_tree %}"
+            error   : handle_ajax_error
             data    : {
-                "id"       : cur_sel.attr("id"),
-                "new_peer" : new_p,
-                "penalty"  : cur_sel.parents("tr:first").find("input[id^='" + cur_sel.attr("id") + "']").attr("value")
-            },
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    $(xml).find("value[name='new_peer_information'] peer_information").each(function() {
-                        var new_peer = $(this);
-                        inject_peer(new_peer, "s_netdevice");
-                        if (new_peer.attr("s_netdevice") != new_peer.attr("d_netdevice")) {
-                            inject_peer(new_peer, "d_netdevice");
-                        };
-                    });
-                };
+                "sel_list" : @SELECTED_DEVICES
             }
-        });
-    };
-    cur_sel.attr("value", "0");
-};
-
-function add_valid_peers(line_prefix, start_el) {
-    if (start_el !== undefined) {
-        var target_div = start_el.find("span[id='" + line_prefix + "__routing__new_peer']");
-    } else {
-        var target_div = $("div#network-table span[id='" + line_prefix + "__routing__new_peer']");
-    };
-    if (DEVICE_NETWORKS.find("valid_peers valid_peer").length) {
-        var peer_sel = $("<select>").attr({
-            "id"  : line_prefix + "__routing__new_peer"
-        }).bind("change", create_new_peer);
-        peer_sel.append($("<option>").attr({"value" : "0", "selected" : "selected"}).text("---"));
-        DEVICE_NETWORKS.find("valid_peers valid_peer").each(function() {
-            var new_peer = $(this);
-            peer_sel.append($("<option>").attr({
-                "value" : new_peer.attr("pk")
-            }).text(new_peer.text()));
-        });
-        target_div.html(peer_sel);
-    } else {
-        target_div.html($("<b>").text("no valid peers"));
-    };
-};
-
-function set_network_after_change(cur_el) {
-    // get xml_el
-    var net_ip_xml = DEVICE_NETWORKS.find("net_ip[pk='" + cur_el.attr("id").split("__")[4] + "']");
-    $("div#network_table select[id$='__ip__" + net_ip_xml.attr("pk") + "__network']").attr("value", net_ip_xml.attr("network"));
-};
-
-function update_network_device_type_string(cur_el) {
-    cur_nd = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "'] netdevice[pk='" + cur_el.attr("id").split("__")[2] + "']");
-    cur_el.parents("tr:first").find("span[id$='__devinfo']").text(DEVICE_NETWORKS.find("network_device_type_list network_device_type[pk='" + cur_nd.attr("network_device_type") + "']").text());
-};
-
-function fill_new_netdevice_name(event) {
-    var cur_el = $(event.target);
-    var cur_val = cur_el.attr("value");
-    if (! cur_val) {
-        var used_devs = _.map($("table#network_tree tr[id^='nd__" + cur_el.attr("id").split("__")[1] + "__'] input[id$='__devname']"), function(el, num) { return $(el).attr("value"); });
-        if (used_devs.indexOf("lo") < 0) {
-            cur_el.attr("value", "lo");
-        } else if (used_devs.indexOf("eth0") < 0) {
-            cur_el.attr("value", "eth0");
-        } else {
-            cur_el.attr("value", "ib0");
-        };
-    };
-};
-
-function inject_netdevice_line(cur_dev, new_nd) {
-    // add new_nd to DEVICE_NETWORKS
-    DEVICE_NETWORKS.find("device[pk='" + new_nd.attr("device") + "'] netdevices").append(new_nd);
-    FIRST_NETDEVICE_LINE = false;
-    var header_tr = $("div#network_table tr[id='nd__" + cur_dev.attr("pk") + "__new']");
-    header_tr.next().next().after(
-        add_netdevice_line(cur_dev, new_nd).children()
-    );
-    modify_rowspan(header_tr.find("td[id$='__devname']"), 1);
-};
-
-function inject_net_ip_line(cur_dev, new_ip) {
-    // add new_nd to DEVICE_NETWORKS
-    var cur_nd = DEVICE_NETWORKS.find("netdevice[pk='" + new_ip.attr("netdevice") + "']");
-    var cur_dev = DEVICE_NETWORKS.find("device[pk='" + cur_nd.attr("device") + "']");
-    cur_nd.find("netips").append(new_ip);
-    var line_prefix = "nd__" + cur_dev.attr("pk") + "__" + cur_nd.attr("pk");
-    FIRST_NETDEVICE_LINE = false;
-    var header_tr = $("div#network_table tr[id='" + line_prefix + "__ip__new']");
-    var new_line = add_net_ip_line(cur_dev, cur_nd, line_prefix, new_ip);
-    header_tr.after(new_line);
-    new_line.show();
-    modify_rowspan($("div#network_table td[id='nd__" + cur_dev.attr("pk") + "__new__devname']"), 1);
-};
-
-function remove_netdevice_line(cur_dev, delete_button) {
-    var cur_tr = $("div#network_table tr[id='" + delete_button.attr("id") + "']");
-    var name_td = $("div#network_table td[id='nd__" + delete_button.attr("id").split("__")[1] + "__new__devname']");
-    $("div#network_table tr[id^='nd__" + delete_button.attr("id").split("__")[1] + "__" + delete_button.attr("id").split("__")[2] + "']").each(function() {
-        var cur_tr = $(this);
-        if (cur_tr.is(":visible")) modify_rowspan(name_td, -1);
-        cur_tr.remove();
-    });
-};
-
-function remove_net_ip_line(cur_ip, delete_button) {
-    var name_td = $("div#network_table td[id='nd__" + delete_button.attr("id").split("__")[1] + "__new__devname']");
-    ip_tr = delete_button.parents("tr:first");
-    if (ip_tr.is(":visible")) {
-        modify_rowspan(name_td, -1);
-    };
-    ip_tr.remove();
-};
-    
-function create_delete_new_netdevice(event) {
-    var cur_el = $(event.target);
-    var cur_dev = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "']");
-    var lock_list = lock_elements($("div#network_table"));
-    if (cur_el.attr("id").match(/new$/)) {
-        // create element
-        $.ajax({
-            url  : "{% url network:create_netdevice %}",
-            data : create_dict($("div#network_table"), cur_el.attr("id")),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    inject_netdevice_line(cur_dev, $(xml).find("response values value netdevice"));
-                    $("div#network_table").find("input[id^='nd__" + cur_el.attr("id").split("__")[1] + "__new__devname']").attr("value", "");
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    } else {
-        // delete
-        $.ajax({
-            url  : "{% url network:delete_netdevice %}",
-            data : create_dict($("div#network_table"), cur_el.attr("id")),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    // remove all peers
-                    $(xml).find("response peers peer_information").each(function() {
-                        remove_peer_lines($(this).attr("pk"));
-                    });
-                    remove_netdevice_line(cur_dev, cur_el);
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    };
-};
-
-function create_delete_new_net_ip(event) {
-    var cur_el = $(event.target);
-    var cur_dev = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "']");
-    var cur_nd = DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "__" + cur_el.attr("id").split("__")[2] + "']");
-    var cur_ip = DEVICE_NETWORKS.find("net_ip[pk='" + cur_el.attr("id").split("__")[4] + "']");
-    var lock_list = lock_elements($("div#network_table"));
-    if (cur_el.attr("id").match(/new$/)) {
-        // create element
-        $.ajax({
-            url  : "{% url network:create_net_ip %}",
-            data : create_dict($("div#network_table"), cur_el.attr("id")),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    inject_net_ip_line(cur_dev, $(xml).find("response values value net_ip"));
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    } else {
-        // delete
-        $.ajax({
-            url  : "{% url network:delete_net_ip %}",
-            data : create_dict($("div#network_table"), cur_el.attr("id")),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    remove_net_ip_line(cur_ip, cur_el);
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    };
-};
-
-function create_netspeed_element(id_str, cur_nd) {
-    var dummy_val = DEVICE_NETWORKS.find("netdevice_speeds netdevice_speed:first").attr("pk");
-    var sel_val = cur_nd === undefined ? dummy_val : cur_nd.attr("netdevice_speed");
-    var cur_el = $("<select>").attr({
-        "id"    : id_str,
-        "value" : sel_val
-    });
-    if (cur_nd !== undefined) {
-        cur_el.bind("change", function(event) {
-            submit_change($(event.target));
-        });
-    };
-    DEVICE_NETWORKS.find("netdevice_speeds netdevice_speed").each(function() {
-        var cur_ns = $(this);
-        var cur_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text());
-        if (cur_ns.attr("pk") == sel_val) cur_opt.attr("selected", "selected");
-        cur_el.append(cur_opt);
-    });
-    return cur_el;
-};
-
-function toggle_netdevice_line(line_prefix, state, line_spec) {
-    var dev_line = $("table#network_tree tr[id^='nd__" + line_prefix.split("__")[1] + "__']");
-    var nd_line = $("table#network_tree tr[id='" + line_prefix + "']");
-    var exp_line = $("table#network_tree tr[id^='" + line_prefix + "__" + line_spec + "']");
-    if (state) {
-        exp_line.show();
-        modify_rowspan(dev_line.find("td[id$='__devname']"), exp_line.length);
-    } else {
-        exp_line.hide();
-        modify_rowspan(dev_line.find("td[id$='__devname']"), -exp_line.length);
-    };
-};
-
-function add_net_ip_line(cur_dev, cur_nd, line_prefix, cur_ip) {
-    if (cur_ip === undefined) {
-        var ip_pk = "new";
-    } else {
-        var ip_pk = cur_ip.attr("pk");
-    };
-    var line_prefix = line_prefix + "__ip__" + ip_pk;
-    var ip_tr = $("<tr>").attr({
-        "id" : line_prefix
-    }).hide();
-    if (cur_nd) {
-        ip_tr.append($("<td>").attr({"colspan" : "9"}).append(
-            create_input_el(cur_ip, "ip", line_prefix, {label : "IP", callback : set_network_after_change, master_xml : DEVICE_NETWORKS})
-        ).append(
-            create_input_el(cur_ip, "network", line_prefix, {label : "NW", select_source : DEVICE_NETWORKS.find("network_list network"), callback : set_network_after_change, master_xml : DEVICE_NETWORKS})
-        ).append(
-            create_input_el(cur_ip, "alias", line_prefix, {label : "Alias", master_xml : DEVICE_NETWORKS})
-        ).append(
-            create_input_el(cur_ip, "alias_excl", line_prefix, {label : "Exclusive", boolean : true, master_xml : DEVICE_NETWORKS})
-        ).append(
-           $("<input>").attr({
-               "type"  : "button",
-               "value" : ip_pk == "new" ? "create" : "delete",
-               "id"    : line_prefix
-            }).bind("click", create_delete_new_net_ip)
-        ));
-    };
-    return ip_tr;
-};
-
-function add_netdevice_line(cur_dev, cur_nd) {
-    dummy_div = $("<div>");
-    if (cur_nd === undefined) {
-        var nd_pk = "new";
-    } else {
-        var nd_pk = cur_nd.attr("pk");
-    };
-    var line_prefix = "nd__" + cur_dev.attr("pk") + "__" + nd_pk;
-    if (FIRST_NETDEVICE_LINE) {
-        FIRST_NETDEVICE_LINE = false;
-        var cur_tr = $("<tr>").attr({
-            "id"    : line_prefix,
-            "class" : "ui-widget ui-widget-header"
-        });
-        var num_nds = cur_dev.find("netdevices netdevice").length;
-        cur_tr.append($("<td>").attr({
-            "id"      : line_prefix + "__devname",
-            "rowspan" : num_nds + 1}).text(cur_dev.attr("name")));
-    } else {
-        var cur_tr = $("<tr>").attr({
-            "id"    : line_prefix,
-            "class" : "ui-widget ui-widget-header"
-        });
-    };
-    // hardware line
-    hw_tr = $("<tr>").attr({
-        "id" : line_prefix + "__hw"
-    }).hide();
-    hw_tr.append(
-        $("<td>").attr({"colspan" : "9"}).append(
-            create_input_el(cur_nd, "driver", line_prefix, {label : "driver", master_xml : DEVICE_NETWORKS})
-        ).append(
-            create_input_el(cur_nd, "driver_options", line_prefix, {label : "driver_options", master_xml : DEVICE_NETWORKS})
-        ).append(
-            create_input_el(cur_nd, "ethtool_autoneg", line_prefix, {"select_source" : DEVICE_NETWORKS.find("ethtool_autoneg"), "label" : "autonegotiation", master_xml : DEVICE_NETWORKS})
-        ).append(
-            create_input_el(cur_nd, "ethtool_duplex", line_prefix, {"select_source" : DEVICE_NETWORKS.find("ethtool_duplex"), label : "duplex", master_xml : DEVICE_NETWORKS})
-        ).append(
-            create_input_el(cur_nd, "ethtool_speed", line_prefix, {"select_source" : DEVICE_NETWORKS.find("ethtool_speed"), label : "speed", master_xml : DEVICE_NETWORKS})
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @DEVICE_NETWORKS = $(xml)
+                    @draw_network_table()
+                    @reload_hopcount_info()
+                    @init_copy_widget()
+    draw_network_table: =>
+        new_table = $("<table>").attr({"id" : "network_tree"})
+        @DEVICE_NETWORKS.find("device").each (idx, cur_dev) =>
+            new_table.append(@draw_device_networks($(cur_dev)).children())
+        @top_div.children().remove()
+        @top_div.append(new_table)
+        @new_table = new_table
+        #new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
+    draw_device_networks: (cur_dev) =>
+        # init global flag
+        @FIRST_NETDEVICE_LINE = true
+        dummy_div = $("<div>")
+        dummy_div.append(@add_netdevice_line(cur_dev).children())
+        cur_dev.find("netdevices netdevice").each (idx, cur_nd) =>
+            dummy_div.append(@add_netdevice_line(cur_dev, $(cur_nd)).children())
+        return dummy_div
+    add_netdevice_line: (cur_dev, cur_nd) =>
+        dummy_div = $("<div>")
+        nd_pk = if cur_nd then cur_nd.attr("pk") else "new"
+        line_prefix = "nd__" + cur_dev.attr("pk") + "__#{nd_pk}"
+        if @FIRST_NETDEVICE_LINE
+            @FIRST_NETDEVICE_LINE = false
+            cur_tr = $("<tr>").attr({
+                "id"    : line_prefix,
+                "class" : "ui-widget ui-widget-header"
+            })
+            num_nds = cur_dev.find("netdevices netdevice").length
+            cur_tr.append($("<td>").attr({
+                "id"      : "#{line_prefix}__devname",
+                "rowspan" : num_nds + 1}).text(cur_dev.attr("name")));
+        else
+            cur_tr = $("<tr>").attr({
+                "id"    : line_prefix,
+                "class" : "ui-widget ui-widget-header"
+            })
+        # hardware line
+        hw_tr = $("<tr>").attr({
+            "id" : "#{line_prefix}__hw"
+        }).hide()
+        hw_tr.append(
+            $("<td>").attr({"colspan" : "9"}).append(
+                create_input_el(cur_nd, "driver", line_prefix, {label : "driver", master_xml : @DEVICE_NETWORKS})
+            ).append(
+                create_input_el(cur_nd, "driver_options", line_prefix, {label : "driver_options", master_xml : @DEVICE_NETWORKS})
+            ).append(
+                create_input_el(cur_nd, "ethtool_autoneg", line_prefix, {"select_source" : @DEVICE_NETWORKS.find("ethtool_autoneg"), "label" : "autonegotiation", master_xml : @DEVICE_NETWORKS})
+            ).append(
+                create_input_el(cur_nd, "ethtool_duplex", line_prefix, {"select_source" : @DEVICE_NETWORKS.find("ethtool_duplex"), label : "duplex", master_xml : @DEVICE_NETWORKS})
+            ).append(
+                create_input_el(cur_nd, "ethtool_speed", line_prefix, {"select_source" : @DEVICE_NETWORKS.find("ethtool_speed"), label : "speed", master_xml : @DEVICE_NETWORKS})
+            )
         )
-    );
-    // MAC line
-    mac_tr = $("<tr>").attr({
-        "id" : line_prefix + "__mac"
-    }).hide();
-    mac_tr.append(
-        $("<td>").attr({"colspan" : "9"}).append(
-            create_input_el(cur_nd, "macaddr", line_prefix, {label : "MAC address", new_default : DUMMY_MAC, master_xml : DEVICE_NETWORKS})
-        ).append(
-            create_input_el(cur_nd, "fake_macaddr", line_prefix, {label : "fake MAC address", new_default : DUMMY_MAC, master_xml : DEVICE_NETWORKS})
-        ).append(
-            create_input_el(cur_nd, "dhcp_device", line_prefix, {label : "force write DHCP address", "boolean" : true, master_xml : DEVICE_NETWORKS})
+        # MAC line
+        mac_tr = $("<tr>").attr({
+            "id" : "#{line_prefix}__mac"
+        }).hide()
+        mac_tr.append(
+            $("<td>").attr({"colspan" : "9"}).append(
+                create_input_el(cur_nd, "macaddr", line_prefix, {label : "MAC address", new_default : @DUMMY_MAC, master_xml : @DEVICE_NETWORKS})
+            ).append(
+                create_input_el(cur_nd, "fake_macaddr", line_prefix, {label : "fake MAC address", new_default : @DUMMY_MAC, master_xml : @DEVICE_NETWORKS})
+            ).append(
+                create_input_el(cur_nd, "dhcp_device", line_prefix, {label : "force write DHCP address", "boolean" : true, master_xml : @DEVICE_NETWORKS})
+            )
         )
-    );
-    cur_tr.append(
-        $("<td>").append(
-        $("<input>").attr({
-            "type"  : "text",
-            "id"    : line_prefix + "__devname",
-            "value" : nd_pk == "new" ? "" : cur_nd.attr("devname")
-        })).append($("<span>").attr({
-            "id"    : line_prefix + "__devinfo"
+        cur_tr.append(
+            $("<td>").append(
+                $("<input>").attr({
+                    "type"  : "text",
+                    "id"    : "#{line_prefix}__devname",
+                    "value" : if nd_pk == "new" then "" else cur_nd.attr("devname")
+                })).append($("<span>").attr({
+                    "id"    : "#{line_prefix}__devinfo"
+                })
+            )
+        )
+        if nd_pk == "new"
+            cur_tr.find("td:last input").bind("click", @fill_new_netdevice_name)
+        else
+            cur_tr.find("td:last input").bind("change", (event) ->
+                submit_change($(event.target), @update_network_device_type_string)
+            )
+        # expand flags
+        cur_tr.append(get_expand_td(line_prefix, "hw", undefined, @toggle_netdevice_line))
+        cur_tr.append(get_expand_td(line_prefix, "mac", undefined, @toggle_netdevice_line))
+        if nd_pk == "new"
+            cur_tr.append($("<td>").text("---"))
+            cur_tr.append($("<td>").text("---"))
+        else
+            # IP
+            cur_tr.append(get_expand_td(line_prefix, "ip", undefined, @toggle_netdevice_line))
+            cur_tr.append(get_expand_td(line_prefix, "routing", undefined, @toggle_netdevice_line))
+        # description
+        cur_tr.append(
+            $("<td>").append(
+               $("<input>").attr({
+                   "type"  : "text",
+                   "id"    : "#{line_prefix}__description",
+                   "value" : if nd_pk == "new" then "" else cur_nd.attr("description")
+               })
+            )
+        )
+        if nd_pk != "new"
+            cur_tr.find("td:last input").bind("change", (event) ->
+                submit_change($(event.target))
+            )
+        # vlan_id
+        cur_tr.append(
+            $("<td>").append(
+                $("<input>").attr({
+                    # HTML5 type
+                    "type"  : "number",
+                    "id"    : "#{line_prefix}__vlan_id",
+                    "value" : if nd_pk == "new" then "0" else cur_nd.attr("vlan_id")
+                })
+            )
+        )
+        if nd_pk != "new"
+            cur_tr.find("td:last input").bind("change", (event) ->
+                submit_change($(event.target))
+            )
+        if nd_pk != "new"
+            @update_network_device_type_string(cur_tr.find("td:last input"))
+        cur_tr.append(
+            $("<td>").append(
+                $("<input>").attr({
+                    "type"  : "button",
+                    "value" : if nd_pk == "new" then "create" else "delete",
+                    "id"    : line_prefix
+                }).bind("click", @create_delete_new_netdevice)
+            )
+        )
+        cur_tr.append(
+            $("<td>").append(
+                @create_netspeed_element("#{line_prefix}__netdevice_speed", cur_nd)
+            )
+        )
+        dummy_div.append(cur_tr)
+        dummy_div.append(hw_tr)
+        dummy_div.append(mac_tr)
+        # IP tr
+        dummy_div.append(@add_net_ip_line(cur_dev, cur_nd, line_prefix, undefined));
+        # add present net_ip lines
+        if cur_nd
+            cur_nd.find("net_ip").each (ip_idx, cur_ip) =>
+                dummy_div.append(@add_net_ip_line(cur_dev, cur_nd, line_prefix, $(cur_ip)))
+            # routing tr
+            route_tr_base = $("<tr>").attr({
+                "id" : "#{line_prefix}__routing__base"
+            }).hide()
+            route_tr_base.append($("<td>").attr({"colspan" : "9"}).append(
+                create_input_el(cur_nd, "routing", line_prefix, {label : "Routing", boolean : true, callback : @redraw_possible_peers, master_xml : @DEVICE_NETWORKS})
+            ).append(
+                create_input_el(cur_nd, "penalty", line_prefix, {label : "Penalty", number: true, master_xml : @DEVICE_NETWORKS})
+            ))
+            route_tr_add = $("<tr>").attr({
+                "id" : "#{line_prefix}__routing__add"
+            }).hide()
+            route_td = $("<td>").attr({"colspan" : "9"})
+            route_tr_add.append(route_td)
+            route_td.append(
+                $("<span>").text("add new peer: ")
+            ).append($("<span>").attr({"id" : "#{line_prefix}__routing__new_peer"})
+            ).append($("<span>").text(" with penalty ")
+            ).append(
+                $("<input>").attr({
+                    "id"    : "#{line_prefix}__routing__new_peer__penalty",
+                    "type"  : "number",
+                    "value" : "1"})
+            )
+            @add_valid_peers(line_prefix, route_td)
+            dummy_div.append(route_tr_base)
+            dummy_div.append(route_tr_add)
+            cur_nd.find("peer_information").each (p_idx, cur_peer) =>
+                dummy_div.append(@create_peer_line(cur_nd, $(cur_peer), "#{line_prefix}__routing"));
+        return dummy_div
+    create_delete_new_netdevice: (event) =>
+        cur_el = $(event.target)
+        cur_dev = @DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "']")
+        lock_list = lock_elements(@new_table)
+        if cur_el.attr("id").match(/new$/)
+            # create element
+            $.ajax
+                url     : "{% url network:create_netdevice %}"
+                data    : create_dict(@new_table, cur_el.attr("id"))
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @inject_netdevice_line(cur_dev, $(xml).find("response values value netdevice"));
+                        $("div#network_table").find("input[id^='nd__" + cur_el.attr("id").split("__")[1] + "__new__devname']").attr("value", "")
+                    unlock_elements(lock_list)
+        else
+            # delete
+            $.ajax
+                url     : "{% url network:delete_netdevice %}"
+                data    : create_dict(@new_table, cur_el.attr("id"))
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        # remove all peers
+                        $(xml).find("response peers peer_information").each (p_idx, d_peer) =>
+                            @remove_peer_lines($(d_peer).attr("pk"))
+                        @remove_netdevice_line(cur_dev, cur_el)
+                    unlock_elements(lock_list)
+    remove_netdevice_line: (cur_dev, delete_button) =>
+        cur_tr = @new_table.find("tr[id='" + delete_button.attr("id") + "']")
+        name_td = @new_table.find("td[id='nd__" + delete_button.attr("id").split("__")[1] + "__new__devname']")
+        @new_table.find("tr[id^='nd__" + delete_button.attr("id").split("__")[1] + "__" + delete_button.attr("id").split("__")[2] + "']").each (idx, cur_tr) =>
+            cur_tr = $(cur_tr)
+            if cur_tr.is(":visible")
+                @modify_rowspan(name_td, -1)
+            cur_tr.remove()
+    inject_netdevice_line: (cur_dev, new_nd) =>
+        # add new_nd to DEVICE_NETWORKS
+        @DEVICE_NETWORKS.find("device[pk='" + new_nd.attr("device") + "'] netdevices").append(new_nd)
+        @FIRST_NETDEVICE_LINE = false;
+        header_tr = $("div#network_table tr[id='nd__" + cur_dev.attr("pk") + "__new']")
+        header_tr.next().next().after(
+            @add_netdevice_line(cur_dev, new_nd).children()
+        )
+        @modify_rowspan(header_tr.find("td[id$='__devname']"), 1)
+    fill_new_netdevice_name: (event) =>
+        cur_el = $(event.target)
+        cur_val = cur_el.attr("value")
+        if not cur_val
+            used_dev_names = ($(dn_el).attr("value") for dn_el in @new_table.find("tr[id^='nd__" + cur_el.attr("id").split("__")[1] + "__'] input[id$='__devname']"))
+            if "lo" not in used_dev_names
+                cur_el.attr("value", "lo")
+            else if "eth0" not in used_dev_names
+                cur_el.attr("value", "eth0")
+            else
+                cur_el.attr("value", "ib0")
+    create_netspeed_element: (id_str, cur_nd) =>
+        dummy_val = @DEVICE_NETWORKS.find("netdevice_speeds netdevice_speed:first").attr("pk")
+        sel_val = if cur_nd then cur_nd.attr("netdevice_speed") else dummy_val
+        cur_el = $("<select>").attr({
+            "id"    : id_str,
+            "value" : sel_val
         })
-    ));
-    if (nd_pk == "new") {
-        cur_tr.find("td:last input").bind("click", fill_new_netdevice_name);
-    } else {
-        cur_tr.find("td:last input").bind("change", function(event) {
-            submit_change($(event.target), update_network_device_type_string);
-        })
-    };
-    // expand flags
-    cur_tr.append(get_expand_td(line_prefix, "hw", undefined, toggle_netdevice_line));
-    cur_tr.append(get_expand_td(line_prefix, "mac", undefined, toggle_netdevice_line));
-    if (nd_pk == "new"){
-        cur_tr.append($("<td>").text("---"));
-        cur_tr.append($("<td>").text("---"));
-    } else {
-        // IP
-        cur_tr.append(get_expand_td(line_prefix, "ip", undefined, toggle_netdevice_line));
-        cur_tr.append(get_expand_td(line_prefix, "routing", undefined, toggle_netdevice_line));
-    };
-    // description
-    cur_tr.append(
-        $("<td>").append(
-        $("<input>").attr({
-            "type"  : "text",
-            "id"    : line_prefix + "__description",
-            "value" : nd_pk == "new" ? "" : cur_nd.attr("description")
-        })
-    ));
-    if (nd_pk != "new") {
-        cur_tr.find("td:last input").bind("change", function(event) {
-            submit_change($(event.target));
-        })
-    };
-    // vlan_id
-    cur_tr.append(
-        $("<td>").append(
-        $("<input>").attr({
-            // HTML5 type
-            "type"  : "number",
-            "id"    : line_prefix + "__vlan_id",
-            "value" : nd_pk == "new" ? "0" : cur_nd.attr("vlan_id")
-        })
-    ));
-    if (nd_pk != "new") {
-        cur_tr.find("td:last input").bind("change", function(event) {
-            submit_change($(event.target));
-        })
-    };
-    if (nd_pk != "new") {
-        update_network_device_type_string(cur_tr.find("td:last input"));
-    };
-    cur_tr.append(
-        $("<td>").append(
-        $("<input>").attr({
-            "type"  : "button",
-            "value" : nd_pk == "new" ? "create" : "delete",
-            "id"    : line_prefix
-        }).bind("click", create_delete_new_netdevice)
-    ));
-    cur_tr.append(
-        $("<td>").append(
-        create_netspeed_element(line_prefix + "__netdevice_speed", cur_nd)));
-    dummy_div.append(cur_tr);
-    dummy_div.append(hw_tr);
-    dummy_div.append(mac_tr);
-    // IP tr
-    dummy_div.append(add_net_ip_line(cur_dev, cur_nd, line_prefix, undefined));
-    // add present net_ip lines
-    if (cur_nd !== undefined) {
-        cur_nd.find("net_ip").each(function() {
-            var cur_ip = $(this);
-            dummy_div.append(add_net_ip_line(cur_dev, cur_nd, line_prefix, cur_ip));
-        });
-        // routing tr
-        var route_tr_base = $("<tr>").attr({
-            "id" : line_prefix + "__routing__base"
-        }).hide();
-        route_tr_base.append($("<td>").attr({"colspan" : "9"}).append(
-            create_input_el(cur_nd, "routing", line_prefix, {label : "Routing", boolean : true, callback : redraw_possible_peers, master_xml : DEVICE_NETWORKS})
-        ).append(
-            create_input_el(cur_nd, "penalty", line_prefix, {label : "Penalty", number: true, master_xml : DEVICE_NETWORKS})
-        ));
-        var route_tr_add = $("<tr>").attr({
-            "id" : line_prefix + "__routing__add"
-        }).hide();
-        var route_td = $("<td>").attr({"colspan" : "9"});
-        route_tr_add.append(route_td);
-        route_td.append(
-            $("<span>").text("add new peer: ")
-        ).append($("<span>").attr({"id" : line_prefix + "__routing__new_peer"})
-        ).append($("<span>").text(" with penalty ")
-        ).append(
-            $("<input>").attr({
-                "id"    : line_prefix + "__routing__new_peer__penalty",
-                "type"  : "number",
-                "value" : "1"})
-        );
-        add_valid_peers(line_prefix, route_td);
-        dummy_div.append(route_tr_base);
-        dummy_div.append(route_tr_add);
-        cur_nd.find("peer_information").each(function() {
-            var cur_peer = $(this);
-            dummy_div.append(create_peer_line(cur_nd, cur_peer, line_prefix + "__routing"));
-        });
-    };
-    return dummy_div;
-};
-
-function draw_device_networks(cur_dev) {
-    // init global flag
-    FIRST_NETDEVICE_LINE = true;
-    var dummy_div = $("<div>");
-    dummy_div.append(add_netdevice_line(cur_dev).children());
-    cur_dev.find("netdevices netdevice").each(function() {
-        dummy_div.append(add_netdevice_line(cur_dev, $(this)).children());
-    });
-    return dummy_div;
-};
-
-function draw_network_table() {
-    $("div#network_table").children().remove();
-    new_table = $("<table>").attr({"id" : "network_tree"});
-    DEVICE_NETWORKS.find("device").each(function() {
-        new_table.append(draw_device_networks($(this)).children());
-    });
-    $("div#network_table").append(new_table);
-    new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
-};
-
-function reload_network_tree() {
-    $.ajax({
-        url     : "{% url network:get_network_tree %}",
-        error   : handle_ajax_error,
-        data    : {
-            "sel_list" : SELECTED_DEVICES
-        },
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                DEVICE_NETWORKS = $(xml);
-                draw_network_table();
-                reload_hopcount_info();
-                init_copy_widget();
-            }
-        }
-    });
-};
-
-function init_copy_widget() {
-    var c_w = $("select#network_copy");
-    c_w.children().remove();
-    c_w.append($("<option>").attr({"value" : "0"}).text("---"));
-    c_w.val("0");
-    DEVICE_NETWORKS.find("device").each(function() {
-        var cur_dev = $(this);
-        c_w.append($("<option>").attr({"value" : cur_dev.attr("pk")}).text(cur_dev.attr("name")));
-    });
-    c_w. off("change").on("change", copy_network);
-};
-
-function copy_network(event) {
-    cur_el = $(event.target);
-    var c_val = cur_el.val();
-    if (confirm("Overwrite all networks with the one from " + DEVICE_NETWORKS.find("device[pk='" + c_val + "']").attr("name") + " ?")) {
-        $.ajax({
-            url     : "{% url network:copy_network %}",
-            error   : handle_ajax_error,
-            data    : {
-                "source_dev" : c_val,
-                "all_devs"   : SELECTED_DEVICES
-            },
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    reload_network_tree();
+        if cur_nd
+            cur_el.bind("change", (event) ->
+                submit_change($(event.target))
+            )
+        @DEVICE_NETWORKS.find("netdevice_speeds netdevice_speed").each (s_idx, cur_ns) =>
+            cur_ns = $(cur_ns)
+            cur_opt = $("<option>").attr({"value" : cur_ns.attr("pk")}).text(cur_ns.text())
+            if cur_ns.attr("pk") == sel_val
+                cur_opt.attr("selected", "selected")
+            cur_el.append(cur_opt)
+        return cur_el;
+    update_network_device_type_string: (cur_el) =>
+        cur_nd = @DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "'] netdevice[pk='" + cur_el.attr("id").split("__")[2] + "']")
+        cur_el.parents("tr:first").find("span[id$='__devinfo']").text(@DEVICE_NETWORKS.find("network_device_type_list network_device_type[pk='" + cur_nd.attr("network_device_type") + "']").text())
+    add_net_ip_line: (cur_dev, cur_nd, line_prefix, cur_ip) =>
+        ip_pk = if cur_ip then cur_ip.attr("pk") else "new"
+        line_prefix = "#{line_prefix}__ip__#{ip_pk}"
+        ip_tr = $("<tr>").attr({
+            "id" : line_prefix
+        }).hide()
+        if cur_nd
+            ip_tr.append(
+                $("<td>").attr({"colspan" : "9"}).append(
+                    create_input_el(cur_ip, "ip", line_prefix, {label : "IP", callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS})
+                ).append(
+                    create_input_el(cur_ip, "network", line_prefix, {label : "NW", select_source : @DEVICE_NETWORKS.find("network_list network"), callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS})
+                ).append(
+                    create_input_el(cur_ip, "alias", line_prefix, {label : "Alias", master_xml : @DEVICE_NETWORKS})
+                ).append(
+                    create_input_el(cur_ip, "alias_excl", line_prefix, {label : "Exclusive", boolean : true, master_xml : @DEVICE_NETWORKS})
+                ).append(
+                    $("<input>").attr({
+                       "type"  : "button",
+                       "value" : if ip_pk == "new" then "create" else "delete",
+                       "id"    : line_prefix
+                    }).bind("click", @create_delete_new_net_ip)
+                )
+            )
+        return ip_tr
+    set_network_after_change: (cur_el) =>
+        # get xml_el
+        net_ip_xml = @DEVICE_NETWORKS.find("net_ip[pk='" + cur_el.attr("id").split("__")[4] + "']")
+        @new_table.find("select[id$='__ip__" + net_ip_xml.attr("pk") + "__network']").attr("value", net_ip_xml.attr("network"))
+    redraw_possible_peers: =>
+        $.ajax
+            url     : "{% url network:get_valid_peers %}"
+            error   : handle_ajax_error
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @DEVICE_NETWORKS.find("valid_peers").replaceWith($(xml).find("valid_peers"))
+                    @new_table.find("tr[id$='__routing__add']").each (idx, cur_tr) =>
+                        cur_tr = $(cur_tr)
+                        line_prefix = "nd__" + cur_tr.attr("id").split("__")[1] + "__" + cur_tr.attr("id").split("__")[2]
+                        @add_valid_peers(line_prefix, cur_tr)
+    add_valid_peers: (line_prefix, start_el) =>
+        if start_el
+            target_div = start_el.find("span[id='#{line_prefix}__routing__new_peer']")
+        else
+            target_div = $("div#network-table span[id='#{line_prefix}__routing__new_peer']")
+        if @DEVICE_NETWORKS.find("valid_peers valid_peer").length
+            peer_sel = $("<select>").attr({
+                "id"  : "#{line_prefix}__routing__new_peer"
+            }).bind("change", @create_new_peer)
+            peer_sel.append($("<option>").attr({"value" : "0", "selected" : "selected"}).text("---"))
+            @DEVICE_NETWORKS.find("valid_peers valid_peer").each (p_idx, new_peer) =>
+                new_peer = $(new_peer)
+                peer_sel.append($("<option>").attr({
+                    "value" : new_peer.attr("pk")
+                }).text(new_peer.text()))
+            target_div.html(peer_sel)
+        else
+            target_div.html($("<b>").text("no valid peers"))
+    create_peer_line: (cur_nd, cur_peer, line_prefix) =>
+        line_prefix = "#{line_prefix}__" + cur_peer.attr("pk")
+        new_tr = $("<tr>").attr({
+            "id" : line_prefix
+        }).hide()
+        new_tr.append(
+            $("<td>").attr({
+                "colspan" : "9"
+            }).append(
+                $("<span>").text("from " + cur_peer.attr("from_devname") + " [" + cur_peer.attr("from_penalty") + "] on " + cur_peer.attr("from_device"))
+            ).append(
+                $("<input>").attr({
+                    "id"    : "#{line_prefix}__penalty",
+                    "type"  : "number",
+                    "value" : cur_peer.attr("penalty")
+                })
+            ).bind("change", (event) ->
+                submit_change($(event.target))
+            ).append(
+                $("<span>").text("to " + cur_peer.attr("to_devname") + " [" + cur_peer.attr("to_penalty") + "] on " + cur_peer.attr("to_device"))
+            ).append(
+                $("<input>").attr({
+                    "id"    : line_prefix,
+                    "type"  : "button",
+                    "value" : "delete"
+                }).bind("click", @delete_peer)
+            )
+        )
+        return new_tr
+    delete_peer: (event) =>
+       peer_id = $(event.target).attr("id")
+       $.ajax
+           url     : "{% url network:delete_peer %}"
+           error   : handle_ajax_error
+           data    : {
+               "id" : peer_id
+           }
+           success : (xml) =>
+               if parse_xml_response(xml)
+                   # remove all peer lines
+                   @remove_peer_lines(peer_id.split("__")[4])
+    remove_peer_lines: (peer_pk) =>
+        @new_table.find("tr[id$='__routing__#{peer_pk}']").each (p_idx, peer_line) =>
+            peer_line = $(peer_line)
+            header_tr = @new_table.find("tr[id='nd__" + peer_line.attr("id").split("__")[1] + "__new']")
+            if peer_line.is(":visible")
+                @modify_rowspan(header_tr.find("td[id$='__devname']"), -1)
+            peer_line.remove()
+    create_new_peer: (event) =>
+        cur_sel = $(event.target)
+        new_p = parseInt(cur_sel.attr("value"))
+        if new_p
+            $.ajax
+                url     : "{% url network:create_new_peer %}"
+                error   : handle_ajax_error
+                data    : {
+                    "id"       : cur_sel.attr("id")
+                    "new_peer" : new_p
+                    "penalty"  : cur_sel.parents("tr:first").find("input[id^='" + cur_sel.attr("id") + "']").attr("value")
                 }
-            }
-        });
-    };
-    cur_el.val(0);
-};
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        $(xml).find("value[name='new_peer_information'] peer_information").each (p_idx, new_peer) =>
+                            new_peer = $(new_peer)
+                            @inject_peer(new_peer, "s_netdevice");
+                            if new_peer.attr("s_netdevice") != new_peer.attr("d_netdevice")
+                                @inject_peer(new_peer, "d_netdevice");
+        cur_sel.attr("value", "0")
+    inject_peer: (new_peer, attr_name) =>
+        cur_nd = @DEVICE_NETWORKS.find("netdevice[pk='" + new_peer.attr(attr_name) + "']")
+        cur_nd.find("peers").append(new_peer.clone())
+        line_prefix = "nd__" + cur_nd.attr("device") + "__" + cur_nd.attr("pk") + "__routing"
+        header_peer_line = $("div#network_table tr[id='#{line_prefix}__add']")
+        peer_line = @create_peer_line(cur_nd, new_peer, line_prefix)
+        header_peer_line.after(peer_line)
+        if header_peer_line.is(":visible")
+            peer_line.show();
+            @modify_rowspan($("div#network_table tr[id='nd__" + cur_nd.attr("device") + "__new'] td[id$='__devname']"), 1)
+    trigger_hopcount_rebuild: =>
+        $.ajax
+            url     : "{% url network:rebuild_hopcount %}"
+            error   : handle_ajax_error
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @reload_hopcount_info()
+    reload_hopcount_info: =>
+        $.ajax
+            url     : "{% url network:get_hopcount_state %}"
+            error   : handle_ajax_error
+            success : (xml) ->
+                if parse_xml_response(xml)
+                    $("span#hopcount_rebuild_info").text($(xml).find("value[name='response'] hopcount_state").attr("rebuild_info"))
+    init_copy_widget: =>
+        c_w = $("select#network_copy")
+        c_w.children().remove()
+        c_w.append($("<option>").attr({"value" : "0"}).text("---"))
+        c_w.val("0")
+        @DEVICE_NETWORKS.find("device").each (dev_idx, cur_dev) =>
+            cur_dev = $(cur_dev)
+            c_w.append($("<option>").attr({"value" : cur_dev.attr("pk")}).text(cur_dev.attr("name")))
+        c_w.off("change").on("change", @copy_network)
+    copy_network: (event) =>
+        cur_el = $(event.target)
+        c_val = cur_el.val()
+        if confirm("Overwrite all networks with the one from " + @DEVICE_NETWORKS.find("device[pk='#{c_val}']").attr("name") + " ?")
+            $.ajax
+                url     : "{% url network:copy_network %}"
+                error   : handle_ajax_error
+                data    : {
+                    "source_dev" : c_val
+                    "all_devs"   : @SELECTED_DEVICES
+                },
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @reload_network_tree()
+        cur_el.val(0)
+    toggle_netdevice_line: (line_prefix, state, line_spec) =>
+        dev_line = @new_table.find("tr[id^='nd__" + line_prefix.split("__")[1] + "__']")
+        nd_line = @new_table.find("tr[id='#{line_prefix}']")
+        exp_line = @new_table.find("tr[id^='#{line_prefix}__#{line_spec}']")
+        if state
+            exp_line.show()
+            @modify_rowspan(dev_line.find("td[id$='__devname']"), exp_line.length)
+        else
+            exp_line.hide()
+            @modify_rowspan(dev_line.find("td[id$='__devname']"), -exp_line.length)
+    create_delete_new_net_ip: (event) =>
+        cur_el = $(event.target)
+        cur_dev = @DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "']")
+        cur_nd = @DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "__" + cur_el.attr("id").split("__")[2] + "']")
+        cur_ip = @DEVICE_NETWORKS.find("net_ip[pk='" + cur_el.attr("id").split("__")[4] + "']")
+        lock_list = lock_elements(@new_table)
+        if cur_el.attr("id").match(/new$/)
+            # create element
+            $.ajax
+                url     : "{% url network:create_net_ip %}"
+                data    : create_dict(@new_table, cur_el.attr("id")),
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @inject_net_ip_line(cur_dev, $(xml).find("response values value net_ip"))
+                    unlock_elements(lock_list)
+        else
+            # delete
+            $.ajax
+                url     : "{% url network:delete_net_ip %}"
+                data    : create_dict(@new_table, cur_el.attr("id"))
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @remove_net_ip_line(cur_ip, cur_el)
+                    unlock_elements(lock_list)
+    inject_net_ip_line: (cur_dev, new_ip) =>
+        # add new_nd to DEVICE_NETWORKS
+        cur_nd = @DEVICE_NETWORKS.find("netdevice[pk='" + new_ip.attr("netdevice") + "']")
+        cur_dev = @DEVICE_NETWORKS.find("device[pk='" + cur_nd.attr("device") + "']")
+        cur_nd.find("netips").append(new_ip)
+        line_prefix = "nd__" + cur_dev.attr("pk") + "__" + cur_nd.attr("pk")
+        @FIRST_NETDEVICE_LINE = false
+        header_tr = @new_table.find("tr[id='#{line_prefix}__ip__new']")
+        new_line = @add_net_ip_line(cur_dev, cur_nd, line_prefix, new_ip)
+        header_tr.after(new_line)
+        new_line.show()
+        @modify_rowspan($("div#network_table td[id='nd__" + cur_dev.attr("pk") + "__new__devname']"), 1)
+    remove_net_ip_line: (cur_ip, delete_button) =>
+        name_td = @new_table.find("td[id='nd__" + delete_button.attr("id").split("__")[1] + "__new__devname']")
+        ip_tr = delete_button.parents("tr:first")
+        if ip_tr.is(":visible")
+            @modify_rowspan(name_td, -1)
+        ip_tr.remove()
+    modify_rowspan: (cur_el, diff) =>
+        cur_el.attr({"rowspan" : parseInt(cur_el.attr("rowspan")) + diff})
 
-function trigger_hopcount_rebuild() {
-    $.ajax({
-        url     : "{% url network:rebuild_hopcount %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                reload_hopcount_info();
-            }
-        }
-    });
-};
+add_dnet_handlers = ->
+    net_t = new network_table($("div#network_table"))
+    install_devsel_link(net_t.use_devs, true)
+    $(document).everyTime(10000, (i) -> net_t.reload_hopcount_info())
 
-function reload_hopcount_info() {
-    $.ajax({
-        url     : "{% url network:get_hopcount_state %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                $("span#hopcount_rebuild_info").text($(xml).find("value[name='response'] hopcount_state").attr("rebuild_info"));
-            }
-        }
-    });
-};
+$(document).ready(add_dnet_handlers)
 
-function use_devs(dt_div) {
-    SELECTED_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
-        return(value.data.key);
-    });
-    reload_network_tree();
-};
-
-function add_dnet_handlers() {
-    install_devsel_link(use_devs, true);
-    $(document).everyTime(10000, function(i) { reload_hopcount_info(); });
-};
-
-$(document).ready(add_dnet_handlers);
+{% endinlinecoffeescript %}
 
 </script>
 
