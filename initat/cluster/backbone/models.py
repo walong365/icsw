@@ -1658,11 +1658,17 @@ def netdevice_pre_save(sender, **kwargs):
         dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
                              re.compile("^%s$" % (":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
         # set empty if not set
-        if not cur_inst.macaddr.strip() or int(cur_inst.macaddr.replace(":", ""), 16) == 0:
-            cur_inst.macaddr = dummy_mac
+        try:
+            if not cur_inst.macaddr.strip() or int(cur_inst.macaddr.replace(":", ""), 16) == 0:
+                cur_inst.macaddr = dummy_mac
+        except:
+            raise ValidationError("MACaddress has illegal format")
         # set empty if not set
-        if not cur_inst.fake_macaddr.strip() or int(cur_inst.fake_macaddr.replace(":", ""), 16) == 0:
-            cur_inst.fake_macaddr = dummy_mac
+        try:
+            if not cur_inst.fake_macaddr.strip() or int(cur_inst.fake_macaddr.replace(":", ""), 16) == 0:
+                cur_inst.fake_macaddr = dummy_mac
+        except:
+            raise ValidationError("fake MACaddress has illegal format")
         if not mac_re.match(cur_inst.macaddr):
             raise ValidationError("MACaddress has illegal format")
         if not mac_re.match(cur_inst.fake_macaddr):
