@@ -2744,8 +2744,8 @@ class peer_information(models.Model):
             to_devname=self.d_netdevice.devname,
             from_device=self.s_netdevice.device.name,
             to_device=self.d_netdevice.device.name,
-            s_netdevice_id="%d" % (self.s_netdevice_id),
-            d_netdevice_id="%d" % (self.d_netdevice_id),
+            s_netdevice="%d" % (self.s_netdevice_id),
+            d_netdevice="%d" % (self.d_netdevice_id),
             from_penalty="%d" % (self.s_netdevice.penalty),
             to_penalty="%d" % (self.d_netdevice.penalty),
             penalty="%d" % (self.penalty or 1)
