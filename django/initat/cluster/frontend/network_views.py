@@ -187,7 +187,9 @@ def get_network_tree(request):
     dev_list = E.devices()
     for cur_dev in device.objects.filter(Q(pk__in=dev_pk_list)).select_related(
         "device_group",
-        "device_type").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").order_by("device_group__name", "name"):
+        "device_type").prefetch_related(
+            "netdevice_set",
+            "netdevice_set__net_ip_set").order_by("device_group__name", "name"):
         dev_list.append(cur_dev.get_xml())
     # now handled via fixtures
     xml_resp.extend(
@@ -199,7 +201,7 @@ def get_network_tree(request):
                 *[E.network_device_type(unicode(cur_ndt), pk="%d" % (cur_ndt.pk)) for cur_ndt in network_device_type.objects.all()]),
             # networks
             E.network_list(
-                *[cur_nw.get_xml() for cur_nw in network.objects.all().select_related("network_type").order_by("name")]
+                *[cur_nw.get_xml() for cur_nw in network.objects.all().select_related("network_type").prefetch_related("network_device_type").order_by("name")]
             ),
             # ethtool options
             E.ethtool_autoneg_list(
@@ -255,13 +257,23 @@ def rebuild_hopcount(request):
     return request.xml_response.create_response()
 
 def _get_valid_peers():
+    routing_nds = netdevice.objects.filter(Q(routing=True)).order_by(
+        "device__name",
+        "devname").prefetch_related("net_ip_set").select_related("device")
+    peer_dict = dict([(cur_nd.pk, 0) for cur_nd in routing_nds])
+    for s_nd, d_nd in peer_information.objects.all().values_list("s_netdevice", "d_netdevice"):
+        if s_nd in peer_dict:
+            peer_dict[s_nd] += 1
+        if d_nd in peer_dict:
+            peer_dict[d_nd] += 1
     return E.valid_peers(
-        *[E.valid_peer("%s [%d] on %s (%s)" % (
+        *[E.valid_peer("%s [%s, pen %d] on %s (%s)" % (
             cur_p.devname,
+            logging_tools.get_plural("peer", peer_dict.get(cur_p.pk, 0)),
             cur_p.penalty or 1,
             cur_p.device.name,
             ", ".join([cur_ip.ip for cur_ip in cur_p.net_ip_set.all()]) or "no IPs"), pk="%d" % (cur_p.pk))
-          for cur_p in netdevice.objects.filter(Q(routing=True)).order_by("device__name", "devname").prefetch_related("net_ip_set").select_related("device")]
+          for cur_p in routing_nds]
     )
 
 @login_required
@@ -293,16 +305,16 @@ def copy_network(request):
         for peer_info in peer_information.objects.filter(Q(s_netdevice__in=src_nds) | Q(d_netdevice__in=src_nds)):
             s_local, d_local = (peer_info.s_netdevice_id in src_nds,
                                 peer_info.d_netdevice_id in src_nds)
+            print "*", s_local, d_local
             if s_local and d_local:
                 if peer_info.s_netdevice_id != peer_info.d_netdevice_id:
                     request.log("host peering detection, not handled", logging_tools.LOG_LEVEL_CRITICAL)
                 else:
-                    peer_dict[peer_info.s_netdevice_id] = (None, peer_info.penalty)
+                    peer_dict.setdefault(peer_info.s_netdevice_id, []).append((None, peer_info.penalty))
             elif s_local:
-                peer_dict[peer_info.s_netdevice_id] = (peer_info.d_netdevice, peer_info.penalty)
+                peer_dict.setdefault(peer_info.s_netdevice_id, []).append((peer_info.d_netdevice, peer_info.penalty))
             else:
-                peer_dict[peer_info.d_netdevice_id] = (peer_info.s_netdevice, peer_info.penalty)
-        pprint.pprint(peer_dict)
+                peer_dict.setdefault(peer_info.d_netdevice_id, []).append((peer_info.s_netdevice, peer_info.penalty))
         for target_num, target_dev in enumerate(target_devs):
             offset = target_num + 1
             request.log("operating on %s, offset is %d" % (unicode(target_dev), offset))
@@ -347,19 +359,19 @@ def copy_network(request):
                     new_ip.save()
                 # peering
                 if cur_nd.pk in peer_dict:
-                    target_nd, penalty = peer_dict[cur_nd.pk]
-                    if target_nd == None:
-                        # local peer
-                        peer_information(
-                            s_netdevice=new_nd,
-                            d_netdevice=new_nd,
-                            penalty=penalty).save()
-                    else:
-                        # remote peer
-                        peer_information(
-                            s_netdevice=new_nd,
-                            d_netdevice=target_nd,
-                            penalty=penalty).save()
+                    for target_nd, penalty in peer_dict[cur_nd.pk]:
+                        if target_nd == None:
+                            # local peer
+                            peer_information(
+                                s_netdevice=new_nd,
+                                d_netdevice=new_nd,
+                                penalty=penalty).save()
+                        else:
+                            # remote peer
+                            peer_information(
+                                s_netdevice=new_nd,
+                                d_netdevice=target_nd,
+                                penalty=penalty).save()
         request.log("copied network settings", xml=True)
     else:
         request.log("no target_devices", logging_tools.LOG_LEVEL_WARN, xml=True)
