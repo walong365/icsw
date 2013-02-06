@@ -745,9 +745,11 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
     dummy_div.append(new_el);
     if (kwargs && kwargs.draw_result_cb) dummy_div = kwargs.draw_result_cb(xml_el, dummy_div);
     if (kwargs.enclose_td) {
-        // will not work when draw_result_cb or a label is used
-        var enc_td = $("<td>");
-        enc_td.append(new_el);
+        kwargs.enclose_tag = "<td>";
+    };
+    if (kwargs.enclose_tag) {
+        // will not work when draw_result_cb
+        var enc_td = $(kwargs.enclose_tag).append(dummy_div.children());
         dummy_div.append(enc_td);
     };
     return dummy_div.children();

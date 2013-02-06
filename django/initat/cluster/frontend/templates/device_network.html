@@ -156,41 +156,58 @@ class network_table
         dummy_div.append(cur_tr)
         dummy_div.append(hw_tr)
         dummy_div.append(mac_tr)
-        # IP tr
-        dummy_div.append(@add_net_ip_line(cur_dev, cur_nd, line_prefix, undefined));
+        # IP table
+        ip_table = $("<table>").attr("id" : "#{line_prefix}__ip")
+        ip_table.append(@create_net_ip_line(cur_dev, cur_nd, line_prefix, undefined))
+        ip_tr = $("<tr>").attr("id", "#{line_prefix}__ip").hide()
+        ip_tr.append($("<td>").attr("colspan", "9").append(ip_table))
+        dummy_div.append(ip_tr)
         # add present net_ip lines
         if cur_nd
             cur_nd.find("net_ip").each (ip_idx, cur_ip) =>
-                dummy_div.append(@add_net_ip_line(cur_dev, cur_nd, line_prefix, $(cur_ip)))
+                ip_table.append(@create_net_ip_line(cur_dev, cur_nd, line_prefix, $(cur_ip)))
             # routing tr
             route_tr_base = $("<tr>").attr({
                 "id" : "#{line_prefix}__routing__base"
-            }).hide()
-            route_tr_base.append($("<td>").attr({"colspan" : "9"}).append(
-                create_input_el(cur_nd, "routing", line_prefix, {label : "Routing", boolean : true, callback : @redraw_possible_peers, master_xml : @DEVICE_NETWORKS})
+            })
+            route_tr_base.append(
+                $("<td>").attr({"colspan" : "3"}).append(
+                    create_input_el(cur_nd, "routing", line_prefix, {label : "Routing capable: ", boolean : true, callback : @redraw_possible_peers, master_xml : @DEVICE_NETWORKS})
+                )
             ).append(
-                create_input_el(cur_nd, "penalty", line_prefix, {label : "Penalty", number: true, master_xml : @DEVICE_NETWORKS})
-            ))
+                create_input_el(cur_nd, "penalty", line_prefix, {label : "Penalty", number: true, master_xml : @DEVICE_NETWORKS, enclose_tag: "<td>"})
+            )
+            peer_table = $("<table>").attr("id" : "#{line_prefix}__routing")
             route_tr_add = $("<tr>").attr({
                 "id" : "#{line_prefix}__routing__add"
-            }).hide()
-            route_td = $("<td>").attr({"colspan" : "9"})
+            })
+            route_td = $("<th>").attr({"colspan" : "3"})
             route_tr_add.append(route_td)
             route_td.append(
                 $("<span>").text("add new peer: ")
-            ).append($("<span>").attr({"id" : "#{line_prefix}__routing__new_peer"})
-            ).append($("<span>").text(" with penalty ")
             ).append(
-                $("<input>").attr({
-                    "id"    : "#{line_prefix}__routing__new_peer__penalty",
-                    "type"  : "number",
-                    "value" : "1"})
+                $("<span>").attr({"id" : "#{line_prefix}__routing__new_peer"})
+            ).append(
+                $("<span>").text(" with")
+            )
+            route_tr_add.append(
+                $("<th>").append(
+                    $("<span>").text("penalty")
+                ).append(
+                    $("<input>").attr({
+                        "id"    : "#{line_prefix}__routing__new_peer__penalty",
+                        "type"  : "number",
+                        "value" : "1"})
+                )
             )
             @add_valid_peers(line_prefix, route_td)
-            dummy_div.append(route_tr_base)
-            dummy_div.append(route_tr_add)
+            peer_table.append(route_tr_base)
+            peer_table.append(route_tr_add)
             cur_nd.find("peer_information").each (p_idx, cur_peer) =>
-                dummy_div.append(@create_peer_line(cur_nd, $(cur_peer), "#{line_prefix}__routing"));
+                peer_table.append(@create_peer_line(cur_nd, $(cur_peer), "#{line_prefix}__routing"))
+            peer_tr = $("<tr>").attr("id", "#{line_prefix}__routing").hide()
+            peer_tr.append($("<td>").attr("colspan", "9").append(peer_table))
+            dummy_div.append(peer_tr)
         return dummy_div
     create_delete_new_netdevice: (event) =>
         cur_el = $(event.target)
@@ -311,8 +328,6 @@ class network_table
         @new_table.find("tr[id$='__routing__#{peer_pk}']").each (p_idx, peer_line) =>
             peer_line = $(peer_line)
             header_tr = @new_table.find("tr[id='nd__" + peer_line.attr("id").split("__")[1] + "__new']")
-            if peer_line.is(":visible")
-                @modify_rowspan(header_tr.find("th[id$='__devname']"), -1)
             peer_line.remove()
         @show_ip_peer_numbers()
     create_new_peer: (event) =>
@@ -342,15 +357,12 @@ class network_table
         header_peer_line = $("div#network_table tr[id='#{line_prefix}__add']")
         peer_line = @create_peer_line(cur_nd, new_peer, line_prefix)
         header_peer_line.after(peer_line)
-        if header_peer_line.is(":visible")
-            peer_line.show();
-            @modify_rowspan($("div#network_table tr[id='nd__" + cur_nd.attr("device") + "__new'] th[id$='__devname']"), 1)
         @show_ip_peer_numbers()
     create_peer_line: (cur_nd, cur_peer, line_prefix) =>
         line_prefix = "#{line_prefix}__" + cur_peer.attr("pk")
         new_tr = $("<tr>").attr({
             "id" : line_prefix
-        }).hide()
+        })
         if cur_nd.attr("pk") == cur_peer.attr("s_netdevice")
             sn = "from"
             dn = "to"
@@ -358,15 +370,21 @@ class network_table
             sn = "to"
             dn = "from"
         new_tr.append(
-            $("<td>").attr({
-                "colspan" : "9"
-            }).append(
+            $("<td>").append(
                 $("<span>").text("from " + cur_peer.attr("#{sn}_devname") + " [" + cur_peer.attr("#{sn}_penalty") + "] on " + cur_peer.attr("#{sn}_device"))
+            )
+        ).append(
+            $("<td>").append(
+                $("<span>").text("with penalty")
             ).append(
                 create_input_el(cur_peer, "penalty", line_prefix, {number: true, master_xml : @DEVICE_NETWORKS, min: 1, max: 4096})
-            ).append(
+            )
+        ).append(
+            $("<td>").append(
                 $("<span>").text("to " + cur_peer.attr("#{dn}_devname") + " [" + cur_peer.attr("#{dn}_penalty") + "] on " + cur_peer.attr("#{dn}_device"))
-            ).append(
+            )
+        ).append(
+            $("<td>").append(
                 $("<input>").attr({
                     "id"    : line_prefix,
                     "type"  : "button",
@@ -402,27 +420,28 @@ class network_table
                     if parse_xml_response(xml)
                         @remove_net_ip_line(cur_ip, cur_el)
                     unlock_elements(lock_list)
-    add_net_ip_line: (cur_dev, cur_nd, line_prefix, cur_ip) =>
+    create_net_ip_line: (cur_dev, cur_nd, line_prefix, cur_ip) =>
         ip_pk = if cur_ip then cur_ip.attr("pk") else "new"
         line_prefix = "#{line_prefix}__ip__#{ip_pk}"
         ip_tr = $("<tr>").attr({
             "id" : line_prefix
-        }).hide()
+        })
         if cur_nd
+            new_tag = if cur_ip then "<td>" else "<th>"
             ip_tr.append(
-                $("<td>").attr({"colspan" : "9"}).append(
-                    create_input_el(cur_ip, "ip", line_prefix, {label : "IP", callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS})
-                ).append(
-                    create_input_el(cur_ip, "network", line_prefix, {label : "NW", select_source : @DEVICE_NETWORKS.find("network_list network"), callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS})
-                ).append(
-                    create_input_el(cur_ip, "alias", line_prefix, {label : "Alias", master_xml : @DEVICE_NETWORKS})
-                ).append(
-                    create_input_el(cur_ip, "alias_excl", line_prefix, {label : "Exclusive", boolean : true, master_xml : @DEVICE_NETWORKS})
-                ).append(
+                create_input_el(cur_ip, "ip", line_prefix, {label : "IP", callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag})
+            ).append(
+                create_input_el(cur_ip, "network", line_prefix, {label : "NW", select_source : @DEVICE_NETWORKS.find("network_list network"), callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag})
+            ).append(
+                create_input_el(cur_ip, "alias", line_prefix, {label : "Alias", master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag})
+            ).append(
+                create_input_el(cur_ip, "alias_excl", line_prefix, {label : "Exclusive", boolean : true, master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag})
+            ).append(
+                $(new_tag).append(
                     $("<input>").attr({
-                       "type"  : "button",
-                       "value" : if ip_pk == "new" then "create" else "delete",
-                       "id"    : line_prefix
+                        "type"  : "button",
+                        "value" : if ip_pk == "new" then "create" else "delete",
+                        "id"    : line_prefix
                     }).bind("click", @create_delete_new_net_ip)
                 )
             )
@@ -435,16 +454,13 @@ class network_table
         line_prefix = "nd__" + cur_dev.attr("pk") + "__" + cur_nd.attr("pk")
         @FIRST_NETDEVICE_LINE = false
         header_tr = @new_table.find("tr[id='#{line_prefix}__ip__new']")
-        new_line = @add_net_ip_line(cur_dev, cur_nd, line_prefix, new_ip)
+        new_line = @create_net_ip_line(cur_dev, cur_nd, line_prefix, new_ip)
         header_tr.after(new_line)
         new_line.show()
-        @modify_rowspan($("div#network_table th[id='nd__" + cur_dev.attr("pk") + "__new__devname']"), 1)
         @show_ip_peer_numbers()
     remove_net_ip_line: (cur_ip, delete_button) =>
         name_td = @new_table.find("th[id='nd__" + delete_button.attr("id").split("__")[1] + "__new__devname']")
         ip_tr = delete_button.parents("tr:first")
-        if ip_tr.is(":visible")
-            @modify_rowspan(name_td, -1)
         ip_tr.remove()
         @show_ip_peer_numbers()
         
@@ -455,10 +471,24 @@ class network_table
             cur_nd = $(cur_nd)
             tr_prefix = "nd__#{cur_nd.attr('device')}__#{cur_nd.attr('pk')}"
             cur_tr = @new_table.find("tr[id='#{tr_prefix}']")
-            num_ip = @new_table.find("tr[id^='#{tr_prefix}__ip']").length - 1
+            # recolor
+            ip_lines = @new_table.find("tr[id^='#{tr_prefix}'] table[id='#{tr_prefix}__ip']")
+            ip_lines.find("tr").removeClass("even odd")
+            ip_lines.find("tr:even").addClass("even")
+            ip_lines.find("tr:odd").addClass("odd")
+            num_ip = ip_lines.find("tr").on("hover", @hover).length - 1
             cur_tr.find("span#" + tr_prefix + "__expand__ip__info").text(if num_ip then "ip (#{num_ip})" else "ip")
-            num_peer = @new_table.find("tr[id^='#{tr_prefix}__routing']").length - 2
+            peer_lines = @new_table.find("tr[id^='#{tr_prefix}'] table[id='#{tr_prefix}__routing']")
+            peer_lines.find("tr").removeClass("even odd")
+            peer_lines.find("tr:even").addClass("even")
+            peer_lines.find("tr:odd").addClass("odd")
+            num_peer = peer_lines.find("tr").on("hover", @hover).length - 2
             cur_tr.find("span#" + tr_prefix + "__expand__routing__info").text(if num_peer then "routing (#{num_peer})" else "routing")
+    hover: (event) =>
+        if event.type == "mouseenter"
+            $(event.target).parents("tr:first").addClass("highlight")
+        else
+            $(event.target).parents("tr:first").removeClass("highlight")
     create_netspeed_element: (id_str, cur_nd) =>
         dummy_val = @DEVICE_NETWORKS.find("netdevice_speeds netdevice_speed:first").attr("pk")
         sel_val = if cur_nd then cur_nd.attr("netdevice_speed") else dummy_val
@@ -493,10 +523,16 @@ class network_table
         exp_line = @new_table.find("tr[id^='#{line_prefix}__#{line_spec}']")
         if state
             exp_line.show()
-            @modify_rowspan(dev_line.find("th[id$='__devname']"), exp_line.length)
+            if line_spec in ["routing", "ip"]
+                @modify_rowspan(dev_line.find("th[id$='__devname']"), 1)
+            else
+                @modify_rowspan(dev_line.find("th[id$='__devname']"), exp_line.length)
         else
             exp_line.hide()
-            @modify_rowspan(dev_line.find("th[id$='__devname']"), -exp_line.length)
+            if line_spec in ["routing", "ip"]
+                @modify_rowspan(dev_line.find("th[id$='__devname']"), -1)
+            else
+                @modify_rowspan(dev_line.find("th[id$='__devname']"), -exp_line.length)
     
     # copy widget related calls
     
