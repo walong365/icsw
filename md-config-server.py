@@ -2484,7 +2484,7 @@ class build_process(threading_tools.process_obj):
                                             finally:
                                                 cur_special.cleanup()
                                     else:
-                                        sc_array = [special_commands.arg_template(None, s_check.get_description())]
+                                        sc_array = [special_commands.arg_template(s_check, s_check.get_description())]
                                         # contact_group is only written if contact_group is responsible for the host and the service_template
                                     serv_temp = serv_templates[s_check.get_template(act_def_serv.name)]
                                     serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
