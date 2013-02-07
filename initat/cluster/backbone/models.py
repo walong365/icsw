@@ -3099,7 +3099,7 @@ class user(models.Model):
             home_dir_created="1" if self.home_dir_created else "0",
         )
         if with_allowed_device_groups:
-            user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)]),
+            user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
         if with_permissions:
             user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(user__username=self.login))])
         else:
