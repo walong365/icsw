@@ -1966,9 +1966,12 @@ class config(models.Model):
             parent_config="%d" % (self.parent_config_id or 0),
         )
         if full:
+            r_xml.attrib["num_device_configs"] = "%d" % (self.device_config_set.all().count())
             r_xml.extend([
                 E.config_vars(*[cur_var.get_xml() for cur_var in list(self.config_str_set.all()) + \
-                                list(self.config_int_set.all()) + list(self.config_bool_set.all()) + list(self.config_blob_set.all())]),
+                                list(self.config_int_set.all()) + \
+                                list(self.config_bool_set.all()) + \
+                                list(self.config_blob_set.all())]),
                 E.mon_check_commands(*[cur_ngc.get_xml() for cur_ngc in list(self.mon_check_command_set.all())]),
                 E.config_scripts(*[cur_cs.get_xml() for cur_cs in list(self.config_script_set.all())])
             ])
@@ -2061,7 +2064,6 @@ def config_post_save(sender, **kwargs):
                 cur_var.save()
         if cur_inst.parent_config_id == cur_inst.pk and cur_inst.pk:
             raise ValidationError("cannot be my own parent")
-                
 
 class config_type(models.Model):
     idx = models.AutoField(db_column="new_config_type_idx", primary_key=True)
