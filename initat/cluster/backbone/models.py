@@ -946,7 +946,10 @@ class hopcount(models.Model):
     s_netdevice = models.ForeignKey("netdevice", related_name="hopcount_s_netdevice")
     d_netdevice = models.ForeignKey("netdevice", related_name="hopcount_d_netdevice")
     value = models.IntegerField(null=True, blank=True)
+    # device trace
     trace = models.CharField(max_length=765, blank=True)
+    # number of trace entries
+    trace_length = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'hopcount'
