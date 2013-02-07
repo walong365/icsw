@@ -226,8 +226,21 @@ class path_object(object):
             d_netdevice=nd_dict[self.d_nd],
             value=sum([nd_dict[cur_hop].penalty for cur_hop in cur_p]) + sum([peer_dict[(cur_p[idx], cur_p[idx + 1])] for idx in xrange(0, len(cur_p) - 1)]),
             trace=":".join(cur_trace),
+            trace_length=len(cur_trace),
         )
         hc_list = [new_hc]
+        rev_trace = copy.deepcopy(cur_trace)
+        rev_trace.reverse()
+        # also add reverted version
+        hc_list.append(
+            hopcount(
+                s_netdevice=nd_dict[self.d_nd],
+                d_netdevice=nd_dict[self.s_nd],
+                value=new_hc.value,
+                trace=":".join(rev_trace),
+                trace_length=len(rev_trace),
+            )
+        )
         visited = set([(self.s_nd, self.d_nd)])
         hc_list.extend(self._expand_pruned(new_hc, cur_trace, nd_dict, peer_dict, pruned_dict, visited))
         #print "-" * 20
@@ -241,14 +254,16 @@ class path_object(object):
         r_list = []
         for new_left in pruned_dict.get(src_hc.s_netdevice_id, []):
             # expand left
-            if (new_left, src_hc.d_netdevice_id) not in visited:
+            if (new_left, src_hc.d_netdevice_id) not in visited and src_trace[0] != src_trace[-1]:
                 visited.add((new_left, src_hc.d_netdevice_id))
+                add_penalty = peer_dict[(new_left, src_hc.s_netdevice_id)] + nd_dict[new_left].penalty
                 cur_trace = ["%d" % (nd_dict[new_left].device_id)] + src_trace
                 new_hc = hopcount(
                     s_netdevice=nd_dict[new_left],
                     d_netdevice=nd_dict[src_hc.d_netdevice_id],
-                    value=src_hc.value + peer_dict[(new_left, src_hc.s_netdevice_id)] + nd_dict[new_left].penalty,
+                    value=src_hc.value + add_penalty,
                     trace=":".join(cur_trace),
+                    trace_length=len(cur_trace),
                 )
                 r_list.append(new_hc)
                 if new_hc.s_netdevice_id != new_hc.d_netdevice_id:
@@ -259,6 +274,7 @@ class path_object(object):
                             d_netdevice=nd_dict[new_left],
                             value=new_hc.value,
                             trace=":".join(cur_trace),
+                            trace_length=len(cur_trace),
                         )
                     )
                     cur_trace.reverse()
@@ -267,14 +283,16 @@ class path_object(object):
                               )
         for new_right in pruned_dict.get(src_hc.d_netdevice_id, []):
             # expand right
-            if (src_hc.s_netdevice_id, new_right) not in visited:
+            if (src_hc.s_netdevice_id, new_right) not in visited and src_trace[0] != src_trace[-1]:
                 visited.add((src_hc.s_netdevice_id, new_right))
+                add_penalty = peer_dict[(new_right, src_hc.d_netdevice_id)] + nd_dict[new_right].penalty
                 cur_trace = src_trace + ["%d" % (nd_dict[new_right].device_id)]
                 new_hc = hopcount(
                     s_netdevice=nd_dict[src_hc.s_netdevice_id],
                     d_netdevice=nd_dict[new_right],
-                    value=src_hc.value + peer_dict[(new_right, src_hc.d_netdevice_id)] + nd_dict[new_right].penalty,
+                    value=src_hc.value + add_penalty,
                     trace=":".join(cur_trace),
+                    trace_length=len(cur_trace),
                 )
                 r_list.append(new_hc)
                 if new_hc.s_netdevice_id != new_hc.d_netdevice_id:
@@ -285,6 +303,7 @@ class path_object(object):
                             d_netdevice=nd_dict[src_hc.s_netdevice_id],
                             value=new_hc.value,
                             trace=":".join(cur_trace),
+                            trace_length=len(cur_trace),
                         )
                     )
                     cur_trace.reverse()
@@ -402,8 +421,59 @@ class rebuild_hopcount(cs_base_class.server_com):
         self.log(my_timer("pathfinding (%s) finished" % (logging_tools.get_plural("node", len(nd_pks)))))
         hopcount.objects.all().delete()
         self.log(my_timer("hopcount delete"))
-        num_hcs = 0
+        # add simple hopcounts from prune dict
         save_hcs = []
+        for src_nd, dst_nds in pruned_dict.iteritems():
+            used_dst_nds = set()
+            for dst_nd in dst_nds:
+                penalty = nd_dict[src_nd].penalty + peer_dict[(src_nd, dst_nd)] + nd_dict[dst_nd].penalty
+                save_hcs.extend([
+                    hopcount(
+                        s_netdevice=nd_dict[src_nd],
+                        d_netdevice=nd_dict[dst_nd],
+                        value=penalty,
+                        trace="%d:%d" % (nd_dict[src_nd].device_id, nd_dict[dst_nd].device_id),
+                        trace_length=2,
+                    ),
+                    hopcount(
+                        s_netdevice=nd_dict[dst_nd],
+                        d_netdevice=nd_dict[src_nd],
+                        value=penalty,
+                        trace="%d:%d" % (nd_dict[dst_nd].device_id, nd_dict[src_nd].device_id),
+                        trace_length=2,
+                    )
+                ])
+                used_dst_nds.add(dst_nd)
+                # add triplets (dst_nd -> src_nd -> dst_nd' )
+                for dst_nd_2 in dst_nds:
+                    if dst_nd_2 not in used_dst_nds:
+                        penalty = nd_dict[src_nd].penalty + peer_dict[(src_nd, dst_nd)] + nd_dict[dst_nd].penalty + peer_dict[(src_nd, dst_nd_2)] + nd_dict[dst_nd_2].penalty
+                        save_hcs.extend([
+                            hopcount(
+                                s_netdevice=nd_dict[dst_nd],
+                                d_netdevice=nd_dict[dst_nd_2],
+                                value=penalty,
+                                trace="%d:%d:%d" % (
+                                    nd_dict[dst_nd].device_id,
+                                    nd_dict[src_nd].device_id,
+                                    nd_dict[dst_nd_2].device_id,
+                                ),
+                                trace_length=3,
+                            ),
+                            hopcount(
+                                s_netdevice=nd_dict[dst_nd_2],
+                                d_netdevice=nd_dict[dst_nd],
+                                value=penalty,
+                                trace="%d:%d:%d" % (
+                                    nd_dict[dst_nd_2].device_id,
+                                    nd_dict[src_nd].device_id,
+                                    nd_dict[dst_nd].device_id,
+                                ),
+                                trace_length=3,
+                            )
+                        ])
+        num_hcs = len(save_hcs)
+        self.log("simple hops: %d" % (num_hcs))
         for cur_p in all_paths:
             cur_hcs = cur_p.generate_hopcounts(nd_dict, peer_dict, pruned_dict)
             num_hcs += len(cur_hcs)
