@@ -1970,7 +1970,7 @@ class build_process(threading_tools.process_obj):
     def _build_distance_map(self, root_node):
         self.log("building distance map, root node is '%s'" % (root_node))
         # exclude all without attached netdevices
-        dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.exclude(netdevice=None).prefetch_related("netdevice_set", "netdevice_set")])
+        dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.exclude(netdevice=None).prefetch_related("netdevice_set")])
         nd_dict = dict([(pk, set(cur_dev.netdevice_set.all().values_list("pk", flat=True))) for pk, cur_dev in dm_dict.iteritems()])
         for cur_dev in dm_dict.itervalues():
             # set 0 for root_node, -1 for all other devices
@@ -1988,31 +1988,28 @@ class build_process(threading_tools.process_obj):
                                  logging_tools.get_plural("dest node", len(dst_nodes))))
             src_nds = reduce(operator.ior, [nd_dict[key] for key in src_nodes], set())
             dst_nds = reduce(operator.ior, [nd_dict[key] for key in dst_nodes], set())
-            for cur_hc in hopcount.objects.filter(Q(s_netdevice__in=src_nds) & Q(d_netdevice__in=dst_nds)):
+            # only single-hop hopcounts
+            for cur_hc in hopcount.objects.filter(Q(s_netdevice__in=src_nds) & Q(d_netdevice__in=dst_nds) & Q(trace_length=2)):
                 if cur_hc.s_netdevice_id == cur_hc.d_netdevice_id:
                     # loop, skip
                     pass
                 else:
                     #dst_nds = [val for val in [cur_hc.s_netdevice_id, cur_hc.d_netdevice_id] if val not in src_nds]
                     trace = [int(val) for val in cur_hc.trace.split(":")]
-                    if len(trace) == 2:
-                        # direct attached
-                        if trace[0] in src_nodes:
-                            src_dev, dst_dev = (dm_dict[trace[0]], dm_dict[trace[1]])
-                        else:
-                            src_dev, dst_dev = (dm_dict[trace[1]], dm_dict[trace[0]])
-                        new_level = src_dev.md_dist_level + 1
-                        if dst_dev.md_dist_level >= 0 and new_level > dst_dev.md_dist_level:
-                            self.log("pushing node %s farther away from root (%d => %d)" % (
-                                unicode(dst_dev),
-                                dst_dev.md_dist_level,
-                                new_level))
-                        dst_dev.md_dist_level = max(dst_dev.md_dist_level, new_level)
-                        max_level = max(max_level, dst_dev.md_dist_level)
-                        run_again = True
+                    # direct attached
+                    if trace[0] in src_nodes:
+                        src_dev, dst_dev = (dm_dict[trace[0]], dm_dict[trace[1]])
                     else:
-                        # more than one hop away, skip
-                        pass
+                        src_dev, dst_dev = (dm_dict[trace[1]], dm_dict[trace[0]])
+                    new_level = src_dev.md_dist_level + 1
+                    if dst_dev.md_dist_level >= 0 and new_level > dst_dev.md_dist_level:
+                        self.log("pushing node %s farther away from root (%d => %d)" % (
+                            unicode(dst_dev),
+                            dst_dev.md_dist_level,
+                            new_level))
+                    dst_dev.md_dist_level = max(dst_dev.md_dist_level, new_level)
+                    max_level = max(max_level, dst_dev.md_dist_level)
+                    run_again = True
             if not run_again:
                 break
         self.log("max distance level: %d" % (max_level))
@@ -2234,7 +2231,7 @@ class build_process(threading_tools.process_obj):
             #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
             self.__cached_mach_name = host.name
             self.mach_log("-------- %s ---------" % ("master" if cur_gc.master else "slave %s" % (cur_gc.slave_name)))
-            glob_log_str = "Starting build of config for device %20s (%s), distance level is %d" % (
+            glob_log_str = "Starting build of config for device %32s (%s), distance level is %d" % (
                 host.name,
                 "active" if checks_are_active else "passive",
                 d_map.get(host_pk, -1),
@@ -2283,7 +2280,7 @@ class build_process(threading_tools.process_obj):
                         dev_variables = {}
                         for cur_var in device_variable.objects.filter(Q(device=host)):
                             var_name = cur_var.name
-                            dev_variables[var_name] = cur_var
+                            dev_variables[var_name] = unicode(cur_var.value)
                         dev_variables.update(snmp_stack.get_vars(host))
                         self.mach_log("device has %s" % (
                             logging_tools.get_plural("device_variable", len(dev_variables.keys()))))
