@@ -1759,8 +1759,8 @@ def net_ip_pre_save(sender, **kwargs):
                 cur_inst.network = match_list[0][1]
             else:
                 raise ValidationError("no maching network found")
-        all_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
-        if cur_inst.ip in all_ips:
+        dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
+        if cur_inst.ip in dev_ips:
             raise ValidationError("Adress already used")
         if cur_inst.network.network_type.identifier == "b":
             # set boot netdevice
