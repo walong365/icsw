@@ -49,7 +49,6 @@ config_patterns = patterns(
     "initat.cluster.frontend",
     url("^config_types$"     , "config_views.show_config_types"       , name="show_config_types" ),
     url("^show_config$"      , "config_views.show_configs"            , name="show_configs"      ),
-    url("^get_configs_xml$"  , "config_views.get_configs"             , name="get_configs"       ),
     url("^get_dev_confs_xml$", "config_views.get_device_configs"      , name="get_device_configs"),
     url("^create_config$"    , "config_views.create_config"           , name="create_config"     ),
     url("^delete_config$"    , "config_views.delete_config"           , name="delete_config"     ),

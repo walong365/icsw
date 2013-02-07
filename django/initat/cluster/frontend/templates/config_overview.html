@@ -57,7 +57,7 @@ class config_table
         notify_generate_link(sel_list)
     load_configs: =>
         $.ajax
-            url     : "{% url config:get_configs %}"
+            url     : "{% url config:show_configs %}"
             error   : handle_ajax_error
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -141,15 +141,21 @@ class config_table
             c_line.append(get_expand_td(line_prefix, "cscript", undefined, @toggle_config_line));
         else
             c_line.append($("<td>").attr({"colspan" : "3"}))
-        c_line.append(
-            $("<td>").append(
-                $("<input>").attr({
-                    "type"  : "button",
-                    "value" : if conf_pk == "new" then "create" else "delete",
-                    "id"    : line_prefix
-                }).bind("click", @create_delete_config)
+        num_confs = if cur_conf then parseInt(cur_conf.attr("num_device_configs")) else 0
+        if num_confs
+            c_line.append(
+                $("<th>").text("Used: #{num_confs}")
             )
-        )
+        else   
+            c_line.append(
+                $("<td>").append(
+                    $("<input>").attr({
+                        "type"  : "button",
+                        "value" : if conf_pk == "new" then "create" else "delete",
+                        "id"    : line_prefix
+                    }).bind("click", @create_delete_config)
+                )
+            )
         dummy_div.append(c_line)
         if cur_conf
             var_div = $("<table>")

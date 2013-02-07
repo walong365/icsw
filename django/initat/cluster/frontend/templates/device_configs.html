@@ -50,10 +50,11 @@ class config_table
                     @load_configs()
     load_configs : () =>
         $.ajax
-            url     : "{% url config:get_configs %}"
+            url     : "{% url config:show_configs %}"
             error   : handle_ajax_error
             data    : {
-                "mode" : "simple"
+                #"mode" : "simple"
+                "mode" : "full"
             }
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -95,6 +96,8 @@ class config_table
         $("input#filter").val("")
         @apply_filter(false)
     draw_tables : =>
+        @selected = {}
+        @meta_selected = {}
         @top_div.children().remove();
         c_table = $("<table>").attr({"id" : "config"}).addClass("devicelist")
         @devices.find("device_group").each (idx, cur_dg) =>
@@ -117,33 +120,35 @@ class config_table
         @top_div.append(c_table)
         @c_table = c_table
     draw_device : (d_el) =>
+        dev_pk = d_el.attr("pk")
         dummy_div = $("<div>")
         line_prefix = d_el.attr("key")
         new_tr = $("<tr>").attr({
             "class" : "ui-widget ui-widget-header",
             "id"    : line_prefix
         })
-        is_meta = d_el.attr("meta_device") == "1"
         new_tr.append(get_expand_td(line_prefix, "config", "config", @toggle_config_line))
         new_tr.append($("<th>").attr({
             "class"   : "left",
-            "colspan" : "8"
+            "colspan" : "8",
+            "id"      : dev_pk,
         }))
-        dev_str = (if is_meta then "Meta device" else "device") + " " + d_el.text()
         dummy_div.append(new_tr)
         cur_entries = 0
         run_idx = 1
-        selected = meta_selected = 0
+        @selected[dev_pk] = []
+        @meta_selected[dev_pk] = []
         for cur_conf in @display_list
             cur_conf = $(cur_conf)
+            conf_pk = cur_conf.attr("pk")
             if !cur_entries
                 cur_tr = $("<tr>").attr({
-                    "id" : line_prefix + "__config__" + run_idx
+                    "id" : "#{line_prefix}__config__#{run_idx}"
                 }).hide()
                 cur_tr.append($("<td>"))
             cur_cb = $("<input>").attr({
                 "type" : "checkbox",
-                "id"   : line_prefix + "__config__" + cur_conf.attr("pk")
+                "id"   : "#{line_prefix}__config__" + conf_pk
             }).bind("click", @change_config)
 
             cur_tr.append(
@@ -157,27 +162,26 @@ class config_table
                     $("<span>").text("")
                 )
             )
-            if @device_configs.find("device_config[device='" + d_el.attr("pk") + "'][config='" + cur_conf.attr("pk") + "'][meta='1']").length
+            if @device_configs.find("device_config[device='#{dev_pk}'][config='#{conf_pk}'][meta='1']").length
                 cur_cb.attr({"checked" : "checked"})
                 cur_cb.prev().text("(")
                 cur_cb.next().text(")")
-                meta_selected++
-            else if @device_configs.find("device_config[device='" + d_el.attr("pk") + "'][config='" + cur_conf.attr("pk") + "']").length
+                @meta_selected[dev_pk].push(conf_pk)
+            else if @device_configs.find("device_config[device='#{dev_pk}'][config='#{conf_pk}']").length
                 cur_cb.attr({"checked" : "checked"})
-                selected++
+                @selected[dev_pk].push(conf_pk)
+            num_vars = cur_conf.find("config_vars *").length
+            num_scripts = cur_conf.find("config_scripts *").length
+            num_checks = cur_conf.find("mon_check_commands *").length
             cur_tr.append($("<td>").on("hover", $(cur_cb), @hover).append(
-                $("<span>").text(cur_conf.attr("name"))
+                $("<span>").attr("title", "#{num_vars} variables, #{num_scripts} scripts, #{num_checks} check commands").text(cur_conf.attr("name") + " (#{num_vars}, #{num_scripts}, #{num_checks})")
             ))
             cur_entries++
             if cur_entries == 4
                 dummy_div.append(cur_tr)
                 cur_entries = 0
                 run_idx += 1
-        if selected
-            dev_str = "#{dev_str}, #{selected} selected"
-        if meta_selected
-            dev_str = "#{dev_str}, #{meta_selected} via meta"
-        new_tr.find("th").text(dev_str)
+        @update_device_info(dev_pk, new_tr.find("th"))
         if cur_entries
             dummy_div.append(cur_tr)
         return dummy_div.children()
@@ -199,6 +203,20 @@ class config_table
             exp_line.show()
         else
             exp_line.hide()
+    update_device_info: (dev_pk, dev_th) =>
+        selected = @selected[dev_pk].length
+        meta_selected = @meta_selected[dev_pk].length
+        cur_dev = @devices.find("device[pk='#{dev_pk}']")
+        is_meta = cur_dev.attr("meta_device") == "1"
+        dev_str = (if is_meta then "Meta device" else "device") + " " + cur_dev.text()
+        if selected
+            dev_str = "#{dev_str}, #{selected} selected"
+        if meta_selected
+            dev_str = "#{dev_str}, #{meta_selected} via meta"
+        if dev_th
+            dev_th.text(dev_str)
+        else
+            @c_table.find("tr th[id='#{dev_pk}']").text(dev_str)
     change_config : (event) =>
         cur_cb = $(event.target)
         lock_list = lock_elements(@c_table)
@@ -212,20 +230,32 @@ class config_table
                 parse_xml_response(xml)
                 res_xml = $(xml)
                 conf_pk = res_xml.find("device_configs config").attr("pk")
+                # remove selection
+                for dev_pk of @selected
+                    @selected[dev_pk]      = @selected[dev_pk].filter (val) -> val != conf_pk
+                    @meta_selected[dev_pk] = @meta_selected[dev_pk].filter (val) -> val != conf_pk
                 res_xml.find("devices device").each (xml_idx, cur_dev) =>
                     # deselect all checkboxes
                     cur_dev = $(cur_dev)
-                    cur_cb = @c_table.find("input[id='dev__" + cur_dev.attr("pk") + "__config__" + conf_pk + "']")
+                    dev_pk = cur_dev.attr("pk")
+                    cur_cb = @c_table.find("input[id='dev__#{dev_pk}__config__#{conf_pk}']")
                     cur_cb.removeAttr("checked")
                     cur_cb.prev().text("")
                     cur_cb.next().text("")
                 res_xml.find("device_configs device_config").each (xml_idx, cur_dc) =>
                     cur_dc = $(cur_dc)
-                    cur_cb = @c_table.find("input[id='dev__" + cur_dc.attr("device") + "__config__" + conf_pk + "']")
-                    cur_cb.attr("checked", "checked")
-                    if cur_dc.attr("meta") == "1"
-                        cur_cb.prev().text("(")
-                        cur_cb.next().text(")")
+                    dev_pk = cur_dc.attr("device")
+                    if dev_pk of @selected
+                        cur_cb = @c_table.find("input[id='dev__#{dev_pk}__config__#{conf_pk}']")
+                        cur_cb.attr("checked", "checked")
+                        if cur_dc.attr("meta") == "1"
+                            cur_cb.prev().text("(")
+                            cur_cb.next().text(")")
+                            @meta_selected[dev_pk].push(conf_pk)
+                        else
+                            @selected[dev_pk].push(conf_pk)
+                for dev_pk, sel_list of @selected
+                    @update_device_info(dev_pk)
                 unlock_elements(lock_list)
 
 add_dcon_handlers = ->

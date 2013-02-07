@@ -47,39 +47,45 @@ def show_config_types(request):
 @login_required
 @init_logging
 def show_configs(request):
-    return render_me(
-        request, "config_overview.html",
-    )()
-
-@login_required
-@init_logging
-def get_configs(request):
-    _post = request.POST
-    mode = _post.get("mode", "full")
-    full_mode = mode == "full"
-    request.log("get configs, mode is %s" % (mode))
-    if full_mode:
-        all_configs = config.objects.all().select_related("config_type").prefetch_related("config_int_set", "config_str_set", "config_bool_set", "config_blob_set", "mon_check_command_set", "config_script_set").order_by("name")
+    if request.method == "GET":
+        return render_me(
+            request, "config_overview.html",
+        )()
     else:
-        all_configs = config.objects.all().select_related("config_type").order_by("name")
-    xml_resp = E.response(
-        E.config_list(
-            *[cur_c.get_xml(full=full_mode) for cur_c in all_configs]
+        _post = request.POST
+        mode = _post.get("mode", "full")
+        full_mode = mode == "full"
+        request.log("get configs, mode is %s" % (mode))
+        if full_mode:
+            all_configs = config.objects.all().select_related("config_type").prefetch_related(
+                "config_int_set",
+                "config_str_set",
+                "config_bool_set",
+                "config_blob_set",
+                "config_script_set",
+                "mon_check_command_set",
+                "device_config_set",
+                ).order_by("name")
+        else:
+            all_configs = config.objects.all().select_related("config_type").order_by("name")
+        xml_resp = E.response(
+            E.config_list(
+                *[cur_c.get_xml(full=full_mode) for cur_c in all_configs]
+            )
         )
-    )
-    if full_mode:
-        xml_resp.append(E.config_types(
-            *[cur_ct.get_xml() for cur_ct in config_type.objects.all().order_by("name")]
-        ))
-        xml_resp.append(E.mon_check_command_types(
-            *[cur_ct.get_xml() for cur_ct in mon_check_command_type.objects.all().order_by("name")]
-        ))
-        xml_resp.append(E.mon_service_templates(
-            *[cur_st.get_xml() for cur_st in mon_service_templ.objects.all().order_by("name")]
-        ))
-    #print etree.tostring(xml_resp, pretty_print=True)
-    request.xml_response["response"] = xml_resp
-    return request.xml_response.create_response()
+        if full_mode:
+            xml_resp.append(E.config_types(
+                *[cur_ct.get_xml() for cur_ct in config_type.objects.all().order_by("name")]
+            ))
+            xml_resp.append(E.mon_check_command_types(
+                *[cur_ct.get_xml() for cur_ct in mon_check_command_type.objects.all().order_by("name")]
+            ))
+            xml_resp.append(E.mon_service_templates(
+                *[cur_st.get_xml() for cur_st in mon_service_templ.objects.all().order_by("name")]
+            ))
+        #print etree.tostring(xml_resp, pretty_print=True)
+        request.xml_response["response"] = xml_resp
+        return request.xml_response.create_response()
 
 @login_required
 @init_logging
