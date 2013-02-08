@@ -2,7 +2,7 @@
 #
 # -*- encoding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2007,2009 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2007,2009,2013 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -69,9 +69,9 @@ class mail(object):
     def set_from_addr(self, frm):
         self.from_addr = frm or "root"
     def add_to_address(self, trg):
-        if type(trg) in [type(u""), type("")]:
+        if type(trg) in [unicode, str]:
             self.to_addrs.append(trg)
-        elif type(trg) == type([]):
+        elif type(trg) == list:
             self.to_addrs.extend(trg)
         elif type(trg) == type(set()):
             for add_addr in trg:
@@ -83,17 +83,18 @@ class mail(object):
     def add_bcc_address(self, addr):
         self.bcc_list.append(addr)
     def append_text(self, what=None):
-        if type(what) == type(""):
+        if type(what) in [str, unicode]:
             self.text.append(what)
-        elif type(what) == type([]):
+        elif type(what) == list:
             self.text.extend(what)
         elif what == None:
             self.text.append("root@localhost")
     def send_mail(self):
-        stat, ret_f = (0, ["trying to send an email with %s to %s (%sfrom %s via %s)" % (logging_tools.get_plural("line", len(self.text)),
-                                                                                         ", ".join(self.to_addrs),
-                                                                                         "bcc to %s, " % (", ".join(self.bcc_list)) if self.bcc_list else "",
-                                                                                         self.from_addr, self.server)])
+        stat, ret_f = (0, ["trying to send an email with %s to %s (%sfrom %s via %s)" % (
+            logging_tools.get_plural("line", len(self.text)),
+            ", ".join(self.to_addrs),
+            "bcc to %s, " % (", ".join(self.bcc_list)) if self.bcc_list else "",
+            self.from_addr, self.server)])
         gen_msgs = self.generate_msg_string()
         ret_f.extend(gen_msgs)
         if gen_msgs:
@@ -148,7 +149,7 @@ class mail(object):
             self.msg.set_charset("utf-8")
         else:
             self.msg = email.MIMEMultipart.MIMEMultipart("utf-8")
-            self.msg.set_charset("utf-8")
+            self.msg.preamble = "This is a multi-part message in MIME-format."
             self.msg.attach(email.MIMEText.MIMEText("\n".join([line.encode("utf-8") for line in self.text] + [""]), "plain", "utf-8"))
         self.msg["Subject"] = self.subject
         self.msg["From"] = self.from_addr

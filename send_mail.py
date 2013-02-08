@@ -1,5 +1,7 @@
 #!/usr/bin/python-init -Ot
 #
+# -*- encoding: utf-8 -*-
+#
 # Copyright (c) 2001,2002,2003,2004,2007,2009 Andreas,2013 Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
@@ -21,9 +23,14 @@
 #
 """ small tool for sending mails via commandline """
 
+import os
 import sys
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
 import argparse
 import mail_tools
+import logging_tools
 
 def main():
     my_parser = argparse.ArgumentParser()
@@ -31,41 +38,18 @@ def main():
     my_parser.add_argument("-s", "--subject", type=str, help="subject [%(default)s]", default="mailsubject")
     my_parser.add_argument("-m", "--server", type=str, help="mailserver to connect [%(default)s]", default="localhost")
     my_parser.add_argument("-t", "--to", type=str, nargs="*", help="to address [%(default)s]", default="root@localhost")
+    my_parser.add_argument("-G", dest="to_all", action="store_true", default=False, help="send mail to all active users [%(default)s]")
     my_parser.add_argument("message", nargs="+", help="message to send")
     cur_opts = my_parser.parse_args()
-    # not implemented right now
-##        if arg == "-G":
-##            try:
-##                import mysql_tools
-##                import MySQLdb
-##            except ImportError:
-##                print "No mysql_tools found, exiting ..."
-##                sys.exit(1)
-##            else:
-##                db_con = mysql_tools.dbcon_container(with_logging=False)
-##                try:
-##                    dc = db_con.get_connection("cluster_full_access")
-##                except:
-##                    print "Cannot connect to SQL-Server (%s)" % (process_tools.get_except_info())
-##                    sys.exit(1)
-##                dc.execute("SELECT u.login,u.useremail FROM user u WHERE u.useremail LIKE('%@%')")
-##                user_dict = dict([(x["login"], x["useremail"]) for x in dc.fetchall()])
-##                dc.release()
-##                if user_dict:
-##                    user_list = sorted(user_dict.keys())
-##                    print "Sending mail to %s: %s" % (logging_tools.get_plural("user", len(user_list)),
-##                                                      ", ".join(user_list))
-##                    to_addrs = user_dict.values()
-##                else:
-##                    print "No users found, exiting ..."
-##                    sys.exit(0)
+    if cur_opts.to_all:
+        from initat.cluster.backbone.models import user
+        from django.db.models import Q
+        all_users = [entry for entry in list(user.objects.exclude(Q(email='')).filter(Q(active=True) & Q(group__active=True)).values_list("email", flat=True)) if entry.count("@")]
+        cur_opts.to = all_users
+        print "sending to %s: %s" % (
+            logging_tools.get_plural("address", len(all_users)),
+            ", ".join(sorted(all_users)))
     message = (" ".join(cur_opts.message)).replace("\\n", "\n").strip()
-    if not cur_opts.to:
-        print "To-address(es) missing, exiting..."
-        sys.exit(2)
-    if not len(message):
-        print "Need message text, exiting..."
-        sys.exit(2)
     my_mail = mail_tools.mail(cur_opts.subject, getattr(cur_opts, "from"), cur_opts.to, message)
     my_mail.set_server(cur_opts.server)
     m_stat, m_ret_f = my_mail.send_mail()
