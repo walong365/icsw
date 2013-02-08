@@ -1,9 +1,8 @@
 {% extends "main.html" %}
 
-{% load i18n compress %}
+{% load i18n compress coffeescript %}
 
 {% block title %}{% trans "Package Repository Overview" %}{% endblock %}
-
 
 {% block content %}
 
@@ -13,10 +12,9 @@
 
 <script type="text/javascript">
 
-// repository XML
-REPO_XML = undefined;
+{% inlinecoffeescript %}
 
-var master_array = {
+master_array = {
     "repo" : new draw_setup("Package repositories", "package_repo", "package_repo",
         undefined,
         undefined,
@@ -33,23 +31,17 @@ var master_array = {
     )
 };
 
-function load_repos() {
-    $.ajax({
-        url     : "{% url pack:repo_overview %}",
-        error   : handle_ajax_error,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                draw_ds_tables($("div#repo_tables"), master_array, $(xml).find("value[name='response']"));
-            }
-        }
-    });
-}
+add_config_handlers = ->
+    $.ajax
+        url     : "{% url pack:repo_overview %}"
+        error   : handle_ajax_error
+        success : (xml) ->
+            if parse_xml_response(xml)
+                draw_ds_tables($("div#repo_tables"), master_array, $(xml).find("value[name='response']"))
 
-function add_config_handlers() {
-    load_repos();
-};
+$(document).ready(add_config_handlers)
 
-$(document).ready(add_config_handlers);
+{% endinlinecoffeescript %}
 
 </script>
 

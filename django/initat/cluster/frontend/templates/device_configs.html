@@ -64,7 +64,7 @@ class config_table
         cur_text = $("input#filter").attr("value")
         if (cur_text != @cur_filter) or force_reload
             @cur_filter = cur_text
-            cur_re = new RegExp("^.*" + @cur_filter+ ".*$")
+            cur_re = new RegExp("^.*#{@cur_filter}.*$")
             disp_list = new Array()
             # get keys/pks for current filter
             @configs.find("config").each (idx, c_config) =>
@@ -73,7 +73,7 @@ class config_table
                     disp_list.push(c_config.attr("key"))
             # not working, FIXME
             if (@show_list != disp_list) or force_reload
-                @display_list = (@configs.find("config[key='" + name + "']")[0] for name in disp_list)
+                @display_list = (@configs.find("config[key='#{name}']")[0] for name in disp_list)
                 @update_config_info(disp_list.length);
                 cur_exp_list = @get_expand_list()
                 @draw_tables()
@@ -90,7 +90,7 @@ class config_table
         if num_shown == @configs.find("config").length
             info_str += ", all shown"
         else
-            info_str += ", " + num_shown + " shown"
+            info_str += ", #{num_shown} shown"
         $("span#config_info").text(info_str)
     clear_filter : =>
         $("input#filter").val("")
@@ -148,7 +148,7 @@ class config_table
                 cur_tr.append($("<td>"))
             cur_cb = $("<input>").attr({
                 "type" : "checkbox",
-                "id"   : "#{line_prefix}__config__" + conf_pk
+                "id"   : "#{line_prefix}__config__#{conf_pk}"
             }).bind("click", @change_config)
 
             cur_tr.append(
@@ -183,7 +183,12 @@ class config_table
                 run_idx += 1
         @update_device_info(dev_pk, new_tr.find("th"))
         if cur_entries
+            # add dummy entries for colorization
+            cur_tr.append($("<td>").attr("colspan", 2 * (4 - cur_entries)))
             dummy_div.append(cur_tr)
+        # beautify it
+        dummy_div.find("tr:even").addClass("even")
+        dummy_div.find("tr:odd").addClass("odd")
         return dummy_div.children()
     hover: (event) ->
         target = $(event.data).parents("td:first")
@@ -197,8 +202,8 @@ class config_table
         for cur_val in exp_list
             @toggle_config_line(cur_val.split("__")[0] + "__" + cur_val.split("__")[1], true, "config")
     toggle_config_line : (line_prefix, state, line_spec) =>
-        conf_line = @c_table.find("tr[id='" + line_prefix + "']")
-        exp_line  = @c_table.find("tr[id^='" + line_prefix + "__" + line_spec + "']")
+        conf_line = @c_table.find("tr[id='#{line_prefix}']")
+        exp_line  = @c_table.find("tr[id^='#{line_prefix}__#{line_spec}']")
         if state
             exp_line.show()
         else

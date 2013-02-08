@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n compress %}
+{% load i18n compress coffeescript %}
 
 {% block title %}{% trans "Variables" %}{% endblock %}
 
@@ -12,216 +12,165 @@
 
 <script type="text/javascript">
 
-// selected devices
-CUR_DEVICES = undefined;
-// devices
-DEVICES = undefined;
+{% inlinecoffeescript %}
 
-function update_expand_info() {
-    $("table#variables tr td div[id*='__expand__']").each(function() {
-        var cur_span = $(this);
-        var span_id = cur_span.attr("id");
-        var start_tr = cur_span.parents("tr:first");
-        var num_lines = -1;
-        while (true) {
-            start_tr = start_tr.next();
-            if (start_tr && start_tr.attr("id") && start_tr.attr("id").match(/^dev__\d+__dv__/)) {
-                num_lines += 1;
-            } else {
-                break;
-            };
-        };
-        cur_span.next().text(num_lines);
-    });
-};
-
-function toggle_variable_line(line_prefix, state, line_spec, conf_line) {
-    if (conf_line === undefined) {
-        var conf_line = $("table#variables tr[id='" + line_prefix + "']");
-    };
-    var exp_line  = $("table#variables tr[id^='" + line_prefix + "__" + line_spec + "']");
-    var cur_dg = conf_line.find("div[id$='__expand__" + line_spec + "']");
-    if (state) {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-s");
-        exp_line.show();
-    } else {
-        cur_dg.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_dg.addClass("ui-icon-triangle-1-e");
-        exp_line.hide();
-    };
-};
-
-
-function inject_variable_line(new_cs) {
-    var header_tr = $("table#variables tr[id$='dev__" + new_cs.attr("device") + "__dv__new']");
-    var cur_config = DEVICES.find("device[pk='" + new_cs.attr("device") + "']");
-    header_tr.find("input[id$='__name']").attr("value", "");
-    var new_lines = add_dv_line(cur_config, "dev__" + new_cs.attr("device"), new_cs).show();
-    header_tr.after(new_lines);
-    update_expand_info();
-};
-
-function remove_variable_line(cur_el) {
-    var cs_line = $("table#variables tr[id^='" + cur_el.attr("id") + "']");
-    cs_line.remove();
-    update_expand_info();
-};
-
-function create_delete_dv(event) {
-    var cur_el = $(event.target);
-    var lock_list = lock_elements($("table#variables"));
-    if (cur_el.attr("id").match(/new$/)) {
-        // create element
-        $.ajax({
-            url  : "{% url base:create_object 'device_variable' %}",
-            data : create_dict($("table#variables"), cur_el.attr("id")),
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    var new_cs = $(xml).find("value[name='new_entry']").children();
-                    inject_variable_line(new_cs);
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    } else {
-        // delete
-        var del_dict = create_dict($("table#variables"), cur_el.attr("id"));
-        del_dict.delete_index = 3;
-        $.ajax({
-            url  : "{% url base:delete_object 'device_variable' %}",
-            data : del_dict,
-            success : function(xml) {
-                if (parse_xml_response(xml)) {
-                    remove_variable_line(cur_el);
-                };
-                unlock_elements(lock_list);
-            }
-        });
-    };
-};
-
-function add_dv_line(c_el, line_prefix, cs_com) {
-    if (cs_com === undefined) {
-        var cs_key = "dv__new";
-    } else {
-        var cs_key = cs_com.attr("key");
-    };
-    var line_prefix = line_prefix + "__" + cs_key;
-    var cs_tr = $("<tr>").attr({
-        "id"  : line_prefix
-    }).hide();
-    cs_tr.append($("<td>"));
-    var cur_td = $("<td>");
-    cs_tr.append(cur_td);
-    var val_kwargs = {master_xml : DEVICES};
-    if (cs_com) {
-        if (cs_com.attr("var_type") == "b") val_kwargs.boolean = true;
-        if (cs_com.attr("var_type") == "i") val_kwargs.number = true;
-    };
-    cur_td.append(
-        create_input_el(cs_com, "name", line_prefix, {master_xml : DEVICES})
-    ).append(
-        create_input_el(cs_com, "value", line_prefix, val_kwargs)
-    ).append(
-        create_input_el(cs_com, "is_public", line_prefix, {boolean : true, new_default : true, master_xml : DEVICES})
-    ).append(
-        create_input_el(cs_com, "description", line_prefix, {master_xml : DEVICES})
-    );
-    cs_tr.append($("<td>").append(
-        $("<input>").attr({
-            "type"  : "button",
-            "value" : cs_com ? "delete" : "create",
+class var_table
+    constructor: (@top_div) ->
+    use_devs: (dt_div) =>
+        sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
+        $.ajax
+            url     : "{% url device:get_group_tree %}"
+            error   : handle_ajax_error
+            data    : {
+                "sel_list"       : sel_list,
+                "ignore_cdg"     : 0,
+                "with_variables" : 1
+            },
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @DEVICES = $(xml).find("value[name='response']")
+                    @draw_var_table()
+    draw_var_table: () =>
+        @v_table = $("<table>").attr({"id" : "variables"}).addClass("devicelist")
+        @DEVICES.find("device_group").each (idx, cur_dg) =>
+            cur_dg = $(cur_dg)
+            new_tr = $("<tr>").attr({
+                "class"   : "ui-widget ui-widget-header"
+            })
+            new_tr.append($("<th>").css({
+                "padding" : "5px",
+                "border"  : "1px solid black"
+            }).attr({
+                "colspan" : "6"
+            }).text("device group " + cur_dg.attr("name")))
+            @v_table.append(new_tr)
+            # at first append metadevice
+            cur_dg.find("devices device[tree_selected='selected'][meta_device='1']").each (idx, cur_dev) =>
+                @v_table.append(@draw_device($(cur_dev)))
+            cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each (idx, cur_dev) =>
+                @v_table.append(@draw_device($(cur_dev)))
+        @top_div.children().remove()
+        @top_div.append(@v_table)
+        @update_expand_info()
+    draw_device: (d_el) =>
+        dummy_div = $("<div>")
+        line_prefix = d_el.attr("key")
+        new_tr = $("<tr>").attr({
+            "class" : "ui-widget ui-widget-header devicegroup",
             "id"    : line_prefix
-        }).bind("click", create_delete_dv)
+        })
+        is_meta = d_el.attr("meta_device") == "1"
+        new_tr.append(get_expand_td(line_prefix, "dv", "variable", @toggle_variable_line))
+        new_tr.append($("<th>").attr({
+            "colspan" : "5",
+            "class"   : "left"
+        }).text((if is_meta then "Meta device" else "device") + " " + d_el.text()))
+        dummy_div.append(new_tr)
+        header_tr = $("<tr>").attr({
+            "id"    : "#{line_prefix}__dv__header",
+            "class" : "ui-widget ui-widget-header"
+        })
+        for header_name in ["", "Name", "Value", "public", "description", "action"]
+            header_tr.append($("<th>").text(header_name))
+        dummy_div.append(header_tr.hide())
+        dummy_div.append(@add_dv_line(d_el, line_prefix))
+        d_el.find("device_variables device_variable").each (idx, cur_var) =>
+            dummy_div.append(@add_dv_line(d_el, line_prefix, $(cur_var)))
+        return dummy_div.children()
+    add_dv_line: (c_el, line_prefix, cs_com) =>
+        cs_key = if cs_com then cs_com.attr("key") else "dv__new"
+        line_prefix = "#{line_prefix}__#{cs_key}"
+        cs_tr = $("<tr>").attr({
+            "id"  : line_prefix
+        }).hide()
+        cs_tr.append($("<td>"))
+        val_kwargs = {master_xml : @DEVICES, enclose_tag : "<td>"}
+        if cs_com
+            if cs_com.attr("var_type") == "b"
+                val_kwargs.boolean = true
+            if cs_com.attr("var_type") == "i"
+                val_kwargs.number = true
+        cs_tr.append(
+            create_input_el(cs_com, "name", line_prefix, {master_xml : @DEVICES, enclose_tag : "<td>"})
+        ).append(
+            create_input_el(cs_com, "value", line_prefix, val_kwargs)
+        ).append(
+            create_input_el(cs_com, "is_public", line_prefix, {boolean : true, new_default : true, master_xml : @DEVICES, enclose_tag : "<td>"})
+        ).append(
+            create_input_el(cs_com, "description", line_prefix, {master_xml : @DEVICES, enclose_tag : "<td>"})
         )
-    );
-    return cs_tr;
-};
+        cs_tr.append(
+            $("<td>").append(
+                $("<input>").attr({
+                    "type"  : "button",
+                    "value" : if cs_com then "delete" else "create",
+                    "id"    : line_prefix
+                }).bind("click", @create_delete_dv)
+            )
+        )
+        return cs_tr
+    toggle_variable_line: (line_prefix, state, line_spec) =>
+        exp_line  = @v_table.find("tr[id^='#{line_prefix}__#{line_spec}']")
+        if state then exp_line.show() else exp_line.hide()
+    update_expand_info: () =>
+        @v_table.find("tr td div[id*='__expand__']").each (idx, cur_div) =>
+            cur_div = $(cur_div)
+            div_id = cur_div.attr("id")
+            start_tr = cur_div.parents("tr:first")
+            num_lines = -1
+            act_class = "even"
+            while true
+                start_tr = start_tr.next()
+                if start_tr and start_tr.attr("id") and start_tr.attr("id").match(/^dev__\d+__dv__/)
+                    start_tr.removeClass("even odd").addClass(act_class)
+                    act_class = if act_class == "odd" then "even" else "odd"
+                    num_lines++
+                else
+                    break
+            cur_div.next().text(num_lines)
+    create_delete_dv: (event) =>
+        cur_el = $(event.target)
+        lock_list = lock_elements(@v_table)
+        if cur_el.attr("id").match(/new$/)
+            # create variable
+            $.ajax
+                url     : "{% url base:create_object 'device_variable' %}"
+                data    : create_dict(@v_table, cur_el.attr("id"))
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        new_cs = $(xml).find("value[name='new_entry']").children()
+                        @inject_variable_line(new_cs)
+                    unlock_elements(lock_list)
+        else
+            # delete variable
+            del_dict = create_dict(@v_table, cur_el.attr("id"))
+            del_dict.delete_index = 3
+            $.ajax
+                url     : "{% url base:delete_object 'device_variable' %}"
+                data    : del_dict
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @remove_variable_line(cur_el)
+                    unlock_elements(lock_list);
+    inject_variable_line: (new_cs) =>
+        dev_pk = new_cs.attr("device")
+        header_tr = @v_table.find("tr[id$='dev__#{dev_pk}__dv__new']")
+        cur_config = @DEVICES.find("device[pk='#{dev_pk}']")
+        header_tr.find("input[id$='__name']").attr("value", "")
+        header_tr.after(@add_dv_line(cur_config, "dev__#{dev_pk}", new_cs).show())
+        @update_expand_info()
+    remove_variable_line: (cur_el) =>
+        cs_line = $("table#variables tr[id^='" + cur_el.attr("id") + "']")
+        cs_line.remove()
+        @update_expand_info()
 
-function draw_device(d_el) {
-    var dummy_div = $("<div>");
-    var line_prefix = d_el.attr("key");
-    var new_tr = $("<tr>").attr({
-        "class" : "ui-widget ui-widget-header",
-        "id"    : line_prefix
-    });
-    var is_meta = d_el.attr("meta_device") == "1";
-    new_tr.append(get_expand_td(line_prefix, "dv", "variable", toggle_variable_line));
-    new_tr.append($("<th>").attr({
-        "colspan" : "2",
-        "class"   : "left"
-    }).text((is_meta ? "Meta device" : "device") + " " + d_el.text()));
-    dummy_div.append(new_tr);
-    dummy_div.append(add_dv_line(d_el, line_prefix));
-    d_el.find("device_variables device_variable").each(function() {
-        dummy_div.append(add_dv_line(d_el, line_prefix, $(this)));
-    });
-    return dummy_div.children();
-};
+add_config_handlers = ->
+    var_t = new var_table($("div#variables"))
+    install_devsel_link(var_t.use_devs, true)
 
-function draw_var_table() {
-    //update_config_info();
-    c_table = $("<table>").attr({"id" : "variables"});
-    DEVICES.find("device_group").each(function() {
-        var cur_dg = $(this);
-        var new_tr = $("<tr>").attr({
-            "class"   : "ui-widget ui-widget-header"
-        });
-        new_tr.append($("<th>").css({
-            "padding" : "5px",
-            "border"  : "1px solid black"
-        }).attr({
-            "colspan" : "3"
-        }).text("device group " + cur_dg.attr("name")));
-        c_table.append(new_tr);
-        // at first append metadevice
-        cur_dg.find("devices device[tree_selected='selected'][meta_device='1']").each(function() {
-            var cur_dev = $(this);
-            c_table.append(draw_device(cur_dev));
-        });
-        cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each(function() {
-            var cur_dev = $(this);
-            c_table.append(draw_device(cur_dev));
-        });
-    });
-    var v_div = $("div#variables");
-    v_div.children().remove();
-    v_div.append(c_table);
-    update_expand_info();
-};
+$(document).ready(add_config_handlers)
 
-function load_variables(sel_list) {
-    //console.log(sel_list);
-    $.ajax({
-        url     : "{% url device:get_group_tree %}",
-        error   : handle_ajax_error,
-        data    : {
-            "sel_list"       : sel_list,
-            "ignore_cdg"     : 0,
-            "with_variables" : 1
-        },
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                DEVICES = $(xml).find("value[name='response']");
-                draw_var_table();
-            }
-        }
-    });
-};
-
-function use_devs(dt_div) {
-    CUR_DEVICES = _.map(dt_div.dynatree("getSelectedNodes"), function(value) {
-        return(value.data.key);
-    });
-    load_variables(CUR_DEVICES);
-};
-
-function add_config_handlers() {
-    install_devsel_link(use_devs, true);
-};
-
-$(document).ready(add_config_handlers);
+{% endinlinecoffeescript %}
 
 </script>
 
