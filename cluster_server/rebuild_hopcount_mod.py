@@ -216,33 +216,31 @@ class path_object(object):
         return unicode(self)
     def __unicode__(self):
         return "%d - %d (%d)" % (self.s_nd, self.d_nd, len(self.pathes))
-    def generate_hopcounts(self, nd_dict, peer_dict, pruned_dict):
-        new_hcs = sum([self._generate_hc(cur_p, nd_dict, peer_dict, pruned_dict) for cur_p in self.pathes], [])
+    def generate_hopcounts(self, rho):
+        new_hcs = sum([self._generate_hc(cur_p, rho) for cur_p in self.pathes], [])
         return new_hcs
-    def _generate_hc(self, cur_p, nd_dict, peer_dict, pruned_dict):
-        cur_trace = ["%d" % (nd_dict[cur_hop].device_id) for cur_hop in cur_p]
+    def _generate_hc(self, cur_p, rho):
+        cur_trace = ["%d" % (rho.nd_dict[cur_hop].device_id) for cur_hop in cur_p]
         new_hc = hopcount(
-            s_netdevice=nd_dict[self.s_nd],
-            d_netdevice=nd_dict[self.d_nd],
-            value=sum([nd_dict[cur_hop].penalty for cur_hop in cur_p]) + sum([peer_dict[(cur_p[idx], cur_p[idx + 1])] for idx in xrange(0, len(cur_p) - 1)]),
+            s_netdevice=rho.nd_dict[self.s_nd],
+            d_netdevice=rho.nd_dict[self.d_nd],
+            value=sum([rho.nd_dict[cur_hop].penalty for cur_hop in cur_p]) + sum([rho.peer_dict[(cur_p[idx], cur_p[idx + 1])] for idx in xrange(0, len(cur_p) - 1)]),
             trace=":".join(cur_trace),
             trace_length=len(cur_trace),
         )
         hc_list = [new_hc]
-        rev_trace = copy.deepcopy(cur_trace)
-        rev_trace.reverse()
         # also add reverted version
         hc_list.append(
             hopcount(
-                s_netdevice=nd_dict[self.d_nd],
-                d_netdevice=nd_dict[self.s_nd],
+                s_netdevice=rho.nd_dict[self.d_nd],
+                d_netdevice=rho.nd_dict[self.s_nd],
                 value=new_hc.value,
-                trace=":".join(rev_trace),
-                trace_length=len(rev_trace),
+                trace=":".join([val for val in cur_trace[::-1]]),
+                trace_length=len(cur_trace),
             )
         )
         visited = set([(self.s_nd, self.d_nd)])
-        hc_list.extend(self._expand_pruned(new_hc, cur_trace, nd_dict, peer_dict, pruned_dict, visited))
+        hc_list.extend(self._expand_pruned(new_hc, cur_trace, rho, visited))
         #print "-" * 20
         #pprint.pprint(pruned_dict)
         #pprint.pprint(hc_list)
@@ -250,67 +248,102 @@ class path_object(object):
 ##        if len(hc_list) > 10:
 ##            sys.exit(0)
         return hc_list
-    def _expand_pruned(self, src_hc, src_trace, nd_dict, peer_dict, pruned_dict, visited):
+    def _expand_pruned(self, src_hc, src_trace, rho, visited):
         r_list = []
-        for new_left in pruned_dict.get(src_hc.s_netdevice_id, []):
+        for new_left in rho.pruned_dict.get(src_hc.s_netdevice_id, []):
             # expand left
             if (new_left, src_hc.d_netdevice_id) not in visited and src_trace[0] != src_trace[-1]:
                 visited.add((new_left, src_hc.d_netdevice_id))
-                add_penalty = peer_dict[(new_left, src_hc.s_netdevice_id)] + nd_dict[new_left].penalty
-                cur_trace = ["%d" % (nd_dict[new_left].device_id)] + src_trace
+                add_penalty = rho.peer_dict[(new_left, src_hc.s_netdevice_id)] + rho.nd_dict[new_left].penalty
+                cur_trace = ["%d" % (rho.nd_dict[new_left].device_id)] + src_trace
                 new_hc = hopcount(
-                    s_netdevice=nd_dict[new_left],
-                    d_netdevice=nd_dict[src_hc.d_netdevice_id],
+                    s_netdevice=rho.nd_dict[new_left],
+                    d_netdevice=rho.nd_dict[src_hc.d_netdevice_id],
                     value=src_hc.value + add_penalty,
                     trace=":".join(cur_trace),
                     trace_length=len(cur_trace),
                 )
                 r_list.append(new_hc)
                 if new_hc.s_netdevice_id != new_hc.d_netdevice_id:
-                    cur_trace.reverse()
                     r_list.append(
                         hopcount(
-                            s_netdevice=nd_dict[src_hc.d_netdevice_id],
-                            d_netdevice=nd_dict[new_left],
+                            s_netdevice=rho.nd_dict[src_hc.d_netdevice_id],
+                            d_netdevice=rho.nd_dict[new_left],
                             value=new_hc.value,
-                            trace=":".join(cur_trace),
+                            trace=":".join([val for val in cur_trace[::-1]]),
                             trace_length=len(cur_trace),
                         )
                     )
                     cur_trace.reverse()
                 r_list.extend(self._expand_pruned(
-                    new_hc, src_trace, nd_dict, peer_dict, pruned_dict, visited)
+                    new_hc, src_trace, rho, visited)
                               )
-        for new_right in pruned_dict.get(src_hc.d_netdevice_id, []):
+        for new_right in rho.pruned_dict.get(src_hc.d_netdevice_id, []):
             # expand right
             if (src_hc.s_netdevice_id, new_right) not in visited and src_trace[0] != src_trace[-1]:
                 visited.add((src_hc.s_netdevice_id, new_right))
-                add_penalty = peer_dict[(new_right, src_hc.d_netdevice_id)] + nd_dict[new_right].penalty
-                cur_trace = src_trace + ["%d" % (nd_dict[new_right].device_id)]
+                add_penalty = rho.peer_dict[(new_right, src_hc.d_netdevice_id)] + rho.nd_dict[new_right].penalty
+                cur_trace = src_trace + ["%d" % (rho.nd_dict[new_right].device_id)]
                 new_hc = hopcount(
-                    s_netdevice=nd_dict[src_hc.s_netdevice_id],
-                    d_netdevice=nd_dict[new_right],
+                    s_netdevice=rho.nd_dict[src_hc.s_netdevice_id],
+                    d_netdevice=rho.nd_dict[new_right],
                     value=src_hc.value + add_penalty,
                     trace=":".join(cur_trace),
                     trace_length=len(cur_trace),
                 )
                 r_list.append(new_hc)
                 if new_hc.s_netdevice_id != new_hc.d_netdevice_id:
-                    cur_trace.reverse()
                     r_list.append(
                         hopcount(
-                            s_netdevice=nd_dict[new_right],
-                            d_netdevice=nd_dict[src_hc.s_netdevice_id],
+                            s_netdevice=rho.nd_dict[new_right],
+                            d_netdevice=rho.nd_dict[src_hc.s_netdevice_id],
                             value=new_hc.value,
-                            trace=":".join(cur_trace),
+                            trace=":".join([val for val in cur_trace[::-1]]),
                             trace_length=len(cur_trace),
                         )
                     )
                     cur_trace.reverse()
                 r_list.extend(self._expand_pruned(
-                    new_hc, src_trace, nd_dict, peer_dict, pruned_dict, visited)
+                    new_hc, src_trace, rho, visited)
                               )
         return r_list
+
+class route_helper_obj(object):
+    def __init__(self):
+        self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).select_related("device__device_type")
+        self.all_peers = peer_information.objects.all()
+        self.nd_dict = dict([(cur_nd.pk, cur_nd) for cur_nd in self.all_nds])
+        # peer dict
+        self.peer_dict = {}
+        for cur_p in self.all_peers:
+            self.peer_dict[(cur_p.s_netdevice_id, cur_p.d_netdevice_id)] = cur_p.penalty
+            self.peer_dict[(cur_p.d_netdevice_id, cur_p.s_netdevice_id)] = cur_p.penalty
+        self.pruned_dict = {}
+        self.dups = 0
+    def create_hopcount(self, nd_list):
+        penalty = sum([self.nd_dict[nd_list[idx]].penalty + self.peer_dict[(nd_list[idx], nd_list[idx + 1])] for idx in xrange(len(nd_list) - 1)], 0) + self.nd_dict[nd_list[-1]].penalty
+        ret_list = [
+            hopcount(
+                s_netdevice=self.nd_dict[nd_list[0]],
+                d_netdevice=self.nd_dict[nd_list[-1]],
+                value=penalty,
+                trace=":".join(["%d" % (self.nd_dict[cur_nd].device_id) for cur_nd in nd_list]),
+                trace_length=len(nd_list),
+            )
+        ]
+        if len(nd_list) > 1:
+            self.dups += 1
+            ret_list.append(
+                hopcount(
+                    s_netdevice=self.nd_dict[nd_list[-1]],
+                    d_netdevice=self.nd_dict[nd_list[0]],
+                    value=penalty,
+                    trace=":".join(["%d" % (self.nd_dict[cur_nd].device_id) for cur_nd in nd_list[::-1]]),
+                    trace_length=len(nd_list),
+                )
+            )
+        return ret_list
+        
         
 class rebuild_hopcount(cs_base_class.server_com):
     class Meta:
@@ -318,45 +351,39 @@ class rebuild_hopcount(cs_base_class.server_com):
         needed_configs = ["rebuild_hopcount"]
         restartable = True
     def _new_code(self):
-        all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).select_related("device__device_type")
+        rho = route_helper_obj()
         my_timer = cs_timer()
-        all_peers = peer_information.objects.all()
         self.log("building routing info for %s and %s" % (
-            logging_tools.get_plural("netdevice", len(all_nds)),
-            logging_tools.get_plural("peer information", len(all_peers))))
-        nd_dict = dict([(cur_nd.pk, cur_nd) for cur_nd in all_nds])
-        pure_peers = [(cur_p.s_netdevice_id, cur_p.d_netdevice_id) for cur_p in all_peers]
-        # peer dict
-        peer_dict = {}
-        for cur_p in all_peers:
-            peer_dict[(cur_p.s_netdevice_id, cur_p.d_netdevice_id)] = cur_p.penalty
-            peer_dict[(cur_p.d_netdevice_id, cur_p.s_netdevice_id)] = cur_p.penalty
-        dot_file = file("/tmp/r.dot", "w")
-        dot_file.write("graph routing {\n")
-        # build neighbour dict
-        nb_dict = {}
-        for nd_pk, cur_nd in nd_dict.iteritems():
-            label = "%s (%d, [%s:%d], p: %d)" % (
-                cur_nd.devname,
-                nd_pk,
-                unicode(cur_nd.device),
-                cur_nd.device_id,
-                cur_nd.penalty)
-            dot_file.write("n_%d %s;\n" % (
-                nd_pk,
-                "[shape=%s, label=\"%s\"]" % (
-                    "circle " if cur_nd.routing else "box",
-                    label),
-            )
-                           )
-        for cur_p in pure_peers:
-            nb_dict.setdefault(cur_p[0], set()).add(cur_p[1])
-            nb_dict.setdefault(cur_p[1], set()).add(cur_p[0])
-            dot_file.write("n_%d -- n_%d;\n" % (cur_p[0], cur_p[1]))
-        dot_file.write("}\n")
-        dot_file.close()
-        nd_pks = set(nd_dict.keys())
-        pruned_dict = {}
+            logging_tools.get_plural("netdevice", len(rho.all_nds)),
+            logging_tools.get_plural("peer information", len(rho.all_peers))))
+        pure_peers = [(cur_p.s_netdevice_id, cur_p.d_netdevice_id) for cur_p in rho.all_peers]
+        # dot part
+        if True:
+            dot_file = file("/tmp/r.dot", "w")
+            dot_file.write("graph routing {\n")
+            # build neighbour dict
+            nb_dict = {}
+            for nd_pk, cur_nd in rho.nd_dict.iteritems():
+                label = "%s (%d, [%s:%d], p: %d)" % (
+                    cur_nd.devname,
+                    nd_pk,
+                    unicode(cur_nd.device),
+                    cur_nd.device_id,
+                    cur_nd.penalty)
+                dot_file.write("n_%d %s;\n" % (
+                    nd_pk,
+                    "[shape=%s, label=\"%s\"]" % (
+                        "circle " if cur_nd.routing else "box",
+                        label),
+                )
+                               )
+            for cur_p in pure_peers:
+                nb_dict.setdefault(cur_p[0], set()).add(cur_p[1])
+                nb_dict.setdefault(cur_p[1], set()).add(cur_p[0])
+                dot_file.write("n_%d -- n_%d;\n" % (cur_p[0], cur_p[1]))
+            dot_file.write("}\n")
+            dot_file.close()
+        nd_pks = set(rho.nd_dict.keys())
         #print nd_pks
         #print pure_peers
         pruned_pks = set()
@@ -368,12 +395,12 @@ class rebuild_hopcount(cs_base_class.server_com):
             if len(nd_pks) > 2:
                 for cur_nd in nd_pks:
                     # check for non-routing netdevices
-                    if len(nb_dict.get(cur_nd, set())) < 2 and not nd_dict[cur_nd].routing:
+                    if len(nb_dict.get(cur_nd, set())) < 2 and not rho.nd_dict[cur_nd].routing:
                         # remove netdevice (no or only one connection)
                         if cur_nd in nb_dict:
                             for nb_pk in nb_dict[cur_nd]:
                                 nb_dict[nb_pk].remove(cur_nd)
-                                pruned_dict.setdefault(nb_pk, []).append(cur_nd)
+                                rho.pruned_dict.setdefault(nb_pk, []).append(cur_nd)
                             del nb_dict[cur_nd]
                         rem_nds.add(cur_nd)
                 if rem_nds:
@@ -412,7 +439,7 @@ class rebuild_hopcount(cs_base_class.server_com):
                             for next_nd in nb_dict.get(cur_path[-1], []):
                                 if next_nd == d_nd:
                                     new_po.feed_path(copy.deepcopy(cur_path) + [next_nd])
-                                elif next_nd not in cur_path and nd_dict[next_nd].routing:
+                                elif next_nd not in cur_path and rho.nd_dict[next_nd].routing:
                                     new_paths.append(copy.deepcopy(cur_path) + [next_nd])
                         cur_paths = new_paths
                     if new_po:
@@ -423,59 +450,19 @@ class rebuild_hopcount(cs_base_class.server_com):
         self.log(my_timer("hopcount delete"))
         # add simple hopcounts from prune dict
         save_hcs = []
-        for src_nd, dst_nds in pruned_dict.iteritems():
+        for src_nd, dst_nds in rho.pruned_dict.iteritems():
             used_dst_nds = set()
             for dst_nd in dst_nds:
-                penalty = nd_dict[src_nd].penalty + peer_dict[(src_nd, dst_nd)] + nd_dict[dst_nd].penalty
-                save_hcs.extend([
-                    hopcount(
-                        s_netdevice=nd_dict[src_nd],
-                        d_netdevice=nd_dict[dst_nd],
-                        value=penalty,
-                        trace="%d:%d" % (nd_dict[src_nd].device_id, nd_dict[dst_nd].device_id),
-                        trace_length=2,
-                    ),
-                    hopcount(
-                        s_netdevice=nd_dict[dst_nd],
-                        d_netdevice=nd_dict[src_nd],
-                        value=penalty,
-                        trace="%d:%d" % (nd_dict[dst_nd].device_id, nd_dict[src_nd].device_id),
-                        trace_length=2,
-                    )
-                ])
+                save_hcs.extend(rho.create_hopcount([src_nd, dst_nd]))
                 used_dst_nds.add(dst_nd)
                 # add triplets (dst_nd -> src_nd -> dst_nd' )
                 for dst_nd_2 in dst_nds:
                     if dst_nd_2 not in used_dst_nds:
-                        penalty = nd_dict[src_nd].penalty + peer_dict[(src_nd, dst_nd)] + nd_dict[dst_nd].penalty + peer_dict[(src_nd, dst_nd_2)] + nd_dict[dst_nd_2].penalty
-                        save_hcs.extend([
-                            hopcount(
-                                s_netdevice=nd_dict[dst_nd],
-                                d_netdevice=nd_dict[dst_nd_2],
-                                value=penalty,
-                                trace="%d:%d:%d" % (
-                                    nd_dict[dst_nd].device_id,
-                                    nd_dict[src_nd].device_id,
-                                    nd_dict[dst_nd_2].device_id,
-                                ),
-                                trace_length=3,
-                            ),
-                            hopcount(
-                                s_netdevice=nd_dict[dst_nd_2],
-                                d_netdevice=nd_dict[dst_nd],
-                                value=penalty,
-                                trace="%d:%d:%d" % (
-                                    nd_dict[dst_nd_2].device_id,
-                                    nd_dict[src_nd].device_id,
-                                    nd_dict[dst_nd].device_id,
-                                ),
-                                trace_length=3,
-                            )
-                        ])
+                        save_hcs.extend(rho.create_hopcount([dst_nd, src_nd, dst_nd_2]))
         num_hcs = len(save_hcs)
         self.log("simple hops: %d" % (num_hcs))
         for cur_p in all_paths:
-            cur_hcs = cur_p.generate_hopcounts(nd_dict, peer_dict, pruned_dict)
+            cur_hcs = cur_p.generate_hopcounts(rho)
             num_hcs += len(cur_hcs)
             save_hcs.extend(cur_hcs)
             if len(save_hcs) > 200:
@@ -485,11 +472,6 @@ class rebuild_hopcount(cs_base_class.server_com):
             hopcount.objects.bulk_create(save_hcs)
         self.log(my_timer("%d hopcounts inserted" % (num_hcs)))
         return num_hcs, 0
-        #pprint.pprint(all_hcs)
-        #pprint.pprint(nb_dict)
-        #print nd_pks
-        #print pure_peers
-        #print len(all_nds), len(all_peers)
     def _call(self):
         # check for cluster-device-group
         try:
