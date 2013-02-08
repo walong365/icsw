@@ -2,7 +2,18 @@
 
 #from backend.models import site_call_log, session_call_log
 from django.conf import settings
-from django.db import connection
+
+DB_DEBUG = False
+
+if hasattr(settings, "DATABASE_DEBUG"):
+    DB_DEBUG = settings.DATABASE_DEBUG
+else:
+    DB_DEBUG = settings.DEBUG
+
+if DB_DEBUG:
+    from django.db import connection
+else:
+    connection = None
 from django.http import HttpResponseRedirect
 import django.contrib.auth
 import process_tools
@@ -98,42 +109,45 @@ def get_terminal_size():
     return width, height
 
 def show_database_calls(**kwargs):
-    full = kwargs.get("full", False)
-    tot_time = sum([float(entry["time"]) for entry in connection.queries], 0.)
-    try:
-        cur_width = get_terminal_size()[0]
-    except:
-        # no regular TTY, ignore
-        cur_width = None
+    if connection:
+        full = kwargs.get("full", False)
+        tot_time = sum([float(entry["time"]) for entry in connection.queries], 0.)
+        try:
+            cur_width = get_terminal_size()[0]
+        except:
+            # no regular TTY, ignore
+            cur_width = None
+        else:
+            # only output if stdout is a regular TTY
+            print "queries: %d in %.2f seconds" % (len(connection.queries),
+                                                   tot_time)
+        if len(connection.queries) > 1 and cur_width:
+            for act_sql in connection.queries:
+                sql_str = act_sql["sql"].replace("\n", "<NL>")
+                if full:
+                    out_str = sql_str
+                else:
+                    if sql_str.count("FROM") and sql_str.count("WHERE"):
+                        oper_str = sql_str.split()[0]
+                        if sql_str.count("FROM") > 1 or sql_str.count("WHERE") > 1:
+                            print "FROM / COUNT: %d / %d" % (sql_str.count("FROM"), sql_str.count("WHERE"))
+                        # parse sql_str
+                        sub_str = sql_str[sql_str.index("FROM"):sql_str.index("WHERE")]
+                        for r_char in "(),=":
+                            sub_str = sub_str.replace(r_char, "")
+                        out_list = set()
+                        for cur_str in sub_str.split():
+                            if cur_str.startswith("[") and cur_str.endswith("]"):
+                                out_list.add(cur_str.split(".")[0])
+                        #print sql_str
+                        sql_str = "%s FROM %s :: %s" % (
+                            oper_str,
+                            ", ".join(sorted(list(out_list))),
+                            sql_str)
+                    out_str = sql_str[0:cur_width - 8]
+                print "%6.2f %s" % (float(act_sql["time"]), out_str)
     else:
-        # only output if stdout is a regular TTY
-        print "queries: %d in %.2f seconds" % (len(connection.queries),
-                                               tot_time)
-    if len(connection.queries) > 1 and cur_width:
-        for act_sql in connection.queries:
-            sql_str = act_sql["sql"].replace("\n", "<NL>")
-            if full:
-                out_str = sql_str
-            else:
-                if sql_str.count("FROM") and sql_str.count("WHERE"):
-                    oper_str = sql_str.split()[0]
-                    if sql_str.count("FROM") > 1 or sql_str.count("WHERE") > 1:
-                        print "FROM / COUNT: %d / %d" % (sql_str.count("FROM"), sql_str.count("WHERE"))
-                    # parse sql_str
-                    sub_str = sql_str[sql_str.index("FROM"):sql_str.index("WHERE")]
-                    for r_char in "(),=":
-                        sub_str = sub_str.replace(r_char, "")
-                    out_list = set()
-                    for cur_str in sub_str.split():
-                        if cur_str.startswith("[") and cur_str.endswith("]"):
-                            out_list.add(cur_str.split(".")[0])
-                    #print sql_str
-                    sql_str = "%s FROM %s :: %s" % (
-                        oper_str,
-                        ", ".join(sorted(list(out_list))),
-                        sql_str)
-                out_str = sql_str[0:cur_width - 8]
-            print "%6.2f %s" % (float(act_sql["time"]), out_str)
+        print "django.db.connection not loaded in backbone.middleware.py"
     
 class database_debug(object):
     def process_response(self, request, response):
