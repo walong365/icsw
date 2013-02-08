@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2001,2002,2003,2004,2007,2009 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2001,2002,2003,2004,2007,2009 Andreas,2013 Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -21,12 +21,15 @@
 #
 
 import sys
-import getopt
+import argparse
 import process_tools
 import mail_tools
 import logging_tools
 
 def main():
+    my_parser = argparse.ArgumentParser()
+    my_parser.add_argument("f", type=str, meta="from", help="from address [%(default)s]", default="root@localhost")
+    print my_parse.parse_args()
     try:
         args, opts = getopt.getopt(sys.argv[1:], "hf:t:s:m:G", ["help"])
     except:
