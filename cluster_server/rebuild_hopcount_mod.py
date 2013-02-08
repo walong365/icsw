@@ -476,6 +476,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         self.log(my_timer("%d hopcounts inserted" % (num_hcs)))
         num_dups = rho.dups
         del rho
+        del new_paths
         return num_hcs, num_dups
     def _call(self):
         # check for cluster-device-group
@@ -519,7 +520,6 @@ class rebuild_hopcount(cs_base_class.server_com):
             num_peers,
             max_peer_pk,
         )
-        print reb_var.description
         reb_var.val_date = pytz.utc.localize(datetime.datetime(*time.localtime()[0:6]))
         reb_var.save()
         state_var.delete()
