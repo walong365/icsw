@@ -239,6 +239,7 @@ class path_object(object):
                 trace_length=len(cur_trace),
             )
         )
+        rho.dups += 1
         visited = set([(self.s_nd, self.d_nd)])
         hc_list.extend(self._expand_pruned(new_hc, cur_trace, rho, visited))
         #print "-" * 20
@@ -265,6 +266,7 @@ class path_object(object):
                 )
                 r_list.append(new_hc)
                 if new_hc.s_netdevice_id != new_hc.d_netdevice_id:
+                    rho.dups += 1
                     r_list.append(
                         hopcount(
                             s_netdevice=rho.nd_dict[src_hc.d_netdevice_id],
@@ -293,6 +295,7 @@ class path_object(object):
                 )
                 r_list.append(new_hc)
                 if new_hc.s_netdevice_id != new_hc.d_netdevice_id:
+                    rho.dups += 1
                     r_list.append(
                         hopcount(
                             s_netdevice=rho.nd_dict[new_right],
@@ -471,7 +474,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         if save_hcs:
             hopcount.objects.bulk_create(save_hcs)
         self.log(my_timer("%d hopcounts inserted" % (num_hcs)))
-        return num_hcs, 0
+        return num_hcs, rho.dups
     def _call(self):
         # check for cluster-device-group
         try:
