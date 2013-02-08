@@ -25,7 +25,6 @@ import os
 import logging_tools
 import cluster_location
 import pprint
-from django.db import connection
 from django.conf import settings
 
 class server_com(object):
@@ -55,8 +54,9 @@ class server_com(object):
         for key in dir(server_com.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(server_com.Meta, key))
-    def link(self, process_pool):
+    def link(self, process_pool, db_debug):
         self.process_pool = process_pool
+        self.db_debug = db_debug
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.process_pool.log("[com] %s" % (what), log_level)
     def check_config(self, loc_config, force=False):
@@ -88,7 +88,8 @@ class server_com(object):
             srv_origin = "yes"
         return (doit, srv_origin, err_str)
     def __call__(self):
-        if settings.DEBUG:
+        if self.db_debug:
+            from django.db import connection
             pre_queries = len(connection.queries)
         self.start_time = time.time()
         result = self._call()
@@ -102,7 +103,7 @@ class server_com(object):
             self.srv_com["result"].attrib["reply"] = "%s in %s" % (
                 self.srv_com["result"].attrib["reply"],
                 logging_tools.get_diff_time_str(self.end_time - self.start_time))
-        if settings.DEBUG:
+        if self.db_debug:
             self.log("queries executed : %d" % (len(connection.queries) - pre_queries))
         return result
     def write_start_log(self):

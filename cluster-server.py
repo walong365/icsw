@@ -24,6 +24,7 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from django.conf import settings
 import socket
 import re
 import time
@@ -51,7 +52,6 @@ from django.db.models import Q
 from host_monitoring import hm_classes
 from django.core.handlers.wsgi import WSGIHandler
 from initat.cluster.backbone.models import device, device_variable, log_source
-from initat.cluster.backbone.middleware import show_database_calls
 
 try:
     from cluster_server_version import VERSION_STRING
@@ -1459,7 +1459,7 @@ class server_process(threading_tools.process_pool):
         for com_name in cluster_server.command_names:
             act_sc = cluster_server.command_dict[com_name]
             if hasattr(act_sc, "_call"):
-                act_sc.link(self)
+                act_sc.link(self, global_config["DATABASE_DEBUG"])
                 self.log("   com %-30s, %s%s, %s, %s, %s, %s" % (
                     act_sc.name,
                     logging_tools.get_plural("config", len(act_sc.Meta.needed_configs)),
@@ -1485,6 +1485,7 @@ def main():
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("DATABASE_DEBUG"      , configfile.bool_c_var(False, help_string="enable database debug mode [%(default)s]", only_commandline=True)),
         ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("PID_NAME"            , configfile.str_c_var("%s" % (prog_name))),
         ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
@@ -1552,6 +1553,7 @@ def main():
         ("SERVER_FULL_NAME"      , configfile.str_c_var(long_host_name, database=False)),
         ("SERVER_SHORT_NAME"     , configfile.str_c_var(mach_name, database=False)),
     ])
+    settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     if not global_config["DEBUG"] and not global_config["COMMAND"]:
         process_tools.become_daemon()
         process_tools.set_handles({"out" : (1, "cluster-server.out"),
@@ -1560,7 +1562,8 @@ def main():
         if global_config["DEBUG"]:
             print "Debugging cluster-server on %s" % (long_host_name)
     ret_state = server_process(options).loop()
-    if global_config["DEBUG"]:
+    if global_config["DATABASE_DEBUG"]:
+        from initat.cluster.backbone.middleware import show_database_calls
         show_database_calls()
     sys.exit(ret_state)
 
