@@ -32,7 +32,7 @@ from lxml import etree
 def main():
     parser = argparse.ArgumentParser("send command to servers of the init.at Clustersoftware")
     parser.add_argument("arguments", nargs="+", help="additional arguments, first one is command")
-    parser.add_argument("-t", help="set timeout [%(default)d]", default=10, dest="timeout")
+    parser.add_argument("-t", help="set timeout [%(default)d]", default=10, type=int, dest="timeout")
     parser.add_argument("-p", help="port [%(default)d]", default=2001, dest="port", type=int)
     parser.add_argument("-P", help="protocoll [%(default)s]", type=str, default="tcp", choices=["tcp", "ipc"], dest="protocoll")
     parser.add_argument("-S", help="servername [%(default)s]", type=str, default="collrelay", dest="server_name")
@@ -78,9 +78,12 @@ def main():
         if not args.raw:
             srv_com["arg_list"] = " ".join(other_args)
         s_time = time.time()
-        #client.send_unicode("49481fb4-4ca7-11e1-85fb-001f161a5a03:hoststatus:", zmq.SNDMORE)
         client.send_unicode(unicode(srv_com))
-        recv_str = client.recv()
+        if client.poll(args.timeout * 1000):
+            recv_str = client.recv()
+        else:
+            print "Timeout"
+            recv_str = None
         e_time = time.time()
         if args.verbose:
             print "communication took %s, received %d bytes" % (
