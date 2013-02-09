@@ -990,7 +990,11 @@ class process_obj(multiprocessing.Process):
         src_pid = cur_mes["pid"]
         mes_type = cur_mes["type"]
         if mes_type in self.__func_table:
-            self.__func_table[mes_type](*cur_mes["args"], src_pid=src_pid, src_process=src_process, **cur_mes.get("kwargs", {}))
+            self.__func_table[mes_type](
+                *cur_mes["args"],
+                src_pid=src_pid,
+                src_process=src_process,
+                **cur_mes.get("kwargs", {}))
             self.any_message_received()
         else:
             self.log("unknown message type '%s' from %s (%d)" % (
