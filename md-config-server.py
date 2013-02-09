@@ -54,7 +54,7 @@ from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_service, mon_ext_host, mon_check_command, mon_check_command_type, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, hopcount, \
-     user, mon_host_cluster, mon_service_cluster, config
+     user, mon_host_cluster, mon_service_cluster, config, route_generation
 from django.conf import settings
 import base64
 import uuid_tools
@@ -1944,10 +1944,12 @@ class build_process(threading_tools.process_obj):
                 else:
                     bc_valid = False
             if bc_valid:
+                # latest routing generation
+                latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
                 # build distance map
                 cur_dmap = self._build_distance_map(self.__gen_config.monitor_server)
                 for cur_gc in [self.__gen_config] + self.__slave_configs.values():
-                    self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap)
+                    self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap, latest_gen)
                     if cur_gc.master:
                         # recreate access files
                         cur_gc._create_access_entries()
@@ -1967,7 +1969,7 @@ class build_process(threading_tools.process_obj):
             self.log("queries issued: %d" % (tot_query_count))
             #for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
             #    self.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
-    def _build_distance_map(self, root_node):
+    def _build_distance_map(self, root_node, latest_gen):
         self.log("building distance map, root node is '%s'" % (root_node))
         # exclude all without attached netdevices
         dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.exclude(netdevice=None).prefetch_related("netdevice_set")])
@@ -1989,7 +1991,11 @@ class build_process(threading_tools.process_obj):
             src_nds = reduce(operator.ior, [nd_dict[key] for key in src_nodes], set())
             dst_nds = reduce(operator.ior, [nd_dict[key] for key in dst_nodes], set())
             # only single-hop hopcounts
-            for cur_hc in hopcount.objects.filter(Q(s_netdevice__in=src_nds) & Q(d_netdevice__in=dst_nds) & Q(trace_length=2)):
+            for cur_hc in hopcount.objects.filter(
+                Q(route_generation=latest_gen) &
+                Q(s_netdevice__in=src_nds) &
+                Q(d_netdevice__in=dst_nds) &
+                Q(trace_length=2)):
                 if cur_hc.s_netdevice_id == cur_hc.d_netdevice_id:
                     # loop, skip
                     pass
@@ -2100,9 +2106,10 @@ class build_process(threading_tools.process_obj):
             return ("%%%dd" % (size)) % (i_val)
         else:
             return ("%%%ds" % (size)) % ("-")
-    def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map):
+    def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map, latest_gen):
         """
         d_map : distance map
+        latest_gen : latest routing generation
         """
         start_time = time.time()
         # get contacts with access to all devices
@@ -2256,7 +2263,7 @@ class build_process(threading_tools.process_obj):
                 if host.name == global_config["SERVER_SHORT_NAME"]:
                     valid_ips, traces = (["127.0.0.1"], [(1, [host_pk])])
                 else:
-                    valid_ips, traces = self._get_target_ip_info(my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts)
+                    valid_ips, traces = self._get_target_ip_info(my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts, latest_gen)
                     if not valid_ips:
                         num_error += 1
                 act_def_dev = dev_templates[host.mon_device_templ_id or 0]
@@ -2629,7 +2636,7 @@ class build_process(threading_tools.process_obj):
             else:
                 ret_field.append(act_serv)
         return ret_field
-    def _get_target_ip_info(self, my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts):
+    def _get_target_ip_info(self, my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts, latest_gen):
         host = all_hosts_dict[host_pk]
         traces = []
 ##        mni_str_s = " OR ".join(["h.s_netdevice=%d" % (x) for x in my_net_idxs])
@@ -2637,7 +2644,10 @@ class build_process(threading_tools.process_obj):
 ##        dc.execute("SELECT h.s_netdevice, h.d_netdevice, h.trace, h.value FROM hopcount h WHERE (%s) AND (%s) ORDER BY h.value" % (mni_str_s, dev_str_d))
         #targ_netdev_ds = dc.fetchone()
         targ_netdev_idxs = None
-        for targ_netdev_ds in hopcount.objects.filter(Q(s_netdevice__in=my_net_idxs) & Q(d_netdevice__in=net_devices.keys())):
+        for targ_netdev_ds in hopcount.objects.filter(
+            Q(route_generation=latest_gen) &
+            Q(s_netdevice__in=my_net_idxs) &
+            Q(d_netdevice__in=net_devices.keys())):
             targ_netdev_idxs = [getattr(targ_netdev_ds, key) for key in ["s_netdevice_id", "d_netdevice_id"] if getattr(targ_netdev_ds, key) not in my_net_idxs]
             if not targ_netdev_idxs:
                 # special case: peers defined but only local netdevices found, maybe alias ?
