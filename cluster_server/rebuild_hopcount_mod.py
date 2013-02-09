@@ -337,12 +337,12 @@ class route_helper_obj(object):
         except route_generation.DoesNotExist:
             self.last_gen = None
         self.cur_gen = route_generation(
-            generation=self.last_gen.geneartion + 1 if self.last_gen else 1,
+            generation=self.last_gen.generation + 1 if self.last_gen else 1,
             valid=False
         )
         self.cur_gen.save()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.log_com("[rho] %s" % (what), log_level)
+        self.__log_com("[rho] %s" % (what), log_level)
     def switch(self):
         self.__end_time = time.time()
         # switches from last_gen to cur_gen
@@ -350,9 +350,11 @@ class route_helper_obj(object):
         self.cur_gen.valid = True
         self.log("enabled new route_generation (%s)" % (unicode(self.cur_gen)))
         self.cur_gen.save()
-        if self.last_gen:
-            self.last_gen.valid = False
-            self.last_gen.save()
+        for prev_gen in route_generation.objects.exclude(pk=self.cur_gen.pk).filter(Q(valid=True)):
+            prev_gen.valid = False
+            prev_gen.save()
+        # delete all hopcounts with no route generation
+        hopcount.objects.filter(Q(route_generation=None)).delete()
         # delete routing sets which are at least 10 geneartions behind
         old_gens = route_generation.objects.filter(Q(generation__lt=self.cur_gen.generation - 10))
         if old_gens:
