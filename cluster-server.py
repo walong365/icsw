@@ -1060,6 +1060,11 @@ class server_process(threading_tools.process_pool):
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult)
             self.__msi_block.save_block()
+    def process_exit(self, src_process, src_pid):
+        process_tools.remove_pids(self.__pid_name, src_pid)
+        if self.__msi_block:
+            self.__msi_block.remove_actual_pid(src_pid)
+            self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
