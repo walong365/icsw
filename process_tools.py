@@ -487,7 +487,7 @@ class meta_server_info(object):
     def remove_actual_pid(self, act_pid=None):
         if not act_pid:
             act_pid = os.getpid()
-        if act_pid in self.__pids:
+        while act_pid in self.__pids:
             self.__pids.remove(act_pid)
         self.__pids.sort()
     def get_pids(self):
@@ -701,9 +701,9 @@ def append_pids(name, pid=None, mult=1, mode="a"):
     if pid == None:
         actp = [os.getpid()]
     else:
-        if type(pid) in [type(0), type(0L)]:
+        if type(pid) in [int, long]:
             actp = [pid]
-        elif type(pid) == type(""):
+        elif type(pid) in [str, unicode]:
             actp = [int(pid)]
         else:
             actp = pid
@@ -722,40 +722,43 @@ def append_pids(name, pid=None, mult=1, mode="a"):
     try:
         pid_file = file(fname, mode).write("\n".join(mult * ["%d" % (cur_p) for cur_p in actp] + [""]))
     except:
-        logging_tools.my_syslog("error %s %s (%s) to %s: %s" % (long_mode,
-                                                                logging_tools.get_plural("pid", len(actp)),
-                                                                ", ".join(["%d" % (x) for x in actp]), fname,
-                                                                get_except_info()))
+        logging_tools.my_syslog("error %s %s (%s) to %s: %s" % (
+            long_mode,
+            logging_tools.get_plural("pid", len(actp)),
+            ", ".join(["%d" % (line) for line in actp]), fname,
+            get_except_info()))
     else:
         try:
             os.chmod(fname, 0644)
         except:
-            logging_tools.my_syslog("error changing mode of %s to 0644: %s" % (fname, get_except_info()))
+            logging_tools.my_syslog("error changing mode of %s to 0644: %s" % (
+                fname,
+                get_except_info()))
 
 def remove_pids(name, pid=None):
     if pid == None:
         actp = [os.getpid()]
     else:
-        if type(pid) in [type(0), type(0L)]:
+        if type(pid) in [int, long]:
             actp = [pid]
-        elif type(pid) == type(""):
+        elif type(pid) in [str, unicode]:
             actp = [int(pid)]
         else:
             actp = pid
-            if name.startswith("/"):
-                fname = name
-            else:
-                fname = "%s.pid" % (os.path.join(RUN_DIR, name))
+    if name.startswith("/"):
+        fname = name
+    else:
+        fname = "%s.pid" % (os.path.join(RUN_DIR, name))
     try:
-        pid_lines = [x.strip() for x in file(fname, "r").read().split("\n")]
+        pid_lines = [entry.strip() for entry in file(fname, "r").read().split("\n")]
     except:
-        pass
+        logging_tools.my_syslog("error interpreting file: %s" % (get_except_info()))
     else:
         for del_pid in actp:
             new_lines = []
             for line in pid_lines:
                 if line == str(del_pid):
-                    del_pid = "."
+                    pass
                 else:
                     new_lines.append(line)
             pid_lines = new_lines
@@ -763,7 +766,9 @@ def remove_pids(name, pid=None):
             file(fname, "w").write("\n".join(pid_lines))
             os.chmod(fname, 0644)
         except:
-            logging_tools.my_syslog("error removing %d pids (%s) to %s" % (len(actp), ",".join(["%d" % (x) for x in actp]), fname))
+            logging_tools.my_syslog("error removing %d pids (%s) to %s" % (
+                len(actp),
+                ",".join(["%d" % (line) for line in actp]), fname))
         
 def delete_pid(name):
     if name.startswith("/"):
