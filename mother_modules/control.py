@@ -43,7 +43,7 @@ from django.db import connection
 from twisted.python import log
 from twisted.internet.error import CannotListenError
 from initat.cluster.backbone.models import kernel, device, hopcount, \
-     image, macbootlog, mac_ignore, cluster_timezone, \
+     image, macbootlog, mac_ignore, cluster_timezone, route_generation, \
      cached_log_status, cached_log_source, log_source, devicelog
 from django.db.models import Q
 import process_tools
@@ -328,7 +328,9 @@ class host(machine):
         ip_dict = {}
         if nd_list:
             # get hopcount
+            latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
             my_hc = hopcount.objects.filter(
+                Q(route_generation=latest_gen) &
                 Q(s_netdevice__in=machine.process.sc.netdevice_idx_list) &
                 Q(d_netdevice__in=nd_list)).order_by("value")
             for _ in my_hc:

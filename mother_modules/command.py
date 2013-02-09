@@ -32,7 +32,7 @@ import subprocess
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, network, cd_connection, device_variable, \
-     hopcount
+     hopcount, route_generation
 from mother_modules.command_tools import simple_command
 import re
 import server_command
@@ -112,7 +112,11 @@ class hc_command(object):
             var_value = cur_var.value
         return var_value
     def get_ip_to_host(self, dev_struct):
-        hc_list = hopcount.objects.filter(Q(s_netdevice__device=dev_struct) & Q(d_netdevice__in=hc_command.process.sc.netdevice_idx_list)).order_by("value")
+        latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
+        hc_list = hopcount.objects.filter(
+            Q(route_generation=latest_gen) & 
+            Q(s_netdevice__device=dev_struct) &
+            Q(d_netdevice__in=hc_command.process.sc.netdevice_idx_list)).order_by("value")
         com_ip = None
         if hc_list:
             ip_list = hc_list[0].s_netdevice.net_ip_set.all().values_list("ip", flat=True)
