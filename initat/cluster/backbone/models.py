@@ -947,13 +947,20 @@ class route_generation(models.Model):
     generation = models.IntegerField(default=1)
     # time used to generate in seconds
     time_used = models.IntegerField(default=0)
+    # dirty flag, used to set the route generation as dirty (changed network setting)
+    dirty = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return u"route generation %d, %s" % (
             self.generation,
             "valid" if self.valid else "invalid",
         )
-    
+ 
+def mark_routing_dirty():
+    for valid_route in route_generation.objects.filter(Q(valid=True)):
+        valid_route.dirty = True
+        valid_route.save()
+        
 class hopcount(models.Model):
     idx = models.AutoField(db_column="hopcount_idx", primary_key=True)
     route_generation = models.ForeignKey(route_generation)
@@ -1562,6 +1569,12 @@ class netdevice(models.Model):
     bridge_name = models.CharField(max_length=765, blank=True)
     vlan_id = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def __init__(self, *args, **kwargs):
+        models.Model.__init__(self, *args, **kwargs)
+        self.saved_values = {
+            "penalty" : self.penalty,
+            "routing" : self.routing,
+        }
     def copy(self):
         return netdevice(
             devname=self.devname,
@@ -1690,6 +1703,23 @@ def netdevice_pre_save(sender, **kwargs):
             raise ValidationError("MACaddress has illegal format")
         if not mac_re.match(cur_inst.fake_macaddr):
             raise ValidationError("fake MACaddress has illegal format")
+
+@receiver(signals.post_save, sender=netdevice)
+def netdevice_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        mark_dirty = False
+        for comp_val in ["penalty", "routing"]:
+            if getattr(cur_inst, comp_val) != cur_inst.saved_values[comp_val]:
+                mark_dirty = True
+                break
+        if mark_dirty:
+            mark_routing_dirty()
+
+@receiver(signals.post_delete, sender=netdevice)
+def netdevice_post_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        mark_routing_dirty()
 
 class netdevice_speed(models.Model):
     idx = models.AutoField(db_column="netdevice_speed_idx", primary_key=True)
@@ -2772,6 +2802,22 @@ class peer_information(models.Model):
     class Meta:
         db_table = u'peer_information'
 
+@receiver(signals.pre_save, sender=peer_information)
+def peer_information_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_integer(cur_inst, "penalty", min_val=1)
+
+@receiver(signals.post_save, sender=peer_information)
+def peer_information_post_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        mark_routing_dirty()
+
+@receiver(signals.post_delete, sender=peer_information)
+def peer_information_post_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        mark_routing_dirty()
+
 class pi_connection(models.Model):
     idx = models.AutoField(db_column="pi_connection_idx", primary_key=True)
     package = models.ForeignKey("package")
@@ -3384,13 +3430,6 @@ class wc_files(models.Model):
     class Meta:
         db_table = u'wc_files'
             
-@receiver(signals.pre_save, sender=peer_information)
-def peer_information_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        _check_integer(cur_inst, "penalty", min_val=1)
-
-
 def config_str_general_check(cur_inst):
     if not cur_inst.name:
         raise ValidationError("name must not be zero")
