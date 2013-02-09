@@ -1,6 +1,6 @@
 #!/usr/bin/python -Otu
 #
-# Copyright (C) 2007,2008,2011,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2008,2011,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -29,7 +29,8 @@ import logging_tools
 import server_command
 import cluster_location
 from django.db.models import Q
-from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group
+from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, \
+     hopcount, device_group, route_generation
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME       = "/etc/hosts"
@@ -52,7 +53,12 @@ class write_etc_hosts(cs_base_class.server_com):
         # get all peers to local machine and local netdevices
         my_idxs = netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True)
         # ref_table
-        ref_table = dict([((cur_entry.s_netdevice_id, cur_entry.d_netdevice_id), cur_entry.value) for cur_entry in hopcount.objects.filter(Q(s_netdevice__in=my_idxs) | Q(d_netdevice__in=my_idxs))])
+        latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
+        ref_table = dict([
+            ((cur_entry.s_netdevice_id, cur_entry.d_netdevice_id), cur_entry.value)
+            for cur_entry in hopcount.objects.filter(
+                Q(route_generation=latest_gen) & (
+                    Q(s_netdevice__in=my_idxs) | Q(d_netdevice__in=my_idxs)))])
         t_devs = net_ip.objects.filter(Q(netdevice__hopcount_s_netdevice__d_netdevice__in=my_idxs)).select_related(
             "netdevice__device",
             "network__network_type").order_by(

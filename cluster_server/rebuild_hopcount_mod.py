@@ -29,7 +29,7 @@ import server_command
 from django.db.models import Q
 from django.conf import settings
 from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group, \
-     peer_information, cs_timer
+     peer_information, cs_timer, route_generation
 import pprint
 import copy
 
@@ -222,6 +222,7 @@ class path_object(object):
     def _generate_hc(self, cur_p, rho):
         cur_trace = ["%d" % (rho.nd_dict[cur_hop].device_id) for cur_hop in cur_p]
         new_hc = hopcount(
+            route_generation=rho.cur_gen,
             s_netdevice=rho.nd_dict[self.s_nd],
             d_netdevice=rho.nd_dict[self.d_nd],
             value=sum([rho.nd_dict[cur_hop].penalty for cur_hop in cur_p]) + sum([rho.peer_dict[(cur_p[idx], cur_p[idx + 1])] for idx in xrange(0, len(cur_p) - 1)]),
@@ -232,6 +233,7 @@ class path_object(object):
         # also add reverted version
         hc_list.append(
             hopcount(
+                route_generation=rho.cur_gen,
                 s_netdevice=rho.nd_dict[self.d_nd],
                 d_netdevice=rho.nd_dict[self.s_nd],
                 value=new_hc.value,
@@ -258,6 +260,7 @@ class path_object(object):
                 add_penalty = rho.peer_dict[(new_left, src_hc.s_netdevice_id)] + rho.nd_dict[new_left].penalty
                 cur_trace = ["%d" % (rho.nd_dict[new_left].device_id)] + src_trace
                 new_hc = hopcount(
+                    route_generation=rho.cur_gen,
                     s_netdevice=rho.nd_dict[new_left],
                     d_netdevice=rho.nd_dict[src_hc.d_netdevice_id],
                     value=src_hc.value + add_penalty,
@@ -269,6 +272,7 @@ class path_object(object):
                     rho.dups += 1
                     r_list.append(
                         hopcount(
+                            route_generation=rho.cur_gen,
                             s_netdevice=rho.nd_dict[src_hc.d_netdevice_id],
                             d_netdevice=rho.nd_dict[new_left],
                             value=new_hc.value,
@@ -287,6 +291,7 @@ class path_object(object):
                 add_penalty = rho.peer_dict[(new_right, src_hc.d_netdevice_id)] + rho.nd_dict[new_right].penalty
                 cur_trace = src_trace + ["%d" % (rho.nd_dict[new_right].device_id)]
                 new_hc = hopcount(
+                    route_generation=rho.cur_gen,
                     s_netdevice=rho.nd_dict[src_hc.s_netdevice_id],
                     d_netdevice=rho.nd_dict[new_right],
                     value=src_hc.value + add_penalty,
@@ -298,6 +303,7 @@ class path_object(object):
                     rho.dups += 1
                     r_list.append(
                         hopcount(
+                            route_generation=rho.cur_gen,
                             s_netdevice=rho.nd_dict[new_right],
                             d_netdevice=rho.nd_dict[src_hc.s_netdevice_id],
                             value=new_hc.value,
@@ -312,7 +318,10 @@ class path_object(object):
         return r_list
 
 class route_helper_obj(object):
-    def __init__(self):
+    def __init__(self, log_com):
+        self.__log_com = log_com
+        self.log("init router helper object")
+        self.__start_time = time.time()
         self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).select_related("device__device_type")
         self.all_peers = peer_information.objects.all()
         self.nd_dict = dict([(cur_nd.pk, cur_nd) for cur_nd in self.all_nds])
@@ -323,10 +332,37 @@ class route_helper_obj(object):
             self.peer_dict[(cur_p.d_netdevice_id, cur_p.s_netdevice_id)] = cur_p.penalty
         self.pruned_dict = {}
         self.dups = 0
+        try:
+            self.last_gen = route_generation.objects.get(Q(valid=True))
+        except route_generation.DoesNotExist:
+            self.last_gen = None
+        self.cur_gen = route_generation(
+            generation=self.last_gen.geneartion + 1 if self.last_gen else 1,
+            valid=False
+        )
+        self.cur_gen.save()
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.log_com("[rho] %s" % (what), log_level)
+    def switch(self):
+        self.__end_time = time.time()
+        # switches from last_gen to cur_gen
+        self.cur_gen.time_used = self.__end_time - self.__start_time
+        self.cur_gen.valid = True
+        self.log("enabled new route_generation (%s)" % (unicode(self.cur_gen)))
+        self.cur_gen.save()
+        if self.last_gen:
+            self.last_gen.valid = False
+            self.last_gen.save()
+        # delete routing sets which are at least 10 geneartions behind
+        old_gens = route_generation.objects.filter(Q(generation__lt=self.cur_gen.generation - 10))
+        if old_gens:
+            self.log("deleting %s" % (logging_tools.get_plural("old generation", len(old_gens))))
+            old_gens.delete()
     def create_hopcount(self, nd_list):
         penalty = sum([self.nd_dict[nd_list[idx]].penalty + self.peer_dict[(nd_list[idx], nd_list[idx + 1])] for idx in xrange(len(nd_list) - 1)], 0) + self.nd_dict[nd_list[-1]].penalty
         ret_list = [
             hopcount(
+                route_generation=self.cur_gen,
                 s_netdevice=self.nd_dict[nd_list[0]],
                 d_netdevice=self.nd_dict[nd_list[-1]],
                 value=penalty,
@@ -338,6 +374,7 @@ class route_helper_obj(object):
             self.dups += 1
             ret_list.append(
                 hopcount(
+                    route_generation=self.cur_gen,
                     s_netdevice=self.nd_dict[nd_list[-1]],
                     d_netdevice=self.nd_dict[nd_list[0]],
                     value=penalty,
@@ -354,7 +391,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         needed_configs = ["rebuild_hopcount"]
         restartable = True
     def _new_code(self):
-        rho = route_helper_obj()
+        rho = route_helper_obj(self.log)
         my_timer = cs_timer()
         self.log("building routing info for %s and %s" % (
             logging_tools.get_plural("netdevice", len(rho.all_nds)),
@@ -475,6 +512,8 @@ class rebuild_hopcount(cs_base_class.server_com):
             hopcount.objects.bulk_create(save_hcs)
         self.log(my_timer("%d hopcounts inserted" % (num_hcs)))
         num_dups = rho.dups
+        # enable new routing set
+        rho.switch()
         del rho
         del new_paths
         return num_hcs, num_dups
