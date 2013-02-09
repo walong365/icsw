@@ -941,8 +941,22 @@ class genstuff(models.Model):
     class Meta:
         db_table = u'genstuff'
 
+class route_generation(models.Model):
+    idx = models.AutoField(primary_key=True)
+    valid = models.BooleanField(default=True)
+    generation = models.IntegerField(default=1)
+    # time used to generate in seconds
+    time_used = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+    def __unicode__(self):
+        return u"route generation %d, %s" % (
+            self.generation,
+            "valid" if self.valid else "invalid",
+        )
+    
 class hopcount(models.Model):
     idx = models.AutoField(db_column="hopcount_idx", primary_key=True)
+    route_generation = models.ForeignKey(route_generation)
     s_netdevice = models.ForeignKey("netdevice", related_name="hopcount_s_netdevice")
     d_netdevice = models.ForeignKey("netdevice", related_name="hopcount_d_netdevice")
     value = models.IntegerField(null=True, blank=True)
