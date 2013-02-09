@@ -35,7 +35,7 @@ import array
 import process_tools
 import netifaces
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
-     hopcount, device_group, config_str, config_blob, config_int, config_bool
+     hopcount, device_group, config_str, config_blob, config_int, config_bool, route_generation
 from django.db.models import Q
 
 def get_config_var_list(config_obj, config_dev):
@@ -280,7 +280,11 @@ class server_check(object):
             if self.__hc_cache:
                 all_hcs = self.__hc_cache
             else:
-                all_hcs = hopcount.objects.filter(Q(s_netdevice__in=self.netdevice_idx_list) & Q(d_netdevice__in=other.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice", "d_netdevice", "value")
+                latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
+                all_hcs = hopcount.objects.filter(
+                    Q(route_generation=latest_gen) & 
+                    Q(s_netdevice__in=self.netdevice_idx_list) &
+                    Q(d_netdevice__in=other.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice", "d_netdevice", "value")
             for db_rec in all_hcs:
                 # dicts identifier -> ips
                 source_ip_lut, dest_ip_lut = ({}, {})
@@ -407,7 +411,11 @@ class device_with_config(dict):
         dev_pks = set()
         for conf, srv_list in self.iteritems():
             dev_pks |= set([cur_str.device.pk for cur_str in srv_list])
-        all_hcs = hopcount.objects.filter(Q(s_netdevice__device__in=dev_pks) & Q(d_netdevice__in=d_dev.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice__device", "s_netdevice", "d_netdevice", "value")
+        latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
+        all_hcs = hopcount.objects.filter(
+            Q(route_generation=latest_gen) & 
+            Q(s_netdevice__device__in=dev_pks) &
+            Q(d_netdevice__in=d_dev.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice__device", "s_netdevice", "d_netdevice", "value")
         dev_dict = {}
         for in_list in all_hcs:
             dev_dict.setdefault(in_list[0], []).append(tuple(in_list[1:]))
