@@ -6,7 +6,10 @@
 
 {% block content %}
 
-<h1 class="center">Device network settings, hopcount info: <span id="hopcount_rebuild_info">unknown</span>, <input type="button" value="rebuild hopcount" id="rebuild_hopcount"/></h1>
+<h1 class="center">Device network settings</h1>
+<h2>hopcount info: <span id="rebuild_info">unknown</span></h2>
+<h2>routing info: <span id="routing_info">unknown</span></h2>
+<input type="button" value="rebuild hopcount" id="rebuild_hopcount"/>
 
 <div id="network_table"></div>
 
@@ -279,7 +282,8 @@ class network_table
             error   : handle_ajax_error
             success : (xml) ->
                 if parse_xml_response(xml)
-                    $("span#hopcount_rebuild_info").text($(xml).find("value[name='response'] hopcount_state").attr("rebuild_info"))
+                    $("span#rebuild_info").text($(xml).find("value[name='response'] hopcount_state").attr("rebuild_info"))
+                    $("span#routing_info").text($(xml).find("value[name='response'] hopcount_state").attr("routing_info"))
 
     # peer related calls
     

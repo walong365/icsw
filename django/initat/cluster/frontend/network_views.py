@@ -16,7 +16,7 @@ from django.db.models import Q
 from django.core.exceptions import ValidationError
 from initat.cluster.backbone.models import device, network, net_ip, \
      network_type, network_device_type, netdevice, peer_information, \
-     netdevice_speed, device_variable, device_group
+     netdevice_speed, device_variable, device_group, route_generation
 import server_command
 import net_tools
 import ipvx_tools
@@ -221,6 +221,17 @@ def get_network_tree(request):
 def _get_hopcount_state(request):
     rebuild_possible = False
     xml_resp = E.hopcount_state()
+    valid_routes = route_generation.objects.filter(Q(valid=True))
+    if len(valid_routes) == 1:
+        valid_route = valid_routes[0]
+        if valid_routes[0].dirty:
+            xml_resp.attrib["routing_info"] = "valid route found (gen #%d) but marked as dirty" % (valid_route.generation)
+        else:
+            xml_resp.attrib["routing_info"] = "valid route found (gen #%d)" % (valid_route.generation)
+    elif not len(valid_routes):
+        xml_resp.attrib["routing_info"] = "no valid routes found"
+    else:
+        xml_resp.attrib["routing_info"] = "more then one (%d) valid routes found" % (len(valid_routes))
     # hopcount info
     try:
         reb_var = device_variable.objects.get(Q(name="hopcount_table_build_time") & Q(device__device_group__cluster_device_group=True))
