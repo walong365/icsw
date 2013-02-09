@@ -1,8 +1,8 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009,2010,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008,2009,2010,2012,2013 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of nagios-config-server
+# this file is part of md-config-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
