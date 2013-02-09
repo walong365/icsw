@@ -52,7 +52,8 @@ from lxml.builder import E
 from initat.cluster.backbone.models import device, network, config, \
      device_variable, net_ip, hopcount, boot_uuid, \
      partition, sys_partition, wc_files, tree_node, config_str, \
-     cached_log_status, cached_log_source, log_source, devicelog
+     cached_log_status, cached_log_source, log_source, devicelog, \
+     route_generation
 from django.db.models import Q
 import module_dependency_tools
 
@@ -1367,7 +1368,10 @@ class partition_setup(object):
 # generate /etc/hosts for nodes, including routing-info
 def do_etc_hosts(conf):
     conf_dict = conf.conf_dict
-    all_hopcounts = hopcount.objects.filter(Q(s_netdevice__in=[cur_ip.netdevice for cur_ip in conf_dict["node_if"]])).select_related(
+    latest_gen = route_generation.objects.filter(Q(valid=True)).oder_by("-pk")[0]
+    all_hopcounts = hopcount.objects.filter(
+        Q(route_generation=latest_gen) & 
+        Q(s_netdevice__in=[cur_ip.netdevice for cur_ip in conf_dict["node_if"]])).select_related(
         "d_netdevice",
         "d_netdevice__device").prefetch_related(
             "d_netdevice__net_ip_set",
@@ -1426,69 +1430,9 @@ def do_etc_hosts(conf):
         new_co += ["# penalty %d" % (p_value), ""] + [form_str % (tuple(entry)) for entry in act_list] + [""]
 
 def do_hosts_equiv(conf):
-    # no longer needed ? FIXME
+    # no longer needed
     return
-    db_dc = conf.get_cursor()
-    pub_stuff = conf.dev_dict
-    new_co = conf.add_file_object("/etc/hosts.equiv")
-    my_nets = pub_stuff["idxs"]
-    all_netdevs = [x["netdevice_idx"] for x in pub_stuff["node_if"]]
-    sql_str = "SELECT DISTINCT d.name, i.ip, i.alias, i.alias_excl, nw.network_idx, n.netdevice_idx, n.devname, n.vlan_id, nt.identifier, nw.name as domain_name, nw.postfix, nw.short_names, h.value FROM " + \
-        "device d, netip i, netdevice n, network nw, network_type nt, hopcount h WHERE nt.network_type_idx=nw.network_type AND i.network=nw.network_idx AND n.device=d.device_idx AND " + \
-        "i.netdevice=n.netdevice_idx AND n.netdevice_idx=h.s_netdevice AND (%s) ORDER BY d.name" % (" OR ".join(["h.d_netdevice=%d" % (x) for x in all_netdevs]))
-    db_dc.execute(sql_str)
-    all_hosts = [[x for x in db_dc.fetchall()]]
-    # self-references
-    sql_str = "SELECT DISTINCT d.name, i.ip, i.alias, i.alias_excl, nw.network_idx, n.netdevice_idx, n.devname, n.vlan_id, nt.identifier, nw.name AS domain_name, nw.postfix, nw.short_names, n.penalty AS value FROM " + \
-        "device d, netip i, netdevice n, network nw, network_type nt WHERE nt.network_type_idx=nw.network_type AND i.network=nw.network_idx AND n.device=d.device_idx AND i.netdevice=n.netdevice_idx AND " + \
-        "d.device_idx=%d ORDER BY d.name, i.ip" % (pub_stuff["device_idx"])
-    db_dc.execute(sql_str)
-    all_hosts.append([x for x in db_dc.fetchall()])
-    out_list = []
-    for hosts in all_hosts:
-        for host in hosts:
-            if host["network_idx"] in my_nets:
-                out_names = []
-                n_idx = host["netdevice_idx"]
-                if not (host["alias"].strip() and host["alias_excl"]):
-                    out_names.append("%s%s" % (host["name"], host["postfix"]))
-                out_names.extend(host["alias"].strip().split())
-                out_names = ["%s.%s" % (x, host["domain_name"]) for x in out_names]
-                for out_n in out_names:
-                    if out_n not in out_list:
-                        out_list.append(out_n)
-    out_list.sort()
-    new_co += out_list
     
-def get_sys_dict(dc, im_name):
-    dc.execute("SELECT * FROM image i WHERE i.name='%s'" % (im_name))
-    if dc.rowcount:
-        image_data = dc.fetchone()
-        sys_dict = {"vendor"  : image_data["sys_vendor"],
-                    "version" : image_data["sys_version"],
-                    "release" : image_data["sys_release"]}
-        try:
-            sys_dict["version"] = int(sys_dict["version"])
-        except:
-            sys_dict["version"] = 9
-        try:
-            sys_dict["release"] = int(sys_dict["release"])
-        except:
-            sys_dict["release"] = 0
-        if sys_dict["vendor"]:
-            mes_str = "found image with this name, using %s-%d.%d as vendor-id-string ..." % (sys_dict["vendor"], sys_dict["version"], sys_dict["release"])
-        else:
-            sys_dict = {"vendor"  : "suse",
-                        "version" : 9,
-                        "release" : 0}
-            mes_str = "found image with this name but no sys_vendor field, using %s-%d.%d as vendor-id-string ..." % (sys_dict["vendor"], sys_dict["version"], sys_dict["release"])
-    else:
-        sys_dict = {"vendor"  : "suse",
-                    "version" : 9,
-                    "release" : 0}
-        mes_str = "found no image with this name, using %s-%d.%d as vendor-id-string ..." % (sys_dict["vendor"], sys_dict["version"], sys_dict["release"])
-    return sys_dict, mes_str
-
 class config_request(object):
     """ to hold all the necessary data for a simple config request """
     def __init__(self, sc_thread, glob_config, loc_config, command, src_data, **args):
