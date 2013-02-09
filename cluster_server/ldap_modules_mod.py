@@ -34,6 +34,7 @@ import ldap.modlist
 import server_command
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, device_config, device, config, config_str
+from cluster_server.config import global_config
 
 """ possible smb.conf:
 
@@ -99,7 +100,7 @@ class init_ldap_config(cs_base_class.server_com):
     def _get_ldap_err_str(self):
         err_dict = sys.exc_info()[1].args[0]
         return " / ".join(["%s: %s" % (x, err_dict[x]) for x in ["info", "desc"] if err_dict.has_key(x)])
-    def _call(self):
+    def _call(self, cur_inst):
         # fetch configs
         par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="ldap_server"))])
         #self.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
@@ -183,7 +184,7 @@ class init_ldap_config(cs_base_class.server_com):
                                                           needed_dn,
                                                           {"objectClass" : ["top", "organizationalUnit"],
                                                            "ou"          : [short_dn],
-                                                           "description" : "added by cluster-server on %s" % (self.global_config["SERVER_SHORT_NAME"])})
+                                                           "description" : "added by cluster-server on %s" % (global_config["SERVER_SHORT_NAME"])})
                             if ok:
                                 self.log("added entry %s" % (needed_dn))
                             else:
@@ -227,11 +228,11 @@ class init_ldap_config(cs_base_class.server_com):
                 ld_read.unbind_s()
                 ld_write.unbind_s()
         if errors:
-            self.srv_com["result"].attrib.update({
+            cur_inst.srv_com["result"].attrib.update({
                 "reply" : "error init LDAP tree: %s" % (", ".join(errors)),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
-            self.srv_com["result"].attrib.update({
+            cur_inst.srv_com["result"].attrib.update({
                 "reply" : "ok init ldap tree",
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
@@ -273,7 +274,7 @@ class sync_ldap_config(cs_base_class.server_com):
     def _get_ldap_err_str(self, dn):
         err_dict = sys.exc_info()[1].args[0]
         return "%s (%s)" % (dn, " / ".join(["%s: %s" % (x, err_dict[x]) for x in ["info", "desc"] if err_dict.get(x, None)]))
-    def _call(self):
+    def _call(self, cur_inst):
         # fetch configs
         par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="ldap_server"))])
         errors = []
@@ -306,7 +307,7 @@ class sync_ldap_config(cs_base_class.server_com):
                     ld_write = None
                     ld_read.unbind_s()
             if ld_read and ld_write:
-                ldap_version = self.global_config["LDAP_SCHEMATA_VERSION"]
+                ldap_version = global_config["LDAP_SCHEMATA_VERSION"]
                 self.log("using LDAP_SCHEMATA_VERSION %d" % (ldap_version))
                 # fetch user / group info
                 all_groups = dict([(cur_g.pk, cur_g) for cur_g in group.objects.all()])
@@ -768,11 +769,11 @@ class sync_ldap_config(cs_base_class.server_com):
                 ld_read.unbind_s()
                 ld_write.unbind_s()
         if errors:
-            self.srv_com["result"].attrib.update({
+            cur_inst.srv_com["result"].attrib.update({
                 "reply" : "error synced LDAP tree: %s" % (", ".join(errors)),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
-            self.srv_com["result"].attrib.update({
+            cur_inst.srv_com["result"].attrib.update({
                 "reply" : "ok synced LDAP tree",
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 

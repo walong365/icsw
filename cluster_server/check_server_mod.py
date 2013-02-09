@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -25,9 +25,10 @@ import check_scripts
 import uuid_tools
 import pprint
 import cluster_server
+from cluster_server.config import global_config
 
 class check_server(cs_base_class.server_com):
-    def _call(self):
+    def _call(self, cur_inst):
         opt_dict = check_scripts.get_default_opt_dict()
         opt_dict["full_status"] = True
         opt_dict["mem_info"] = True
@@ -38,11 +39,11 @@ class check_server(cs_base_class.server_com):
         for key, value in ret_dict.iteritems():
             if type(value) == dict and "sql" in value:
                 value["sql"] = str(value["sql"])
-        self.srv_com["result"].attrib.update({
+        cur_inst.srv_com["result"].attrib.update({
             "reply" : "returned server info",
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
-        self.srv_com["result:server_info"] = {
-            "version"          : self.global_config["VERSION"],
+        cur_inst.srv_com["result:server_info"] = {
+            "version"          : global_config["VERSION"],
             "uuid"             : uuid_tools.get_uuid().get_urn(),
             "server_status"    : ret_dict,
             "public_commands"  : pub_coms,

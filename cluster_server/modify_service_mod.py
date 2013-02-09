@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -27,29 +27,29 @@ import process_tools
 class modify_service(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["service", "mode"]
-    def _call(self):
+    def _call(self, cur_inst):
         full_service_name = "/etc/init.d/%s" % (self.option_dict["service"])
         if self.option_dict["mode"] in ["start", "stop", "restart"]:
             if os.path.isfile(full_service_name):
                 at_com = "%s %s" % (full_service_name, self.option_dict["mode"])
                 cstat, c_logs = process_tools.submit_at_command(at_com, self.option_dict.get("timediff", 0))
                 if cstat:
-                    self.srv_com["result"].attrib.update({
+                    cur_inst.srv_com["result"].attrib.update({
                         "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
                         "reply" : "error unable to submit '%s' to at-daemon" % (at_com)
                         })
                 else:
-                    self.srv_com["result"].attrib.update({
+                    cur_inst.srv_com["result"].attrib.update({
                         "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
                         "reply" : "ok submitted '%s' to at-daemon" % (at_com)
                         })
             else:
-                self.srv_com["result"].attrib.update({
+                cur_inst.srv_com["result"].attrib.update({
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
                     "reply" : "error unknown service '%s'" % (full_service_name)
                 })
         else:
-            self.srv_com["result"].attrib.update({
+            cur_inst.srv_com["result"].attrib.update({
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
                 "reply" : "error unknown mode '%s'" % (self.option_dict["mode"])
             })

@@ -26,18 +26,18 @@ import server_command
 class get_uuid(cs_base_class.server_com):
     class Meta:
         show_execution_time = False
-    def _call(self):
-        self.srv_com["uuid"] = uuid_tools.get_uuid().get_urn()
-        self.srv_com["result"].attrib.update({
+    def _call(self, cur_inst):
+        cur_inst.srv_com["uuid"] = uuid_tools.get_uuid().get_urn()
+        cur_inst.srv_com["result"].attrib.update({
             "reply" : "uuid is %s" % (uuid_tools.get_uuid().get_urn()),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
     
 class get_0mq_id(cs_base_class.server_com):
     class Meta:
         show_execution_time = False
-    def _call(self):
-        self.srv_com["zmq_id"] = uuid_tools.get_uuid().get_urn()
-        self.srv_com["result"].attrib.update({
+    def _call(self, cur_inst):
+        cur_inst.srv_com["zmq_id"] = uuid_tools.get_uuid().get_urn()
+        cur_inst.srv_com["result"].attrib.update({
             "reply" : "0MQ_ID is %s" % (uuid_tools.get_uuid().get_urn()),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
         

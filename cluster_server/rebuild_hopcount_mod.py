@@ -20,6 +20,7 @@
 """ rebuilds the hopcount-table, needs some rewrite ... """
 
 import sys
+import os
 import cs_base_class
 import logging_tools
 import time
@@ -30,8 +31,10 @@ from django.db.models import Q
 from django.conf import settings
 from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group, \
      peer_information, cs_timer, route_generation
+from cluster_server.config import global_config
 import pprint
 import copy
+from cluster_server.config import global_config
 
 HOPCOUNT_REBUILT_VAR_NAME = "hopcount_table_build_time"
 HOPCOUNT_STATE_VAR_NAME = "hopcount_state_var"
@@ -391,11 +394,11 @@ class rebuild_hopcount(cs_base_class.server_com):
     class Meta:
         blocking = True
         needed_configs = ["rebuild_hopcount"]
-        restartable = True
-    def _new_code(self):
-        rho = route_helper_obj(self.log)
+        background = True
+    def _new_code(self, cur_inst):
+        rho = route_helper_obj(cur_inst.log)
         my_timer = cs_timer()
-        self.log("building routing info for %s and %s" % (
+        cur_inst.log("building routing info for %s and %s" % (
             logging_tools.get_plural("netdevice", len(rho.all_nds)),
             logging_tools.get_plural("peer information", len(rho.all_peers))))
         pure_peers = [(cur_p.s_netdevice_id, cur_p.d_netdevice_id) for cur_p in rho.all_peers]
@@ -432,7 +435,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         # first step: prune the tree
         for prune_step in xrange(256):
             #break
-            self.log("prune step %d" % (prune_step))
+            cur_inst.log("prune step %d" % (prune_step))
             rem_nds = set()
             if len(nd_pks) > 2:
                 for cur_nd in nd_pks:
@@ -448,18 +451,18 @@ class rebuild_hopcount(cs_base_class.server_com):
                 if rem_nds:
                     pruned_pks |= rem_nds
                     nd_pks -= rem_nds
-                    self.log("removing %s (%s) while pruning" % (
+                    cur_inst.log("removing %s (%s) while pruning" % (
                         logging_tools.get_plural("netdevice", len(rem_nds)),
                         ", ".join(["%d" % (rem_nd) for rem_nd in rem_nds]),
                     ))
                     pure_peers = [cur_p for cur_p in pure_peers if cur_p[0] not in rem_nds and cur_p[1] not in rem_nds]
                 else:
-                    self.log("nothing to prune, exiting")
+                    cur_inst.log("nothing to prune, exiting")
                     break
             else:
-                self.log("no netdevices left to prune, exiting")
+                cur_inst.log("no netdevices left to prune, exiting")
                 break
-        self.log(my_timer("pruning finished (%s)" % (logging_tools.get_plural("netdevice", len(pruned_pks)))))
+        cur_inst.log(my_timer("pruning finished (%s)" % (logging_tools.get_plural("netdevice", len(pruned_pks)))))
         nds_visited = set()
         all_paths = []
         # some rules:
@@ -487,9 +490,9 @@ class rebuild_hopcount(cs_base_class.server_com):
                     if new_po:
                         all_paths.append(new_po)
                         nds_visited.add(s_nd)
-        self.log(my_timer("pathfinding (%s) finished" % (logging_tools.get_plural("node", len(nd_pks)))))
+        cur_inst.log(my_timer("pathfinding (%s) finished" % (logging_tools.get_plural("node", len(nd_pks)))))
         hopcount.objects.all().delete()
-        self.log(my_timer("hopcount delete"))
+        cur_inst.log(my_timer("hopcount delete"))
         # add simple hopcounts from prune dict
         save_hcs = []
         for src_nd, dst_nds in rho.pruned_dict.iteritems():
@@ -502,7 +505,7 @@ class rebuild_hopcount(cs_base_class.server_com):
                     if dst_nd_2 not in used_dst_nds:
                         save_hcs.extend(rho.create_hopcount([dst_nd, src_nd, dst_nd_2]))
         num_hcs = len(save_hcs)
-        self.log("simple hops: %d" % (num_hcs))
+        cur_inst.log("simple hops: %d" % (num_hcs))
         for cur_p in all_paths:
             cur_hcs = cur_p.generate_hopcounts(rho)
             num_hcs += len(cur_hcs)
@@ -512,14 +515,14 @@ class rebuild_hopcount(cs_base_class.server_com):
                 save_hcs = []
         if save_hcs:
             hopcount.objects.bulk_create(save_hcs)
-        self.log(my_timer("%d hopcounts inserted" % (num_hcs)))
+        cur_inst.log(my_timer("%d hopcounts inserted" % (num_hcs)))
         num_dups = rho.dups
         # enable new routing set
         rho.switch()
         del rho
         del new_paths
         return num_hcs, num_dups
-    def _call(self):
+    def _call(self, cur_inst):
         # check for cluster-device-group
         try:
             cdg_dev = device.objects.get(Q(device_group__cluster_device_group=True))
@@ -544,7 +547,7 @@ class rebuild_hopcount(cs_base_class.server_com):
             var_type="i",
             val_int=0)
         state_var.save()
-        num_routes, num_dups = self._new_code()
+        num_routes, num_dups = self._new_code(cur_inst)
         ret_str = "ok wrote %d routing entries (%d dups)" % (num_routes, num_dups)
         try:
             reb_var = device_variable.objects.get(Q(device=cdg_dev) & Q(name=HOPCOUNT_REBUILT_VAR_NAME))
@@ -556,7 +559,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         max_peer_pk = peer_information.objects.all().order_by("-pk")[0].pk
         num_peers = peer_information.objects.all().count()
         reb_var.description = "rebuilt at %s {%d:%d:%d}" % (
-            self.global_config["SERVER_SHORT_NAME"],
+            global_config["SERVER_SHORT_NAME"],
             min_peer_pk,
             num_peers,
             max_peer_pk,
@@ -564,7 +567,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         reb_var.val_date = pytz.utc.localize(datetime.datetime(*time.localtime()[0:6]))
         reb_var.save()
         state_var.delete()
-        self.srv_com["result"].attrib.update({
+        cur_inst.srv_com["result"].attrib.update({
             "reply" : ret_str,
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
         return
@@ -620,7 +623,7 @@ class rebuild_hopcount(cs_base_class.server_com):
 ##            perc_done = max(0, min(100, 100. - (100. * checks_left) / num_to_check))
 ##            if abs(old_perc - perc_done) >= 10 or abs(time.time() - old_time) >= 5.:
 ##                old_perc, old_time = (perc_done, time.time())
-##                self.log("%6.2f %% done" % perc_done)
+##                cur_inst.log("%6.2f %% done" % perc_done)
 ##                state_var.val_int = int(perc_done)
 ##                state_var.save()
 ##            checks_left -= 2 * num_devs - 1
@@ -716,7 +719,7 @@ class rebuild_hopcount(cs_base_class.server_com):
 ##            state_var.delete()
 ##            if not self.global_config["COMMAND"] and False:
 ##                print "broadcast"
-##                self.log("broadcasting write_etc_hosts to other cluster-servers")
+##                cur_inst.log("broadcasting write_etc_hosts to other cluster-servers")
 ##                self.process_pool.send_broadcast("write_etc_hosts")
 ##                my_dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE n.device=%d" % (self.server_idx))
 ##                my_netdev_idxs = [db_rec["netdevice_idx"] for db_rec in my_dc.fetchall()]
@@ -728,14 +731,14 @@ class rebuild_hopcount(cs_base_class.server_com):
 ##                for db_rec in my_dc.fetchall():
 ##                    serv_ip_dict.setdefault(db_rec["name"], db_rec["ip"])
 ##                htc_com = "hopcount_table_changed"
-##                self.log("Contacting %s (%s): %s" % (logging_tools.get_plural("mother", len(serv_ip_dict.keys())),
+##                cur_inst.log("Contacting %s (%s): %s" % (logging_tools.get_plural("mother", len(serv_ip_dict.keys())),
 ##                                                     htc_com,
 ##                                                     ", ".join(["%s (IP %s)" % (k, v) for k, v in serv_ip_dict.iteritems()])))
 ##                for serv_name, serv_ip in serv_ip_dict.iteritems():
 ##                    # FIXME
 ##                    #call_params.nss_queue.put(("contact_server", (serv_name, serv_ip, 8001, htc_com)))
 ##                    pass
-##            self.log("%6.2f %% done" % (100))
+##            cur_inst.log("%6.2f %% done" % (100))
 ##        self.srv_com["result"].attrib.update({
 ##            "reply" : ret_str,
 ##            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})

@@ -52,6 +52,7 @@ from django.db.models import Q
 from host_monitoring import hm_classes
 from django.core.handlers.wsgi import WSGIHandler
 from initat.cluster.backbone.models import device, device_variable, log_source
+from cluster_server.config import global_config
 
 try:
     from cluster_server_version import VERSION_STRING
@@ -559,17 +560,19 @@ class quota_stuff(bg_stuff):
                 log_line = "%s violated the quota policies on %s" % (logging_tools.get_plural("user", len(prob_users.keys())),
                                                                      logging_tools.get_plural("device", len(prob_devs.keys())))
                 self.log(log_line)
-                mail_lines["admins"].extend(["Servername: %s" % (global_config["SERVER_FULL_NAME"]),
-                                             log_line,
-                                             "",
-                                             "device info:",
-                                             ""])
+                mail_lines["admins"].extend([
+                    "Servername: %s" % (global_config["SERVER_FULL_NAME"]),
+                    log_line,
+                    "",
+                    "device info:",
+                    ""])
                 # device overview
                 for prob_dev, pd_info in prob_devs.iteritems():
-                    log_line = "%s: mounted on %s (flags %s), fstype is %s" % (prob_dev,
-                                                                               pd_info[0],
-                                                                               pd_info[2],
-                                                                               pd_info[1])
+                    log_line = "%s: mounted on %s (flags %s), fstype is %s" % (
+                        prob_dev,
+                        pd_info[0],
+                        pd_info[2],
+                        pd_info[1])
                     self.log(log_line)
                     mail_lines["admins"].append(log_line)
                 if not self.__admin_mail_sent or abs(self.__admin_mail_sent - time.time()) > global_config["USER_MAIL_SEND_TIME"]:
@@ -579,10 +582,11 @@ class quota_stuff(bg_stuff):
                 mail_lines["admins"].extend(["", "user info:", ""])
                 for uid, u_stuff in prob_users.iteritems():
                     user_info = self._get_uid_info(uid)
-                    mail_lines[uid] = ["This is an informal mail to notify you that",
-                                       "you have violated one or more quota-policies",
-                                       "on %s, user info: %s" % (global_config["SERVER_FULL_NAME"], user_info["info"]),
-                                       ""]
+                    mail_lines[uid] = [
+                        "This is an informal mail to notify you that",
+                        "you have violated one or more quota-policies",
+                        "on %s, user info: %s" % (global_config["SERVER_FULL_NAME"], user_info["info"]),
+                        ""]
                     if user_info.get("email", ""):
                         if uid not in email_users:
                             # only send mail if at least USER_MAIL_SEND_TIME seconds
@@ -656,69 +660,6 @@ class quota_stuff(bg_stuff):
         self.log(sep_str)
         dc.release()
         return my_vector
-
-class background_thread(threading_tools.thread_obj):
-    def __init__(self, db_con, ss_queue, glob_config, loc_config, logger):
-        self.__db_con = db_con
-        self.__socket_server_queue = ss_queue
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        self.__logger = logger
-        threading_tools.thread_obj.__init__(self, "background", queue_size=50)
-        self.register_func("start_bg_task", self._start_bg_task)
-    def thread_running(self):
-        self.send_pool_message(("new_pid", self.pid))
-        self.__socket_server_queue.put(("set_bg_queue", self.get_thread_queue()))
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__logger.log(lev, what)
-    def _get_bg_queue(self, ret_queue):
-        ret_queue.put(("bg_queue", self.get_thread_queue()))
-    def _check_for_restart(self, in_data):
-        in_queue, com_name = in_data
-        add_messages = []
-        it, restart = (True, False)
-        while it:
-            try:
-                in_mes = in_queue.get_nowait()
-            except Queue.Empty:
-                break
-            else:
-                if type(in_mes) == type(()):
-                    m_type, m_stuff = in_mes
-                    if m_type == "bg_task_restart" and m_stuff[0].get_name() == com_name:
-                        restart = True
-                        in_mes = None
-                if in_mes:
-                    add_messages.append(in_mes)
-        # re-insert messages
-        for add_mes in add_messages:
-            in_queue.put(add_mes)
-        return restart
-    def _start_bg_task(self, (act_sc, act_call)):
-        act_call.set_logger(self.__logger)
-        self.log("receivce START_BG request for command %s" % (act_sc.get_name()))
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        act_call.set_dc(dc)
-        runs = 0
-        while True:
-            runs += 1
-            if act_sc.get_is_restartable():
-                act_call.install_restart_hook(self._check_for_restart, [self.get_thread_queue(), act_sc.get_name()])
-            try:
-                ret_str = act_sc(act_call)
-            except:
-                exc_info = sys.exc_info()
-                ret_str = "error Something went badly wrong (%s) ..." % (process_tools.get_except_info())
-                act_call.log("*** INTERNAL ERROR: %s" % (process_tools.get_except_info()))
-            self.log(ret_str)
-            if act_sc.get_is_restartable():
-                if act_call.restarted:
-                    self.log("restarting command...")
-                else:
-                    break
-        act_call.close()
-        self.log("command %s finished after %s" % (act_sc.get_name(),
-                                                   logging_tools.get_plural("run", runs)))
-        self.__socket_server_queue.put(("bg_task_finish", (act_sc.get_name(), act_call)))
 
 ##class socket_server_thread(threading_tools.thread_obj):
 ##    def __init__(self, db_con, glob_config, loc_config, ns, logger):
@@ -1180,8 +1121,9 @@ class server_process(threading_tools.process_pool):
             try:
                 client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
             except zmq.core.error.ZMQError:
-                self.log("error binding to %d: %s" % (global_config["COM_PORT"],
-                                                      process_tools.get_except_info()),
+                self.log("error binding to %d: %s" % (
+                    global_config["COM_PORT"],
+                    process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_CRITICAL)
                 raise
             else:
@@ -1264,38 +1206,18 @@ class server_process(threading_tools.process_pool):
                 else:
                     if set(found_keys) != set(com_obj.Meta.needed_option_keys):
                         srv_com["result"].attrib.update({
-                            "reply" : "error option keys found (%s) != needed (%s)" % (", ".join(sorted(list(set(found_keys)))) or "none",
-                                                                                       ", ".join(sorted(list(set(com_obj.Meta.needed_option_keys))))),
+                            "reply" : "error option keys found (%s) != needed (%s)" % (
+                                ", ".join(sorted(list(set(found_keys)))) or "none",
+                                ", ".join(sorted(list(set(com_obj.Meta.needed_option_keys))))),
                             "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
                             })
                     else:
-                        com_obj.srv_com = srv_com
-                        com_obj.global_config = global_config
                         # salt com_obj with some settings
-                        com_obj.server_idx = global_config["SERVER_IDX"]
-                        com_obj.option_dict = dict([(key, srv_com["*server_key:%s" % (key)]) for key in com_obj.Meta.needed_option_keys])
-                        com_obj.write_start_log()
-                        try:
-                            result = com_obj()
-                        except:
-                            exc_info = process_tools.exception_info()
-                            for line in exc_info.log_lines:
-                                self.log(line, logging_tools.LOG_LEVEL_CRITICAL)
-                            srv_com["result"].attrib.update({
-                                "reply" : "error %s" % (process_tools.get_except_info(exc_info.except_info)),
-                                "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
-                            })
-                            # write to logging-server
-                            err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
-                            err_h.write("\n".join(exc_info.log_lines))
-                            err_h.close()
-                        else:
-                            if result is not None:
-                                self.log("command got an (unexpected) result: '%s'" % (str(result)),
-                                         logging_tools.LOG_LEVEL_ERROR)
-                        com_obj.write_end_log()
-                        del com_obj.global_config
-                        del com_obj.srv_com
+                        option_dict = dict([(key, srv_com["*server_key:%s" % (key)]) for key in com_obj.Meta.needed_option_keys])
+                        cur_inst = com_obj(srv_com, option_dict)
+                        cur_inst.write_start_log()
+                        cur_inst()
+                        cur_inst.write_end_log()
             else:
                 srv_com["result"].attrib.update({
                     "reply" : "error %s" % (err_str),
@@ -1410,40 +1332,6 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("connected to %s" % (conn_str))
         self.send_broadcast(bc_com)
-    def loop_function(self):
-        print "Loop"
-        if self.__is_server:
-            self.__mon_thread_queue.put("update")
-            self.__ns.step()
-        elif self.__target_host:
-            if self.__first_step:
-                self.__first_step = False
-                self.__ns.step()
-            if not self.__ns.exit_requested() and self.__ns.get_num_objects():
-                self.__ns.step()
-            else:
-                self._int_error("done")
-        else:
-            self.log("Direct command: %s" % (self.__server_com.get_command()))
-            try:
-                self.__client_ret_str, coms_queued = process_request(self.__glob_config, self.__loc_config, self.__logger, self.__db_con, self.__server_com, "127.0.0.1", 0, 1, "127.0.0.1", None, None, [], None)
-            except:
-                exc_info = process_tools.exception_info()
-                for line in exc_info.log_lines:
-                    self.log(" :: %s" % (line), logging_tools.LOG_LEVEL_CRITICAL)
-                self.__client_error, self.__client_ret_str = (True, "exception: %s" % (process_tools.get_except_info()))
-            else:
-                self.__client_error = False
-            self._int_error("request_done")
-    def set_result(self, in_data):
-        try:
-            srv_reply = server_command.server_reply(in_data)
-        except ValueError:
-            self.__client_error, self.__client_ret_str = (True, "Error: got no valid server_reply (got: '%s')" % (in_data))
-        else:
-            self.__client_error, self.__client_ret_str = (False, srv_reply)
-    def set_error(self, in_data):
-        self.__client_error, self.__client_ret_str = (True, in_data)
     def get_client_ret_state(self):
         return self.__client_error, self.__client_ret_str
     def _load_modules(self):
@@ -1459,17 +1347,23 @@ class server_process(threading_tools.process_pool):
         for com_name in cluster_server.command_names:
             act_sc = cluster_server.command_dict[com_name]
             if hasattr(act_sc, "_call"):
-                act_sc.link(self, global_config["DATABASE_DEBUG"])
-                self.log("   com %-30s, %s%s, %s, %s, %s, %s" % (
-                    act_sc.name,
-                    logging_tools.get_plural("config", len(act_sc.Meta.needed_configs)),
-                    " (%s)" % (", ".join(act_sc.Meta.needed_configs)) if act_sc.Meta.needed_configs else "",
-                    "blocking" if act_sc.Meta.blocking else "not blocking",
-                    "%s: %s" % (logging_tools.get_plural("option key", len(act_sc.Meta.needed_option_keys)),
-                                ", ".join(act_sc.Meta.needed_option_keys)) if act_sc.Meta.needed_option_keys else "no option keys",
-                    "%s: %s" % (logging_tools.get_plural("config key", len(act_sc.Meta.needed_config_keys)),
-                                ", ".join(act_sc.Meta.needed_config_keys)) if act_sc.Meta.needed_config_keys else "no config keys",
-                    "restartable" if act_sc.Meta.restartable else "not restartable"))
+                act_sc.link(self)
+                self.log(
+                    "   com %-30s, %s%s, %s, %s, %s, %s" % (
+                        act_sc.name,
+                        logging_tools.get_plural("config", len(act_sc.Meta.needed_configs)),
+                        " (%s)" % (
+                            ", ".join(act_sc.Meta.needed_configs)) if act_sc.Meta.needed_configs else "",
+                        "blocking" if act_sc.Meta.blocking else "not blocking",
+                        "%s: %s" % (
+                            logging_tools.get_plural("option key", len(act_sc.Meta.needed_option_keys)),
+                            ", ".join(act_sc.Meta.needed_option_keys)) if act_sc.Meta.needed_option_keys else "no option keys",
+                        "%s: %s" % (
+                            logging_tools.get_plural("config key", len(act_sc.Meta.needed_config_keys)),
+                            ", ".join(act_sc.Meta.needed_config_keys)) if act_sc.Meta.needed_config_keys else "no config keys",
+                        "background" if act_sc.Meta.background else "foreground",
+                    )
+                )
             else:
                 self.log("command %s has no _call function" % (com_name), logging_tools.LOG_LEVEL_ERROR)
                 del_names.append(com_name)
@@ -1478,7 +1372,7 @@ class server_process(threading_tools.process_pool):
             del cluster_server.command_dict[del_name]
         self.log("Found %s" % (logging_tools.get_plural("command", len(cluster_server.command_names))))
 
-global_config = configfile.get_global_config(process_tools.get_programm_name())
+#global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()

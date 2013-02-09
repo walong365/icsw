@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -24,13 +24,14 @@ import cs_base_class
 import configfile
 import os
 import server_command
+from cluster_server.config import global_config
 
 CLUSTER_NAME_FILE = "/etc/sysconfig/cluster/cluster_name"
 
 class status(cs_base_class.server_com):
     class Meta:
         show_execution_time = False
-    def _call(self):
+    def _call(self, cur_inst):
         self.dc.execute("SELECT d.device_idx FROM device d, device_group dg WHERE d.device_group=dg.device_group_idx AND dg.cluster_device_group")
         if self.dc.rowcount:
             cd_idx = self.dc.fetchone()["device_idx"]
@@ -53,11 +54,12 @@ class status(cs_base_class.server_com):
                 cluster_name = "not found"
         else:
             cluster_name = "not set"
-        self.srv_com["clustername"] = cluster_name
-        self.srv_com["version"] = self.global_config["VERSION"]
-        self.srv_com["result"].attrib.update({
-            "reply" : "all threads and processes running, clustername is %s, version is %s" % (cluster_name,
-                                                                                               self.global_config["VERSION"]),
+        cur_inst.srv_com["clustername"] = cluster_name
+        cur_inst.srv_com["version"] = global_config["VERSION"]
+        cur_inst.srv_com["result"].attrib.update({
+            "reply" : "all threads and processes running, clustername is %s, version is %s" % (
+                cluster_name,
+                global_config["VERSION"]),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
         #num_threads, num_ok = (tp.num_threads(False),
         #                       tp.num_threads_running(False))

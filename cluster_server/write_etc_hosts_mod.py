@@ -38,7 +38,7 @@ ETC_HOSTS_FILENAME       = "/etc/hosts"
 class write_etc_hosts(cs_base_class.server_com):
     class Meta:
         needed_configs = ["auto_etc_hosts"]
-    def _call(self):
+    def _call(self, cur_inst):
         file_list = []
         server_idxs = [self.server_idx]
         # get additional idx if host is virtual server
@@ -236,7 +236,7 @@ class write_etc_hosts(cs_base_class.server_com):
                     tf.close()
                 else:
                     self.log("Error: directory '%s' not found" % (act_dirname))
-        self.srv_com["result"].attrib.update({
+        cur_inst.srv_com["result"].attrib.update({
             "reply" : "ok wrote %s" % (", ".join(sorted(file_list))),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 

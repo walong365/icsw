@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2008,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2008,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -29,21 +29,22 @@ import pprint
 from django.db.models import Q
 from initat.cluster.backbone.models import net_ip, \
      network
+from cluster_server.config import global_config
 
 class write_dhcpd_config(cs_base_class.server_com):
     class Meta:
         needed_configs = ["mother_server"]
         needed_option_keys = ["authoritative"]
-    def _call(self):
+    def _call(self, cur_inst):
         my_c = config_tools.server_check(server_type="mother_server")
         boot_ips = my_c.identifier_ip_lut.get("b", [])
         if len(boot_ips) > 1:
-            self.srv_com["result"].attrib.update({
-                "reply" : "error more than one boot-net found for '%s'" % (self.global_config["SERVER_SHORT_NAME"]),
+            cur_inst.srv_com["result"].attrib.update({
+                "reply" : "error more than one boot-net found for '%s'" % (global_config["SERVER_SHORT_NAME"]),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         elif not boot_ips:
-            self.srv_com["result"].attrib.update({
-                "reply" : "error no boot-net found for '%s'" % (self.global_config["SERVER_SHORT_NAME"]),
+            cur_inst.srv_com["result"].attrib.update({
+                "reply" : "error no boot-net found for '%s'" % (global_config["SERVER_SHORT_NAME"]),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
             boot_ip = boot_ips[0]
@@ -56,9 +57,9 @@ class write_dhcpd_config(cs_base_class.server_com):
                 dhcpd_f = file("/etc/dhcpd.conf", "w")
             dhcpd_f.write("ddns-update-style none;\n")
             dhcpd_f.write("omapi-port 7911;\n")
-            dhcpd_f.write("ddns-domainname \"%s\";\n" % (self.global_config["SERVER_SHORT_NAME"]))
+            dhcpd_f.write("ddns-domainname \"%s\";\n" % (global_config["SERVER_SHORT_NAME"]))
             dhcpd_f.write("allow booting;\nallow bootp;\n\n")
-            if self.srv_com["server_key:authoritative"].text.lower() in ["1", "true", "yes"]:
+            if cur_inst.srv_com["server_key:authoritative"].text.lower() in ["1", "true", "yes"]:
                 dhcpd_f.write("authoritative;\n")
             # get gateway and domain-servers for the various nets
             gw_pri, gateway = (-10000, "0.0.0.0")
@@ -96,7 +97,7 @@ class write_dhcpd_config(cs_base_class.server_com):
 ##                        hosts, opts = ([(x["ip"], x["name"]) for x in dc.fetchall()], {})
 ##                        act_net[key] = {"hosts" : hosts, "opts" : opts}
                 #act_net["dns"] = 
-            dhcpd_f.write("shared-network %s {\n" % (self.global_config["SERVER_SHORT_NAME"]))
+            dhcpd_f.write("shared-network %s {\n" % (global_config["SERVER_SHORT_NAME"]))
             dhcpd_f.write("  option routers %s;\n" % (gateway))
             for act_net in [boot_net] + add_nets:
                 dhcpd_f.write("  subnet %s netmask %s {\n" % (act_net.network,
@@ -144,7 +145,7 @@ class write_dhcpd_config(cs_base_class.server_com):
                 ret_state, ret_str = (
                     server_command.SRV_REPLY_STATE_ERROR,
                     "error no valid dhcp-server found")
-            self.srv_com["result"].attrib.update({
+            cur_inst.srv_com["result"].attrib.update({
                 "reply" : ret_str,
                 "state" : "%d" % (ret_state)})
             

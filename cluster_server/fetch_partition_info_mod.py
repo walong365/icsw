@@ -33,7 +33,7 @@ from initat.cluster.backbone.models import device, partition, partition_disc, pa
 class fetch_partition_info(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["devname"]
-    def _call(self):
+    def _call(self, cur_inst):
         target_devs = self.option_dict["devname"].split(",")
         zmq_con = net_tools.zmq_connection(
             "server:%s" % (process_tools.get_machine_name()),
@@ -274,11 +274,11 @@ class fetch_partition_info(cs_base_class.server_com):
                     logging_tools.get_plural("volumegroup", len(lvm_info.lv_dict.get("vg", {}).keys())),
                     logging_tools.get_plural("logical volume", len(lvm_info.lv_dict.get("lv", {}).keys()))))
         if num_errors:
-            self.srv_com["result"].attrib.update({
+            cur_inst.srv_com["result"].attrib.update({
                 "reply" : "ok %s" % (";".join(ret_f)),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
-            self.srv_com["result"].attrib.update({
+            cur_inst.srv_com["result"].attrib.update({
                 "reply" : "ok %s" % (";".join(ret_f)),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
         

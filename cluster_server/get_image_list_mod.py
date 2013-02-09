@@ -24,6 +24,7 @@ import server_command
 import os
 import logging_tools
 import process_tools
+from cluster_server.config import global_config
 
 NEEDED_IMAGE_DIRS = ["usr", "etc", "bin", "sbin", "var"]
 
@@ -31,9 +32,9 @@ class get_image_list(cs_base_class.server_com):
     class Meta:
         needed_configs = ["image_server"]
         needed_config_keys = ["IMAGE_SOURCE_DIR"]
-    def _call(self):
+    def _call(self, cur_inst):
         #sys.path.append("/usr/local/sbin/modules")
-        source_dir = self.global_config["IMAGE_SOURCE_DIR"]
+        source_dir = global_config["IMAGE_SOURCE_DIR"]
         if os.path.isdir(source_dir):
             t_dirs = ["%s/%s" % (source_dir, sub_dir) for sub_dir in os.listdir(source_dir) if os.path.isdir("%s/%s" % (source_dir, sub_dir))]
             valid_sys = {}
@@ -58,20 +59,19 @@ class get_image_list(cs_base_class.server_com):
                     self.log("  ... skipping %s (%s [%s] missing)" % (t_dir,
                                                                       logging_tools.get_plural("subdirectory", len(dirs_missing)),
                                                                       ", ".join(dirs_missing)))
-            self.srv_com["result"].attrib.update({
+            cur_inst.srv_com["result"].attrib.update({
                 "reply" : "found %s" % (logging_tools.get_plural("image", len(valid_sys.keys()))),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
             if valid_sys:
-                image_list = self.srv_com.builder("image_list", image_dir=source_dir)
-                self.srv_com["result"] = image_list
+                image_list = cur_inst.srv_com.builder("image_list", image_dir=source_dir)
+                cur_inst.srv_com["result"] = image_list
                 for image_name, sys_dict in valid_sys.iteritems():
                     sys_dict["bitcount"] = "%d" % (sys_dict["bitcount"])
-                    image_list.append(self.srv_com.builder("image", image_name, **sys_dict))
+                    image_list.append(cur_inst.srv_com.builder("image", image_name, **sys_dict))
         else:
-            self.srv_com["result"].attrib.update({
+            cur_inst.srv_com["result"].attrib.update({
                 "reply" : "error image-source-dir '%s' not found" % (source_dir),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
-        #print unicode(self.srv_com)
     
 if __name__ == "__main__":
     print "Loadable module, exiting ..."

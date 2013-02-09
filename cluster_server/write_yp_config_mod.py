@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -29,11 +29,12 @@ import shutil
 import time
 import commands
 import server_command
+from cluster_server.config import global_config
 
 class write_yp_config(cs_base_class.server_com):
     class Meta:
         needed_configs = ["yp_server"]
-    def _call(self):#call_it(self, opt_dict, call_params):
+    def _call(self, cur_inst):#call_it(self, opt_dict, call_params):
         try:
             import gdbm
         except ImportError:
@@ -78,10 +79,10 @@ class write_yp_config(cs_base_class.server_com):
                 ext_keys[exp].append((dirname, export_dict[ext_k]))
             else:
                 mysql_tools.device_log_entry(self.dc,
-                                             self.server_idx,
-                                             self.global_config["LOG_SOURCE_IDX"],
+                                             global_config["SERVER_IDX"],
+                                             global_config["LOG_SOURCE_IDX"],
                                              0,
-                                             self.global_config["LOG_STATUS"]["e"]["log_status_idx"],
+                                             global_config["LOG_STATUS"]["e"]["log_status_idx"],
                                              "refuse to create automont-map for / ")
         # collect homedir-export entries and create group/passwd entries
         # group-entries
@@ -142,10 +143,10 @@ class write_yp_config(cs_base_class.server_com):
                         ext_keys[homestart].append((e2["home"], "%s %s:%s/%s" % (entry["options"], entry["name"], cs_tools.hostname_expand(entry["name"], entry["homeexport"]), e2["home"])))
                     else:
                         mysql_tools.device_log_entry(self.dc,
-                                                     self.server_idx,
-                                                     self.global_config["LOG_SOURCE_IDX"],
+                                                     global_config["SERVER_IDX"],
+                                                     global_config["LOG_SOURCE_IDX"],
                                                      0,
-                                                     self.global_config["LOG_STATUS"]["e"]["log_status_idx"],
+                                                     global_config["LOG_STATUS"]["e"]["log_status_idx"],
                                                      "refuse to create automont-map for / (homedir-export)")
         # scratch-exports
         self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, config_str cs, device_config dc, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
@@ -170,10 +171,10 @@ class write_yp_config(cs_base_class.server_com):
                         ext_keys[scratchstart].append((e2["scratch"], "%s %s:%s/%s" % (entry["options"], entry["name"], cs_tools.hostname_expand(entry["name"], entry["scratchexport"]), e2["login"])))
                     else:
                         mysql_tools.device_log_entry(self.dc,
-                                                     self.server_idx,
-                                                     self.global_config["LOG_SOURCE_IDX"],
+                                                     global_config["SERVER_IDX"],
+                                                     global_config["LOG_SOURCE_IDX"],
                                                      0,
-                                                     self.global_config["LOG_STATUS"]["e"]["log_status_idx"],
+                                                     global_config["LOG_STATUS"]["e"]["log_status_idx"],
                                                      "refuse to create automont-map for / (scratch-export)")
         ext_keys["auto.master"] = auto_master
         # get yp-name
@@ -198,11 +199,11 @@ class write_yp_config(cs_base_class.server_com):
         ext_keys["services.byservicename"] = sbs
         # generate ypservers map
         temp_map_dir = "_ics_tmd"
-        ext_keys["ypservers"] = [(self.global_config["SERVER_FULL_NAME"],
-                                  self.global_config["SERVER_FULL_NAME"])]
+        ext_keys["ypservers"] = [(global_config["SERVER_FULL_NAME"],
+                                  global_config["SERVER_FULL_NAME"])]
         temp_map_dir = "/var/yp/%s" % (temp_map_dir)
         if not os.path.isdir("/var/yp"):
-            self.srv_com["result"].attrib.update({
+            cur_inst.srv_com["result"].attrib.update({
                 "reply" : "error no /var/yp directory",
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
@@ -218,7 +219,7 @@ class write_yp_config(cs_base_class.server_com):
                 gdbf = gdbm.open(map_name, "n", 0600)
                 gdbf["YP_INPUT_NAME"] = "%s.mysql" % (mapname)
                 gdbf["YP_OUTPUT_NAME"] = map_name
-                gdbf["YP_MASTER_NAME"] = self.global_config["SERVER_FULL_NAME"]
+                gdbf["YP_MASTER_NAME"] = global_config["SERVER_FULL_NAME"]
                 gdbf["YP_LAST_MODIFIED"] = str(int(time.time()))
                 for key, value in ext_keys[mapname]:
                     gdbf[key] = value
@@ -235,11 +236,11 @@ class write_yp_config(cs_base_class.server_com):
             else:
                 cstat, cout = commands.getstatusoutput("/usr/lib/yp/makedbm -c")
             if cstat:
-                self.srv_com["result"].attrib.update({
+                cur_inst.srv_com["result"].attrib.update({
                     "reply" : "error wrote %d yp-maps, reloading gave :'%s'" % (num_maps, cout),
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             else:
-                self.srv_com["result"].attrib.update({
+                cur_inst.srv_com["result"].attrib.update({
                     "reply" : "ok wrote %d yp-maps and successfully reloaded configuration" % (num_maps),
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 

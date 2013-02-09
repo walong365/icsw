@@ -29,13 +29,14 @@ import os
 from django.db.models import Q
 import server_command
 from initat.cluster.backbone.models import image
+from cluster_server.config import global_config
 
 class write_rsyncd_config(cs_base_class.server_com):
     class Meta:
         needed_configs = ["rsync_server"]
-    def _call(self):
+    def _call(self, cur_inst):
         rsyncd_cf_name = "/etc/rsyncd.conf"
-        #print self.srv_com.pretty_print()
+        #print cur_inst.srv_com.pretty_print()
         #not_full = opt_dict.get("not_full", 0)
         def_lines = [
             "uid = 0",
@@ -91,7 +92,7 @@ class write_rsyncd_config(cs_base_class.server_com):
             extra_info = ""
         else:
             extra_info = " (root kept)"
-        server_idxs = [self.server_idx]
+        server_idxs = [global_config["SERVER_IDX"]]
         # check for rsync
         #call_params.dc.execute("SELECT cs.value, cs.name, c.name AS config_name FROM device_config dc LEFT JOIN new_config c ON dc.new_config=c.new_config_idx INNER JOIN config_str cs ON cs.new_config=c.new_config_idx AND c.name LIKE('%%rsync%%') AND (%s)" % (" OR ".join(["dc.device=%d" % (x) for x in server_idxs])))
         rsync_dict = {}
@@ -154,7 +155,7 @@ class write_rsyncd_config(cs_base_class.server_com):
                         rsyncd_cf_name, logging_tools.get_plural("image", num_images), extra_info,
                         logging_tools.get_plural("rsync", num_rsync))
                 )
-        self.srv_com["result"].attrib.update({
+        cur_inst.srv_com["result"].attrib.update({
             "reply" : ret_str,
             "state" : "%d" % (ret_state)})
 

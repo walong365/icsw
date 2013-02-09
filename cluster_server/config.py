@@ -1,6 +1,8 @@
-#!/usr/bin/python -Ot
+#!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2013 Andreas Lang-Nevyjel, init.at
+#
+# this file is part of cluster-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -18,22 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
-import cs_base_class
 import configfile
-import server_command
-from cluster_server.config import global_config
+import process_tools
 
-class reload_config(cs_base_class.server_com):
-    def _call(self, cur_inst):
-        configfile.read_config_from_db(global_config, self.dc, "server")
-        # log config
-        for conf_line in global_config.get_config_info():
-            self.log("Config : %s" % (conf_line))
-        cur_inst.srv_com["result"].attrib.update({
-            "reply" : "ok reloaded config",
-            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
+global_config = configfile.get_global_config(process_tools.get_programm_name())
