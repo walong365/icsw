@@ -7,9 +7,7 @@
 {% block content %}
 
 <h1 class="center">Device network settings</h1>
-<h2>hopcount info: <span id="rebuild_info">unknown</span></h2>
-<h2>routing info: <span id="routing_info">unknown</span></h2>
-<input type="button" value="rebuild hopcount" id="rebuild_hopcount"/>
+<h2>routing info: <span id="routing_info">unknown</span><span id="rebuild_button"></span></h2>
 
 <div id="network_table"></div>
 
@@ -21,8 +19,12 @@
 
 class network_table
     constructor: (@top_div) ->
-        $("input#rebuild_hopcount").bind("click", @trigger_hopcount_rebuild)
-        @DUMMY_MAC ="00:00:00:00:00:00";
+        @DUMMY_MAC ="00:00:00:00:00:00"
+        rebuild_button = $("<input>").attr({
+            "type" : "button",
+            "value" : "rebuild hopcount",
+            "id"    : "rebuild_hopcount"}).bind("click", @trigger_hopcount_rebuild)
+        $("span#rebuild_button").append($("<span>").text(", ")).append(rebuild_button).hide()
     use_devs: (dt_div) =>
         @SELECTED_DEVICES = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
         @reload_network_tree()
@@ -284,6 +286,10 @@ class network_table
                 if parse_xml_response(xml)
                     $("span#rebuild_info").text($(xml).find("value[name='response'] hopcount_state").attr("rebuild_info"))
                     $("span#routing_info").text($(xml).find("value[name='response'] hopcount_state").attr("routing_info"))
+                    if $(xml).find("value[name='response'] hopcount_state").attr("enable_rebuild") == "1"
+                        $("span#rebuild_button").show()
+                    else
+                        $("span#rebuild_button").hide()
 
     # peer related calls
     
