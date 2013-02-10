@@ -956,7 +956,7 @@ class route_generation(models.Model):
         return u"route generation %d, %s:%s:%s" % (
             self.generation,
             "valid" if self.valid else "invalid",
-            "built" if self.build else "not built",
+            "building" if self.build else "built",
             "dirty" if self.dirty else "clean",
         )
  
