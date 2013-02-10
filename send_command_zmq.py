@@ -81,35 +81,44 @@ def main():
         client.send_unicode(unicode(srv_com))
         if client.poll(args.timeout * 1000):
             recv_str = client.recv()
+            timeout  = False
         else:
-            print "Timeout"
-            recv_str = None
+            print "error timeout"
+            timeout = True
         e_time = time.time()
         if args.verbose:
-            print "communication took %s, received %d bytes" % (
-                logging_tools.get_diff_time_str(e_time - s_time),
-                len(recv_str))
-        try:
-            srv_reply = server_command.srv_command(source=recv_str)
-        except:
-            print "cannot interpret reply: %s" % (process_tools.get_except_info())
-            print "reply was: %s" % (recv_str)
-        else:
-            if args.verbose:
-                print
-                print "XML response:"
-                print
-                print srv_reply.pretty_print()
-                print
-            if "result" in srv_reply:
-                print srv_reply["result"].attrib["reply"]
-                ret_state = int(srv_reply["result"].attrib["state"])
-            elif len(srv_reply.xpath(None, ".//nodestatus")):
-                print srv_reply.xpath(None, ".//nodestatus")[0].text
-                ret_state = 0
+            if timeout:
+                print "communication took %s" % (
+                    logging_tools.get_diff_time_str(e_time - s_time),
+                )
             else:
-                print "no result tag found in reply"
-                ret_state = -1
+                print "communication took %s, received %d bytes" % (
+                    logging_tools.get_diff_time_str(e_time - s_time),
+                    len(recv_str),
+                )
+        if not timeout:
+            try:
+                srv_reply = server_command.srv_command(source=recv_str)
+            except:
+                print "cannot interpret reply: %s" % (process_tools.get_except_info())
+                print "reply was: %s" % (recv_str)
+                eet_state = 1
+            else:
+                if args.verbose:
+                    print
+                    print "XML response:"
+                    print
+                    print srv_reply.pretty_print()
+                    print
+                if "result" in srv_reply:
+                    print srv_reply["result"].attrib["reply"]
+                    ret_state = int(srv_reply["result"].attrib["state"])
+                elif len(srv_reply.xpath(None, ".//nodestatus")):
+                    print srv_reply.xpath(None, ".//nodestatus")[0].text
+                    ret_state = 0
+                else:
+                    print "no result tag found in reply"
+                    ret_state = 2
     client.close()
     sys.exit(ret_state)
 

@@ -161,6 +161,7 @@ def get_zmq_ipc_name(name, **kwargs):
     else:
         if ALLOW_MULTIPLE_INSTANCES and not ctri:
             root_dir = os.path.join(LOCAL_ROOT_ZMQ_DIR, INIT_ZMQ_DIR_PID)
+            atexit.register(remove_zmq_dirs, root_dir)
         else:
             root_dir = LOCAL_ROOT_ZMQ_DIR
     if not os.path.isdir(root_dir):
