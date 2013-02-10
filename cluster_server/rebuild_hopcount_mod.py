@@ -341,7 +341,8 @@ class route_helper_obj(object):
             self.last_gen = None
         self.cur_gen = route_generation(
             generation=self.last_gen.generation + 1 if self.last_gen else 1,
-            valid=False
+            valid=False,
+            build=True,
         )
         self.cur_gen.save()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -350,6 +351,7 @@ class route_helper_obj(object):
         self.__end_time = time.time()
         # switches from last_gen to cur_gen
         self.cur_gen.time_used = self.__end_time - self.__start_time
+        self.cur_gen.build = False
         self.cur_gen.valid = True
         self.log("enabled new route_generation (%s)" % (unicode(self.cur_gen)))
         self.cur_gen.save()

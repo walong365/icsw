@@ -65,6 +65,7 @@ class bg_process(threading_tools.process_obj):
             loc_inst.srv_com["result"].attrib["reply"],
         )
         self.log("state (%d): %s" % (ret_state, ret_str))
+        self.send_pool_message("bg_finished", com_name)
         self._exit_process()
     def loop_post(self):
         self.__log_template.close()
@@ -95,28 +96,35 @@ class com_instance(object):
             pass
     def __call__(self):
         if self.Meta.background:
-            com_instance.bg_idx += 1
-            new_bg_name = "bg_%s_%d" % (self.sc_obj.name, com_instance.bg_idx)
-            new_bgt = self.sc_obj.process_pool.add_process(bg_process(new_bg_name), start=True)
-            self.sc_obj.process_pool.send_to_process(
-                new_bg_name,
-                "set_option_dict",
-                self.option_dict)
-            self.sc_obj.process_pool.send_to_process(
-                new_bg_name,
-                "set_srv_com",
-                unicode(self.srv_com),
-            )
-            self.sc_obj.process_pool.send_to_process(
-                new_bg_name,
-                "start_command",
-                self.sc_obj.name,
-            )
-            connection.close()
-            self.srv_com["result"].attrib.update({
-                "reply" : "sent to background",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-            })
+            if self.Meta.cur_running < self.Meta.max_instances:
+                self.Meta.cur_running += 1
+                com_instance.bg_idx += 1
+                new_bg_name = "bg_%s_%d" % (self.sc_obj.name, com_instance.bg_idx)
+                new_bgt = self.sc_obj.process_pool.add_process(bg_process(new_bg_name), start=True)
+                self.sc_obj.process_pool.send_to_process(
+                    new_bg_name,
+                    "set_option_dict",
+                    self.option_dict)
+                self.sc_obj.process_pool.send_to_process(
+                    new_bg_name,
+                    "set_srv_com",
+                    unicode(self.srv_com),
+                )
+                self.sc_obj.process_pool.send_to_process(
+                    new_bg_name,
+                    "start_command",
+                    self.sc_obj.name,
+                )
+                connection.close()
+                self.srv_com["result"].attrib.update({
+                    "reply" : "sent to background",
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                })
+            else:
+                self.srv_com["result"].attrib.update({
+                    "reply" : "too many instances running (%d of %d)" % (self.Meta.cur_running, self.Meta.max_instances),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                })
         else:
             db_debug = global_config["DATABASE_DEBUG"]
             if db_debug:
@@ -177,6 +185,10 @@ class server_com(object):
         needed_config_keys = []
         # public via network
         public_via_net = True
+        # maximum number of instances
+        max_instances = 1
+        # current number of instances
+        cur_running = 0
     def __init__(self):
         # copy Meta keys
         for key in dir(server_com.Meta):

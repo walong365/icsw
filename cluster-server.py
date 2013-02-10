@@ -977,6 +977,7 @@ class server_process(threading_tools.process_pool):
         self._re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
+        self.register_func("bg_finished", self._bg_finished)
         self._log_config()
         self._check_uuid()
         #self.__is_server = not self.__server_com
@@ -1008,8 +1009,6 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
-    def get_dc(self):
-        return self.__db_con.get_connection(SQL_ACCESS)
     def set_target(self, t_host, t_port):
         self.__target_host, self.__target_port = (t_host, t_port)
         self.__ns = net_tools.network_send(timeout=10, log_hook=self.log, verbose=False)
@@ -1018,6 +1017,10 @@ class server_process(threading_tools.process_pool):
                                                                                 self.__target_port,
                                                                                 self.__server_com.get_command()))
         self.__first_step = True
+    def _bg_finished(self, *args, **kwargs):
+        func_name = args[2]
+        self.log("background task for '%s' finished" % (func_name))
+        cluster_server.command_dict[func_name].Meta.cur_running -= 1
     def _init_capabilities(self):
         self.log("init server capabilities")
         self.__server_cap_dict = {
@@ -1135,7 +1138,7 @@ class server_process(threading_tools.process_pool):
                 self.register_poller(client, zmq.POLLIN, self._recv_command)
         self.com_socket = client
         # connection to local collserver socket
-        conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver")
+        conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
         vector_socket = self.zmq_context.socket(zmq.PUSH)
         vector_socket.setsockopt(zmq.LINGER, 0)
         vector_socket.connect(conn_str)
