@@ -29,7 +29,7 @@ import os
 from django.db.models import Q
 import server_command
 from initat.cluster.backbone.models import image
-from cluster_server.config import global_config
+from initat.cluster_server.config import global_config
 
 class write_rsyncd_config(cs_base_class.server_com):
     class Meta:

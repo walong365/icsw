@@ -24,17 +24,17 @@ import server_command
 import check_scripts
 import uuid_tools
 import pprint
-import cluster_server
-from cluster_server.config import global_config
+import initat.cluster_server
+from initat.cluster_server.config import global_config
 
 class check_server(cs_base_class.server_com):
     def _call(self, cur_inst):
-        opt_dict = check_scripts.get_default_opt_dict()
-        opt_dict["full_status"] = True
-        opt_dict["mem_info"] = True
-        ret_dict = check_scripts.check_system(opt_dict, {}, self.dc)
-        pub_coms   = sorted([com_name for com_name, com_struct in cluster_server.command_dict.iteritems() if com_struct.Meta.public_via_net])
-        priv_coms  = sorted([com_name for com_name, com_struct in cluster_server.command_dict.iteritems() if not com_struct.Meta.public_via_net])
+        def_ns = check_scripts.get_default_ns()
+        #def_ns["full_status"] = True
+        #def_ns["mem_info"] = True
+        ret_dict = check_scripts.check_system(def_ns)
+        pub_coms   = sorted([com_name for com_name, com_struct in initat.cluster_server.command_dict.iteritems() if com_struct.Meta.public_via_net])
+        priv_coms  = sorted([com_name for com_name, com_struct in initat.cluster_server.command_dict.iteritems() if not com_struct.Meta.public_via_net])
         # FIXME, sql info not transfered
         for key, value in ret_dict.iteritems():
             if type(value) == dict and "sql" in value:

@@ -34,6 +34,7 @@ from initat.cluster.backbone.models import net_ip, netdevice, device, device_var
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME       = "/etc/hosts"
+GROUP_DIR                = "/etc/dsh/group"
 
 class write_etc_hosts(cs_base_class.server_com):
     class Meta:
@@ -148,25 +149,27 @@ class write_etc_hosts(cs_base_class.server_com):
             # name_dict without localhost
             name_dict.setdefault(host.netdevice.device.name, []).extend([out_name for out_name in out_names if out_name not in name_dict[host.netdevice.device.name] and not out_name.startswith("localhost")])
             ip_dict.setdefault(host.ip, [])
-            if out_names not in [x[1] for x in ip_dict[host.ip]]:
+            if out_names not in [entry[1] for entry in ip_dict[host.ip]]:
                 found_keys = set([(host.netdevice_id, my_idx) for my_idx in my_idxs]) & con_keys
                 if found_keys:
                     min_value = min([ref_table[key] for key in found_keys])
                 else:
                     # localhost ?
                     min_value = 1
-                ip_dict[host.ip].append((min_value, out_names))
+                if host.ip != "0.0.0.0":
+                    ip_dict[host.ip].append((min_value, out_names))
         # out_list
         loc_dict = {}
         for ip, h_list in ip_dict.iteritems():
-            all_values = sorted([x[0] for x in h_list])
-            min_value = all_values[0]
-            out_names = []
-            for val in all_values:
-                for act_val, act_list in [(x_value, x_list) for x_value, x_list in h_list if x_value == val]:
-                    out_names.extend([value for value in act_list if value not in out_names])
-            #print min_value, ip, out_names
-            loc_dict.setdefault(min_value, []).append([ipvx_tools.ipv4(ip)] + out_names)
+            all_values = sorted([entry[0] for entry in h_list])
+            if all_values:
+                min_value = all_values[0]
+                out_names = []
+                for val in all_values:
+                    for act_val, act_list in [(x_value, x_list) for x_value, x_list in h_list if x_value == val]:
+                        out_names.extend([value for value in act_list if value not in out_names])
+                #print min_value, ip, out_names
+                loc_dict.setdefault(min_value, []).append([ipvx_tools.ipv4(ip)] + out_names)
         pen_list = sorted(loc_dict.keys())
         out_file = []
         for pen_value in pen_list:
@@ -176,43 +179,37 @@ class write_etc_hosts(cs_base_class.server_com):
             host_lines = str(act_out_list).split("\n")
             out_file.extend(["# penalty %d, %s" % (pen_value,
                                                    logging_tools.get_plural("host entry", len(host_lines))), ""] + host_lines + [""])
-        group_dir = "/usr/local/etc/group"
-        if not os.path.isdir(group_dir):
+        if not os.path.isdir(GROUP_DIR):
             try:
-                os.makedirs(group_dir)
+                os.makedirs(GROUP_DIR)
             except:
                 pass
-        if os.path.isdir(group_dir):
+        if os.path.isdir(GROUP_DIR):
             # remove old files
-            for file_name in os.listdir(group_dir):
+            for file_name in os.listdir(GROUP_DIR):
                 try:
-                    os.unlink(os.path.join(group_dir, file_name))
+                    os.unlink(os.path.join(GROUP_DIR, file_name))
                 except:
                     pass
             # get all devices with netips
             all_devs = device.objects.filter(Q(netdevice__net_ip__ip__contains=".")).values_list("name", "device_group__name").order_by("device_group__name", "name")
-##            print all_devs
-##            self.dc.execute("SELECT DISTINCT d.name, dg.name AS dgname FROM device d, device_group dg, netdevice n, netip i WHERE dg.device_group_idx=d.device_group AND n.device=d.device_idx AND i.netdevice=n.netdevice_idx ORDER BY dg.name, d.name")
-##            ddg_dict, all_names, all_nodes = ({}, [], [])
-##            for db_rec in self.dc.fetchall():
-##                ddg_dict.setdefault(db_rec["dgname"], []).append(db_rec["name"])
-##                all_names.append(db_rec["name"])
-            # FIXME
-            if False:
-                self.dc.execute("SELECT DISTINCT d.name, dg.name AS dgname, c.name FROM device d, device_group dg, device_config dc, new_config c WHERE (dc.device=d.device_idx OR dc.device=dg.device) AND c.new_config_idx=dc.new_config AND c.name LIKE('node%') AND dg.device_group_idx=d.device_group ORDER BY dg.name, d.name")
-                ddg_dict["all_names"] = all_names
-                ddg_dict["all_nodes"] = [x["name"] for x in self.dc.fetchall() if x["name"] in all_names]
-                for dg_name, dg_hosts in ddg_dict.iteritems():
-                    dg_hosts.sort()
-                    try:
-                        file("%s/%s" % (group_dir, dg_name), "w").write("\n".join(dg_hosts + [""]))
-                    except:
-                        pass
-        #outhandle.seek(0, 0)
+            dg_dict = {}
+            for dev_name, dg_name in all_devs:
+                dg_dict.setdefault(dg_name, []).append(dev_name)
+            for file_name, content in dg_dict.iteritems():
+                file(os.path.join(GROUP_DIR, file_name), "w").write("\n".join(content))
         file_list.append(ETC_HOSTS_FILENAME)
-        file(ETC_HOSTS_FILENAME, "w+").write("\n".join(["### AEH-START-PRE insert pre-host lines below"] + pre_host_lines + ["### AEH-END-PRE insert pre-host lines above", ""] +
-                                                       out_file +
-                                                       ["", "### AEH-START-POST insert post-host lines below"] + post_host_lines + ["### AEH-END-POST insert post-host lines above", ""]))
+        file(ETC_HOSTS_FILENAME, "w+").write("\n".join(
+            ["### AEH-START-PRE insert pre-host lines below"] +
+            pre_host_lines +
+            ["### AEH-END-PRE insert pre-host lines above",
+             ""] +
+            out_file +
+            ["",
+             "### AEH-START-POST insert post-host lines below"] +
+            post_host_lines +
+            ["### AEH-END-POST insert post-host lines above",
+             ""]))
         # write known_hosts_file
         if os.path.isdir(os.path.dirname(SSH_KNOWN_HOSTS_FILENAME)):
             skh_f = file(SSH_KNOWN_HOSTS_FILENAME, "w")

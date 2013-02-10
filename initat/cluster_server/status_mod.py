@@ -24,7 +24,7 @@ import cs_base_class
 import configfile
 import os
 import server_command
-from cluster_server.config import global_config
+from initat.cluster_server.config import global_config
 
 CLUSTER_NAME_FILE = "/etc/sysconfig/cluster/cluster_name"
 

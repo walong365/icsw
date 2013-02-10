@@ -30,7 +30,7 @@ import process_tools
 import server_command
 import io_stream_helper
 from django.conf import settings
-from cluster_server.config import global_config
+from initat.cluster_server.config import global_config
 from django.db import connection
 
 class bg_process(threading_tools.process_obj):
@@ -54,8 +54,8 @@ class bg_process(threading_tools.process_obj):
     def _start_command(self, com_name, **kwargs):
         self.log("starting command '%s'" % (com_name))
         #print [key for key in sys.modules.keys() if key.count("cluster_s")]
-        import cluster_server
-        ex_code = cluster_server.command_dict[com_name]
+        import initat.cluster_server
+        ex_code = initat.cluster_server.command_dict[com_name]
         loc_inst = com_instance(ex_code, self.srv_com, self.option_dict, self.Meta, self.zmq_context)
         loc_inst.log = self.log
         loc_inst()

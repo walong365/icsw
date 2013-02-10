@@ -29,7 +29,7 @@ import server_command
 import process_tools
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, config, device_config, config_str
-from cluster_server.config import global_config
+from initat.cluster_server.config import global_config
 
 class create_user_home(cs_base_class.server_com):
     class Meta:

@@ -24,7 +24,7 @@ import server_command
 import os
 import logging_tools
 import process_tools
-from cluster_server.config import global_config
+from initat.cluster_server.config import global_config
 
 NEEDED_IMAGE_DIRS = ["usr", "etc", "bin", "sbin", "var"]
 

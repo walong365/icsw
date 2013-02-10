@@ -18,23 +18,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" simple one: returns the version string """
-
 import sys
 import cs_base_class
+import configfile
 import server_command
-from cluster_server.config import global_config
+from initat.cluster_server.config import global_config
 
-class version(cs_base_class.server_com):
-    class Meta:
-        show_execution_time = False
+class reload_config(cs_base_class.server_com):
     def _call(self, cur_inst):
-        cur_inst.srv_com["version"] = global_config["VERSION"]
+        configfile.read_config_from_db(global_config, self.dc, "server")
+        # log config
+        for conf_line in global_config.get_config_info():
+            self.log("Config : %s" % (conf_line))
         cur_inst.srv_com["result"].attrib.update({
-            "reply" : "version is %s" % (global_config["VERSION"]),
+            "reply" : "ok reloaded config",
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
-    

@@ -46,13 +46,13 @@ import difflib
 import config_tools
 import cluster_location
 import zmq
-import cluster_server
+import initat.cluster_server
 import io_stream_helper
 from django.db.models import Q
 from host_monitoring import hm_classes
 from django.core.handlers.wsgi import WSGIHandler
 from initat.cluster.backbone.models import device, device_variable, log_source
-from cluster_server.config import global_config
+from initat.cluster_server.config import global_config
 
 try:
     from cluster_server_version import VERSION_STRING
@@ -1020,7 +1020,7 @@ class server_process(threading_tools.process_pool):
     def _bg_finished(self, *args, **kwargs):
         func_name = args[2]
         self.log("background task for '%s' finished" % (func_name))
-        cluster_server.command_dict[func_name].Meta.cur_running -= 1
+        initat.cluster_server.command_dict[func_name].Meta.cur_running -= 1
     def _init_capabilities(self):
         self.log("init server capabilities")
         self.__server_cap_dict = {
@@ -1195,8 +1195,8 @@ class server_process(threading_tools.process_pool):
         srv_com["result"].attrib.update({
             "reply" : "no reply set",
             "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)})
-        if com_name in cluster_server.command_dict:
-            com_obj = cluster_server.command_dict[com_name]
+        if com_name in initat.cluster_server.command_dict:
+            com_obj = initat.cluster_server.command_dict[com_name]
             # check config status
             do_it, srv_origin, err_str = com_obj.check_config(global_config, global_config["FORCE"])
             self.log("checking the config gave: %s (%s) %s" % (str(do_it),
@@ -1344,16 +1344,16 @@ class server_process(threading_tools.process_pool):
         return self.__client_error, self.__client_ret_str
     def _load_modules(self):
         self.log("init modules from cluster_server")
-        if cluster_server.error_log:
-            self.log("%s while loading:" % (logging_tools.get_plural("error", len(cluster_server.error_log))),
+        if initat.cluster_server.error_log:
+            self.log("%s while loading:" % (logging_tools.get_plural("error", len(initat.cluster_server.error_log))),
                      logging_tools.LOG_LEVEL_ERROR)
-            for line_num, err_line in enumerate(cluster_server.error_log):
+            for line_num, err_line in enumerate(initat.cluster_server.error_log):
                 self.log("%2d : %s" % (line_num + 1,
                                        err_line),
                          logging_tools.LOG_LEVEL_ERROR)
         del_names = []
-        for com_name in cluster_server.command_names:
-            act_sc = cluster_server.command_dict[com_name]
+        for com_name in initat.cluster_server.command_names:
+            act_sc = initat.cluster_server.command_dict[com_name]
             if hasattr(act_sc, "_call"):
                 act_sc.link(self)
                 self.log(
@@ -1376,9 +1376,9 @@ class server_process(threading_tools.process_pool):
                 self.log("command %s has no _call function" % (com_name), logging_tools.LOG_LEVEL_ERROR)
                 del_names.append(com_name)
         for del_name in del_names:
-            cluster_server.command_names.remove(del_name)
-            del cluster_server.command_dict[del_name]
-        self.log("Found %s" % (logging_tools.get_plural("command", len(cluster_server.command_names))))
+            initat.cluster_server.command_names.remove(del_name)
+            del initat.cluster_server.command_dict[del_name]
+        self.log("Found %s" % (logging_tools.get_plural("command", len(initat.cluster_server.command_names))))
 
 #global_config = configfile.get_global_config(process_tools.get_programm_name())
 
@@ -1397,7 +1397,7 @@ def main():
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("CONTACT"             , configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
-        ("COMMAND"             , configfile.str_c_var("", short_options="c", choices=[""] + cluster_server.command_names, only_commandline=True, help_string="command to execute [%(default)s]")),
+        ("COMMAND"             , configfile.str_c_var("", short_options="c", choices=[""] + initat.cluster_server.command_names, only_commandline=True, help_string="command to execute [%(default)s]")),
         ("OPTION_KEYS"         , configfile.array_c_var([], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)")),
     ])
     global_config.parse_file()

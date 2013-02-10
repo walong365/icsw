@@ -26,15 +26,14 @@ import logging_tools
 import time
 import datetime
 import pytz
+import pprint
+import copy
 import server_command
 from django.db.models import Q
 from django.conf import settings
 from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group, \
      peer_information, cs_timer, route_generation
-from cluster_server.config import global_config
-import pprint
-import copy
-from cluster_server.config import global_config
+from initat.cluster_server.config import global_config
 
 HOPCOUNT_REBUILT_VAR_NAME = "hopcount_table_build_time"
 HOPCOUNT_STATE_VAR_NAME = "hopcount_state_var"

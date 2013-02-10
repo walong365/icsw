@@ -34,7 +34,7 @@ import ldap.modlist
 import server_command
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, device_config, device, config, config_str
-from cluster_server.config import global_config
+from initat.cluster_server.config import global_config
 
 """ possible smb.conf:
 

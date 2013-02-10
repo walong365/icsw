@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -18,22 +18,23 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+""" simple one: returns the version string """
+
 import sys
 import cs_base_class
-import configfile
 import server_command
-from cluster_server.config import global_config
+from initat.cluster_server.config import global_config
 
-class reload_config(cs_base_class.server_com):
+class version(cs_base_class.server_com):
+    class Meta:
+        show_execution_time = False
     def _call(self, cur_inst):
-        configfile.read_config_from_db(global_config, self.dc, "server")
-        # log config
-        for conf_line in global_config.get_config_info():
-            self.log("Config : %s" % (conf_line))
+        cur_inst.srv_com["version"] = global_config["VERSION"]
         cur_inst.srv_com["result"].attrib.update({
-            "reply" : "ok reloaded config",
+            "reply" : "version is %s" % (global_config["VERSION"]),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
+    

@@ -29,7 +29,7 @@ import shutil
 import time
 import commands
 import server_command
-from cluster_server.config import global_config
+from initat.cluster_server.config import global_config
 
 class write_yp_config(cs_base_class.server_com):
     class Meta:

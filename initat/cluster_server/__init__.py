@@ -23,7 +23,7 @@ import imp
 import os.path
 import pkgutil
 import pprint
-import cs_base_class
+import initat.cluster_server.cs_base_class
 import process_tools
 
 __all__ = [cur_entry for cur_entry in [entry.split(".")[0] for entry in os.listdir(os.path.dirname(__file__)) if entry.endswith("_mod.py")] if cur_entry and not cur_entry.startswith("_")]
