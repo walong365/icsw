@@ -1916,6 +1916,47 @@ class build_process(threading_tools.process_obj):
                 # no rebuild
                 rebuild_it = False
         if rebuild_it:
+            # latest routing generation
+            latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
+            if latest_gen.dirty:
+                self.log("latest route_generation (%s) is marked as dirty, forcing rebuild" % (unicode(latest_gen)), logging_tools.LOG_LEVEL_WARN)
+                srv_com = server_command.srv_command(command="rebuild_hopcount")
+                targ_str = "tcp://localhost:8004"
+                cs_sock = self.zmq_context.socket(zmq.DEALER)
+                identity_str = "md_config_server::%d" % (os.getpid())
+                timeout = 10
+                cs_sock.setsockopt(zmq.IDENTITY, identity_str)
+                cs_sock.setsockopt(zmq.LINGER, timeout)
+                cs_sock.connect(targ_str)
+                s_time = time.time()
+                cs_sock.send_unicode(unicode(srv_com))
+                if cs_sock.poll(timeout * 1000):
+                    recv_str = cs_sock.recv()
+                else:
+                    self.log("error while communication with %s after %s: timeout" % (
+                        targ_str,
+                        logging_tools.get_plural("second", timeout)), logging_tools.LOG_LEVEL_ERROR)
+                    recv_str = None
+                if recv_str:
+                    self.log("send rebuild_hocount to %s, took %s" % (
+                        targ_str,
+                        logging_tools.get_diff_time_str(time.time() - s_time)))
+                    next_gen = latest_gen.generation + 1
+                    self.log("waiting for generation %d to become valid" % (next_gen))
+                    s_time = time.time()
+                    # wait for up to 60 seconds
+                    for idx in xrange(60):
+                        time.sleep(1)
+                        try:
+                            latest_gen = route_generation.objects.get(
+                                Q(valid=True) &
+                                Q(build=False) &
+                                Q(generation=next_gen))
+                        except route_generation.DoesNotExist:
+                            self.log("still waiting...")
+                        else:
+                            self.log("done after %d iterations" % (idx + 1))
+                            break
             # fetch SNMP-stuff of cluster
             snmp_stack = snmp_settings(cdg)
             rebuild_gen_config = False
@@ -1944,10 +1985,8 @@ class build_process(threading_tools.process_obj):
                 else:
                     bc_valid = False
             if bc_valid:
-                # latest routing generation
-                latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
                 # build distance map
-                cur_dmap = self._build_distance_map(self.__gen_config.monitor_server)
+                cur_dmap = self._build_distance_map(self.__gen_config.monitor_server, latest_gen)
                 for cur_gc in [self.__gen_config] + self.__slave_configs.values():
                     self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap, latest_gen)
                     if cur_gc.master:
