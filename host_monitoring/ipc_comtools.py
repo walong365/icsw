@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" ipc communication tools, now in fact 0MQ communication tools """
+""" ipc communication tools, now using 0MQ as communication layer """
 
 import sys
 import process_tools
@@ -33,7 +33,7 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     client_recv = zmq_context.socket(zmq.SUB)
     #client_send.setsockopt(zmq.IDENTITY, identity_str)
     client_send.setsockopt(zmq.LINGER, cur_timeout * 2)
-    client_recv.setsockopt(zmq.SUBSCRIBE, int(identity_str))
+    client_recv.setsockopt(zmq.SUBSCRIBE, identity_str)
     # kwargs["server"] : collrelay or snmprelay
     server_name = kwargs.pop("server")
     send_conn_str = "%s" % (process_tools.get_zmq_ipc_name(
