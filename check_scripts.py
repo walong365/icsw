@@ -226,6 +226,10 @@ def check_system(opt_ns):
             ret_dict[name] = act_info_dict
     return ret_dict
     
+def get_default_ns():
+    def_ns = argparse.Namespace(all=True, server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True)
+    return def_ns
+
 def main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview (%(default)s)")
