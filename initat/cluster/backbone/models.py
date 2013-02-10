@@ -949,11 +949,15 @@ class route_generation(models.Model):
     time_used = models.IntegerField(default=0)
     # dirty flag, used to set the route generation as dirty (changed network setting)
     dirty = models.BooleanField(default=False)
+    # build flag, true when route is in process of building
+    build = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
-        return u"route generation %d, %s" % (
+        return u"route generation %d, %s:%s:%s" % (
             self.generation,
             "valid" if self.valid else "invalid",
+            "built" if self.build else "not built",
+            "dirty" if self.dirty else "clean",
         )
  
 def mark_routing_dirty():
