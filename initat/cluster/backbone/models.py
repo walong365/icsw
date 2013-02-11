@@ -965,9 +965,7 @@ class route_generation(models.Model):
         )
  
 def mark_routing_dirty():
-    for valid_route in route_generation.objects.filter(Q(valid=True)):
-        valid_route.dirty = True
-        valid_route.save()
+    num_inv = route_generation.objects.filter(Q(valid=True)).update(dirty=True)
         
 class hopcount(models.Model):
     idx = models.AutoField(db_column="hopcount_idx", primary_key=True)
