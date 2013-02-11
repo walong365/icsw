@@ -225,16 +225,20 @@ def _get_hopcount_state(request):
     valid_routes = route_generation.objects.filter(Q(valid=True))
     if len(valid_routes) == 1:
         valid_route = valid_routes[0]
+        route_info = "gen #%d, built %s, %d/%d" % (
+            valid_route.generation,
+            logging_tools.get_relative_dt(to_system_tz(valid_route.date)),
+            valid_route.num_hops,
+            valid_route.num_dups,
+        )
         if valid_route.dirty:
-            xml_resp.attrib["routing_info"] = "valid route found (gen #%d, built %s) but marked as dirty" % (
-                valid_route.generation,
-                logging_tools.get_relative_dt(to_system_tz(valid_route.date)),
+            xml_resp.attrib["routing_info"] = "dirty route found (%s)" % (
+                route_info,
             )
             enable_rebuild = True
         else:
-            xml_resp.attrib["routing_info"] = "valid route found (gen #%d, built %s)" % (
-                valid_route.generation,
-                logging_tools.get_relative_dt(to_system_tz(valid_route.date)),
+            xml_resp.attrib["routing_info"] = "valid route found (%s)" % (
+                route_info,
             )
             enable_rebuild = False
     elif not len(valid_routes):
@@ -258,7 +262,7 @@ def _get_hopcount_state(request):
     else:
         xml_resp.attrib["rebuild_info"] = "built %s" % (logging_tools.get_relative_dt(reb_var.val_date))
         rebuild_possible = True
-    request.xml_response["response"] = xml_resp
+    request.xml_response["response"] = xml_resp	
     return rebuild_possible
     
 @login_required
