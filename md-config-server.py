@@ -1917,9 +1917,18 @@ class build_process(threading_tools.process_obj):
                 rebuild_it = False
         if rebuild_it:
             # latest routing generation
-            latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
-            if latest_gen.dirty:
-                self.log("latest route_generation (%s) is marked as dirty, forcing rebuild" % (unicode(latest_gen)), logging_tools.LOG_LEVEL_WARN)
+            latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")
+            if len(latest_gen):
+                latest_gen = latest_gen[0]
+                if latest_gen.dirty:
+                    rebuild_routing = True
+                else:
+                    rebuild_routing = False
+            else:
+                latest_gen = None
+                rebuild_routing = True
+            if rebuild_routing:
+                self.log("latest route_generation (%s) is marked as dirty, forcing rebuild" % (unicode(latest_gen) if latest_gen else "no generations found"), logging_tools.LOG_LEVEL_WARN)
                 srv_com = server_command.srv_command(command="rebuild_hopcount")
                 targ_str = "tcp://localhost:8004"
                 cs_sock = self.zmq_context.socket(zmq.DEALER)
@@ -1941,7 +1950,7 @@ class build_process(threading_tools.process_obj):
                     self.log("send rebuild_hocount to %s, took %s" % (
                         targ_str,
                         logging_tools.get_diff_time_str(time.time() - s_time)))
-                    next_gen = latest_gen.generation + 1
+                    next_gen = latest_gen.generation + 1 if latest_gen else 1
                     self.log("waiting for generation %d to become valid" % (next_gen))
                     s_time = time.time()
                     # wait for up to 60 seconds
