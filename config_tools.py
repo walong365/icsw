@@ -280,11 +280,15 @@ class server_check(object):
             if self.__hc_cache:
                 all_hcs = self.__hc_cache
             else:
-                latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
-                all_hcs = hopcount.objects.filter(
-                    Q(route_generation=latest_gen) & 
-                    Q(s_netdevice__in=self.netdevice_idx_list) &
-                    Q(d_netdevice__in=other.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice", "d_netdevice", "value")
+                latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")
+                if len(latest_gen):
+                    latest_gen = latest_gen[0]
+                    all_hcs = hopcount.objects.filter(
+                        Q(route_generation=latest_gen) & 
+                        Q(s_netdevice__in=self.netdevice_idx_list) &
+                        Q(d_netdevice__in=other.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice", "d_netdevice", "value")
+                else:
+                    all_hcs = []
             for db_rec in all_hcs:
                 # dicts identifier -> ips
                 source_ip_lut, dest_ip_lut = ({}, {})
