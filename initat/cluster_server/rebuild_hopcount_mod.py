@@ -346,12 +346,15 @@ class route_helper_obj(object):
         self.cur_gen.save()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[rho] %s" % (what), log_level)
-    def switch(self):
+    def switch(self, num_hops, num_dups):
         self.__end_time = time.time()
         # switches from last_gen to cur_gen
         self.cur_gen.time_used = self.__end_time - self.__start_time
         self.cur_gen.build = False
         self.cur_gen.valid = True
+        # statistic values
+        self.cur_gen.num_hops = num_hops
+        self.cur_gen.num_dups = num_dups
         self.log("enabled new route_generation (%s)" % (unicode(self.cur_gen)))
         self.cur_gen.save()
         for prev_gen in route_generation.objects.exclude(pk=self.cur_gen.pk).filter(Q(valid=True)):
@@ -519,7 +522,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         cur_inst.log(my_timer("%d hopcounts inserted" % (num_hcs)))
         num_dups = rho.dups
         # enable new routing set
-        rho.switch()
+        rho.switch(num_hcs, num_dups)
         del rho
         del new_paths
         return num_hcs, num_dups
