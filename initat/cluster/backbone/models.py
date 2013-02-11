@@ -952,9 +952,9 @@ class route_generation(models.Model):
     # build flag, true when route is in process of building
     build = models.BooleanField(default=False)
     # number of hopcount entries
-    num_hops = models.ImageField(default=0)
+    num_hops = models.IntegerField(default=0)
     # number of duplicates (s_nd/d_nd <=> d_nd/s_nd)
-    num_dups = models.ImageField(default=0)
+    num_dups = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return u"route generation %d, %s:%s:%s" % (
