@@ -30,10 +30,6 @@ import configfile
 import difflib
 import socket
 from host_monitoring import limits
-import pprint
-# SNMP related imports
-import pkg_resources
-pkg_resources.require("pyasn1")
 from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher
 from pysnmp.carrier.asynsock.dgram import udp
 from pyasn1.codec.ber import encoder, decoder
@@ -42,6 +38,7 @@ from pysnmp.smi import exval
 from pysnmp.proto import api
 import snmp_relay_schemes
 import server_command
+import pprint
 
 # non-critical imports
 try:
@@ -54,10 +51,11 @@ DEBUG_LOG_TIME = 15
 
 class snmp_process(threading_tools.process_obj):
     def process_init(self):
-        self.__thread_num = 0#thread_num
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        #self.__mother_thread_queue = mother_thread_queue
-        #threading_tools.thread_obj.__init__(self, thread_name, queue_size=500)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context)
         self.register_func("fetch_snmp", self._fetch_snmp)
         self._init_dispatcher()
         self.__verbose = global_config["VERBOSE"]
@@ -71,8 +69,6 @@ class snmp_process(threading_tools.process_obj):
         self.__disp.registerTransport(udp.domainName, udp.UdpSocketTransport().openClientMode())
         self.__disp.registerRecvCbFun(self._recv_func)
         self.__disp.registerTimerCbFun(self._timer_func)
-    #def thread_running(self):
-    #    self.__mother_thread_queue.put(("new_pid", self.pid))
     def _fetch_snmp(self, *scheme_data, **kwargs):
         snmp_ver, snmp_host, snmp_community, self.envelope, self.transform_single_key = scheme_data[0:5]
         self._set_target(snmp_ver, snmp_host, snmp_community)
@@ -94,15 +90,17 @@ class snmp_process(threading_tools.process_obj):
                         self.log("get tables: done")
                 if self.run_ok():
                     if self.__verbose > 1:
-                        self.log("(%s) for host %s (%s): %s" % (key,
-                                                                self.__snmp_host,
-                                                                logging_tools.get_plural("table header", len(header_list)),
-                                                                logging_tools.get_plural("result", self.num_result_values)))
+                        self.log("(%s) for host %s (%s): %s" % (
+                            key,
+                            self.__snmp_host,
+                            logging_tools.get_plural("table header", len(header_list)),
+                            logging_tools.get_plural("result", self.num_result_values)))
                 else:
                     self.__error_list.append("snmp timeout (OID is %s)" % (self.oid_pretty_print(header_list)))
-                    self.log("(%s) run not ok for host %s (%s)" % (key,
-                                                                   self.__snmp_host,
-                                                                   logging_tools.get_plural("table header", len(header_list))),
+                    self.log("(%s) run not ok for host %s (%s)" % (
+                        key,
+                        self.__snmp_host,
+                        logging_tools.get_plural("table header", len(header_list))),
                              logging_tools.LOG_LEVEL_ERROR)
         # signal scheme that we are done
         #pprint.pprint(self.snmp)
@@ -182,8 +180,9 @@ class snmp_process(threading_tools.process_obj):
         try:
             self.__disp.runDispatcher()
         except:
-            self.log("cannot run Dispatcher (host %s): %s" % (self.__snmp_host,
-                                                              process_tools.get_except_info()),
+            self.log("cannot run Dispatcher (host %s): %s" % (
+                self.__snmp_host,
+                process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_CRITICAL)
             self.__other_errors = True
     def run_ok(self):
@@ -196,15 +195,17 @@ class snmp_process(threading_tools.process_obj):
         # no data received for a certain time (wait at least 3 seconds)
         if not self.__data_got and self.__timer_idx and diff_time > 3:
             if self.__timer_idx > 3 and not self.__num_items:
-                self.log("giving up for %s after %d items (timer_idx is %d)" % (self.__snmp_host,
-                                                                                self.__num_items,
-                                                                                self.__timer_idx),
+                self.log("giving up for %s after %d items (timer_idx is %d)" % (
+                    self.__snmp_host,
+                    self.__num_items,
+                    self.__timer_idx),
                          logging_tools.LOG_LEVEL_ERROR)
                 trigger_timeout = True
             else:
-                self.log("re-initiated get() for %s after %d items (timer_idx is %d)" % (self.__snmp_host,
-                                                                                         self.__num_items,
-                                                                                         self.__timer_idx),
+                self.log("re-initiated get() for %s after %s (timer_idx is %d)" % (
+                    self.__snmp_host,
+                    logging_tools.get_plural("item", self.__num_items),
+                    self.__timer_idx),
                          logging_tools.LOG_LEVEL_WARN)
                 self._next_send()
         self.__timer_idx += 1
@@ -337,21 +338,21 @@ class relay_process(threading_tools.process_pool):
     def _init_host_objects(self):
         self.__host_objects = {}
     def _init_processes(self, num_processes):
-        self.log("Spawning %s" % (logging_tools.get_plural("SNMP_process", num_processes)))
+        self.log("Spawning %s" % (logging_tools.get_plural("snmp_process", num_processes)))
         # buffer for queued_requests
         self.__queued_requests = []
         # pending schemes
         self.__pending_schemes = {}
         self.__process_dict = {}
         for idx in xrange(num_processes):
-            proc_name = "SNMP_%d" % (idx)
+            proc_name = "snmp_%d" % (idx)
             new_proc = snmp_process(proc_name)
             proc_socket = self.add_process(new_proc, start=True)
             self.__process_dict[proc_name] = {
                 "socket"     : proc_socket,
                 "call_count" : 0,
                 "in_use"     : False,
-                "running"    : True,
+                "state"      : "running",
                 "proc_name"  : proc_name}
     def _get_host_object(self, host_name, snmp_community, snmp_version):
         host_tuple = (host_name, snmp_community, snmp_version)
@@ -485,6 +486,7 @@ class relay_process(threading_tools.process_pool):
     def _snmp_finished(self, src_proc, src_pid, *args, **kwargs):
         proc_struct = self.__process_dict[src_proc]
         proc_struct["in_use"] = False
+        proc_struct["call_count"] += 1
         envelope, error_list, received, snmp_dict = args
         cur_scheme = self.__pending_schemes[envelope]
         cur_scheme.snmp = snmp_dict
@@ -501,16 +503,36 @@ class relay_process(threading_tools.process_pool):
         if self.__queued_requests:
             self.log("sending request from buffer (size: %d)" % (len(self.__queued_requests)))
             self._start_snmp_fetch(self.__queued_requests.pop(0))
+        if proc_struct["call_count"] == global_config["MAX_CALLS"]:
+            self.log("recycling helper process %s after %d calls" % (
+                src_proc,
+                proc_struct["call_count"],
+            ))
+            self.stop_process(src_proc)
+            proc_struct["state"] = "stopping"
+    def process_exit(self, p_name, p_pid):
+        if not self["exit_requested"]:
+            if global_config["DAEMONIZE"]:
+                process_tools.remove_pids(global_config["PID_NAME"], pid=p_pid)
+                self.__msi_block.remove_actual_pid(p_pid)
+                self.__msi_block.save_block()
+            self.log("helper process %s stopped, restarting" % (p_name))
+            proc_struct = self.__process_dict[p_name]
+            proc_struct["call_count"] = 0
+            proc_struct["state"] = "running"
+            proc_struct["socket"] = self.add_process(snmp_process(p_name), start=True)
     def _start_snmp_fetch(self, scheme):
-        free_processes = sorted([key for key, value in self.__process_dict.iteritems() if not value["in_use"] and value["running"]])
+        free_processes = sorted([key for key, value in self.__process_dict.iteritems() if not value["in_use"] and value["state"] == "running"])
         cache_ok, num_cached, num_refresh, num_pending, num_hot_enough = scheme.pre_snmp_start(self.log)
         if self.__verbose:
-            self.log("%sinfo for %s: %s" % ("[F] " if num_refresh else "[I] ",
-                                            scheme.net_obj.name,
-                                            ", ".join(["%d %s" % (cur_num, info_str) for cur_num, info_str in [(num_cached, "cached"),
-                                                                                                               (num_refresh, "to refresh"),
-                                                                                                               (num_pending, "pending"),
-                                                                                                               (num_hot_enough, "hot enough")] if cur_num])))
+            self.log("%sinfo for %s: %s" % (
+                "[F] " if num_refresh else "[I] ",
+                scheme.net_obj.name,
+                ", ".join(["%d %s" % (cur_num, info_str) for cur_num, info_str in [
+                    (num_cached    , "cached"),
+                    (num_refresh   , "to refresh"),
+                    (num_pending   , "pending"),
+                    (num_hot_enough, "hot enough")] if cur_num])))
         if num_refresh:
             if free_processes:
                 proc_struct = self.__process_dict[free_processes[0]]
@@ -615,8 +637,9 @@ class relay_process(threading_tools.process_pool):
         self.__num_messages += 1
         if self.__num_messages % 100 == 0:
             cur_mem = process_tools.get_mem_info()
-            self.log("memory usage is %s after %s" % (logging_tools.get_size_str(cur_mem),
-                                                      logging_tools.get_plural("message", self.__num_messages)))
+            self.log("memory usage is %s after %s" % (
+                logging_tools.get_size_str(cur_mem),
+                logging_tools.get_plural("message", self.__num_messages)))
     def _send_return(self, envelope, ret_state, ret_str):
         self.sender_socket.send(envelope, zmq.SNDMORE)
         self.sender_socket.send_unicode(u"%d\0%s" % (ret_state, ret_str))
@@ -673,14 +696,15 @@ def main():
         ("DAEMONIZE"       , configfile.bool_c_var(True)),
         ("SNMP_PROCESSES"  , configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
         ("MAIN_TIMER"      , configfile.int_c_var(60, help_string="main timer [%(default)d]")),
-        #("IPC_SNMP_KEY"    , configfile.int_c_var(0)),
         ("KILL_RUNNING"    , configfile.bool_c_var(True)),
         ("BACKLOG_SIZE"    , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
         ("LOG_NAME"        , configfile.str_c_var("snmp-relay")),
         ("LOG_DESTINATION" , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("MAX_CALLS"       , configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
         ("VERBOSE"         , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("PID_NAME"        , configfile.str_c_var("%s/%s" % (prog_name,
-                                                             prog_name)))])
+        ("PID_NAME"        , configfile.str_c_var("%s/%s" % (
+            prog_name,
+            prog_name)))])
     global_config.parse_file()
     options = global_config.handle_commandline(positional_arguments=False,
                                                partial=False,

@@ -151,10 +151,10 @@ class snmp_scheme(object):
         self.__init_time = kwargs["init_time"]
         # public stuff
         self.snmp_dict = {}
-        self.net_obj = kwargs["net_obj"]
-        self.envelope = kwargs["envelope"]
+        self.net_obj   = kwargs["net_obj"]
+        self.envelope  = kwargs["envelope"]
         self.xml_input = kwargs["xml_input"]
-        self.srv_com = kwargs["srv_com"]
+        self.srv_com   = kwargs["srv_com"]
         self.__errors = []
         self.__missing_headers = []
         self.return_sent = False
@@ -359,10 +359,11 @@ class load_scheme(snmp_scheme):
         load_array = [float(simple_dict[key]) for key in [1, 2, 3]]
         max_load = max(load_array)
         ret_state = limits.nag_STATE_CRITICAL if max_load > self.opts.crit else (limits.nag_STATE_WARNING if max_load > self.opts.warn else limits.nag_STATE_OK)
-        return ret_state, "%s: load 1/5/15: %.2f / %.2f / %.2f" % (limits.get_state_str(ret_state),
-                                                                   load_array[0],
-                                                                   load_array[1],
-                                                                   load_array[2])
+        return ret_state, "load 1/5/15: %.2f / %.2f / %.2f" % (
+            load_array[0],
+            load_array[1],
+            load_array[2])
+    
 def k_str(i_val):
     f_val = float(i_val)
     if f_val < 1024:
@@ -409,11 +410,11 @@ class linux_memory_scheme(snmp_scheme):
         else:
             allp = 100 * all_used / all_total
         ret_state = limits.nag_STATE_OK
-        return ret_state, "%s: meminfo: %d %% of %s phys, %d %% of %s tot" % (limits.get_state_str(ret_state),
-                                                                              memp,
-                                                                              k_str(phys_total),
-                                                                              allp,
-                                                                              k_str(all_total))
+        return ret_state, "meminfo: %d %% of %s phys, %d %% of %s tot" % (
+            memp,
+            k_str(phys_total),
+            allp,
+            k_str(all_total))
 
 class snmp_info_scheme(snmp_scheme):
     def __init__(self, **kwargs):
@@ -425,10 +426,11 @@ class snmp_info_scheme(snmp_scheme):
         simple_dict = self.snmp_dict.values()[0]
         self._check_for_missing_keys(simple_dict, needed_keys=set([(4, 0), (5, 0), (6, 0)]))
         ret_state = limits.nag_STATE_OK
-        return ret_state, "%s: SNMP Info: contact %s, name %s, location %s" % (limits.get_state_str(ret_state),
-                                                                               simple_dict[(4, 0)] or "???",
-                                                                               simple_dict[(5, 0)] or "???",
-                                                                               simple_dict[(6, 0)] or "???")
+        return ret_state, "SNMP Info: contact %s, name %s, location %s" % (
+            simple_dict[(4, 0)] or "???",
+            simple_dict[(5, 0)] or "???",
+            simple_dict[(6, 0)] or "???",
+        )
 
 class qos_cfg(object):
     def __init__(self, idx):
@@ -446,10 +448,11 @@ class qos_cfg(object):
     def feed_drop_rate(self, class_idx, value):
         self.class_dict[class_idx].feed_drop_rate(value)
     def __repr__(self):
-        return "qos_cfg %6d; if_idx %4d; direction %d; %s" % (self.idx,
-                                                              self.if_idx,
-                                                              self.direction,
-                                                              ", ".join([str(value) for value in self.class_dict.itervalues()]) if self.class_dict else "<NC>")
+        return "qos_cfg %6d; if_idx %4d; direction %d; %s" % (
+            self.idx,
+            self.if_idx,
+            self.direction,
+            ", ".join([str(value) for value in self.class_dict.itervalues()]) if self.class_dict else "<NC>")
     
 class check_snmp_qos_scheme(snmp_scheme):
     def __init__(self, **kwargs):
@@ -554,12 +557,16 @@ class eonstor_object(object):
     def get_ret_str(self, **kwargs):
         out_str = self.long_string if (self.long_string and kwargs.get("long_version", False)) else self.out_string
         if self.nag_state == limits.nag_STATE_OK and out_str:
-            return "%s: %s" % (self.name,
-                               out_str)
+            return "%s: %s" % (
+                self.name,
+                out_str,
+            )
         elif self.nag_state:
-            return "%s: %s%s" % (self.name,
-                                 self.get_state_str(),
-                                 " (%s)" % (out_str) if out_str else "")
+            return "%s: %s%s" % (
+                self.name,
+                self.get_state_str(),
+                " (%s)" % (out_str) if out_str else "",
+            )
         else:
             return ""
 
@@ -605,7 +612,11 @@ class eonstor_disc(eonstor_object):
                                                      int(in_dict[3]),
                                                      vers_str)
     def __repr__(self):
-        return "%s, state 0x%x (%d, %s)" % (self.name, self.state, self.nag_state, self.get_state_str())
+        return "%s, state 0x%x (%d, %s)" % (
+            self.name,
+            self.state,
+            self.nag_state,
+            self.get_state_str())
 
 class eonstor_ld(eonstor_object):
     lu_dict = {0 : ("Good", limits.nag_STATE_OK),
@@ -664,7 +675,11 @@ class eonstor_ld(eonstor_object):
                                                      drv_info,
                                                      vers_str)
     def __repr__(self):
-        return "%s, state 0x%x (%d, %s)" % (self.name, self.state, self.nag_state, self.get_state_str())
+        return "%s, state 0x%x (%d, %s)" % (
+            self.name,
+            self.state,
+            self.nag_state,
+            self.get_state_str())
 
 class eonstor_slot(eonstor_object):
     def __init__(self, in_dict):
@@ -682,7 +697,11 @@ class eonstor_slot(eonstor_object):
     def __del__(self):
         eonstor_object.__del__(self)
     def __repr__(self):
-        return "slot %s, state 0x%x (%d, %s)" % (self.name, self.state, self.nag_state, self.get_state_str())
+        return "slot %s, state 0x%x (%d, %s)" % (
+            self.name,
+            self.state,
+            self.nag_state,
+            self.get_state_str())
 
 class eonstor_psu(eonstor_object):
     def __init__(self, in_dict):
@@ -696,7 +715,11 @@ class eonstor_psu(eonstor_object):
     def __del__(self):
         eonstor_object.__del__(self)
     def __repr__(self):
-        return "PSU %s, state 0x%x (%d, %s)" % (self.name, self.state, self.nag_state, self.get_state_str())
+        return "PSU %s, state 0x%x (%d, %s)" % (
+            self.name,
+            self.state,
+            self.nag_state,
+            self.get_state_str())
 
 class eonstor_bbu(eonstor_object):
     def __init__(self, in_dict):
@@ -720,7 +743,11 @@ class eonstor_bbu(eonstor_object):
     def __del__(self):
         eonstor_object.__del__(self)
     def __repr__(self):
-        return "BBU %s, state 0x%x (%d, %s)" % (self.name, self.state, self.nag_state, self.get_state_str())
+        return "BBU %s, state 0x%x (%d, %s)" % (
+            self.name,
+            self.state,
+            self.nag_state,
+            self.get_state_str())
 
 class eonstor_ups(eonstor_object):
     def __init__(self, in_dict):
@@ -745,7 +772,11 @@ class eonstor_ups(eonstor_object):
     def __del__(self):
         eonstor_object.__del__(self)
     def __repr__(self):
-        return "UPS %s, state 0x%x (%d, %s)" % (self.name, self.state, self.nag_state, self.get_state_str())
+        return "UPS %s, state 0x%x (%d, %s)" % (
+            self.name,
+            self.state,
+            self.nag_state,
+            self.get_state_str())
 
 class eonstor_fan(eonstor_object):
     def __init__(self, in_dict):
@@ -761,7 +792,12 @@ class eonstor_fan(eonstor_object):
     def __del__(self):
         eonstor_object.__del__(self)
     def __repr__(self):
-        return "fan %s, state 0x%x (%d, %s), %s" % (self.name, self.state, self.nag_state, self.get_state_str(), self.out_string)
+        return "fan %s, state 0x%x (%d, %s), %s" % (
+            self.name,
+            self.state,
+            self.nag_state,
+            self.get_state_str(),
+            self.out_string)
 
 class eonstor_temperature(eonstor_object):
     def __init__(self, in_dict, net_obj):
@@ -788,7 +824,12 @@ class eonstor_temperature(eonstor_object):
     def __del__(self):
         eonstor_object.__del__(self)
     def __repr__(self):
-        return "temperature %s, state 0x%x (%d, %s), %s" % (self.name, self.state, self.nag_state, self.get_state_str(), self.out_string)
+        return "temperature %s, state 0x%x (%d, %s), %s" % (
+            self.name,
+            self.state,
+            self.nag_state,
+            self.get_state_str(),
+            self.out_string)
     
 class eonstor_voltage(eonstor_object):
     def __init__(self, in_dict):
@@ -812,7 +853,12 @@ class eonstor_voltage(eonstor_object):
     def __del__(self):
         eonstor_object.__del__(self)
     def __repr__(self):
-        return "voltage %s, state 0x%x (%d, %s), %s" % (self.name, self.state, self.nag_state, self.get_state_str(), self.out_string)
+        return "voltage %s, state 0x%x (%d, %s), %s" % (
+            self.name,
+            self.state,
+            self.nag_state,
+            self.get_state_str(),
+            self.out_string)
     
 class eonstor_info_scheme(snmp_scheme):
     def __init__(self, **kwargs):
@@ -867,8 +913,7 @@ class eonstor_info_scheme(snmp_scheme):
                 ret_state = max(ret_state, value.nag_state)
                 ret_field.append(value.get_ret_str())
         ret_field.sort()
-        return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
-                                      "; ".join(ret_field) or "no errors or warnings")
+        return ret_state, "; ".join(ret_field) or "no errors or warnings"
 
 class eonstor_proto_scheme(snmp_scheme):
     def __init__(self, name, **kwargs):
@@ -918,8 +963,9 @@ class eonstor_proto_scheme(snmp_scheme):
                     ret_field.append(value.get_ret_str(long_version=True) or "%s is OK" % (value.name))
             else:
                 ret_state = limits.nag_STATE_CRITICAL
-                ret_field.append("idx %d not found in dict (possible values: %s)" % (dev_idx,
-                                                                                     ", ".join(["%d" % (key) for key in sorted(dev_dict.keys())])))
+                ret_field.append("idx %d not found in dict (possible values: %s)" % (
+                    dev_idx,
+                    ", ".join(["%d" % (key) for key in sorted(dev_dict.keys())])))
         else:
             for key in sorted(dev_dict.keys()):
                 value = dev_dict[key]
@@ -931,8 +977,7 @@ class eonstor_proto_scheme(snmp_scheme):
             self.srv_com["eonstor_info"] = raw_dict
             return limits.nag_STATE_OK, "ok got info"
         else:
-            return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
-                                          "; ".join(ret_field) or "no errors or warnings")
+            return ret_state, "; ".join(ret_field) or "no errors or warnings"
         
 class eonstor_ld_info_scheme(eonstor_proto_scheme):
     def __init__(self, **kwargs):
@@ -1058,11 +1103,13 @@ class port_info_scheme(snmp_scheme):
         macs = [mac for mac, p_type in port_ref_dict.get(p_num, []) if p_type == 3]
         if macs:
             mac_list, ip_list, host_list = self._transform_macs(macs)
-            return limits.nag_STATE_OK, "port %d (%s): %s" % (p_num,
-                                                              ", ".join([logging_tools.get_plural(name, len(what_list)) for name, what_list in [("Host", host_list),
-                                                                                                                                                ("IP"  , ip_list  ),
-                                                                                                                                                ("MAC" , mac_list )] if len(what_list)]),
-                                                              ", ".join(host_list + ip_list + mac_list))
+            return limits.nag_STATE_OK, "port %d (%s): %s" % (
+                p_num,
+                ", ".join([logging_tools.get_plural(name, len(what_list)) for name, what_list in [
+                    ("Host", host_list),
+                    ("IP"  , ip_list  ),
+                    ("MAC" , mac_list )] if len(what_list)]),
+                ", ".join(host_list + ip_list + mac_list))
         else:
             return limits.nag_STATE_OK, "port %d: ---" % (p_num)
 
@@ -1087,14 +1134,16 @@ class trunk_info_scheme(snmp_scheme):
             else:
                 dest_name = t_stuff[t_ports[0]][9]
                 dest_hw   = t_stuff[t_ports[0]][10]
-                t_array.append("%s [%s]: %s to %s (%s)" % (logging_tools.get_plural("port", len(t_ports)),
-                                                           str(t_key),
-                                                           "/".join(["%d-%d" % (port, port_map[port]) for port in t_ports]),
-                                                           dest_name,
-                                                           dest_hw))
+                t_array.append("%s [%s]: %s to %s (%s)" % (
+                    logging_tools.get_plural("port", len(t_ports)),
+                    str(t_key),
+                    "/".join(["%d-%d" % (port, port_map[port]) for port in t_ports]),
+                    dest_name,
+                    dest_hw))
         if t_array:
-            return limits.nag_STATE_OK, "%s: %s" % (logging_tools.get_plural("trunk", len(t_array)),
-                                                    ", ".join(t_array))
+            return limits.nag_STATE_OK, "%s: %s" % (
+                logging_tools.get_plural("trunk", len(t_array)),
+                ", ".join(t_array))
         else:
             limits.nag_STATE_OK, "no trunks"
 
@@ -1112,8 +1161,7 @@ class apc_rpdu_load_scheme(snmp_scheme):
                      2 : limits.nag_STATE_OK,
                      3 : limits.nag_STATE_WARNING,
                      4 : limits.nag_STATE_CRITICAL}[act_state]
-        return ret_state, "%s: load is %.2f Ampere" % (limits.get_state_str(ret_state),
-                                                       float(act_load) / 10.)
+        return ret_state, "load is %.2f Ampere" % (float(act_load) / 10.)
 
 class usv_apc_load_scheme(snmp_scheme):
     def __init__(self, **kwargs):
@@ -1134,9 +1182,9 @@ class usv_apc_load_scheme(snmp_scheme):
             elif act_load > WARN_LOAD:
                 ret_state = max(ret_state, limits.nag_STATE_WARNING)
                 prob_f.append("load is high (> %d)" % (WARN_LOAD))
-            return ret_state, "%s: load is %d %%%s" % (limits.get_state_str(ret_state),
-                                                       act_load,
-                                                       ": %s" % ("; ".join(prob_f)) if prob_f else "")
+            return ret_state, "load is %d %%%s" % (
+                act_load,
+                ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class usv_apc_output_scheme(snmp_scheme):
     def __init__(self, **kwargs):
@@ -1157,10 +1205,10 @@ class usv_apc_output_scheme(snmp_scheme):
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
             prob_f.append("output voltage is not in range [%d, %d]" % (MIN_VOLT,
                                                                        MAX_VOLT))
-        return ret_state, "%s: output is %d V at %d Hz%s" % (limits.get_state_str(ret_state),
-                                                             out_voltage,
-                                                             out_freq,
-                                                             ": %s" % ("; ".join(prob_f)) if prob_f else "")
+        return ret_state, "output is %d V at %d Hz%s" % (
+            out_voltage,
+            out_freq,
+            ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class usv_apc_input_scheme(snmp_scheme):
     def __init__(self, **kwargs):
@@ -1181,10 +1229,11 @@ class usv_apc_input_scheme(snmp_scheme):
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
             prob_f.append("input voltage is not in range [%d, %d]" % (MIN_VOLT,
                                                                       MAX_VOLT))
-        return ret_state, "%s: input is %d V at %d Hz%s" % (limits.get_state_str(ret_state),
-                                                            in_voltage,
-                                                            in_freq,
-                                                            ": %s" % ("; ".join(prob_f)) if prob_f else "")
+        return ret_state, "input is %d V at %d Hz%s" % (
+            limits.get_state_str(ret_state),
+            in_voltage,
+            in_freq,
+            ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class usv_apc_battery_scheme(snmp_scheme):
     def __init__(self, **kwargs):
@@ -1227,12 +1276,12 @@ class usv_apc_battery_scheme(snmp_scheme):
         elif run_time < 10 * 60:
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
             prob_f.append("run time below 10 minutes")
-        return ret_state, "%s: bat temperatur is %d C, bat load is %d %%, support time is %s %s%s" % (limits.get_state_str(ret_state),
-                                                                                                      act_temp,
-                                                                                                      act_bat_load,
-                                                                                                      logging_tools.get_plural("min", int(run_time / 60)),
-                                                                                                      logging_tools.get_plural("sec", int(run_time % 60)),
-                                                                                                      ": %s" % ("; ".join(prob_f)) if prob_f else "")
+        return ret_state, "bat temperatur is %d C, bat load is %d %%, support time is %s %s%s" % (
+            act_temp,
+            act_bat_load,
+            logging_tools.get_plural("min", int(run_time / 60)),
+            logging_tools.get_plural("sec", int(run_time % 60)),
+            ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class ibm_bc_blade_status_scheme(snmp_scheme):
     def __init__(self, **kwargs):
@@ -1266,10 +1315,10 @@ class ibm_bc_blade_status_scheme(snmp_scheme):
                 loc_str = "N/A"
             ret_state = max(ret_state, loc_state)
             state_dict.setdefault(loc_str, []).append(loc_dict["name"])
-        return ret_state, "%s: %s, %s" % (limits.get_state_str(ret_state),
-                                          logging_tools.get_plural("blade", len(all_blades)),
-                                          "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
-
+        return ret_state, "%s, %s" % (
+            logging_tools.get_plural("blade", len(all_blades)),
+            "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
+    
 class ibm_bc_storage_status_scheme(snmp_scheme):
     def __init__(self, **kwargs):
         snmp_scheme.__init__(self, "ibm_bc_storage_status", **kwargs)
@@ -1294,9 +1343,9 @@ class ibm_bc_storage_status_scheme(snmp_scheme):
                 loc_state, state_str = (limits.nag_STATE_OK, "good")
             state_dict.setdefault(state_str, []).append(loc_dict["name"])
             ret_state = max(ret_state, loc_state)
-        return ret_state, "%s: %s, %s" % (limits.get_state_str(ret_state),
-                                          logging_tools.get_plural("item", len(store_dict)),
-                                          "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
+        return ret_state, "%s, %s" % (
+            logging_tools.get_plural("item", len(store_dict)),
+            "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
         
 class temperature_probe_scheme(snmp_scheme):
     def __init__(self, **kwargs):
@@ -1316,8 +1365,7 @@ class temperature_probe_scheme(snmp_scheme):
             cur_state = limits.nag_STATE_WARNING
         else:
             cur_state = limits.nag_STATE_OK
-        return cur_state, "%s: temperature %.2f C | temp=%.2f" % (
-            limits.get_state_str(cur_state),
+        return cur_state, "temperature %.2f C | temp=%.2f" % (
             cur_temp,
             cur_temp)
 
@@ -1339,8 +1387,7 @@ class temperature_probe_hum_scheme(snmp_scheme):
             cur_state = limits.nag_STATE_WARNING
         else:
             cur_state = limits.nag_STATE_OK
-        return cur_state, "%s: humidity %.2f %% | hum=%.2f%%" % (
-            limits.get_state_str(cur_state),
+        return cur_state, "humidity %.2f %% | hum=%.2f%%" % (
             cur_hum,
             cur_hum)
 
@@ -1363,8 +1410,7 @@ class temperature_knurr_scheme(snmp_scheme):
             cur_state = limits.nag_STATE_WARNING
         else:
             cur_state = limits.nag_STATE_OK
-        return cur_state, "%s: temperature %.2f C | temp=%.2f" % (
-            limits.get_state_str(cur_state),
+        return cur_state, "temperature %.2f C | temp=%.2f" % (
             cur_val,
             cur_val)
 
@@ -1381,8 +1427,7 @@ class humidity_knurr_scheme(snmp_scheme):
             cur_state = limits.nag_STATE_CRITICAL
         else:
             cur_state = limits.nag_STATE_OK
-        return cur_state, "%s: humidity %.2f %% [%.2f - %.2f] | humidity=%.2f" % (
-            limits.get_state_str(cur_state),
+        return cur_state, "humidity %.2f %% [%.2f - %.2f] | humidity=%.2f" % (
             cur_val,
             low_crit,
             high_crit,
@@ -1409,11 +1454,9 @@ class environment_knurr_scheme(snmp_scheme):
             7 : "PSA",
             8 : "PSB",
             }
-        return cur_state, "%s: %s" % (
-            limits.get_state_str(cur_state),
-            ", ".join(["%s: %s" % (info_dict[key], {0 : "OK", 1 : "faild"}[new_dict[key]]) for key in sorted(new_dict.keys())])
-            )
-        
+        return cur_state, ", ".join([
+            "%s: %s" % (info_dict[key], {0 : "OK", 1 : "faild"}[new_dict[key]]) for key in sorted(new_dict.keys())])
+    
 if __name__ == "__main__":
     print "Loadable module, exiting"
     sys.exit(0)
