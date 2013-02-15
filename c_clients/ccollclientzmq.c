@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2012 Andreas Lang-Nevyjel, init.at
+  Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
 
   Send feedback to: <lang-nevyjel@init.at>
 
@@ -136,6 +136,9 @@ int main (int argc, char** argv) {
     sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
     sprintf(sendbuff, "%s;%s;%d;", identity_str, host_b, port);
     act_pos = sendbuff;
+    if (verbose) {
+        printf("argument info (%d found)\n", argc);
+    };
     for (i = optind; i < argc; i++) {
         if (verbose) {
             printf("[%2d] %s\n", i, argv[i]);
@@ -176,32 +179,37 @@ int main (int argc, char** argv) {
         // send
         zmq_connect(requester, "ipc:///var/log/cluster/sockets/collrelay/receiver");
         zmq_connect(receiver, "ipc:///var/log/cluster/sockets/collrelay/sender");
-        //zmq_connect(requester, "ipc:///var/log/cluster/sockets/collserver/command");
-        //zmq_connect(receiver, "ipc:///var/log/cluster/sockets/collserver/result");
         /* set filter */
         zmq_setsockopt(receiver, ZMQ_SUBSCRIBE, identity_str, strlen(identity_str));
-        //zmq_connect(requester, "ipc:///tmp/bla");
-        //zmq_connect(requester, "tcp://localhost:8888");
         zmq_msg_t request, reply;
         if (verbose) {
             printf("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', pid is %d\n", strlen(sendbuff), identity_str, myuts.nodename, SERVICE_NAME, getpid());
             printf("%s\n", sendbuff);
         };
-        zmq_msg_init_size (&request, strlen(sendbuff));
+        zmq_msg_init_size(&request, strlen(sendbuff));
         memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
-        zmq_sendmsg(requester, &request, 0);
         zmq_msg_init(&reply);
+        zmq_sendmsg(requester, &request, 0);
+        if (verbose) {
+            printf("send(), waiting for result\n");
+        }   
         // receive header
-        zmq_recvmsg(receiver, &reply, 0);
+        zmq_recv(receiver, &reply, 0, 0);
         zmq_getsockopt(receiver, ZMQ_RCVMORE, &more, &more_size);
         zmq_msg_close(&request);
+        if (verbose) {
+            printf("rcv(): more_flag is %d\n", more);
+        };
         if (more) {
             // receive body
-            zmq_recvmsg(receiver, &reply, 0);
+            zmq_recv(receiver, &reply, 0, 0);
             int reply_size = zmq_msg_size(&reply);
             char *recv_buffer = malloc(reply_size + 1);
             memcpy (recv_buffer, zmq_msg_data(&reply), reply_size);
             recv_buffer[reply_size] = 0;
+            if (verbose) {
+                printf("rcv(): '%s'\n", recv_buffer + 2);
+            };
             retcode = strtol(recv_buffer, NULL, 10);
             printf("%s\n", recv_buffer + 2);
             free(recv_buffer);

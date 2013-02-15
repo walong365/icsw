@@ -62,6 +62,14 @@ class net_object(object):
             if len(act_list) > 2:
                 # 3 values are enough, calculate the mean time between different calls
                 self.__time_steps[oid] = sum([act_list[idx + 1] - act_list[idx] for idx in xrange(len(act_list) - 1)]) / (len(act_list) - 1)
+                if False:
+                    self.log(
+                        log_com,
+                        "timestream info (%d entries, oid %s, time_steps: %d): %s" % (
+                            len(act_list),
+                            str(oid),
+                            self.__time_steps[oid],
+                            ", ".join(["%d" % (cur_value - act_list[0]) for cur_value in act_list])))
                 if oid in self.__oid_cache_defaults and self.__time_steps[oid] > self.__oid_cache_defaults[oid]["timeout"]:
                     # do we really need this ? 
                     # log and modify
@@ -208,7 +216,6 @@ class snmp_scheme(object):
             act_oids, pending_oids = (set(self.__hv_mapping.keys()), set())
             # check for caching and already pending requests
             #self.net_obj.lock()
-            #self.net_obj.register_oids(self.__hv_mapping.keys(), log_com)
             self.net_obj.register_oids(log_com, act_oids)
             cache_ok = all([True if oid_struct.cache_it and self.net_obj.snmp_tree_valid(wf_oid) else False for wf_oid, oid_struct in self.__hv_mapping.iteritems()])
             if cache_ok:
@@ -291,9 +298,11 @@ class snmp_scheme(object):
         pass
     def _send_error_return(self):
         self.error()
-        err_str = "%s: %s; missing headers: %s" % (self.name,
-                                                   ", ".join(self.__errors) or "unspecified error",
-                                                   ", ".join([".".join(["%d" % (part) for part in oid]) for oid in self.__missing_headers]) or "none")
+        err_str = "%s: %s; missing headers: %s" % (
+            self.name,
+            ", ".join(self.__errors) or "unspecified error",
+            ", ".join([".".join(["%d" % (part) for part in oid]) for oid in self.__missing_headers]) or "none",
+        )
         self.send_return(limits.nag_STATE_CRITICAL, err_str, True)
     def send_return(self, ret_state, ret_str, log_it=False):
         self.return_sent = True
@@ -1199,12 +1208,14 @@ class usv_apc_output_scheme(snmp_scheme):
         ret_state, prob_f = (limits.nag_STATE_OK, [])
         if out_freq not in xrange(MIN_HZ, MAX_HZ):
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
-            prob_f.append("output frequency not ok [%d, %d]" % (MIN_HZ,
-                                                                MAX_HZ))
+            prob_f.append("output frequency not ok [%d, %d]" % (
+                MIN_HZ,
+                MAX_HZ))
         if out_voltage not in xrange(MIN_VOLT, MAX_VOLT):
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
-            prob_f.append("output voltage is not in range [%d, %d]" % (MIN_VOLT,
-                                                                       MAX_VOLT))
+            prob_f.append("output voltage is not in range [%d, %d]" % (
+                MIN_VOLT,
+                MAX_VOLT))
         return ret_state, "output is %d V at %d Hz%s" % (
             out_voltage,
             out_freq,
@@ -1223,14 +1234,15 @@ class usv_apc_input_scheme(snmp_scheme):
         ret_state, prob_f = (limits.nag_STATE_OK, [])
         if in_freq not in xrange(MIN_HZ, MAX_HZ):
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
-            prob_f.append("input frequency not ok [%d, %d]" % (MIN_HZ,
-                                                               MAX_HZ))
+            prob_f.append("input frequency not ok [%d, %d]" % (
+                MIN_HZ,
+                MAX_HZ))
         if in_voltage not in xrange(MIN_VOLT, MAX_VOLT):
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
-            prob_f.append("input voltage is not in range [%d, %d]" % (MIN_VOLT,
-                                                                      MAX_VOLT))
+            prob_f.append("input voltage is not in range [%d, %d]" % (
+                MIN_VOLT,
+                MAX_VOLT))
         return ret_state, "input is %d V at %d Hz%s" % (
-            limits.get_state_str(ret_state),
             in_voltage,
             in_freq,
             ": %s" % ("; ".join(prob_f)) if prob_f else "")

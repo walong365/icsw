@@ -34,6 +34,7 @@ from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher
 from pysnmp.carrier.asynsock.dgram import udp
 from pyasn1.codec.ber import encoder, decoder
 import pyasn1
+from pyasn1.type.error import ValueConstraintError
 from pysnmp.smi import exval
 from pysnmp.proto import api
 import snmp_relay_schemes
@@ -104,7 +105,6 @@ class snmp_process(threading_tools.process_obj):
                              logging_tools.LOG_LEVEL_ERROR)
         # signal scheme that we are done
         #pprint.pprint(self.snmp)
-        #act_scheme.snmp_end(self.log)
         self._unlink()
         self.send_pool_message("snmp_finished", self.envelope, self.__error_list, self.__received, self.snmp)
     @property
@@ -179,11 +179,18 @@ class snmp_process(threading_tools.process_obj):
         self.__disp.jobStarted(True)
         try:
             self.__disp.runDispatcher()
-        except:
-            self.log("cannot run Dispatcher (host %s): %s" % (
-                self.__snmp_host,
-                process_tools.get_except_info()),
+        except ValueConstraintError:
+            self.log("caught ValueConstraintError for host %s" % (
+                self.__snmp_host),
                      logging_tools.LOG_LEVEL_CRITICAL)
+            self.__other_errors = True
+        except:
+            exc_info = process_tools.exception_info()
+            self.log("cannot run Dispatcher (host %s):" % (
+                self.__snmp_host),
+                     logging_tools.LOG_LEVEL_CRITICAL)
+            for log_line in exc_info.log_lines:
+                self.log(" - %s" % (log_line), logging_tools.LOG_LEVEL_CRITICAL)
             self.__other_errors = True
     def run_ok(self):
         return not self.__timed_out and not self.__other_errors
@@ -195,16 +202,18 @@ class snmp_process(threading_tools.process_obj):
         # no data received for a certain time (wait at least 3 seconds)
         if not self.__data_got and self.__timer_idx and diff_time > 3:
             if self.__timer_idx > 3 and not self.__num_items:
-                self.log("giving up for %s after %d items (timer_idx is %d)" % (
+                self.log("giving up for %s after %d items (%d seconds, timer_idx is %d)" % (
                     self.__snmp_host,
                     self.__num_items,
+                    act_time - self.__start_time,
                     self.__timer_idx),
                          logging_tools.LOG_LEVEL_ERROR)
                 trigger_timeout = True
             else:
-                self.log("re-initiated get() for %s after %s (timer_idx is %d)" % (
+                self.log("re-initiated get() for %s after %s (%d seconds, timer_idx is %d)" % (
                     self.__snmp_host,
                     logging_tools.get_plural("item", self.__num_items),
+                    act_time - self.__start_time,
                     self.__timer_idx),
                          logging_tools.LOG_LEVEL_WARN)
                 self._next_send()
@@ -296,7 +305,12 @@ class relay_process(threading_tools.process_pool):
     def __init__(self):
         self.__verbose = global_config["VERBOSE"]
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        threading_tools.process_pool.__init__(
+            self,
+            "main",
+            zmq=True,
+            zmq_debug=global_config["ZMQ_DEBUG"]
+        )
         self.renice()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
@@ -316,6 +330,8 @@ class relay_process(threading_tools.process_pool):
         self.__last_log_time = time.time() - 3600
         self._check_schemes()
         self._init_host_objects()
+        # dict to suppress too fast sending
+        self.__ret_dict = {}
         self._init_processes(global_config["SNMP_PROCESSES"])
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
@@ -483,33 +499,6 @@ class relay_process(threading_tools.process_pool):
                 self.__forward_lut[orig_target] = ip_addr
                 self.log("ip resolving: %s -> %s" % (orig_target, ip_addr))
         return ip_addr
-    def _snmp_finished(self, src_proc, src_pid, *args, **kwargs):
-        proc_struct = self.__process_dict[src_proc]
-        proc_struct["in_use"] = False
-        proc_struct["call_count"] += 1
-        envelope, error_list, received, snmp_dict = args
-        cur_scheme = self.__pending_schemes[envelope]
-        cur_scheme.snmp = snmp_dict
-        for cur_error in error_list:
-            cur_scheme.flag_error(cur_error)
-        cur_scheme.snmp_end(self.log)
-        if cur_scheme.return_sent:
-            if cur_scheme.xml_input:
-                self._send_return_xml(cur_scheme)
-            else:
-                ret_state, ret_str, log_it = cur_scheme.return_tuple
-                self._send_return(cur_scheme.envelope, ret_state, ret_str)
-        del self.__pending_schemes[envelope]
-        if self.__queued_requests:
-            self.log("sending request from buffer (size: %d)" % (len(self.__queued_requests)))
-            self._start_snmp_fetch(self.__queued_requests.pop(0))
-        if proc_struct["call_count"] == global_config["MAX_CALLS"]:
-            self.log("recycling helper process %s after %d calls" % (
-                src_proc,
-                proc_struct["call_count"],
-            ))
-            self.stop_process(src_proc)
-            proc_struct["state"] = "stopping"
     def process_exit(self, p_name, p_pid):
         if not self["exit_requested"]:
             if global_config["DAEMONIZE"]:
@@ -521,6 +510,27 @@ class relay_process(threading_tools.process_pool):
             proc_struct["call_count"] = 0
             proc_struct["state"] = "running"
             proc_struct["socket"] = self.add_process(snmp_process(p_name), start=True)
+    def _snmp_finished(self, src_proc, src_pid, *args, **kwargs):
+        proc_struct = self.__process_dict[src_proc]
+        proc_struct["in_use"] = False
+        proc_struct["call_count"] += 1
+        envelope, error_list, received, snmp_dict = args
+        cur_scheme = self.__pending_schemes[envelope]
+        cur_scheme.snmp = snmp_dict
+        for cur_error in error_list:
+            cur_scheme.flag_error(cur_error)
+        self._snmp_end(cur_scheme)
+        del self.__pending_schemes[envelope]
+        if self.__queued_requests:
+            self.log("sending request from buffer (size: %d)" % (len(self.__queued_requests)))
+            self._start_snmp_fetch(self.__queued_requests.pop(0))
+        if proc_struct["call_count"] == global_config["MAX_CALLS"]:
+            self.log("recycling helper process %s after %d calls" % (
+                src_proc,
+                proc_struct["call_count"],
+            ))
+            self.stop_process(src_proc)
+            proc_struct["state"] = "stopping"
     def _start_snmp_fetch(self, scheme):
         free_processes = sorted([key for key, value in self.__process_dict.iteritems() if not value["in_use"] and value["state"] == "running"])
         cache_ok, num_cached, num_refresh, num_pending, num_hot_enough = scheme.pre_snmp_start(self.log)
@@ -541,20 +551,37 @@ class relay_process(threading_tools.process_pool):
                 self.__pending_schemes[scheme.envelope] = scheme
             else:
                 self.__queued_requests.append(scheme)
-                self.log("no free threads, buffering request (%d in buffer)" % (len(self.__queued_requests)),
-                         logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "no free threads, buffering request (%d in buffer)" % (
+                        len(self.__queued_requests)),
+                    logging_tools.LOG_LEVEL_WARN)
         else:
-            scheme.snmp_end(self.log)
-            if scheme.return_sent:
-                if scheme.xml_input:
-                    self._send_return_xml(scheme)
-                else:
-                    ret_state, ret_str, log_it = scheme.return_tuple
-                    self._send_return(scheme.envelope, ret_state, ret_str)
+            self._snmp_end(scheme)
+    def _snmp_end(self, scheme):
+        if self.__verbose > 3:
+            self.log(
+                "snmp_end for %s, return_sent is %s, xml_input is %s" % (
+                    scheme.net_obj.name,
+                    scheme.return_sent,
+                    scheme.xml_input,
+                )
+            )
+        scheme.snmp_end(self.log)
+        if scheme.return_sent:
+            if scheme.xml_input:
+                self._send_return_xml(scheme)
+            else:
+                ret_state, ret_str, log_it = scheme.return_tuple
+                self._send_return(scheme.envelope, ret_state, ret_str)
     def _recv_command(self, zmq_sock):
         body = zmq_sock.recv()
-        xml_input = body.startswith("<")
+        if zmq_sock.getsockopt(zmq.RCVMORE):
+            src_id = body
+            body = zmq_sock.recv()
         parameter_ok = False
+        xml_input = body.startswith("<")
+        if self.__verbose > 3:
+            self.log("received %d bytes, xml_input is %s" % (len(body), str(xml_input)))
         if xml_input:
             srv_com = server_command.srv_command(source=body)
             srv_com["result"] = None
@@ -566,7 +593,7 @@ class relay_process(threading_tools.process_pool):
                 snmp_community = srv_com.xpath(None, ".//ns:snmp_community")[0].text
                 comline = srv_com.xpath(None, ".//ns:command")[0].text
             except:
-                self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
+                self._send_return(body, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
             else:
                 envelope = srv_com["identity"].text
                 parameter_ok = True
@@ -586,8 +613,8 @@ class relay_process(threading_tools.process_pool):
                     arg_list = [com_part[idx + 1] for idx in xrange(0, len(com_part), 2)]
                 host, snmp_version, snmp_community = parts[0:3]
                 comline = " ".join(arg_list)
-                #envelope, host, snmp_version, snmp_community, comline = body.split(";", 4)
                 parameter_ok = True
+                #envelope, host, snmp_version, snmp_community, comline = body.split(";", 4)
         if parameter_ok:
             try:
                 snmp_version = int(snmp_version)
@@ -596,6 +623,7 @@ class relay_process(threading_tools.process_pool):
             except:
                 self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
             else:
+                self.__ret_dict[envelope] = time.time()
                 act_scheme = self.__all_schemes.get(scheme, None)
                 if act_scheme:
                     host = self._resolve_address(host)
@@ -629,23 +657,52 @@ class relay_process(threading_tools.process_pool):
                             self._start_snmp_fetch(act_scheme)
                 else:
                     guess_list = ", ".join(difflib.get_close_matches(scheme, self.__all_schemes.keys()))
-                    err_str = "got unknown scheme '%s'%s" % (scheme,
-                                                             ", maybe one of %s" % (guess_list) if guess_list else ", no similar scheme found")
+                    err_str = "got unknown scheme '%s'%s" % (
+                        scheme,
+                        ", maybe one of %s" % (guess_list) if guess_list else ", no similar scheme found")
                     self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
-        else:
+        elif not xml_input:
             self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error")
         self.__num_messages += 1
+        if self.__verbose > 3:
+            self.log("recv() done")
         if self.__num_messages % 100 == 0:
             cur_mem = process_tools.get_mem_info()
             self.log("memory usage is %s after %s" % (
                 logging_tools.get_size_str(cur_mem),
                 logging_tools.get_plural("message", self.__num_messages)))
     def _send_return(self, envelope, ret_state, ret_str):
+        if self.__verbose > 3:
+            self.log("_send_return, envelope is %s (%d, %s)" % (
+                envelope,
+                ret_state,
+                ret_str,
+            ))
+        self._check_ret_dict(envelope)
         self.sender_socket.send(envelope, zmq.SNDMORE)
         self.sender_socket.send_unicode(u"%d\0%s" % (ret_state, ret_str))
     def _send_return_xml(self, scheme):
+        self._check_ret_dict(scheme.envelope)
         self.sender_socket.send(scheme.envelope, zmq.SNDMORE)
         self.sender_socket.send_unicode(unicode(scheme.srv_com))
+    def _check_ret_dict(self, env_str):
+        max_sto = 0.001
+        if env_str in self.__ret_dict:
+            cur_time = time.time()
+            if cur_time - self.__ret_dict[env_str] < max_sto:
+                if self.__verbose > 2:
+                    self.log("sleeping to avoid too fast resending (%.5f < %.5f) for %s" % (
+                        cur_time - self.__ret_dict[env_str],
+                        max_sto,
+                        env_str))
+                time.sleep(max_sto)
+            del_keys = [key for key, value in self.__ret_dict.iteritems() if abs(value - cur_time) > 60]
+            if del_keys:
+                if self.__verbose > 2:
+                    self.log("removing %s" % (logging_tools.get_plural("timed-out key", len(del_keys))), logging_tools.LOG_LEVEL_ERROR)
+                for del_key in del_keys:
+                    del self.__ret_dict[del_key]
+            del self.__ret_dict[env_str]
     def _check_msg_settings(self):
         msg_dir = "/proc/sys/kernel/"
         t_dict = {"max" : {"info"  : "maximum number of bytes in a message"},

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2012 Andreas Lang-Nevyjel, init.at
+  Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
 
   Send feedback to: <lang-nevyjel@init.at>
 
@@ -138,6 +138,9 @@ int main (int argc, char** argv) {
     sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
     sprintf(sendbuff, "%s;%s;%d;%s;", identity_str, host_b, snmp_version, snmp_community);
     act_pos = sendbuff;
+    if (verbose) {
+        printf("argument info (%d length)\n", argc);
+    };
     for (i = optind; i < argc; i++) {
         if (verbose) {
             printf("[%2d] %s\n", i, argv[i]);
@@ -151,9 +154,13 @@ int main (int argc, char** argv) {
     sendbuff[SENDBUFF_SIZE] = '\0';/* terminate optarg for secure use of strlen() */
     if (!strlen(sendbuff)) err_exit("Nothing to send!\n");
     //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));
-    int linger = 100;
+    int linger = 100, n_bytes;
+    int rcv_timeout = 200;
+    int res_code = 0;
+    int retry_iter = 0;
     int64_t more;
     size_t more_size = sizeof(more);
+        char recv_buffer[1024];
     alrmsigact = (struct sigaction*)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
         free(host_b);
@@ -176,36 +183,52 @@ int main (int argc, char** argv) {
         void *receiver = zmq_socket(context, ZMQ_SUB);
         // send
         zmq_connect(requester, "ipc:///var/log/cluster/sockets/snmp_relay/receiver");
-        zmq_connect(receiver, "ipc:///var/log/cluster/sockets/snmp_relay/sender");
+        zmq_connect(receiver , "ipc:///var/log/cluster/sockets/snmp_relay/sender");
         zmq_setsockopt(receiver, ZMQ_SUBSCRIBE, identity_str, strlen(identity_str));
+        zmq_setsockopt(receiver, ZMQ_RCVTIMEO, &rcv_timeout, sizeof(int));
         zmq_msg_t request, reply;
         if (verbose) {
             printf("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', pid is %d\n", strlen(sendbuff), 
             identity_str, myuts.nodename, SERVICE_NAME, getpid());
         };
-        zmq_msg_init_size (&request, strlen(sendbuff));
+        zmq_msg_init_size(&request, strlen(sendbuff));
         memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
-        zmq_sendmsg(requester, &request, 0);
         zmq_msg_init(&reply);
+        zmq_sendmsg(requester, &request, 0);
+        if (verbose) {
+            printf("send(), waiting for result\n");
+        }   
         // receive header
-        zmq_recvmsg(receiver, &reply, 0);
+        retry_iter = 0;
+        while (1) {
+            retry_iter++;
+            res_code = zmq_recv(receiver, recv_buffer, 1024, 0);
+            if (res_code > 0) break;
+            if (verbose) {
+                printf ("RCV_TIMEOUT, retry_iter is %d\n", retry_iter);
+            }
+        };
         zmq_getsockopt(receiver, ZMQ_RCVMORE, &more, &more_size);
         zmq_msg_close(&request);
+        if (verbose) {
+            printf("rcv(): more_flag is %d\n", more);
+        };
         if (more) {
             // receive body
-            zmq_recvmsg(receiver, &reply, 0);
-            int reply_size = zmq_msg_size(&reply);
-            char *recv_buffer = malloc(reply_size + 1);
-            memcpy (recv_buffer, zmq_msg_data(&reply), reply_size);
-            recv_buffer[reply_size] = 0;
-            retcode = strtol(recv_buffer, NULL, 10);
-            printf("%s\n", recv_buffer + 2);
-            free(recv_buffer);
+	  n_bytes = zmq_recv(receiver, recv_buffer, 1024 , 0);
+	  recv_buffer[n_bytes] = 0;
+            // int reply_size = zmq_msg_size(&reply);
+            // memcpy (recv_buffer, zmq_msg_data(&reply), reply_size);
+            // recv_buffer[reply_size] = 0;
+            if (verbose) {
+	      printf("rcv(): '%d, %s||%s'\n", n_bytes, recv_buffer, recv_buffer + 2);
+            };
+	  retcode = strtol(recv_buffer, NULL, 10);
+	  printf("%s\n", recv_buffer + 2);
         } else {
             retcode = 2;
             printf("short message\n");
         }
-        zmq_msg_close(&reply);
         zmq_close(requester);
         zmq_close(receiver);
         zmq_term(context);

@@ -1116,8 +1116,9 @@ class relay_process(threading_tools.process_pool):
                             #host_connection.delete_hc(srv_com)
                             if t_host not in self.__last_tried:
                                 self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
-                            self.__last_tried[t_host] = {"T" : "0",
-                                                         "0" : "T"}[self.__last_tried[t_host]]
+                            self.__last_tried[t_host] = {
+                                "T" : "0",
+                                "0" : "T"}[self.__last_tried[t_host]]
                             c_state = self.__last_tried[t_host]
                         con_mode = c_state
                         #con_mode = "0"
