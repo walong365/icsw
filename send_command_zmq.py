@@ -41,6 +41,7 @@ def main():
     parser.add_argument("-i", help="set identity substring [%(default)s]", type=str, default="sc", dest="identity_string")
     parser.add_argument("-n", help="set number of iterations [%(default)d]", type=int, default=1, dest="iterations")
     parser.add_argument("--raw", help="do not convert to server_command", default=False, action="store_true")
+    parser.add_argument("--root", help="connect to root-socket [%(default)s]", default=False, action="store_true")
     parser.add_argument("--kv", help="key-value pair, colon-separated", action="append")
     #parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
@@ -54,7 +55,9 @@ def main():
     client.setsockopt(zmq.IDENTITY, identity_str)
     client.setsockopt(zmq.LINGER, args.timeout)
     if args.protocoll == "ipc":
-        conn_str = "%s" % (process_tools.get_zmq_ipc_name(args.host, s_name=args.server_name))
+        if args.root:
+            process_tools.ALLOW_MULTIPLE_INSTANCES = False
+        conn_str = "%s" % (process_tools.get_zmq_ipc_name(args.host, s_name=args.server_name, connect_to_root_instance=args.root))
     else:
         conn_str = "%s://%s:%d" % (args.protocoll, args.host, args.port)
     if args.verbose:
