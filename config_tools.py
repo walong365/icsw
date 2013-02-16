@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -OtW error
 #
-# Copyright (C) 2007,2008,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #

@@ -485,11 +485,19 @@ class meta_server_info(object):
             act_pid = os.getpid()
         self.__pids.extend(mult * [act_pid])
         self.__pids.sort()
-    def remove_actual_pid(self, act_pid=None):
+    def remove_actual_pid(self, act_pid=None, mult=0):
+        """
+        mult: number of pids to remove, defaults to 0 (means all)
+        """
         if not act_pid:
             act_pid = os.getpid()
-        while act_pid in self.__pids:
-            self.__pids.remove(act_pid)
+        if mult:
+            for idx in xrange(mult):
+                if act_pid in self.__pids:
+                    self.__pids.remove(act_pid)
+        else:
+            while act_pid in self.__pids:
+                self.__pids.remove(act_pid)
         self.__pids.sort()
     def get_pids(self):
         return self.__pids
@@ -736,7 +744,10 @@ def append_pids(name, pid=None, mult=1, mode="a"):
                 fname,
                 get_except_info()))
 
-def remove_pids(name, pid=None):
+def remove_pids(name, pid=None, mult=0):
+    """
+    mult: number of pids to remove, defaults to 0 (means all)
+    """
     if pid == None:
         actp = [os.getpid()]
     else:
@@ -756,10 +767,11 @@ def remove_pids(name, pid=None):
         logging_tools.my_syslog("error interpreting file: %s" % (get_except_info()))
     else:
         for del_pid in actp:
+            num_removed = 0
             new_lines = []
             for line in pid_lines:
-                if line == str(del_pid):
-                    pass
+                if line == str(del_pid) and (not mult or num_removed < mult):
+                    num_removed += 1
                 else:
                     new_lines.append(line)
             pid_lines = new_lines
@@ -770,7 +782,7 @@ def remove_pids(name, pid=None):
             logging_tools.my_syslog("error removing %d pids (%s) to %s" % (
                 len(actp),
                 ",".join(["%d" % (line) for line in actp]), fname))
-        
+
 def delete_pid(name):
     if name.startswith("/"):
         fname = name
