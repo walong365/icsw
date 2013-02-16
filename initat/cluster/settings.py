@@ -225,8 +225,12 @@ INSTALLED_APPS = (
     "compressor",
     "coffeescript",
     "crispy_forms",
+    "initat.core",
     # cluster
 )
+
+ZMQ_LOGGING = True
+IS_WINDOWS = False
 
 # crispy settings
 CRISPY_TEMPLATE_PACK = "uni_form"
