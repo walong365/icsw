@@ -2,10 +2,11 @@ include ../Makefile.config
 
 .SUFFIXES:
 .SUFFIXES: .o .c
-.PHONY: clean all
+.PHONY: clean all indent
 
 comp=gcc
 progs=csnmpclientzmq ccollclientzmq
+INDENT_OPTIONS=-linux
 
 ifeq ($(shell getconf LONG_BIT), 64)
 LIB_DIR=lib64
@@ -19,6 +20,10 @@ clean:
 	rm -f *.o $(progs)
 
 all:	$(progs)
+
+indent:
+	indent csnmpclientzmq.c $(INDENT_OPTIONS)
+	indent ccollclientzmq.c $(INDENT_OPTIONS)
 
 ccollclientzmq: ccollclientzmq.o
 	$(comp) -L/opt/cluster/$(LIB_DIR)/ ccollclientzmq.o -o ccollclientzmq -lzmq

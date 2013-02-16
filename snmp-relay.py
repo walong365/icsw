@@ -404,13 +404,6 @@ class relay_process(threading_tools.process_pool):
         else:
             msi_block = None
         self.__msi_block = msi_block
-    def thread_exited(self, t_name, t_pid):
-        process_tools.remove_pids(self.__pid_name, t_pid)
-        if self.__msi_block:
-            self.__msi_block.remove_actual_pid(t_pid)
-            self.__msi_block.save_block()
-        if t_name.startswith("snmp_"):
-            self.__relay_thread_queue.put(("spawn_thread", int(t_name.split("_")[1])))
     def process_start(self, src_process, src_pid):
         process_tools.append_pids(self.__pid_name, src_pid, mult=3)
         if self.__msi_block:
@@ -502,7 +495,7 @@ class relay_process(threading_tools.process_pool):
     def process_exit(self, p_name, p_pid):
         if not self["exit_requested"]:
             if global_config["DAEMONIZE"]:
-                process_tools.remove_pids(global_config["PID_NAME"], pid=p_pid)
+                process_tools.remove_pids(self.__pid_name, pid=p_pid)
                 self.__msi_block.remove_actual_pid(p_pid)
                 self.__msi_block.save_block()
             self.log("helper process %s stopped, restarting" % (p_name))
