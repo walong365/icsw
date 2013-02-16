@@ -31,7 +31,7 @@ import pytz
 import codecs
 import time
 import zipfile
-from logging_tools import LOG_LEVEL_OK, LOG_LEVEL_ERROR
+import logging_tools
 from functools import partial
 
 from django.core.exceptions import ImproperlyConfigured
@@ -47,15 +47,28 @@ from optparse import make_option
 
 from initat.core.utils import init_base_object, sql_iterator, MemoryProfile
 
-BASE_OBJECT = init_base_object("dumpdatafast_new")
+# lazy init, for use in cluster-server.py::backup_process
+BASE_OBJECT = None
 TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
+def _init_base_object():
+    global BASE_OBJECT
+    if BASE_OBJECT is None:
+        BASE_OBJECT = init_base_object("dumpdatafast_new")
+        
 def log(x):
-    BASE_OBJECT.log(LOG_LEVEL_OK, x)
+    _init_base_object()
+    BASE_OBJECT.log(logging_tools.LOG_LEVEL_OK, x)
 
 def error(x):
+    _init_base_object()
     sys.stderr.write(x + "\n")
-    BASE_OBJECT.log(LOG_LEVEL_ERROR, x)
+    BASE_OBJECT.log(logging_tools.LOG_LEVEL_ERROR, x)
+
+def critical(x):
+    _init_base_object()
+    sys.stderr.write(x + "\n")
+    BASE_OBJECT.log(logging_tools.LOG_LEVEL_CRITICAL, x)
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
@@ -88,7 +101,7 @@ class Command(BaseCommand):
         try:
             return self._handle(*app_labels, **options)
         except Exception as e:
-            BASE_OBJECT.get_logger().exception("Exception occured")
+            critical("Exception occured")
             raise e
 
     def _handle(self, *app_labels, **options):
@@ -116,7 +129,7 @@ class Command(BaseCommand):
             self.iterator.name = "Builtin django queryset iterator()"
 
         log("Started with options: %s" % options)
-        log("app labels: %s" % ",".join(app_labels))
+        log("app labels: %s" % (", ".join(app_labels)))
 
         excluded_apps = set()
         excluded_models = set()
@@ -282,7 +295,7 @@ class Command(BaseCommand):
         # arguments
         progress_break = min(obj_count, 30)
 
-        msg = "%s (%s)" % (model._meta.object_name, obj_count)
+        msg = "%s (%s)" % (model._meta.object_name, logging_tools.get_plural("entry", int(obj_count)))
         log(msg)
         if self.progress:
             print msg
