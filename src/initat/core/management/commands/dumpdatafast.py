@@ -30,6 +30,7 @@ import datetime
 import pytz
 import codecs
 import time
+import zipfile
 from logging_tools import LOG_LEVEL_OK, LOG_LEVEL_ERROR
 from functools import partial
 
@@ -49,15 +50,12 @@ from initat.core.utils import init_base_object, sql_iterator, MemoryProfile
 BASE_OBJECT = init_base_object("dumpdatafast_new")
 TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
-
 def log(x):
     BASE_OBJECT.log(LOG_LEVEL_OK, x)
-
 
 def error(x):
     sys.stderr.write(x + "\n")
     BASE_OBJECT.log(LOG_LEVEL_ERROR, x)
-
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
@@ -68,7 +66,7 @@ class Command(BaseCommand):
                     help='An appname or appname.ModelName to exclude (use multiple'
                     ' --exclude to exclude multiple apps/models).'),
         make_option('-d', '--directory', action='store', default='/tmp', help=''
-                    'The output directory (default: %(directory)s'),
+                    'The output directory (default: %default'),
         make_option('-s', '--stats', action='store_true', help='Show stats for '
                     'each dumped model'),
         make_option('-i', '--iterator', action="store_true", help="Use custom "
@@ -80,7 +78,8 @@ class Command(BaseCommand):
         make_option("-p", "--progress", action="store_true", help="Print progress"
                     " bar"),
         make_option("-z", "--step-size", action="store", type=int, default=2000,
-                    help="Iterator step size (default %(step_size)s)"),
+                    help="Iterator step size (default %default)"),
+        make_option("--one-file", type=str, default="", help="generate one zip file (default '%default', relative to directory)")
     )
     help = "Output the contents of the database in PostgreSQL dump format. "
     args = '[appname appname.ModelName ...]'
@@ -106,6 +105,7 @@ class Command(BaseCommand):
         self.count = options.get("count")
         self.bz2 = options.get("bz2")
         self.progress = options.get("progress")
+        self.one_file = options.get("one_file")
 
         if iterator:
             #self.iterator = partial(sql_iterator, step=lambda x: max(x / 100, 2000))
@@ -188,17 +188,31 @@ class Command(BaseCommand):
                 models.add(model)
         models = list(models)
 
+        file_list = []
         for model in models:
             if model in excluded_models:
                 continue
             deps.add_to_tree(model)
-            many_to_many = self.dump_model(model)
+            many_to_many, file_name = self.dump_model(model)
+            file_list.append(file_name)
             for m2m in many_to_many:
                 if m2m not in models:
                     models.append(m2m)
 
-        with open(os.path.join(self.directory, "DEPENDENCIES"), "w") as f:
+        dep_file = os.path.join(self.directory, "DEPENDENCIES")
+        file_list.append(dep_file)
+        with open(dep_file, "w") as f:
             f.writelines(["%s_%s" % (m._meta.app_label, m._meta.object_name) + "\n" for m in deps.tree])
+        if self.one_file:
+            if not self.one_file.endswith(".zip"):
+                self.one_file = "%s.zip" % (self.one_file)
+            if not self.one_file.startswith("/"):
+                self.one_file = os.path.join(self.directory, self.one_file)
+            new_zip_file = zipfile.ZipFile(self.one_file, "w")
+            for file_name in file_list:
+                new_zip_file.write(file_name, os.path.basename(file_name))
+                os.unlink(file_name)
+            new_zip_file.close()
 
     def dump_model(self, model):
         """
@@ -243,7 +257,7 @@ class Command(BaseCommand):
                     # Escape all backslashes, tab, newline and CR
                     value = smart_unicode(value)
                     value = value.replace("\\", ur"\\")
-                    value = value.replace("\t", ur"\t").replace("\n", ur"\n").replace("\r", ur"\r")
+                    new_value = value.replace("\t", ur"\t").replace("\n", ur"\n").replace("\r", ur"\r")
 
                 converted_values.append(new_value)
 
@@ -305,7 +319,7 @@ class Command(BaseCommand):
                 print "    Time bz: %6.2f s" % (time.time() - time_bz_start)
             print "    RAM  : %6.2f MB" % (mem_profile.max_usage / 1024.0)
 
-        return pg_copy.many_to_many
+        return pg_copy.many_to_many, "%s%s" % (model_file, ".bz2" if self.bz2 else "")
 
 
 class PostgresCommand(object):
@@ -385,3 +399,4 @@ c.handle("backend.customer", **opts)
         p.sort_stats("cumulative").print_stats(20)
         print s, "time", s
         p.sort_stats("time").print_stats(20)
+
