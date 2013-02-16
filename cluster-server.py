@@ -25,14 +25,10 @@ import sys
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.conf import settings
-import socket
 import re
 import time
 import net_tools
-import Queue
 import threading_tools
-import mysql_tools
-import MySQLdb
 import commands
 import pwd
 import logging_tools
@@ -40,19 +36,20 @@ import process_tools
 import configfile
 import server_command
 import pprint
+import datetime
 import uuid_tools
 import mail_tools
-import difflib
 import config_tools
 import cluster_location
 import zmq
 import initat.cluster_server
-import io_stream_helper
 from django.db.models import Q
+from django.db import connection
 from host_monitoring import hm_classes
-from django.core.handlers.wsgi import WSGIHandler
 from initat.cluster.backbone.models import device, device_variable, log_source
 from initat.cluster_server.config import global_config
+from initat.core.management.commands import dumpdatafast
+from optparse import OptionParser
 
 try:
     from cluster_server_version import VERSION_STRING
@@ -60,193 +57,38 @@ except ImportError:
     VERSION_STRING = "?.?"
 
 SERVER_PORT = 8004
-SQL_ACCESS  = "cluster_full_access"
 
-class call_params(object):
-    def __init__(self, act_sc, **args):
-        self.__glob_config, self.__loc_config = (args.get("g_config", None),
-                                                 args.get("l_config", None))
-        self.__server_idx = self.__loc_config["SERVER_IDX"]
-        self.set_loc_ip()
-        self.set_direct_call()
-        self.set_server_command()
-        self.set_option_dict_valid()
-        self.set_nss_queue()
-        self.set_dc()
-        self.set_server_com_name(act_sc.get_name())
-        self.set_src_host()
-        self.set_ret_str()
-        self.set_call_finished()
-        self.set_thread_pool()
-        self.set_server_idx()
-        self.restart_hook_function = None
-    def __del__(self):
-        pass
-    def close(self):
-        if self.dc:
-            self.dc.release()
-            self.dc = None
-    def install_restart_hook(self, func, add_data):
-        self.restart_hook_function = func
-        self.restart_hook_data = add_data
-        self.restarted = 0
-    def check_for_restart(self):
-        if self.restart_hook_function:
-            self.restarted = self.restart_hook_function(self.restart_hook_data)
-            return self.restarted
-        else:
-            return 0
-    def set_server_idx(self, s_idx=0):
-        self.__server_idx = s_idx
-    def get_server_idx(self):
-        return self.__server_idx
-    def set_thread_pool(self, tp=None):
-        self.__thread_pool = tp
-    def get_thread_pool(self):
-        return self.__thread_pool
-    def get_g_config(self):
-        return self.__glob_config
-    def get_l_config(self):
-        return self.__loc_config
-    def set_call_finished(self, cf=0):
-        self.call_finished = cf
-    def get_call_finished(self):
-        return self.call_finished
-    def set_ret_str(self, ret_str="not set"):
-        if type(ret_str) == type(""):
-            self.ret_str = ret_str
-        else:
-            self.ret_str = "%d: %s" % (ret_str.get_state(), ret_str.get_result())
-    def set_src_host(self, src_host = "unknown", src_port=0):
-        self.src_host = src_host
-        self.src_port = src_port
-    def set_server_com_name(self, sc_name):
-        self.sc_name = sc_name
-    def set_dc(self, dc=None):
-        self.dc = dc
-    def set_logger(self, logger):
-        self.logger = logger
-    def get_logger(self):
-        return self.logger
-    def set_nss_queue(self, nss_q = None):
-        self.nss_queue = nss_q
-    def set_loc_ip(self, loc_ip=None):
-        self.loc_ip = loc_ip
-    def set_direct_call(self, dc=0):
-        self.direct_call = dc
-    def get_direct_call(self):
-        return self.direct_call
-    def set_server_command(self, server_com=None):
-        self.server_com = server_com
-        self.set_option_dict_valid()
-        if self.server_com:
-            self.opt_str, self.opt_dict = (self.server_com.get_option_dict() and self.server_com.get_option_dict_info() or "<NONE>",
-                                           self.server_com.get_option_dict())
-        else:
-            self.opt_str, self.opt_dict = ("<no server_com>", {})
-    def link_with_command(self, s_com=None):
-        if self.server_com:
-            opts_found = [key for key in s_com.needed_option_keys if key in self.opt_dict.keys()]
-            if len(opts_found) == len(s_com.needed_option_keys):
-                self.set_option_dict_valid(1)
-            else:
-                self.missing_option_keys = [x for x in s_com.needed_option_keys if x not in opts_found]
-    def set_option_dict_valid(self, valid=0):
-        self.option_dict_valid = valid
-    def get_option_dict_valid(self):
-        return self.option_dict_valid
-        
-def process_request(glob_config, loc_config, logger, db_con, server_com, src_host, src_port, direct_com, loc_ip, nss_queue, bg_queue, bg_commands, thread_pool):
-    commands_queued = []
-    try:
-        dc = db_con.get_connection(SQL_ACCESS)
-    except:
-        ret_str = "error connecting to SQL-server"
-    else:
-        if loc_ip == "127.0.0.1":
-            # map loc_ip to something meaningful
-            stat, out = commands.getstatusoutput("/sbin/ifconfig")
-            self_ips = []
-            for line in [x for x in [y.strip() for y in out.strip().split("\n")] if x.startswith("inet")]:
-                ip_re = re.match("^inet.*addr:(?P<ip>\S+)\s+.*$", line)
-                if ip_re and ip_re.group("ip") != "127.0.0.1":
-                    self_ips.append(ip_re.group("ip"))
-            if self_ips:
-                loc_ip = self_ips.pop(0)
-        if server_com.get_command() in loc_config["COM_LIST"]:
-            act_sc = loc_config["COM_DICT"][server_com.get_command()]
-            act_call_params = call_params(act_sc,
-                                          g_config=glob_config,
-                                          l_config=loc_config)
-            act_call_params.set_src_host(src_host, src_port)
-            act_call_params.set_loc_ip(loc_ip)
-            act_call_params.set_server_command(server_com)
-            act_call_params.set_nss_queue(nss_queue)
-            act_call_params.set_thread_pool(thread_pool)
-            act_call_params.set_server_idx(loc_config["SERVER_IDX"])
-            act_call_params.set_logger(logger)
-            bg_command = False
-            doit, srv_origin, err_str = act_sc.check_config(dc, loc_config, loc_config["FORCE"] or act_call_params.opt_dict.get("force", 0))
-            if doit:
-                act_call_params.link_with_command(act_sc)
-                act_call_params.write_start_log(act_sc)
-                if act_call_params.get_option_dict_valid():
-                    if act_sc.get_blocking_mode() or direct_com:
-                        act_call_params.set_dc(dc)
-                        act_call_params.set_direct_call(direct_com)
-                        if direct_com:
-                            ret_str = act_sc(act_call_params)
-                        else:
-                            try:
-                                ret_str = act_sc(act_call_params)
-                            except:
-                                exc_info = sys.exc_info()
-                                long_exc_info = process_tools.exception_info()
-                                ret_str = "error Something went badly wrong (%s) ..." % (process_tools.get_except_info())
-                                act_call_params.log("*** INTERNAL ERROR: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
-                                for line in long_exc_info.log_lines:
-                                    act_call_params.log("***: %s" % (line), logging_tools.LOG_LEVEL_CRITICAL)
-                    else:
-                        if act_sc.get_name() in bg_commands:
-                            if act_sc.get_is_restartable():
-                                logger.warning("command %s already running in the background, restarting ..." % (act_sc.get_name()))
-                                #bg_queue.put(bg_restart_message((act_sc, act_call_params)))
-                                bg_queue.put(("bg_task_restart", (act_sc, act_call_params)))
-                                ret_str = "warn restarting %s in the background" % (server_com.get_command())
-                            else:
-                                logger.error("command %s already running in the background, ignoring request ..." % (act_sc.get_name()))
-                                ret_str = "error %s already running in the background" % (server_com.get_command())
-                        else:
-                            #bg_queue.put(bg_start_message((act_sc, act_call_params)))
-                            bg_queue.put(("start_bg_task", (act_sc, act_call_params)))
-                            ret_str = "ok submitting %s to the background" % (server_com.get_command())
-                            commands_queued.append(act_sc.get_name())
-                        bg_command = True
-                else:
-                    act_call_params.set_dc(dc)
-                    ret_str = "error missing keys in option_dict: %s" % (", ".join(act_call_params.missing_option_keys))
-                if not bg_command:
-                    act_call_params.set_ret_str(ret_str)
-                    act_call_params.write_end_log(act_sc)
-            else:
-                act_call_params.set_dc(dc)
-                ret_str = err_str
-                act_call_params.set_ret_str(ret_str)
-                ret_str = "error %s" % (err_str)
-            if not bg_command:
-                act_call_params.close()
-                dc = None
-                del act_call_params
-                del act_sc
-        else:
-            guess_list = ", ".join(difflib.get_close_matches(server_com.get_command(), loc_config["COM_LIST"]))
-            ret_str = server_command.server_reply(state=server_command.SRV_REPLY_STATE_WARN,
-                                                  result="command %s not known (did you meant: %s)" % (server_com.get_command(),
-                                                                                                       guess_list or "<none found>"))
-        if dc:
-            dc.release()
-    logger.info(type(ret_str) == type("") and ret_str or "%d: %s" % (ret_str.get_state(), ret_str.get_result()))
-    return ret_str, commands_queued
+class backup_process(threading_tools.process_obj):
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        connection.close()
+        self.register_func("start_backup", self._start_backup)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def _start_backup(self, *args, **kwargs):
+        s_time = time.time()
+        self.log("starting backup")
+        bu_dir = global_config["DATABASE_DUMP_DIR"]
+        if not os.path.isdir(bu_dir):
+            self.log("creating bu_dir %s" % (global_config["DATABASE_DUMP_DIR"]))
+            os.mkdir(global_config["DATABASE_DUMP_DIR"])
+        bu_name = datetime.datetime.now().strftime("db_bu_%Y%m%d_%H:%M:%S")
+        self.log("storing backup in %s" % (os.path.join(global_config["DATABASE_DUMP_DIR"],
+                                                        bu_name)))
+        # set BASE_OBJECT 
+        dumpdatafast.BASE_OBJECT = self
+        buf_com = dumpdatafast.Command()
+        opts, args = OptionParser(option_list=buf_com.option_list).parse_args(["-d", global_config["DATABASE_DUMP_DIR"], "-b", "--one-file", bu_name])
+        buf_com._handle(*args, **vars(opts))
+        e_time = time.time()
+        self.log("backup finished in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+        # clear base object
+        dumpdatafast.BASE_OBJECT = None
+        self._exit_process()
+    def loop_post(self):
+        self.__log_template.close()
 
 class bg_stuff(object):
     class Meta:
@@ -661,300 +503,6 @@ class quota_stuff(bg_stuff):
         dc.release()
         return my_vector
 
-##class socket_server_thread(threading_tools.thread_obj):
-##    def __init__(self, db_con, glob_config, loc_config, ns, logger):
-##        self.__db_con = db_con
-##        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-##        self.__net_server = ns
-##        self.__logger = logger
-##        threading_tools.thread_obj.__init__(self, "socket_server", queue_size=50)
-##        self.register_func("bg_task_finish", self._bg_task_finish)
-##        self.register_func("in_tcp_bytes", self._tcp_in)
-##        self.register_func("in_udp_bytes", self._udp_in)
-##        self.register_func("set_bg_queue", self._set_bg_queue)
-##        self.register_func("send_broadcast", self._send_broadcast)
-##        self.register_func("send_error", self._send_error)
-##        self.register_func("send_ok", self._send_ok)
-##        self.register_func("contact_server", self._contact_server)
-##        # background commands
-##        self.__bg_commands = []
-##        # unique key list
-##        self.__ukey_list = []
-##        # wait dict
-##        self.__wait_dict = {}
-##    def thread_running(self):
-##        self.send_pool_message(("new_pid", self.pid))
-##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-##        self.__logger.log(lev, what)
-##    def _set_bg_queue(self, bg_queue):
-##        self.__bg_queue = bg_queue
-##    def _bg_task_finish(self, (sc_name, call_params)):
-##        if sc_name not in self.__bg_commands:
-##            self.log("*** error, command %s not in bg_command_list (%s)" % (sc_name,
-##                                                                            ", ".join(self.__bg_commands)),
-##                     logging_tools.LOG_LEVEL_ERROR)
-##        else:
-##            self.log("removing %s from bg_command_list" % (sc_name))
-##            self.__bg_commands.remove(sc_name)
-##            if self.__bg_commands:
-##                self.log("%s queued: %s" % (logging_tools.get_plural("command", len(self.__bg_commands)),
-##                                            ", ".join(self.__bg_commands)))
-##            else:
-##                self.log("no commands running in the background")
-##    def _udp_in(self, (in_data, frm)):
-##        src_host, src_port = frm
-##        try:
-##            u_key, command = in_data.split(None, 1)
-##        except:
-##            self.log("error decoding udp_data '%s' from %s: %s" % (in_data, str(frm), process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-##        else:
-##            self.log("got udp_command %s (key %s) from %s" % (command, u_key, str(frm)))
-##            if u_key in self.__ukey_list:
-##                self.log("key %s already in list, ignoring request ..." % (u_key))
-##            else:
-##                server_com = server_command.server_command(command = command)
-##                server_com.set_compat(1)
-##                ret_str, coms_queued = process_request(self.__glob_config, self.__loc_config, self.__logger, self.__db_con, server_com, src_host, src_port, 0, "0.0.0.0", self.get_thread_queue(), self.__bg_queue, self.__bg_commands, self.get_thread_pool())
-##                self.__ukey_list.append(u_key)
-##                self._do_server_broadcast(u_key, command)
-##    def _tcp_in(self, tcp_stuff):
-##        in_data = tcp_stuff.get_decoded_in_str()
-##        try:
-##            server_com = server_command.server_command(in_data)
-##        except:
-##            com_split = in_data.split()
-##            server_com = server_command.server_command(command = com_split.pop(0))
-##            server_com.set_option_dict(dict([(k, v) for k, v in [z for z in [x.split(":", 1) for x in com_split] if len(z) == 2]]))
-##            server_com.set_compat(1)
-##        tcp_stuff.set_command(server_com.get_command())
-##        ret_str, coms_queued = process_request(self.__glob_config, self.__loc_config, self.__logger, self.__db_con, server_com, tcp_stuff.get_src_host(), tcp_stuff.get_src_port(), 0, tcp_stuff.get_loc_host(), self.get_thread_queue(), self.__bg_queue, self.__bg_commands, self.get_thread_pool())
-##        for com_queued in coms_queued:
-##            self.__bg_commands.append(com_queued)
-##        if self.__bg_commands:
-##            self.log("%s queued: %s" % (logging_tools.get_plural("command", len(self.__bg_commands)),
-##                                        ", ".join(self.__bg_commands)))
-##        if type(ret_str) == type(""):
-##            server_reply = server_command.server_reply()
-##            server_reply.set_ok_result(ret_str)
-##        else:
-##            server_reply = ret_str
-##        tcp_stuff.add_to_out_buffer(server_reply)
-##    def _send_broadcast(self, bc_com):
-##        unique_key = time.strftime("%Y%m%d%H%M%S", time.localtime(time.time()))
-##        self._do_server_broadcast(unique_key, bc_com)
-##    def _contact_server(self, (srv_name, srv_ip, srv_port, srv_com)):
-##        self.log("Sending %s to device '%s' (IP %s, port %d)" % (srv_com, srv_name, srv_ip, srv_port))
-##        self.__net_server.add_object(net_tools.tcp_con_object(self._new_tcp_con, target_host=srv_ip, target_port=srv_port, bind_retries=1, rebind_wait_time=1, connect_state_call=self._udp_connect, connect_timeout_call=self._connect_timeout, timeout=10, add_data=srv_com))
-##    def _connect_timeout(self, sock):
-##        self.log("connect timeout", logging_tools.LOG_LEVEL_ERROR)
-##        sock.close()
-##    def _new_tcp_con(self, sock):
-##        return simple_con("tcp", sock.get_target_host(), sock.get_target_port(), sock.get_add_data(), self.get_thread_queue())
-##    def _do_server_broadcast(self, u_key, bc_com):
-##        dc = self.__db_con.get_connection(SQL_ACCESS)
-##        send_str = "%s %s" % (u_key, bc_com)
-##        self.log("Initiating server-broadcast command '%s', key %s" % (bc_com, u_key))
-##        dc.execute("SELECT n.netdevice_idx FROM netdevice n WHERE n.device=%d" % (self.__loc_config["SERVER_IDX"]))
-##        my_netdev_idxs = [x["netdevice_idx"] for x in dc.fetchall()]
-##        if my_netdev_idxs:
-##            # start sending of nscd_reload commands
-##            dc.execute("SELECT d.name, i.ip, h.value FROM device d INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN device_group dg INNER JOIN device_type dt INNER JOIN " + \
-##                       "hopcount h INNER JOIN netdevice n INNER JOIN netip i LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_idx=n.device AND i.netdevice=n.netdevice_idx AND dg.device_group_idx=d.device_group AND " + \
-##                       "dc.new_config=c.new_config_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND c.name='server' AND d.device_type=dt.device_type_idx AND dt.identifier='H' AND " + \
-##                       "h.s_netdevice=n.netdevice_idx AND (%s) ORDER BY h.value, d.name" % (" OR ".join(["h.d_netdevice=%d" % (x) for x in my_netdev_idxs])))
-##            serv_ip_dict = dict([(db_rec["name"], db_rec["ip"]) for db_rec in dc.fetchall()])
-##            for serv_name, serv_ip in serv_ip_dict.iteritems():
-##                self.log(" - Sending %s to %s (%s) ..." % (send_str, serv_name, serv_ip))
-##                self.__net_server.add_object(net_tools.udp_con_object(self._new_udp_con, target_host=serv_ip, target_port=SERVER_PORT, bind_retries=1, rebind_wait_time=1, connect_state_call=self._udp_connect, add_data=send_str))
-##        dc.release()
-##    def _new_udp_con(self, sock):
-##        return simple_con("udp", sock.get_target_host(), sock.get_target_port(), sock.get_add_data(), self.get_thread_queue())
-##    def _udp_connect(self, **args):
-##        if args["state"] == "error":
-##            self.get_thread_queue().put(("send_error", (args["host"], args["port"], args["type"], "connect error")))
-##    def _send_error(self, (s_host, s_port, mode, what)):
-##        self.log("send_error (%s, %s %d): %s" % (s_host, mode, s_port, what), logging_tools.LOG_LEVEL_ERROR)
-##    def _send_ok(self, (s_host, s_port, mode, what)):
-##        self.log("send_ok (%s, %s %d): %s" % (s_host, mode, s_port, what))
-        
-##class monitor_thread(threading_tools.thread_obj):
-##    def __init__(self, db_con, glob_config, loc_config, logger):
-##        self.__db_con = db_con
-##        self.__logger = logger
-##        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-##        threading_tools.thread_obj.__init__(self, "monitor", queue_size=50)
-##        self.__esd, self.__nvn = ("/tmp/.machvect_es", "cluster_div")
-##        self.__ext_keys = {}
-##        self.register_func("update", self._update)
-##        self._init_cap_list()
-##    def thread_running(self):
-##        self.send_pool_message(("new_pid", self.pid))
-##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-##        self.__logger.log(lev, what)
-##    def _init_cap_list(self):
-##        # init value
-##        self.__init_ext_ok = False
-##        self.__cap_list = []
-##        dc =  self.__db_con.get_connection(SQL_ACCESS)
-##        for what in self.__server_cap_dict.keys():
-##            sql_info = config_tools.server_check(dc=dc, server_type=what)
-##            if sql_info.num_servers:
-##                self.__cap_list.append(what)
-##        dc.release()
-##        self.__any_capabilities = len(self.__cap_list)
-##        if self.__any_capabilities:
-##            self.log("Found %s: %s" % (logging_tools.get_plural("capability", len(self.__cap_list)),
-##                                       ", ".join(self.__cap_list)))
-##        else:
-##            self.log("Found no capabilities")
-##        self.__mv_caps, self.__other_caps = ([], [])
-##        if self.__any_capabilities:
-##            init_list, act_list = (self._init_machvector(),
-##                                   self._get_machvector())
-##            self.__act_init_list = init_list
-##            self.__init_ext_ok = self._write_ext(init_list, True)
-##            if self.__init_ext_ok:
-##                self._write_ext(act_list)
-##        self.__last_update = None
-##    def _init_machvector(self):
-##        init_list = []
-##        self.__mv_caps, self.__other_caps = ([], [])
-##        for cap in self.__cap_list:
-##            if self.__server_cap_dict[cap].get_creates_machvector():
-##                self.__mv_caps.append(cap)
-##                init_list.extend(self.__server_cap_dict[cap].init_machvector())
-##            else:
-##                self.__other_caps.append(cap)
-##        return init_list
-##    def _get_machvector(self):
-##        act_list = []
-##        for cap in self.__cap_list:
-##            if self.__server_cap_dict[cap].get_creates_machvector():
-##                act_list.extend(self.__server_cap_dict[cap].get_machvector())
-##        return act_list
-##    def _write_ext(self, out_list, init=False):
-##        if init:
-##            out_file = "%s/%s.mvd" % (self.__esd, self.__nvn)
-##        else:
-##            out_file = "%s/%s.mvv" % (self.__esd, self.__nvn)
-##        ret_state = False
-##        if os.path.isdir(self.__esd):
-##            try:
-##                file(out_file, "w").write("\n".join(out_list + [""]))
-##            except:
-##                self.log("cannot create file %s: %s" % (out_file, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-##            else:
-##                ret_state = True
-##        else:
-##            self.log("directory %s not found" % (self.__esd), logging_tools.LOG_LEVEL_WARN)
-##        return ret_state
-##    def _update(self):
-##        min_wakeup_time = 10.
-##        act_time = time.time()
-##        if not self.__last_update or abs(act_time - self.__last_update) > min_wakeup_time:
-##            self.__last_update = act_time
-##            if self.__any_capabilities and self.__init_ext_ok:
-##                act_init_list = self._init_machvector()
-##                if act_init_list != self.__act_init_list:
-##                    self.__act_init_list = act_init_list
-##                    self.__init_ext_ok = self._write_ext(act_init_list, True)
-##                if self.__init_ext_ok:
-##                    act_list = self._get_machvector()
-##                    self._write_ext(act_list)
-##            for cap in self.__other_caps:
-##                if self.__server_cap_dict[cap].check_for_wakeup(act_time):
-##                    self.__server_cap_dict[cap].wakeup()
-##        else:
-##            self.log("Too many update requests...", logging_tools.LOG_LEVEL_WARN)
-##        
-### --------- connection objects ------------------------------------
-
-##class new_tcp_con(net_tools.buffer_object):
-##    # connection object for cluster-server
-##    def __init__(self, sock, src, pm_queue, logger):
-##        self.__loc_host, self.__loc_port = sock.get_sock_name()
-##        self.__src_host, self.__src_port = src
-##        self.__pm_queue = pm_queue
-##        self.__logger = logger
-##        net_tools.buffer_object.__init__(self)
-##        self.__init_time = time.time()
-##        self.__in_buffer = ""
-##        self.__command = "<not set>"
-##    def __del__(self):
-##        pass
-##    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-##        self.__logger.log(level, what)
-##    def set_command(self, com):
-##        self.__command = com
-##    def get_loc_host(self):
-##        return self.__loc_host
-##    def get_loc_port(self):
-##        return self.__loc_port
-##    def get_src_host(self):
-##        return self.__src_host
-##    def get_src_port(self):
-##        return self.__src_port
-##    def add_to_in_buffer(self, what):
-##        self.__in_buffer += what
-##        p1_ok, what = net_tools.check_for_proto_1_header(self.__in_buffer)
-##        if p1_ok:
-##            self.__decoded = what
-##            self.__pm_queue.put(("in_tcp_bytes", self))
-##    def add_to_out_buffer(self, what):
-##        self.lock()
-##        if self.socket:
-##            self.out_buffer = net_tools.add_proto_1_header(what)
-##            self.socket.ready_to_send()
-##        else:
-##            self.log("timeout, other side has closed connection")
-##        self.unlock()
-##    def out_buffer_sent(self, d_len):
-##        if d_len == len(self.out_buffer):
-##            self.__pm_queue = None
-##            d_time = abs(time.time() - self.__init_time)
-##            self.log("command %s from %s (port %d) took %s" % (self.__command,
-##                                                               self.__src_host,
-##                                                               self.__src_port,
-##                                                               logging_tools.get_diff_time_str(d_time)))
-##            self.close()
-##        else:
-##            self.out_buffer = self.out_buffer[d_len:]
-##            #self.socket.ready_to_send()
-##    def get_decoded_in_str(self):
-##        return self.__decoded
-##    def report_problem(self, flag, what):
-##        self.close()
-##
-##class simple_con(net_tools.buffer_object):
-##    def __init__(self, mode, host, port, s_str, d_queue):
-##        self.__mode = mode
-##        self.__host = host
-##        self.__port = port
-##        self.__send_str = s_str
-##        self.__d_queue = d_queue
-##        net_tools.buffer_object.__init__(self)
-##    def setup_done(self):
-##        if self.__mode == "udp":
-##            self.add_to_out_buffer(self.__send_str)
-##        else:
-##            self.add_to_out_buffer(net_tools.add_proto_1_header(self.__send_str, True))
-##    def out_buffer_sent(self, send_len):
-##        if send_len == len(self.out_buffer):
-##            self.out_buffer = ""
-##            self.socket.send_done()
-##            if self.__mode == "udp":
-##                self.__d_queue.put(("send_ok", (self.__host, self.__port, self.__mode, "udp_send")))
-##                self.delete()
-##        else:
-##            self.out_buffer = self.out_buffer[send_len:]
-##    def add_to_in_buffer(self, what):
-##        self.__d_queue.put(("send_ok", (self.__host, self.__port, self.__mode, "got %s" % (what))))
-##        self.delete()
-##    def report_problem(self, flag, what):
-##        self.__d_queue.put(("send_error", (self.__host, self.__port, self.__mode, "%s: %s" % (net_tools.net_flag_to_str(flag),
-##                                                                                              what))))
-##        self.delete()
-
 # --------- connection objects ------------------------------------
 
 class server_process(threading_tools.process_pool):
@@ -984,24 +532,12 @@ class server_process(threading_tools.process_pool):
         self._load_modules()#self.__loc_config, self.log, self.__is_server)
         self._init_capabilities()
         self.__options = options
+        self._set_next_backup_time(True)
         if self.__run_command:
             self.register_timer(self._run_command, 3600, instant=True)
         else:
             self._init_network_sockets()
-            self.register_timer(self._update, 30, instant=True)
-##        self.__ns = None
-##        if not self.__server_com:
-##            self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=False)
-##            self.__tcp_bo = net_tools.tcp_bind(self._new_tcp_con, port=self.__glob_config["COM_PORT"], bind_retries=self.__loc_config["N_RETRY"], bind_state_call=self._bind_state_call, timeout=120)
-##            self.__udp_bo = net_tools.udp_bind(self._new_udp_con, port=self.__glob_config["COM_PORT"], bind_retries=self.__loc_config["N_RETRY"], bind_state_call=self._bind_state_call, timeout=120)
-##            self.__ns.add_object(self.__tcp_bo)
-##            self.__ns.add_object(self.__udp_bo)
-##            self.__ss_thread_queue = self.add_thread(socket_server_thread(self.__db_con, self.__glob_config, self.__loc_config, self.__ns, self.__logger), start_thread=True).get_thread_queue()
-##            self.__bg_thread_queue = self.add_thread(background_thread(self.__db_con, self.__ss_thread_queue, self.__glob_config, self.__loc_config, self.__logger), start_thread=True).get_thread_queue()
-##            self.__mon_thread_queue = self.add_thread(monitor_thread(self.__db_con, self.__glob_config, self.__loc_config, self.__logger), start_thread=True).get_thread_queue()
-##        else:
-##            self.__target_host, self.__target_port = (None, None)
-##            self.__client_ret_str = None
+            self.register_timer(self._update, 2 if global_config["DEBUG"] else 30, instant=True)
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -1009,7 +545,17 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+    def _set_next_backup_time(self, first=False):
+        self.__next_backup_dt = datetime.datetime.now().replace(microsecond=0)
+        if not global_config["DEBUG"]:
+            self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(days=0)).replace(hour=2, minute=0, second=0)
+        else:
+            self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(seconds=2 if first else 600))
+        self.log("setting %s backup-time to %s" % (
+            "first" if first else "next",
+            self.__next_backup_dt))
     def set_target(self, t_host, t_port):
+        # not needed, fixme
         self.__target_host, self.__target_port = (t_host, t_port)
         self.__ns = net_tools.network_send(timeout=10, log_hook=self.log, verbose=False)
         self.__ns.add_object(net_tools.tcp_con_object(self._new_client_tcp_con, connect_state_call=self._client_connect_state_call, connect_timeout_call=self._client_connect_timeout, target_host=self.__target_host, target_port=self.__target_port, timeout=10, bind_retries=1, rebind_wait_time=2))
@@ -1038,11 +584,6 @@ class server_process(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
-##            if not self.__is_server and self.__client_ret_str is None:
-##                self.set_error("interrupted")
-##            self["exit_requested"] = True
-##            if self.__ns:
-##                self.__ns.set_timeout(0.1)
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -1060,13 +601,17 @@ class server_process(threading_tools.process_pool):
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=1)
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult)
+            self.__msi_block.add_actual_pid(configfile.get_manager_pid(), mult=1)
             self.__msi_block.save_block()
     def process_exit(self, src_process, src_pid):
         process_tools.remove_pids(self.__pid_name, src_pid)
+        process_tools.remove_pids(self.__pid_name, configfile.get_manager_pid(), mult=1)
         if self.__msi_block:
             self.__msi_block.remove_actual_pid(src_pid)
+            self.__msi_block.remove_actual_pid(configfile.get_manager_pid(), mult=1)
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
@@ -1158,12 +703,6 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("data stream has wrong length (%d) != 2" % (len(data)),
                      logging_tools.LOG_LEVEL_ERROR)
-##    def _new_client_tcp_con(self, sock):
-##        return cs_base_class.simple_tcp_obj(self, self.__server_com)
-##    def _new_tcp_con(self, sock, src):
-##        return new_tcp_con(sock, src, self.__ss_thread_queue, self.__logger)
-##    def _new_udp_con(self, data, frm):
-##        self.__ss_thread_queue.put(("in_udp_bytes", (data, frm)))
     def _client_connect_timeout(self, sock):
         self.log("connect timeout", logging_tools.LOG_LEVEL_ERROR)
         self.set_error("error connect timeout")
@@ -1241,6 +780,17 @@ class server_process(threading_tools.process_pool):
                                                 srv_com["result"].attrib["reply"]))
     def _update(self):
         cur_time = time.time()
+        cur_dt = datetime.datetime.now().replace(microsecond=0)
+        if not global_config["DEBUG"]:
+            cur_dt = cut_dt.replace(minute=0, second=0)
+        if cur_dt == self.__next_backup_dt:
+            self._set_next_backup_time()
+            self.log("start DB-backup")
+            self.add_process(backup_process("backup_process"), start=True)
+            self.send_to_process(
+                "backup_process",
+                "start_backup",
+            )
         drop_com = server_command.srv_command(command="set_vector")
         for cap_name in self.__cap_list:
             self.__server_cap_dict[cap_name](cur_time, drop_com)
@@ -1380,8 +930,6 @@ class server_process(threading_tools.process_pool):
             del initat.cluster_server.command_dict[del_name]
         self.log("Found %s" % (logging_tools.get_plural("command", len(initat.cluster_server.command_names))))
 
-#global_config = configfile.get_global_config(process_tools.get_programm_name())
-
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
@@ -1401,18 +949,12 @@ def main():
         ("OPTION_KEYS"         , configfile.array_c_var([], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)")),
     ])
     global_config.parse_file()
-    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
-                                                                                  VERSION_STRING),
-                                               add_writeback_option=True,
-                                               positional_arguments=False)
+    options = global_config.handle_commandline(
+        description="%s, version is %s" % (prog_name,
+                                           VERSION_STRING),
+        add_writeback_option=True,
+        positional_arguments=False)
     global_config.write_file()
-    #db_con = mysql_tools.dbcon_container()
-    #try:
-        #dc = db_con.get_connection("cluster_full_access")
-    #except MySQLdb.OperationalError:        print my_devs
-
-        #sys.stderr.write(" Cannot connect to SQL-Server ")
-        #sys.exit(1)
     sql_info = config_tools.server_check(server_type="server")
     if not sql_info.effective_device:
         print "not a server"
@@ -1425,17 +967,11 @@ def main():
     if not global_config["SERVER_IDX"] and not global_config["FORCE"]:
         sys.stderr.write(" %s is no cluster-server, exiting..." % (long_host_name))
         sys.exit(5)
-    if not sql_info.device and global_config["FORCE"]:
-        # set SERVER_IDX according to short hhostname
-        dc.execute("SELECT d.device_idx FROM device d WHERE d.name=%s", (mach_name))
-        if dc.rowcount:
-            global_config["SERVER_IDX"] = dc.fetchone()["device_idx"]
     if global_config["CHECK"]:
         sys.exit(0)
     global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("cluster-server", "Cluster Server", device=sql_info.effective_device).pk))])
     if not global_config["LOG_SOURCE_IDX"]:
         print "Too many log_source with my id present, exiting..."
-        #dc.release()
         sys.exit(5)
     if global_config["KILL_RUNNING"] and not global_config["COMMAND"]:
         log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
@@ -1454,6 +990,8 @@ def main():
         ("USER_MAIL_SEND_TIME"   , configfile.int_c_var(3600, info="time in seconds between to mails")),
         ("SERVER_FULL_NAME"      , configfile.str_c_var(long_host_name, database=False)),
         ("SERVER_SHORT_NAME"     , configfile.str_c_var(mach_name, database=False)),
+        ("DATABASE_DUMP_DIR"     , configfile.str_c_var("/opt/cluster/share/db_backup")),
+        ("DATABASE_KEEP_DAYS"    , configfile.int_c_var(30)),
     ])
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     if not global_config["DEBUG"] and not global_config["COMMAND"]:
