@@ -415,6 +415,8 @@ class device(models.Model):
     master_connections = models.ManyToManyField("self", through="cd_connection", symmetrical=False, related_name="slave_connections")
     # automap root for nagvis
     automap_root_nagvis = models.BooleanField(default=False)
+    # parent nagvis
+    nagvis_parent = models.ForeignKey("device", null=True, related_name="nagvis_childs")
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
@@ -457,6 +459,7 @@ class device(models.Model):
             boot_dev_driver="%s" % (self.bootnetdevice.driver if self.bootnetdevice else ""),
             greedy_mode="0" if not self.dhcp_mac else "1",
             bootserver="%d" % (self.bootserver_id or 0),
+            nagvis_parent="%d" % (self.nagvis_parent_id or 0),
             dhcp_write="1" if self.dhcp_write else "0",
             partition_table_id="%d" % (self.partition_table_id if self.partition_table_id else 0),
             act_partition_table_id="%d" % (self.act_partition_table_id if self.act_partition_table_id else 0),
