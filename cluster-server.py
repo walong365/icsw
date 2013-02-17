@@ -42,6 +42,7 @@ import mail_tools
 import config_tools
 import cluster_location
 import zmq
+import stat
 import initat.cluster_server
 from django.db.models import Q
 from django.db import connection
@@ -72,15 +73,29 @@ class backup_process(threading_tools.process_obj):
         self.log("starting backup")
         bu_dir = global_config["DATABASE_DUMP_DIR"]
         if not os.path.isdir(bu_dir):
-            self.log("creating bu_dir %s" % (global_config["DATABASE_DUMP_DIR"]))
-            os.mkdir(global_config["DATABASE_DUMP_DIR"])
+            self.log("creating bu_dir %s" % (bu_dir))
+            os.mkdir(bu_dir)
+        # delete old files
+        for entry in os.listdir(bu_dir):
+            if entry.endswith(".zip"):
+                f_name = os.path.join(bu_dir, entry)
+                diff_dt = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.stat(f_name)[stat.ST_CTIME])
+                if diff_dt.days > global_config["DATABASE_KEEP_DAYS"]:
+                    self.log("removing backup %s" % (f_name))
+                    os.unlink(f_name)
         bu_name = datetime.datetime.now().strftime("db_bu_%Y%m%d_%H:%M:%S")
-        self.log("storing backup in %s" % (os.path.join(global_config["DATABASE_DUMP_DIR"],
-                                                        bu_name)))
+        self.log("storing backup in %s" % (os.path.join(
+            bu_dir,
+            bu_name)))
         # set BASE_OBJECT 
         dumpdatafast.BASE_OBJECT = self
         buf_com = dumpdatafast.Command()
-        opts, args = OptionParser(option_list=buf_com.option_list).parse_args(["-d", global_config["DATABASE_DUMP_DIR"], "-b", "--one-file", bu_name])
+        opts, args = OptionParser(option_list=buf_com.option_list).parse_args([
+            "-d",
+            bu_dir,
+            "-b",
+            "--one-file",
+            bu_name])
         buf_com._handle(*args, **vars(opts))
         e_time = time.time()
         self.log("backup finished in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
