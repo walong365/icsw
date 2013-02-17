@@ -90,7 +90,7 @@ def get_relative_dt(dt_struct):
         return dt_struct.strftime("%a, %d. %b %Y %H:%M:%S")
     
 def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
-    if type(num) in [type([]), type(set())]:
+    if type(num) in [list, set]:
         r_num = len(num)
     else:
         r_num = num
@@ -119,7 +119,7 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
                        p_str)
 
 def get_size_str(in_s, long_version=False, divider=1024):
-    if type(in_s) == type(""):
+    if type(in_s) in [str, unicode]:
         len_in_s = len(in_s)
     else:
         len_in_s = in_s
@@ -134,7 +134,7 @@ def get_size_str(in_s, long_version=False, divider=1024):
 
 def get_diff_time_str(diff_secs):
     abs_diffs = abs(diff_secs)
-    is_int = type(abs_diffs) in [type(0), type(0L)]
+    is_int = type(abs_diffs) in [int, long]
     if abs_diffs < 0.1:
         diff_str = "%.2f mseconds" % (abs_diffs * 1000)
     else:
@@ -228,7 +228,7 @@ def get_logger(name, destination, **kwargs):
         # only initiate once
         act_logger.handler_strings = []
     act_logger.setLevel(kwargs.get("base_log_level", logging.DEBUG))
-    if type(destination) != type([]):
+    if type(destination) != list:
         destination = [destination]
     # hack to make destination unique with respect to pid
     destination = [(cur_pid, cur_dest) for cur_dest in destination]
@@ -305,7 +305,7 @@ try:
             self.log("<LCH>%s</LCH>" % (what))
         def log(self, level, what=LOG_LEVEL_OK, *args, **kwargs):
             self.__lock.acquire()
-            if type(level) == type(""):
+            if type(level) in [str, unicode]:
                 if self.__prefix:
                     level = "%s%s" % (self.__prefix, level)
                 logging.LoggerAdapter.log(self, what, level, *args, **kwargs)
@@ -554,15 +554,15 @@ class form_list(object):
     def set_raw_mode(self, raw_mode=False):
         self.raw_mode = raw_mode
     def add_line(self, l_p):
-        if type(l_p) in [type(0), type(0L)]:
+        if type(l_p) in [int, long]:
             l_p = str(l_p)
-        if type(l_p) == type("a"):
+        if type(l_p) in [str, unicode]:
             l_p = [l_p]
         self.lines.append(tuple(l_p))
     def set_column_separator(self, def_val=" "):
         self.col_separator = def_val
     def set_format_string(self, row_idx, r_t="s", left="-", pre_string="", post_string="", min_size=0):
-        if type(row_idx) == type(""):
+        if type(row_idx) in [str, unicode]:
             row_idx = dict([(v, k) for k, v in self.header_dict.iteritems()])[row_idx]
         if row_idx == -1:
             act_row_idx = self.act_row_idx + 1
@@ -571,7 +571,7 @@ class form_list(object):
         self.form_dict[act_row_idx] = (r_t, left, pre_string, post_string, 0)
         self.act_row_idx = act_row_idx
     def set_header_string(self, row_idx, header):
-        if type(header) == type([]):
+        if type(header) == list:
             for idx in range(len(header)):
                 self.header_dict[row_idx + idx] = header[idx]
         else:
@@ -657,11 +657,11 @@ class new_form_list(object):
             act_content = item["content"]
             if not row_idx in self.__format_dict:
                 self.__format_dict[row_idx] = {"left"      : True,
-                                               "format"    : {type("")          : "s",
-                                                              type(u"")         : "s",
+                                               "format"    : {str               : "s",
+                                                              unicode           : "s",
                                                               type(None)        : "s",
-                                                              type(0)           : "d",
-                                                              type(0L)          : "d",
+                                                              int               : "d",
+                                                              long              : "d",
                                                               datetime.date     : "s",
                                                               datetime.datetime : "s"}.get(type(act_content), "f"),
                                                "min_width" : 0}
@@ -798,7 +798,7 @@ def compress_num_list(ql, excl_list=[]):
             return "%d/%d" % (s_idx, e_idx)
         else:
             return "%d-%d" % (s_idx, e_idx)
-    if type(ql) == type([]):
+    if type(ql) == list:
         ql.sort()
     nc_a = []
     s_num = None
@@ -1173,7 +1173,7 @@ class syslog_helper_obj(object):
                         pre_str = "%s%s" % (pre_str, in_c)
         return s_list
     def is_string(self, in_str):
-        return type(in_str) == type("") and in_str[0] == in_str[-1] and in_str[0] in ["'", '"']
+        return type(in_str) == str and in_str[0] == in_str[-1] and in_str[0] in ["'", '"']
     def flatten_string(self, in_str):
         if self.is_string(in_str):
             return in_str[1:-1]
@@ -1256,7 +1256,7 @@ class syslog_ng_config(syslog_helper_obj):
         # parse stream
         s_list = self._parse_stream(self.__stream, self.__multi_commands.keys(), "{")
         for key, value in s_list:
-            if type(key) == type(()):
+            if type(key) == set:
                 key, name = key
             if key in self.__multi_commands.keys():
                 self.__multi_objects[key][name] = self.__multi_commands[key](value)

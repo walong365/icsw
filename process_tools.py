@@ -213,7 +213,7 @@ def submit_at_command(com, diff_time=0):
 def get_mem_info(pid=0, **kwargs):
     if not pid:
         pid = os.getpid()
-    if type(pid) != type([]):
+    if type(pid) not in [list, set]:
         pid = [pid]
     ps_list = []
     for cur_pid in pid:
@@ -408,12 +408,6 @@ class meta_server_info(object):
         return self.__file_name
     def get_heartbeat_file_name(self):
         return "%s.hb" % (self.__file_name)
-    @property
-    def file_init_time(self):
-        return self.__file_init_time
-    @file_init_time.setter
-    def file_init_time(self, fi_time):
-        self.__file_init_time = fi_time
     def get_name(self):
         return self.__name
     def get_last_pid_check_ok_time(self):
@@ -426,60 +420,56 @@ class meta_server_info(object):
         self.__last_heartbeat_check_ok = last_t or time.time()
     def set_meta_server_dir(self, msd):
         self.__meta_server_dir = msd
-    @property
-    def stop_command(self):
+    def file_init_time_get(self):
+        return self.__file_init_time
+    def file_init_time_set(self, fi_time):
+        self.__file_init_time = fi_time
+    file_init_time = property(file_init_time_get, file_init_time_set)
+    def stop_command_get(self):
         return self._stop_command
-    @stop_command.setter
-    def stop_command(self, stop_com):
+    def stop_command_set(self, stop_com):
         self._stop_command = stop_com
-    @property
-    def start_command(self):
+    stop_command = property(stop_command_get, stop_command_set)
+    def start_command_get(self):
         return self._start_command
-    @start_command.setter
-    def start_command(self, start_com):
+    def start_command_set(self, start_com):
         self._start_command = start_com
-    @property
-    def fuzzy_ceiling(self):
+    start_command = property(start_command_get, start_command_set)
+    def fuzzy_ceiling_get(self):
         return self._fuzzy_ceiling
-    @fuzzy_ceiling.setter
-    def fuzzy_ceiling(self, fc):
+    def fuzzy_ceiling_set(self, fc):
         self._fuzzy_ceiling = int(fc)
-    @property
-    def fuzzy_floor(self):
+    fuzzy_ceiling = property(fuzzy_ceiling_get, fuzzy_ceiling_set)
+    def fuzzy_floor_get(self):
         return self._fuzzy_floor
-    @fuzzy_floor.setter
-    def fuzzy_floor(self, ff):
+    def fuzzy_floor_set(self, ff):
         self._fuzzy_floor = int(ff)
-    @property
-    def exe_name(self):
+    fuzzy_floor = property(fuzzy_floor_get, fuzzy_floor_set)
+    def exe_name_get(self):
         return self.__exe_name
-    @exe_name.setter
-    def exe_name(self, en):
+    def exe_name_set(self, en):
         self.__exe_name = en
-    @property
-    def need_any_pids(self):
+    exe_name = property(exe_name_get, exe_name_set)
+    def need_any_pids_get(self):
         return self.__need_any_pids
-    @need_any_pids.setter
-    def need_any_pids(self, en):
+    def need_any_pids_set(self, en):
         self.__need_any_pids = en
-    @property
-    def kill_pids(self):
+    need_any_pids = property(need_any_pids_get, need_any_pids_set)
+    def kill_pids_get(self):
         return self.__kill_pids
-    @kill_pids.setter
-    def kill_pids(self, kp=1):
+    def kill_pids_set(self, kp=1):
         self.__kill_pids = kp
-    @property
-    def check_memory(self):
+    kill_pids = property(kill_pids_get, kill_pids_set)
+    def check_memory_get(self):
         return self.__check_memory
-    @check_memory.setter
-    def check_memory(self, cm=1):
+    def check_memory_set(self, cm=1):
         self.__check_memory = cm
-    @property
-    def heartbeat_timeout(self):
+    check_memory = property(check_memory_get, check_memory_set)
+    def heartbeat_timeout_get(self):
         return self.__heartbeat_timeout
-    @heartbeat_timeout.setter
-    def heartbeat_timeout(self, hb_to=0):
+    def heartbeat_timeout_set(self, hb_to=0):
         self.__heartbeat_timeout = hb_to
+    heartbeat_timeout = property(heartbeat_timeout_get, heartbeat_timeout_set)
     def add_actual_pid(self, act_pid=None, mult=1):
         if not act_pid:
             act_pid = os.getpid()
@@ -506,9 +496,10 @@ class meta_server_info(object):
     def get_info(self):
         pid_dict = dict([(pid, self.__pids.count(pid)) for pid in self.__pids])
         all_pids = sorted(pid_dict.keys())
-        return "%s (%s): %s" % (logging_tools.get_plural("different pid", len(all_pids)),
-                                logging_tools.get_plural("total pid", len(self.__pids)),
-                                all_pids and ", ".join(["%d%s" % (pid, pid_dict[pid] and " (x %d)" % (pid_dict[pid]) or "") for pid in all_pids]) or "---")
+        return "%s (%s): %s" % (
+            logging_tools.get_plural("different pid", len(all_pids)),
+            logging_tools.get_plural("total pid", len(self.__pids)),
+            all_pids and ", ".join(["%d%s" % (pid, pid_dict[pid] and " (x %d)" % (pid_dict[pid]) or "") for pid in all_pids]) or "---")
     def heartbeat(self):
         try:
             file(self.get_heartbeat_file_name(), "wb").write("%d" % (os.getpid()))
@@ -554,16 +545,18 @@ class meta_server_info(object):
         try:
             os.unlink(self.__file_name)
         except:
-            logging_tools.my_syslog("error removing file %s (meta_server_info for %s): %s" % (self.__file_name,
-                                                                                              self.__name,
-                                                                                              get_except_info()))
+            logging_tools.my_syslog("error removing file %s (meta_server_info for %s): %s" % (
+                self.__file_name,
+                self.__name,
+                get_except_info()))
         if os.path.isfile(self.get_heartbeat_file_name()):
             try:
                 os.unlink(self.get_heartbeat_file_name())
             except:
-                logging_tools.my_syslog("error removing heartbeat file %s (meta_server_info for %s): %s" % (self.get_heartbeat_file_name(),
-                                                                                                            self.__name,
-                                                                                                            get_except_info()))
+                logging_tools.my_syslog("error removing heartbeat file %s (meta_server_info for %s): %s" % (
+                    self.get_heartbeat_file_name(),
+                    self.__name,
+                    get_except_info()))
     def check_block(self, act_pids=[], act_dict={}):
         if not act_pids:
             act_pids = get_process_id_list(True, True)
@@ -609,21 +602,25 @@ class meta_server_info(object):
         for pid in self.__pids_expected:
             p_w, p_f = (self.__pids_expected[pid], self.__pids_found.get(pid, 0))
             if p_w == p_f:
-                pid_f.append("pid %d: ok (%d)" % (pid,
-                                                  p_w))
+                pid_f.append("pid %d: ok (%d)" % (
+                    pid,
+                    p_w))
             elif p_f < p_w:
-                pid_f.append("pid %d: %d of %d missing" % (pid,
-                                                           p_w - p_f,
-                                                           p_w))
+                pid_f.append("pid %d: %d of %d missing" % (
+                    pid,
+                    p_w - p_f,
+                    p_w))
                 missing += p_w - p_f
             else:
-                pid_f.append("pid %d: %d too mouch (should be %d)" % (pid,
-                                                                      p_f - p_w,
-                                                                      p_w))
+                pid_f.append("pid %d: %d too mouch (should be %d)" % (
+                    pid,
+                    p_f - p_w,
+                    p_w))
                 too_much += p_f - p_w
-        return "%s missing, %s too much: %s" % (logging_tools.get_plural("process", missing),
-                                                logging_tools.get_plural("process", too_much),
-                                                ", ".join(pid_f))
+        return "%s missing, %s too much: %s" % (
+            logging_tools.get_plural("process", missing),
+            logging_tools.get_plural("process", too_much),
+            ", ".join(pid_f))
     def kill_all_found_pids(self):
         all_pids = sorted(self.__pids_found.keys())
         if all_pids:
@@ -635,12 +632,15 @@ class meta_server_info(object):
                     error_pids += [pid]
                 else:
                     ok_pids += [pid]
-            return "%s to kill (%s); ok: %s, error: %s" % (logging_tools.get_plural("pid", len(all_pids)),
-                                                           ",".join(["%d" % (cur_pid) for cur_pid in all_pids]),
-                                                           ok_pids and "%s (%s)" % (logging_tools.get_plural("pid", len(ok_pids)),
-                                                                                    ", ".join(["%d" % (cur_pid) for cur_pid in ok_pids])) or "---",
-                                                           error_pids and "%s (%s)" % (logging_tools.get_plural("pid", len(error_pids)),
-                                                                                       ", ".join(["%d" % (cur_pid) for cur_pid in error_pids])) or "---")
+            return "%s to kill (%s); ok: %s, error: %s" % (
+                logging_tools.get_plural("pid", len(all_pids)),
+                ",".join(["%d" % (cur_pid) for cur_pid in all_pids]),
+                ok_pids and "%s (%s)" % (
+                    logging_tools.get_plural("pid", len(ok_pids)),
+                    ", ".join(["%d" % (cur_pid) for cur_pid in ok_pids])) or "---",
+                error_pids and "%s (%s)" % (
+                    logging_tools.get_plural("pid", len(error_pids)),
+                    ", ".join(["%d" % (cur_pid) for cur_pid in error_pids])) or "---")
         else:
             return "no pids to kill"
          
@@ -872,7 +872,7 @@ def set_handles(pfix, error_only=False, **kwargs):
     zmq_context = kwargs.get("zmq_context", None)
     ext_return = kwargs.get("ext_return", False)
     pf_dict = {}
-    if type(pfix) == type(""):
+    if type(pfix) in [str, unicode]:
         pf_dict = {"out" : (1, "%s.out" % (pfix)),
                    "err" : (1, "%s.err" % (pfix))}
     else:
@@ -971,7 +971,7 @@ def renice(nice=16):
 
 def resolve_user(user):
     try:
-        if type(user) == type(0):
+        if type(user) in [int, long]:
             uid_stuff = pwd.getpwuid(user)
         else:
             uid_stuff = pwd.getpwnam(user)
@@ -981,7 +981,7 @@ def resolve_user(user):
     
 def change_user_group(user, group, groups=[], **kwargs):
     try:
-        if type(user) == type(0):
+        if type(user) in [int, long]:
             uid_stuff = pwd.getpwuid(user)
         else:
             uid_stuff = pwd.getpwnam(user)
@@ -990,7 +990,7 @@ def change_user_group(user, group, groups=[], **kwargs):
         new_uid, new_uid_name = (0, "root")
         logging_tools.my_syslog("Cannot find user '%s', using %s (%d)" % (user, new_uid_name, new_uid))
     try:
-        if type(group) == type(0):
+        if type(group) in [int, long]:
             gid_stuff = grp.getgrgid(group)
         else:
             gid_stuff = grp.getgrnam(group)
@@ -1053,7 +1053,7 @@ def fix_sysconfig_rights():
     
 def change_user_group_path(path, user, group):
     try:
-        if type(user) == type(0):
+        if type(user) in [int, long]:
             uid_stuff = pwd.getpwuid(user)
         else:
             uid_stuff = pwd.getpwnam(user)
@@ -1062,7 +1062,7 @@ def change_user_group_path(path, user, group):
         new_uid, new_uid_name = (0, "root")
         logging_tools.my_syslog("Cannot find user '%s', using %s (%d)" % (user, new_uid_name, new_uid))
     try:
-        if type(group) == type(0):
+        if type(group) in [int, long]:
             gid_stuff = grp.getgrgid(group)
         else:
             gid_stuff = grp.getgrnam(group)
@@ -1284,7 +1284,7 @@ def kill_running_processes(p_name=None, **kwargs):
     my_pid = os.getpid()
     exclude_pids = kwargs.get("exclude", [])
     kill_sig = kwargs.get("kill_signal", 9)
-    if type(exclude_pids) != type([]):
+    if type(exclude_pids) != list:
         exclude_pids = [exclude_pids]
     if p_name is None:
         p_name = file("/proc/%d/status" % (my_pid), "r").readline().strip().split()[1]
@@ -1332,7 +1332,7 @@ def fd_change((uid, gid), d_name, files):
 
 def fix_directories(user, group, f_list):
     try:
-        if type(user) != type(""):
+        if type(user) != str:
             named_uid = user
         else:
             named_uid = pwd.getpwnam(user)[2]
@@ -1340,21 +1340,21 @@ def fix_directories(user, group, f_list):
         named_uid = 0
         logging_tools.my_syslog("Cannot find user '%s', using root (0)" % (user))
     try:
-        if type(group) != type(""):
+        if type(group) != str:
             named_gid = group
         else:
             named_gid = grp.getgrnam(group)[2]
     except KeyError:
         named_gid = 0
         logging_tools.my_syslog("Cannot find group '%s', using root (0)" % (group))
-    if type(f_list) == type(""):
+    if type(f_list) in [str, unicode]:
         f_list = [f_list]
     for act_dir in f_list:
-        if type(act_dir) == type({}):
+        if type(act_dir) == dict:
             dir_name = act_dir["name"]
             dir_mode = act_dir.get("dir_mode", 0755)
             walk_dir = act_dir.get("walk_dir", True)
-        elif type(act_dir) == type(()):
+        elif type(act_dir) == set:
             dir_name, dir_mode = act_dir
             walk_dir = True
         else:
