@@ -2121,21 +2121,31 @@ class build_process(threading_tools.process_obj):
         base_names = []
         if os.path.isdir(logos_dir):
             logo_files = os.listdir(logos_dir)
-            for log_line in [x.split(".")[0] for x in logo_files]:
+            for log_line in [entry.split(".")[0] for entry in logo_files]:
                 if log_line not in base_names:
                     if "%s.png" % (log_line) in logo_files and "%s.gd2" % (log_line) in logo_files:
                         base_names.append(log_line)
         if base_names:
-            stat, out = commands.getstatusoutput("file %s" % (" ".join(["%s/%s.png" % (logos_dir, x) for x in base_names])))
+            stat, out = commands.getstatusoutput("file %s" % (" ".join([os.path.join(logos_dir, "%s.png" % (entry)) for entry in base_names])))
             if stat:
                 self.log("error getting filetype of %s" % (logging_tools.get_plural("logo", len(base_names))), logging_tools.LOG_LEVEL_ERROR)
             else:
                 base_names = []
-                for logo_name, logo_data in [(os.path.basename(y[0].strip()), [z.strip() for z in y[1].split(",") if z.strip()]) for y in [x.strip().split(":", 1) for x in out.split("\n")] if len(y) == 2]:
+                for logo_name, logo_data in [
+                    (os.path.basename(y[0].strip()), [z.strip() for z in y[1].split(",") if z.strip()]) for y in [
+                        line.strip().split(":", 1) for line in out.split("\n")] if len(y) == 2]:
                     if len(logo_data) == 4:
-                        width, height = [int(x.strip()) for x in logo_data[1].split("x")]
+                        width, height = [int(value.strip()) for value in logo_data[1].split("x")]
                         if min_width <= width and width <= max_width and min_height <= height and height <= max_height:
                             base_names.append(logo_name[:-4])
+                        else:
+                            self.log("width or height (%d x %d) not in range ([%d - %d] x [%d - %d])" % (
+                                width,
+                                height,
+                                min_width,
+                                max_width,
+                                min_height,
+                                max_height))
         all_images_present = set([eh.name for eh in all_image_stuff.values()])
         all_images_present_lower = set([name.lower() for name in all_images_present])
         base_names_lower = set([name.lower() for name in base_names])
