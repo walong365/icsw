@@ -61,7 +61,7 @@ class config_table
                 )
             ).append(
                 $("<th>").attr({
-                    "colspan" : "9"
+                    "colspan" : "10"
                 }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")))
             c_table.append(new_tr)
             # at first append metadevice
@@ -75,7 +75,7 @@ class config_table
             })
             new_tr.append(
                 $("<th>").attr({
-                    "colspan" : "10"
+                    "colspan" : "11"
                 }).addClass("ui-widget ui-widget-header").text("all devices"))
             c_table.append(new_tr)
             c_table.append(@draw_device(undefined))
@@ -113,7 +113,8 @@ class config_table
                     add_null_entry : "not set",
                     css            : {width : "100px"},
                     change_cb      : if d_el then undefined else @change_monitor_template,
-                    master_xml     : @devices
+                    master_xml     : @devices,
+                    title          : "device template"
                 })
             )
         ).append(
@@ -122,6 +123,7 @@ class config_table
                     boolean    : true,
                     change_cb  : if d_el then undefined else @change_monitor_checks,
                     master_xml : @devices,
+                    title      : "checks enabled",
                 })
             )
         ).append(
@@ -131,7 +133,8 @@ class config_table
                     add_null_entry : "not set",
                     css            : {width : "250px"},
                     change_cb      : if d_el then undefined else @change_mon_ext_host,
-                    master_xml     : @devices
+                    master_xml     : @devices,
+                    title          : "image for map",
                 })
             )
         ).append(
@@ -139,7 +142,8 @@ class config_table
                 create_input_el(d_el, "enable_perfdata", line_prefix, {
                     boolean    : true,
                     change_cb  : if d_el then undefined else @change_enable_perfdata,
-                    master_xml : @devices
+                    master_xml : @devices,
+                    title      : "perfdata monitoring",
                 })
             )
         ).append(
@@ -147,7 +151,18 @@ class config_table
                 create_input_el(d_el, "automap_root_nagvis", line_prefix, {
                     boolean    : true,
                     change_cb  : if d_el then undefined else @change_automap_root_nagvis,
-                    master_xml : @devices
+                    master_xml : @devices,
+                    title      : "automap root (for NagVis)",
+                })
+            )
+            $("<td>").append(
+                create_input_el(d_el, "nagvis_parent", line_prefix, {
+                    select_source  : @devices.find("device[automap_root_nagvis='1']"),
+                    add_null_entry : "not set",
+                    css            : {width : "150px"},
+                    change_cb      : if d_el then undefined else @change_automap_parent,
+                    master_xml     : @devices,
+                    title          : "parent nagvis root",
                 })
             )
         ).append(
@@ -157,7 +172,8 @@ class config_table
                     add_null_entry : "default (==master)",
                     css            : {width : "150px"},
                     change_cb      : if d_el then undefined else @change_monitor_server,
-                    master_xml     : @devices
+                    master_xml     : @devices,
+                    title          : "monitor server",
                 })
             )
         )
@@ -169,7 +185,8 @@ class config_table
                         manytomany            : true,
                         css                   : {width : "150px"},
                         ignore_missing_source : true,
-                        master_xml            : @devices
+                        master_xml            : @devices,
+                        title                 : "host cluster",
                     })
                 )
             ).append(
@@ -179,7 +196,8 @@ class config_table
                         manytomany            : true,
                         css                   : {width : "150px"},
                         ignore_missing_source : true,
-                        master_xml            : @devices
+                        master_xml            : @devices,
+                        title                 : "service cluster",
                     })
                 )
             )
@@ -230,6 +248,9 @@ class config_table
     change_automap_root_nagvis : (event) =>
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
             $(sel_el).parents("tr:first").find("input[id$='__automap_root_nagvis']").trigger("click")
+    change_automap_parent : (event) =>
+        @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
+            $(sel_el).parents("tr:first").find("input[id$='__nagvis_parent']").trigger("click")
 
 add_dcon_handlers = ->
     conf_t = new config_table($("div#mon_tables"))

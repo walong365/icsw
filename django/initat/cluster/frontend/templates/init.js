@@ -720,6 +720,9 @@ function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
             };
         };
     };
+    if (kwargs["title"]) {
+        new_el.attr("title", kwargs["title"]);
+    };
     if (xml_el !== undefined && (kwargs.bind === undefined || kwargs.bind)) {
         if (kwargs.change_cb) {
             if (kwargs.button) {
