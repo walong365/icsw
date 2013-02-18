@@ -777,6 +777,25 @@ class tz_factory(object):
         """
         reactor.addSystemEventTrigger('during', 'shutdown', self.shutdown)
         
+class _timer_obj(object):
+    def __init__(self, step, next_time, cb_func, **kwargs):
+        # step value
+        self.step = step
+        # next wakeup time
+        self.next_time = next_time
+        # callback func
+        self.cb_func = cb_func
+        # onehost
+        self.oneshot = kwargs.get("oneshot", False)
+        # data
+        self.data = kwargs.get("data", None)
+    def __call__(self):
+        self.next_time += self.step
+        if self.data is None:
+            self.cb_func()
+        else:
+            self.cb_func(self.data)
+    
 class process_obj(multiprocessing.Process):
     def __init__(self, name, **kwargs):
         multiprocessing.Process.__init__(self, target=self._code, name=name)
@@ -842,43 +861,36 @@ class process_obj(multiprocessing.Process):
         s_time = time.time()
         if not kwargs.get("instant", False):
             s_time = s_time + timeout
-        self.__timer_list.append((timeout, s_time, cb_func, kwargs.get("oneshot", False)))
-        self.__next_timeout = min([last_to for cur_to, last_to, cb_func, is_oneshot in self.__timer_list])
+        self.__timer_list.append(_timer_obj(timeout, s_time, cb_func, **kwargs))
+        #self.__timer_list.append((timeout, s_time, cb_func, kwargs.get("oneshot", False), kwargs.get("data", None)))
+        self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
         if not self.loop_timer:
             self.loop_timer = 500
             self.log("set loop_timer to %d" % (self.loop_timer))
     def change_timer(self, ct_cb_func, timeout):
-        new_tl = []
-        for cur_to, t_time, cb_func, is_oneshot in self.__timer_list:
-            if cb_func == ct_cb_func:
-                cur_to = timeout
-                self.set_loop_timer(min(self.loop_timer, cur_to))
-                t_time = time.time() + cur_to / 1000
-            new_tl.append((cur_to / 1000, t_time, cb_func, is_oneshot))
-        self.__timer_list = new_tl
-        self.__next_timeout = min([last_to for cur_to, last_to, cb_func, is_oneshot in self.__timer_list])
+        # timeout is here in milliseconds, just like the loop_timer
+        for cur_to in self.__timer_list:
+            if cur_to.cb_func == ct_cb_func:
+                cur_to.step = timeout / 1000
+                self.set_loop_timer(min(self.loop_timer, cur_to.step * 1000))
+                cur_to.next_time = time.time() + cur_to.step
+        self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
     def unregister_timer(self, ut_cb_func):
-        new_tl = []
-        for cur_to, t_time, cb_func, is_oneshot in self.__timer_list:
-            if cb_func != ut_cb_func:
-                new_tl.append((cur_to, t_time, cb_func, is_oneshot))
-        self.__timer_list = new_tl
+        self.__timer_list = [cur_to for cur_to in self.__timer_list if cur_to.cb_func != ut_cb_func]
     def _handle_timer(self, cur_time):
-        new_tl, t_funcs = ([], [])
-        for cur_to, t_time, cb_func, is_oneshot in self.__timer_list:
-            if t_time <= cur_time:
-                t_funcs.append(cb_func)
-                if not is_oneshot:
-                    new_tl.append((cur_to, t_time + cur_to, cb_func, is_oneshot))
+        new_tl = []
+        for cur_to in self.__timer_list:
+            if cur_to.next_time <= cur_time:
+                cur_to()
+                if not cur_to.oneshot:
+                    new_tl.append(cur_to)
             else:
-                new_tl.append((cur_to, t_time, cb_func, is_oneshot))
+                new_tl.append(cur_to)
         self.__timer_list = new_tl
         if self.__timer_list:
-            self.__next_timeout = min([last_to for cur_to, last_to, cb_func, is_oneshot in self.__timer_list])
+            self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
         else:
             self.__next_timeout = None
-        for t_func in t_funcs:
-            t_func()
     def set_loop_timer(self, lt):
         # loop timer in millisecons
         self.loop_timer = lt
@@ -1179,29 +1191,24 @@ class process_pool(object):
         s_time = time.time()
         if not kwargs.get("instant", False):
             s_time = s_time + timeout
-        self.__timer_list.append((timeout, s_time, cb_func))
-        self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+        self.__timer_list.append(_timer_obj(timeout, s_time, cb_func, **kwargs))
+        self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
     def unregister_timer(self, ut_cb_func):
-        new_tl = []
-        for cur_to, t_time, cb_func in self.__timer_list:
-            if cb_func != ut_cb_func:
-                new_tl.append((cur_to, t_time, cb_func))
-        self.__timer_list = new_tl
+        self.__timer_list = [cur_to for cur_to in self.__timer_list if cur_to.cb_func != ut_cb_func]
     def _handle_timer(self, cur_time):
-        new_tl, t_funcs = ([], [])
-        for cur_to, t_time, cb_func in self.__timer_list:
-            if t_time <= cur_time:
-                t_funcs.append(cb_func)
-                new_tl.append((cur_to, t_time + cur_to, cb_func))
+        new_tl = []
+        for cur_to in self.__timer_list:
+            if cur_to.next_time <= cur_time:
+                cur_to()
+                if not cur_to.oneshot:
+                    new_tl.append(cur_to)
             else:
-                new_tl.append((cur_to, t_time, cb_func))
+                new_tl.append(cur_to)
         self.__timer_list = new_tl
         if self.__timer_list:
-            self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+            self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
         else:
             self.__next_timeout = None
-        for t_func in t_funcs:
-            t_func()
     def add_zmq_socket(self, q_name):
         if q_name in self.__sockets:
             zmq_socket = self.__sockets[q_name]
