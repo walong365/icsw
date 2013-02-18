@@ -26,8 +26,12 @@ from email.mime.text import MIMEText
 from lxml import etree
 from lxml.builder import E
 
-from openpyxl.writer.excel import save_virtual_workbook
-from openpyxl.workbook import Workbook
+# to reduce dependencies (cluster-server for example)
+try:
+    from openpyxl.writer.excel import save_virtual_workbook
+    from openpyxl.workbook import Workbook
+except:
+    openpyxl = None
 
 import django
 from django.conf import settings
