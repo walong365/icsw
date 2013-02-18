@@ -1349,6 +1349,9 @@ class relay_process(threading_tools.process_pool):
     def loop_end(self):
         self._close_ipc_sockets()
         self._close_io_sockets()
+        from host_monitoring import modules
+        for cur_mod in modules.module_list:
+            cur_mod.close_module()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
@@ -1812,6 +1815,9 @@ class server_process(threading_tools.process_pool):
         for conf in conf_info:
             self.log("Config : %s" % (conf))
     def loop_end(self):
+        from host_monitoring import modules
+        for cur_mod in modules.module_list:
+            cur_mod.close_module()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
@@ -1826,7 +1832,7 @@ class server_process(threading_tools.process_pool):
         self.commands = modules.command_dict
         _init_ok = True
         for call_name, add_self in [("register_server", True),
-                                    ("init_module", False)]:
+                                    ("init_module"    , False)]:
             for cur_mod in modules.module_list:
                 if global_config["VERBOSE"]:
                     self.log("calling %s for module '%s'" % (call_name,

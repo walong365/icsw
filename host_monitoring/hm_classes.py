@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2011,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -29,7 +29,6 @@ import argparse
 import subprocess
 import server_command
 import zmq
-import types
 
 def net_to_sys(in_val):
     try:
@@ -165,6 +164,8 @@ class hm_module(object):
     def register_server(self, proc_pool):
         self.process_pool = proc_pool
     def init_module(self):
+        pass
+    def close_module(self):
         pass
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.process_pool.log("[%s] %s" % (self.name, what), log_level)
@@ -346,11 +347,6 @@ class mvect_entry(object):
             except:
                 # cast to None
                 self.value = None
-##        if self.__monitor:
-##            self.min_value = min(self.min_value, self.value)
-##            self.max_value = max(self.max_value, self.value)
-##            self.total_value += self.value
-##            self.num += 1
     def update_default(self):
         # init value with default value for entries without valid_until settings
         if not self.valid_until:
@@ -389,29 +385,14 @@ class mvect_entry(object):
         else:
             val_str = "%-14s" % (str(val))
         return act_pf, val_str
-##    def get_monitor_form_entry(self):
-##        act_line = []
-##        sub_keys = (self.name.split(".") + ["", "", ""])[0:4]
-##        for key_idx, sub_key in zip(xrange(4), sub_keys):
-##            act_line.append(logging_tools.form_entry("%s%s" % ("" if (key_idx == 0 or sub_key == "") else ".", sub_key), header="key%d" % (key_idx)))
-##        act_line.extend([logging_tools.form_entry(self.num, header="count"),
-##                         logging_tools.form_entry_right(self._get_val_str(self.value)[0], header="value"),
-##                         logging_tools.form_entry_right(self._get_val_str(self.value)[1], header=" "),
-##                         logging_tools.form_entry_right(self._get_val_str(self.min_value)[0], header="min_value"),
-##                         logging_tools.form_entry_right(self._get_val_str(self.min_value)[1], header=" "),
-##                         logging_tools.form_entry_right(self._get_val_str(self.max_value)[0], header="max_value"),
-##                         logging_tools.form_entry_right(self._get_val_str(self.max_value)[1], header=" "),
-##                         logging_tools.form_entry_right(self._get_val_str(self.total_value / self.num)[0], header="mean_value"),
-##                         logging_tools.form_entry_right(self._get_val_str(self.total_value / self.num)[1], header=" "),
-##                         logging_tools.form_entry(self.unit, header="unit"),
-##                         logging_tools.form_entry(self._build_info_string(), header="info")])
-##        return act_line
     def _build_info_string(self):
         ret_str = self.info
         ref_p = self.name.split(".")
         for idx in xrange(len(ref_p)):
             ret_str = ret_str.replace("$%d" % (idx + 1), ref_p[idx])
         return ret_str
+    def build_simple_xml(self, builder):
+        return builder("m", n=self.name, v=str(self.value))
     def build_xml(self, builder):
         kwargs = {"name"   : self.name,
                   "info"   : self.info,

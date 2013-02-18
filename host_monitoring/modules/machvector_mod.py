@@ -1,6 +1,6 @@
 #!/usr/bin/python-init
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,31 +21,23 @@
 #
 """ machine vector stuff """
 
-import Queue
 import sys
-import threading
 import os
 import os.path
 import commands
-import stat
 import time
 import shutil
 from host_monitoring import limits
-import configfile
 import logging_tools
 import process_tools
-import threading_tools
-import net_tools
 from host_monitoring import hm_classes
 from lxml import etree
+from lxml.builder import E
 import server_command
 import copy
-try:
-    import bz2
-except:
-    bz2 = None
+import zmq
 
-MACHVECTOR_NAME = "machvector"
+MACHVECTOR_NAME = "machvector.xml"
 ALERT_NAME = "alert"
 COLLECTOR_PORT = 8002
                             
@@ -61,6 +53,9 @@ class _general(hm_classes.hm_module):
         if hasattr(self.process_pool, "register_vector_receiver"):
             self.process_pool.register_timer(self._update_machine_vector, 10, instant=True)
             self._init_machine_vector()
+    def close_module(self):
+        if hasattr(self.process_pool, "register_vector_receiver"):
+            self.machine_vector.close()
     def _init_machine_vector(self):
         self.machine_vector = machine_vector(self)
     def init_machine_vector(self, mvect):
@@ -68,354 +63,26 @@ class _general(hm_classes.hm_module):
     def _update_machine_vector(self):
         self.machine_vector.update()
 
-class my_modclass(hm_classes.hm_fileinfo):
-    def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "machvector",
-                                        "provides the framework for the machine_vector",
-                                        **args)
-        self.priority = -255
-        self.has_own_thread = True
-    def init(self, mode, logger, basedir_name, **args):
-        if mode == "i":
-            self.mvect = mach_vect(logger, module_dict=args.get("mc_dict", {}), module=self)
-    def process_client_args(self, opts, hmb):
-        ok, why = (1, "")
-        my_lim = limits.limits()
-        for opt, arg in opts:
-            #print opt, arg
-            if hmb.name in ["get_mvector_raw"]:
-                if opt in ("-r", "--raw"):
-                    my_lim.set_add_flags("R")
-        return ok, why, [my_lim]
-    def get_machvector_file_name(self):
-        return "%s/%s" % (self.basedir_name, MACHVECTOR_NAME)
-    def get_alert_file_name(self):
-        return "%s/%s" % (self.basedir_name, ALERT_NAME)
-    def process_server_args(self, glob_config, logger):
-        self.basedir_name = glob_config["BASEDIR_NAME"]
-        # check for config file in /etc/sysconfig/host-monitoring.d/machvector_mod
-        full_name = self.get_machvector_file_name()
-        if not os.path.isfile(full_name):
-            try:
-                file(full_name, "w").write("RRD_SERVER*=udp:localhost:8002\n")
-            except:
-                pass
-        collector_host_dict, send_interval = ({}, 1)
-        logger.info("  setting send-interval to %d iterations (conf)" % (send_interval))
-        stat, c_dict = configfile.readconfig(full_name, 1)
-        if stat:
-            rrd_keys = [x for x in c_dict.keys() if x.startswith("RRD_SERVER")]
-            collector_host_dict = {}
-            for rrd_key in rrd_keys:
-                # no more bz2 compression
-                use_bz2 = False
-                collector_hosts = c_dict[rrd_key].split(",")
-                for col_host in collector_hosts:
-                    act_dict = {"mode"    : "tcp",
-                                "host"    : None,
-                                "port"    : COLLECTOR_PORT,
-                                "use_bz2" : use_bz2}
-                    try:
-                        chp = col_host.split(":")
-                        act_part = chp.pop(0)
-                        if act_part in ["tcp", "udp"]:
-                            act_dict["mode"] = act_part
-                            act_part = chp.pop(0)
-                        act_dict["host"] = act_part
-                        if chp:
-                            act_dict["port"] = int(chp.pop(0))
-                        if len(chp):
-                            logger.error("*** ParseError: something left in %s after parsing" % (col_host))
-                            act_dict = None
-                    except ValueError:
-                        logger.error("*** ValueError() while parsing %s" % (col_host))
-                    else:
-                        if act_dict:
-                            collector_host_dict["%s%s%d" % (act_dict["host"], act_dict["mode"], act_dict["port"])] = act_dict
-            for key, stuff in collector_host_dict.iteritems():
-                logger.info("   connecting to host %20s via %4s, port %5d" % (stuff["host"],
-                                                                              stuff["mode"],
-                                                                              stuff["port"]))
-            if c_dict.has_key("SEND_INTERVAL"):
-                send_interval = int(c_dict["SEND_INTERVAL"])
-                logger.info("  setting max. send-interval to %d iterations (conf)" % (send_interval))
-        if not collector_host_dict:
-            logger.info("  sending of MachVectors disabled (empty collector_host_dict)")
-        self.send_interval = send_interval
-        self.collector_host_dict = collector_host_dict
-        ok, why = (1, "")
-        return ok, why
-    def start_thread(self, logger):
-        self.__tc_lock = threading.Lock()
-        self.__loc_queue = Queue.Queue(20)
-        new_t = my_subthread(self, logger, self.__loc_queue, self.mvect)
-        self.__t_queue = new_t.get_thread_queue()
-        return new_t
-    def send_thread(self, what):
-        self.__tc_lock.acquire()
-        self.__t_queue.put(what)
-        res = self.__loc_queue.get()
-        self.__tc_lock.release()
-        return res
-
-class simple_con(net_tools.buffer_object):
-    def __init__(self, mode, host, port, s_str, d_queue):
-        self.__mode = mode
-        self.__host = host
-        self.__port = port
-        self.__send_str = s_str
-        self.__d_queue = d_queue
-        net_tools.buffer_object.__init__(self)
-    def setup_done(self):
-        if self.__mode == "udp":
-            self.add_to_out_buffer(self.__send_str)
-        else:
-            self.add_to_out_buffer(net_tools.add_proto_1_header(self.__send_str, True))
-    def out_buffer_sent(self, send_len):
-        if send_len == len(self.out_buffer):
-            self.out_buffer = ""
-            self.socket.send_done()
-            if self.__mode == "udp":
-                self.__d_queue.put(("send_ok", (self.__host, self.__port, self.__mode, "udp_send")))
-                self.delete()
-        else:
-            self.out_buffer = self.out_buffer[send_len:]
-    def add_to_in_buffer(self, what):
-        self.__d_queue.put(("send_ok", (self.__host, self.__port, self.__mode, "got %s" % (what))))
-        self.delete()
-    def report_problem(self, flag, what):
-        self.__d_queue.put(("send_error", (self.__host, self.__port, self.__mode, "%s: %s" % (net_tools.net_flag_to_str(flag),
-                                                                                              what))))
-        self.delete()
-
-class my_subthread(threading_tools.thread_obj):
-    def __init__(self, file_info, logger, loc_queue, mvect):
-        self.__logger = logger
-        self.__file_info = file_info
-        self.__loc_queue = loc_queue
-        threading_tools.thread_obj.__init__(self, "machvector", queue_size=100)
-        self.__mvector = mvect
-        self.register_func("register_call_queue", self._register_call_queue)
-        self.register_func("update", self._update)
-        self.register_func("get_mvector", self._get_mvector)
-        self.register_func("get_mvector_raw", self._get_mvector_raw)
-        self.register_func("get_mvector_stats", self._get_mvector_stats)
-        self.register_func("start_monitor", self._start_monitor)
-        self.register_func("stop_monitor", self._stop_monitor)
-        self.register_func("monitor_info", self._monitor_info)
-        self.register_func("set_net_server", self._set_net_server)
-        self.register_func("send_error", self._send_error)
-        self.register_func("send_ok", self._send_ok)
-        # clear net_server
-        self.__net_server = None
-        self.__num_con, self.__num_ok, self.__num_fail = ({}, {}, {})
-        for h_name in self.__file_info.collector_host_dict.keys():
-            self.__num_con[h_name]        = 0
-            self.__num_ok[h_name]         = 0
-            self.__num_fail[h_name]       = 0
-    def thread_running(self):
-        self.send_pool_message(("new_pid", self.pid))
-        # update timestamps and stuff
-        self.__first_update, self.__last_update, self.__num_update = (time.time(), None, 0)
-        # init external machvector source dir
-        self.__esd = "/tmp/.machvect_es"
-        if not os.path.isdir(self.__esd):
-            os.mkdir(self.__esd)
-            self.log("external machvector_source_dir '%s' created" % (self.__esd))
-        try:
-            os.chmod(self.__esd, 0777)
-        except:
-            self.log("cannot chmod() %s to 0777" % (self.__esd),
-                     logging_tools.LOG_LEVEL_ERROR)
-        # monitor objects
-        self.__mon_dict = {}
-        # fetch net_server_object
-        self.send_pool_message(("get_net_server", self.get_thread_queue()))
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__logger.log(lev, what)
-    def _set_net_server(self, ns):
-        self.log("setting net_server")
-        self.__net_server = ns
-    def _register_call_queue(self, dest_q):
-        #dest_q.put(("register_queue", ("flush_mv", self.get_thread_queue())))
-        pass
-    def _send_error(self, (s_host, s_port, mode, what)):
-        self.log("send_error (%s, %s %d): %s" % (s_host, mode, s_port, what), logging_tools.LOG_LEVEL_ERROR)
-        match = False
-        for h_name, h_stuff in self.__file_info.collector_host_dict.iteritems():
-            if h_stuff["host"] == s_host and h_stuff["port"] == s_port and h_stuff["mode"] == mode:
-                match = True
-                self.__num_fail[h_name] += 1
-        if not match:
-            self.log("Got unknown '%s'-message for host/port/mode %s/%d/%s" % (what, s_host, s_port, mode), logging_tools.LOG_LEVEL_WARN)
-    def _send_ok(self, (s_host, s_port, mode, what)):
-        # no logging of send_ok messages
-        #self.log("send_ok (%s, %s %d): %s" % (s_host, mode, s_port, what))
-        match = False
-        for h_name, h_stuff in self.__file_info.collector_host_dict.iteritems():
-            if h_stuff["host"] == s_host and h_stuff["port"] == s_port and h_stuff["mode"] == mode:
-                match = True
-                self.__num_ok[h_name] += 1
-                #self.__mvector.flush_cache(h_name)
-        if not match:
-            self.log("Got unknown '%s'-message for host/port/mode %s/%d/%s" % (what, s_host, s_port, mode), logging_tools.LOG_LEVEL_WARN)
-    def _update(self):
-        act_update = time.time()
-        if not self.__last_update:
-            self.__last_update = act_update - 2 * min_update_step
-        if act_update > self.__last_update:
-            if self.__last_update + min_update_step > act_update or False:
-                self.log("(machvector) too many update-requests (last was %s ago, minimum allowed step is %s)" % (logging_tools.get_diff_time_str(act_update - self.__last_update),
-                                                                                                                  logging_tools.get_diff_time_str(min_update_step)),
-                         logging_tools.LOG_LEVEL_WARN)
-                do_update = False
-            else:
-                do_update = True
-        else:
-            self.log("(machvector) time skew detected, adjusting last_update timestemp from %.2f to %.2f" % (self.__last_update,
-                                                                                                             act_update),
-                     logging_tools.LOG_LEVEL_WARN)
-            self.__last_update = act_update
-            do_update = False
-        if do_update:
-            self.__latest_key = self.__mvector.get_actual_key()
-            # check external sources
-            self.__mvector.check_external_sources(self.__logger, self.__esd)
-            self.__mvector.update_vector(self.__logger, self.__esd)
-            # monitor threads
-            for mon_id, mon_stuff in self.__mon_dict.iteritems():
-                mon_stuff.update(self.__mvector)
-            self.__num_update += 1
-            send_str = hm_classes.sys_to_net(self.__mvector.get_send_mvector())
-            send_str_compr, sok = (send_str, "ok")
-            for h_name, h_stuff in self.__file_info.collector_host_dict.iteritems():
-                # try connecting to collector_host
-                # netserver set ?
-                if not self.__net_server:
-                    self.log("net_server not set, skipping send ...", logging_tools.LOG_LEVEL_WARN)
-                else:
-                    self.__num_con[h_name] += 1
-                    if h_stuff["mode"] == "tcp":
-                        self.__net_server.add_object(net_tools.tcp_con_object(self._new_tcp_con,
-                                                                              target_host=h_stuff["host"],
-                                                                              target_port=h_stuff["port"],
-                                                                              bind_retries=1,
-                                                                              rebind_wait_time=1,
-                                                                              connect_state_call=self._udp_connect,
-                                                                              add_data="ok %s" % (send_str)))
-                    else:
-                        self.__net_server.add_object(net_tools.udp_con_object(self._new_udp_con,
-                                                                              target_host=h_stuff["host"],
-                                                                              target_port=h_stuff["port"],
-                                                                              bind_retries=1,
-                                                                              rebind_wait_time=1,
-                                                                              connect_state_call=self._udp_connect,
-                                                                              add_data="ok %s" % (send_str)))
-
-    def _udp_connect(self, **args):
-        if args["state"] == "error":
-            args["socket"].delete()
-            self.get_thread_queue().put(("send_error", (args["host"], args["port"], args["type"], "connect error")))
-    def _new_udp_con(self, sock):
-        return simple_con("udp", sock.get_target_host(), sock.get_target_port(), sock.get_add_data(), self.get_thread_queue())
-    def _new_tcp_con(self, sock):
-        return simple_con("tcp", sock.get_target_host(), sock.get_target_port(), sock.get_add_data(), self.get_thread_queue())
-    def _get_mvector(self):
-        self.__loc_queue.put(self.__mvector.get_mvector())
-    def _get_mvector_raw(self):
-        self.__loc_queue.put(self.__mvector.get_mvector_raw())
-    def _get_mvector_stats(self):
-        ret_arg = {"num_updates"   : self.__num_update,
-                   "send_interval" : self.__file_info.send_interval,
-                   "hosts"         : {}}
-        for h_name, h_stuff in self.__file_info.collector_host_dict.iteritems():
-            loc_dict = {"host"        : h_stuff["host"],
-                        "port"        : h_stuff["port"],
-                        "mode"        : h_stuff["mode"],
-                        "num_con"     : self.__num_con[h_name],
-                        "num_ok"      : self.__num_ok[h_name],
-                        "num_fail"    : self.__num_fail[h_name]}
-            ret_arg["hosts"][h_name] = loc_dict
-        self.__loc_queue.put(ret_arg)
-    def _start_monitor(self, mon_id):
-        if self.__mon_dict.has_key(mon_id):
-            del self.__mon_dict[mon_id]
-            self.log("Monitor_object with id '%s' already present, deleting ..." % (mon_id), logging_tools.LOG_LEVEL_WARN)
-        self.__mon_dict[mon_id] = monitor_object(mon_id)
-        self.__mon_dict[mon_id].update(self.__mvector)
-        self.log("init monitor_object Monitor_object with id '%s' (now %d in list: %s)" % (mon_id,
-                                                                                           len(self.__mon_dict.keys()),
-                                                                                           ",".join(self.__mon_dict.keys())))
-        if len(self.__mon_dict.keys()) > MAX_MONITOR_OBJECTS:
-            del_id = None
-            for key, value in self.__mon_dict.iteritems():
-                if not del_id:
-                    del_id, del_time = (key, value.get_start_time())
-                else:
-                    if value.get_start_time()  < del_time:
-                        del_id, del_time = (key, value.get_start_time())
-            del self.__mon_dict[del_id]
-            self.log("too many monitor objects (%d), deleting oldest one (is '%s'), still in list: %s" % (len(self.__mon_dict.keys()) + 1,
-                                                                                                          del_id,
-                                                                                                          ",".join(self.__mon_dict.keys())),
-                     logging_tools.LOG_LEVEL_ERROR)
-        self.__loc_queue.put("ok started monitor with id %s" % (mon_id))
-    def _stop_monitor(self, mon_id):
-        if self.__mon_dict.has_key(mon_id):
-            del self.__mon_dict[mon_id]
-            self.log("Monitor_object with id '%s' deleted" % (mon_id))
-            self.__loc_queue.put("ok stopped monitor with id %s" % (mon_id))
-        else:
-            self.log("no monitor_object with id '%s' found" % (mon_id), logging_tools.LOG_LEVEL_ERROR)
-            self.__loc_queue.put("error not monitor with id %s" % (mon_id))
-    def _monitor_info(self, mon_id):
-        if self.__mon_dict.has_key(mon_id):
-            send_str = hm_classes.sys_to_net(self.__mon_dict[mon_id].get_info())
-            self.__loc_queue.put("ok %s" % (send_str))
-        else:
-            self.__loc_queue.put("error not monitor with id %s" % (mon_id))
-
 class get_mvector_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        self.parser.add_argument("--raw", dest="raw", action="store_true", default=False)
     def __call__(self, srv_com, cur_ns):
         self.module.machine_vector.store_xml(srv_com)
     def interpret(self, srv_com, cur_ns):
         cur_vector = srv_com["data:machine_vector"]
-        vector_keys = sorted(srv_com.xpath(cur_vector, ".//ns:mve/@name"))
-        ret_array = ["Machinevector id %s, %s:" % (cur_vector.attrib["version"],
-                                                   logging_tools.get_plural("key", len(vector_keys)))]
-        out_list = logging_tools.new_form_list()
-        for mv_num, mv_key in enumerate(vector_keys):
-            cur_xml = srv_com.xpath(cur_vector, "//ns:mve[@name='%s']" % (mv_key))[0]
-            out_list.append(hm_classes.mvect_entry(cur_xml.attrib.pop("name"), **cur_xml.attrib).get_form_entry(mv_num))
-        ret_array.extend(unicode(out_list).split("\n"))
-        return limits.nag_STATE_OK, "\n".join(ret_array)
-
-class get_mvector_raw_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "get_mvector_raw", **args)
-        self.help_str = "returns the raw machine vector"
-        self.short_client_info = "-r, --raw"
-        self.long_client_info = "sets raw-output (for scripts)"
-        self.short_client_opts = "r"
-        self.long_client_opts = ["raw"]
-        self.net_only = True
-    def server_call(self, cm):
-        try:
-            return "ok %s" % (hm_classes.sys_to_net(self.module_info.send_thread("get_mvector_raw")))
-        except:
-            return "error %s" % (process_tools.get_except_info())
-    def client_call(self, result, parsed_coms):
-        #print cm
-        ret_state = limits.nag_STATE_OK
-        raw_output = parsed_coms[0].get_add_flag("R")
-        if raw_output:
-            return ret_state, result[3:]
+        if cur_ns.raw:
+            return limits.nag_STATE_OK, etree.tostring(cur_vector)
         else:
-            # not really usefull
-            return ret_state, str(hm_classes.net_to_sys(result[3:]))
+            vector_keys = sorted(srv_com.xpath(cur_vector, ".//ns:mve/@name"))
+            ret_array = ["Machinevector id %s, %s:" % (cur_vector.attrib["version"],
+                                                       logging_tools.get_plural("key", len(vector_keys)))]
+            out_list = logging_tools.new_form_list()
+            for mv_num, mv_key in enumerate(vector_keys):
+                cur_xml = srv_com.xpath(cur_vector, "//ns:mve[@name='%s']" % (mv_key))[0]
+                out_list.append(hm_classes.mvect_entry(cur_xml.attrib.pop("name"), **cur_xml.attrib).get_form_entry(mv_num))
+            ret_array.extend(unicode(out_list).split("\n"))
+            return limits.nag_STATE_OK, "\n".join(ret_array)
 
 class get_mvector_stats_command(hm_classes.hmb_command):
     def __init__(self, **args):
@@ -515,13 +182,7 @@ class monitor_info_command(hm_classes.hmb_command):
             return self.module_info.send_thread(("monitor_info", cm[0]))
     def client_call(self, result, parsed_coms):
         if result.startswith("ok") or result.startswith("cok"):
-            if result.startswith("ok"):
-                in_dict = hm_classes.net_to_sys(result[3:])
-            else:
-                if bz2:
-                    in_dict = hm_classes.net_to_sys(bz2.decompress(result[4:]))
-                else:
-                    return limits.nag_STATE_CRITICAL, "error cannot decompress bz2-encoded info"
+            in_dict = hm_classes.net_to_sys(result[3:])
             data_dict = in_dict["cache"]
             in_keys = sorted(data_dict.keys())
             # check for old or new-style monitor_info
@@ -550,8 +211,6 @@ class monitor_info_command(hm_classes.hmb_command):
                 return limits.nag_STATE_OK, "\n".join(ret_f + str(out_list).split("\n"))
         else:
             return limits.nag_STATE_CRITICAL, result
-
-min_update_step = 5
 
 class alert_object(object):
     def __init__(self, key, logger, num_dp, th_class, th, command):
@@ -600,11 +259,54 @@ class machine_vector(object):
         # actual keys, last keys
         self.__act_keys = set()
         # init external_sources
-        #self.init_ext_src()
         #self.__alert_dict, self.__alert_dict_time = ({}, time.time())
         # key is in fact the timestamp
         self.__act_key, self.__changed = (0, True)
         self.__verbosity = module.process_pool.global_config["VERBOSE"]
+        # socket dict for mv-sending
+        self.__socket_dict = {}
+        # read machine vector config
+        self.conf_name = os.path.join("/etc/sysconfig/host-monitoring.d", MACHVECTOR_NAME)
+        if not os.path.isfile(self.conf_name):
+            # create default file
+            def_xml = E.mv_targets(
+                E.mv_target(
+                    enabled="0",
+                    target="127.0.0.1",
+                    port="8002",
+                    send_name="",
+                    send_every="30",
+                    full_info_every="10",
+                )
+            )
+            file(self.conf_name, "w").write(etree.tostring(def_xml,
+                                                           pretty_print=True,
+                                                           xml_declaration=True))
+        try:
+            xml_struct = etree.fromstring(file(self.conf_name, "r").read())
+        except:
+            self.log("cannot read %s: %s" % (
+                self.conf_name,
+                process_tools.get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+            xml_struct = None
+        else:
+            send_id = 0
+            p_pool = self.module.process_pool
+            for mv_target in xml_struct.xpath(".//mv_target[@enabled='1']"):
+                send_id += 1
+                mv_target.attrib["send_id"] = "%d" % (send_id)
+                mv_target.attrib["sent"] = "0"
+                p_pool.register_timer(self._send_vector, int(mv_target.get("send_every", "30")), data=send_id)
+                t_sock = p_pool.zmq_context.socket(zmq.PUSH)
+                t_sock.setsockopt(zmq.LINGER, 0)
+                target_str = "tcp://%s:%d" % (
+                    mv_target.get("target", "127.0.0.1"),
+                    int(mv_target.get("port", "8002")))
+                self.log("creating zmq.PUSH socket for %s" % (target_str))
+                t_sock.connect(target_str)
+                self.__socket_dict[send_id] = t_sock
+        self.__xml_struct = xml_struct
         module.process_pool.register_vector_receiver(self._recv_vector)
         #self.__module_dict = module_dict
         for module in module.process_pool.module_list:
@@ -627,6 +329,17 @@ class machine_vector(object):
                          logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.log("removed old external directory %s" % (old_dir))
+    def _send_vector(self, *args, **kwargs):
+        cur_xml = self.__xml_struct.find(".//mv_target[@send_id='%d']" % (args[0]))
+        cur_id = int(cur_xml.attrib["sent"])
+        full = cur_id % int(cur_xml.attrib.get("full_info_every", "10")) == 0
+        cur_id += 1
+        cur_xml.attrib["sent"] = "%d" % (cur_id)
+        #print etree.tostring(self.build_xml(E, simple=not full), pretty_print=True)
+        pass
+    def close(self):
+        for s_id, t_sock in self.__socket_dict.iteritems():
+            t_sock.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.module.process_pool.log("[mvect] %s" % (what), log_level)
     def _recv_vector(self, zmq_sock):
@@ -650,43 +363,6 @@ class machine_vector(object):
         else:
             # only update value
             self[mvec.name] = mvec.value
-##    def check_for_alert_file_change(self, log_t):
-##        if self.__module:
-##            alert_file = self.__module.get_alert_file_name()
-##            if os.path.isfile(alert_file):
-##                last_time, file_time, act_time = (self.__alert_dict_time, os.stat(alert_file)[stat.ST_MTIME], time.time())
-##                if not self.__alert_dict or file_time > last_time:
-##                    self.__alert_dict_time, alert_dict = (act_time, {})
-##                    try:
-##                        a_lines = [[z.strip() for z in y.split(":")] for y in [x.strip() for x in file(alert_file, "r").read().split("\n")] if y]
-##                    except:
-##                        alert_dict = {}
-##                    else:
-##                        alert_dict = {}
-##                        # format of alert lines:
-##                        # key:number_of_datapoints:U|L(upper or lower threshold):threshold:command to execute#
-##                        for line in a_lines:
-##                            if len(line) == 5:
-##                                key, num_dp, th_class, th, command = line
-##                                log_t.info("Trying to parse alert_line '%s' ... " % (":".join(line)))
-##                                try:
-##                                    th_class = th_class.upper()
-##                                    num_dp = int(num_dp)
-##                                    if th_class not in ["U", "L"]:
-##                                        raise ValueError, "threshold_class not U(pper) or L(ower)"
-##                                    th = float(th)
-##                                except:
-##                                    log_t.error(" +++ Cannot parse line : %s" % (process_tools.get_except_info()))
-##                                else:
-##                                    log_t.info(" ... key '%s', %s, threshold_class %s, threshold %.2f, command to execute: '%s'" % (key, logging_tools.get_plural("datapoint", num_dp), {"U" : "Upper", "L" : "Lower"}[th_class], th, command))
-##                                    alert_dict[key] = alert_object(key, log_t, num_dp, th_class, th, command)
-##                            else:
-##                                log_t.error("Cannot parse line %s: %d != 5" % (":".join(line), len(line)))
-##                    self.__alert_dict = alert_dict
-##                    #print "*", last_time,file_time,act_time, self.__alert_dict
-##    def check_for_alerts(self, logger):
-##        for alert_key in [key for key in self.__alert_dict.keys() if key in self.__act_dict.keys()]:
-##            self.__alert_dict[alert_key].add_value(self.__act_dict[alert_key].value)
     def register_entry(self, name, default, info, unit="1", base=1, factor=1, **kwargs):
         # name is the key (first.second.third.fourth)
         # default is a default value
@@ -718,19 +394,6 @@ class machine_vector(object):
             self.__act_dict[name].update(value)
         else:
             log_t.error("Error: unknown machvector-name '%s'" % (name))
-#         if self.__act_dict.has_key(name):
-#             if type(value) == type(self.__act_dict[name]["d"]):
-#                 self.__act_dict[name]["v"] = value
-#             else:
-#                 if type(value) in [type(0), type(0L)] and type(self.__act_dict[name]["d"]) in [type(0), type(0L)]:
-#                     self.__act_dict[name]["v"] = value
-#                 else:
-#                     log_t.log("reg_update, key %s: type of default (%s) and value (%s) differ, using float..." % (name, str(type(self.__act_dict[name]["d"])), str(type(value))))
-#                     self.__act_dict[name]["v"] = float(value)
-#         else:
-#             log_t.log("Error: unknown machvector-name '%s'" % (name), logging_tools.LOG_LEVEL_ERROR)
-#         #print "updates %s with value" % (name), value
-#         return
     def _optimize_list(self, in_list):
         new_list = []
         for entry in in_list:
@@ -775,20 +438,26 @@ class machine_vector(object):
         cur_time = time.time()
         rem_keys = [key for key, value in self.__act_dict.iteritems() if value.check_timeout(cur_time)]
         if rem_keys:
-            self.log("removing %s because of timeout: %s" % (logging_tools.get_plural("key", len(rem_keys)),
-                                                             ", ".join(sorted(rem_keys))))
+            self.log("removing %s because of timeout: %s" % (
+                logging_tools.get_plural("key", len(rem_keys)),
+                ", ".join(sorted(rem_keys))))
             for rem_key in rem_keys:
                 self.unregister_entry(rem_key)
             self.__changed = True
     def store_xml(self, srv_com):
-        el_builder = srv_com.builder
-        mach_vect = el_builder("machine_vector", version="%d" % (self.__act_key))
-        mach_vect.extend([cur_mve.build_xml(el_builder) for cur_mve in self.__act_dict.itervalues()])
-        srv_com["data"] = mach_vect
-    def get_mvector(self):
-        return (self.__act_key, [(key, self.__act_dict[key]) for key in self.__act_keys])
-    def get_mvector_raw(self):
-        return (self.__act_key, [self.__act_dict[key].value for key in self.__act_keys])
+        srv_com["data"] = self.build_xml(srv_com.builder)
+    def build_xml(self, builder, simple=False):
+        mach_vect = builder(
+            "machine_vector",
+            version="%d" % (self.__act_key),
+            time="%d" % (int(time.time())),
+            simple="1" if simple else "0",
+        )
+        if simple:
+            mach_vect.extend([cur_mve.build_simple_xml(builder) for cur_mve in self.__act_dict.itervalues()])
+        else:
+            mach_vect.extend([cur_mve.build_xml(builder) for cur_mve in self.__act_dict.itervalues()])
+        return mach_vect
     def get_send_mvector(self):
         return (time.time(), self.__act_key, [self.__act_dict[key].value for key in self.__act_keys])
     #def flush_cache(self, name):
@@ -810,136 +479,6 @@ class machine_vector(object):
                 module.update_machine_vector(self)
         self.check_changed()
         #self.check_for_alerts(log_t)
-    def init_ext_src(self):
-        self.ext_src = {}
-        self.ext_src_dt = {}
-    def set_ext_src(self, src):
-        self.ext_src[src] = []
-        self.set_ext_src_dt(src)
-    def set_ext_src_dt(self, src):
-        self.ext_src_dt[src] = time.time()
-    def get_ext_src_dt(self, src):
-        return self.ext_src_dt[src]
-    def has_ext_src(self, src):
-        return self.ext_src.has_key(src)
-    def get_last_update(self, src):
-        return self.ext_src[src]
-##    def check_external_sources(self, log_t, esd):
-##        act_time = time.time()
-##        mvns_found = []
-##        if os.path.isdir(esd):
-##            try:
-##                esd_files = os.listdir(esd)
-##            except:
-##                log_t.error("error reading entries from directory %s: %s" % (esd,
-##                                                                             process_tools.get_except_info()))
-##                esd_files = []
-##            for fn in esd_files:
-##                ffn = "%s/%s" % (esd, fn)
-##                if fn.endswith(".mvd"):
-##                    # machine vector definition
-##                    mvn = fn.split(".")[0]
-##                    mvns_found.append(mvn)
-##                    if not self.has_ext_src(mvn):
-##                        self.set_ext_src(mvn)
-##                        log_t.info("Registering external mv-source '%s'" % (mvn))
-##                        mvn_lines = [line_p for line_p in [line_s.split(":") for line_s in [line.strip() for line in file(ffn, "r").readlines()] if line_s] if len(line_p) >= 6]
-##                        for line_p in mvn_lines:
-##                            # mvv_timeout should in fact be a emv-local setting
-##                            if len(line_p) == 6:
-##                                name, default, info, unit, base, factor = line_p
-##                                mvv_timeout = 300
-##                            else:
-##                                name, default, info, unit, base, factor, mvv_timeout = line_p
-##                            try:
-##                                mvv_timeout = int(mvv_timeout)
-##                                if default.isdigit():
-##                                    default_n = int(default)
-##                                    base = int(base)
-##                                    factor = int(factor)
-##                                else:
-##                                    default_n = float(default)
-##                                    base = float(base)
-##                                    factor = float(factor)
-##                            except:
-##                                log_t.error("Error adding mvector %s: %s" % (name, process_tools.get_except_info()))
-##                            else:
-##                                log_t.info("Adding mvector %s with default %s, info %s, unit %s, base %s and factor %s (mvv_timeout is %d)" % (name, default, info, unit, base, factor, mvv_timeout))
-##                                self.reg_entry(name, default_n, info, unit, base, factor, mvv_timeout=mvv_timeout)
-##                                self.ext_src[mvn].append(name)
-##                    elif self.get_ext_src_dt(mvn) < os.stat(ffn)[stat.ST_MTIME]:
-##                        self.set_ext_src_dt(mvn)
-##                        log_t.info("Checking already registered external mv-source '%s'" % (mvn))
-##                        mvn_lines = [line_p for line_p in [line_s.split(":") for line_s in [line.strip() for line in file(ffn, "r").readlines()] if line_s] if len(line_p) >= 6]
-##                        for line_p in mvn_lines:
-##                            # mvv_timeout should in fact be a emv-local setting
-##                            if len(line_p) == 6:
-##                                name, default, info, unit, base, factor = line_p
-##                                mvv_timeout = 300
-##                            else:
-##                                name, default, info, unit, base, factor, mvv_timeout = line_p
-##                            try:
-##                                mvv_timeout = int(mvv_timeout)
-##                                if default.isdigit():
-##                                    default_n = int(default)
-##                                    base = int(base)
-##                                    factor = int(factor)
-##                                else:
-##                                    default_n = float(default)
-##                                    base = float(base)
-##                                    factor = float(factor)
-##                            except:
-##                                log_t.error("Error checking mvector %s: %s" % (name, process_tools.get_except_info()))
-##                            else:
-##                                if name in self.ext_src[mvn]:
-##                                    log_t.info("  key %s already present")
-##                                else:
-##                                    log_t.info("Adding mvector %s with default %s, info %s, unit %s, base %s and factor %s (mvv_timeout is %d)" % (name, default, info, unit, base, factor, mvv_timeout))
-##                                    self.reg_entry(name, default_n, info, unit, base, factor, mvv_timeout=mvv_timeout)
-##                                    self.ext_src[mvn].append(name)
-##                elif fn.endswith(".mvv"):
-##                    act_mtime = os.path.getmtime(ffn)
-##                    mvn = fn.split(".")[0]
-##                    mvv_timeout = 300
-##                    if mvn in self.ext_src:
-##                        if self.ext_src[mvn]:
-##                            mv_entry = self.get_entry(self.ext_src[mvn][0], None)
-##                            if mv_entry:
-##                                mvv_timeout = mv_entry.get_mvv_timeout()
-##                    if abs(act_mtime - act_time) < mvv_timeout:
-##                        if self.has_ext_src(mvn):
-##                            mvv_lines = [z for z in [y.split(":") for y in [x.strip() for x in file(ffn, "r").readlines()] if y] if len(z) == 3]
-##                            for name, tp, value in mvv_lines:
-##                                if tp == "i":
-##                                    value = int(value)
-##                                else:
-##                                    value = float(value)
-##                                try:
-##                                    self.reg_update(log_t, name, value)
-##                                except:
-##                                    log_t.error("Error calling reg_update(): %s" % (process_tools.get_except_info()))
-##                        else:
-##                            log_t.info("Found .mvv file for unknown emv '%s'" % (mvn))
-##                    else:
-##                        log_t.warning(".mvv file for emv '%s' is too old, removing" % (mvn))
-##                        try:
-##                            os.unlink(ffn)
-##                        except:
-##                            log_t.error("cannot remove '%s': %s" % (ffn,
-##                                                                    process_tools.get_except_info()))
-##                            
-##        del_ext_s = []
-##        for ext_s, ext_keys in self.ext_src.iteritems():
-##            if ext_s not in mvns_found:
-##                del_ext_s.append(ext_s)
-##                log_t.info("External mv-source %s no more existent, removing %s (%s)" % (ext_s,
-##                                                                                         logging_tools.get_plural("key", len(ext_keys)),
-##                                                                                         ", ".join(ext_keys)))
-##                for k in ext_keys:
-##                    self.unreg_entry(k)
-##        for del_ext in del_ext_s:
-##            del self.ext_src[del_ext]
-##        # delete 
 
 class monitor_object(object):
     def __init__(self, name):
