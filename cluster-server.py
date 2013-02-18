@@ -25,7 +25,6 @@ import sys
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.conf import settings
-import re
 import time
 import net_tools
 import threading_tools
@@ -797,7 +796,7 @@ class server_process(threading_tools.process_pool):
         cur_time = time.time()
         cur_dt = datetime.datetime.now().replace(microsecond=0)
         if not global_config["DEBUG"]:
-            cur_dt = cut_dt.replace(minute=0, second=0)
+            cur_dt = cur_dt.replace(minute=0, second=0)
         if cur_dt == self.__next_backup_dt:
             self._set_next_backup_time()
             self.log("start DB-backup")
@@ -864,7 +863,7 @@ class server_process(threading_tools.process_pool):
                 srv_com["servers_visited"] = None
                 srv_com["command"].attrib["broadcast"] = "1"
                 srv_com["src_uuid"] = my_uuid
-                srv_com["servers_visited"].append(srv_com.builder("server", my_uid))
+                srv_com["servers_visited"].append(srv_com.builder("server", my_uuid))
                 for send_id in to_send_ids:
                     if send_id == my_uuid:
                         self._process_command(srv_com)
