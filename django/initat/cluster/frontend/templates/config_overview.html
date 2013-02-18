@@ -8,6 +8,7 @@
 
 {% compress js %}
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/codemirror.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/addon/selection/active-line.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/python.js"></script>
 {% endcompress %}
 
@@ -21,12 +22,7 @@
 
 <style type="text/css">
 .CodeMirror {border-top: 1px solid black; border-bottom: 1px solid black;}
-.activeline {background: #e8f2ff !important;}
-.CodeMirror-scroll {
-    height     : auto;
-    overflow-y : hidden;
-    overflow-x : auto;
-}
+.CodeMirror-activeline-background {background: #ffff00 !important;}
 </style>
 
 {% endblock %}
@@ -188,10 +184,12 @@ class config_table
             $(cur_tr).removeClass("even odd").addClass(act_class).on("hover", $(cur_tr), @hover)
             act_class = if act_class == "odd" then "even" else "odd"
     hover: (event, targ_tr) ->
-        if event.type == "mouseenter"
-            $(event.data).addClass("highlight")
-        else
-            $(event.data).removeClass("highlight")
+        parent_tr = $(event.target).parents("tr:first")
+        if not parent_tr.attr("id").match(/__editor_line$/)
+            if event.type == "mouseenter"
+                $(event.data).addClass("highlight")
+            else
+                $(event.data).removeClass("highlight")
     create_delete_config: (event) =>
         cur_el = $(event.target)
         el_id = cur_el.attr("id")
@@ -237,7 +235,7 @@ class config_table
     
     add_header: (cur_conf, line_prefix, h_type) =>
         cv_tr = $("<tr>").attr({
-            "id" : "#{line_prefix}__#{h_type}__header",
+            "id"    : "#{line_prefix}__#{h_type}__header",
             "class" : "ui-widget ui-widget-header"
         })
         header_lut = 
@@ -438,7 +436,7 @@ class config_table
         cs_div.append(cs_tr)
         # editor line
         cs_div.append(
-            $("<tr>").append(
+            $("<tr>").attr("id", "#{line_prefix}__editor_line").append(
                 $("<td>").attr({    
                     "colspan" : 8
                 }).append(
@@ -499,18 +497,15 @@ class config_table
                 "name"    : "python",
                 "version" : "2"
             },
-            "lineNumbers"  : true,
-            "lineWrapping" : true,
-            "indentUnit"   : 4,
-            "onCursorActivity" : (cur_ed) =>
-                cur_struct = @codemirror_dict[cur_id];
-                cur_struct.editor.setLineClass(cur_struct.line, null, null);
-                cur_struct.line = cur_struct.editor.setLineClass(cur_struct.editor.getCursor().line, null, "activeline");
+            "styleActiveLine" : true,
+            "lineNumbers"     : true,
+            "lineWrapping"    : true,
+            "indentUnit"      : 4,
         })
         cur_ed.setSize(1024, null)
         @codemirror_dict[cur_id] = {
             "editor" : cur_ed,
-            "line"   : cur_ed.setLineClass(0, "activeline")
+            "line"   : cur_ed.addLineClass(0, "activeline")
         }
     
     # info / helper functions
@@ -533,6 +528,8 @@ class config_table
             div_id = cur_div.attr("id");
             if !div_id.match(/__info$/)
                 num_tr = @table.find("tr[id^='" + div_id.replace(/^(conf__\d+__)[a-z]+__(.*)$/, "$1$2") + "']").length - 3
+                if div_id.match(/__cscript$/)
+                    num_tr = (num_tr - 1) / 2
                 cur_div.next().text(num_tr)
     update_config_info: (num_shown) =>
         num_confs = @configs.find("config").length
