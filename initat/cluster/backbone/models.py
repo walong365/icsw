@@ -2308,6 +2308,14 @@ class mon_contact(models.Model):
     class Meta:
         db_table = u'ng_contact'
 
+@receiver(signals.pre_save, sender=mon_contact)
+def mon_contact_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        used_user_ids = mon_contact.objects.exclude(Q(pk=cur_inst.pk)).values_list("user", flat=True)
+        if cur_inst.user_id in used_user_ids:
+            raise ValidationError("user already in used by mon_contact")
+
 class mon_contactgroup(models.Model):
     idx = models.AutoField(db_column="ng_contactgroup_idx", primary_key=True)
     name = models.CharField(max_length=192, unique=True)
