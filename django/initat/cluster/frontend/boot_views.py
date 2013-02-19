@@ -175,7 +175,7 @@ def set_kernel(request):
     else:
         cur_dev.new_kernel = kernel.objects.get(Q(pk=_post["new_kernel"]))
     cur_dev.stage1_flavour = _post["kernel_flavour"]
-    cur_dev.kernel_append = _post["kernel_append"]
+    cur_dev.kernel_append  = _post["kernel_append"]
     cur_dev.save()
     # very important
     transaction.commit()

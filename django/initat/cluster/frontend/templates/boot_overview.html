@@ -22,11 +22,15 @@
 {% inlinecoffeescript %}
 
 class option_list
-    constructor: (@dev_xml, @short) ->
+    constructor: (@dev_xml, @short, @add_to_global=false) ->
         # to proper handle dummy call for get_*info_from_server calls
         if @dev_xml
             @dev_key = @dev_xml.attr("key")
             @set = false
+            @global_mode = false
+        else
+            @dev_key = "all"
+            @global_mode = true
     close: ->
         @set = false
     get_info_from_server: ->
@@ -61,37 +65,49 @@ class option_list
     
 class kernel_option extends option_list
     constructor: (dev_xml) ->
-        super(dev_xml, "k")
+        super(dev_xml, "k", true)
     draw: (boot) =>
         cur_td = $("<td>")
         cur_td.append("kernel:")
         kernel_sel = $("<select>").attr({
-            "disabled" : "disabled",
-            "id"       : @dev_key + "__new_kernel"
+            "id"       : "#{@dev_key}__new_kernel"
         })
-        kernel_sel.append($("<option>").attr({"value" : "0"}).text("not set"));
+        if @global_mode
+            kernel_sel.bind("change", @change_global).append($("<option>").attr({"value" : "-1"}).text("keep"))
+        else
+            kernel_sel.attr("disabled", "disabled")
+        kernel_sel.append($("<option>").attr({"value" : "0"}).text("not set"))
         boot.xml_dict[@short].find("kernel").each (k_idx, cur_kernel) =>
             cur_kernel = $(cur_kernel)
             kernel_sel.append($("<option>").attr({"value" : cur_kernel.attr("pk")}).text(cur_kernel.attr("name")));
         cur_td.append(kernel_sel)
-        cur_td.append(", actual kernel: ").append($("<span>").attr({
-            "id" : @dev_key + "__act_kernel"
-        }))
+        if not @global_mode
+            cur_td.append(", actual kernel: ").append($("<span>").attr({
+                "id" : "#{@dev_key}__act_kernel"
+            }))
         cur_td.append(", stage 1 flavour : ")
         stage1_flav = $("<select>").attr({
-            "disabled" : "disabled",
-            "id"       : @dev_key + "__kernel_flavour"
+            "id"       : "#{@dev_key}__kernel_flavour"
         })
+        if @global_mode
+            stage1_flav.bind("change", @change_global).append($("<option>").attr({"value" : "-1"}).text("keep"))
+        else
+            stage1_flav.attr("disabled", "disabled")
         stage1_flav.append($("<option>").attr({"value" : "none"}).text("not set"))
         stage1_flav.append($("<option>").attr({"value" : "cpio"}).text("CPIO"))
         stage1_flav.append($("<option>").attr({"value" : "cramfs"}).text("CramFS"))
         stage1_flav.append($("<option>").attr({"value" : "lo"}).text("ext2 via Loopback"))
         cur_td.append(stage1_flav)
         cur_td.append(", kernel append:")
-        cur_td.append($("<input>").attr({
+        k_append = $("<input>").attr({
             "type"     : "text",
-            "id"       : @dev_key + "__kernel_append",
-            "disabled" : "disabled"}))
+            "id"       : "#{@dev_key}__kernel_append"}
+        )
+        if @global_mode
+            k_append.bind("change", @change_global)
+        else
+            k_append.attr("disabled", "disabled")
+        cur_td.append(k_append)
         return @full_line(cur_td)
     _set_option: (dev_xml) =>
         new_kernel = @cur_td.find("select#" + @dev_key + "__new_kernel")
@@ -99,7 +115,7 @@ class kernel_option extends option_list
         stage1_flav = @cur_td.find("select#" + @dev_key + "__kernel_flavour")
         kernel_append = @cur_td.find("input#" + @dev_key + "__kernel_append")
         new_kernel.val(dev_xml.attr("new_kernel"))
-        kernel_append.val(dev_xml.attr("new_append"))
+        kernel_append.val(dev_xml.attr("kernel_append"))
         stage1_flav.val(dev_xml.attr("stage1_flavour"))
         new_kernel.removeAttr("disabled")
         stage1_flav.removeAttr("disabled")
@@ -115,6 +131,20 @@ class kernel_option extends option_list
             error   : handle_ajax_error
             success : (xml) =>
                 parse_xml_response(xml)
+    change_global: (event) =>
+        cur_el = $(event.target)
+        cur_val = cur_el.val()
+        cur_id = cur_el.attr("id").split("__")[-1...][0]
+        if cur_id == "kernel_append"
+            cur_el.val("")
+        else
+            cur_el.val("-1")
+        if cur_el.val() != cur_val
+            for target_el in $("table#boot").find("tr[id$='__opt__#{@short}'] *[id$='__#{cur_id}']")
+                target_el = $(target_el)
+                if target_el.val() != cur_val
+                    target_el.val(cur_val)
+                    target_el.trigger("change")
 
 class hard_control_option extends option_list
     constructor: (dev_xml) ->
@@ -123,7 +153,7 @@ class hard_control_option extends option_list
         cur_td = $("<td>")
         cur_td.append("hard control:")
         hard_con = $("<span>").attr({
-            "id"       : @dev_key + "__hard_control",
+            "id"       : "#{@dev_key}__hard_control",
             "disabled" : "disabled"
         }).text("waiting")
         cur_td.append(hard_con)
@@ -164,7 +194,7 @@ class hard_control_option extends option_list
 
 class soft_control_option extends option_list
     constructor: (dev_xml) ->
-        super(dev_xml, "s")
+        super(dev_xml, "s", true)
     get_info_from_server: ->
         return false
     draw: (boot) =>
@@ -173,38 +203,52 @@ class soft_control_option extends option_list
         for value in ["status", "reboot", "halt", "poweroff"]
             radio_el = $("<input>").attr({
                 "type"    : "radio",
-                "name"    : @dev_key + "__soft_control",
-                "id"      : @dev_key + "__#{value}",
-                "value"   : value}).bind("click", @soft_control)
+                "name"    : "#{@dev_key}__soft_control",
+                "id"      : "#{@dev_key}__#{value}",
+                "value"   : value}).bind("click", if @global_mode then @global_soft_control else @soft_control)
             if value == "status"
                 radio_el.attr("checked", "checked")
             cur_td.append(radio_el).append($("<span>").text(value))
         return @full_line(cur_td)
     soft_control: (event) =>
         cur_el = $(event.target)
+        console.log "sc", cur_el.attr("id")
         if cur_el.val() != "status"
-            $.ajax
-                url     : "{% url boot:soft_control %}"
-                error   : handle_ajax_error
-                data    : {
-                    "key" : cur_el.attr("id")
-                }
-                success : (xml) =>
-                    if parse_xml_response(xml)
-                        cur_el.removeAttr("checked")
-                        $("input[type='radio'][id='" + @dev_key + "__status']").attr("checked", "checked")
+            cur_el.removeAttr("checked")
+            #console.log @cur_td.find("input[type='radio'][id='#{@dev_key}__status']").length
+            @cur_td.find("input[type='radio'][id='#{@dev_key}__status']").attr("checked", "checked")
+            #$.ajax
+            #    url     : "{% url boot:soft_control %}"
+            #    error   : handle_ajax_error
+            #    data    : {
+            #        "key" : cur_el.attr("id")
+            #    }
+            #    success : (xml) =>
+            #        parse_xml_response(xml)
+    global_soft_control: (event) =>
+        cur_el = $(event.target)
+        cur_val = cur_el.val()
+        if cur_val != "status"
+            cur_el.removeAttr("checked")
+            @cur_td.find("input[type='radio'][id$='__status']").attr("checked", "checked")
+            for target_el in $("table#boot").find("tr[id$='__opt__#{@short}'] input[type='radio'][id$='__#{cur_val}']")
+                target_el = $(target_el)
+                target_el.trigger("click")
     _set_option: (dev_xml) =>
 
 class target_state_option extends option_list
     constructor: (dev_xml) ->
-        super(dev_xml, "t")
+        super(dev_xml, "t", true)
     draw: (boot) =>
         cur_td = $("<td>")
         cur_td.append("target state:")
         target_sel = $("<select>").attr({
-            "disabled" : "disabled",
             "id"       : "#{@dev_key}__target_state"
         })
+        if @global_mode
+            target_sel.bind("change", @change_global).append($("<option>").attr({"value" : "-1"}).text("keep"))
+        else
+            target_sel.attr("disabled", "disabled")
         target_sel.append($("<option>").attr({"value" : "0__0"}).text("not set"))
         boot.xml_dict[@short].find("status").each (index, cur_tstate) =>
             cur_tstate = $(cur_tstate)
@@ -226,6 +270,17 @@ class target_state_option extends option_list
             error   : handle_ajax_error
             success : (xml) =>
                 parse_xml_response(xml)
+    change_global: (event) =>
+        cur_el = $(event.target)
+        cur_val = cur_el.val()
+        if cur_val != "-1"
+            cur_el.val("-1")
+        if cur_val != cur_el.val()
+            for target_el in $("table#boot").find("tr[id$='__opt__#{@short}'] select[id$='__target_state']")
+                target_el = $(target_el)
+                if target_el.val() != cur_val
+                    target_el.val(cur_val)
+                    target_el.trigger("change")
 
 class boot_device_option extends option_list
     constructor: (dev_xml) ->
@@ -452,6 +507,7 @@ class boot_table
                                 if parse_xml_response(xml)
                                     @xml_dict[key] = $(xml)
                     @device_lut = {}
+                    @global_device_lut = {}
                     @draw_table()
                     @option_lut = 
                         "k" : kernel_option
@@ -532,7 +588,8 @@ class boot_table
         $("input#update_info").off("click").bind("click", => @force_update_info(true))
     draw_overview_header: =>
         new_tr = $("<tr>").attr({
-            "class" : "ui-widget ui-widget-header devicegroup"
+            "class" : "ui-widget ui-widget-header devicegroup",
+            "id"    : "header"
         })
         new_tr.append(
             $("<th>").attr({
@@ -582,18 +639,24 @@ class boot_table
         )
         dummy_div.append(new_tr)
         return dummy_div.children()
-    # create option lines
-    redraw_options: (opt, call_server, create_dummy_line) =>
-        @xml.find("devices device[tree_selected='selected'][meta_device='0']").each (index, cur_dev) =>
-            cur_dev = $(cur_dev)
-            if create_dummy_line and not @options_used[opt]
-                # init options
+    # create option line (for one device)
+    redraw_option: (opt, call_server, create_dummy_line, cur_dev) =>
+        if not cur_dev and not new @option_lut[opt]().add_to_global
+            return
+        # cur_dev is none for global options
+        if create_dummy_line and not @options_used[opt]
+            # init options
+            if cur_dev
                 new_opt = new @option_lut[opt](cur_dev)
                 @device_lut[opt][cur_dev.attr("key")] = new_opt
-                new_tr = new_opt.dummy_line()
-                line_mode = "append_hide"
             else
-                if @options_used[opt]
+                new_opt = new @option_lut[opt]()
+                @global_device_lut[opt] = new_opt
+            new_tr = new_opt.dummy_line()
+            line_mode = "append_hide"
+        else
+            if @options_used[opt]
+                if cur_dev
                     # add lines
                     if @device_lut[opt][cur_dev.attr("key")]
                         # this code gets executed on use_selection when the option is initially activated
@@ -606,21 +669,54 @@ class boot_table
                     @device_lut[opt][cur_dev.attr("key")] = new_opt
                     new_tr = new_opt.draw(@)
                 else
-                    # remove line, set .set-flag to false
+                    # add lines
+                    if @global_device_lut[opt]
+                        # this code gets executed on use_selection when the option is initially activated
+                        new_opt = @global_device_lut[opt]
+                        line_mode = "replace"
+                    else
+                        # this code gets executed on reload (use_selection)
+                        new_opt = new @option_lut[opt]()
+                        line_mode = "append_show"
+                    @global_device_lut[opt] = new_opt
+                    new_tr = new_opt.draw(@)
+            else
+                # remove line, set .set-flag to false
+                if cur_dev
                     @device_lut[opt][cur_dev.attr("key")].close()
                     line_mode = "hide"
                     new_tr = @table.find("tr[id$='__opt__#{opt}']")
-            if line_mode == "append_hide"
+                else
+                    @global_device_lut[opt].close()
+                    line_mode = "hide"
+                    new_tr = @ov_table.find("tr[id$='__opt__#{opt}']")
+        if line_mode == "append_hide"
+            if cur_dev
                 @table.find("tr[id='#{new_opt.dev_key}']").after(new_tr)
-                new_tr.hide()
-            else if line_mode == "append_show"
+            else
+                @ov_table.find("tr[id='header']").after(new_tr)
+            new_tr.hide()
+        else if line_mode == "append_show"
+            if cur_dev
                 @table.find("tr[id='#{new_opt.dev_key}']").after(new_tr)
-                new_tr.show()
-            else if line_mode == "replace"
+            else
+                @ov_table.find("tr[id='header']").after(new_tr)
+            new_tr.show()
+        else if line_mode == "replace"
+            if cur_dev
                 @table.find("tr[id='" + new_tr.attr("id") + "']").replaceWith(new_tr)
-                new_tr.show()
-            else if line_mode == "hide"
-                new_tr.hide()
+            else
+                @ov_table.find("tr[id='" + new_tr.attr("id") + "']").replaceWith(new_tr)
+            new_tr.show()
+        else if line_mode == "hide"
+            new_tr.hide()
+    # create option lines
+    redraw_options: (opt, call_server, create_dummy_line) =>
+        # device options
+        @xml.find("devices device[tree_selected='selected'][meta_device='0']").each (index, cur_dev) =>
+            @redraw_option(opt, call_server, create_dummy_line, $(cur_dev))
+        # global option
+        @redraw_option(opt, call_server, create_dummy_line)
         if not create_dummy_line and @options_used[opt] and call_server
             dummy_opt = new @option_lut[opt]()
             if dummy_opt.get_info_from_server
