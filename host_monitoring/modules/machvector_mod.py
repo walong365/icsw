@@ -268,15 +268,24 @@ class machine_vector(object):
         # read machine vector config
         self.conf_name = os.path.join("/etc/sysconfig/host-monitoring.d", MACHVECTOR_NAME)
         if not os.path.isfile(self.conf_name):
+            self.log("create %s" % (self.conf_name))
             # create default file
             def_xml = E.mv_targets(
                 E.mv_target(
+                    # enabled or disabled
                     enabled="0",
+                    # target (== server)
                     target="127.0.0.1",
+                    # target port
                     port="8002",
+                    # name used for sending, if unset use process_tools.get_machine_name()
                     send_name="",
+                    # send every X seconds
                     send_every="30",
+                    # every Y iteration send a full dump
                     full_info_every="10",
+                    # send immediately
+                    immediate="0",
                 )
             )
             file(self.conf_name, "w").write(etree.tostring(def_xml,
@@ -297,7 +306,7 @@ class machine_vector(object):
                 send_id += 1
                 mv_target.attrib["send_id"] = "%d" % (send_id)
                 mv_target.attrib["sent"] = "0"
-                p_pool.register_timer(self._send_vector, int(mv_target.get("send_every", "30")), data=send_id)
+                p_pool.register_timer(self._send_vector, int(mv_target.get("send_every", "30")), data=send_id, instant=int(mv_target.get("immediate", "0")) == 1)
                 t_sock = p_pool.zmq_context.socket(zmq.PUSH)
                 t_sock.setsockopt(zmq.LINGER, 0)
                 target_str = "tcp://%s:%d" % (
@@ -335,8 +344,11 @@ class machine_vector(object):
         full = cur_id % int(cur_xml.attrib.get("full_info_every", "10")) == 0
         cur_id += 1
         cur_xml.attrib["sent"] = "%d" % (cur_id)
-        # print etree.tostring(self.build_xml(E, simple=not full), pretty_print=True)
-        pass
+        send_vector = self.build_xml(E, simple=not full)
+        send_vector.attrib["name"] = (cur_xml.get("send_name", process_tools.get_machine_name()) or process_tools.get_machine_name()).split(".")[0]
+        # send to server
+        self.__socket_dict[int(cur_xml.attrib["send_id"])].send_unicode(unicode(etree.tostring(send_vector)))
+        #print etree.tostring(send_vector, pretty_print=True)
     def close(self):
         for s_id, t_sock in self.__socket_dict.iteritems():
             t_sock.close()
