@@ -1036,7 +1036,9 @@ class relay_process(threading_tools.process_pool):
             try:
                 ip_addr = socket.gethostbyname(target)
             except:
-                self.log("cannot resolve target '%s': %s" % (target, process_tools.get_except_info()),
+                self.log("cannot resolve target '%s': %s" % (
+                    target,
+                    process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_CRITICAL)
                 raise
             try:
@@ -1047,7 +1049,14 @@ class relay_process(threading_tools.process_pool):
                 pass
             else:
                 # resolve full name
-                ip_addr = socket.gethostbyname(full_name)
+                try:
+                    ip_addr = socket.gethostbyname(full_name)
+                except:
+                    self.log("cannot resolve full_name '%s': %s" % (
+                        full_name,
+                        process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_CRITICAL)
+                    raise
             if ip_addr not in self.__ip_lut:
                 self.log("resolved %s to %s" % (target, ip_addr))
                 self.__ip_lut[ip_addr] = target
@@ -1105,54 +1114,61 @@ class relay_process(threading_tools.process_pool):
                 if t_host == "DIRECT":
                     self._handle_direct_command(src_id, srv_com)
                 else:
-                    ip_addr = self._resolve_address(t_host)
-                    srv_com["host_unresolved"] = t_host
-                    srv_com["host"] = ip_addr
-                    if self.__autosense:
-                        # try to get the state of both addresses
-                        c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
-                        if c_state is None:
-                            # not needed
-                            #host_connection.delete_hc(srv_com)
-                            if t_host not in self.__last_tried:
-                                self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
-                            self.__last_tried[t_host] = {
-                                "T" : "0",
-                                "0" : "T"}[self.__last_tried[t_host]]
-                            c_state = self.__last_tried[t_host]
-                        con_mode = c_state
-                        #con_mode = "0"
+                    try:
+                        ip_addr = self._resolve_address(t_host)
+                    except socket.gaierror:
+                        self.log("resolve error for '%s'" % (t_host),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
+                        self.sender_socket.send_unicode("resolve error")
                     else:
-                        self.__old_clients.update()
-                        self.__new_clients.update()
-                        if t_host in self.__new_clients:
-                            con_mode = "0"
-                        elif t_host in self.__old_clients:
-                            con_mode = "T"
-                        elif self.__default_0mq:
-                            con_mode = "0"
+                        srv_com["host_unresolved"] = t_host
+                        srv_com["host"] = ip_addr
+                        if self.__autosense:
+                            # try to get the state of both addresses
+                            c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
+                            if c_state is None:
+                                # not needed
+                                #host_connection.delete_hc(srv_com)
+                                if t_host not in self.__last_tried:
+                                    self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
+                                self.__last_tried[t_host] = {
+                                    "T" : "0",
+                                    "0" : "T"}[self.__last_tried[t_host]]
+                                c_state = self.__last_tried[t_host]
+                            con_mode = c_state
+                            #con_mode = "0"
                         else:
-                            con_mode = "T"
-                    # decide which code to use
-                    if self.__verbose:
-                        self.log("connection to '%s:%d' via %s" % (t_host,
-                                                                   int(srv_com["port"].text),
-                                                                   con_mode))
-                    if int(srv_com["port"].text) != 2001:
-                        # connect to non-host-monitoring service
-                        if con_mode == "0":
-                            self._send_to_nhm_service(src_id, srv_com, xml_input)
+                            self.__old_clients.update()
+                            self.__new_clients.update()
+                            if t_host in self.__new_clients:
+                                con_mode = "0"
+                            elif t_host in self.__old_clients:
+                                con_mode = "T"
+                            elif self.__default_0mq:
+                                con_mode = "0"
+                            else:
+                                con_mode = "T"
+                        # decide which code to use
+                        if self.__verbose:
+                            self.log("connection to '%s:%d' via %s" % (t_host,
+                                                                       int(srv_com["port"].text),
+                                                                       con_mode))
+                        if int(srv_com["port"].text) != 2001:
+                            # connect to non-host-monitoring service
+                            if con_mode == "0":
+                                self._send_to_nhm_service(src_id, srv_com, xml_input)
+                            else:
+                                self._send_to_old_nhm_service(src_id, srv_com, xml_input)
+                        elif con_mode == "0":
+                            self._send_to_client(src_id, srv_com, xml_input)
+                        elif con_mode == "T":
+                            self._send_to_old_client(src_id, srv_com, xml_input)
                         else:
-                            self._send_to_old_nhm_service(src_id, srv_com, xml_input)
-                    elif con_mode == "0":
-                        self._send_to_client(src_id, srv_com, xml_input)
-                    elif con_mode == "T":
-                        self._send_to_old_client(src_id, srv_com, xml_input)
-                    else:
-                        self.log("unknown con_mode '%s', error" % (con_mode),
-                                 logging_tools.LOG_LEVEL_CRITICAL)
-                    if self.__verbose:
-                        self.log("send done")
+                            self.log("unknown con_mode '%s', error" % (con_mode),
+                                     logging_tools.LOG_LEVEL_CRITICAL)
+                        if self.__verbose:
+                            self.log("send done")
             else:
                 self.log("some keys missing (host and / or port)",
                          logging_tools.LOG_LEVEL_ERROR)
