@@ -140,7 +140,7 @@ class config_table
         num_confs = if cur_conf then parseInt(cur_conf.attr("num_device_configs")) else 0
         if num_confs
             c_line.append(
-                $("<th>").text("Used: #{num_confs}")
+                $("<th>").text("Used: #{num_confs}").attr("title", "Device list : " + cur_conf.attr("device_list"))
             )
         else   
             c_line.append(
