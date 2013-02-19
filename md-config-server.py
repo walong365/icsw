@@ -257,7 +257,7 @@ class main_config(object):
             "etc",
             "var",
             "share",
-            "archives",
+            "var/archives",
             "ssl",
             "bin",
             "sbin",
@@ -599,7 +599,7 @@ class main_config(object):
                        ("lock_file"                        , "%s/%s" % (self.__r_dir_dict["var"], global_config["MD_LOCK_FILE"])),
                        ("temp_file"                        , "%s/temp.tmp" % (self.__r_dir_dict["var"])),
                        ("log_rotation_method"              , "d"),
-                       ("log_archive_path"                 , self.__r_dir_dict["archives"]),
+                       ("log_archive_path"                 , self.__r_dir_dict["var/archives"]),
                        ("use_syslog"                       , 0),
                        ("host_inter_check_delay_method"    , "s"),
                        ("service_inter_check_delay_method" , "s"),
@@ -2319,7 +2319,7 @@ class build_process(threading_tools.process_obj):
                 #print mni_str_s, mni_str_d, dev_str_s, dev_str_d
                 # get correct netdevice for host
                 if host.name == global_config["SERVER_SHORT_NAME"]:
-                    valid_ips, traces = (["127.0.0.1"], [(1, [host_pk])])
+                    valid_ips, traces = (["127.0.0.1"], [(1, 0, [host_pk])])
                 else:
                     valid_ips, traces = self._get_target_ip_info(my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts, latest_gen)
                     if not valid_ips:
@@ -2401,8 +2401,8 @@ class build_process(threading_tools.process_obj):
                         else:
                             self.mach_log("No direct parent(s) found, registering trace")
                             if host.bootserver_id != host_pk and host.bootserver_id:
-                                traces.append((1, [host_pk]))
-                            if traces and len(traces[0][1]) > 1:
+                                traces.append((1, 0, [host_pk]))
+                            if traces and len(traces[0][2]) > 1:
                                 act_host["possible_parents"] = traces
                                 #print traces, host["name"], all_hosts_dict[traces[1]]["name"]
                                 #parents += [all_hosts_dict[traces[1]]["name"]]
@@ -2630,7 +2630,7 @@ class build_process(threading_tools.process_obj):
                 parent_list = []
                 p_parents = host["possible_parents"]
                 #print "*", p_parents
-                for p_val, p_list in p_parents:
+                for p_val, nd_val, p_list in p_parents:
                     # skip first host (is self)
                     host_pk = p_list.pop(0)
                     for parent_idx in p_list:
@@ -2715,15 +2715,16 @@ class build_process(threading_tools.process_obj):
                     loc_traces = [int(val) for val in targ_netdev_ds.trace.split(":")]
                     if loc_traces[0] != host_pk:
                         loc_traces.reverse()
-                traces.append((targ_netdev_ds.value, loc_traces))
+                traces.append((targ_netdev_ds.value, targ_netdev_idxs[0], loc_traces))
                 #break
-            else:
-                targ_netdev_idxs = None
-        if not targ_netdev_idxs:
-            self.mach_log("Cannot reach host %s (check peer_information)" % (host.name), logging_tools.LOG_LEVEL_ERROR)
+        traces = sorted(traces)
+        if not traces:
+            self.mach_log("Cannot reach host %s (check peer_information)" % (host.name),
+                          logging_tools.LOG_LEVEL_ERROR)
             valid_ips = []
         else:
-            valid_ips = (",".join([",".join([y for y in net_devices[x]]) for x in targ_netdev_idxs])).split(",")
+            valid_ips = sum([net_devices[nd_pk] for val, nd_pk, loc_trace in traces], [])
+            #(",".join([",".join([y for y in net_devices[x]]) for x in targ_netdev_idxs])).split(",")
         return valid_ips, traces
         
 class server_process(threading_tools.process_pool):
