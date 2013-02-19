@@ -2019,7 +2019,9 @@ class config(models.Model):
             parent_config="%d" % (self.parent_config_id or 0),
         )
         if full:
-            r_xml.attrib["num_device_configs"] = "%d" % (self.device_config_set.all().count())
+            dev_names = self.device_config_set.all().values_list("device__name", flat=True)
+            r_xml.attrib["num_device_configs"] = "%d" % (len(dev_names))
+            r_xml.attrib["device_list"] = logging_tools.compress_list(sorted(dev_names))
             r_xml.extend([
                 E.config_vars(*[cur_var.get_xml() for cur_var in list(self.config_str_set.all()) + \
                                 list(self.config_int_set.all()) + \
