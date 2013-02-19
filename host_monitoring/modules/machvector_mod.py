@@ -309,6 +309,12 @@ class machine_vector(object):
                 p_pool.register_timer(self._send_vector, int(mv_target.get("send_every", "30")), data=send_id, instant=int(mv_target.get("immediate", "0")) == 1)
                 t_sock = p_pool.zmq_context.socket(zmq.PUSH)
                 t_sock.setsockopt(zmq.LINGER, 0)
+                t_sock.setsockopt(zmq.SNDHWM, 16)
+                t_sock.setsockopt(zmq.BACKLOG, 4)
+                t_sock.setsockopt(zmq.SNDTIMEO, 1000)
+                # to stop 0MQ trashing the target socket
+                t_sock.setsockopt(zmq.RECONNECT_IVL, 1000)
+                t_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 30000)
                 target_str = "tcp://%s:%d" % (
                     mv_target.get("target", "127.0.0.1"),
                     int(mv_target.get("port", "8002")))
@@ -347,7 +353,11 @@ class machine_vector(object):
         send_vector = self.build_xml(E, simple=not full)
         send_vector.attrib["name"] = (cur_xml.get("send_name", process_tools.get_machine_name()) or process_tools.get_machine_name()).split(".")[0]
         # send to server
-        self.__socket_dict[int(cur_xml.attrib["send_id"])].send_unicode(unicode(etree.tostring(send_vector)))
+        try:
+            self.__socket_dict[int(cur_xml.attrib["send_id"])].send_unicode(unicode(etree.tostring(send_vector)))
+        except:
+            # ignore errors
+            pass
         #print etree.tostring(send_vector, pretty_print=True)
     def close(self):
         for s_id, t_sock in self.__socket_dict.iteritems():
