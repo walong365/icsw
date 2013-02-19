@@ -142,6 +142,7 @@ def set_boot(request):
 @init_logging
 def set_partition(request):
     _post = request.POST
+    pprint.pprint(_post)
     cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
     if not int(_post["new_part"]):
         cur_dev.partition_table = None
