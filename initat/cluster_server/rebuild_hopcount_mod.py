@@ -559,14 +559,8 @@ class rebuild_hopcount(cs_base_class.server_com):
             reb_var = device_variable(device=cdg_dev,
                                       name=HOPCOUNT_REBUILT_VAR_NAME)
         reb_var.var_type = "d"
-        min_peer_pk = peer_information.objects.all().order_by("pk")[0].pk
-        max_peer_pk = peer_information.objects.all().order_by("-pk")[0].pk
-        num_peers = peer_information.objects.all().count()
-        reb_var.description = "rebuilt at %s {%d:%d:%d}" % (
+        reb_var.description = "rebuilt at %s" % (
             global_config["SERVER_SHORT_NAME"],
-            min_peer_pk,
-            num_peers,
-            max_peer_pk,
         )
         reb_var.val_date = pytz.utc.localize(datetime.datetime(*time.localtime()[0:6]))
         reb_var.save()
