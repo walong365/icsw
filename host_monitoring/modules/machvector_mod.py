@@ -335,7 +335,7 @@ class machine_vector(object):
         full = cur_id % int(cur_xml.attrib.get("full_info_every", "10")) == 0
         cur_id += 1
         cur_xml.attrib["sent"] = "%d" % (cur_id)
-        #print etree.tostring(self.build_xml(E, simple=not full), pretty_print=True)
+        # print etree.tostring(self.build_xml(E, simple=not full), pretty_print=True)
         pass
     def close(self):
         for s_id, t_sock in self.__socket_dict.iteritems():
