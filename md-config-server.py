@@ -348,7 +348,7 @@ class main_config(object):
                     ("hovertemplate", "default"),
                     ("hoverdelay", 0),
                     ("hoverchildsshow", 1),
-                    ("hoverchildslimit", 10),
+                    ("hoverchildslimit", 100),
                     ("hoverchildsorder", "asc"),
                     ("hoverchildssort", "s"),
                     ("icons", "std_medium"),
