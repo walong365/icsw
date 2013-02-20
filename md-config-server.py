@@ -2285,6 +2285,7 @@ class build_process(threading_tools.process_obj):
         # build lookup-table
         host_lut = dict([(cur_dev.name, cur_dev.pk) for cur_dev in check_hosts.itervalues()])
         host_names = sorted(host_lut.keys())
+        nagvis_maps = set()
         for host_name in host_names:
             start_time = time.time()
             host_pk = host_lut[host_name]
@@ -2461,6 +2462,7 @@ class build_process(threading_tools.process_obj):
                                                                           process_tools.get_except_info()),
                                                   logging_tools.LOG_LEVEL_CRITICAL)
                                 else:
+                                    nagvis_maps.add(map_file)
                                     map_h.write("define global {\n")
                                     for key, value in map_dict.iteritems():
                                         if type(value) == bool:
@@ -2646,6 +2648,20 @@ class build_process(threading_tools.process_obj):
                 if parent_list:
                     host["parents"] = ",".join(set(parent_list))
                     self.mach_log("Setting parent to %s" % (", ".join(parent_list)), logging_tools.LOG_LEVEL_OK, host["name"])
+        # remove old nagvis maps
+        self.log("created %s" % (logging_tools.get_plural("nagvis map", len(nagvis_maps))))
+        nagvis_map_dir = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps")
+        if os.path.isdir(nagvis_map_dir):
+            for entry in os.listdir(nagvis_map_dir):
+                full_name = os.path.join(nagvis_map_dir, entry)
+                if full_name not in nagvis_maps:
+                    self.log("removing old nagvis mapfile %s" % (full_name))
+                    try:
+                        os.unlink(full_name)
+                    except:
+                        self.log("error removing %s: %s" % (full_name, 
+                                                            process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
         end_time = time.time()
         self.log("created configs for %s hosts in %s" % (host_info_str,
                                                          logging_tools.get_diff_time_str(end_time - start_time)))
