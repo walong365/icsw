@@ -44,30 +44,30 @@ class device_tree
             dg_pk = cur_tr.attr("id").split("__")[1]
             @recolor_device_group(dg_pk)
             info_th = cur_tr.find("span[id^='devg__'][id$='__info']")
-            num_devs = @xml.find("device_group[pk='" + dg_pk + "'] device[device_type!='" + @md_dt + "']").length
+            num_devs = @xml.find("device_group[pk='#{dg_pk}'] device[device_type!='" + @md_dt + "']").length
             info_th.text(num_devs)
     toggle_device_group: (line_prefix, state, name) =>
         dg_pk = line_prefix.split("__")[1]
         if state
-            @top_div.find("tr[id^='dev__" + dg_pk + "__']").show()
+            @top_div.find("tr[id^='dev__#{dg_pk}__']").show()
             @recolor_device_group(dg_pk)
         else
-            @top_div.find("tr[id^='dev__" + dg_pk + "__']").hide()
+            @top_div.find("tr[id^='dev__#{dg_pk}__']").hide()
     change_device_group_cb: (cur_el) =>
         # move row
         dev_id = cur_el.attr("id").split("__")[1]
         new_dg_id = cur_el.attr("value")
         cur_el.parents("tr:first").remove()
         new_dg = @xml.find("device_group[pk='" + new_dg_id + "']")
-        dev_xml = @xml.find("device[pk='" + dev_id + "']")
+        dev_xml = @xml.find("device[pk='#{dev_id}']")
         # important: set device group
         dev_xml.attr("device_group", new_dg_id)
         # call create_device
         @create_device(dev_xml)
     recolor_device_group: (dg_pk) =>
-        @top_div.find("tr[id^='dev__" + dg_pk + "__']").removeClass("even odd")
-        @top_div.find("tr[id^='dev__" + dg_pk + "__']:even").addClass("even")
-        @top_div.find("tr[id^='dev__" + dg_pk + "__']:odd").addClass("odd")
+        @top_div.find("tr[id^='dev__#{dg_pk}__']").removeClass("even odd")
+        @top_div.find("tr[id^='dev__#{dg_pk}__']:even").addClass("even")
+        @top_div.find("tr[id^='dev__#{dg_pk}__']:odd").addClass("odd")
     toggle_device_group_selection: (event) =>
         cur_el = $(event.target)
         cur_tr = cur_el.parents("tr:first")
@@ -186,6 +186,7 @@ class device_tree
                 if (param == "noask" || confirm("really delete device " + cur_d.attr("name") + " ?")) 
                     data = {}
                     data[line_prefix] = "1"
+                    data["force_delete"] = $("input#force_delete").is(":checked")
                     $.ajax
                         url     : "{% url base:delete_object 'device' %}"
                         data    : data
@@ -405,7 +406,7 @@ class device_tree
     propagate_sel_change: (new_val, postfix) =>
         @top_div.find("tr input[id^='dev__'][id$='__sel']:checked").each (index, cur_el) =>
             dev_pk = $(cur_el).attr("id").split("__")[1]
-            targ_sel = @top_div.find("#dev__" + dev_pk + "__" + postfix)
+            targ_sel = @top_div.find("#dev__#{dev_pk}__#{postfix}")
             if targ_sel.attr("value") != new_val
                 targ_sel.attr("value", new_val).trigger("change")
 
