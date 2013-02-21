@@ -129,6 +129,8 @@ class license_check(object):
                                 else:
                                     num_lics = 1
                                 start_data = " ".join(lparts[7:])
+                                # remove linger info (if present)
+                                start_data (start_data.split("(")[0]).strip()
                                 co_datetime = datetime.datetime.strptime(
                                     "%d %s" % (cur_year,
                                                start_data.title()), "%Y %a %m/%d %H:%M")
