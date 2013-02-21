@@ -65,6 +65,7 @@ def show_configs(request):
                 "config_script_set",
                 "mon_check_command_set",
                 "device_config_set",
+                "device_config_set__device",
                 ).order_by("name")
         else:
             all_configs = config.objects.all().select_related("config_type").order_by("name")

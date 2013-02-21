@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n coffeescript %}
 
 {% if settings.CLUSTER_LICENSE.boot %}
 
@@ -6,120 +6,122 @@
 
 {% endif %}
 
-<div id="generated_config">
-</div>
+<div id="generated_config"></div>
 
 <script type="text/javascript">
 
-TREE_XML = undefined;
-GENERATE_DEV_LIST = undefined;
+{% inlinecoffeescript %}
 
-function iterate_tree(nest_lev, top_node) {
-    var content = nest_lev.find("content:first");
-    var node_str = nest_lev.attr("name") + " (";
-    var attr_list = ["uid", "gid", "mode"];
-    for (idx=0 ; idx < attr_list.length; idx ++) {
-        var attr_name = attr_list[idx];
-        if (content.attr(attr_name) !== undefined) {
-            attr_value = content.attr(attr_name);
-            if (attr_name == "mode") {
-                var attr_value = parseInt(attr_value).toString(8);
-            };
-            var node_str = node_str + attr_name + "=" + attr_value + ", ";
-        }
-    };
-    var node_str = node_str + "lvl=" + nest_lev.attr("depth");
-    if (content.attr("error_flag") == "1") {
-        var node_str = node_str + ", Error";
-    };
-    var node_str = node_str + ")";
-    var cur_node = top_node.addChild({
-        title      : node_str,
-        isLazy     : false,
-        key        : nest_lev.attr("node_id")
-    });
-    if (nest_lev.attr("is_dir") == "1") {
-        var sub_nodes = nest_lev.find("tree[depth='" + (parseInt(nest_lev.attr("depth")) + 1) + "']");
-        cur_node.data.isFolder = true;
-        $.each(sub_nodes, function(idx, sub_node) {
-            iterate_tree($(sub_node), cur_node);
-        });
-    };
-};
+class config_tree
+    constructor: (@top_div, @xml) ->
+    draw: =>
+        gen_div = $("<div>").attr({
+            "id" : "gen_tree"
+        })
+        tab_ul = $("<ul>")
+        gen_div.append(tab_ul)
+        @xml.find("devices device").each (idx, cur_dev) =>
+            cur_dev = $(cur_dev)
+            tab_ul.append(
+                $("<li>").append(
+                    $("<a>").attr({
+                        "href" : "#dev__" + cur_dev.attr("pk")
+                    }).text(cur_dev.attr("name"))
+                )
+            )
+        @xml.find("devices device").each (idx, cur_dev) =>
+            console.log idx
+            cur_dev = $(cur_dev)
+            cur_pk = cur_dev.attr("pk")
+            new_div = $("<div>").attr({
+                "id" : "dev__#{cur_pk}"
+            })
+            error_div = $("<div>").attr({
+                "id" : "dev__#{cur_pk}__error"
+            }).append(
+                $("<span>").addClass(
+                    {
+                        "40" : "error",
+                        "30" : "warn",
+                        "20" : "ok"
+                    }[cur_dev.attr("state_level")]
+                ) 
+            )
+            tree_div = $("<div>").attr({
+                "id" : "tree__dev__#{cur_pk}__error"
+            })
+            title_div = $("<div>").attr({
+                "id"    : "title__dev__#{cur_pk}",
+            })
+            content_div = $("<div>").attr({
+                "id"    : "cont__dev__#{cur_pk}",
+                "style" : "border: 1px solid #aaaaaa;",
+            }).append($("<span>"))
+            error_div.find("span").text(cur_dev.attr("info_str"))
+            new_div.append(error_div)
+            if parseInt(cur_dev.attr("state_level")) < 40
+                new_div.append(tree_div)
+                new_div.append(title_div)
+                new_div.append(content_div)
+                tree_div.dynatree
+                    onActivate : (dtnode) =>
+                        if not dtnode.hasChildren()
+                            c_node = @xml.find("tree[node_id='#{dtnode.data.key}']")
+                            title_div.text("length: " + c_node.find("content").text().length + " bytes")
+                            content_div.find("span").html(c_node.find("content").text().replace(/\n/g, "<br>"))
+                    debuglevel : {% if DEBUG %}10{% else %}0{% endif %}
+                @iterate_tree(cur_dev.find("tree[depth='0']"), tree_div.dynatree("getRoot"))
+            gen_div.append(new_div)
+        @top_div.children().remove()
+        @top_div.append(gen_div)
+        gen_div.tabs()
+    iterate_tree: (nest_lev, top_node) =>
+        content = nest_lev.find("content:first")
+        node_str = nest_lev.attr("name") + " ("
+        for attr_name in ["uid", "gid", "mode"]
+            if content.attr(attr_name)
+                attr_value = content.attr(attr_name)
+                if attr_name == "mode"
+                    attr_value = parseInt(attr_value).toString(8)
+                node_str = "#{node_str}#{attr_name}=#{attr_value}, "
+        node_str = "#{node_str}lvl=" + nest_lev.attr("depth")
+        if content.attr("error_flag") == "1"
+            node_str = "#{node_str}, Error"
+        node_str = "#{node_str})"
+        cur_node = top_node.addChild
+            title      : node_str,
+            isLazy     : false,
+            key        : nest_lev.attr("node_id")
+        if nest_lev.attr("is_dir") == "1"
+            sub_nodes = nest_lev.find("tree[depth='" + (parseInt(nest_lev.attr("depth")) + 1) + "']")
+            cur_node.data.isFolder = true
+            for sub_node in sub_nodes
+                @iterate_tree($(sub_node), cur_node)
 
-function draw_tree_xml() {
-    var top_div = $("<div>").attr({
-        "id" : "gen_tree"
-    });
-    var tab_ul = $("<ul>");
-    top_div.append(tab_ul);
-    TREE_XML.find("devices device").each(function() {
-        var cur_dev = $(this);
-        tab_ul.append($("<li>").append($("<a>").attr({
-            "href" : "#dev__" + cur_dev.attr("pk")
-        }).text(cur_dev.attr("name"))));
-    });
-    TREE_XML.find("devices device").each(function() {
-        var cur_dev = $(this);
-        var new_div = $("<div>").attr({
-            "id" : "dev__" + cur_dev.attr("pk")
-        });
-        var error_div = $("<div>").attr({
-            "id" : "dev__" + cur_dev.attr("pk") + "__error"
-        });
-        var tree_div = $("<div>").attr({
-            "id" : "tree__dev__" + cur_dev.attr("pk")
-        });
-        var content_div = $("<div>").attr({
-            "id" : "cont__dev__" + cur_dev.attr("pk")
-        });
-        error_div.text(cur_dev.attr("info_str"));
-        new_div.append(error_div);
-        new_div.append(tree_div);
-        new_div.append(content_div);
-        <!--var top_node = $("<ul>");-->
-        <!--tree_div.append(top_node);-->
-        tree_div.dynatree({
-            onActivate : function(dtnode) {
-                if (! dtnode.hasChildren()) {
-                    var c_node = TREE_XML.find("tree[node_id='" + dtnode.data.key + "']");
-                    content_div.html(c_node.find("content").text().replace(/\n/g, "<br>"));
-                };
-            },
-            debuglevel : {% if DEBUG %}10{% else %}0{% endif %}
-        });
-        iterate_tree(cur_dev.find("tree[depth='0']"), tree_div.dynatree("getRoot"));//top_node);
-        top_div.append(new_div);
-    });
-    $("div#generated_config").children().remove();
-    $("div#generated_config").append(top_div);
-    top_div.tabs();
-};
+root = exports ? this
 
-function notify_generate_link(sel_list) {
-    if (sel_list) {
-        GENERATE_DEV_LIST = sel_list;
-    } else {
-        sel_list = CUR_DEVICES;
-    };
-    $("span#generate_info").text(resolve_device_keys(sel_list ? sel_list : CUR_DEVICES));
-};
+root.GENERATE_DEV_LIST = undefined
 
-function generate_configs() {
-    $("input#generate_button").attr("disabled", "disabled");
-    $.ajax({
-        url : "{% url config:generate_config %}",
-        data : {
-            "sel_list" : GENERATE_DEV_LIST
+root.notify_generate_link = (sel_list) ->
+    if sel_list
+        root.GENERATE_DEV_LIST = sel_list
+    else
+        sel_list = CUR_DEVICES
+    $("span#generate_info").text(resolve_device_keys(if sel_list then sel_list else CUR_DEVICES))
+
+root.generate_configs = ->
+    $("input#generate_button").attr("disabled", "disabled")
+    $.ajax
+        url     : "{% url config:generate_config %}"
+        data    : {
+            "sel_list" : root.GENERATE_DEV_LIST
         },
-        success : function(xml) {
-            $("input#generate_button").removeAttr("disabled");
-            if (parse_xml_response(xml)) {
-                TREE_XML = $(xml);
-                draw_tree_xml();
-            };
-        }
-    });
-};
+        success : (xml) ->
+            $("input#generate_button").removeAttr("disabled")
+            if parse_xml_response(xml)
+                cur_dt = new config_tree($("div#generated_config"), $(xml))
+                cur_dt.draw()
+
+{% endinlinecoffeescript %}
 
 </script>

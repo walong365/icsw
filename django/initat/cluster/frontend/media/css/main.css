@@ -61,6 +61,16 @@ span.error {
     font-weight : bold;
 }
 
+span.warn {
+    color       : #ffff88;
+}
+
+span.ok {
+    color       : #44aa44;
+    font-weight : bold;
+    font-style : italic;
+}
+
 .ui-layout-north {
     padding: 0px !important;
 }
