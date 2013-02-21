@@ -1,6 +1,10 @@
 {% load i18n %}
 
+{% if settings.CLUSTER_LICENSE.boot %}
+
 <input type="button" id="generate_button" value="generate device config" onClick="generate_configs();"/><span id="generate_info"></span>
+
+{% endif %}
 
 <div id="generated_config">
 </div>
