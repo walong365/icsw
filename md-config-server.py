@@ -2454,6 +2454,8 @@ class build_process(threading_tools.process_obj):
                                     "header_menu"  : True,
                                     "hover_menu"   : True,
                                     "context_menu" : True,
+                                    # special flag for anovis
+                                    "use_childs_for_overview_icon" : False,
                                 }
                                 try:
                                     map_h = open(map_file, "w")
