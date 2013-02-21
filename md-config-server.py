@@ -347,7 +347,7 @@ class main_config(object):
                     ("hovermenu", 1),
                     ("hovertemplate", "default"),
                     ("hoverdelay", 0),
-                    ("hoverchildsshow", 1),
+                    ("hoverchildsshow", 0),
                     ("hoverchildslimit", 100),
                     ("hoverchildsorder", "asc"),
                     ("hoverchildssort", "s"),
