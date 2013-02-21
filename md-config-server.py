@@ -1995,9 +1995,10 @@ class build_process(threading_tools.process_obj):
                     bc_valid = False
             if bc_valid:
                 # build distance map
-                cur_dmap = self._build_distance_map(self.__gen_config.monitor_server, latest_gen)
+                self.latest_gen = latest_gen
+                cur_dmap = self._build_distance_map(self.__gen_config.monitor_server)
                 for cur_gc in [self.__gen_config] + self.__slave_configs.values():
-                    self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap, latest_gen)
+                    self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap)
                     if cur_gc.master:
                         # recreate access files
                         cur_gc._create_access_entries()
@@ -2017,7 +2018,7 @@ class build_process(threading_tools.process_obj):
             self.log("queries issued: %d" % (tot_query_count))
             #for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
             #    self.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
-    def _build_distance_map(self, root_node, latest_gen):
+    def _build_distance_map(self, root_node):
         self.log("building distance map, root node is '%s'" % (root_node))
         # exclude all without attached netdevices
         dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.exclude(netdevice=None).prefetch_related("netdevice_set")])
@@ -2040,7 +2041,7 @@ class build_process(threading_tools.process_obj):
             dst_nds = reduce(operator.ior, [nd_dict[key] for key in dst_nodes], set())
             # only single-hop hopcounts
             for cur_hc in hopcount.objects.filter(
-                Q(route_generation=latest_gen) &
+                Q(route_generation=self.latest_gen) &
                 Q(s_netdevice__in=src_nds) &
                 Q(d_netdevice__in=dst_nds) &
                 Q(trace_length=2)):
@@ -2164,10 +2165,376 @@ class build_process(threading_tools.process_obj):
             return ("%%%dd" % (size)) % (i_val)
         else:
             return ("%%%ds" % (size)) % ("-")
-    def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map, latest_gen):
+    def _create_single_host_config(self,
+                                   cur_gc,
+                                   host,
+                                   check_hosts,
+                                   d_map,
+                                   my_net_idxs,
+                                   all_hosts_dict,
+                                   dev_templates,
+                                   serv_templates,
+                                   snmp_stack,
+                                   all_access,
+                                   # not used right now
+                                   #all_ms_connections,
+                                   #all_ib_connections,
+                                   #all_dev_relationships,
+                                   contact_group_dict,
+                                   ng_ext_hosts,
+                                   all_configs,
+                                   nagvis_maps,
+                                   ):
+        start_time = time.time()
+        # set some vars
+        host_nc, service_nc, hostext_nc  = (cur_gc["host"], cur_gc["service"], cur_gc["hostextinfo"])
+        if cur_gc.master:
+            check_for_passive_checks = True
+        else:
+            check_for_passive_checks = False
+        checks_are_active = True
+        if check_for_passive_checks:
+            if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
+                checks_are_active = False
+        #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
+        self.__cached_mach_name = host.name
+        self.mach_log("-------- %s ---------" % ("master" if cur_gc.master else "slave %s" % (cur_gc.slave_name)))
+        glob_log_str = "Starting build of config for device %32s%s (%10s), distance level is %3d" % (
+            host.name[:32],
+            "*" if len(host.name) > 32 else " ",
+            "active" if checks_are_active else "passive",
+            d_map.get(host.pk, -1),
+        )
+        self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.name)
+        num_ok, num_warning, num_error = (0, 0, 0)
+        #print "%s : %s" % (host["name"], host["identifier"])
+        if host.valid_ips:
+            net_devices = host.valid_ips
+        elif host.invalid_ips:
+            self.mach_log("Device %s has no valid netdevices associated, using invalid ones..." % (host.name),
+                          logging_tools.LOG_LEVEL_WARN)
+            net_devices = host.invalid_ips
+        else:
+            self.mach_log("Device %s has no netdevices associated, skipping..." % (host.name),
+                          logging_tools.LOG_LEVEL_ERROR)
+            num_error += 1
+            net_devices = {}
+        if net_devices:
+            #print mni_str_s, mni_str_d, dev_str_s, dev_str_d
+            # get correct netdevice for host
+            if host.name == global_config["SERVER_SHORT_NAME"]:
+                valid_ips, traces = (["127.0.0.1"], [(1, 0, [host.pk])])
+            else:
+                valid_ips, traces = self._get_target_ip_info(my_net_idxs, net_devices, host.pk, all_hosts_dict, check_hosts)
+                if not valid_ips:
+                    num_error += 1
+            act_def_dev = dev_templates[host.mon_device_templ_id or 0]
+            if valid_ips and act_def_dev:
+                valid_ip = valid_ips[0]
+                self.mach_log("Found %s for host %s : %s, using %s" % (
+                    logging_tools.get_plural("target ip", len(valid_ips)),
+                    host.name,
+                    ", ".join(valid_ips),
+                    valid_ip))
+                if not serv_templates.has_key(act_def_dev.mon_service_templ_id):
+                    self.log("Default service_template not found in service_templates", logging_tools.LOG_LEVEL_WARN)
+                else:
+                    act_def_serv = serv_templates[act_def_dev.mon_service_templ_id]
+                    # tricky part: check the actual service_template for the various services
+                    self.mach_log("Using default device_template '%s' and service_template '%s' for host %s" % (
+                        act_def_dev.name,
+                        act_def_serv.name,
+                        host.name))
+                    # get device variables
+                    dev_variables = {}
+                    for cur_var in device_variable.objects.filter(Q(device=host)):
+                        var_name = cur_var.name
+                        dev_variables[var_name] = unicode(cur_var.value)
+                    dev_variables.update(snmp_stack.get_vars(host))
+                    self.mach_log("device has %s" % (
+                        logging_tools.get_plural("device_variable", len(dev_variables.keys()))))
+                    # now we have the device- and service template
+                    act_host = nag_config(host.name)
+                    act_host["host_name"] = host.name
+                    # action url
+                    if global_config["ENABLE_PNP"]:
+                        act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
+                        if host.enable_perfdata:
+                            act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (global_config["PNP_URL"])
+                    # deep copy needed here
+                    c_list = [entry for entry in all_access]
+                    # set alias
+                    if host.device_group.user_set.all():
+                        c_list.extend([cur_u.login for cur_u in host.device_group.user_set.all()])
+                    if c_list:
+                        act_host["contacts"] = ",".join(c_list)
+                    act_host["alias"] = host.alias or host.name
+                    act_host["address"] = valid_ip
+                    # check for parents
+                    parents = []
+                    # rule 1: APC Masterswitches have their bootserver set as parent
+                    if host.device_type.identifier in ["AM", "IBC"] and host.bootserver_id:
+                        parents.append(all_hosts_dict[host.bootserver_id].name)
+                    # rule 2: Devices connected to an apc have this apc set as parent
+                    #elif all_ms_connections.has_key(host.pk):
+                        #for pd in all_ms_connections[host.pk]:
+                            #if all_hosts_dict[pd]["name"] not in parents:
+                                ## disable circular references
+                                #if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
+                                    #self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[pd]["name"]))
+                                #else:
+                                    #parents.append(all_hosts_dict[pd]["name"])
+                    # rule 3: Devices connected to an ibc have this ibc set as parent
+                    #elif all_ib_connections.has_key(host.pk):
+                        #for pd in all_ib_connections[host.pk]:
+                            #if all_hosts_dict[pd]["name"] not in parents:
+                                ## disable circular references
+                                #if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
+                                    #self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[pd]["name"]))
+                                #else:
+                                    #parents.append(all_hosts_dict[pd]["name"])
+                    # rule 4: Devices have their xen/vmware-parent set as parent
+                    #elif all_dev_relationships.has_key(host.pk) and all_hosts_dict.has_key(all_dev_relationships[host.pk]["host_device"]):
+                        #act_rel = all_dev_relationships[host.pk]
+                        ## disable circular references
+                        #if host["identifier"] == "H" and host["name"] == global_config["SERVER_SHORT_NAME"]:
+                            #self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[act_rel["host_device"]]["name"]))
+                        #else:
+                            #parents.append(all_hosts_dict[act_rel["host_device"]]["name"])
+                    # rule 5: Check routing
+                    else:
+                        self.mach_log("No direct parent(s) found, registering trace")
+                        if host.bootserver_id != host.pk and host.bootserver_id:
+                            traces.append((1, 0, [host.pk]))
+                        if traces and len(traces[0][2]) > 1:
+                            act_host["possible_parents"] = traces
+                            #print traces, host["name"], all_hosts_dict[traces[1]]["name"]
+                            #parents += [all_hosts_dict[traces[1]]["name"]]
+                        #print "No parent set for %s" % (host["name"])
+                    if parents:
+                        self.mach_log("settings %s: %s" % (
+                            logging_tools.get_plural("parent", len(parents)),
+                            ", ".join(sorted(parents))))
+                        act_host["parents"] = ",".join(parents)
+                    act_host["retain_status_information"] = global_config["RETAIN_HOST_STATUS"]
+                    act_host["max_check_attempts"]        = act_def_dev.max_attempts
+                    act_host["notification_interval"]     = act_def_dev.ninterval
+                    act_host["notification_period"]       = cur_gc["timeperiod"][act_def_dev.mon_period_id]["name"]
+                    act_host["checks_enabled"]            = 1
+                    act_host["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
+                    act_host["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
+                    if checks_are_active and not cur_gc.master:
+                        # trace changes
+                        act_host["obsess_over_host"] = 1
+                    host_groups = set(contact_group_dict.get(host.name, []))
+                    act_host["contact_groups"] = ",".join(host_groups) if host_groups else global_config["NONE_CONTACT_GROUP"]
+                    act_host["contacts"] = ""
+                    self.mach_log("contact groups for host: %s" % (
+                        ", ".join(sorted(host_groups)) or "none"))
+                    if host.monitor_checks:
+                        if valid_ip == "0.0.0.0":
+                            self.mach_log("IP address is '%s', host is assumed to be always up" % (unicode(valid_ip)))
+                            act_host["check_command"] = "check-host-ok"
+                        else:
+                            act_host["check_command"] = act_def_dev.ccommand
+                        # check for nagvis map
+                        if host.automap_root_nagvis:
+                            map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.name))
+                            map_dict = {
+                                "sources"      : "automap",
+                                "alias"        : host.comment or host.name,
+                                "parent_map"   : "",
+                                "iconset"      : "std_big",
+                                "child_layers" : 10,
+                                "backend_id"   : "live_1",
+                                "root"         : host.name,
+                                "label_show"   : "1",
+                                "label_border" : "transparent",
+                                "render_mode"  : "directed",
+                                "rankdir"      : "TB",
+                                "width"        : 800,
+                                "height"       : 600,
+                                "header_menu"  : True,
+                                "hover_menu"   : True,
+                                "context_menu" : True,
+                                # special flag for anovis
+                                "use_childs_for_overview_icon" : False,
+                            }
+                            try:
+                                map_h = open(map_file, "w")
+                            except:
+                                self.mach_log("cannot open %s: %s" % (map_file,
+                                                                      process_tools.get_except_info()),
+                                              logging_tools.LOG_LEVEL_CRITICAL)
+                            else:
+                                nagvis_maps.add(map_file)
+                                map_h.write("define global {\n")
+                                for key, value in map_dict.iteritems():
+                                    if type(value) == bool:
+                                        value = "1" if value else "0"
+                                    elif type(value) in [int, long]:
+                                        value = "%d" % (value)
+                                    map_h.write("    %s=%s\n" % (key, value))
+                                map_h.write("}\n")
+                                map_h.close()
+                        # check for notification options
+                        not_a = []
+                        for what, shortcut in [("nrecovery", "r"), ("ndown", "d"), ("nunreachable", "u")]:
+                            if getattr(act_def_dev, what):
+                                not_a.append(shortcut)
+                        if not not_a:
+                            not_a.append("n")
+                        act_host["notification_options"] = ",".join(not_a)
+                        # check for hostextinfo
+                        if host.mon_ext_host_id and ng_ext_hosts.has_key(host.mon_ext_host_id):
+                            if (global_config["MD_TYPE"] == "nagios" and global_config["MD_VERSION"] > 1) or (global_config["MD_TYPE"] == "icinga"):
+                                # handle for nagios 2
+                                act_hostext_info = nag_config(host.name)
+                                act_hostext_info["host_name"] = host.name
+                                for key in ["icon_image", "statusmap_image"]:
+                                    act_hostext_info[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
+                                hostext_nc[host.name] = act_hostext_info
+                            else:
+                                self.log("don't know how to handle hostextinfo for %s_version %d" % (
+                                    global_config["MD_TYPE"],
+                                    global_config["MD_VERSION"]),
+                                         logging_tools.LOG_LEVEL_ERROR)
+                        # clear host from servicegroups
+                        cur_gc["servicegroup"].clear_host(host.name)
+                        # get check_commands and templates
+                        conf_names = set(all_configs.get(host.name, []))
+                        # cluster config names
+                        cconf_names = set(host.devs_mon_service_cluster.all().values_list("mon_check_command__name", flat=True))
+                        # build lut
+                        conf_dict = dict([(cur_c["command_name"], cur_c) for cur_c in cur_gc["command"].values() if 
+                                          (cur_c.get_config() in conf_names and (not(cur_c.get_device()) or cur_c.get_device() == host.pk)) or
+                                          cur_c["command_name"] in cconf_names])
+                        # old code, use only_ping config
+                        #if host["identifier"] == "NB" or host["identifier"] == "AM" or host["identifier"] == "S":
+                        #    # set config-dict for netbotzes, APC Masterswitches and switches to ping
+                        #    conf_dict = dict([(x["command_name"], x) for x in self.__gen_config["checkcommand"]["struct"].values() if x["command_name"].startswith("check_ping")])
+                        #print host["name"], conf_dict
+                        # now conf_dict is a list of all service-checks defined for this host
+                        #pprint.pprint(conf_dict)
+                        # list of already used checks
+                        used_checks = set()
+                        conf_names = sorted(conf_dict.keys())
+                        for conf_name in conf_names:
+                            s_check = conf_dict[conf_name]
+                            if s_check.name in used_checks:
+                                self.mach_log("%s (%s) already used, ignoring .... (CHECK CONFIG !)" % (
+                                    s_check.get_description(),
+                                    s_check["command_name"]), logging_tools.LOG_LEVEL_WARN)
+                                num_warning += 1
+                            else:
+                                used_checks.add(s_check.name)
+                                special = s_check.get_special()
+                                if special:
+                                    sc_array = []
+                                    try:
+                                        cur_special = getattr(special_commands, "special_%s" % (special.lower()))(self, s_check, host, valid_ip, global_config)
+                                    except:
+                                        self.log("unable to initialize special '%s': %s" % (
+                                            special,
+                                            process_tools.get_except_info()),
+                                                 logging_tools.LOG_LEVEL_CRITICAL)
+                                    else:
+                                        # calling handle to return a list of checks with format
+                                        # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
+                                        try:
+                                            sc_array = cur_special()
+                                        except:
+                                            exc_info = process_tools.exception_info()
+                                            self.log("error calling special %s:" % (special),
+                                                     logging_tools.LOG_LEVEL_CRITICAL)
+                                            for line in exc_info.log_lines:
+                                                self.log(" - %s" % (line), logging_tools.LOG_LEVEL_CRITICAL)
+                                            sc_array = []
+                                        finally:
+                                            cur_special.cleanup()
+                                else:
+                                    sc_array = [special_commands.arg_template(s_check, s_check.get_description())]
+                                    # contact_group is only written if contact_group is responsible for the host and the service_template
+                                serv_temp = serv_templates[s_check.get_template(act_def_serv.name)]
+                                serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc, dev_variables)
+                                service_nc.extend(sc_list)
+                                num_ok += len(sc_list)
+                        # add cluster checks
+                        mhc_checks = host.main_mon_host_cluster.all().prefetch_related("devices")
+                        if len(mhc_checks):
+                            self.mach_log("adding %s" % (logging_tools.get_plural("host_cluster check", len(mhc_checks))))
+                            for mhc_check in mhc_checks:
+                                dev_names = ",".join(["$HOSTSTATEID:%s$" % (cur_dev.name) for cur_dev in mhc_check.devices.all()])
+                                s_check = cur_gc["command"]["check_host_cluster"]
+                                serv_temp = serv_templates[mhc_check.mon_service_templ_id]
+                                serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                sub_list = self.get_service(
+                                    host,
+                                    act_host,
+                                    s_check,
+                                    [special_commands.arg_template(
+                                        s_check,
+                                        "%s %s" % (s_check.get_description(), mhc_check.description),
+                                        arg1=mhc_check.description,
+                                        arg2=mhc_check.warn_value,
+                                        arg3=mhc_check.error_value,
+                                        arg4=dev_names)
+                                     ],
+                                    act_def_serv,
+                                    serv_cgs,
+                                    checks_are_active,
+                                    serv_temp,
+                                    cur_gc,
+                                    dev_variables)
+                                service_nc.extend(sub_list)
+                                num_ok += len(sub_list)
+                        # add service checks
+                        msc_checks = host.main_mon_service_cluster.all().prefetch_related("devices")
+                        if len(msc_checks):
+                            self.mach_log("adding %s" % (logging_tools.get_plural("service_cluster check", len(mhc_checks))))
+                            for msc_check in msc_checks:
+                                c_com = cur_gc["command"][msc_check.mon_check_command.name]
+                                dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.name, c_com.get_description()) for cur_dev in mhc_check.devices.all()])
+                                s_check = cur_gc["command"]["check_service_cluster"]
+                                serv_temp = serv_templates[msc_check.mon_service_templ_id]
+                                serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                sub_list = self.get_service(
+                                    host,
+                                    act_host,
+                                    s_check,
+                                    [special_commands.arg_template(
+                                        s_check,
+                                        s_check.get_description(), 
+                                        arg1=msc_check.description,
+                                        arg2=msc_check.warn_value,
+                                        arg3=msc_check.error_value,
+                                        arg4=dev_names)
+                                     ],
+                                    act_def_serv,
+                                    serv_cgs,
+                                    checks_are_active,
+                                    serv_temp,
+                                    cur_gc,
+                                    dev_variables)
+                                service_nc.extend(sub_list)
+                                num_ok += len(sub_list)
+                        host_nc[act_host["name"]] = act_host
+                    else:
+                        self.mach_log("Host %s is disabled" % (host.name))
+            else:
+                self.mach_log("No valid IPs found or no default_device_template found", logging_tools.LOG_LEVEL_ERROR)
+        info_str = "finished with %s warnings and %s errors (%3d ok) in %s" % (
+            self._get_int_str(num_warning),
+            self._get_int_str(num_error),
+            num_ok,
+            logging_tools.get_diff_time_str(time.time() - start_time))
+        glob_log_str = "%s, %s" % (glob_log_str, info_str)
+        self.log(glob_log_str)
+        self.mach_log(info_str)
+    def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map):
         """
         d_map : distance map
-        latest_gen : latest routing generation
         """
         start_time = time.time()
         # get contacts with access to all devices
@@ -2189,16 +2556,19 @@ class build_process(threading_tools.process_obj):
             h_filter = Q()
         # add master/slave related filters
         if cur_gc.master:
-            check_for_passive_checks = True
+            pass
             #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         else:
-            check_for_passive_checks = False
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
         # dictionary with all parent / slave relations
         ps_dict = {}
         for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):
             ps_dict[ps_config.name] = ps_config.parent_config.name
         check_hosts = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(h_filter)])
+        for cur_dev in check_hosts.itervalues():
+            # set default values
+            cur_dev.valid_ips = {}
+            cur_dev.invalid_ips = {}
         meta_devices = dict([(md.device_group.pk, md) for md in device.objects.filter(Q(device_type__identifier='MD')).prefetch_related("device_config_set", "device_config_set__config").select_related("device_group")])
         all_configs = {}
         for cur_dev in device.objects.filter(h_filter).prefetch_related("device_config_set", "device_config_set__config"):
@@ -2214,11 +2584,6 @@ class build_process(threading_tools.process_obj):
                     break
             all_configs[cur_dev.name] = loc_config
         # get config variables
-##        sql_str = "SELECT d.name, dc.new_config FROM new_config c INNER JOIN device d INNER JOIN device_group dg INNER JOIN device_config dc LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND dc.new_config=c.new_config_idx AND %s ORDER BY d.name" % (sel_str)
-##        dc.execute(sql_str)
-##        all_configs = {}
-##        for db_rec in dc.fetchall():
-##            all_configs.setdefault(db_rec["name"], []).append(db_rec["new_config"])
         first_contactgroup_name = cur_gc["contactgroup"][cur_gc["contactgroup"].keys()[0]]["name"]
         contact_group_dict = {}
         # get contact groups
@@ -2245,13 +2610,10 @@ class build_process(threading_tools.process_obj):
         valid_nwt_list = set(network_type.objects.filter(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
         invalid_nwt_list = set(network_type.objects.exclude(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
         # get all network devices (needed for relaying)
-        all_net_devices = {
-            "i" : {},
-            "v" : {}}
-        for n_i, n_n, n_t, n_d in net_ip.objects.all().values_list("ip", "netdevice__device__name", "network__network_type__identifier", "netdevice__pk"):
-            n_t = "v" if n_t in valid_nwt_list else "i"
-            all_net_devices.setdefault(n_t, {}).setdefault(n_n, {}).setdefault(n_d, []).append(n_i)
-        #pprint.pprint(all_net_devices)
+        for n_i, n_n, n_t, n_d, d_pk in net_ip.objects.all().values_list("ip", "netdevice__device__name", "network__network_type__identifier", "netdevice__pk", "netdevice__device__pk"):
+            if d_pk in check_hosts:
+                cur_host = check_hosts[d_pk]
+                getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append(n_i)
         # get all masterswitch connections, FIXME
         #dc.execute("SELECT d.device_idx, ms.device FROM device d, msoutlet ms WHERE ms.slave_device = d.device_idx")
         all_ms_connections = {}
@@ -2269,8 +2631,7 @@ class build_process(threading_tools.process_obj):
         all_ib_connections = {}
         #for db_rec in dc.fetchall():
         #    all_ib_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
-        host_nc, service_nc  = (cur_gc["host"], cur_gc["service"])
-        hostext_nc = cur_gc["hostextinfo"]
+        host_nc, service_nc, hostext_nc  = (cur_gc["host"], cur_gc["service"], cur_gc["hostextinfo"])
         # delete host if already present in host_table
         for host_pk, host in check_hosts.iteritems():
             del_list = set([cur_dev for cur_dev in host_nc.values() if cur_dev.name == host.name])
@@ -2283,351 +2644,27 @@ class build_process(threading_tools.process_obj):
                     del hostext_nc[del_h.name]
                 del host_nc[del_h.name]
         # build lookup-table
-        host_lut = dict([(cur_dev.name, cur_dev.pk) for cur_dev in check_hosts.itervalues()])
-        host_names = sorted(host_lut.keys())
         nagvis_maps = set()
-        for host_name in host_names:
-            start_time = time.time()
-            host_pk = host_lut[host_name]
-            host = check_hosts[host_pk]
-            checks_are_active = True
-            if check_for_passive_checks:
-                if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
-                    checks_are_active = False
-            #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
-            self.__cached_mach_name = host.name
-            self.mach_log("-------- %s ---------" % ("master" if cur_gc.master else "slave %s" % (cur_gc.slave_name)))
-            glob_log_str = "Starting build of config for device %32s (%s), distance level is %d" % (
-                host.name,
-                "active" if checks_are_active else "passive",
-                d_map.get(host_pk, -1),
+        for host_name, host in sorted([(cur_dev.name, cur_dev) for cur_dev in check_hosts.itervalues()]):
+            self._create_single_host_config(
+                cur_gc,
+                host,
+                check_hosts,
+                d_map,
+                my_net_idxs,
+                all_hosts_dict,
+                dev_templates,
+                serv_templates,
+                snmp_stack,
+                all_access,
+                #all_ms_connections,
+                #all_ib_connections,
+                #all_dev_relationships,
+                contact_group_dict,
+                ng_ext_hosts,
+                all_configs,
+                nagvis_maps,
             )
-            self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.name)
-            num_ok, num_warning, num_error = (0, 0, 0)
-            #print "%s : %s" % (host["name"], host["identifier"])
-            if host.name in all_net_devices["v"]:
-                net_devices = all_net_devices["v"][host.name]
-            elif host.name in all_net_devices["i"]:
-                self.mach_log("Device %s has no valid netdevices associated, using invalid ones..." % (host.name),
-                              logging_tools.LOG_LEVEL_WARN)
-                net_devices = all_net_devices["i"][host.name]
-            else:
-                self.mach_log("Device %s has no netdevices associated, skipping..." % (host.name),
-                                      logging_tools.LOG_LEVEL_ERROR)
-                num_error += 1
-                net_devices = []
-            if net_devices:
-                #print mni_str_s, mni_str_d, dev_str_s, dev_str_d
-                # get correct netdevice for host
-                if host.name == global_config["SERVER_SHORT_NAME"]:
-                    valid_ips, traces = (["127.0.0.1"], [(1, 0, [host_pk])])
-                else:
-                    valid_ips, traces = self._get_target_ip_info(my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts, latest_gen)
-                    if not valid_ips:
-                        num_error += 1
-                act_def_dev = dev_templates[host.mon_device_templ_id or 0]
-                if valid_ips and act_def_dev:
-                    valid_ip = valid_ips[0]
-                    self.mach_log("Found %s for host %s : %s, using %s" % (
-                        logging_tools.get_plural("target ip", len(valid_ips)),
-                        host.name,
-                        ", ".join(valid_ips),
-                        valid_ip))
-                    if not serv_templates.has_key(act_def_dev.mon_service_templ_id):
-                        self.log("Default service_template not found in service_templates", logging_tools.LOG_LEVEL_WARN)
-                    else:
-                        act_def_serv = serv_templates[act_def_dev.mon_service_templ_id]
-                        # tricky part: check the actual service_template for the various services
-                        self.mach_log("Using default device_template '%s' and service_template '%s' for host %s" % (
-                            act_def_dev.name,
-                            act_def_serv.name,
-                            host.name))
-                        # get device variables
-                        dev_variables = {}
-                        for cur_var in device_variable.objects.filter(Q(device=host)):
-                            var_name = cur_var.name
-                            dev_variables[var_name] = unicode(cur_var.value)
-                        dev_variables.update(snmp_stack.get_vars(host))
-                        self.mach_log("device has %s" % (
-                            logging_tools.get_plural("device_variable", len(dev_variables.keys()))))
-                        # now we have the device- and service template
-                        act_host = nag_config(host.name)
-                        act_host["host_name"] = host.name
-                        # action url
-                        if global_config["ENABLE_PNP"]:
-                            act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
-                            if host.enable_perfdata:
-                                act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (global_config["PNP_URL"])
-                        # deep copy needed here
-                        c_list = [entry for entry in all_access]
-                        # set alias
-                        if host.device_group.user_set.all():
-                            c_list.extend([cur_u.login for cur_u in host.device_group.user_set.all()])
-                        if c_list:
-                            act_host["contacts"] = ",".join(c_list)
-                        act_host["alias"] = host.alias or host.name
-                        act_host["address"] = valid_ip
-                        # check for parents
-                        parents = []
-                        # rule 1: APC Masterswitches have their bootserver set as parent
-                        if host.device_type.identifier in ["AM", "IBC"] and host.bootserver_id:
-                            parents.append(all_hosts_dict[host.bootserver_id].name)
-                        # rule 2: Devices connected to an apc have this apc set as parent
-                        elif all_ms_connections.has_key(host_pk):
-                            for pd in all_ms_connections[host_pk]:
-                                if all_hosts_dict[pd]["name"] not in parents:
-                                    # disable circular references
-                                    if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
-                                        self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[pd]["name"]))
-                                    else:
-                                        parents.append(all_hosts_dict[pd]["name"])
-                        # rule 3: Devices connected to an ibc have this ibc set as parent
-                        elif all_ib_connections.has_key(host_pk):
-                            for pd in all_ib_connections[host_pk]:
-                                if all_hosts_dict[pd]["name"] not in parents:
-                                    # disable circular references
-                                    if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
-                                        self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[pd]["name"]))
-                                    else:
-                                        parents.append(all_hosts_dict[pd]["name"])
-                        # rule 4: Devices have their xen/vmware-parent set as parent
-                        elif all_dev_relationships.has_key(host_pk) and all_hosts_dict.has_key(all_dev_relationships[host_pk]["host_device"]):
-                            act_rel = all_dev_relationships[host_pk]
-                            # disable circular references
-                            if host["identifier"] == "H" and host["name"] == global_config["SERVER_SHORT_NAME"]:
-                                self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[act_rel["host_device"]]["name"]))
-                            else:
-                                parents.append(all_hosts_dict[act_rel["host_device"]]["name"])
-                        # rule 5: Check routing
-                        else:
-                            self.mach_log("No direct parent(s) found, registering trace")
-                            if host.bootserver_id != host_pk and host.bootserver_id:
-                                traces.append((1, 0, [host_pk]))
-                            if traces and len(traces[0][2]) > 1:
-                                act_host["possible_parents"] = traces
-                                #print traces, host["name"], all_hosts_dict[traces[1]]["name"]
-                                #parents += [all_hosts_dict[traces[1]]["name"]]
-                            #print "No parent set for %s" % (host["name"])
-                        if parents:
-                            self.mach_log("settings %s: %s" % (
-                                logging_tools.get_plural("parent", len(parents)),
-                                ", ".join(sorted(parents))))
-                            act_host["parents"] = ",".join(parents)
-                        act_host["retain_status_information"] = global_config["RETAIN_HOST_STATUS"]
-                        act_host["max_check_attempts"]        = act_def_dev.max_attempts
-                        act_host["notification_interval"]     = act_def_dev.ninterval
-                        act_host["notification_period"]       = cur_gc["timeperiod"][act_def_dev.mon_period_id]["name"]
-                        act_host["checks_enabled"]            = 1
-                        act_host["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
-                        act_host["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
-                        if checks_are_active and not cur_gc.master:
-                            # trace changes
-                            act_host["obsess_over_host"] = 1
-                        host_groups = set(contact_group_dict.get(host.name, []))
-                        act_host["contact_groups"] = ",".join(host_groups) if host_groups else global_config["NONE_CONTACT_GROUP"]
-                        act_host["contacts"] = ""
-                        self.mach_log("contact groups for host: %s" % (
-                            ", ".join(sorted(host_groups)) or "none"))
-                        if host.monitor_checks:
-                            if valid_ip == "0.0.0.0":
-                                self.mach_log("IP address is '%s', host is assumed to be always up" % (unicode(valid_ip)))
-                                act_host["check_command"] = "check-host-ok"
-                            else:
-                                act_host["check_command"] = act_def_dev.ccommand
-                            # check for nagvis map
-                            if host.automap_root_nagvis:
-                                map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.name))
-                                map_dict = {
-                                    "sources"      : "automap",
-                                    "alias"        : host.comment or host.name,
-                                    "parent_map"   : "",
-                                    "iconset"      : "std_big",
-                                    "child_layers" : 10,
-                                    "backend_id"   : "live_1",
-                                    "root"         : host.name,
-                                    "label_show"   : "1",
-                                    "label_border" : "transparent",
-                                    "render_mode"  : "directed",
-                                    "rankdir"      : "TB",
-                                    "width"        : 800,
-                                    "height"       : 600,
-                                    "header_menu"  : True,
-                                    "hover_menu"   : True,
-                                    "context_menu" : True,
-                                    # special flag for anovis
-                                    "use_childs_for_overview_icon" : False,
-                                }
-                                try:
-                                    map_h = open(map_file, "w")
-                                except:
-                                    self.mach_log("cannot open %s: %s" % (map_file,
-                                                                          process_tools.get_except_info()),
-                                                  logging_tools.LOG_LEVEL_CRITICAL)
-                                else:
-                                    nagvis_maps.add(map_file)
-                                    map_h.write("define global {\n")
-                                    for key, value in map_dict.iteritems():
-                                        if type(value) == bool:
-                                            value = "1" if value else "0"
-                                        elif type(value) in [int, long]:
-                                            value = "%d" % (value)
-                                        map_h.write("    %s=%s\n" % (key, value))
-                                    map_h.write("}\n")
-                                    map_h.close()
-                            # check for notification options
-                            not_a = []
-                            for what, shortcut in [("nrecovery", "r"), ("ndown", "d"), ("nunreachable", "u")]:
-                                if getattr(act_def_dev, what):
-                                    not_a.append(shortcut)
-                            if not not_a:
-                                not_a.append("n")
-                            act_host["notification_options"] = ",".join(not_a)
-                            # check for hostextinfo
-                            if host.mon_ext_host_id and ng_ext_hosts.has_key(host.mon_ext_host_id):
-                                if (global_config["MD_TYPE"] == "nagios" and global_config["MD_VERSION"] > 1) or (global_config["MD_TYPE"] == "icinga"):
-                                    # handle for nagios 2
-                                    act_hostext_info = nag_config(host.name)
-                                    act_hostext_info["host_name"] = host.name
-                                    for key in ["icon_image", "statusmap_image"]:
-                                        act_hostext_info[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
-                                    hostext_nc[host.name] = act_hostext_info
-                                else:
-                                    self.log("don't know how to handle hostextinfo for %s_version %d" % (
-                                        global_config["MD_TYPE"],
-                                        global_config["MD_VERSION"]),
-                                             logging_tools.LOG_LEVEL_ERROR)
-                            # clear host from servicegroups
-                            cur_gc["servicegroup"].clear_host(host.name)
-                            # get check_commands and templates
-                            conf_names = set(all_configs.get(host.name, []))
-                            # cluster config names
-                            cconf_names = set(host.devs_mon_service_cluster.all().values_list("mon_check_command__name", flat=True))
-                            # build lut
-                            conf_dict = dict([(cur_c["command_name"], cur_c) for cur_c in cur_gc["command"].values() if 
-                                              (cur_c.get_config() in conf_names and (not(cur_c.get_device()) or cur_c.get_device() == host.pk)) or
-                                              cur_c["command_name"] in cconf_names])
-                            # old code, use only_ping config
-                            #if host["identifier"] == "NB" or host["identifier"] == "AM" or host["identifier"] == "S":
-                            #    # set config-dict for netbotzes, APC Masterswitches and switches to ping
-                            #    conf_dict = dict([(x["command_name"], x) for x in self.__gen_config["checkcommand"]["struct"].values() if x["command_name"].startswith("check_ping")])
-                            #print host["name"], conf_dict
-                            # now conf_dict is a list of all service-checks defined for this host
-                            #pprint.pprint(conf_dict)
-                            # list of already used checks
-                            used_checks = set()
-                            conf_names = sorted(conf_dict.keys())
-                            for conf_name in conf_names:
-                                s_check = conf_dict[conf_name]
-                                if s_check.name in used_checks:
-                                    self.mach_log("%s (%s) already used, ignoring .... (CHECK CONFIG !)" % (
-                                        s_check.get_description(),
-                                        s_check["command_name"]), logging_tools.LOG_LEVEL_WARN)
-                                    num_warning += 1
-                                else:
-                                    used_checks.add(s_check.name)
-                                    special = s_check.get_special()
-                                    if special:
-                                        sc_array = []
-                                        try:
-                                            cur_special = getattr(special_commands, "special_%s" % (special.lower()))(self, s_check, host, valid_ip, global_config)
-                                        except:
-                                            self.log("unable to initialize special '%s': %s" % (
-                                                special,
-                                                process_tools.get_except_info()),
-                                                     logging_tools.LOG_LEVEL_CRITICAL)
-                                        else:
-                                            # calling handle to return a list of checks with format
-                                            # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
-                                            try:
-                                                sc_array = cur_special()
-                                            except:
-                                                exc_info = process_tools.exception_info()
-                                                self.log("error calling special %s:" % (special),
-                                                         logging_tools.LOG_LEVEL_CRITICAL)
-                                                for line in exc_info.log_lines:
-                                                    self.log(" - %s" % (line), logging_tools.LOG_LEVEL_CRITICAL)
-                                                sc_array = []
-                                            finally:
-                                                cur_special.cleanup()
-                                    else:
-                                        sc_array = [special_commands.arg_template(s_check, s_check.get_description())]
-                                        # contact_group is only written if contact_group is responsible for the host and the service_template
-                                    serv_temp = serv_templates[s_check.get_template(act_def_serv.name)]
-                                    serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
-                                    sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc, dev_variables)
-                                    service_nc.extend(sc_list)
-                                    num_ok += len(sc_list)
-                            # add cluster checks
-                            mhc_checks = host.main_mon_host_cluster.all().prefetch_related("devices")
-                            if len(mhc_checks):
-                                self.mach_log("adding %s" % (logging_tools.get_plural("host_cluster check", len(mhc_checks))))
-                                for mhc_check in mhc_checks:
-                                    dev_names = ",".join(["$HOSTSTATEID:%s$" % (cur_dev.name) for cur_dev in mhc_check.devices.all()])
-                                    s_check = cur_gc["command"]["check_host_cluster"]
-                                    serv_temp = serv_templates[mhc_check.mon_service_templ_id]
-                                    serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
-                                    sub_list = self.get_service(
-                                        host,
-                                        act_host,
-                                        s_check,
-                                        [special_commands.arg_template(
-                                            s_check,
-                                            "%s %s" % (s_check.get_description(), mhc_check.description),
-                                            arg1=mhc_check.description,
-                                            arg2=mhc_check.warn_value,
-                                            arg3=mhc_check.error_value,
-                                            arg4=dev_names)
-                                         ],
-                                        act_def_serv,
-                                        serv_cgs,
-                                        checks_are_active,
-                                        serv_temp,
-                                        cur_gc,
-                                        dev_variables)
-                                    service_nc.extend(sub_list)
-                                    num_ok += len(sub_list)
-                            # add service checks
-                            msc_checks = host.main_mon_service_cluster.all().prefetch_related("devices")
-                            if len(msc_checks):
-                                self.mach_log("adding %s" % (logging_tools.get_plural("service_cluster check", len(mhc_checks))))
-                                for msc_check in msc_checks:
-                                    c_com = cur_gc["command"][msc_check.mon_check_command.name]
-                                    dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.name, c_com.get_description()) for cur_dev in mhc_check.devices.all()])
-                                    s_check = cur_gc["command"]["check_service_cluster"]
-                                    serv_temp = serv_templates[msc_check.mon_service_templ_id]
-                                    serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
-                                    sub_list = self.get_service(
-                                        host,
-                                        act_host,
-                                        s_check,
-                                        [special_commands.arg_template(
-                                            s_check,
-                                            s_check.get_description(), 
-                                            arg1=msc_check.description,
-                                            arg2=msc_check.warn_value,
-                                            arg3=msc_check.error_value,
-                                            arg4=dev_names)
-                                         ],
-                                        act_def_serv,
-                                        serv_cgs,
-                                        checks_are_active,
-                                        serv_temp,
-                                        cur_gc,
-                                        dev_variables)
-                                    service_nc.extend(sub_list)
-                                    num_ok += len(sub_list)
-                            host_nc[act_host["name"]] = act_host
-                        else:
-                            self.mach_log("Host %s is disabled" % (host.name))
-                else:
-                    self.mach_log("No valid IPs found or no default_device_template found", logging_tools.LOG_LEVEL_ERROR)
-            info_str = "finished with %s warnings and %s errors (%3d ok) in %s" % (self._get_int_str(num_warning),
-                                                                                   self._get_int_str(num_error),
-                                                                                   num_ok,
-                                                                                   logging_tools.get_diff_time_str(time.time() - start_time))
-            glob_log_str += ", %s" % (info_str)
-            self.log(glob_log_str)
-            self.mach_log(info_str)
         host_names = host_nc.keys()
         for host in host_nc.values():
             if host.has_key("possible_parents"):
@@ -2665,8 +2702,9 @@ class build_process(threading_tools.process_obj):
                                                             process_tools.get_except_info()),
                                  logging_tools.LOG_LEVEL_ERROR)
         end_time = time.time()
-        self.log("created configs for %s hosts in %s" % (host_info_str,
-                                                         logging_tools.get_diff_time_str(end_time - start_time)))
+        self.log("created configs for %s hosts in %s" % (
+            host_info_str,
+            logging_tools.get_diff_time_str(end_time - start_time)))
     def get_service(self, host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc, dev_variables):
         self.mach_log("  adding check %-30s (%2d p), template %s, %s" % (
             s_check["command_name"],
@@ -2712,16 +2750,12 @@ class build_process(threading_tools.process_obj):
             else:
                 ret_field.append(act_serv)
         return ret_field
-    def _get_target_ip_info(self, my_net_idxs, all_net_devices, net_devices, host_pk, all_hosts_dict, check_hosts, latest_gen):
+    def _get_target_ip_info(self, my_net_idxs, net_devices, host_pk, all_hosts_dict, check_hosts):
         host = all_hosts_dict[host_pk]
         traces = []
-##        mni_str_s = " OR ".join(["h.s_netdevice=%d" % (x) for x in my_net_idxs])
-##        dev_str_d = " OR ".join(["h.d_netdevice=%d" % (x) for x in net_devices.keys()])
-##        dc.execute("SELECT h.s_netdevice, h.d_netdevice, h.trace, h.value FROM hopcount h WHERE (%s) AND (%s) ORDER BY h.value" % (mni_str_s, dev_str_d))
-        #targ_netdev_ds = dc.fetchone()
         targ_netdev_idxs = None
         for targ_netdev_ds in hopcount.objects.filter(
-            Q(route_generation=latest_gen) &
+            Q(route_generation=self.latest_gen) &
             Q(s_netdevice__in=my_net_idxs) &
             Q(d_netdevice__in=net_devices.keys())):
             targ_netdev_idxs = [getattr(targ_netdev_ds, key) for key in ["s_netdevice_id", "d_netdevice_id"] if getattr(targ_netdev_ds, key) not in my_net_idxs]
