@@ -2159,8 +2159,8 @@ class new_rrd_data(models.Model):
 
 class mon_host_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=32, blank=False, null=False, unique=True)
-    description = models.CharField(max_length=64, default="")
+    name = models.CharField(max_length=128, blank=False, null=False, unique=True)
+    description = models.CharField(max_length=255, default="")
     main_device = models.ForeignKey("device", related_name="main_mon_host_cluster")
     mon_service_templ = models.ForeignKey("mon_service_templ")
     devices = models.ManyToManyField(device, related_name="devs_mon_host_cluster")
@@ -2195,8 +2195,8 @@ def mon_host_cluster_pre_save(sender, **kwargs):
             
 class mon_service_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=32, blank=False, null=False, unique=True)
-    description = models.CharField(max_length=64, default="")
+    name = models.CharField(max_length=128, blank=False, null=False, unique=True)
+    description = models.CharField(max_length=255, default="")
     main_device = models.ForeignKey("device", related_name="main_mon_service_cluster")
     mon_service_templ = models.ForeignKey("mon_service_templ")
     devices = models.ManyToManyField(device, related_name="devs_mon_service_cluster")
