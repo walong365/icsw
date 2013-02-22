@@ -2361,7 +2361,7 @@ class build_process(threading_tools.process_obj):
                                 "use_childs_for_overview_icon" : False,
                             }
                             try:
-                                map_h = open(map_file, "w")
+                                map_h = codecs.open(map_file, "w", "utf-8")
                             except:
                                 self.mach_log("cannot open %s: %s" % (map_file,
                                                                       process_tools.get_except_info()),
@@ -2374,7 +2374,7 @@ class build_process(threading_tools.process_obj):
                                         value = "1" if value else "0"
                                     elif type(value) in [int, long]:
                                         value = "%d" % (value)
-                                    map_h.write("    %s=%s\n" % (key, value))
+                                    map_h.write(u"    %s=%s\n" % (key, value))
                                 map_h.write("}\n")
                                 map_h.close()
                         # check for notification options
