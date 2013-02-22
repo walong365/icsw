@@ -28,6 +28,7 @@ import datetime
 import pytz
 import pprint
 import copy
+import codecs
 import server_command
 from django.db.models import Q
 from django.conf import settings
@@ -408,7 +409,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         pure_peers = [(cur_p.s_netdevice_id, cur_p.d_netdevice_id) for cur_p in rho.all_peers]
         # dot part
         if True:
-            dot_file = file("/tmp/r.dot", "w")
+            dot_file = codecs.open("/tmp/r.dot", "w", "utf-8")
             dot_file.write("graph routing {\n")
             # build neighbour dict
             nb_dict = {}
@@ -419,9 +420,9 @@ class rebuild_hopcount(cs_base_class.server_com):
                     unicode(cur_nd.device),
                     cur_nd.device_id,
                     cur_nd.penalty)
-                dot_file.write("n_%d %s;\n" % (
+                dot_file.write(u"n_%d %s;\n" % (
                     nd_pk,
-                    "[shape=%s, label=\"%s\"]" % (
+                    u"[shape=%s, label=\"%s\"]" % (
                         "circle " if cur_nd.routing else "box",
                         label),
                 )
@@ -472,9 +473,18 @@ class rebuild_hopcount(cs_base_class.server_com):
         # some rules:
         # only routes via external (net)devices, so
         # no route from netdevice to netdevice (inner-device routing)
+        old_perc, old_time = (1000, time.time())
+        num_to_check = len(nd_pks) * len(nd_pks)
+        checks_left = num_to_check
         for s_nd in nd_pks:
+            perc_done = max(0, min(100, 100. - (100. * checks_left) / num_to_check))
+            if abs(old_perc - perc_done) >= 10 or abs(time.time() - old_time) >= 5.:
+                old_perc, old_time = (perc_done, time.time())
+                cur_inst.log("%6.2f %% done (%7d of %7d)" % (perc_done, checks_left, num_to_check))
+            checks_left -= len(nd_pks)
             for d_nd in nd_pks:
                 if d_nd not in nds_visited:
+                    #print "+++", d_nd
                     new_po = path_object(s_nd, d_nd)
                     # get all paths between s_nd and d_nd
                     new_paths = [[s_nd]]
@@ -485,15 +495,20 @@ class rebuild_hopcount(cs_base_class.server_com):
                         cur_paths = new_paths
                         new_paths = []
                         for cur_path in cur_paths:
+                            #print len(cur_path)
                             for next_nd in nb_dict.get(cur_path[-1], []):
                                 if next_nd == d_nd:
-                                    new_po.feed_path(copy.deepcopy(cur_path) + [next_nd])
+                                    #new_po.feed_path(copy.deepcopy(cur_path) + [next_nd])
+                                    new_po.feed_path(cur_path + [next_nd])
                                 elif next_nd not in cur_path and rho.nd_dict[next_nd].routing:
-                                    new_paths.append(copy.deepcopy(cur_path) + [next_nd])
+                                    #print cur_path
+                                    #new_paths.append(copy.deepcopy(cur_path) + [next_nd])
+                                    new_paths.append(cur_path + [next_nd])
                         cur_paths = new_paths
                     if new_po:
                         all_paths.append(new_po)
-                        nds_visited.add(s_nd)
+                    nds_visited.add(s_nd)
+        cur_inst.log("%6.2f %% done" % (100.))
         cur_inst.log(my_timer("pathfinding (%s) finished" % (logging_tools.get_plural("node", len(nd_pks)))))
         hopcount.objects.all().delete()
         cur_inst.log(my_timer("hopcount delete"))
