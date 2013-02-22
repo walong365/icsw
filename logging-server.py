@@ -392,6 +392,7 @@ class log_receiver(threading_tools.process_obj):
             form = logging_tools.my_formatter(global_config["LOG_FORMAT"],
                                               global_config["DATE_FORMAT"])
             logger.setLevel(logging.DEBUG)
+            full_name = full_name.encode("ascii", errors="replace")
             new_h = logging_tools.new_logfile(full_name, max_bytes=1000000, max_age_days=global_config["MAX_AGE_FILES"])
             form.set_max_line_length(global_config["MAX_LINE_LENGTH"])
             new_h.setFormatter(form)
