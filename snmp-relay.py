@@ -689,7 +689,7 @@ class relay_process(threading_tools.process_pool):
                         max_sto,
                         env_str))
                 time.sleep(max_sto)
-            del_keys = [key for key, value in self.__ret_dict.iteritems() if abs(value - cur_time) > 60]
+            del_keys = [key for key, value in self.__ret_dict.iteritems() if abs(value - cur_time) > 60 and key != env_str]
             if del_keys:
                 if self.__verbose > 2:
                     self.log("removing %s" % (logging_tools.get_plural("timed-out key", len(del_keys))), logging_tools.LOG_LEVEL_ERROR)
