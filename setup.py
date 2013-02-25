@@ -9,5 +9,5 @@ setup(name="cbc-tools",
       py_modules=["compile_tools"],
       scripts=["compile_libgoto.py", "compile_openmpi.py", "compile_hpl.py",
                "compile_fftw.py", "read_bonnie.py", "bonnie.py", "n_from_mem.py",
-               "read_hpl_result.py", "check_vasp.yp"],
+               "read_hpl_result.py", "check_vasp.py"],
       )
