@@ -1222,9 +1222,10 @@ class relay_process(threading_tools.process_pool):
             srv_com["host"] = self.master_ip
             srv_com["port"] = "%d" % (self.master_port)
             self._send_to_nhm_service(None, srv_com, None)
-            send_return = True
-        if send_return:
-            self._send_result(src_id, "processed direct command", server_command.SRV_REPLY_STATE_OK)
+            # we nerver send dummy returns, usefull with -s flag in ccollclientzmq
+            #send_return = True
+        #if send_return:
+            #self._send_result(src_id, "processed direct command", server_command.SRV_REPLY_STATE_OK)
     def _ext_com_result(self, sub_s):
         self.log("external command gave:")
         for line_num, line in enumerate(sub_s.read().split("\n")):

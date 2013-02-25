@@ -6,7 +6,7 @@ include ../Makefile.config
 
 comp=gcc
 progs=csnmpclientzmq ccollclientzmq
-INDENT_OPTIONS=-linux
+INDENT_OPTIONS=-linux --no-tabs --indent-level4
 
 ifeq ($(shell getconf LONG_BIT), 64)
 LIB_DIR=lib64
