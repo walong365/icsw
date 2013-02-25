@@ -1083,6 +1083,7 @@ class relay_process(threading_tools.process_pool):
                 srv_com["identity"] = src_id
         else:
             if data.count(";") > 1:
+                data = data.decode("utf-8")
                 parts = data.split(";", 3)
                 src_id = parts.pop(0)
                 # parse new format
@@ -1176,8 +1177,7 @@ class relay_process(threading_tools.process_pool):
             self.log("cannot interpret input data '%s' as srv_command" % (data),
                      logging_tools.LOG_LEVEL_ERROR)
             # return a dummy message
-            zmq_sock.send_unicode(src_id, zmq.SNDMORE)
-            zmq_sock.send_unicode("cannot interpret")
+            self._send_result(src_id, "cannot interpret", limits.nag_STATE_CRITICAL)
         self.__num_messages += 1
         if self.__num_messages % 1000 == 0:
             cur_mem = process_tools.get_mem_info()
@@ -1188,7 +1188,8 @@ class relay_process(threading_tools.process_pool):
         #print "*", src_id
         cur_com = srv_com["command"].text
         send_return = False
-        self.log("got DIRECT command %s" % (cur_com))
+        if self.__verbose:
+            self.log("got DIRECT command %s" % (cur_com))
         if cur_com == "file_content":
             t_file = srv_com["file_name"].text
             content = base64.b64decode(srv_com["content"].text)
@@ -1221,7 +1222,7 @@ class relay_process(threading_tools.process_pool):
             # add cache ?
             srv_com["host"] = self.master_ip
             srv_com["port"] = "%d" % (self.master_port)
-            self._send_to_nhm_service(None, srv_com, None)
+            self._send_to_nhm_service(None, srv_com, None, register=False)
             # we nerver send dummy returns, usefull with -s flag in ccollclientzmq
             #send_return = True
         #if send_return:
@@ -1252,7 +1253,7 @@ class relay_process(threading_tools.process_pool):
             cur_hc.return_error(cur_mes, "0mq discovery in progress")
         else:
             id_discovery(srv_com, src_id, xml_input)
-    def _send_to_nhm_service(self, src_id, srv_com, xml_input):
+    def _send_to_nhm_service(self, src_id, srv_com, xml_input, **kwargs):
         conn_str = "tcp://%s:%d" % (
             srv_com["host"].text,
             int(srv_com["port"].text))
@@ -1277,7 +1278,8 @@ class relay_process(threading_tools.process_pool):
                         conn_str,
                         process_tools.get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
                 else:
-                    self.__nhm_dict[srv_com["identity"].text] = (time.time(), srv_com)
+                    if kwargs.get("register", True):
+                        self.__nhm_dict[srv_com["identity"].text] = (time.time(), srv_com)
         elif id_discovery.is_pending(conn_str):
             self._send_result(src_id, "0mq discovery in progress", server_command.SRV_REPLY_STATE_CRITICAL)
         else:
@@ -1385,7 +1387,7 @@ class relay_process(threading_tools.process_pool):
         for call_name, add_self in [("register_server", True),
                                     ("init_module"    , False)]:
             for cur_mod in self.modules.module_list:
-                if global_config["VERBOSE"]:
+                if self.__verbose:
                     self.log("calling %s for module '%s'" % (call_name,
                                                              cur_mod.name))
                 try:
