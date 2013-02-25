@@ -20,14 +20,12 @@
 """ rebuilds the hopcount-table, needs some rewrite ... """
 
 import sys
-import os
 import cs_base_class
 import logging_tools
 import time
 import datetime
 import pytz
 import pprint
-import copy
 import codecs
 import server_command
 from django.db.models import Q
