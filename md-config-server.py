@@ -1278,12 +1278,12 @@ class all_commands(host_type_config):
                 ),
             mon_check_command(
                 name="ochp-command",
-                command_line="$USER2$ -m DIRECT ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"%s\"" % ("$HOSTOUTPUT$|$HOSTPERFDATA$" if global_config["ENABLE_PNP"] else "$HOSTOUTPUT$"),
+                command_line="$USER2$ -m DIRECT -s ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"%s\"" % ("$HOSTOUTPUT$|$HOSTPERFDATA$" if global_config["ENABLE_PNP"] else "$HOSTOUTPUT$"),
                 description="OCHP Command"
                 ),
             mon_check_command(
                 name="ocsp-command",
-                command_line="$USER2$ -m DIRECT ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"%s\" " % ("$SERVICEOUTPUT$|$SERVICEPERFDATA$" if global_config["ENABLE_PNP"] else "$SERVICEOUTPUT$"),
+                command_line="$USER2$ -m DIRECT -s ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"%s\" " % ("$SERVICEOUTPUT$|$SERVICEPERFDATA$" if global_config["ENABLE_PNP"] else "$SERVICEOUTPUT$"),
                 description="OCSP Command"
                 ),
             mon_check_command(
@@ -1966,6 +1966,8 @@ class build_process(threading_tools.process_obj):
                         else:
                             self.log("done after %d iterations" % (idx + 1))
                             break
+            else:
+                self.log("latest route_generation %s is valid" % (unicode(latest_gen)))
             # fetch SNMP-stuff of cluster
             snmp_stack = snmp_settings(cdg)
             rebuild_gen_config = False
