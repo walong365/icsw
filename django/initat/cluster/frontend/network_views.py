@@ -222,7 +222,7 @@ def get_network_tree(request):
 def _get_hopcount_state(request):
     rebuild_possible = False
     xml_resp = E.hopcount_state()
-    valid_routes = route_generation.objects.filter(Q(valid=True))
+    valid_routes = []#route_generation.objects.filter(Q(valid=True))
     if len(valid_routes) == 1:
         valid_route = valid_routes[0]
         route_info = "gen #%d, built %s, %d/%d" % (
