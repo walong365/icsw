@@ -3102,8 +3102,9 @@ class server_process(threading_tools.process_pool):
                 self.com_socket.send_unicode("internal error")
             else:
                 cur_com = srv_com["command"].text
-                self.log("got command '%s' from '%s'" % (cur_com,
-                                                         srv_com["source"].attrib["host"]))
+                if self.__verbose or cur_com not in ["ocsp-event", "ochp-event"]:
+                    self.log("got command '%s' from '%s'" % (cur_com,
+                                                             srv_com["source"].attrib["host"]))
                 srv_com.update_source()
                 send_return = False
                 if cur_com == "rebuild_host_config":
