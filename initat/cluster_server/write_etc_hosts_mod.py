@@ -22,15 +22,16 @@ import sys
 import cs_base_class
 import process_tools
 import os
-import array
 import ipvx_tools
 import pprint
+import codecs
 import logging_tools
 import server_command
 import cluster_location
 from django.db.models import Q
-from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, \
-     hopcount, device_group, route_generation
+from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable
+from initat.cluster_server.rebuild_hopcount_mod import router_object
+import networkx
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME       = "/etc/hosts"
@@ -54,29 +55,13 @@ class write_etc_hosts(cs_base_class.server_com):
         # get all peers to local machine and local netdevices
         my_idxs = netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True)
         # ref_table
-        latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
-        ref_table = dict([
-            ((cur_entry.s_netdevice_id, cur_entry.d_netdevice_id), cur_entry.value)
-            for cur_entry in hopcount.objects.filter(
-                Q(route_generation=latest_gen) & (
-                    Q(s_netdevice__in=my_idxs) | Q(d_netdevice__in=my_idxs)))])
-        t_devs = net_ip.objects.filter(Q(netdevice__hopcount_s_netdevice__d_netdevice__in=my_idxs)).select_related(
-            "netdevice__device",
-            "network__network_type").order_by(
-                "netdevice__hopcount_s_netdevice__value",
-                "netdevice__device__name",
-                "ip"
-            )
-        all_hosts = list(t_devs)
-        # self-references
-        my_devs = net_ip.objects.filter(Q(netdevice__device__in=server_idxs)).select_related(
-            "netdevice__device",
-            "network__network_type").order_by(
-                "netdevice__hopcount_s_netdevice__value",
-                "netdevice__device__name",
-                "ip"
-            )
-        all_hosts.extend(list(my_devs))
+        #latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
+        route_obj = router_object(cur_inst.log)
+        all_paths = []
+        for s_ndev in my_idxs:
+            all_paths.extend(networkx.shortest_path(route_obj.nx, s_ndev, weight="weight").values())
+        #pprint.pprint(all_paths)
+        nd_lut = dict([(cur_nd.pk, cur_nd) for cur_nd in netdevice.objects.all().select_related("device").prefetch_related("net_ip_set", "net_ip_set__network")])
         # fetch key-information
         ssh_vars = device_variable.objects.filter(Q(name="ssh_host_rsa_key_pub")).select_related("device")
         rsa_key_dict = {}
@@ -94,7 +79,7 @@ class write_etc_hosts(cs_base_class.server_com):
         pre_host_lines, post_host_lines = ([], [])
         # parse pre/post host_lines
         try:
-            host_lines = [line.strip() for line in file(ETC_HOSTS_FILENAME, "r").read().split("\n")]
+            host_lines = [line.strip() for line in codecs.open(ETC_HOSTS_FILENAME, "r", "utf-8").read().split("\n")]
         except:
             self.log("error reading / parsing %s: %s" % (ETC_HOSTS_FILENAME,
                                                          process_tools.get_except_info()),
@@ -128,36 +113,33 @@ class write_etc_hosts(cs_base_class.server_com):
         # ip dictionary
         ip_dict = {}
         # connection keys
-        con_keys = set(ref_table)
+        #con_keys = set(ref_table)
         # build dict, ip->[list of hosts]
-        for host in all_hosts:
-            # get names
-            host_names = []
-            if not (host.alias.strip() and host.alias_excl):
-                host_names.append("%s%s" % (host.netdevice.device.name, host.network.postfix))
-            host_names.extend(host.alias.strip().split())
-            if "localhost" in [x.split(".")[0] for x in host_names]:
-                host_names = [host_name for host_name in host_names if host_name.split(".")[0] == "localhost"]
-            if host.network.short_names:
-                # also print short_names
-                out_names = (" ".join(["%s.%s %s" % (host_name, host.network.name, host_name) for host_name in host_names if not host_name.count(".")])).split()
-            else:
-                # only print the long names
-                out_names = ["%s.%s" % (host_name, host.network.name) for host_name in host_names if not host_name.count(".")]
-            # add names with dot
-            out_names.extend([host_name for host_name in host_names if host_name.count(".")])
-            # name_dict without localhost
-            name_dict.setdefault(host.netdevice.device.name, []).extend([out_name for out_name in out_names if out_name not in name_dict[host.netdevice.device.name] and not out_name.startswith("localhost")])
-            ip_dict.setdefault(host.ip, [])
-            if out_names not in [entry[1] for entry in ip_dict[host.ip]]:
-                found_keys = set([(host.netdevice_id, my_idx) for my_idx in my_idxs]) & con_keys
-                if found_keys:
-                    min_value = min([ref_table[key] for key in found_keys])
+        for cur_path in all_paths:
+            min_value = route_obj.get_penalty(cur_path)
+            target_nd = nd_lut[cur_path[-1]]
+            for cur_ip in nd_lut[cur_path[-1]].net_ip_set.all():
+                # get names
+                host_names = []
+                if not (cur_ip.alias.strip() and cur_ip.alias_excl):
+                    host_names.append("%s%s" % (target_nd.device.name, cur_ip.network.postfix))
+                host_names.extend(cur_ip.alias.strip().split())
+                if "localhost" in [x.split(".")[0] for x in host_names]:
+                    host_names = [host_name for host_name in host_names if host_name.split(".")[0] == "localhost"]
+                if cur_ip.network.short_names:
+                    # also print short_names
+                    out_names = (" ".join(["%s.%s %s" % (host_name, cur_ip.network.name, host_name) for host_name in host_names if not host_name.count(".")])).split()
                 else:
-                    # localhost ?
-                    min_value = 1
-                if host.ip != "0.0.0.0":
-                    ip_dict[host.ip].append((min_value, out_names))
+                    # only print the long names
+                    out_names = ["%s.%s" % (host_name, cur_ip.network.name) for host_name in host_names if not host_name.count(".")]
+                # add names with dot
+                out_names.extend([host_name for host_name in host_names if host_name.count(".")])
+                # name_dict without localhost
+                name_dict.setdefault(target_nd.device.name, []).extend([out_name for out_name in out_names if out_name not in name_dict[target_nd.device.name] and not out_name.startswith("localhost")])
+                ip_dict.setdefault(cur_ip.ip, [])
+                if out_names not in [entry[1] for entry in ip_dict[cur_ip.ip]]:
+                    if cur_ip.ip != "0.0.0.0":
+                        ip_dict[cur_ip.ip].append((min_value, out_names))
         # out_list
         loc_dict = {}
         for ip, h_list in ip_dict.iteritems():
@@ -197,9 +179,9 @@ class write_etc_hosts(cs_base_class.server_com):
             for dev_name, dg_name in all_devs:
                 dg_dict.setdefault(dg_name, []).append(dev_name)
             for file_name, content in dg_dict.iteritems():
-                file(os.path.join(GROUP_DIR, file_name), "w").write("\n".join(content))
+                codecs.open(os.path.join(GROUP_DIR, file_name), "w", "utf-8").write("\n".join(content))
         file_list.append(ETC_HOSTS_FILENAME)
-        file(ETC_HOSTS_FILENAME, "w+").write("\n".join(
+        codecs.open(ETC_HOSTS_FILENAME, "w+", "utf-8").write("\n".join(
             ["### AEH-START-PRE insert pre-host lines below"] +
             pre_host_lines +
             ["### AEH-END-PRE insert pre-host lines above",
@@ -217,22 +199,6 @@ class write_etc_hosts(cs_base_class.server_com):
                 skh_f.write("%s %s\n" % (",".join(name_dict.get(ssh_key_node, [ssh_key_node])), rsa_key_dict[ssh_key_node]))
             skh_f.close()
             file_list.append(SSH_KNOWN_HOSTS_FILENAME)
-        #outhandle.close()
-        # FIXME
-        if False:
-            for act_file, restr in [("/etc/nodenames", "c.name LIKE ('node%')"), ("/usr/local/etc/machines.list", "c.name LIKE('node%')"), ("/etc/clusternames", "1")]:
-                act_dirname = os.path.dirname(act_file)
-                if os.path.isdir(act_dirname):
-                    file_list.append(act_file)
-                    tf = file(act_file, "w+")
-                    self.dc.execute("SELECT DISTINCT d.name FROM device d INNER JOIN device_type dt INNER JOIN new_config c INNER JOIN device_config dc INNER JOIN device_group dg LEFT JOIN " + \
-                                           "device d2 ON d2.device_idx=dg.device WHERE dg.device_group_idx=d.device_group AND dt.identifier='H' AND dt.device_type_idx=d.device_type AND dc.new_config=c.new_config_idx AND " + \
-                                           "(d2.device_idx=dc.device OR d.device_idx=dc.device) AND %s ORDER BY dg.name, d.name" % (restr))
-                    for entry in self.dc.fetchall():
-                        tf.write("%s\n" % (entry["name"]))
-                    tf.close()
-                else:
-                    self.log("Error: directory '%s' not found" % (act_dirname))
         cur_inst.srv_com["result"].attrib.update({
             "reply" : "ok wrote %s" % (", ".join(sorted(file_list))),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
