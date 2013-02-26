@@ -2837,10 +2837,6 @@ class server_process(threading_tools.process_pool):
                 init_ok = True
         self.__em_ok = init_ok
     def _update(self):
-        #dc = self.__db_con.get_connection(SQL_ACCESS)
-        #sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM nagiosdb.%s_hoststatus #nhs, nagiosdb.%s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (	
-        #    global_config["MD_TYPE"],
-        #    global_config["MD_TYPE"])
         sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM %s_hoststatus nhs, %s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (	
             global_config["MD_TYPE"],
             global_config["MD_TYPE"])
@@ -2851,11 +2847,12 @@ class server_process(threading_tools.process_pool):
                                      nag_dict.values().count(NAG_HOST_UP),
                                      nag_dict.values().count(NAG_HOST_DOWN))
         num_unknown = num_tot - (num_up + num_down)
-        self.log("%s status is: %d up, %d down, %d unknown (%d total)" % (global_config["MD_TYPE"],
-                                                                          num_up,
-                                                                          num_down,
-                                                                          num_unknown,
-                                                                          num_tot))
+        self.log("%s status is: %d up, %d down, %d unknown (%d total)" % (
+            global_config["MD_TYPE"],
+            num_up,
+            num_down,
+            num_unknown,
+            num_tot))
         if not self.__em_ok:
             self._init_em()
         if self.__em_ok:
