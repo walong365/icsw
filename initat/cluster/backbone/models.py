@@ -946,29 +946,38 @@ class genstuff(models.Model):
 
 class route_generation(models.Model):
     idx = models.AutoField(primary_key=True)
-    valid = models.BooleanField(default=True)
+    #valid = models.BooleanField(default=True)
+    # generation, is increased whenever one of the routing entries changes
     generation = models.IntegerField(default=1)
-    # time used to generate in seconds
-    time_used = models.IntegerField(default=0)
-    # dirty flag, used to set the route generation as dirty (changed network setting)
-    dirty = models.BooleanField(default=False)
-    # build flag, true when route is in process of building
-    build = models.BooleanField(default=False)
-    # number of hopcount entries
-    num_hops = models.IntegerField(default=0)
-    # number of duplicates (s_nd/d_nd <=> d_nd/s_nd)
-    num_dups = models.IntegerField(default=0)
+    ## time used to generate in seconds
+    #time_used = models.IntegerField(default=0)
+    ## dirty flag, used to set the route generation as dirty (changed network setting)
+    #dirty = models.BooleanField(default=False)
+    ## build flag, true when route is in process of building
+    #build = models.BooleanField(default=False)
+    ## number of hopcount entries
+    #num_hops = models.IntegerField(default=0)
+    ## number of duplicates (s_nd/d_nd <=> d_nd/s_nd)
+    #num_dups = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
-        return u"route generation %d, %s:%s:%s" % (
+        return u"route generation %d" % (
             self.generation,
-            "valid" if self.valid else "invalid",
-            "building" if self.build else "built",
-            "dirty" if self.dirty else "clean",
+            #"valid" if self.valid else "invalid",
+            #"building" if self.build else "built",
+            #"dirty" if self.dirty else "clean",
         )
  
 def mark_routing_dirty():
-    num_inv = route_generation.objects.filter(Q(valid=True)).update(dirty=True)
+    cur_gen = route_generation.objects.all().order_by("-generation")
+    if len(cur_gen):
+        new_gen = list(cur_gen)[0]
+        cur_gen.delete()
+        new_gen.generation += 1
+    else:
+        new_gen = route_generation(generation=1)
+    new_gen.save()
+    #num_inv = route_generation.objects.filter(Q(valid=True)).update(dirty=True)
         
 class hopcount(models.Model):
     idx = models.AutoField(db_column="hopcount_idx", primary_key=True)
