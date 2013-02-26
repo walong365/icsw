@@ -3049,7 +3049,7 @@ class server_process(threading_tools.process_pool):
             ";".join(targ_list))
         if self.__external_cmd_file:
             try:
-                file(self.__external_cmd_file, "w").write(out_line)
+                codecs.open(self.__external_cmd_file, "w", "utf-8").write(out_line)
             except:
                 self.log("error writing to %s: %s" % (
                     self.__external_cmd_file,
