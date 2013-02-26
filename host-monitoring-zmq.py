@@ -1083,7 +1083,6 @@ class relay_process(threading_tools.process_pool):
                 srv_com["identity"] = src_id
         else:
             if data.count(";") > 1:
-                data = data.decode("utf-8")
                 parts = data.split(";", 3)
                 src_id = parts.pop(0)
                 # parse new format
@@ -1092,7 +1091,8 @@ class relay_process(threading_tools.process_pool):
                 else:
                     com_part = parts[2].split(";")
                 if all([com_part[idx].isdigit() and (len(com_part[idx + 1]) == int(com_part[idx])) for idx in xrange(0, len(com_part), 2)]):
-                    arg_list = [com_part[idx + 1] for idx in xrange(0, len(com_part), 2)]
+                    # decode to utf-8 after parsing, otherwise the string lengths encoded in the data string would differ
+                    arg_list = [com_part[idx + 1].decode("utf-8") for idx in xrange(0, len(com_part), 2)]
                     cur_com = arg_list.pop(0) if arg_list else ""
                     srv_com = server_command.srv_command(command=cur_com, identity=src_id)
                     srv_com["host"] = parts[0]
