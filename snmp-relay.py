@@ -659,7 +659,7 @@ class relay_process(threading_tools.process_pool):
         self.__num_messages += 1
         if self.__verbose > 3:
             self.log("recv() done")
-        if self.__num_messages % 100 == 0 or True:
+        if self.__num_messages % 100 == 0:
             cur_mem = process_tools.get_mem_info(self.__msi_block.get_unique_pids() if self.__msi_block else 0)
             self.log("memory usage is %s after %s" % (
                 logging_tools.get_size_str(cur_mem),
