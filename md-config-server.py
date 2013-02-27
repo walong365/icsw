@@ -2001,6 +2001,7 @@ class build_process(threading_tools.process_obj):
             else:
                 bc_valid = False
         if bc_valid:
+            self.router_obj.check_for_update()
             # build distance map
             cur_dmap = self._build_distance_map(self.__gen_config.monitor_server)
             for cur_gc in [self.__gen_config] + self.__slave_configs.values():
