@@ -29,7 +29,7 @@ import process_tools
 import configfile
 import difflib
 import socket
-from host_monitoring import limits
+from initat.host_monitoring import limits
 from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher
 from pysnmp.carrier.asynsock.dgram import udp
 from pyasn1.codec.ber import encoder, decoder
@@ -37,7 +37,7 @@ import pyasn1
 from pyasn1.type.error import ValueConstraintError
 from pysnmp.smi import exval
 from pysnmp.proto import api
-import snmp_relay_schemes
+from initat.snmp_relay import snmp_relay_schemes
 import server_command
 import pprint
 

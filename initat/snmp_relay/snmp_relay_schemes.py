@@ -23,7 +23,7 @@ import time
 import sys
 import logging_tools
 import process_tools
-from host_monitoring import limits
+from initat.host_monitoring import limits
 import optparse
 import cStringIO
 import pprint
