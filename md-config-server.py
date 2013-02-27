@@ -53,8 +53,8 @@ from django.contrib.auth.models import User
 from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_service, mon_ext_host, mon_check_command, mon_check_command_type, mon_period, mon_contact, \
-     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, hopcount, \
-     user, mon_host_cluster, mon_service_cluster, config, route_generation
+     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
+     user, mon_host_cluster, mon_service_cluster, config#, route_generation
 from django.conf import settings
 import base64
 import uuid_tools
@@ -63,6 +63,7 @@ import ConfigParser
 import hashlib
 import binascii
 import operator
+import networkx
 
 # nagios constants
 NAG_HOST_UNKNOWN     = -1
@@ -165,7 +166,7 @@ class main_config(object):
                 server_type="monitor_slave",
                 fetch_network_info=True)
             self.slave_uuid = monitor_server.uuid
-            route = master_cfg["monitor_server"][0].get_route_to_other_device(slave_cfg, allow_route_to_other_networks=True)
+            route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__build_process.router_obj, slave_cfg, allow_route_to_other_networks=True)
             if not route:
                 self.slave_ip = None
                 self.master_ip = None
@@ -1783,6 +1784,7 @@ class build_process(threading_tools.process_obj):
         # slave configs
         slave_servers = device.objects.filter(Q(device_config__config__name="monitor_slave"))
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
+        self.router_obj = config_tools.router_object(self.log)
         self.__gen_config = main_config(self, master_server, distributed=True if len(slave_servers) else False)
         self.send_pool_message("external_cmd_file", self.__gen_config.get_command_name())
         self.__slave_configs = {}
@@ -1790,8 +1792,12 @@ class build_process(threading_tools.process_obj):
             self.log("found %s: %s" % (logging_tools.get_plural("slave_server", len(slave_servers)),
                                        ", ".join(sorted([cur_dev.name for cur_dev in slave_servers]))))
             for cur_dev in slave_servers:
-                self.__slave_configs[cur_dev.pk] = main_config(self, cur_dev, slave_name=cur_dev.name, 
-                                                               master_server=master_server)
+                self.__slave_configs[cur_dev.pk] = main_config(
+                    self,
+                    cur_dev,
+                    slave_name=cur_dev.name, 
+                    master_server=master_server,
+                )
         else:
             self.log("no slave-servers found")
         self.register_func("rebuild_config", self._rebuild_config)
@@ -1899,122 +1905,120 @@ class build_process(threading_tools.process_obj):
         if global_config["DEBUG"]:
             cur_query_count = len(connection.queries)
         h_list = args[0] if len(args) else []
-        rebuild_it = True
-        try:
-            cdg = device.objects.get(Q(device_group__cluster_device_group=True))
-        except device.DoesNotExist:
-            self.log("no cluster_device_group, unable to check validity of hopcount_table", logging_tools.LOG_LEVEL_ERROR)
+        #rebuild_it = True
+        #try:
+            #cdg = device.objects.get(Q(device_group__cluster_device_group=True))
+        #except device.DoesNotExist:
+            #self.log("no cluster_device_group, unable to check validity of hopcount_table", logging_tools.LOG_LEVEL_ERROR)
+        #else:
+            #try:
+                #reb_var = device_variable.objects.get(Q(device=cdg) & Q(name="hopcount_rebuild_in_progress"))
+            #except device_variable.DoesNotExist:
+                #pass
+            #else:
+                #self.log("hopcount_rebuild in progress, delaying request", logging_tools.LOG_LEVEL_WARN)
+                ## delay request
+                #self.__log_queue.put(("delay_request", (self.get_thread_queue(), ("rebuild_config", h_list), global_config["MAIN_LOOP_TIMEOUT"] / 2)))
+                ## no rebuild
+                #rebuild_it = False
+        #if rebuild_it:
+##            latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")
+##            if len(latest_gen):
+##                latest_gen = latest_gen[0]
+##                if latest_gen.dirty:
+##                    rebuild_routing = True
+##                else:
+##                    rebuild_routing = False
+##            else:
+##                latest_gen = None
+##                rebuild_routing = True
+##            if rebuild_routing:
+##                self.log("latest route_generation (%s) is marked as dirty, forcing rebuild" % (unicode(latest_gen) if latest_gen else "no generations found"), logging_tools.LOG_LEVEL_WARN)
+##                srv_com = server_command.srv_command(command="rebuild_hopcount")
+##                targ_str = "tcp://localhost:8004"
+##                cs_sock = self.zmq_context.socket(zmq.DEALER)
+##                identity_str = "md_config_server::%d" % (os.getpid())
+##                timeout = 10
+##                cs_sock.setsockopt(zmq.IDENTITY, identity_str)
+##                cs_sock.setsockopt(zmq.LINGER, timeout)
+##                cs_sock.connect(targ_str)
+##                s_time = time.time()
+##                cs_sock.send_unicode(unicode(srv_com))
+##                if cs_sock.poll(timeout * 1000):
+##                    recv_str = cs_sock.recv()
+##                else:
+##                    self.log("error while communication with %s after %s: timeout" % (
+##                        targ_str,
+##                        logging_tools.get_plural("second", timeout)), logging_tools.LOG_LEVEL_ERROR)
+##                    recv_str = None
+##                if recv_str:
+##                    self.log("send rebuild_hocount to %s, took %s" % (
+##                        targ_str,
+##                        logging_tools.get_diff_time_str(time.time() - s_time)))
+##                    next_gen = latest_gen.generation + 1 if latest_gen else 1
+##                    self.log("waiting for generation %d to become valid" % (next_gen))
+##                    s_time = time.time()
+##                    # wait for up to 60 seconds
+##                    for idx in xrange(60):
+##                        time.sleep(1)
+##                        try:
+##                            latest_gen = route_generation.objects.get(
+##                                Q(valid=True) &
+##                                Q(build=False) &
+##                                Q(generation=next_gen))
+##                        except route_generation.DoesNotExist:
+##                            self.log("still waiting...")
+##                        else:
+##                            self.log("done after %d iterations" % (idx + 1))
+##                            break
+##            else:
+##                self.log("latest route_generation %s is valid" % (unicode(latest_gen)))
+        # fetch SNMP-stuff of cluster
+        snmp_stack = snmp_settings(cdg)
+        rebuild_gen_config = False
+        if global_config["ALL_HOSTS_NAME"] in h_list:
+            self.log("rebuilding complete config (for master and %s)" % (
+                logging_tools.get_plural("slave", len(self.__slave_configs))
+            ))
+            rebuild_gen_config = True
         else:
-            try:
-                reb_var = device_variable.objects.get(Q(device=cdg) & Q(name="hopcount_rebuild_in_progress"))
-            except device_variable.DoesNotExist:
+            # FIXME, handle host-related config for only specified slaves
+            self.log("rebuilding config for %s: %s" % (logging_tools.get_plural("host", len(h_list)),
+                                                       logging_tools.compress_list(h_list)))
+        if not self.__gen_config:
+            rebuild_gen_config = True
+        if rebuild_gen_config:
+            self._create_general_config()
+            h_list = []
+        bc_valid = self.__gen_config.is_valid()
+        if bc_valid:
+            # get device templates
+            dev_templates = device_templates(self)
+            # get serivce templates
+            serv_templates = service_templates(self)
+            if dev_templates.is_valid() and serv_templates.is_valid():
                 pass
             else:
-                self.log("hopcount_rebuild in progress, delaying request", logging_tools.LOG_LEVEL_WARN)
-                # delay request
-                self.__log_queue.put(("delay_request", (self.get_thread_queue(), ("rebuild_config", h_list), global_config["MAIN_LOOP_TIMEOUT"] / 2)))
-                # no rebuild
-                rebuild_it = False
-        if rebuild_it:
-            # latest routing generation
-            latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")
-            if len(latest_gen):
-                latest_gen = latest_gen[0]
-                if latest_gen.dirty:
-                    rebuild_routing = True
-                else:
-                    rebuild_routing = False
-            else:
-                latest_gen = None
-                rebuild_routing = True
-            if rebuild_routing:
-                self.log("latest route_generation (%s) is marked as dirty, forcing rebuild" % (unicode(latest_gen) if latest_gen else "no generations found"), logging_tools.LOG_LEVEL_WARN)
-                srv_com = server_command.srv_command(command="rebuild_hopcount")
-                targ_str = "tcp://localhost:8004"
-                cs_sock = self.zmq_context.socket(zmq.DEALER)
-                identity_str = "md_config_server::%d" % (os.getpid())
-                timeout = 10
-                cs_sock.setsockopt(zmq.IDENTITY, identity_str)
-                cs_sock.setsockopt(zmq.LINGER, timeout)
-                cs_sock.connect(targ_str)
-                s_time = time.time()
-                cs_sock.send_unicode(unicode(srv_com))
-                if cs_sock.poll(timeout * 1000):
-                    recv_str = cs_sock.recv()
-                else:
-                    self.log("error while communication with %s after %s: timeout" % (
-                        targ_str,
-                        logging_tools.get_plural("second", timeout)), logging_tools.LOG_LEVEL_ERROR)
-                    recv_str = None
-                if recv_str:
-                    self.log("send rebuild_hocount to %s, took %s" % (
-                        targ_str,
-                        logging_tools.get_diff_time_str(time.time() - s_time)))
-                    next_gen = latest_gen.generation + 1 if latest_gen else 1
-                    self.log("waiting for generation %d to become valid" % (next_gen))
-                    s_time = time.time()
-                    # wait for up to 60 seconds
-                    for idx in xrange(60):
-                        time.sleep(1)
-                        try:
-                            latest_gen = route_generation.objects.get(
-                                Q(valid=True) &
-                                Q(build=False) &
-                                Q(generation=next_gen))
-                        except route_generation.DoesNotExist:
-                            self.log("still waiting...")
-                        else:
-                            self.log("done after %d iterations" % (idx + 1))
-                            break
-            else:
-                self.log("latest route_generation %s is valid" % (unicode(latest_gen)))
-            # fetch SNMP-stuff of cluster
-            snmp_stack = snmp_settings(cdg)
-            rebuild_gen_config = False
-            if global_config["ALL_HOSTS_NAME"] in h_list:
-                self.log("rebuilding complete config (for master and %s)" % (
-                    logging_tools.get_plural("slave", len(self.__slave_configs))
-                ))
-                rebuild_gen_config = True
-            else:
-                # FIXME, handle host-related config for only specified slaves
-                self.log("rebuilding config for %s: %s" % (logging_tools.get_plural("host", len(h_list)),
-                                                           logging_tools.compress_list(h_list)))
-            if not self.__gen_config:
-                rebuild_gen_config = True
-            if rebuild_gen_config:
-                self._create_general_config()
-                h_list = []
-            bc_valid = self.__gen_config.is_valid()
-            if bc_valid:
-                # get device templates
-                dev_templates = device_templates(self)
-                # get serivce templates
-                serv_templates = service_templates(self)
-                if dev_templates.is_valid() and serv_templates.is_valid():
-                    pass
-                else:
-                    bc_valid = False
-            if bc_valid:
-                # build distance map
-                self.latest_gen = latest_gen
-                cur_dmap = self._build_distance_map(self.__gen_config.monitor_server)
-                for cur_gc in [self.__gen_config] + self.__slave_configs.values():
-                    self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap)
-                    if cur_gc.master:
-                        # recreate access files
-                        cur_gc._create_access_entries()
-                    # refresh implies _write_entries
-                    cur_gc.refresh()
-                    if not cur_gc.master:
-                        cur_gc._write_entries()
-                        cur_gc.distribute()
-            cfgs_written = self.__gen_config._write_entries()
-            if bc_valid and (cfgs_written or rebuild_gen_config):
-                # send reload to remote instance ?
-                self._reload_nagios()
-            # FIXME
-            #self.__queue_dict["command_queue"].put(("config_rebuilt", h_list or [global_config["ALL_HOSTS_NAME"]]))
+                bc_valid = False
+        if bc_valid:
+            # build distance map
+            cur_dmap = self._build_distance_map(self.__gen_config.monitor_server)
+            for cur_gc in [self.__gen_config] + self.__slave_configs.values():
+                self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap)
+                if cur_gc.master:
+                    # recreate access files
+                    cur_gc._create_access_entries()
+                # refresh implies _write_entries
+                cur_gc.refresh()
+                if not cur_gc.master:
+                    cur_gc._write_entries()
+                    cur_gc.distribute()
+        cfgs_written = self.__gen_config._write_entries()
+        if bc_valid and (cfgs_written or rebuild_gen_config):
+            # send reload to remote instance ?
+            self._reload_nagios()
+        # FIXME
+        #self.__queue_dict["command_queue"].put(("config_rebuilt", h_list or [global_config["ALL_HOSTS_NAME"]]))
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
             self.log("queries issued: %d" % (tot_query_count))
@@ -2025,6 +2029,7 @@ class build_process(threading_tools.process_obj):
         # exclude all without attached netdevices
         dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.exclude(netdevice=None).prefetch_related("netdevice_set")])
         nd_dict = dict([(pk, set(cur_dev.netdevice_set.all().values_list("pk", flat=True))) for pk, cur_dev in dm_dict.iteritems()])
+        nd_lut = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
         for cur_dev in dm_dict.itervalues():
             # set 0 for root_node, -1 for all other devices
             cur_dev.md_dist_level = 0 if cur_dev.pk == root_node.pk else -1
@@ -2041,32 +2046,49 @@ class build_process(threading_tools.process_obj):
                                  logging_tools.get_plural("dest node", len(dst_nodes))))
             src_nds = reduce(operator.ior, [nd_dict[key] for key in src_nodes], set())
             dst_nds = reduce(operator.ior, [nd_dict[key] for key in dst_nodes], set())
-            # only single-hop hopcounts
-            for cur_hc in hopcount.objects.filter(
-                Q(route_generation=self.latest_gen) &
-                Q(s_netdevice__in=src_nds) &
-                Q(d_netdevice__in=dst_nds) &
-                Q(trace_length=2)):
-                if cur_hc.s_netdevice_id == cur_hc.d_netdevice_id:
-                    # loop, skip
-                    pass
-                else:
-                    #dst_nds = [val for val in [cur_hc.s_netdevice_id, cur_hc.d_netdevice_id] if val not in src_nds]
-                    trace = [int(val) for val in cur_hc.trace.split(":")]
-                    # direct attached
-                    if trace[0] in src_nodes:
-                        src_dev, dst_dev = (dm_dict[trace[0]], dm_dict[trace[1]])
-                    else:
-                        src_dev, dst_dev = (dm_dict[trace[1]], dm_dict[trace[0]])
-                    new_level = src_dev.md_dist_level + 1
-                    if dst_dev.md_dist_level >= 0 and new_level > dst_dev.md_dist_level:
-                        self.log("pushing node %s farther away from root (%d => %d)" % (
-                            unicode(dst_dev),
-                            dst_dev.md_dist_level,
-                            new_level))
-                    dst_dev.md_dist_level = max(dst_dev.md_dist_level, new_level)
-                    max_level = max(max_level, dst_dev.md_dist_level)
-                    run_again = True
+            # build list of src_nd, dst_nd tuples
+            nb_list = []
+            for src_nd in src_nds:
+                for dst_nd in networkx.all_neighbors(self.router_obj.nx, src_nd):
+                    if dst_nd not in src_nds:
+                        nb_list.append((src_nd, dst_nd))
+            for src_nd, dst_nd, in nb_list:
+                src_dev, dst_dev = (dm_dict[nd_lut[src_nd]], dm_dict[nd_lut[dst_nd]])
+                new_level = src_dev.md_dist_level + 1
+                if dst_dev.md_dist_level >= 0 and new_level > dst_dev.md_dist_level:
+                    self.log("pushing node %s farther away from root (%d => %d)" % (
+                        unicode(dst_dev),
+                        dst_dev.md_dist_level,
+                        new_level))
+                dst_dev.md_dist_level = max(dst_dev.md_dist_level, new_level)
+                max_level = max(max_level, dst_dev.md_dist_level)
+                run_again = True
+            #if False:
+                #for cur_hc in hopcount.objects.filter(
+                    #Q(route_generation=self.latest_gen) &
+                    #Q(s_netdevice__in=src_nds) &
+                    #Q(d_netdevice__in=dst_nds) &
+                    #Q(trace_length=2)):
+                    #if cur_hc.s_netdevice_id == cur_hc.d_netdevice_id:
+                        ## loop, skip
+                        #pass
+                    #else:
+                        ##dst_nds = [val for val in [cur_hc.s_netdevice_id, cur_hc.d_netdevice_id] if val not in src_nds]
+                        #trace = [int(val) for val in cur_hc.trace.split(":")]
+                        ## direct attached
+                        #if trace[0] in src_nodes:
+                            #src_dev, dst_dev = (dm_dict[trace[0]], dm_dict[trace[1]])
+                        #else:
+                            #src_dev, dst_dev = (dm_dict[trace[1]], dm_dict[trace[0]])
+                        #new_level = src_dev.md_dist_level + 1
+                        #if dst_dev.md_dist_level >= 0 and new_level > dst_dev.md_dist_level:
+                            #self.log("pushing node %s farther away from root (%d => %d)" % (
+                                #unicode(dst_dev),
+                                #dst_dev.md_dist_level,
+                                #new_level))
+                        #dst_dev.md_dist_level = max(dst_dev.md_dist_level, new_level)
+                        #max_level = max(max_level, dst_dev.md_dist_level)
+                        #run_again = True
             if not run_again:
                 break
         self.log("max distance level: %d" % (max_level))
@@ -2756,21 +2778,29 @@ class build_process(threading_tools.process_obj):
         host = all_hosts_dict[host_pk]
         traces = []
         targ_netdev_idxs = None
-        for targ_netdev_ds in hopcount.objects.filter(
-            Q(route_generation=self.latest_gen) &
-            Q(s_netdevice__in=my_net_idxs) &
-            Q(d_netdevice__in=net_devices.keys())):
-            targ_netdev_idxs = [getattr(targ_netdev_ds, key) for key in ["s_netdevice_id", "d_netdevice_id"] if getattr(targ_netdev_ds, key) not in my_net_idxs]
-            if not targ_netdev_idxs:
-                # special case: peers defined but only local netdevices found, maybe alias ?
-                targ_netdev_idxs = [targ_netdev_ds.s_netdevice_id]
-            if any([net_devices.has_key(key) for key in targ_netdev_idxs]):
-                if targ_netdev_ds.trace:
-                    loc_traces = [int(val) for val in targ_netdev_ds.trace.split(":")]
-                    if loc_traces[0] != host_pk:
-                        loc_traces.reverse()
-                traces.append((targ_netdev_ds.value, targ_netdev_idxs[0], loc_traces))
-                #break
+        pathes = self.router_obj.get_ndl_ndl_pathes(my_net_idxs, net_devices.keys(), add_penalty=True)
+        pprint.pprint(pathes)
+        for penalty, cur_path in pathes:
+            if net_devices.has_key(cur_path[-1]):
+                dev_path = self.router_obj.map_path_to_device(cur_path)
+                dev_path.reverse()
+                traces.append((penalty, cur_path[-1], dev_path))
+        #if False:
+            #for targ_netdev_ds in hopcount.objects.filter(
+                #Q(route_generation=self.latest_gen) &
+                #Q(s_netdevice__in=my_net_idxs) &
+                #Q(d_netdevice__in=net_devices.keys())):
+                #targ_netdev_idxs = [getattr(targ_netdev_ds, key) for key in ["s_netdevice_id", "d_netdevice_id"] if getattr(targ_netdev_ds, key) not in my_net_idxs]
+                #if not targ_netdev_idxs:
+                    ## special case: peers defined but only local netdevices found, maybe alias ?
+                    #targ_netdev_idxs = [targ_netdev_ds.s_netdevice_id]
+                #if any([net_devices.has_key(key) for key in targ_netdev_idxs]):
+                    #if targ_netdev_ds.trace:
+                        #loc_traces = [int(val) for val in targ_netdev_ds.trace.split(":")]
+                        #if loc_traces[0] != host_pk:
+                            #loc_traces.reverse()
+                    #traces.append((targ_netdev_ds.value, targ_netdev_idxs[0], loc_traces))
+                    ##break
         traces = sorted(traces)
         if not traces:
             self.mach_log("Cannot reach host %s (check peer_information)" % (host.name),
@@ -2785,6 +2815,7 @@ class server_process(threading_tools.process_pool):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
+        self.__verbose = global_config["VERBOSE"]
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         if not global_config["DEBUG"]:
