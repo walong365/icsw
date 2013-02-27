@@ -33,79 +33,10 @@ from django.conf import settings
 from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group, \
      peer_information, cs_timer, route_generation
 from initat.cluster_server.config import global_config
-import networkx
-
+from config_tools import router_object
+i
 HOPCOUNT_REBUILT_VAR_NAME = "hopcount_table_build_time"
 HOPCOUNT_STATE_VAR_NAME = "hopcount_state_var"
-
-class router_object(object):
-    def __init__(self, log_com):
-        self.__log_com = log_com
-        self.__cur_gen = 0
-        self.nx = None
-        self._update()
-    def add_nodes(self):
-        self.nx.add_nodes_from(self.nd_dict.keys())
-    def add_edges(self):
-        for node_pair, penalty in self.simple_peer_dict.iteritems():
-            src_node, dst_node = node_pair
-            self.nx.add_edge(src_node, dst_node, weight=penalty)
-    def _update(self):
-        latest_gen = route_generation.objects.all().order_by("-generation")
-        if latest_gen:
-            latest_gen = latest_gen[0].generation
-        else:
-            latest_gen = route_generation(generation=1)
-            latest_gen.save()
-            latest_gen = latest_gen.generation
-        if latest_gen != self.__cur_gen:
-            s_time = time.time()
-            self.__cur_gen = latest_gen
-            self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).values_list("idx", "device", "routing", "penalty")
-            self.dev_dict = {}
-            for cur_nd in self.all_nds:
-                if cur_nd[1] not in self.dev_dict:
-                    self.dev_dict[cur_nd[1]] = []
-                self.dev_dict[cur_nd[1]].append(cur_nd)
-            self.nd_dict = dict([(cur_nd[0], cur_nd) for cur_nd in self.all_nds])
-            self.log("init router helper object, %s / %s" % (
-                logging_tools.get_plural("netdevice", len(self.all_nds)),
-                logging_tools.get_plural("peer information", peer_information.objects.count())))
-            # peer dict
-            self.peer_dict, self.simple_peer_dict = ({}, {})
-            all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id", "penalty")
-            for s_nd_id, d_nd_id, penalty in all_peers:
-                self.peer_dict[(s_nd_id, d_nd_id)] = penalty + self.nd_dict[s_nd_id][2] + self.nd_dict[d_nd_id][2]
-                self.peer_dict[(d_nd_id, s_nd_id)] = penalty + self.nd_dict[s_nd_id][2] + self.nd_dict[d_nd_id][2]
-                self.simple_peer_dict[(s_nd_id, d_nd_id)] = penalty
-            # add simple peers for device-internal networks
-            for nd_list in self.dev_dict.itervalues():
-                route_nds = [cur_nd for cur_nd in nd_list if cur_nd[2]]
-                if len(route_nds) > 1:
-                    for s_idx in xrange(len(route_nds)):
-                        for d_idx in xrange(s_idx + 1, len(route_nds)):
-                            s_pk, d_pk = (route_nds[s_idx][0], route_nds[d_idx][0])
-                            int_penalty = 1
-                            self.peer_dict[(s_pk, d_pk)] = int_penalty
-                            self.peer_dict[(d_pk, s_pk)] = int_penalty
-                            self.simple_peer_dict[(s_pk, d_pk)] = int_penalty
-            if self.nx:
-                del self.nx
-            self.nx = networkx.Graph()
-            self.add_nodes()
-            self.add_edges()
-            self.log("update generation from %d to %d in %s" % (
-                self.__cur_gen,
-                latest_gen,
-                logging_tools.get_diff_time_str(time.time() - s_time),
-            ))
-    def check_for_update(self):
-        self._update()
-    def get_penalty(self, in_path):
-        #return sum([self.nx[in_path[idx]][in_path[idx + 1]]["weight"] for idx in xrange(len(in_path) - 1)])
-        return sum([self.peer_dict[(in_path[idx], in_path[idx + 1])] for idx in xrange(len(in_path) - 1)])
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[router] %s" % (what), log_level)
 
 class path_object(object):
     def __init__(self, s_nd, d_nd):
@@ -299,27 +230,6 @@ class rebuild_hopcount(cs_base_class.server_com):
         blocking = True
         needed_configs = ["rebuild_hopcount"]
         background = True
-    def _new_code_nwx(self, cur_inst):
-        rho = router_object(cur_inst.log)
-        my_nx = networkx.Graph()
-        return (0, 0)
-        #print "***", networkx.to_agraph(my_nx)
-        cur_run = 0
-        for src_node in my_nx.nodes():
-            for dst_node in my_nx.nodes():
-                cur_run += 1
-                try:
-                    s_path = list(networkx.all_simple_paths(my_nx, source=src_node, target=dst_node))
-                except networkx.exception.NetworkXNoPath:
-                    print "...", src_node, dst_node
-                else:
-                    print rho.nd_dict[src_node], rho.nd_dict[src_node].device, rho.nd_dict[dst_node], rho.nd_dict[dst_node].device, s_path, [rho.get_penalty(sub_p) for sub_p in s_path], [[rho.nd_dict[cur_nd].device_id for cur_nd in sub_p] for sub_p in s_path]
-                if cur_run > 1000:
-                    break
-            if cur_run > 1000:
-                break
-        cur_inst.log(my_timer("graph init"))
-        return (0, 0)
     def _new_code(self, cur_inst):
         rho = route_helper_obj(cur_inst.log)
         my_timer = cs_timer()
@@ -486,7 +396,7 @@ class rebuild_hopcount(cs_base_class.server_com):
             var_type="i",
             val_int=0)
         state_var.save()
-        num_routes, num_dups = self._new_code_nwx(cur_inst)
+        num_routes, num_dups = self._new_code(cur_inst)
         ret_str = "ok wrote %d routing entries (%d dups)" % (num_routes, num_dups)
         try:
             reb_var = device_variable.objects.get(Q(device=cdg_dev) & Q(name=HOPCOUNT_REBUILT_VAR_NAME))
