@@ -55,7 +55,6 @@ class write_etc_hosts(cs_base_class.server_com):
         # get all peers to local machine and local netdevices
         my_idxs = netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True)
         # ref_table
-        #latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
         route_obj = router_object(cur_inst.log)
         all_paths = []
         for s_ndev in my_idxs:
