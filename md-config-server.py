@@ -54,7 +54,7 @@ from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_service, mon_ext_host, mon_check_command, mon_check_command_type, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
-     user, mon_host_cluster, mon_service_cluster, config#, route_generation
+     user, mon_host_cluster, mon_service_cluster, config
 from django.conf import settings
 import base64
 import uuid_tools
@@ -1906,68 +1906,6 @@ class build_process(threading_tools.process_obj):
             cur_query_count = len(connection.queries)
         h_list = args[0] if len(args) else []
         cdg = device.objects.get(Q(device_group__cluster_device_group=True))
-        #try:
-            #reb_var = device_variable.objects.get(Q(device=cdg) & Q(name="hopcount_rebuild_in_progress"))
-        #except device_variable.DoesNotExist:
-            #pass
-        #else:
-            #self.log("hopcount_rebuild in progress, delaying request", logging_tools.LOG_LEVEL_WARN)
-            ## delay request
-            #self.__log_queue.put(("delay_request", (self.get_thread_queue(), ("rebuild_config", h_list), global_config["MAIN_LOOP_TIMEOUT"] / 2)))
-            ## no rebuild
-            #rebuild_it = False
-        #if rebuild_it:
-##            latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")
-##            if len(latest_gen):
-##                latest_gen = latest_gen[0]
-##                if latest_gen.dirty:
-##                    rebuild_routing = True
-##                else:
-##                    rebuild_routing = False
-##            else:
-##                latest_gen = None
-##                rebuild_routing = True
-##            if rebuild_routing:
-##                self.log("latest route_generation (%s) is marked as dirty, forcing rebuild" % (unicode(latest_gen) if latest_gen else "no generations found"), logging_tools.LOG_LEVEL_WARN)
-##                srv_com = server_command.srv_command(command="rebuild_hopcount")
-##                targ_str = "tcp://localhost:8004"
-##                cs_sock = self.zmq_context.socket(zmq.DEALER)
-##                identity_str = "md_config_server::%d" % (os.getpid())
-##                timeout = 10
-##                cs_sock.setsockopt(zmq.IDENTITY, identity_str)
-##                cs_sock.setsockopt(zmq.LINGER, timeout)
-##                cs_sock.connect(targ_str)
-##                s_time = time.time()
-##                cs_sock.send_unicode(unicode(srv_com))
-##                if cs_sock.poll(timeout * 1000):
-##                    recv_str = cs_sock.recv()
-##                else:
-##                    self.log("error while communication with %s after %s: timeout" % (
-##                        targ_str,
-##                        logging_tools.get_plural("second", timeout)), logging_tools.LOG_LEVEL_ERROR)
-##                    recv_str = None
-##                if recv_str:
-##                    self.log("send rebuild_hocount to %s, took %s" % (
-##                        targ_str,
-##                        logging_tools.get_diff_time_str(time.time() - s_time)))
-##                    next_gen = latest_gen.generation + 1 if latest_gen else 1
-##                    self.log("waiting for generation %d to become valid" % (next_gen))
-##                    s_time = time.time()
-##                    # wait for up to 60 seconds
-##                    for idx in xrange(60):
-##                        time.sleep(1)
-##                        try:
-##                            latest_gen = route_generation.objects.get(
-##                                Q(valid=True) &
-##                                Q(build=False) &
-##                                Q(generation=next_gen))
-##                        except route_generation.DoesNotExist:
-##                            self.log("still waiting...")
-##                        else:
-##                            self.log("done after %d iterations" % (idx + 1))
-##                            break
-##            else:
-##                self.log("latest route_generation %s is valid" % (unicode(latest_gen)))
         # fetch SNMP-stuff of cluster
         snmp_stack = snmp_settings(cdg)
         rebuild_gen_config = False
@@ -2059,32 +1997,6 @@ class build_process(threading_tools.process_obj):
                 dst_dev.md_dist_level = max(dst_dev.md_dist_level, new_level)
                 max_level = max(max_level, dst_dev.md_dist_level)
                 run_again = True
-            #if False:
-                #for cur_hc in hopcount.objects.filter(
-                    #Q(route_generation=self.latest_gen) &
-                    #Q(s_netdevice__in=src_nds) &
-                    #Q(d_netdevice__in=dst_nds) &
-                    #Q(trace_length=2)):
-                    #if cur_hc.s_netdevice_id == cur_hc.d_netdevice_id:
-                        ## loop, skip
-                        #pass
-                    #else:
-                        ##dst_nds = [val for val in [cur_hc.s_netdevice_id, cur_hc.d_netdevice_id] if val not in src_nds]
-                        #trace = [int(val) for val in cur_hc.trace.split(":")]
-                        ## direct attached
-                        #if trace[0] in src_nodes:
-                            #src_dev, dst_dev = (dm_dict[trace[0]], dm_dict[trace[1]])
-                        #else:
-                            #src_dev, dst_dev = (dm_dict[trace[1]], dm_dict[trace[0]])
-                        #new_level = src_dev.md_dist_level + 1
-                        #if dst_dev.md_dist_level >= 0 and new_level > dst_dev.md_dist_level:
-                            #self.log("pushing node %s farther away from root (%d => %d)" % (
-                                #unicode(dst_dev),
-                                #dst_dev.md_dist_level,
-                                #new_level))
-                        #dst_dev.md_dist_level = max(dst_dev.md_dist_level, new_level)
-                        #max_level = max(max_level, dst_dev.md_dist_level)
-                        #run_again = True
             if not run_again:
                 break
         self.log("max distance level: %d" % (max_level))
@@ -2780,22 +2692,6 @@ class build_process(threading_tools.process_obj):
                 dev_path = self.router_obj.map_path_to_device(cur_path)
                 dev_path.reverse()
                 traces.append((penalty, cur_path[-1], dev_path))
-        #if False:
-            #for targ_netdev_ds in hopcount.objects.filter(
-                #Q(route_generation=self.latest_gen) &
-                #Q(s_netdevice__in=my_net_idxs) &
-                #Q(d_netdevice__in=net_devices.keys())):
-                #targ_netdev_idxs = [getattr(targ_netdev_ds, key) for key in ["s_netdevice_id", "d_netdevice_id"] if getattr(targ_netdev_ds, key) not in my_net_idxs]
-                #if not targ_netdev_idxs:
-                    ## special case: peers defined but only local netdevices found, maybe alias ?
-                    #targ_netdev_idxs = [targ_netdev_ds.s_netdevice_id]
-                #if any([net_devices.has_key(key) for key in targ_netdev_idxs]):
-                    #if targ_netdev_ds.trace:
-                        #loc_traces = [int(val) for val in targ_netdev_ds.trace.split(":")]
-                        #if loc_traces[0] != host_pk:
-                            #loc_traces.reverse()
-                    #traces.append((targ_netdev_ds.value, targ_netdev_idxs[0], loc_traces))
-                    ##break
         traces = sorted(traces)
         if not traces:
             self.mach_log("Cannot reach host %s (check peer_information)" % (host.name),
