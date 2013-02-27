@@ -49,13 +49,12 @@ import crypt
 from django.db import connection
 from lxml import etree
 from lxml.builder import E
-from initat.cluster.backbone.models import device, network, config, \
-     device_variable, net_ip, hopcount, boot_uuid, \
-     partition, sys_partition, wc_files, tree_node, config_str, \
-     cached_log_status, cached_log_source, log_source, devicelog, \
-     route_generation
+from initat.cluster.backbone.models import device, network, config, device_variable, net_ip, \
+     boot_uuid, netdevice, partition, sys_partition, wc_files, tree_node, config_str, \
+     cached_log_status, cached_log_source, log_source, devicelog
 from django.db.models import Q
 import module_dependency_tools
+import networkx
 
 try:
     from cluster_config_server_version import VERSION_STRING
@@ -512,12 +511,14 @@ class generated_tree(tree_node_g):
         cur_c.log("wrote %s" % (logging_tools.get_plural("node", nodes_written)))
         
 class build_container(object):
-    def __init__(self, b_client, config_dict, conf_dict, g_tree):
+    def __init__(self, b_client, config_dict, conf_dict, g_tree, router_obj):
         self.b_client = b_client
         # dict of all configs (pk -> config)
         self.config_dict = config_dict
         # config dict
         self.conf_dict = conf_dict
+        # router object
+        self.router_obj = router_obj
         self.g_tree = g_tree
         self.__s_time = time.time()
         self.file_mode, self.dir_mode, self.link_mode = ("0644", "0755", "0644")
@@ -644,6 +645,7 @@ class build_container(object):
                         "dev_dict"        : conf_dict,
                         # new version
                         "conf_dict"       : conf_dict,
+                        "router_obj"      : self.router_obj,
                         "config"          : self,
                         "dir_object"      : dir_object,
                         "delete_object"   : delete_object,
@@ -1368,34 +1370,23 @@ class partition_setup(object):
 # generate /etc/hosts for nodes, including routing-info
 def do_etc_hosts(conf):
     conf_dict = conf.conf_dict
-    latest_gen = route_generation.objects.filter(Q(valid=True)).oder_by("-pk")[0]
-    all_hopcounts = hopcount.objects.filter(
-        Q(route_generation=latest_gen) & 
-        Q(s_netdevice__in=[cur_ip.netdevice for cur_ip in conf_dict["node_if"]])).select_related(
-        "d_netdevice",
-        "d_netdevice__device").prefetch_related(
-            "d_netdevice__net_ip_set",
-            "d_netdevice__net_ip_set__network").order_by(
-                "value",
-                "d_netdevice__devname",
-                "d_netdevice__device__name")
-    # list of (netdevice, ip) tuples
+    route_obj = conf.router_obj
+    all_paths = []
+    for cur_ip in conf_dict["node_if"]:
+        all_paths.extend(networkx.shortest_path(route_obj.nx, cur_ip.netdevice_id, weight="weight").values())
+    all_paths = sorted([route_obj.add_penalty(cur_path) for cur_path in all_paths])
+    all_nds = set([cur_path[-1] for penalty, cur_path in all_paths])
+    nd_lut = dict([(cur_nd.pk, cur_nd) for cur_nd in netdevice.objects.filter(Q(pk__in=all_nds)).select_related("device").prefetch_related("net_ip_set", "net_ip_set__network")])
     all_ips, ips_used = ([], set())
-    for cur_hc in all_hopcounts:
-        for cur_ip in cur_hc.d_netdevice.net_ip_set.all():
+    for penalty, cur_path in all_paths:
+        cur_nd = nd_lut[cur_path[-1]]
+        for cur_ip in cur_nd.net_ip_set.all():
             if cur_ip.ip not in ips_used:
-                # copy hopcount value
-                cur_ip.value = cur_hc.value
+                # copy penalty value
+                cur_ip.value = penalty
                 ips_used.add(cur_ip.ip)
                 # also check network identifiers ? FIXME
-                all_ips.append((cur_hc.d_netdevice, cur_ip))
-    # self-references
-    my_ips = net_ip.objects.filter(Q(netdevice__device=conf_dict["device"])).select_related("netdevice", "netdevice__device", "network__network_type").order_by("ip")
-    for cur_ip in my_ips:
-        if cur_ip.ip not in ips_used:
-            ips_used.add(cur_ip.ip)
-            # do not use IPs with no hopcount entry ? FIXME
-    #        all_ips.append((cur_ip.netdevice, cur_ip))
+                all_ips.append((cur_nd, cur_ip))
     # ip addresses already written
     new_co = conf.add_file_object("/etc/hosts")
     # two iterations: at first the devices that match my local networks, than the rest
@@ -1406,7 +1397,7 @@ def do_etc_hosts(conf):
         if cur_ip.ip.startswith("127.0.0.") and global_config["CORRECT_WRONG_LO_SETUP"]:
             cur_ip.alias, cur_ip.alias_excl = ("localhost", True)
         if not (cur_ip.alias.strip() and cur_ip.alias_excl):
-            out_names.append("%s%s" % (cur_ip.netdevice.device.name, cur_ip.network.postfix))
+            out_names.append("%s%s" % (cur_nd.device.name, cur_ip.network.postfix))
         out_names.extend(cur_ip.alias.strip().split())
         if "localhost" in [entry.split(".")[0] for entry in out_names]:
             out_names = [entry for entry in out_names if entry.split(".")[0] == "localhost"]
@@ -2506,6 +2497,7 @@ class build_process(threading_tools.process_obj):
             init_logger=True)
         # close database connection
         connection.close()
+        self.router_obj = config_tools.router_object(self.log)
         self.config_src = log_source.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         self.register_func("generate_config", self._generate_config)
         # for requests from config_control
@@ -2603,6 +2595,7 @@ class build_process(threading_tools.process_obj):
                 cur_c.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
         self.send_pool_message("client_update", cur_c.get_send_dict())
     def _generate_config_step2(self, cur_c, b_dev, act_prod_net, boot_netdev, dev_sc):
+        self.router_obj.check_for_update()
         running_ip = [ip.ip for ip in dev_sc.identifier_ip_lut["p"] if dev_sc.ip_netdevice_lut[ip.ip].pk == boot_netdev.pk][0]
         full_postfix = act_prod_net.get_full_postfix()
         cur_c.log("IP in production network '%s' is %s, full network_postfix is '%s'" % (
@@ -2624,12 +2617,11 @@ class build_process(threading_tools.process_obj):
             # store in act_prod_net
             conf_dict = {}
             conf_dict["servers"] = srv_names
-            all_servers.prefetch_hopcount_table(dev_sc)
             for config_type in sorted(all_servers.keys()):
                 if config_type not in multiple_configs:
                     routing_info, act_server, routes_found = ([66666666], None, 0)
                     for actual_server in all_servers[config_type]:
-                        act_routing_info = actual_server.get_route_to_other_device(dev_sc, filter_ip=running_ip, allow_route_to_other_networks=True)
+                        act_routing_info = actual_server.get_route_to_other_device(self.router_obj, dev_sc, filter_ip=running_ip, allow_route_to_other_networks=True)
                         if act_routing_info:
                             routes_found += 1
                             # store in some dict-like structure
@@ -2743,7 +2735,7 @@ class build_process(threading_tools.process_obj):
             cur_c.conf_dict, cur_c.link_dict, cur_c.erase_dict = ({}, {}, {})
             cur_c.conf_dict[config_obj.dest] = config_obj
             new_tree = generated_tree()
-            cur_bc = build_container(cur_c, config_dict, conf_dict, new_tree)
+            cur_bc = build_container(cur_c, config_dict, conf_dict, new_tree, self.router_obj)
             for pk in config_pks:
                 cur_bc.process_scripts(pk)
             new_tree.write_config(cur_c, cur_bc)
@@ -3519,7 +3511,7 @@ class build_client(object):
         loc_dev.partdev = part_name
         loc_dev.save()
         success = False
-        dummy_cont = build_container(self, {}, {"device" : loc_dev}, loc_tree)
+        dummy_cont = build_container(self, {}, {"device" : loc_dev}, loc_tree, None)
         try:
             loc_ps = partition_setup(dummy_cont)
         except:
