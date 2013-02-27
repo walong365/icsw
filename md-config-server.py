@@ -1905,22 +1905,17 @@ class build_process(threading_tools.process_obj):
         if global_config["DEBUG"]:
             cur_query_count = len(connection.queries)
         h_list = args[0] if len(args) else []
-        #rebuild_it = True
+        cdg = device.objects.get(Q(device_group__cluster_device_group=True))
         #try:
-            #cdg = device.objects.get(Q(device_group__cluster_device_group=True))
-        #except device.DoesNotExist:
-            #self.log("no cluster_device_group, unable to check validity of hopcount_table", logging_tools.LOG_LEVEL_ERROR)
+            #reb_var = device_variable.objects.get(Q(device=cdg) & Q(name="hopcount_rebuild_in_progress"))
+        #except device_variable.DoesNotExist:
+            #pass
         #else:
-            #try:
-                #reb_var = device_variable.objects.get(Q(device=cdg) & Q(name="hopcount_rebuild_in_progress"))
-            #except device_variable.DoesNotExist:
-                #pass
-            #else:
-                #self.log("hopcount_rebuild in progress, delaying request", logging_tools.LOG_LEVEL_WARN)
-                ## delay request
-                #self.__log_queue.put(("delay_request", (self.get_thread_queue(), ("rebuild_config", h_list), global_config["MAIN_LOOP_TIMEOUT"] / 2)))
-                ## no rebuild
-                #rebuild_it = False
+            #self.log("hopcount_rebuild in progress, delaying request", logging_tools.LOG_LEVEL_WARN)
+            ## delay request
+            #self.__log_queue.put(("delay_request", (self.get_thread_queue(), ("rebuild_config", h_list), global_config["MAIN_LOOP_TIMEOUT"] / 2)))
+            ## no rebuild
+            #rebuild_it = False
         #if rebuild_it:
 ##            latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")
 ##            if len(latest_gen):
@@ -2780,7 +2775,6 @@ class build_process(threading_tools.process_obj):
         traces = []
         targ_netdev_idxs = None
         pathes = self.router_obj.get_ndl_ndl_pathes(my_net_idxs, net_devices.keys(), add_penalty=True)
-        pprint.pprint(pathes)
         for penalty, cur_path in pathes:
             if net_devices.has_key(cur_path[-1]):
                 dev_path = self.router_obj.map_path_to_device(cur_path)
