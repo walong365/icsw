@@ -47,4 +47,5 @@ for hm in _new_hm_list:
             command_dict[hm.__name__].name = hm.__name__
         else:
             del command_dict[hm.__name__]
+
 command_names = sorted(command_dict.keys())

@@ -45,7 +45,7 @@ import stat
 import initat.cluster_server
 from django.db.models import Q
 from django.db import connection
-from host_monitoring import hm_classes
+from initat.host_monitoring import hm_classes
 from initat.cluster.backbone.models import device, device_variable, log_source
 from initat.cluster_server.config import global_config
 from initat.core.management.commands import dumpdatafast
