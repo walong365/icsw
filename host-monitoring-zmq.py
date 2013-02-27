@@ -40,7 +40,7 @@ import threading_tools
 import configfile
 import server_command
 import net_tools
-from host_monitoring import limits, hm_classes
+from initat.host_monitoring import limits, hm_classes
 import argparse
 import icmp_twisted
 import pprint
@@ -67,7 +67,7 @@ MAPPING_FILE_TYPES = os.path.join(CONFIG_DIR, "0mq_clients")
 MASTER_FILE_NAME   = os.path.join(CONFIG_DIR, "monitor_master")
 
 def client_code():
-    from host_monitoring import modules
+    from initat.host_monitoring import modules
     #log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=)
     conn_str = "tcp://%s:%d" % (global_config["HOST"],
                                 global_config["COM_PORT"])
@@ -759,7 +759,7 @@ class relay_process(threading_tools.process_pool):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
         # copy to access from modules
-        from host_monitoring import modules
+        from initat.host_monitoring import modules
         self.modules = modules
         self.global_config = global_config
         self.__verbose = global_config["VERBOSE"]
@@ -1368,7 +1368,7 @@ class relay_process(threading_tools.process_pool):
     def loop_end(self):
         self._close_ipc_sockets()
         self._close_io_sockets()
-        from host_monitoring import modules
+        from initat.host_monitoring import modules
         for cur_mod in modules.module_list:
             cur_mod.close_module()
         process_tools.delete_pid(self.__pid_name)
@@ -1834,7 +1834,7 @@ class server_process(threading_tools.process_pool):
         for conf in conf_info:
             self.log("Config : %s" % (conf))
     def loop_end(self):
-        from host_monitoring import modules
+        from initat.host_monitoring import modules
         for cur_mod in modules.module_list:
             cur_mod.close_module()
         process_tools.delete_pid(self.__pid_name)
@@ -1843,7 +1843,7 @@ class server_process(threading_tools.process_pool):
     def _init_commands(self):
         self.log("init commands")
         self.__delayed = []
-        from host_monitoring import modules
+        from initat.host_monitoring import modules
         self.log("modules import errors:", logging_tools.LOG_LEVEL_ERROR)
         for mod_name, com_name, error_str in modules.IMPORT_ERRORS:
             self.log("%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str), logging_tools.LOG_LEVEL_ERROR)
@@ -1879,7 +1879,7 @@ class server_process(threading_tools.process_pool):
         self.__log_template.close()
 
 def show_command_info():
-    from host_monitoring import modules
+    from initat.host_monitoring import modules
     if modules.IMPORT_ERRORS:
         print "Import errors:"
         for mod_name, com_name, error_str in modules.IMPORT_ERRORS:
