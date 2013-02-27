@@ -106,8 +106,6 @@ network_patterns = patterns(
     url("^create_new_peer$"   , "network_views.create_new_peer"       , name="create_new_peer"      ),
     url("^delete_peer$"       , "network_views.delete_peer"           , name="delete_peer"          ),
     url("^get_valid_peers$"   , "network_views.get_valid_peers"       , name="get_valid_peers"      ),
-    #url("^get_hopcount_state$", "network_views.get_hopcount_state"    , name="get_hopcount_state"   ),
-    url("^trigger_hc_rebuild$", "network_views.rebuild_hopcount"      , name="rebuild_hopcount"     ),
     url("^copy_network$"      , "network_views.copy_network"          , name="copy_network"         ),
 )
 
