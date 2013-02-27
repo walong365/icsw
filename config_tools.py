@@ -37,7 +37,7 @@ import netifaces
 import time
 import logging_tools
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
-     hopcount, device_group, config_str, config_blob, config_int, config_bool, route_generation, netdevice, \
+     device_group, config_str, config_blob, config_int, config_bool, route_generation, netdevice, \
      peer_information
 from django.db.models import Q
 import networkx
