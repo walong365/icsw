@@ -28,8 +28,8 @@ import logging_tools
 import os
 import process_tools
 from initat.md_config_server.config import global_config
-from host_monitoring import ipc_comtools
-from host_monitoring.modules import supermicro_mod
+from initat.host_monitoring import ipc_comtools
+from initat.host_monitoring.modules import supermicro_mod
 from initat.cluster.backbone.models import partition, partition_disc, partition_table, partition_fs, \
      netdevice, net_ip, network, lvm_vg, lvm_lv, device, device_variable
 from django.db.models import Q
