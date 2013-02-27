@@ -34,9 +34,104 @@ import configfile_old
 import array
 import process_tools
 import netifaces
+import time
+import logging_tools
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
-     hopcount, device_group, config_str, config_blob, config_int, config_bool, route_generation
+     hopcount, device_group, config_str, config_blob, config_int, config_bool, route_generation, netdevice, \
+     peer_information
 from django.db.models import Q
+import networkx
+
+class router_object(object):
+    def __init__(self, log_com):
+        self.__log_com = log_com
+        self.__cur_gen = 0
+        self.nx = None
+        self._update()
+    def add_nodes(self):
+        self.nx.add_nodes_from(self.nd_dict.keys())
+    def add_edges(self):
+        for node_pair, penalty in self.simple_peer_dict.iteritems():
+            src_node, dst_node = node_pair
+            self.nx.add_edge(src_node, dst_node, weight=penalty)
+    def _update(self):
+        latest_gen = route_generation.objects.all().order_by("-generation")
+        if latest_gen:
+            latest_gen = latest_gen[0].generation
+        else:
+            latest_gen = route_generation(generation=1)
+            latest_gen.save()
+            latest_gen = latest_gen.generation
+        if latest_gen != self.__cur_gen:
+            s_time = time.time()
+            self.__cur_gen = latest_gen
+            self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).values_list("idx", "device", "routing", "penalty")
+            self.dev_dict = {}
+            for cur_nd in self.all_nds:
+                if cur_nd[1] not in self.dev_dict:
+                    self.dev_dict[cur_nd[1]] = []
+                self.dev_dict[cur_nd[1]].append(cur_nd)
+            self.nd_lut = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
+            self.nd_dict = dict([(cur_nd[0], cur_nd) for cur_nd in self.all_nds])
+            self.log("init router helper object, %s / %s" % (
+                logging_tools.get_plural("netdevice", len(self.all_nds)),
+                logging_tools.get_plural("peer information", peer_information.objects.count())))
+            # peer dict
+            self.peer_dict, self.simple_peer_dict = ({}, {})
+            all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id", "penalty")
+            for s_nd_id, d_nd_id, penalty in all_peers:
+                self.peer_dict[(s_nd_id, d_nd_id)] = penalty + self.nd_dict[s_nd_id][2] + self.nd_dict[d_nd_id][2]
+                self.peer_dict[(d_nd_id, s_nd_id)] = penalty + self.nd_dict[s_nd_id][2] + self.nd_dict[d_nd_id][2]
+                self.simple_peer_dict[(s_nd_id, d_nd_id)] = penalty
+            # add simple peers for device-internal networks
+            for nd_list in self.dev_dict.itervalues():
+                route_nds = [cur_nd for cur_nd in nd_list if cur_nd[2]]
+                if len(route_nds) > 1:
+                    for s_idx in xrange(len(route_nds)):
+                        for d_idx in xrange(s_idx + 1, len(route_nds)):
+                            s_pk, d_pk = (route_nds[s_idx][0], route_nds[d_idx][0])
+                            int_penalty = 1
+                            self.peer_dict[(s_pk, d_pk)] = int_penalty
+                            self.peer_dict[(d_pk, s_pk)] = int_penalty
+                            self.simple_peer_dict[(s_pk, d_pk)] = int_penalty
+            if self.nx:
+                del self.nx
+            self.nx = networkx.Graph()
+            self.add_nodes()
+            self.add_edges()
+            self.log("update generation from %d to %d in %s" % (
+                self.__cur_gen,
+                latest_gen,
+                logging_tools.get_diff_time_str(time.time() - s_time),
+            ))
+    def check_for_update(self):
+        self._update()
+    def get_penalty(self, in_path):
+        #return sum([self.nx[in_path[idx]][in_path[idx + 1]]["weight"] for idx in xrange(len(in_path) - 1)])
+        return sum([self.peer_dict[(in_path[idx], in_path[idx + 1])] for idx in xrange(len(in_path) - 1)])
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[router] %s" % (what), log_level)
+    def get_ndl_ndl_pathes(self, s_list, d_list, **kwargs):
+        """
+        returns all pathes between s_list and d_list (:: net_device)
+        """
+        all_paths = []
+        for s_ndev in s_list:
+            for d_ndev in d_list:
+                try:
+                    all_paths.append(networkx.shortest_path(self.nx, s_ndev, d_ndev, weight="weight"))
+                except networkx.exception.NetworkXNoPath:
+                    pass
+        if kwargs.get("add_penalty", False):
+            if kwargs.get("only_endpoints", False):
+                all_paths = [(self.get_penalty(cur_path), cur_path[0], cur_path[-1]) for cur_path in all_paths]
+            else:
+                all_paths = [(self.get_penalty(cur_path), cur_path) for cur_path in all_paths]
+        elif kwargs.get("only_endpoints", False):
+            all_paths = [(cur_path[0], cur_path[-1]) for cur_path in all_paths]
+        return all_paths
+    def map_path_to_device(self, in_path):
+        return [self.nd_lut[value] for value in in_path]
 
 def get_config_var_list(config_obj, config_dev):
     r_dict = {}
@@ -79,10 +174,10 @@ class server_check(object):
         self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
         self.__fetch_network_info = kwargs.get("fetch_network_info", True)
         self.__network_info_fetched = False
-        self.set_hopcount_cache()
+        #self.set_hopcount_cache()
         self._check(**kwargs)
-    def set_hopcount_cache(self, in_cache=[]):
-        self.__hc_cache = in_cache
+    #def set_hopcount_cache(self, in_cache=[]):
+        #self.__hc_cache = in_cache
     def _check(self, **kwargs):
         # device from database or None
         self.device = None
@@ -267,7 +362,7 @@ class server_check(object):
                 self.short_host_name = cur_dev.name
                 self._set_srv_info("virtual", "IP address '%s'" % (list(match_ips)[0]))
                 break
-    def get_route_to_other_device(self, other, **kwargs):
+    def get_route_to_other_device(self, router_obj, other, **kwargs):
         filter_ip = kwargs.get("filter_ip", None)
         # at first fetch the network info if necessary
         self._fetch_network_info()
@@ -277,24 +372,25 @@ class server_check(object):
         if self.netdevice_idx_list and other.netdevice_idx_list:
             # skip if any of both netdevice_idx_lists are empty
             # get peer_information
-            if self.__hc_cache:
-                all_hcs = self.__hc_cache
-            else:
-                latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")
-                if len(latest_gen):
-                    latest_gen = latest_gen[0]
-                    all_hcs = hopcount.objects.filter(
-                        Q(route_generation=latest_gen) & 
-                        Q(s_netdevice__in=self.netdevice_idx_list) &
-                        Q(d_netdevice__in=other.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice", "d_netdevice", "value")
-                else:
-                    all_hcs = []
-            for db_rec in all_hcs:
+            all_pathes = router_obj.get_ndl_ndl_pathes(self.netdevice_idx_list, other.netdevice_idx_list, add_penalty=True, only_endpoints=True)
+            #if self.__hc_cache:
+                #all_hcs = self.__hc_cache
+            #else:
+                #latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")
+                #if len(latest_gen):
+                    #latest_gen = latest_gen[0]
+                    #all_hcs = hopcount.objects.filter(
+                        #Q(route_generation=latest_gen) & 
+                        #Q(s_netdevice__in=self.netdevice_idx_list) &
+                        #Q(d_netdevice__in=other.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice", "d_netdevice", "value")
+                #else:
+                    #all_hcs = []
+            for penalty, s_nd_pk, d_nd_pk in all_pathes:
                 # dicts identifier -> ips
                 source_ip_lut, dest_ip_lut = ({}, {})
-                for s_ip in self.netdevice_ip_lut[db_rec[0]]:
+                for s_ip in self.netdevice_ip_lut[s_nd_pk]:
                     source_ip_lut.setdefault(self.ip_identifier_lut[unicode(s_ip)], []).append(unicode(s_ip))
-                for d_ip in other.netdevice_ip_lut[db_rec[1]]:
+                for d_ip in other.netdevice_ip_lut[d_nd_pk]:
                     dest_ip_lut.setdefault(other.ip_identifier_lut[unicode(d_ip)], []).append(unicode(d_ip))
                 common_identifiers = set(source_ip_lut.keys()) & set(dest_ip_lut.keys())
                 if common_identifiers:
@@ -304,10 +400,10 @@ class server_check(object):
                             if filter_ip not in source_ip_lut[act_id] and filter_ip not in dest_ip_lut[act_id]:
                                 add_actual = False
                         if add_actual:
-                            ret_list.append((db_rec[2],
+                            ret_list.append((penalty,
                                              act_id,
-                                             (db_rec[0], source_ip_lut[act_id]),
-                                             (db_rec[1], dest_ip_lut[act_id])))
+                                             (s_nd_pk, source_ip_lut[act_id]),
+                                             (d_nd_pk, dest_ip_lut[act_id])))
                 else:
                     if kwargs.get("allow_route_to_other_networks", False):
                         if "p" in dest_ip_lut and "o" in source_ip_lut:
@@ -316,13 +412,13 @@ class server_check(object):
                                 if filter_ip not in source_ip_lut["o"] and filter_ip not in dest_ip_lut["p"]:
                                     add_actual = False
                             if add_actual:
-                                ret_list.append((db_rec[2],
+                                ret_list.append((penalty,
                                                  "o",
-                                                 (db_rec[0], source_ip_lut["o"]),
-                                                 (db_rec[1], dest_ip_lut["p"])))
+                                                 (s_nd_pk, source_ip_lut["o"]),
+                                                 (d_nd_pk, dest_ip_lut["p"])))
         return ret_list
     def report(self):
-        print self.effective_device
+        #print self.effective_device
         if self.effective_device:
             return "short_host_name is %s (idx %d), server_origin is %s, effective_device_idx is %d, config_idx is %d, info_str is \"%s\"" % (
                 self.short_host_name,
