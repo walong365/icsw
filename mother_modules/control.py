@@ -42,9 +42,8 @@ from lxml import etree
 from django.db import connection
 from twisted.python import log
 from twisted.internet.error import CannotListenError
-from initat.cluster.backbone.models import kernel, device, hopcount, \
-     image, macbootlog, mac_ignore, cluster_timezone, route_generation, \
-     cached_log_status, cached_log_source, log_source, devicelog
+from initat.cluster.backbone.models import kernel, device, image, macbootlog, mac_ignore, \
+     cluster_timezone, cached_log_status, cached_log_source, log_source, devicelog
 from django.db.models import Q
 import process_tools
 from mother_modules.command_tools import simple_command
@@ -327,14 +326,23 @@ class host(machine):
         # dict: ip -> identifier
         ip_dict = {}
         if nd_list:
+            machine.process.router_obj.check_for_update()
+            all_paths = sorted(
+                machine.process.router_obj.get_ndl_ndl_pathes(
+                    machine.process.sc.netdevice_idx_list,
+                    nd_list,
+                    only_endpoints=True,
+                    add_penalty=True,
+                )
+            )
             # get hopcount
-            latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
-            my_hc = hopcount.objects.filter(
-                Q(route_generation=latest_gen) &
-                Q(s_netdevice__in=machine.process.sc.netdevice_idx_list) &
-                Q(d_netdevice__in=nd_list)).order_by("value")
-            for _ in my_hc:
-                srv_dev, mach_dev = (machine.process.sc.nd_lut[_.s_netdevice_id], nd_lut[_.d_netdevice_id])
+            #latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
+            #my_hc = hopcount.objects.filter(
+                #Q(route_generation=latest_gen) &
+                #Q(s_netdevice__in=machine.process.sc.netdevice_idx_list) &
+                #Q(d_netdevice__in=nd_list)).order_by("value")
+            for _ in all_paths:
+                srv_dev, mach_dev = (machine.process.sc.nd_lut[_[1]], nd_lut[_[2]])
                 for cur_ip in mach_dev.net_ip_set.all():
                     cur_id = cur_ip.network.network_type.identifier
                     srv_ips = list(set([srv_ip.ip for srv_ip in machine.process.sc.identifier_ip_lut.get(cur_id, [])]) & set([x2.ip for x2 in machine.process.sc.netdevice_ip_lut[srv_dev.pk]]))
@@ -1115,6 +1123,7 @@ class node_control_process(threading_tools.process_obj):
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
         # create connection to twisted process
         self.twisted_socket = self.connect_to_socket("twisted")
+        self.router_obj = config_tools.router_object(self.log)
         machine.setup(self)
         machine.sync()
         self.register_func("refresh", self._refresh)

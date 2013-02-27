@@ -31,8 +31,7 @@ import time
 import subprocess
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, network, cd_connection, device_variable, \
-     hopcount, route_generation
+from initat.cluster.backbone.models import device, network, cd_connection, device_variable, netdevice
 from mother_modules.command_tools import simple_command
 import re
 import server_command
@@ -40,7 +39,7 @@ import process_tools
 from lxml import etree
 
 class hc_command(object):
-    def __init__(self, xml_struct):
+    def __init__(self, xml_struct, router_obj):
         cur_cd = cd_connection.objects.select_related("child", "parent").prefetch_related("parent__device_variable_set").get(Q(pk=xml_struct.get("cd_con")))
         self.cd_obj = cur_cd
         command = xml_struct.get("command")
@@ -58,7 +57,7 @@ class hc_command(object):
             self.log(" var %-20s : %s" % (
                 key,
                 str(var_dict[key])))
-        com_ip = self.get_ip_to_host(self.cd_obj.parent)
+        com_ip = self.get_ip_to_host(self.cd_obj.parent, router_obj)
         if not com_ip:
             self.log("cannot reach device %s" % (unicode(self.cd_obj.parent)),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -111,15 +110,18 @@ class hc_command(object):
         if cur_var:
             var_value = cur_var.value
         return var_value
-    def get_ip_to_host(self, dev_struct):
-        latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
-        hc_list = hopcount.objects.filter(
-            Q(route_generation=latest_gen) & 
-            Q(s_netdevice__device=dev_struct) &
-            Q(d_netdevice__in=hc_command.process.sc.netdevice_idx_list)).order_by("value")
+    def get_ip_to_host(self, dev_struct, router_obj):
+        all_paths = sorted(
+            router_obj.get_ndl_ndl_pathes(
+                hc_command.process.sc.netdevice_idx_list,
+                list(dev_struct.netdevice_set.all().values_list("pk", flat=True)),
+                only_endpoints=True,
+                add_penalty=True,
+            )
+        )
         com_ip = None
-        if hc_list:
-            ip_list = hc_list[0].s_netdevice.net_ip_set.all().values_list("ip", flat=True)
+        if all_paths:
+            ip_list = netdevice.objects.get(Q(pk=all_paths[0][2])).net_ip_set.all().values_list("ip", flat=True)
             if ip_list:
                 com_ip = ip_list[0]
         return com_ip
@@ -141,6 +143,7 @@ class external_command_process(threading_tools.process_obj):
         # close database connection
         connection.close()
         simple_command.setup(self)
+        self.router_obj = config_tools.router_object(self.log)
         self.sc = config_tools.server_check(server_type="mother")
         if "b" in self.sc.identifier_ip_lut:
             self.__kernel_ip = self.sc.identifier_ip_lut["b"][0].ip
@@ -183,8 +186,9 @@ class external_command_process(threading_tools.process_obj):
         if simple_command.idle():
             self.register_timer(self._check_commands, 1)
         in_com = server_command.srv_command(source=in_com)
+        self.router_obj.check_for_update()
         for cur_dev in in_com.xpath(None, ".//ns:device"):
-            hc_command(cur_dev)
+            hc_command(cur_dev, self.router_obj)
     def sc_finished(self, sc_com):
         self.log("simple command done")
         print sc_com.read()
