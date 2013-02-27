@@ -7,7 +7,6 @@
 {% block content %}
 
 <h1 class="center">Device network settings</h1>
-<h2>routing info: <span id="routing_info">unknown</span><span id="rebuild_button"></span></h2>
 
 <div id="network_table"></div>
 
@@ -20,11 +19,6 @@
 class network_table
     constructor: (@top_div) ->
         @DUMMY_MAC ="00:00:00:00:00:00"
-        rebuild_button = $("<input>").attr({
-            "type" : "button",
-            "value" : "rebuild hopcount",
-            "id"    : "rebuild_hopcount"}).bind("click", @trigger_hopcount_rebuild)
-        $("span#rebuild_button").append($("<span>").text(", ")).append(rebuild_button).hide()
     use_devs: (dt_div) =>
         @SELECTED_DEVICES = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
         @reload_network_tree()
@@ -39,7 +33,6 @@ class network_table
                 if parse_xml_response(xml)
                     @DEVICE_NETWORKS = $(xml)
                     @draw_network_table()
-                    @reload_hopcount_info()
                     @init_copy_widget()
     draw_network_table: =>
         @new_table = $("<table>").attr({"id" : "network_tree"}).addClass("devicelist")
@@ -268,28 +261,6 @@ class network_table
                 cur_el.attr("value", "eth0")
             else
                 cur_el.attr("value", "ib0")
-
-    # hopcount related calls
-    
-    trigger_hopcount_rebuild: =>
-        $.ajax
-            url     : "{% url network:rebuild_hopcount %}"
-            error   : handle_ajax_error
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    @reload_hopcount_info()
-    reload_hopcount_info: =>
-        $.ajax
-            url     : "{% url network:get_hopcount_state %}"
-            error   : handle_ajax_error
-            success : (xml) ->
-                if parse_xml_response(xml)
-                    $("span#rebuild_info").text($(xml).find("value[name='response'] hopcount_state").attr("rebuild_info"))
-                    $("span#routing_info").text($(xml).find("value[name='response'] hopcount_state").attr("routing_info"))
-                    if $(xml).find("value[name='response'] hopcount_state").attr("enable_rebuild") == "1"
-                        $("span#rebuild_button").show()
-                    else
-                        $("span#rebuild_button").hide()
 
     # peer related calls
     
@@ -575,7 +546,6 @@ class network_table
 add_dnet_handlers = ->
     net_t = new network_table($("div#network_table"))
     install_devsel_link(net_t.use_devs, true)
-    $(document).everyTime(10000, (i) -> net_t.reload_hopcount_info())
 
 $(document).ready(add_dnet_handlers)
 
