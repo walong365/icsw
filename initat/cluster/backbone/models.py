@@ -946,26 +946,12 @@ class genstuff(models.Model):
 
 class route_generation(models.Model):
     idx = models.AutoField(primary_key=True)
-    #valid = models.BooleanField(default=True)
     # generation, is increased whenever one of the routing entries changes
     generation = models.IntegerField(default=1)
-    ## time used to generate in seconds
-    #time_used = models.IntegerField(default=0)
-    ## dirty flag, used to set the route generation as dirty (changed network setting)
-    #dirty = models.BooleanField(default=False)
-    ## build flag, true when route is in process of building
-    #build = models.BooleanField(default=False)
-    ## number of hopcount entries
-    #num_hops = models.IntegerField(default=0)
-    ## number of duplicates (s_nd/d_nd <=> d_nd/s_nd)
-    #num_dups = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return u"route generation %d" % (
             self.generation,
-            #"valid" if self.valid else "invalid",
-            #"building" if self.build else "built",
-            #"dirty" if self.dirty else "clean",
         )
  
 def mark_routing_dirty():
@@ -977,29 +963,7 @@ def mark_routing_dirty():
     else:
         new_gen = route_generation(generation=1)
     new_gen.save()
-    #num_inv = route_generation.objects.filter(Q(valid=True)).update(dirty=True)
         
-class hopcount(models.Model):
-    idx = models.AutoField(db_column="hopcount_idx", primary_key=True)
-    route_generation = models.ForeignKey(route_generation)
-    s_netdevice = models.ForeignKey("netdevice", related_name="hopcount_s_netdevice")
-    d_netdevice = models.ForeignKey("netdevice", related_name="hopcount_d_netdevice")
-    value = models.IntegerField(null=True, blank=True)
-    # device trace
-    trace = models.CharField(max_length=765, blank=True)
-    # number of trace entries
-    trace_length = models.IntegerField(default=0)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'hopcount'
-    def __unicode__(self):
-        return "%d -- %d (%d, %s)" % (
-            self.s_netdevice_id,
-            self.d_netdevice_id,
-            self.value,
-            self.trace,
-        )
-
 class hw_entry(models.Model):
     idx = models.AutoField(db_column="hw_entry_idx", primary_key=True)
     device = models.ForeignKey("device")
@@ -1189,8 +1153,8 @@ class package_search_result(models.Model):
         except:
             raise
         else:
-            self.copied = True;
-            self.save();
+            self.copied = True
+            self.save()
         return new_p
     def get_xml(self):
         return E.package_search_result(
