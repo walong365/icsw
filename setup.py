@@ -7,5 +7,5 @@ setup(name="host-monitoring",
       author="Andreas Lang-Nevyjel",
       author_email="lang@init.at",
       py_modules=["snmp_relay_schemes"],
-      packages=["host_monitoring", "host_monitoring.modules"],
+      packages=["initat.host_monitoring", "initat.host_monitoring.modules"],
       )
