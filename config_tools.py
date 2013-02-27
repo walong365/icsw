@@ -107,8 +107,9 @@ class router_object(object):
     def check_for_update(self):
         self._update()
     def get_penalty(self, in_path):
-        #return sum([self.nx[in_path[idx]][in_path[idx + 1]]["weight"] for idx in xrange(len(in_path) - 1)])
         return sum([self.peer_dict[(in_path[idx], in_path[idx + 1])] for idx in xrange(len(in_path) - 1)])
+    def add_penalty(self, in_path):
+        return (self.get_penalty(in_path), in_path)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[router] %s" % (what), log_level)
     def get_ndl_ndl_pathes(self, s_list, d_list, **kwargs):
@@ -507,20 +508,20 @@ class device_with_config(dict):
                     effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
                 )
                 self.setdefault(conf_name, []).append(cur_struct)
-    def prefetch_hopcount_table(self, d_dev):
-        dev_pks = set()
-        for conf, srv_list in self.iteritems():
-            dev_pks |= set([cur_str.device.pk for cur_str in srv_list])
-        latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
-        all_hcs = hopcount.objects.filter(
-            Q(route_generation=latest_gen) & 
-            Q(s_netdevice__device__in=dev_pks) &
-            Q(d_netdevice__in=d_dev.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice__device", "s_netdevice", "d_netdevice", "value")
-        dev_dict = {}
-        for in_list in all_hcs:
-            dev_dict.setdefault(in_list[0], []).append(tuple(in_list[1:]))
-        for conf, srv_list in self.iteritems():
-            [cur_srv.set_hopcount_cache(dev_dict.get(cur_srv.device.pk, [])) for cur_srv in srv_list]
+    #def prefetch_hopcount_table(self, d_dev):
+        #dev_pks = set()
+        #for conf, srv_list in self.iteritems():
+            #dev_pks |= set([cur_str.device.pk for cur_str in srv_list])
+        #latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
+        #all_hcs = hopcount.objects.filter(
+            #Q(route_generation=latest_gen) & 
+            #Q(s_netdevice__device__in=dev_pks) &
+            #Q(d_netdevice__in=d_dev.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice__device", "s_netdevice", "d_netdevice", "value")
+        #dev_dict = {}
+        #for in_list in all_hcs:
+            #dev_dict.setdefault(in_list[0], []).append(tuple(in_list[1:]))
+        #for conf, srv_list in self.iteritems():
+            #[cur_srv.set_hopcount_cache(dev_dict.get(cur_srv.device.pk, [])) for cur_srv in srv_list]
     def set_key_type(self, k_type):
         print "deprecated, only one key_type (config) supported"
         sys.exit(0)
