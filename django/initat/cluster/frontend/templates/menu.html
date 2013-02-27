@@ -2,29 +2,29 @@
 
 <ul id="main_navigation" class="sf-menu">
     <li>
-        <a href="{% url main:index %}">{% trans "Home" %}</a>
+        <a href="{% url 'main:index' %}">{% trans "Home" %}</a>
     </li>
     <li>
         <a>{% trans "Setup" %}</a>
         <ul>
-            <li><a href="{% url device:tree %}">{% trans "Devicetree" %}</a></li>
-            <li><a href="{% url network:show_networks %}">{% trans "Networks" %}</a></li>
-            <li><a href="{% url config:show_configs %}">{% trans "Configurations" %}</a></li>
+            <li><a href="{% url 'device:tree' %}">{% trans "Devicetree" %}</a></li>
+            <li><a href="{% url 'network:show_networks' %}">{% trans "Networks" %}</a></li>
+            <li><a href="{% url 'config:show_configs' %}">{% trans "Configurations" %}</a></li>
             <li>
                 <a>{% trans "Basic settings" %}</a>
                 <ul>
-                    <li><a href="{% url network:show_network_d_types %}">{% trans "Network types / Network device types" %}</a></li>
-                    <li><a href="{% url setup:show_device_class_location %}">{% trans "Device locations / class" %}</a></li>
-                    <li><a href="{% url config:show_config_types %}">{% trans "Configuration types" %}</a></li>
+                    <li><a href="{% url 'network:show_network_d_types' %}">{% trans "Network types / Network device types" %}</a></li>
+                    <li><a href="{% url 'setup:show_device_class_location' %}">{% trans "Device locations / class" %}</a></li>
+                    <li><a href="{% url 'config:show_config_types' %}">{% trans "Configuration types" %}</a></li>
                 </ul>
             </li>
             <li>
                 <a>{% trans "Device settings" %}</a>
                 <ul>
-                    <li><a href="{% url device:show_configs %}">{% trans "Configurations" %}</a></li>
-                    <li><a href="{% url network:network %}">{% trans "Network" %}</a></li>
-                    <li><a href="{% url device:connections %}">{% trans "Connections" %}</a></li>
-                    <li><a href="{% url device:variables %}">{% trans "Variables" %}</a></li>
+                    <li><a href="{% url 'device:show_configs' %}">{% trans "Configurations" %}</a></li>
+                    <li><a href="{% url 'network:network' %}">{% trans "Network" %}</a></li>
+                    <li><a href="{% url 'device:connections' %}">{% trans "Connections" %}</a></li>
+                    <li><a href="{% url 'device:variables' %}">{% trans "Variables" %}</a></li>
                 </ul>
             </li>
         </ul>
@@ -33,9 +33,9 @@
     <li>
         <a>{% trans "Operation" %}</a>
         <ul>
-            <li><a href="{% url boot:show_boot %}">{% trans "Node boot" %}</a></li>
-            <li><a href="{% url setup:image_overview %}">{% trans "Image overview" %}</a></li>
-            <li><a href="{% url setup:partition_overview %}">{% trans "Partition overview" %}</a></li>
+            <li><a href="{% url 'boot:show_boot' %}">{% trans "Node boot" %}</a></li>
+            <li><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
+            <li><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
         </ul>
     </li>
     {% endif %}
@@ -43,25 +43,25 @@
     <li>
         <a>{% trans "Package Install" %}</a>
         <ul>
-            <li><a href="{% url pack:repo_overview %}">{% trans "Repository Overview" %}</a></li>
-            <li><a href="{% url pack:search_package %}">{% trans "Package search" %}</a></li>
-            <li><a href="{% url pack:install %}">{% trans "Install" %}</a></li>
+            <li><a href="{% url 'pack:repo_overview' %}">{% trans "Repository Overview" %}</a></li>
+            <li><a href="{% url 'pack:search_package' %}">{% trans "Package search" %}</a></li>
+            <li><a href="{% url 'pack:install' %}">{% trans "Install" %}</a></li>
         </ul>
     </li>
     {% endif %}
     <li>
         <a>{% trans "Users" %}</a>
         <ul>
-            <li><a href="{% url user:overview 'table' %}">{% trans "Overview / Table" %}</a></li>
+            <li><a href="{% url 'user:overview' 'table' %}">{% trans "Overview / Table" %}</a></li>
         </ul>
     </li>
     {% if settings.CLUSTER_LICENSE.monitor %}
     <li>
         <a>{% trans "Monitoring" %}</a>
         <ul>
-            <li><a href="{% url mon:setup %}">{% trans "Basic setup" %}</a></li>
-            <li><a href="{% url mon:device_config %}">{% trans "Device settings" %}</a></li>
-            <li><a href="{% url mon:call_icinga %}">{% trans "Icinga" %}</a></li>
+            <li><a href="{% url 'mon:setup' %}">{% trans "Basic setup" %}</a></li>
+            <li><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
+            <li><a href="{% url 'mon:call_icinga' %}">{% trans "Icinga" %}</a></li>
             {% if settings.CLUSTER_LICENSE.ganglia %}
                 <li><a href="/ganglia-web">{% trans "Ganglia" %}</a></li>
             {% endif %}
@@ -72,7 +72,7 @@
     <li>
         <a>{% trans "RMS" %}</a>
         <ul>
-            <li><a href="{% url rms:overview %}">{% trans "RMS overview" %}</a></li>
+            <li><a href="{% url 'rms:overview' %}">{% trans "RMS overview" %}</a></li>
         </ul>
     </li>
     {% endif %}
@@ -80,7 +80,7 @@
     <li>
         <a>{% trans "REST" %}</a>
         <ul>
-            <li><a href="{% url rest:root %}">{% trans "REST API rootnode" %}</a></li>
+            <li><a href="{% url 'rest:root' %}">{% trans "REST API rootnode" %}</a></li>
         </ul>
     </li>
     {% endif %}
@@ -91,8 +91,8 @@
     <li>
         <a>{% trans "Session" %}</a>
         <ul>
-            <li><a href="{% url session:logout %}">{% trans "Logout" %}</a></li>
-            <li><a href="{% url admin:index %}">{% trans "Admin" %}</a></li>
+            <li><a href="{% url 'session:logout' %}">{% trans "Logout" %}</a></li>
+            <li><a href="{% url 'admin:index' %}">{% trans "Admin" %}</a></li>
         </ul>
     </li>
 </ul>

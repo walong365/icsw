@@ -24,8 +24,8 @@ class search_table
     draw: () ->
         master_array = {
             "ps" : new draw_setup("Package search", "ps", "package_search",
-                "{% url pack:create_search %}",
-                "{% url pack:delete_search %}",
+                "{% url 'pack:create_search' %}",
+                "{% url 'pack:delete_search' %}",
                 [
                     new draw_info("search_string", {size : 40}),
                     new draw_info("user", {ro : true, select_source : "users user"}),
@@ -49,7 +49,7 @@ class search_table
         cur_xml = @master_xml.find("package_search[pk='#{redo_search_pk}']")
         cur_xml.attr("current_state", "redo")
         $.ajax
-            url     : "{% url pack:retry_search %}"
+            url     : "{% url 'pack:retry_search' %}"
             data    : {
                 "pk" : redo_search_pk
             }
@@ -63,7 +63,7 @@ class search_table
                 check_server = true
         if check_server
             $.ajax
-                url     : "{% url pack:search_package %}"
+                url     : "{% url 'pack:search_package' %}"
                 error   : handle_ajax_error
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -100,7 +100,7 @@ class search_table
             )
         }
         $.ajax
-            url     : "{% url pack:get_search_result %}"
+            url     : "{% url 'pack:get_search_result' %}"
             data    : {
                 "pk" : targ_el.attr("id").split("__")[1]
             }
@@ -117,7 +117,7 @@ class search_table
     use_package: (event) ->
         targ_el = $(event.target)
         $.ajax
-            url     : "{% url pack:use_package %}"
+            url     : "{% url 'pack:use_package' %}"
             data    : {
                 "pk" : targ_el.attr("id").split("__")[1]
             }
@@ -128,7 +128,7 @@ class search_table
 
 load_searches = ->
     $.ajax
-        url     : "{% url pack:search_package %}"
+        url     : "{% url 'pack:search_package' %}"
         error   : handle_ajax_error
         success : (xml) ->
             if parse_xml_response(xml)

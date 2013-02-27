@@ -16,8 +16,8 @@
 
 master_array = {
     "dc" : new draw_setup("Device Class", "dc", "device_class",
-        "{% url base:create_object 'device_class' %}",
-        "{% url base:delete_object 'device_class' %}",
+        "{% url 'base:create_object' 'device_class' %}",
+        "{% url 'base:delete_object' 'device_class' %}",
         [
             new draw_info("classname", { clear_after_create : true }),
             new draw_info("priority", {min : -100, max : 100, number : 1, default : 0})
@@ -25,8 +25,8 @@ master_array = {
         {lock_div : "cdcl_tables"}
     ),
     "dl" : new draw_setup("Device Location", "dl", "device_location",
-        "{% url base:create_object 'device_location' %}",
-        "{% url base:delete_object 'device_location' %}",
+        "{% url 'base:create_object' 'device_location' %}",
+        "{% url 'base:delete_object' 'device_location' %}",
         [
             new draw_info("location", { clear_after_create : true })
         ],
@@ -36,7 +36,7 @@ master_array = {
 
 add_config_handlers = ->
     $.ajax
-        url     : "{% url setup:show_device_class_location %}"
+        url     : "{% url 'setup:show_device_class_location' %}"
         error   : handle_ajax_error
         success : (xml) =>
             if parse_xml_response(xml)

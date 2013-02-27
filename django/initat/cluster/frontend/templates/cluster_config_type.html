@@ -16,8 +16,8 @@
 
 master_array = {
     "ctype" : new draw_setup("Config Type", "ctype", "config_type",
-        "{% url base:create_object 'config_type' %}",
-        "{% url base:delete_object 'config_type' %}",
+        "{% url 'base:create_object' 'config_type' %}",
+        "{% url 'base:delete_object' 'config_type' %}",
         [
             new draw_info("name", { clear_after_create : true }),
             new draw_info("description")
@@ -25,8 +25,8 @@ master_array = {
         {lock_div : "ct_tables"}
     ),
     "ngcct" : new draw_setup("Monitor command type", "ngcct", "mon_check_command_type",
-        "{% url base:create_object 'mon_check_command_type' %}",
-        "{% url base:delete_object 'mon_check_command_type' %}",
+        "{% url 'base:create_object' 'mon_check_command_type' %}",
+        "{% url 'base:delete_object' 'mon_check_command_type' %}",
         [
             new draw_info("name", { clear_after_create : true }),
         ],
@@ -36,7 +36,7 @@ master_array = {
 
 add_config_handlers = ->
     $.ajax
-        url     : "{% url config:show_config_types %}"
+        url     : "{% url 'config:show_config_types' %}"
         error   : handle_ajax_error
         success : (xml) =>
             if parse_xml_response(xml)

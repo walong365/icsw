@@ -33,7 +33,7 @@ master_array = {
 
 add_config_handlers = ->
     $.ajax
-        url     : "{% url pack:repo_overview %}"
+        url     : "{% url 'pack:repo_overview' %}"
         error   : handle_ajax_error
         success : (xml) ->
             if parse_xml_response(xml)

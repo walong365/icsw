@@ -25,7 +25,7 @@ take_image = ->
     take_id = button_el.attr("id")
     button_el.attr("disabled", "disabled")
     $.ajax
-        url     : "{% url setup:take_image %}"
+        url     : "{% url 'setup:take_image' %}"
         data    : {
             "take_id" : take_id
         }
@@ -40,7 +40,7 @@ scan_for_images = ->
     scan_button = $("intput#scan_for_images")
     scan_button.attr("disabled", "disabled")
     $.ajax
-        url     : "{% url setup:scan_for_images %}"
+        url     : "{% url 'setup:scan_for_images' %}"
         error   : handle_ajax_error
         success : (xml) ->
             scan_button.removeAttr("disabled")
@@ -100,7 +100,7 @@ show_all_images = ->
 
 load_images = ->
     $.ajax
-        url     : "{% url setup:image_overview %}"
+        url     : "{% url 'setup:image_overview' %}"
         error   : handle_ajax_error
         success : (xml) ->
             if parse_xml_response(xml)

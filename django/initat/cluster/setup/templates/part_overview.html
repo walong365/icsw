@@ -48,7 +48,7 @@ class partition_table
         )
     revalidate_partition: (event) =>
         $.ajax
-            url     : "{% url setup:validate_partition %}"
+            url     : "{% url 'setup:validate_partition' %}"
             error   : handle_ajax_error
             data    : {"pt_pk" : @xml.attr("pk")}
             success : (xml) =>
@@ -115,7 +115,7 @@ class partition_table
         cur_pt_pk = cur_el.attr("id").split("__")[1]
         if cur_el.attr("value").match(/^creat/)
             $.ajax
-                url     : "{% url setup:create_part_disc %}"
+                url     : "{% url 'setup:create_part_disc' %}"
                 error   : handle_ajax_error
                 data    : {
                     "pt_pk" : cur_pt_pk,
@@ -126,7 +126,7 @@ class partition_table
                         @revalidate_partition()
         else
             $.ajax
-                url     : "{% url setup:delete_part_disc %}"
+                url     : "{% url 'setup:delete_part_disc' %}"
                 error   : handle_ajax_error
                 data    : {
                     "pt_pk" : cur_pt_pk,
@@ -217,7 +217,7 @@ class partition_table
         console.log cur_el.attr("value")
         if cur_el.attr("value").match(/^creat/)
             $.ajax
-                url     : "{% url setup:create_partition %}"
+                url     : "{% url 'setup:create_partition' %}"
                 error   : handle_ajax_error
                 data    : {
                     "pt_pk"  : cur_pt_pk,
@@ -230,7 +230,7 @@ class partition_table
                         @revalidate_partition()
         else
             $.ajax
-                url     : "{% url setup:delete_partition %}"
+                url     : "{% url 'setup:delete_partition' %}"
                 error   : handle_ajax_error
                 data    : {
                     "part_pk" : cur_el.attr("id").split("__")[5]
@@ -247,8 +247,8 @@ root.partition_detail = partition_detail
 
 master_array = {
     "ptable" : new draw_setup("Partition Setup", "ptable", "partition_table",
-        "{% url base:create_object 'partition_table' %}",
-        "{% url base:delete_object 'partition_table' %}",
+        "{% url 'base:create_object' 'partition_table' %}",
+        "{% url 'base:delete_object' 'partition_table' %}",
         [
             new draw_link("detail", {change_cb : partition_detail}),
             new draw_info("name", {clear_after_create : true}),
@@ -261,7 +261,7 @@ master_array = {
 
 load_partition_tables = ->
     $.ajax
-        url     : "{% url setup:partition_overview %}"
+        url     : "{% url 'setup:partition_overview' %}"
         error   : handle_ajax_error
         success : (xml) ->
             if parse_xml_response(xml)

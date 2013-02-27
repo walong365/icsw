@@ -80,7 +80,7 @@ function apply_device_selection() {
                 return "skip";
             });
             $.ajax({
-                url : "{% url device:add_selection %}",
+                url  : "{% url 'device:add_selection' %}",
                 data : {
                     "key"    : key_list,
                     "double" : 0
@@ -94,7 +94,7 @@ function apply_device_selection() {
 function clear_selection() {
     $("input#device_selection").val("");
     $.ajax({
-        url : "{% url device:clear_selection %}",
+        url     : "{% url 'device:clear_selection' %}",
         success : function(xml) {
             DYN_DTS_LOCKCOUNT = 1;
             $.each($("div#sidebar_tree").dynatree("getSelectedNodes"), function(index, value) {
@@ -139,7 +139,7 @@ function sidebar_handler() {
                     dtnode.toggleSelect();
                     DBL_HANDLING = false;
                     $.ajax({
-                        url : "{% url device:add_selection %}",
+                        url  : "{% url 'device:add_selection' %}",
                         data : {
                             "key"    : dtnode.data.key,
                             "add"    : dtnode.isSelected() ? 1 : 0,
@@ -156,7 +156,7 @@ function sidebar_handler() {
                 };
                 if (! DYN_DTS_LOCKCOUNT) {
                     $.ajax({
-                        url : "{% url device:add_selection %}",
+                        url  : "{% url 'device:add_selection' %}",
                         data : {
                             "key"    : dtnode.data.key,
                             "add"    : dtnode.isSelected() ? 1 : 0,
@@ -174,7 +174,7 @@ function sidebar_handler() {
         debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
     });
     $.ajax({
-        url     : "{% url device:get_group_tree %}",
+        url     : "{% url 'device:get_group_tree' %}",
         error   : handle_ajax_error,
         data    : {
             "ignore_cdg"      : "0",

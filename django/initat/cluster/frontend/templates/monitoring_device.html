@@ -22,12 +22,12 @@ class config_table
     use_devs: (dt_div) =>
         sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
         $.ajax
-            url     : "{% url mon:device_config %}",
+            url     : "{% url 'mon:device_config' %}",
             error   : handle_ajax_error,
             success : (xml) =>
                 @mon_srv = $(xml).find("value[name='response']")
                 $.ajax
-                    url     : "{% url device:get_group_tree %}"
+                    url     : "{% url 'device:get_group_tree' %}"
                     error   : handle_ajax_error
                     data    : {
                         "sel_list"            : sel_list,

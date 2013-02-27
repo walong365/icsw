@@ -21,7 +21,7 @@ class device_table
     constructor: (@xml) ->
     build_table: (@top_div, @sel_list) =>
         $.ajax
-            url     : "{% url pack:install %}"
+            url     : "{% url 'pack:install' %}"
             error   : handle_ajax_error
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -50,7 +50,7 @@ class device_table
                     $(document).everyTime(5000, "refresh_package_info", @refresh_package_info)
     refresh_package_info: =>
         $.ajax
-            url     : "{% url pack:refresh %}"
+            url     : "{% url 'pack:refresh' %}"
             error   : handle_ajax_error
             data    : {"sel_list" : @sel_list}
             success : (xml) =>
@@ -89,7 +89,7 @@ class device_table
                         @remove_package_xml(cur_pdc)
     remove_package_xml: (cur_pdc) =>
         $.ajax
-            url     : "{% url pack:remove_package %}"
+            url     : "{% url 'pack:remove_package' %}"
             data    : {
                 "pdc_key" : cur_pdc.attr("key")
             }
@@ -111,7 +111,7 @@ class device_table
                     @add_package_xml(dev_xml, @pack_xml.find("package[key='" + pack_key + "']"))
     add_package_xml: (dev_xml, pack_xml) =>
         $.ajax
-            url     : "{% url pack:add_package %}"
+            url     : "{% url 'pack:add_package' %}"
             data    : {
                 "dev_key"  : dev_xml.attr("key")
                 "pack_key" : pack_xml.attr("key")
@@ -129,7 +129,7 @@ class device_table
         targ_el = $(event.target)
         if confirm("really delete package ?")
             $.ajax
-                url     : "{% url pack:unuse_package %}"
+                url     : "{% url 'pack:unuse_package' %}"
                 data    : {
                     "pk" : targ_el.attr("id").split("__")[1]
                 }
@@ -236,7 +236,7 @@ class device_table
             $(cur_el).trigger("click")
     sync_server: (event) =>
         $.ajax
-            url     : "{% url pack:synchronize %}"
+            url     : "{% url 'pack:synchronize' %}"
             error   : handle_ajax_error
             success : (xml) =>
                 parse_xml_response(xml)
@@ -356,7 +356,7 @@ class device_table
         cur_ts.bind("change", (event) =>
             cur_el = $(event.target)
             $.ajax
-                url   : "{% url pack:change_target_state %}"
+                url   : "{% url 'pack:change_target_state' %}"
                 data  : {
                     "pdc_key" : cur_el.attr("id")
                     "value"   : cur_el.val()
@@ -374,7 +374,7 @@ class device_table
         cur_ts.bind("change", (event) =>
             cur_el = $(event.target)
             $.ajax
-                url   : "{% url pack:change_package_flag %}"
+                url   : "{% url 'pack:change_package_flag' %}"
                 data  : {
                     "pdc_key" : cur_el.attr("id"),
                     "value"   : if cur_el.prop("checked") then "1" else "0"
@@ -387,7 +387,7 @@ class device_table
 use_devs = ->
     sel_list = (entry.data.key for idx, entry of $("div#sidebar_tree").dynatree("getSelectedNodes"))
     $.ajax
-        url     : "{% url device:get_group_tree %}"
+        url     : "{% url 'device:get_group_tree' %}"
         error   : handle_ajax_error
         data    : {
             "sel_list"            : sel_list

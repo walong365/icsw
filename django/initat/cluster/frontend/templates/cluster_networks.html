@@ -32,8 +32,8 @@ root.get_master_networks = (cur_el, kwargs) ->
 
 root.master_array = {
     "nw" : new draw_setup("Network", "nw", "network",
-        "{% url base:create_object 'network' %}",
-        "{% url base:delete_object 'network' %}",
+        "{% url 'base:create_object' 'network' %}",
+        "{% url 'base:delete_object' 'network' %}",
         [
             new draw_collapse("exp", {default : false}),
             new draw_info("identifier"),
@@ -57,7 +57,7 @@ root.master_array = {
 
 add_config_handlers = ->
     $.ajax
-        url     : "{% url network:show_networks %}"
+        url     : "{% url 'network:show_networks' %}"
         error   : handle_ajax_error
         success : (xml) =>
             if parse_xml_response(xml)

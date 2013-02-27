@@ -112,7 +112,7 @@ root.notify_generate_link = (sel_list) ->
 root.generate_configs = ->
     $("input#generate_button").attr("disabled", "disabled")
     $.ajax
-        url     : "{% url config:generate_config %}"
+        url     : "{% url 'config:generate_config' %}"
         data    : {
             "sel_list" : root.GENERATE_DEV_LIST
         },

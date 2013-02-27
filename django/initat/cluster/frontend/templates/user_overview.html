@@ -22,7 +22,7 @@ root = exports ? this
 root.sync_users = ->
     $("input#sync_users").attr("disable", "disable")
     $.ajax
-        url     : "{% url user:sync_users %}"
+        url     : "{% url 'user:sync_users' %}"
         error   : handle_ajax_error,
         success : (xml) ->
             $("input#sync_users").removeAttr("disable")
@@ -30,8 +30,8 @@ root.sync_users = ->
 
 master_array = {
     "group" : new draw_setup("Group", "group", "group",
-        "{% url base:create_object 'group' %}",
-        "{% url base:delete_object 'group' %}",
+        "{% url 'base:create_object' 'group' %}",
+        "{% url 'base:delete_object' 'group' %}",
         [
             new draw_collapse("exp", {default : false}),
             new draw_info("groupname", {clear_after_create : true}), 
@@ -49,8 +49,8 @@ master_array = {
         }
     ),
     "user" : new draw_setup("User", "user", "user",
-        "{% url base:create_object 'user' %}",
-        "{% url base:delete_object 'user' %}",
+        "{% url 'base:create_object' 'user' %}",
+        "{% url 'base:delete_object' 'user' %}",
         [
             new draw_collapse("exp", {default : false}),
             new draw_info("login"),
@@ -77,7 +77,7 @@ master_array = {
 
 load_users_groups = ->
     $.ajax
-        url     : "{% url user:overview 'table' %}"
+        url     : "{% url 'user:overview' 'table' %}"
         error   : handle_ajax_error
         success : (xml) ->
             if parse_xml_response(xml)

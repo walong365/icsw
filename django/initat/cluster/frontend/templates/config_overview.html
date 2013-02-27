@@ -53,7 +53,7 @@ class config_table
         notify_generate_link(sel_list)
     load_configs: =>
         $.ajax
-            url     : "{% url config:show_configs %}"
+            url     : "{% url 'config:show_configs' %}"
             error   : handle_ajax_error
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -197,7 +197,7 @@ class config_table
         if el_id.match(/new$/)
             # create element
             $.ajax
-                url     : "{%url config:create_config %}"
+                url     : "{%url 'config:create_config' %}"
                 data    : create_dict(@table, el_id)
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -210,7 +210,7 @@ class config_table
         else
             if confirm("really delete configuration ?")
                 $.ajax
-                    url     : "{% url config:delete_config %}"
+                    url     : "{% url 'config:delete_config' %}"
                     data    : create_dict(@table, el_id),
                     success : (xml) =>
                         if parse_xml_response(xml)
@@ -295,7 +295,7 @@ class config_table
         if cur_el.attr("id").match(/new$/)
             # create element
             $.ajax
-                url     : "{% url config:create_var %}"
+                url     : "{% url 'config:create_var' %}"
                 data    : create_dict(@table, cur_el.attr("id"))
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -305,7 +305,7 @@ class config_table
         else
             # delete
             $.ajax
-                url     : "{% url config:delete_var %}"
+                url     : "{% url 'config:delete_var' %}"
                 data    : create_dict(@table, cur_el.attr("id"))
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -362,7 +362,7 @@ class config_table
         if cur_el.attr("id").match(/new$/)
             # create monitoring command
             $.ajax
-                url     : "{% url mon:create_command %}"
+                url     : "{% url 'mon:create_command' %}"
                 data    : create_dict(@table, cur_el.attr("id"))
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -372,7 +372,7 @@ class config_table
         else
             # delete monitoring command
             $.ajax
-                url     : "{% url mon:delete_command %}"
+                url     : "{% url 'mon:delete_command' %}"
                 data    : create_dict(@table, cur_el.attr("id"))
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -454,7 +454,7 @@ class config_table
             cur_ta.text(@codemirror_dict[cur_ta.attr("id")].editor.getValue())
             # create config script
             $.ajax
-                url     : "{% url config:create_script %}"
+                url     : "{% url 'config:create_script' %}"
                 data    : create_dict(@table, cur_el.attr("id"))
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -464,7 +464,7 @@ class config_table
         else
             # delete config script
             $.ajax
-                url     : "{% url config:delete_script %}"
+                url     : "{% url 'config:delete_script' %}"
                 data    : create_dict($("table#config"), cur_el.attr("id"))
                 success : (xml) =>
                     if parse_xml_response(xml)

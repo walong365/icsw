@@ -24,7 +24,7 @@ class network_table
         @reload_network_tree()
     reload_network_tree: (sel_list) =>
         $.ajax
-            url     : "{% url network:get_network_tree %}"
+            url     : "{% url 'network:get_network_tree' %}"
             error   : handle_ajax_error
             data    : {
                 "sel_list" : @SELECTED_DEVICES
@@ -214,7 +214,7 @@ class network_table
         if cur_el.attr("id").match(/new$/)
             # create element
             $.ajax
-                url     : "{% url network:create_netdevice %}"
+                url     : "{% url 'network:create_netdevice' %}"
                 data    : create_dict(@new_table, cur_el.attr("id"))
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -224,7 +224,7 @@ class network_table
         else
             # delete
             $.ajax
-                url     : "{% url network:delete_netdevice %}"
+                url     : "{% url 'network:delete_netdevice' %}"
                 data    : create_dict(@new_table, cur_el.attr("id"))
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -266,7 +266,7 @@ class network_table
     
     redraw_possible_peers: =>
         $.ajax
-            url     : "{% url network:get_valid_peers %}"
+            url     : "{% url 'network:get_valid_peers' %}"
             error   : handle_ajax_error
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -278,7 +278,7 @@ class network_table
     delete_peer: (event) =>
        peer_id = $(event.target).attr("id")
        $.ajax
-           url     : "{% url network:delete_peer %}"
+           url     : "{% url 'network:delete_peer' %}"
            error   : handle_ajax_error
            data    : {
                "id" : peer_id
@@ -316,7 +316,7 @@ class network_table
         new_p = parseInt(cur_sel.attr("value"))
         if new_p
             $.ajax
-                url     : "{% url network:create_new_peer %}"
+                url     : "{% url 'network:create_new_peer' %}"
                 error   : handle_ajax_error
                 data    : {
                     "id"       : cur_sel.attr("id")
@@ -386,7 +386,7 @@ class network_table
         if cur_el.attr("id").match(/new$/)
             # create element
             $.ajax
-                url     : "{% url network:create_net_ip %}"
+                url     : "{% url 'network:create_net_ip' %}"
                 data    : create_dict(@new_table, cur_el.attr("id")),
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -395,7 +395,7 @@ class network_table
         else
             # delete
             $.ajax
-                url     : "{% url network:delete_net_ip %}"
+                url     : "{% url 'network:delete_net_ip' %}"
                 data    : create_dict(@new_table, cur_el.attr("id"))
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -532,7 +532,7 @@ class network_table
         c_val = cur_el.val()
         if confirm("Overwrite all networks with the one from " + @DEVICE_NETWORKS.find("device[pk='#{c_val}']").attr("name") + " ?")
             $.ajax
-                url     : "{% url network:copy_network %}"
+                url     : "{% url 'network:copy_network' %}"
                 error   : handle_ajax_error
                 data    : {
                     "source_dev" : c_val

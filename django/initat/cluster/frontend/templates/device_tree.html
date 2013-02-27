@@ -125,7 +125,7 @@ class device_tree
                     data["force_delete"] = $("input#force_delete").is(":checked")
                     if confirm("really delete device_group " + cur_dg.attr("name") + " ?")
                         $.ajax
-                            url     : "{% url base:delete_object 'device_group' %}"
+                            url     : "{% url 'base:delete_object' 'device_group' %}"
                             data    : data
                             success : (xml) =>
                                 if parse_xml_response(xml)
@@ -188,7 +188,7 @@ class device_tree
                     data[line_prefix] = "1"
                     data["force_delete"] = $("input#force_delete").is(":checked")
                     $.ajax
-                        url     : "{% url base:delete_object 'device' %}"
+                        url     : "{% url 'base:delete_object' 'device' %}"
                         data    : data
                         success : (xml) =>
                             if parse_xml_response(xml)
@@ -255,7 +255,7 @@ class device_tree
             }).bind("click", (event) =>
                 new_devg_line = $("table tr#device_group__new")
                 $.ajax
-                    url     : "{% url base:create_object 'device_group' %}"
+                    url     : "{% url 'base:create_object' 'device_group' %}"
                     data    : create_dict(new_devg_line, "device_group__new")
                     success : (xml) =>
                         if parse_xml_response(xml)
@@ -320,7 +320,7 @@ class device_tree
                 $(event.target).attr("disabled", "disabled")
                 new_dev_line = $("table tr#dev__new")
                 $.ajax
-                    url     : "{% url base:create_object 'device' %}"
+                    url     : "{% url 'base:create_object' 'device' %}"
                     data    : create_dict(new_dev_line, "dev__new")
                     success : (xml) =>
                         $(event.target).removeAttr("disabled")
@@ -414,7 +414,7 @@ root = exports ? this
 
 root.reload_device_tree = ->
     $.ajax
-        url     : "{% url device:get_xml_tree %}"
+        url     : "{% url 'device:get_xml_tree' %}"
         error   : handle_ajax_error
         success : (xml) ->
             if parse_xml_response(xml)

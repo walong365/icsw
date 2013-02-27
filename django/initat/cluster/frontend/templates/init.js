@@ -527,7 +527,7 @@ function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts
         lock_list = undefined;
     };
     $.ajax({
-        url  : "{% url base:change_xml_entry %}",
+        url  : "{% url 'base:change_xml_entry' %}",
         data : data_field,
         success : function(xml) {
             if (parse_xml_response(xml)) {
