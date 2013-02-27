@@ -24,7 +24,7 @@
 
 import threading_tools
 import logging_tools
-from mother_modules.config import global_config
+from initat.mother.config import global_config
 import server_command
 import pprint
 import time

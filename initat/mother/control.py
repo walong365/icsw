@@ -24,7 +24,7 @@
 
 import threading_tools
 import logging_tools
-from mother_modules.config import global_config
+from initat.mother.config import global_config
 import server_command
 import pprint
 import time
@@ -46,7 +46,7 @@ from initat.cluster.backbone.models import kernel, device, image, macbootlog, ma
      cluster_timezone, cached_log_status, cached_log_source, log_source, devicelog
 from django.db.models import Q
 import process_tools
-from mother_modules.command_tools import simple_command
+from initat.mother.command_tools import simple_command
 from twisted.internet import reactor
 
 class machine(object):

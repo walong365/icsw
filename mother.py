@@ -59,12 +59,12 @@ from pysnmp.carrier.asynsock import dispatch
 from pysnmp.carrier.asynsock import dgram
 from pysnmp.proto import rfc1902
 from pysnmp.proto import api
-from mother_modules.config import global_config
+from initat.mother.config import global_config
 from django.db.models import Q
 from django.db import connection
-import mother_modules.kernel
-import mother_modules.command
-import mother_modules.control
+import initat.mother.kernel
+import initat.mother.command
+import initat.mother.control
 from initat.cluster.backbone.models import network, status
 
 SQL_ACCESS = "cluster_full_access"
@@ -2895,10 +2895,10 @@ class server_process(threading_tools.process_pool):
         my_uuid = uuid_tools.get_uuid()
         self.log("cluster_device_uuid is '%s'" % (my_uuid.get_urn()))
         if self._init_network_sockets():
-            self.add_process(mother_modules.kernel.kernel_sync_process("kernel"), start=True)
-            self.add_process(mother_modules.command.external_command_process("command"), start=True)
-            self.add_process(mother_modules.control.node_control_process("control"), start=True)
-            self.add_process(mother_modules.control.twisted_process("twisted"), twisted=True, start=True)
+            self.add_process(initat.mother.kernel.kernel_sync_process("kernel"), start=True)
+            self.add_process(initat.mother.command.external_command_process("command"), start=True)
+            self.add_process(initat.mother.control.node_control_process("control"), start=True)
+            self.add_process(initat.mother.control.twisted_process("twisted"), twisted=True, start=True)
             connection.close()
             #self.add_process(build_process("build"), start=True)
             #self.register_func("client_update", self._client_update)
@@ -3214,11 +3214,11 @@ class server_process(threading_tools.process_pool):
         elif self.__syslog_type == "syslog-ng":
             self._disable_syslog_ng()
     def _enable_rsyslog(self):
-        import mother_modules.syslog_scan
+        import initat.mother.syslog_scan
         rsyslog_lines = [
             "$ModLoad omprog",
             "$RepeatedMsgReduction off",
-            "$actionomprogbinary %s" % (mother_modules.syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),
+            "$actionomprogbinary %s" % (initat.mother.syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),
             "",
             "if $programname contains_i 'dhcp' then :omprog:",
             ""]
