@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2012 Andreas Lang-Nevyjel
+# Copyright (C) 2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -39,8 +39,12 @@ for hm in _new_hm_list:
     try:
         command_dict[hm.__name__] = hm()
     except:
-        error_log.append("%s : %s" % (hm.__name__,
-                                      process_tools.get_except_info()))
+        error_log.append("%s : %s" % (
+            hm.__name__,
+            process_tools.get_except_info()))
     else:
-        command_dict[hm.__name__].name = hm.__name__
+        if not hm.Meta.disabled:
+            command_dict[hm.__name__].name = hm.__name__
+        else:
+            del command_dict[hm.__name__]
 command_names = sorted(command_dict.keys())

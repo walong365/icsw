@@ -189,6 +189,8 @@ class server_com(object):
         max_instances = 1
         # current number of instances
         cur_running = 0
+        # is disbaled
+        disabled = False
     def __init__(self):
         # copy Meta keys
         for key in dir(server_com.Meta):

@@ -918,27 +918,30 @@ class server_process(threading_tools.process_pool):
         del_names = []
         for com_name in initat.cluster_server.command_names:
             act_sc = initat.cluster_server.command_dict[com_name]
-            if hasattr(act_sc, "_call"):
-                act_sc.link(self)
-                self.log(
-                    "   com %-30s, %s%s, %s, %s, %s, %s" % (
-                        act_sc.name,
-                        logging_tools.get_plural("config", len(act_sc.Meta.needed_configs)),
-                        " (%s)" % (
-                            ", ".join(act_sc.Meta.needed_configs)) if act_sc.Meta.needed_configs else "",
-                        "blocking" if act_sc.Meta.blocking else "not blocking",
-                        "%s: %s" % (
-                            logging_tools.get_plural("option key", len(act_sc.Meta.needed_option_keys)),
-                            ", ".join(act_sc.Meta.needed_option_keys)) if act_sc.Meta.needed_option_keys else "no option keys",
-                        "%s: %s" % (
-                            logging_tools.get_plural("config key", len(act_sc.Meta.needed_config_keys)),
-                            ", ".join(act_sc.Meta.needed_config_keys)) if act_sc.Meta.needed_config_keys else "no config keys",
-                        "background" if act_sc.Meta.background else "foreground",
+            if not act_sc.Meta.disabled:
+                if hasattr(act_sc, "_call"):
+                    act_sc.link(self)
+                    self.log(
+                        "   com %-30s, %s%s, %s, %s, %s, %s" % (
+                            act_sc.name,
+                            logging_tools.get_plural("config", len(act_sc.Meta.needed_configs)),
+                            " (%s)" % (
+                                ", ".join(act_sc.Meta.needed_configs)) if act_sc.Meta.needed_configs else "",
+                            "blocking" if act_sc.Meta.blocking else "not blocking",
+                            "%s: %s" % (
+                                logging_tools.get_plural("option key", len(act_sc.Meta.needed_option_keys)),
+                                ", ".join(act_sc.Meta.needed_option_keys)) if act_sc.Meta.needed_option_keys else "no option keys",
+                            "%s: %s" % (
+                                logging_tools.get_plural("config key", len(act_sc.Meta.needed_config_keys)),
+                                ", ".join(act_sc.Meta.needed_config_keys)) if act_sc.Meta.needed_config_keys else "no config keys",
+                            "background" if act_sc.Meta.background else "foreground",
+                        )
                     )
-                )
+                else:
+                    self.log("command %s has no _call function" % (com_name), logging_tools.LOG_LEVEL_ERROR)
+                    del_names.append(com_name)
             else:
-                self.log("command %s has no _call function" % (com_name), logging_tools.LOG_LEVEL_ERROR)
-                del_names.append(com_name)
+                self.log("command %s is disabled" % (com_name))
         for del_name in del_names:
             initat.cluster_server.command_names.remove(del_name)
             del initat.cluster_server.command_dict[del_name]
@@ -990,22 +993,22 @@ def main():
     if global_config["KILL_RUNNING"] and not global_config["COMMAND"]:
         log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
     cluster_location.read_config_from_db(global_config, "server", [
-        ("COM_PORT"              , configfile.int_c_var(SERVER_PORT)),
-        ("IMAGE_SOURCE_DIR"      , configfile.str_c_var("/usr/local/share/cluster/images")),
-        ("UPDATE_SITE"           , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
-        ("MAILSERVER"            , configfile.str_c_var("localhost")),
-        ("FROM_NAME"             , configfile.str_c_var("quotawarning")),
-        ("FROM_ADDR"             , configfile.str_c_var(long_host_name)),
-        ("VERSION"               , configfile.str_c_var(VERSION_STRING, database=False)),
-        ("QUOTA_ADMINS"          , configfile.str_c_var("cluster@init.at")),
-        ("LDAP_SCHEMATA_VERSION" , configfile.int_c_var(1)),
-        ("MONITOR_QUOTA_USAGE"   , configfile.bool_c_var(False)),
-        ("QUOTA_CHECK_TIME_SECS" , configfile.int_c_var(3600)),
-        ("USER_MAIL_SEND_TIME"   , configfile.int_c_var(3600, info="time in seconds between to mails")),
-        ("SERVER_FULL_NAME"      , configfile.str_c_var(long_host_name, database=False)),
-        ("SERVER_SHORT_NAME"     , configfile.str_c_var(mach_name, database=False)),
-        ("DATABASE_DUMP_DIR"     , configfile.str_c_var("/opt/cluster/share/db_backup")),
-        ("DATABASE_KEEP_DAYS"    , configfile.int_c_var(30)),
+        ("COM_PORT"             , configfile.int_c_var(SERVER_PORT)),
+        ("IMAGE_SOURCE_DIR"     , configfile.str_c_var("/usr/local/share/cluster/images")),
+        ("UPDATE_SITE"          , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
+        ("MAILSERVER"           , configfile.str_c_var("localhost")),
+        ("FROM_NAME"            , configfile.str_c_var("quotawarning")),
+        ("FROM_ADDR"            , configfile.str_c_var(long_host_name)),
+        ("VERSION"              , configfile.str_c_var(VERSION_STRING, database=False)),
+        ("QUOTA_ADMINS"         , configfile.str_c_var("cluster@init.at")),
+        ("LDAP_SCHEMATA_VERSION", configfile.int_c_var(1)),
+        ("MONITOR_QUOTA_USAGE"  , configfile.bool_c_var(False)),
+        ("QUOTA_CHECK_TIME_SECS", configfile.int_c_var(3600)),
+        ("USER_MAIL_SEND_TIME"  , configfile.int_c_var(3600, info="time in seconds between to mails")),
+        ("SERVER_FULL_NAME"     , configfile.str_c_var(long_host_name, database=False)),
+        ("SERVER_SHORT_NAME"    , configfile.str_c_var(mach_name, database=False)),
+        ("DATABASE_DUMP_DIR"    , configfile.str_c_var("/opt/cluster/share/db_backup")),
+        ("DATABASE_KEEP_DAYS"   , configfile.int_c_var(30)),
     ])
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     if not global_config["DEBUG"] and not global_config["COMMAND"]:

@@ -30,11 +30,11 @@ import codecs
 import server_command
 from django.db.models import Q
 from django.conf import settings
-from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, hopcount, device_group, \
+from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, device_group, \
      peer_information, cs_timer, route_generation
 from initat.cluster_server.config import global_config
 from config_tools import router_object
-i
+
 HOPCOUNT_REBUILT_VAR_NAME = "hopcount_table_build_time"
 HOPCOUNT_STATE_VAR_NAME = "hopcount_state_var"
 
@@ -230,6 +230,7 @@ class rebuild_hopcount(cs_base_class.server_com):
         blocking = True
         needed_configs = ["rebuild_hopcount"]
         background = True
+        disabled = True
     def _new_code(self, cur_inst):
         rho = route_helper_obj(cur_inst.log)
         my_timer = cs_timer()
