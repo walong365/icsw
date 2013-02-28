@@ -348,6 +348,7 @@ class device(models.Model):
     #switch = models.ForeignKey("device", null=True, related_name="switch_device")
     #switchport = models.IntegerField(null=True, blank=True)
     mon_device_templ = models.ForeignKey("mon_device_templ", null=True)
+    mon_device_esc_templ = models.ForeignKey("mon_device_esc_templ", null=True)
     mon_ext_host = models.ForeignKey("mon_ext_host", null=True, blank=True)
     device_location = models.ForeignKey("device_location", null=True)
     device_class = models.ForeignKey("device_class")
@@ -464,6 +465,7 @@ class device(models.Model):
             partition_table="%d" % (self.partition_table_id if self.partition_table_id else 0),
             act_partition_table="%d" % (self.act_partition_table_id if self.act_partition_table_id else 0),
             mon_device_templ="%d" % (self.mon_device_templ_id or 0),
+            mon_device_esc_templ="%d" % (self.mon_device_esc_templ_id or 0),
             monitor_checks="1" if self.monitor_checks else "0",
             mon_ext_host="%d" % (self.mon_ext_host_id or 0),
             curl=unicode(self.curl),
@@ -2292,6 +2294,17 @@ def mon_contact_pre_save(sender, **kwargs):
         if cur_inst.user_id in used_user_ids:
             raise ValidationError("user already in used by mon_contact")
 
+"""
+connection between the various nagios / icinage notification objects:
+
+device -> mon_device_templ -> mon_service_templ
+       -> mon_device_esc_templ -> mon_service_esc_templ
+
+contactgroup -> mon_service_templ
+             -> mon_service_esc_templ
+             -> members
+"""
+
 class mon_contactgroup(models.Model):
     idx = models.AutoField(db_column="ng_contactgroup_idx", primary_key=True)
     name = models.CharField(max_length=192, unique=True)
@@ -2300,12 +2313,14 @@ class mon_contactgroup(models.Model):
     device_groups = models.ManyToManyField("device_group")
     members = models.ManyToManyField("mon_contact")
     service_templates = models.ManyToManyField("mon_service_templ")
+    service_esc_templates = models.ManyToManyField("mon_service_esc_templ")
     def get_xml(self):
         return E.mon_contactgroup(
             unicode(self),
             members="::".join(["%d" % (cur_pk) for cur_pk in self.members.all().values_list("pk", flat=True)]),
             device_groups="::".join(["%d" % (cur_pk) for cur_pk in self.device_groups.all().values_list("pk", flat=True)]),
             service_templates="::".join(["%d" % (cur_pk) for cur_pk in self.service_templates.all().values_list("pk", flat=True)]),
+            service_esc_templates="::".join(["%d" % (cur_pk) for cur_pk in self.service_esc_templates.all().values_list("pk", flat=True)]),
             pk="%d" % (self.pk),
             key="moncg__%d" % (self.pk),
             name=self.name,
@@ -2363,6 +2378,48 @@ def mon_device_templ_pre_save(sender, **kwargs):
         for attr_name, min_val, max_val in [
             ("max_attempts", 1, 10),
             ("ninterval"   , 0, 60)]:
+            _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+                    
+class mon_device_esc_templ(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(unique=True, max_length=192)
+    first_notification = models.IntegerField(default=1)
+    last_notification = models.IntegerField(default=1)
+    mon_service_esc_templ = models.ForeignKey("mon_service_esc_templ")
+    ninterval = models.IntegerField(default=1)
+    esc_period = models.ForeignKey("mon_period")
+    nrecovery = models.BooleanField()
+    ndown = models.BooleanField()
+    nunreachable = models.BooleanField()
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.mon_device_esc_templ(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="mondet__%d" % (self.pk),
+            name=self.name,
+            first_notification="%d" % (self.first_notification),
+            last_notification="%d" % (self.last_notification),
+            mon_service_esc_templ="%d" % (self.mon_service_esc_templ_id or 0),
+            ninterval="%d" % (self.ninterval or 0),
+            esc_period="%d" % (self.esc_period_id or 0),
+            nrecovery="%d" % (1 if self.nrecovery else 0),
+            ndown="%d" % (1 if self.ndown else 0),
+            nunreachable="%d" % (1 if self.nunreachable else 0),
+        )
+    def __unicode__(self):
+        return self.name
+    
+@receiver(signals.pre_save, sender=mon_device_esc_templ)
+def mon_device_esc_templ_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name.strip():
+            raise ValidationError("name must not be zero")
+        for attr_name, min_val, max_val in [
+            ("first_notification", 1, 10),
+            ("last_notification" , 1, 10),
+            ("ninterval"         , 0, 60)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
                     
 class mon_ext_host(models.Model):
@@ -2500,19 +2557,54 @@ def mon_service_templ_pre_save(sender, **kwargs):
         if not cur_inst.name.strip():
             raise ValidationError("name must not be zero")
         for attr_name, min_val, max_val in [
-            ("max_attempts", 1, 10),
+            ("max_attempts"  , 1, 10),
             ("check_interval", 1, 60),
             ("retry_interval", 1, 60),
-            ("ninterval", 0, 60)]:
+            ("ninterval"     , 0, 60)]:
             cur_val = _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
-##class package_set(models.Model):
-##    idx = models.AutoField(db_column="package_set_idx", primary_key=True)
-##    name = models.CharField(unique=True, max_length=255)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'package_set'
-
+class mon_service_esc_templ(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(unique=True, max_length=192)
+    first_notification = models.IntegerField(default=1)
+    last_notification = models.IntegerField(default=1)
+    ninterval = models.IntegerField(default=1)
+    esc_period = models.ForeignKey("mon_period")
+    nrecovery = models.BooleanField(default=False)
+    ncritical = models.BooleanField(default=False)
+    nwarning = models.BooleanField(default=False)
+    nunknown = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.mon_service_esc_templ(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="monset__%d" % (self.pk),
+            name=self.name,
+            first_notification="%d" % (self.first_notification),
+            last_notification="%d" % (self.last_notification),
+            ninterval="%d" % (self.ninterval or 0),
+            esc_period="%d" % (self.esc_period_id or 0),
+            nrecovery="%d" % (1 if self.nrecovery else 0),
+            ncritical="%d" % (1 if self.ncritical else 0),
+            nwarning="%d" % (1 if self.nwarning else 0),
+            nunknown="%d" % (1 if self.nunknown else 0),
+        )
+    def __unicode__(self):
+        return self.name
+    
+@receiver(signals.pre_save, sender=mon_service_esc_templ)
+def mon_service_esc_templ_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name.strip():
+            raise ValidationError("name must not be zero")
+        for attr_name, min_val, max_val in [
+            ("first_notification", 1, 10),
+            ("last_notification" , 1, 10),
+            ("ninterval"         , 0, 60)]:
+            _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+                    
 class partition(models.Model):
     idx = models.AutoField(db_column="partition_idx", primary_key=True)
     partition_disc = models.ForeignKey("partition_disc")
