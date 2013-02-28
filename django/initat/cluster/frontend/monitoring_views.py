@@ -9,7 +9,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, mon_period, mon_contact, user, \
      mon_contactgroup, get_related_models, network_type, network_device_type, mon_device_templ, \
-     mon_ext_host, mon_host_cluster, mon_service_cluster
+     mon_ext_host, mon_host_cluster, mon_service_cluster, mon_device_esc_templ, mon_service_esc_templ
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -75,8 +75,10 @@ def setup(request):
                 E.mon_periods(*[cur_p.get_xml() for cur_p in mon_period.objects.all()]),
                 E.mon_contacts(*[cur_c.get_xml() for cur_c in mon_contact.objects.all()]),
                 E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]),
+                E.mon_service_esc_templs(*[cur_set.get_xml() for cur_set in mon_service_esc_templ.objects.all()]),
                 E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
                 E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
+                E.mon_device_esc_templs(*[cur_det.get_xml() for cur_det in mon_device_esc_templ.objects.all()]),
                 E.mon_host_clusters(*[cur_mhc.get_xml() for cur_mhc in mon_host_cluster.objects.all()]),
                 E.mon_service_clusters(*[cur_msc.get_xml() for cur_msc in mon_service_cluster.objects.all()]),
                 E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),

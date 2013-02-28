@@ -77,6 +77,24 @@ master_array = {
             "lock_div"     : "mon_tables"
         }
     ),
+    "monset" : new draw_setup("Service Escalation Template", "monset", "mon_service_esc_templ",
+        "{% url 'base:create_object' 'mon_service_esc_templ' %}",
+        "{% url 'base:delete_object' 'mon_service_esc_templ' %}",
+        [
+            new draw_info("name"),
+            new draw_info("first_notification", {min : 1, max : 10, number : 1, default : 1, label : "first notif"}),
+            new draw_info("last_notification", {min : 1, max : 10, number : 1, default : 1, label : "last notif"}),
+            new draw_info("esc_period", {select_source : "mon_periods mon_period", label : "Esc period"}),
+            new draw_info("ninterval", {min : 0, max: 60, number : 1, default : 5, label : "Notif IV"}),
+            new draw_info("nrecovery", {boolean : 1, label : "Recov / Crit / Warn / Unknown", span : 4}),
+            new draw_info("ncritical", {boolean : 1}),
+            new draw_info("nwarning", {boolean : 1}),
+            new draw_info("nunknown", {boolean : 1}),
+        ], {
+            "required_xml" : ["monper"],
+            "lock_div"     : "mon_tables"
+        }
+    ),
     "moncg" : new draw_setup("Contact Group", "moncg", "mon_contactgroup",
         "{% url 'base:create_object' 'mon_contactgroup' %}",
         "{% url 'base:delete_object' 'mon_contactgroup' %}",
@@ -105,6 +123,24 @@ master_array = {
             new draw_info("nunreachable", {boolean : 1})
         ], {
             "required_xml" : ["monper", "monst"],
+            "lock_div"     : "mon_tables"
+        }
+    ),
+    "mondet" : new draw_setup("Device Escalation Template", "mondet", "mon_device_esc_templ",
+        "{% url 'base:create_object' 'mon_device_esc_templ' %}",
+        "{% url 'base:delete_object' 'mon_device_esc_templ' %}",
+        [
+            new draw_info("name"),
+            new draw_info("mon_service_esc_templ", {select_source : "mon_service_esc_templs mon_service_esc_templ", label : "ServiceEscTemplate"}),
+            new draw_info("first_notification", {min : 1, max : 10, number : 1, default : 1, label : "first notif"}),
+            new draw_info("last_notification", {min : 1, max : 10, number : 1, default : 1, label : "last notif"}),
+            new draw_info("esc_period", {select_source : "mon_periods mon_period", label : "Esc period"}),
+            new draw_info("ninterval", {min : 0, max: 60, number : 1, default : 5, label : "Notif IV"}),
+            new draw_info("nrecovery", {boolean : 1, label : "Recov / Down / Unreach", span : 3}),
+            new draw_info("ndown", {boolean : 1}),
+            new draw_info("nunreachable", {boolean : 1})
+        ], {
+            "required_xml" : ["monper", "monset"],
             "lock_div"     : "mon_tables"
         }
     ),
