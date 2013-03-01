@@ -2915,11 +2915,30 @@ class pi_connection(models.Model):
 class rrd_class(models.Model):
     idx = models.AutoField(db_column="rrd_class_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=255)
-    step = models.IntegerField()
-    heartbeat = models.IntegerField()
+    step = models.IntegerField(default=30)
+    heartbeat = models.IntegerField(default=60)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'rrd_class'
+    def get_xml(self):
+        return E.rrd_class(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="rrdc__%d" % (self.pk),
+            name=self.name,
+            step="%d" % (self.step),
+            heartbeat="%d" % (self.heartbeat),
+        )
+    def __unicode__(self):
+        return self.name
+
+@receiver(signals.pre_save, sender=rrd_class)
+def rrd_class_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "name")
+        _check_integer(cur_inst, "step")
+        _check_integer(cur_inst, "heartbeat")
 
 class rrd_data(models.Model):
     idx = models.AutoField(db_column="rrd_data_idx", primary_key=True)
