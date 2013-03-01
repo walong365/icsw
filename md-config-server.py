@@ -2270,7 +2270,7 @@ class build_process(threading_tools.process_obj):
                         else:
                             act_host["check_command"] = act_def_dev.ccommand
                         # check for nagvis map
-                        if host.automap_root_nagvis:
+                        if host.automap_root_nagvis and cur_gc.master:
                             map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.name))
                             map_dict = {
                                 "sources"      : "automap",
@@ -2289,6 +2289,8 @@ class build_process(threading_tools.process_obj):
                                 "header_menu"  : True,
                                 "hover_menu"   : True,
                                 "context_menu" : True,
+                                # parent map
+                                "parent_map"   : host.device_group.name.replace(" ", "_"),
                                 # special flag for anovis
                                 "use_childs_for_overview_icon" : False,
                             }
@@ -2620,19 +2622,30 @@ class build_process(threading_tools.process_obj):
                     host["parents"] = ",".join(set(parent_list))
                     self.mach_log("Setting parent to %s" % (", ".join(parent_list)), logging_tools.LOG_LEVEL_OK, host["name"])
         # remove old nagvis maps
-        self.log("created %s" % (logging_tools.get_plural("nagvis map", len(nagvis_maps))))
-        nagvis_map_dir = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps")
-        if os.path.isdir(nagvis_map_dir):
-            for entry in os.listdir(nagvis_map_dir):
-                full_name = os.path.join(nagvis_map_dir, entry)
-                if full_name not in nagvis_maps:
-                    self.log("removing old nagvis mapfile %s" % (full_name))
-                    try:
-                        os.unlink(full_name)
-                    except:
-                        self.log("error removing %s: %s" % (full_name, 
-                                                            process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
+        if cur_gc.master:
+            self.log("created %s" % (logging_tools.get_plural("nagvis map", len(nagvis_maps))))
+            nagvis_map_dir = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps")
+            if os.path.isdir(nagvis_map_dir):
+                for entry in os.listdir(nagvis_map_dir):
+                    full_name = os.path.join(nagvis_map_dir, entry)
+                    if full_name not in nagvis_maps:
+                        self.log("removing old nagvis mapfile %s" % (full_name))
+                        try:
+                            os.unlink(full_name)
+                        except:
+                            self.log("error removing %s: %s" % (full_name, 
+                                                                process_tools.get_except_info()),
+                                     logging_tools.LOG_LEVEL_ERROR)
+                # create group maps
+                dev_groups = device_group.objects.filter(Q(device_group__name__in=[os.path.basename(entry).split(".")[0] for entry in nagvis_maps])).distinct()
+                self.log("creating maps for %s" % (logging_tools.get_plural("device group", len(dev_groups))))
+                for dev_group in dev_groups:
+                    map_name = os.path.join(nagvis_map_dir, "%s.cfg" % (dev_group.name.replace(" ", "_")))
+                    file(map_name, "w").write("\n".join([
+                        "define global {",
+                        "    alias=Group %s" % (dev_group.name),
+                        "}",
+                    ]))
         end_time = time.time()
         self.log("created configs for %s hosts in %s" % (
             host_info_str,
