@@ -169,6 +169,11 @@ main_patterns = patterns(
     url(r"index$" , "main_views.index", name="index"),
 )
 
+rrd_patterns = patterns(
+    "initat.cluster.frontend",
+    url(r"class$", "rrd_views.class_overview", name="class_overview"),
+)
+
 my_url_patterns = patterns(
     "",
     #url(r"static/(?P<path>.*)$"        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
@@ -185,6 +190,7 @@ my_url_patterns = patterns(
     url(r"^setup/"    , include(setup_patterns     , namespace="setup"   )),
     url(r"^user/"     , include(user_patterns      , namespace="user"    )),
     url(r"^pack/"     , include(pack_patterns      , namespace="pack"    )),
+    url(r"^rrd/"      , include(rrd_patterns       , namespace="rrd"     )),
 )
 
 if settings.CLUSTER_LICENSE["rest"]:
