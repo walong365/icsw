@@ -2971,12 +2971,24 @@ class rrd_rra(models.Model):
     idx = models.AutoField(db_column="rrd_rra_idx", primary_key=True)
     rrd_class = models.ForeignKey("rrd_class")
     cf = models.CharField(max_length=192)
-    steps = models.IntegerField()
-    rows = models.IntegerField()
-    xff = models.FloatField(null=True, blank=True)
+    steps = models.IntegerField(default=30)
+    rows = models.IntegerField(default=2000)
+    xff = models.FloatField(default=0.1)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'rrd_rra'
+    def get_xml(self):
+        return E.rrd_rra(
+            unicode(self),
+            pk="%d" % (self.idx),
+            key="rrdrra_%d" % (self.idx),
+            cf=self.cf,
+            steps="%d" % (self.steps),
+            rows="%d" % (self.rows),
+            xff="%.2f" % (self.xff),
+        )
+    def __unicode__(self):
+        return "%s:%d:%d:%.2f" % (self.cf, self.steps, self.rows, self.xff)
 
 class rrd_set(models.Model):
     idx = models.AutoField(db_column="rrd_set_idx", primary_key=True)
