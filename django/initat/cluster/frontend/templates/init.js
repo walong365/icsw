@@ -43,16 +43,24 @@ root = exports ? this
 
 root.draw_ds_tables = (t_div, master_array, master_xml=undefined) ->
     t_div.children().remove()
-    t_div.append (value.draw_table(master_xml, master_array) for key, value of master_array)
+    master_tables = []
+    for key, value of master_array
+        if value.parent_class
+            master_array[value.parent_class].add_child(key)
+        else
+            master_tables.push(key)
+    t_div.append (master_array[key].draw_table(master_xml, master_array) for key in master_tables)
     t_div.accordion
         heightStyle : "content"
         collapsible : true
 
 class draw_setup
     constructor: (@name, @postfix, @xml_name, @create_url, @delete_url, @draw_array, @kwargs={}) ->
-        @xml_name_plural = if this.xml_name.match(///s$///) then this.xml_name + "es" else this.xml_name + "s"
+        @xml_name_plural = if @xml_name.match(///s$///) then @xml_name + "es" else @xml_name + "s"
         @required_xml = @kwargs.required_xml or []
         @lock_div = @kwargs.lock_div or ""
+        @parent_class = @kwargs.parent_class or ""
+        @childs = []
         for draw_entry in @draw_array
             draw_entry.draw_setup = @
         # timer events
@@ -63,13 +71,24 @@ class draw_setup
         @table_div = undefined
         @element_info = {}
         @master_xml = undefined
+    duplicate: () =>
+        new_ds = new draw_setup(@name, @postfix, @xml_name, @create_url, @delete_url, @draw_array)
+        new_ds.parent_class = @parent_class
+        #new_ds.master_array = @master_array
+        return new_ds
+    add_child: (child) =>
+        @childs.push(child)
     clean: ->
         @drawn      = false
         @table_div  = undefined
-        @info_h3    = undefined
+        @info_div    = undefined
         @master_xml = undefined
     redraw_tables: =>
-        (value.draw_table() for key, value of @master_array)
+        master_tables = []
+        for key, value of @master_array
+            if not value.parent_class
+                master_tables.push(key)
+        (@master_array[key].draw_table() for key in master_tables)
     draw_head_line: =>
         dummy_div = $("<div>")
         head_line = $("<tr>").attr
@@ -97,8 +116,12 @@ class draw_setup
         else
             table_div = $("<div>").attr
                 id : @postfix
-            @info_h3 = $("<h3>").attr
-                id : @postfx
+            if @parent_class
+                @info_div = $("<h5>").attr
+                    id : @postfx
+            else
+                @info_div = $("<h3>").attr
+                    id : @postfx
             table_div.append ($("<table>")
                 .attr(id: @postfix)
                 .addClass("style2"))
@@ -123,12 +146,12 @@ class draw_setup
         else
             if @drawn
                 p_table.children().remove()
-            @info_h3.text("parent objects missing for " + @name + ": " + missing_objects.join(", "))
+            @info_div.text("parent objects missing for " + @name + ": " + missing_objects.join(", "))
         @drawn = draw
         if not @table_div
             @table_div = table_div
             @update_table_info()
-            dummy_div = $("<div>").append(@info_h3).append(table_div)
+            dummy_div = $("<div>").append(@info_div).append(table_div)
             return dummy_div.children()
         else
             @update_table_info()
@@ -142,14 +165,14 @@ class draw_setup
             p_table.append(@draw_line())
         @master_xml.find(@xml_name_plural + " " + @xml_name).each (index, element) =>
             p_table.append(@draw_line($(element)))
-        @info_h3.text(@name + " (").append(
+        @info_div.text(@name + " (").append(
             $("<span>").attr(id : "info__" + @postfix).text("---")
         ).append($("<span>").text(")"))
     redraw: () ->
         @table_div.find("table").find("tr[id]").each (index, cur_tr) =>
             $(cur_tr).find("select").each (index, cur_sel) =>
                 for cur_di in @draw_array
-                    cur_re = new RegExp("__" + cur_di.name + "$")
+                    cur_re = new RegExp("__#{cur_di.name}$")
                     if $(cur_sel).attr("id").match(cur_re)
                         cur_di.sync_select_from_xml($(cur_sel))
     redraw_line: (new_xml) ->
@@ -169,7 +192,7 @@ class draw_setup
             del_tr.remove()
         @update_table_info()
     update_table_info: () ->
-        @info_h3.find("span#info__" + @postfix).text(@master_xml.find(@xml_name_plural + " " + @xml_name).length)
+        @info_div.find("span#info__" + @postfix).text(@master_xml.find(@xml_name_plural + " " + @xml_name).length)
         @recolor_table()
     recolor_table: () =>
         act_class = "even"
@@ -182,9 +205,16 @@ class draw_setup
             $(cur_tr).addClass(act_class)
     draw_line: (xml_el) ->
         xml_pk = if xml_el then xml_el.attr("pk") else "new"
-        line_prefix = @postfix + "__" + xml_pk
+        line_prefix = @postfix + "__#{xml_pk}"
         cur_dl = new draw_line(@)
-        return cur_dl.draw(line_prefix, xml_el, xml_pk)
+        dummy_div = $("<div>")
+        dummy_div.append(cur_dl.draw(line_prefix, xml_el, xml_pk))
+        if xml_el
+            cur_colspan = dummy_div.find("tr td").length
+            for child in @childs
+                new_ds = @master_array[child].duplicate()
+                dummy_div.append($("<tr>").append($("<td>").attr("colspan", cur_colspan).append(new_ds.draw_table(@master_xml, @master_array))))
+        return dummy_div.children()
     create_delete_element: (event) =>
         cur_el = $(event.target)
         el_id  = cur_el.attr("id")

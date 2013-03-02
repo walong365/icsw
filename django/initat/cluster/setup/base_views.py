@@ -12,7 +12,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      mon_contactgroup, get_related_models, network_device_type, network_type, device_class, \
      device_location, network, mon_device_templ, user, group, package_search, device_variable, \
      mon_host_cluster, mon_service_cluster, config_type, partition_table, mon_device_esc_templ, \
-     mon_service_esc_templ, rrd_class
+     mon_service_esc_templ, rrd_class, rrd_rra
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -92,6 +92,7 @@ def change_xml_entry(request):
                    "ctype"   : config_type,
                    "ptable"  : partition_table,
                    "rrdc"    : rrd_class,
+                   "rrdrra"  : rrd_rra,
                    }.get(object_type, None)
         if not mod_obj:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
@@ -214,6 +215,7 @@ def change_xml_entry(request):
 def create_object(request, *args, **kwargs):
     _post = request.POST
     obj_name = kwargs["obj_name"]
+    pprint.pprint(_post)
     request.log("obj_name for create_object is '%s'" % (obj_name))
     new_obj_class = globals()[obj_name]
     key_pf = min([(len(key), key) for key in _post.iterkeys() if key.count("__new")])[1]

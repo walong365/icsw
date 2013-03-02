@@ -30,6 +30,9 @@ def class_overview(request):
         xml_resp = E.response(
             E.rrd_classes(*[
                 cur_rc.get_xml() for cur_rc in rrd_class.objects.all()
+            ]),
+            E.rrd_rras(*[
+                cur_rra.get_xml() for cur_rra in rrd_rra.objects.all()
             ])
         )
         request.xml_response["response"] = xml_resp
