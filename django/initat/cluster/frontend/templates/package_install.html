@@ -22,7 +22,6 @@ class device_table
     build_table: (@top_div, @sel_list) =>
         $.ajax
             url     : "{% url 'pack:install' %}"
-            error   : handle_ajax_error
             success : (xml) =>
                 if parse_xml_response(xml)
                     @pack_xml = $(xml).find("value[name='response']")
@@ -51,7 +50,6 @@ class device_table
     refresh_package_info: =>
         $.ajax
             url     : "{% url 'pack:refresh' %}"
-            error   : handle_ajax_error
             data    : {"sel_list" : @sel_list}
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -93,7 +91,6 @@ class device_table
             data    : {
                 "pdc_key" : cur_pdc.attr("key")
             }
-            error   : handle_ajax_error
             success : (xml) =>
                 if parse_xml_response(xml)
                     @table.find("tr[id='" + cur_pdc.attr("key") + "']").remove()
@@ -116,7 +113,6 @@ class device_table
                 "dev_key"  : dev_xml.attr("key")
                 "pack_key" : pack_xml.attr("key")
             },
-            error   : handle_ajax_error
             success : (xml) =>
                 if parse_xml_response(xml)
                     new_pdc = $(xml).find("value[name='new_entry'] package_device_connection")
@@ -133,7 +129,6 @@ class device_table
                 data    : {
                     "pk" : targ_el.attr("id").split("__")[1]
                 }
-                error   : handle_ajax_error
                 success : (xml) =>
                     if parse_xml_response(xml)
                         targ_el.parents("tr:first").remove()
@@ -237,7 +232,6 @@ class device_table
     sync_server: (event) =>
         $.ajax
             url     : "{% url 'pack:synchronize' %}"
-            error   : handle_ajax_error
             success : (xml) =>
                 parse_xml_response(xml)
     change_global_sel: (event) =>
@@ -388,7 +382,6 @@ use_devs = ->
     sel_list = (entry.data.key for idx, entry of $("div#sidebar_tree").dynatree("getSelectedNodes"))
     $.ajax
         url     : "{% url 'device:get_group_tree' %}"
-        error   : handle_ajax_error
         data    : {
             "sel_list"            : sel_list
             "ignore_meta_devices" : 1

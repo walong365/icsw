@@ -54,7 +54,6 @@ class config_table
     load_configs: =>
         $.ajax
             url     : "{% url 'config:show_configs' %}"
-            error   : handle_ajax_error
             success : (xml) =>
                 if parse_xml_response(xml)
                     @configs = $(xml).find("value[name='response']")

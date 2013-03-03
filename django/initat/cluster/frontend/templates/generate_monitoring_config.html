@@ -11,7 +11,6 @@ root = exports ? this
 root.create_monitoring_config = ->
     $.ajax
         url     : "{% url 'mon:create_config' %}"
-        error   : handle_ajax_error
         success : (xml) =>
             parse_xml_response(xml)
             

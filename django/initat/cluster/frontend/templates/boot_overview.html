@@ -128,7 +128,6 @@ class kernel_option extends option_list
         $.ajax
             url     : "{% url 'boot:set_kernel' %}"
             data    : create_dict(@cur_td, @dev_key)
-            error   : handle_ajax_error
             success : (xml) =>
                 parse_xml_response(xml)
     change_global: (event) =>
@@ -182,12 +181,10 @@ class hard_control_option extends option_list
         cur_el = $(event.target)
         $.ajax
             url     : "{% url 'boot:hard_control' %}"
-            error   : handle_ajax_error
             data    : {
                 "cd_id" : cur_el.attr("id")
                 "value" : cur_el.val()
             }
-            error   : handle_ajax_error,
             success : (xml) =>
                 parse_xml_response(xml)
         cur_el.val("0")
@@ -219,7 +216,6 @@ class soft_control_option extends option_list
             @cur_td.find("input[type='radio'][id='#{@dev_key}__status']").attr("checked", "checked")
             #$.ajax
             #    url     : "{% url 'boot:soft_control' %}"
-            #    error   : handle_ajax_error
             #    data    : {
             #        "key" : cur_el.attr("id")
             #    }
@@ -267,7 +263,6 @@ class target_state_option extends option_list
                 "dev_id"    : @dev_key,
                 "new_state" : @cur_td.find("select#" + @dev_key + "__target_state").val()
             }
-            error   : handle_ajax_error
             success : (xml) =>
                 parse_xml_response(xml)
     change_global: (event) =>
@@ -350,7 +345,6 @@ class boot_device_option extends option_list
         $.ajax
             url     : "{% url 'boot:set_boot' %}"
             data    : create_dict(@cur_td, @dev_key)
-            error   : handle_ajax_error
             success : (xml) =>
                 parse_xml_response(xml)
 
@@ -386,7 +380,6 @@ class partition_option extends option_list
                 "dev_id"   : @dev_key,
                 "new_part" : @cur_td.find("select#" + @dev_key + "__new_part").val()
             }
-            error   : handle_ajax_error
             success : (xml) =>
                 parse_xml_response(xml)
 
@@ -424,7 +417,6 @@ class image_option extends option_list
                 "dev_id"    : @dev_key,
                 "new_image" : @cur_td.find("select#" + @dev_key + "__new_image").val()
             }
-            error   : handle_ajax_error
             success : (xml) =>
                 parse_xml_response(xml)
 
@@ -472,7 +464,6 @@ class boot_table
         # this is called every time use_selection is pressed (or on init)
         $.ajax
             url     : "{% url 'boot:get_html_options' %}"
-            error   : handle_ajax_error
             success : (xml) =>
                 @option_list = []
                 if parse_xml_response(xml)
@@ -502,7 +493,6 @@ class boot_table
                                 "type" : key
                             }
                             async   : false
-                            error   : handle_ajax_error
                             success : (xml) =>
                                 if parse_xml_response(xml)
                                     @xml_dict[key] = $(xml)
@@ -538,7 +528,6 @@ class boot_table
         sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"
-            error   : handle_ajax_error
             data    : {
                 "sel_list" : sel_list
             }
@@ -559,7 +548,6 @@ class boot_table
                 data    : {
                     "type" : opt
                 }
-                error   : handle_ajax_error
                 success : (xml) =>
                     if parse_xml_response(xml)
                         @xml_dict[opt] = $(xml)
@@ -749,7 +737,6 @@ class boot_table
             send_data["call_mother"] = if call_mother then 1 else 0
             $.ajax
                 url     : "{% url 'boot:get_boot_info' %}"
-                error   : handle_ajax_error
                 data    : send_data
                 success : (xml) =>
                     @update_pending = false
@@ -778,7 +765,6 @@ class boot_table
                 send_data[dev_struct.dev_key] = dev_struct.latest_log_pk
             $.ajax
                 url     : "{% url 'boot:get_devlog_info' %}"
-                error   : handle_ajax_error
                 data    : send_data
                 success : (xml) =>
                     if parse_xml_response(xml)

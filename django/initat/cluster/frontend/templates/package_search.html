@@ -53,7 +53,6 @@ class search_table
             data    : {
                 "pk" : redo_search_pk
             }
-            error   : handle_ajax_error
             success : (xml) ->
                 parse_xml_response(xml)
     redraw_search: (cur_ds) =>
@@ -64,7 +63,6 @@ class search_table
         if check_server
             $.ajax
                 url     : "{% url 'pack:search_package' %}"
-                error   : handle_ajax_error
                 success : (xml) =>
                     if parse_xml_response(xml)
                         $(xml).find("package_search").each (index, cur_s) =>
@@ -104,7 +102,6 @@ class search_table
             data    : {
                 "pk" : targ_el.attr("id").split("__")[1]
             }
-            error   : handle_ajax_error
             success : (xml) ->
                 if parse_xml_response(xml)
                     search_array["psr"].clean()
@@ -121,7 +118,6 @@ class search_table
             data    : {
                 "pk" : targ_el.attr("id").split("__")[1]
             }
-            error   : handle_ajax_error
             success : (xml) ->
                 if parse_xml_response(xml)
                     targ_el.remove()
@@ -129,7 +125,6 @@ class search_table
 load_searches = ->
     $.ajax
         url     : "{% url 'pack:search_package' %}"
-        error   : handle_ajax_error
         success : (xml) ->
             if parse_xml_response(xml)
                 cur_st = new search_table($("div#search_tables"), $(xml).find("value[name='response']"))

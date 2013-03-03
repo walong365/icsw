@@ -175,7 +175,6 @@ function sidebar_handler() {
     });
     $.ajax({
         url     : "{% url 'device:get_group_tree' %}",
-        error   : handle_ajax_error,
         data    : {
             "ignore_cdg"      : "0",
             "permission_tree" : "1"

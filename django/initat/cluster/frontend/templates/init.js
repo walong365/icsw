@@ -34,6 +34,18 @@ $.ajaxSetup({
         AJAX_DICT[xhr.inituuid]["runtime"] = new Date() - AJAX_DICT[xhr.inituuid]["start"];
         var ai_div = $("div#ajax_info");
         ai_div.find("li#" + xhr.inituuid).remove();
+    },
+    error      : function(xhr, status, except) {
+    //alert(xhr.status + "," + status + ", " + except);
+        if (status == "timeout") {
+            alert("timeout");
+        } else {
+            if (xhr.status ) {
+                // if status is != 0 an error has occured
+                alert("*** " + status + " ***\nxhr.status : " + xhr.status + "\nxhr.statusText : " + xhr.statusText);
+            }
+        }
+        return false;
     }
 });
 
@@ -117,7 +129,7 @@ class draw_setup
             table_div = $("<div>").attr
                 id : @postfix
             if @parent_class
-                @info_div = $("<h5>").attr
+                @info_div = $("<span>").attr
                     id : @postfx
             else
                 @info_div = $("<h3>").attr
@@ -131,7 +143,7 @@ class draw_setup
             for cur_req in @required_xml
                 ref_obj = @master_array[cur_req]
                 if ref_obj
-                    search_str = ref_obj.xml_name_plural + " " + ref_obj.xml_name
+                    search_str = "#{ref_obj.xml_name_plural} #{ref_obj.xml_name}"
                 else
                     search_str = "#{cur_req}s #{cur_req}"
                 if not @master_xml.find(search_str).length
@@ -155,6 +167,11 @@ class draw_setup
             return dummy_div.children()
         else
             @update_table_info()
+    search_str: =>
+        search_str = "#{@xml_name_plural} #{@xml_name}"
+        if @parent_class
+            search_str = "#{search_str}[#{@parent_class}='" + @parent_el.attr("pk") + "']"
+        return search_str
     first_draw: (p_table) ->
         if @timer_callback
             $(document).everyTime(@timer_timeout * 1000, "table_draw_timer", (idx) =>
@@ -163,10 +180,10 @@ class draw_setup
         p_table.append(@draw_head_line())
         if @create_url
             p_table.append(@draw_line())
-        @master_xml.find(@xml_name_plural + " " + @xml_name).each (index, element) =>
+        @master_xml.find(@search_str()).each (index, element) =>
             p_table.append(@draw_line($(element)))
-        @info_div.text(@name + " (").append(
-            $("<span>").attr(id : "info__" + @postfix).text("---")
+        @info_div.text("#{@name}(").append(
+            $("<span>").attr(id : "info__#{@postfix}").text("---")
         ).append($("<span>").text(")"))
     redraw: () ->
         @table_div.find("table").find("tr[id]").each (index, cur_tr) =>
@@ -186,13 +203,16 @@ class draw_setup
         @update_table_info()
     delete_line: (cur_el) ->
         del_tr = cur_el.parents("tr:first")
+        del_id = del_tr.attr("id")
         if del_tr.attr("id")
-            @table_div.find("table:first tr#" + del_tr.attr("id")).remove()
+            @table_div.find("table:first tr#" + del_id).remove()
         else
             del_tr.remove()
+        if @childs and del_id
+            @table_div.find("tr[id^='child__#{del_id}__']").remove()
         @update_table_info()
     update_table_info: () ->
-        @info_div.find("span#info__" + @postfix).text(@master_xml.find(@xml_name_plural + " " + @xml_name).length)
+        @info_div.find("span#info__" + @postfix).text(@master_xml.find(@search_str()).length)
         @recolor_table()
     recolor_table: () =>
         act_class = "even"
@@ -205,7 +225,7 @@ class draw_setup
             $(cur_tr).addClass(act_class)
     draw_line: (xml_el) ->
         xml_pk = if xml_el then xml_el.attr("pk") else "new"
-        line_prefix = @postfix + "__#{xml_pk}"
+        line_prefix = "#{@postfix}__#{xml_pk}"
         cur_dl = new draw_line(@)
         dummy_div = $("<div>")
         dummy_div.append(cur_dl.draw(line_prefix, xml_el, xml_pk))
@@ -213,27 +233,31 @@ class draw_setup
             cur_colspan = dummy_div.find("tr td").length
             for child in @childs
                 new_ds = @master_array[child].duplicate()
-                dummy_div.append($("<tr>").append($("<td>").attr("colspan", cur_colspan).append(new_ds.draw_table(@master_xml, @master_array))))
+                new_ds.parent_el = xml_el
+                dummy_div.append($("<tr>").attr("id", "child__#{line_prefix}__#{child}").append($("<td>").attr("colspan", cur_colspan).append(new_ds.draw_table(@master_xml, @master_array))))
         return dummy_div.children()
     create_delete_element: (event) =>
         cur_el = $(event.target)
         el_id  = cur_el.attr("id")
         lock_list = if @lock_div then lock_elements($("div#" + @lock_div)) else undefined
         if el_id.match(///new$///)
+            send_data = create_dict(@table_div, el_id)
+            if @parent_class
+                send_data["#{el_id}__#{@parent_class}"] = @parent_el.attr("pk")
             $.ajax
                 url     : @create_url
-                data    : create_dict(@table_div, el_id)
+                data    : send_data
                 success : (xml) =>
                     if parse_xml_response(xml)
                         new_element = $(xml).find(@xml_name)
                         @master_xml.find(@xml_name_plural).append(new_element)
                         @append_new_line(cur_el, new_element)
                         for clear_el in (@draw_array.filter (cur_di) -> cur_di.clear_after_create)
-                            @table_div.find("#" + el_id + "__" + clear_el.name).val("")
+                            @table_div.find("##{el_id}__#{clear_el.name}").val("")
                         @redraw_tables()
                     @unlock_elements(lock_list)
         else
-            if confirm("really delete " + @name + " ?")
+            if confirm("really delete #{@name} ?")
                 $.ajax
                     url     : @delete_url
                     data    : create_dict(@table_div, el_id)
@@ -299,14 +323,14 @@ class draw_info
         for attr_name in ["size", "default", "select_source", "boolean", "min", "max", "ro",
         "button", "change_cb", "trigger", "draw_result_cb", "draw_conditional",
         "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group",
-        "css", "select_source_attribute", "password", "keep_td", "clear_after_create"]
+        "css", "select_source_attribute", "password", "keep_td", "clear_after_create", "callback"]
             @[attr_name] = @kwargs[attr_name] ? undefined
         @size = @kwargs.size or undefined
     get_kwargs: () ->
         kwargs = {new_default : @default}
         for attr_name in ["size", "select_source", "boolean", "min", "max", "ro", "button", "change_cb",
-            "draw_result_cb", "trigger",
-            "number", "manytomany", "add_null_entry", "css", "select_source_attribute", "password"]
+            "draw_result_cb", "trigger", "callback",
+            "number", "manytomany", "add_null_entry", "css", "select_source_attribute", "password",]
             kwargs[attr_name] = @[attr_name]
         kwargs.master_xml = @draw_setup.master_xml
         if @show_label
@@ -407,72 +431,94 @@ get_value = (cur_el) ->
 set_value = (el_id, el_value) ->
     $("#" + el_id).val(el_value)
 
-root.get_value     = get_value
-root.set_value     = set_value
-root.draw_setup    = draw_setup
-root.draw_info     = draw_info
-root.draw_link     = draw_link
-root.draw_collapse = draw_collapse
+parse_xml_response = (xml, min_level) ->
+    success = false
+    if $(xml).find("response header").length
+        ret_state = $(xml).find("response header").attr("code")
+        if parseInt(ret_state) < (if min_level then min_level else 40)
+            success = true
+        $(xml).find("response header messages message").each (idx, cur_mes) ->
+            cur_mes = $(cur_mes)
+            cur_level = parseInt(cur_mes.attr("log_level"))
+            if cur_level < 30
+                $.jnotify(cur_mes.text())
+            else if cur_level == 30
+                $.jnotify(cur_mes.text(), "warning")
+            else
+                $.jnotify(cur_mes.text(), "error", true)
+    else
+        $.jnotify("error parsing responsee", "error", true)
+    return success
+
+# lock all active input elements
+lock_elements = (top_el) ->
+    el_list = top_el.find("input:enabled", "select:enabled")
+    el_list.attr("disabled", "disabled")
+    return el_list
+
+# unlock list of elements
+unlock_elements = (el_list) ->
+    el_list.removeAttr("disabled")
+
+# get expansion list
+get_expand_td = (line_prefix, name, title, cb_func, initial_state) ->
+    if not initial_state
+        initial_state = false
+    exp_td = $("<td>").append(
+        $("<div>").attr({
+            "class"   : if initial_state then "ui-icon ui-icon-triangle-1-s leftfloat" else "ui-icon ui-icon-triangle-1-e leftfloat"
+            "id"      : "#{line_prefix}__expand__#{name}"
+            "title"   : if title then title else "show #{name}"
+        })
+    ).append(
+        $("<span>").attr({
+            "id"    : "#{line_prefix}__expand__#{name}__info",
+            "title" : if title then title else "show #{name}"
+        }).text(name)
+    ).bind("click", (event) ->
+        toggle_config_line_ev(event, cb_func)
+    )
+    exp_td.find("div, span").on("hover", highlight_td)
+    return exp_td
+    
+highlight_td = (event) ->
+    target = $(event.target).parents("td:first")
+    if event.type == "mouseenter"
+        target.addClass("highlight")
+    else
+        target.removeClass("highlight")
+
+toggle_config_line_ev = (event, cb_func) ->
+    # get div-element
+    cur_el = $(event.target)
+    if cur_el.prop("tagName") != "TD"
+        cur_el = cur_el.parent("td")
+    cur_el = cur_el.children("div")
+    cur_class = cur_el.attr("class")
+    name = cur_el.attr("id").split("__").pop()
+    line_prefix = /^(.*)__expand__.*$/.exec(cur_el.attr("id"))[1]
+    if cur_class.match(/-1-e/)
+        cur_el.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s")
+        cur_el.addClass("ui-icon-triangle-1-s")
+        cb_func(line_prefix, true, name)
+    else
+        cur_el.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s")
+        cur_el.addClass("ui-icon-triangle-1-e")
+        cb_func(line_prefix, false, name)
+
+root.get_value             = get_value
+root.set_value             = set_value
+root.draw_setup            = draw_setup
+root.draw_info             = draw_info
+root.draw_link             = draw_link
+root.draw_collapse         = draw_collapse
+root.parse_xml_response    = parse_xml_response
+root.lock_elements         = lock_elements
+root.unlock_elements       = unlock_elements
+root.get_expand_td         = get_expand_td
+root.toggle_config_line_ev = toggle_config_line_ev
 
 {% endinlinecoffeescript %}
-
-parse_xml_response = function(xml, min_level) {
-    var success = false;
-    // parse xml response from server
-    if ($(xml).find("response header").length) {
-        var ret_state = $(xml).find("response header").attr("code");
-        if (parseInt(ret_state) < (min_level ? min_level : 40)) {
-            // return true if we can parse the header and ret_code <= 40 (less than error)
-            success = true;
-        };
-        $(xml).find("response header messages message").each(function() {
-            var cur_mes = $(this);
-            var cur_level = parseInt($(cur_mes).attr("log_level"));
-            if (cur_level < 30) {
-                $.jnotify($(cur_mes).text());
-            } else if (cur_level == 30) {
-                $.jnotify($(cur_mes).text(), "warning");
-            } else {
-                $.jnotify($(cur_mes).text(), "error", true);
-            };
-        });
-    } else {
-        $.jnotify("error parsing response", "error", true);
-    };
-    return success;
-};
-
-handle_ajax_ok = function(xml, ok_func) {
-    if ($(xml).find("err_str").length) {
-        var ret_value = false;
-        alert($(xml).find("err_str").attr("value"));
-    } else {
-        var ret_value = true;
-        if (ok_func == undefined) {
-            if ($(xml).find("ok_str").length) {
-                alert($(xml).find("ok_str").attr("value"));
-            } else {
-                alert("OK");
-            }
-        } else {
-            ok_func(xml);
-        }
-    }
-    return ret_value;
-};
-
-handle_ajax_error = function(xhr, status, except) {
-    //alert(xhr.status + "," + status + ", " + except);
-    if (status == "timeout") {
-        alert("timeout");
-    } else {
-        if (xhr.status ) {
-            // if status is != 0 an error has occured
-            alert("*** " + status + " ***\nxhr.status : " + xhr.status + "\nxhr.statusText : " + xhr.statusText);
-        }
-    }
-    return false;
-}
 
 function get_xml_value(xml, key) {
     var ret_value = undefined;
@@ -485,18 +531,6 @@ function get_xml_value(xml, key) {
         };
     });
     return ret_value;
-};
-
-// lock all active input elements
-function lock_elements(top_el) {
-    var el_list = top_el.find("input:enabled", "select:enabled");
-    el_list.attr("disabled", "disabled");
-    return el_list;
-};
-
-// unlock list of elements
-function unlock_elements(el_list) {
-    el_list.removeAttr("disabled");
 };
 
 // create a dictionary from a list of elements
@@ -597,23 +631,6 @@ function in_array(in_array, s_str) {
     return res;
 };
 
-// get expansion list
-function get_expand_td(line_prefix, name, title, cb_func, initial_state) {
-    if (initial_state === undefined) initial_state = false;
-    return exp_td = $("<td>").append(
-        $("<div>").attr({
-            "class"   : initial_state ? "ui-icon ui-icon-triangle-1-s leftfloat" : "ui-icon ui-icon-triangle-1-e leftfloat",
-            "id"      : line_prefix + "__expand__" + name,
-            "title"   : title === undefined ? "show " + name : title
-        })
-    ).append(
-        $("<span>").attr({
-            "id"    : line_prefix + "__expand__" + name + "__info",
-            "title" : title === undefined ? "show " + name : title
-        }).text(name)
-    ).bind("click", function(event) { toggle_config_line_ev(event, cb_func) ; }).mouseover(function () { $(this).addClass("highlight"); }).mouseout(function() { $(this).removeClass("highlight"); });
-};
-
 function force_expansion_state(cur_tr, state) {
     var cur_el = cur_tr.find("div[id*='__expand__']");
     cur_el.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
@@ -621,25 +638,6 @@ function force_expansion_state(cur_tr, state) {
         cur_el.addClass("ui-icon-triangle-1-s");
     } else {
         cur_el.addClass("ui-icon-triangle-1-e");
-    }
-}
-
-function toggle_config_line_ev(event, cb_func) {
-    // get div-element
-    var cur_el = $(event.target);
-    if (cur_el.prop("tagName") != "TD") cur_el = cur_el.parent("td");
-    cur_el = cur_el.children("div");
-    var cur_class = cur_el.attr("class");
-    var name = cur_el.attr("id").split("__").pop();
-    var line_prefix = /^(.*)__expand__.*$/.exec(cur_el.attr("id"))[1];
-    if (cur_class.match(/-1-e/)) {
-        cur_el.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_el.addClass("ui-icon-triangle-1-s");
-        cb_func(line_prefix, true, name);
-    } else {
-        cur_el.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-        cur_el.addClass("ui-icon-triangle-1-e");
-        cb_func(line_prefix, false, name);
     }
 };
 

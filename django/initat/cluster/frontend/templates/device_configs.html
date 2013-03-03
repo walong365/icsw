@@ -29,7 +29,6 @@ class config_table
         notify_generate_link(sel_list)
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"
-            error   : handle_ajax_error
             data    : {
                 "sel_list" : sel_list
             }
@@ -40,7 +39,6 @@ class config_table
     load_device_configs : (sel_list) =>
         $.ajax
             url     : "{% url 'config:get_device_configs' %}"
-            error   : handle_ajax_error
             data    : {
                 "sel_list" : sel_list
             }
@@ -51,7 +49,6 @@ class config_table
     load_configs : () =>
         $.ajax
             url     : "{% url 'config:show_configs' %}"
-            error   : handle_ajax_error
             data    : {
                 #"mode" : "simple"
                 "mode" : "full"

@@ -39,7 +39,6 @@ master_array = {
 load_nwts = ->
     $.ajax
         url     : "{% url 'network:show_network_d_types' %}"
-        error   : handle_ajax_error
         success : (xml) =>
             if parse_xml_response(xml)
                 draw_ds_tables($("div#nwt_tables"), master_array, $(xml).find("value[name='response']"))

@@ -25,7 +25,6 @@ class network_table
     reload_network_tree: (sel_list) =>
         $.ajax
             url     : "{% url 'network:get_network_tree' %}"
-            error   : handle_ajax_error
             data    : {
                 "sel_list" : @SELECTED_DEVICES
             }
@@ -267,7 +266,6 @@ class network_table
     redraw_possible_peers: =>
         $.ajax
             url     : "{% url 'network:get_valid_peers' %}"
-            error   : handle_ajax_error
             success : (xml) =>
                 if parse_xml_response(xml)
                     @DEVICE_NETWORKS.find("valid_peers").replaceWith($(xml).find("valid_peers"))
@@ -279,7 +277,6 @@ class network_table
        peer_id = $(event.target).attr("id")
        $.ajax
            url     : "{% url 'network:delete_peer' %}"
-           error   : handle_ajax_error
            data    : {
                "id" : peer_id
            }
@@ -317,7 +314,6 @@ class network_table
         if new_p
             $.ajax
                 url     : "{% url 'network:create_new_peer' %}"
-                error   : handle_ajax_error
                 data    : {
                     "id"       : cur_sel.attr("id")
                     "new_peer" : new_p
@@ -533,7 +529,6 @@ class network_table
         if confirm("Overwrite all networks with the one from " + @DEVICE_NETWORKS.find("device[pk='#{c_val}']").attr("name") + " ?")
             $.ajax
                 url     : "{% url 'network:copy_network' %}"
-                error   : handle_ajax_error
                 data    : {
                     "source_dev" : c_val
                     "all_devs"   : @SELECTED_DEVICES

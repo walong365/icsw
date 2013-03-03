@@ -415,7 +415,6 @@ root = exports ? this
 root.reload_device_tree = ->
     $.ajax
         url     : "{% url 'device:get_xml_tree' %}"
-        error   : handle_ajax_error
         success : (xml) ->
             if parse_xml_response(xml)
                 new device_tree($(xml).find("response")).build_table($("div#device_table"))

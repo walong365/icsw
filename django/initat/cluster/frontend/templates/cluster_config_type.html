@@ -37,7 +37,6 @@ master_array = {
 add_config_handlers = ->
     $.ajax
         url     : "{% url 'config:show_config_types' %}"
-        error   : handle_ajax_error
         success : (xml) =>
             if parse_xml_response(xml)
                 draw_ds_tables($("div#ct_tables"), master_array, $(xml).find("value[name='response']"))

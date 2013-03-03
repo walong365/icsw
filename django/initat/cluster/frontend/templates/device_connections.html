@@ -32,7 +32,6 @@ class conn_table
     load_devices: () =>
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"
-            error   : handle_ajax_error
             data    : {
                 "sel_list"            : @sel_list,
                 "extra_t0"            : "device_type",
@@ -49,7 +48,6 @@ class conn_table
         if man_source and man_target
             $.ajax
                 url   : "{% url 'device:manual_connection' %}"
-                error : handle_ajax_error
                 data  : {
                     "source" : man_source
                     "target" : man_target
@@ -120,7 +118,6 @@ class conn_table
         target_table = target_div.parents("table:first")
         $.ajax
             url   : "{% url 'device:create_connection' %}"
-            error : handle_ajax_error,
             data  : {
                 "target"      : target_table.attr("id"),
                 "target_type" : target_div.attr("id"),
@@ -136,7 +133,6 @@ class conn_table
         dc_id = dc_li.attr("id")
         $.ajax
             url     : "{% url 'device:delete_connection' %}"
-            error   : handle_ajax_error,
             data    : {
                 "pk" : dc_id
             }

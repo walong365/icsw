@@ -14,7 +14,7 @@ from lxml import etree
 from lxml.builder import E
 from django.db.models import Q
 from django.core.exceptions import ValidationError
-from initat.cluster.backbone.models import rrd_rra, rrd_class
+from initat.cluster.backbone.models import rrd_rra, rrd_class, ALLOWED_CFS
 import server_command
 import net_tools
 import time
@@ -33,9 +33,10 @@ def class_overview(request):
             ]),
             E.rrd_rras(*[
                 cur_rra.get_xml() for cur_rra in rrd_rra.objects.all()
+            ]),
+            E.rra_cfs(*[
+                E.rra_cf(cur_cf, pk=cur_cf) for cur_cf in ALLOWED_CFS
             ])
         )
         request.xml_response["response"] = xml_resp
         return request.xml_response.create_response()
-        
-    
