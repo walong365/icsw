@@ -23,6 +23,8 @@ from django.conf import settings
 from rest_framework import serializers
 from django.utils.functional import memoize
 
+ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
+
 class cs_timer(object):
     def __init__(self):
         self.start_time = time.time()
@@ -2970,7 +2972,7 @@ class rrd_data_store(models.Model):
 class rrd_rra(models.Model):
     idx = models.AutoField(db_column="rrd_rra_idx", primary_key=True)
     rrd_class = models.ForeignKey("rrd_class")
-    cf = models.CharField(max_length=192)
+    cf = models.CharField(max_length=192, choices=[(val, val) for val in ALLOWED_CFS])
     steps = models.IntegerField(default=30)
     rows = models.IntegerField(default=2000)
     xff = models.FloatField(default=0.1)
@@ -2982,6 +2984,7 @@ class rrd_rra(models.Model):
             unicode(self),
             pk="%d" % (self.idx),
             key="rrdrra_%d" % (self.idx),
+            rrd_class="%d" % (self.rrd_class_id),
             cf=self.cf,
             steps="%d" % (self.steps),
             rows="%d" % (self.rows),
@@ -2989,6 +2992,14 @@ class rrd_rra(models.Model):
         )
     def __unicode__(self):
         return "%s:%d:%d:%.2f" % (self.cf, self.steps, self.rows, self.xff)
+
+@receiver(signals.pre_save, sender=rrd_rra)
+def rrd_rra_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "cf")
+        _check_integer(cur_inst, "steps", min_val=1, max_val=3600)
+        _check_integer(cur_inst, "rows", min_val=30, max_val=12000)
 
 class rrd_set(models.Model):
     idx = models.AutoField(db_column="rrd_set_idx", primary_key=True)
