@@ -1419,8 +1419,9 @@ class server_process(threading_tools.process_pool):
                                               zmq_debug=global_config["ZMQ_DEBUG"])
         self.renice(global_config["NICE_LEVEL"])
         if not global_config["DEBUG"]:
-            process_tools.set_handles({"out" : (1, "host-monitoring.out"),
-                                       "err" : (0, "/var/lib/logging-server/py_err")},
+            process_tools.set_handles({
+                "out" : (1, "host-monitoring.out"),
+                "err" : (0, "/var/lib/logging-server/py_err")},
                                       zmq_context=self.zmq_context)
         self.add_process(twisted_process("twisted"), twisted=True, start=True)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
@@ -1430,7 +1431,7 @@ class server_process(threading_tools.process_pool):
         self._init_msi_block()
         self._change_socket_settings()
         self._init_network_sockets()
-        self.register_exception("int_error", self._sigint)
+        self.register_exception("int_error" , self._sigint)
         self.register_exception("term_error", self._sigint)
         self.register_func("twisted_ping_result", self._twisted_ping_result)
         self._show_config()
@@ -1800,7 +1801,7 @@ class server_process(threading_tools.process_pool):
                 if not cur_del.terminated:
                     new_list.append(cur_del)
         self.__delayed = new_list
-        if not len(self.__delayed):
+        if not self.__delayed:
             self.loop_granularity = 1000.0
             self.unregister_timer(self._check_delayed)
     def _handle_module_command(self, srv_com, rest_str):
