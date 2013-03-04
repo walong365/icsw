@@ -1200,7 +1200,8 @@ class process_pool(object):
         for cur_to in self.__timer_list:
             if cur_to.next_time <= cur_time:
                 cur_to()
-                if not cur_to.oneshot:
+                # also remove if cur_to not in self.__timer_list (due to removal while processing cur_to() )
+                if not cur_to.oneshot and cur_to in self.__timer_list:
                     new_tl.append(cur_to)
             else:
                 new_tl.append(cur_to)
