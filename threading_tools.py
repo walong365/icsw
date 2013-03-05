@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006,2007,2009,2010,2011,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2006,2007,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -796,9 +796,60 @@ class _timer_obj(object):
         else:
             self.cb_func(self.data)
     
-class process_obj(multiprocessing.Process):
+class timer_base(object):
+    def __init__(self, **kwargs):
+        # timer structure
+        self.__timer_list, self.__next_timeout = ([], None)
+        # loop timer
+        self.__loop_timer = kwargs.get("loop_timer", 0)
+    def register_timer(self, cb_func, timeout, **kwargs):
+        s_time = time.time()
+        if not kwargs.get("instant", False):
+            s_time = s_time + timeout
+        self.__timer_list.append(_timer_obj(timeout, s_time, cb_func, **kwargs))
+        self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
+        if not self.__loop_timer:
+            self.__loop_timer = 500
+            self.log("set loop_timer to %d" % (self.__loop_timer))
+    def unregister_timer(self, ut_cb_func):
+        self.__timer_liist = [cur_to for cur_to in self.__timer_list if cur_to.cb_func != ut_cb_func]
+    def change_timer(self, ct_cb_func, timeout):
+        # timeout is here in milliseconds, just like the loop_timer
+        for cur_to in self.__timer_list:
+            if cur_to.cb_func == ct_cb_func:
+                cur_to.step = timeout / 1000
+                self.set_loop_timer(min(self.__loop_timer, cur_to.step * 1000))
+                cur_to.next_time = time.time() + cur_to.step
+        self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
+    def _handle_timer(self, cur_time):
+        new_tl = []
+        for cur_to in self.__timer_list:
+            if cur_to.next_time <= cur_time:
+                cur_to()
+                # also remove if cur_to not in self.__timer_list (due to removal while processing cur_to() )
+                if not cur_to.oneshot and cur_to in self.__timer_list:
+                    new_tl.append(cur_to)
+            else:
+                new_tl.append(cur_to)
+        self.__timer_list = new_tl
+        if self.__timer_list:
+            self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
+        else:
+            self.__next_timeout = None
+    def set_loop_timer(self, lt):
+        # loop timer in millisecons
+        self.__loop_timer = lt
+    @property
+    def next_timeout(self):
+        return self.__next_timeout
+    @property
+    def loop_timer(self):
+        return self.__loop_timer
+
+class process_obj(multiprocessing.Process, timer_base):
     def __init__(self, name, **kwargs):
         multiprocessing.Process.__init__(self, target=self._code, name=name)
+        timer_base.__init__(self, loop_timer=kwargs.get("loop_timer", 0))
         # flags
         self.__flags = {}
         # function table
@@ -813,11 +864,8 @@ class process_obj(multiprocessing.Process):
         # process priority: when stopping processes start with the lowest priority and end with the highest
         self["priority"] = kwargs.get("priority", 0)
         self.cb_func = kwargs.get("cb_func", None)
-        self.loop_timer = kwargs.get("loop_timer", 0)
         # copy kwargs for reference
         self.start_kwargs = kwargs
-        # timer structure
-        self.__timer_list, self.__next_timeout = ([], None)
         self.__exit_locked = False
     @property
     def twisted(self):
@@ -857,43 +905,6 @@ class process_obj(multiprocessing.Process):
             "pid"  : self.pid,
             "type" : list(args)[0],
             "args" : list(args)[1:]})
-    def register_timer(self, cb_func, timeout, **kwargs):
-        s_time = time.time()
-        if not kwargs.get("instant", False):
-            s_time = s_time + timeout
-        self.__timer_list.append(_timer_obj(timeout, s_time, cb_func, **kwargs))
-        #self.__timer_list.append((timeout, s_time, cb_func, kwargs.get("oneshot", False), kwargs.get("data", None)))
-        self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
-        if not self.loop_timer:
-            self.loop_timer = 500
-            self.log("set loop_timer to %d" % (self.loop_timer))
-    def change_timer(self, ct_cb_func, timeout):
-        # timeout is here in milliseconds, just like the loop_timer
-        for cur_to in self.__timer_list:
-            if cur_to.cb_func == ct_cb_func:
-                cur_to.step = timeout / 1000
-                self.set_loop_timer(min(self.loop_timer, cur_to.step * 1000))
-                cur_to.next_time = time.time() + cur_to.step
-        self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
-    def unregister_timer(self, ut_cb_func):
-        self.__timer_list = [cur_to for cur_to in self.__timer_list if cur_to.cb_func != ut_cb_func]
-    def _handle_timer(self, cur_time):
-        new_tl = []
-        for cur_to in self.__timer_list:
-            if cur_to.next_time <= cur_time:
-                cur_to()
-                if not cur_to.oneshot:
-                    new_tl.append(cur_to)
-            else:
-                new_tl.append(cur_to)
-        self.__timer_list = new_tl
-        if self.__timer_list:
-            self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
-        else:
-            self.__next_timeout = None
-    def set_loop_timer(self, lt):
-        # loop timer in millisecons
-        self.loop_timer = lt
     def _init_sockets(self):
         if self.debug_zmq:
             self.zmq_context = debug_zmq_ctx()
@@ -1121,8 +1132,9 @@ class debug_zmq_ctx(zmq.Context):
         self.log("term, %s open" % (logging_tools.get_plural("socket", len(self._sockets_open))))
         super(debug_zmq_ctx, self).term()
 
-class process_pool(object):
+class process_pool(timer_base):
     def __init__(self, name, **kwargs):
+        timer_base.__init__(self)
         self.name = name
         self.pid = os.getpid()
         self.__sockets = {}
@@ -1135,7 +1147,6 @@ class process_pool(object):
             self.zmq_context = zmq.Context(kwargs.pop("zmq_contexts", 1))
         self.poller = zmq.Poller()
         self.loop_granularity = kwargs.get("loop_granularity", 1000)
-        self.__timer_list, self.__next_timeout = ([], None)
         self.queue_name = process_tools.get_zmq_ipc_name("internal")
         self.add_zmq_socket(self.queue_name)
         self.__processes_running = 0
@@ -1187,29 +1198,6 @@ class process_pool(object):
         return self.__flags[fn]
     def __setitem__(self, fn, state):
         self.__flags[fn] = state
-    def register_timer(self, cb_func, timeout, **kwargs):
-        s_time = time.time()
-        if not kwargs.get("instant", False):
-            s_time = s_time + timeout
-        self.__timer_list.append(_timer_obj(timeout, s_time, cb_func, **kwargs))
-        self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
-    def unregister_timer(self, ut_cb_func):
-        self.__timer_list = [cur_to for cur_to in self.__timer_list if cur_to.cb_func != ut_cb_func]
-    def _handle_timer(self, cur_time):
-        new_tl = []
-        for cur_to in self.__timer_list:
-            if cur_to.next_time <= cur_time:
-                cur_to()
-                # also remove if cur_to not in self.__timer_list (due to removal while processing cur_to() )
-                if not cur_to.oneshot and cur_to in self.__timer_list:
-                    new_tl.append(cur_to)
-            else:
-                new_tl.append(cur_to)
-        self.__timer_list = new_tl
-        if self.__timer_list:
-            self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
-        else:
-            self.__next_timeout = None
     def add_zmq_socket(self, q_name):
         if q_name in self.__sockets:
             zmq_socket = self.__sockets[q_name]
@@ -1325,8 +1313,6 @@ class process_pool(object):
                 "args"   : list(b_args),
                 "kwargs" : dict(b_kwargs)})
             del self.__socket_buffer[t_process]
-    #def get_thread_names(self):
-    #    return self.__processes.keys()
     def get_process(self, p_name):
         return self.__processes[p_name]
     def start_process(self, p_name):
@@ -1334,22 +1320,10 @@ class process_pool(object):
             self.log("starting process %s" % (p_name))
             self.__processes[p_name].start()
             self.__processes_running += 1
-    #def get_thread_queue_info(self):
-    #    return dict([(q_n, (q_q.maxsize, q_q.qsize())) for q_n, q_q in self.__queues.iteritems()])
     def stop_process(self, p_name):
         if self.__processes[p_name].is_alive():
             self.log("sending exit to process %s" % (p_name))
             self.send_to_process(p_name, "exit")
-    #def num_threads_running(self, only_sub_threads=True):
-    #    if only_sub_threads:
-    #        return len([True for t in self.__processes.values() if t.isAlive()])
-    #    else:
-    #        return len([True for t in self.__processes.values() + [self.__thread] if t.isAlive()])
-    #def num_threads(self, only_sub_threads=True):
-    #    if only_sub_threads:
-    #        return len(self.__processes.keys())
-    #    else:
-    #        return len(self.__processes.keys()) + 1
     def _process_exit_zmq(self, t_name, t_pid, *args):
         self._process_exit(t_name, t_pid)
     def _process_start_zmq(self, t_name, t_pid, *args):
@@ -1388,6 +1362,8 @@ class process_pool(object):
                      logging_tools.LOG_LEVEL_WARN)
             self.__exception_table[exc_type](exc_info[1])
         else:
+            exc_info = sys.exc_info()
+            self._exc_info = exc_info
             except_info = get_except_info()
             self.log("caught unknown exception %s (%s), traceback" % (exc_type, except_info),
                      logging_tools.LOG_LEVEL_CRITICAL)
@@ -1488,7 +1464,7 @@ class process_pool(object):
                         if self["exit_requested"]:
                             self.stop_running_processes()
                         cur_time = time.time()
-                        if self.__next_timeout and cur_time > self.__next_timeout:
+                        if self.next_timeout and cur_time > self.next_timeout:
                             self._handle_timer(cur_time)
                         if not self["exit_requested"] or self.__processes_running:
                             self._poll()
@@ -1503,7 +1479,7 @@ class process_pool(object):
                             if self["exit_requested"]:
                                 self.stop_running_processes()
                             cur_time = time.time()
-                            if self.__next_timeout and cur_time > self.__next_timeout:
+                            if self.next_timeout and cur_time > self.next_timeout:
                                 self._handle_timer(cur_time)
                             if not self["exit_requested"] or self.__processes_running:
                                 self._poll()
@@ -1661,41 +1637,6 @@ class twisted_main_thread(object):
             for sig_num, orig_h in self.__orig_sig_handlers.iteritems():
                 signal.signal(sig_num, orig_h)
     
-
-class tp_test(thread_pool):
-    def __init__(self):
-        thread_pool.__init__(self, "test", blocking_loop=False)
-        self.register_exception("int_error", self._int_error)
-        self.__iter = 0
-    def _int_error(self, bla):
-        self["exit_requested"] = True
-    def loop_end(self):
-        for tn in self.get_thread_names():
-            print self.get_thread(tn)["run_flag"]
-    def loop_function(self):
-        #print self.get_own_queue().qsize()
-        if self["exit_requested"]:
-            time.sleep(1)
-        else:
-            time.sleep(2)
-        self.__iter += 1
-        if self.__iter > 20:
-            self["exit_requested"] = True
-        print self.get_own_queue().qsize()
-    
-def test_it():
-    mtp = tp_test()#hread_pool("test", blocking_loop=False)
-    mtp.add_queue("log", 200)
-    t_t = mtp.add_thread(thread_obj("sub", queue_size=200), start_thread=True)
-    t_t2 = mtp.add_thread(thread_obj("sub2", queue_size=200), start_thread=True)
-    mtp.get_queue("sub").put([("a", 4), ("b", 5)])
-    mtp.get_queue("sub2").put([("a", 4), ("b", 5)])
-    mtp.thread_loop()
-    print mtp
-    #os.kill(os.getpid(), 9)
-    
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "test":
-        test_it()
     print "Loadable module, exiting..."
     sys.exit(-1)
