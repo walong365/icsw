@@ -275,7 +275,7 @@ class draw_setup
 
 class draw_line
     constructor: (@cur_ds) ->
-    draw: (line_prefix, xml_el, xml_pk) =>
+    draw: (line_prefix, xml_el, xml_pk) ->
         @expand = true
         dummy_div = $("<div>")
         n_line = $("<tr>").attr
@@ -369,7 +369,7 @@ class draw_info
             if cur_ns.attr("pk") in old_pks
                 new_opt.attr("selected", "selected")
             cur_el.append(new_opt)
-    draw: (cur_line, xml_el, line_prefix) =>
+    draw: (cur_line, xml_el, line_prefix) ->
         kwargs = @get_kwargs()
         if not cur_line.cur_ds.create_url
             kwargs.ro = true
@@ -391,7 +391,7 @@ class draw_info
 class draw_collapse extends draw_info
     constructor: (name="collapse", kwargs={}) ->
         super(name, kwargs)
-    draw: (cur_line, xml_el, line_prefix) =>
+    draw: (cur_line, xml_el, line_prefix) ->
         cur_line.expand = @default ? true
         return get_expand_td(line_prefix, "exp", undefined, @expand_cb, @default ? true)
     expand_cb: (line_prefix, state, name) =>
@@ -403,7 +403,7 @@ class draw_collapse extends draw_info
 class draw_link extends draw_info
     constructor: (name="link", kwargs={}) ->
         super(name, kwargs)
-    draw: (cur_line, xml_el, line_prefix) =>
+    draw: (cur_line, xml_el, line_prefix) ->
         if xml_el
             return $("<a>").attr({
                 "href" : "#",
