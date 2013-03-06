@@ -59,7 +59,7 @@ except ImportError:
     VERSION_STRING = "?.?"
     
 MAX_USED_MEM = 148
-TIME_FORMAT = "%.3f"
+TIME_FORMAT  = "%.3f"
 
 CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
 MAPPING_FILE_IDS   = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
