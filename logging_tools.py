@@ -210,9 +210,9 @@ class twisted_log_observer(object):
     def close(self):
         for handle in self.__logger.logger.handlers:
             handle.close()
-        
+
 def get_logger(name, destination, **kwargs):
-    """ specify init_logger=True to append init.at to the logname """
+    """ specify init_logger=True to prepend init.at to the logname """
     is_linux, cur_pid = (
         sys.platform in ["linux2", "linux3"],
         os.getpid())
@@ -323,7 +323,7 @@ except:
     log_adapter = None
 
 class zmq_handler(logging.Handler):
-    def __init__(self, t_sock, logger_struct):
+    def __init__(self, t_sock, logger_struct, **kwargs):
         self.__target = t_sock
         self._open = True
         logging.Handler.__init__(self)
@@ -350,9 +350,26 @@ class zmq_handler(logging.Handler):
             self.__target.setsockopt(zmq.LINGER, 0)
             self.__target.close()
             del self.__target
-            # remove from handler
-            self.__logger.removeHandler(self)
-        
+            if self.__logger:
+                # remove from handler
+                self.__logger.removeHandler(self)
+
+class init_handler(zmq_handler):
+    zmq_context = None
+    def __init__(self, filename=None):
+        if not init_handler.zmq_context:
+            init_handler.zmq_context = zmq.Context()
+        cur_context = init_handler.zmq_context
+        pub = cur_context.socket(zmq.PUSH)
+        pub.connect(rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq"))
+        zmq_handler.__init__(self, pub, None)
+    def emit(self, record):
+        if not record.name.startswith("init.at."):
+            record.name = "init.at.%s" % (record.name)
+        if hasattr(record, "request"):
+            record.request = "request"
+        zmq_handler.emit(self, record)
+
 class queue_handler(logging.Handler):
     """ sends log requests to other queues """
     def __init__(self, t_queue, **kwargs):
