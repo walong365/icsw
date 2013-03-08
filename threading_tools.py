@@ -812,7 +812,7 @@ class timer_base(object):
             self.__loop_timer = 500
             self.log("set loop_timer to %d" % (self.__loop_timer))
     def unregister_timer(self, ut_cb_func):
-        self.__timer_liist = [cur_to for cur_to in self.__timer_list if cur_to.cb_func != ut_cb_func]
+        self.__timer_list = [cur_to for cur_to in self.__timer_list if cur_to.cb_func != ut_cb_func]
     def change_timer(self, ct_cb_func, timeout):
         # timeout is here in milliseconds, just like the loop_timer
         for cur_to in self.__timer_list:
