@@ -209,9 +209,13 @@ def check_system(opt_ns):
             if check_struct["type"] == "server":
                 if config_tools:
                     srv_type = server_type_map.get(name, name.replace("-", "_"))
-                    sql_info = config_tools.server_check(server_type="%s" % (srv_type))
-                    if not sql_info.effective_device:
-                        act_state = 5
+                    try:
+                        sql_info = config_tools.server_check(server_type="%s" % (srv_type))
+                    except:
+                        sql_info = "no db_con"
+                    else:
+                        if not sql_info.effective_device:
+                            act_state = 5
                 else:
                     sql_info = "no db_con"
             else:
