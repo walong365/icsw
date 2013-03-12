@@ -725,27 +725,28 @@ class main_config(object):
                              ("low_host"   , 5.0), ("high_host"   , 20.0)]:
             main_cfg["%s_flap_threshold" % (th_descr)] = th
         def_user = "%sadmin" % (global_config["MD_TYPE"])
-        cgi_config = base_config("cgi",
-                                 is_host_file=True,
-                                 values=[("main_config_file"         , "%s/%s.cfg" % (
-                                     self.__r_dir_dict["etc"], global_config["MAIN_CONFIG_NAME"])),
-                                         ("physical_html_path"       , "%s" % (self.__r_dir_dict["share"])),
-                                         ("url_html_path"            , "/%s" % (global_config["MD_TYPE"])),
-                                         ("show_context_help"        , 0),
-                                         ("use_authentication"       , 1),
-                                         #("default_user_name"        , def_user),
-                                         ("default_statusmap_layout" , 5),
-                                         ("default_statuswrl_layout" , 4),
-                                         ("refresh_rate"             , 60),
-                                         ("lock_author_name"         , 1),
-                                         ("authorized_for_system_information"        , def_user),
-                                         ("authorized_for_system_commands"           , def_user),
-                                         ("authorized_for_configuration_information" , def_user),
-                                         ("authorized_for_all_hosts"                 , def_user),
-                                         ("authorized_for_all_host_commands"         , def_user),
-                                         ("authorized_for_all_services"              , def_user),
-                                         ("authorized_for_all_service_commands"      , def_user)] + 
-                                 [("tac_show_only_hard_state", 1)] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else [])
+        cgi_config = base_config(
+            "cgi",
+            is_host_file=True,
+            values=[("main_config_file"         , "%s/%s.cfg" % (
+                self.__r_dir_dict["etc"], global_config["MAIN_CONFIG_NAME"])),
+                    ("physical_html_path"       , "%s" % (self.__r_dir_dict["share"])),
+                    ("url_html_path"            , "/%s" % (global_config["MD_TYPE"])),
+                    ("show_context_help"        , 0),
+                    ("use_authentication"       , 1),
+                    #("default_user_name"        , def_user),
+                    ("default_statusmap_layout" , 5),
+                    ("default_statuswrl_layout" , 4),
+                    ("refresh_rate"             , 60),
+                    ("lock_author_name"         , 1),
+                    ("authorized_for_system_information"        , def_user),
+                    ("authorized_for_system_commands"           , def_user),
+                    ("authorized_for_configuration_information" , def_user),
+                    ("authorized_for_all_hosts"                 , def_user),
+                    ("authorized_for_all_host_commands"         , def_user),
+                    ("authorized_for_all_services"              , def_user),
+                    ("authorized_for_all_service_commands"      , def_user)] + 
+            [("tac_show_only_hard_state", 1)] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else [])
         if sql_suc:
             pass
         else:
