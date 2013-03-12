@@ -64,6 +64,10 @@ import hashlib
 import binascii
 import operator
 import networkx
+try:
+    import mk_livestatus
+except ImportError:
+    mk_livestatus = None
 
 # nagios constants
 NAG_HOST_UNKNOWN     = -1
@@ -527,24 +531,25 @@ class main_config(object):
         resource_cfg["$USER3$"] = "/opt/cluster/sbin/csnmpclientzmq -t %d" % (global_config["CSNMPCLIENT_TIMEOUT"])
         NDOMOD_NAME, NDO2DB_NAME = ("ndomod",
                                     "ndo2db")
-        ndomod_cfg = base_config(NDOMOD_NAME,
-                                 belongs_to_ndo=True,
-                                 values=[
-                                     ("instance_name"              , "clusternagios"),
-                                     ("output_type"                , "unixsocket"),
-                                         ("output"                     , "%s/ido.sock" % (self.__r_dir_dict["var"])),
-                                         ("tcp_port"                   , 5668),
-                                         ("output_buffer_items"        , 5000),
-                                         ("buffer_file"                , "%s/ndomod.tmp" % (self.__r_dir_dict["var"])),
-                                         ("file_rotation_interval"     , 14400),
-                                         ("file_rotation_timeout"      , 60),
-                                         ("reconnect_interval"         , 15),
-                                         ("reconnect_warning_interval" , 15),
-                                         ("debug_level"                , 0),
-                                         ("debug_verbosity"            , 0),
-                                         ("debug_file"                 , os.path.join(self.__r_dir_dict["var"], "ndomod.debug")),
-                                         ("data_processing_options"    , global_config["NDO_DATA_PROCESSING_OPTIONS"]),
-                                         ("config_output_options"      , 2)])
+        ndomod_cfg = base_config(
+            NDOMOD_NAME,
+            belongs_to_ndo=True,
+            values=[
+                ("instance_name"              , "clusternagios"),
+                ("output_type"                , "unixsocket"),
+                ("output"                     , "%s/ido.sock" % (self.__r_dir_dict["var"])),
+                ("tcp_port"                   , 5668),
+                ("output_buffer_items"        , 5000),
+                ("buffer_file"                , "%s/ndomod.tmp" % (self.__r_dir_dict["var"])),
+                ("file_rotation_interval"     , 14400),
+                ("file_rotation_timeout"      , 60),
+                ("reconnect_interval"         , 15),
+                ("reconnect_warning_interval" , 15),
+                ("debug_level"                , 0),
+                ("debug_verbosity"            , 0),
+                ("debug_file"                 , os.path.join(self.__r_dir_dict["var"], "ndomod.debug")),
+                ("data_processing_options"    , global_config["NDO_DATA_PROCESSING_OPTIONS"]),
+                ("config_output_options"      , 2)])
         if not sql_suc:
             self.log("error reading sql_file '%s', no ndo2b_cfg to write" % (sql_file),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -556,87 +561,89 @@ class main_config(object):
                 sql_dict["PORT"] = 3306
             else:
                 sql_dict["PORT"] = 5432
-            ndo2db_cfg = base_config(NDO2DB_NAME,
-                                     belongs_to_ndo=True,
-                                     values=[("ndo2db_user"            , "idnagios"),
-                                             ("ndo2db_group"           , "idg"),
-                                             ("socket_type"            , "unix"),
-                                             ("socket_name"            , "%s/ido.sock" % (self.__r_dir_dict["var"])),
-                                             ("tcp_port"               , 5668),
-                                             ("db_servertype"          , db_server),
-                                             ("db_host"                , sql_dict["MYSQL_HOST"]),
-                                             ("db_port"                , sql_dict["PORT"]),
-                                             ("db_name"                , sql_dict["NAGIOS_DATABASE"]),
-                                             ("db_prefix"              , "%s_" % (global_config["MD_TYPE"])),
-                                             ("db_user"                , sql_dict["MYSQL_USER"]),
-                                             ("db_pass"                , sql_dict["MYSQL_PASSWD"]),
-                                             # time limits one week
-                                             ("max_timedevents_age"    , 1440),
-                                             ("max_systemcommands_age" , 1440),
-                                             ("max_servicechecks_age"  , 1440),
-                                             ("max_hostchecks_age"     , 1440),
-                                             ("max_eventhandlers_age"  , 1440),
-                                             ("debug_level"            , 0),
-                                             ("debug_verbosity"        , 1),
-                                             ("debug_file"             , "%s/ndo2db.debug" % (self.__r_dir_dict["var"])),
-                                             ("max_debug_file_size"    , 1000000)])
+            ndo2db_cfg = base_config(
+                NDO2DB_NAME,
+                belongs_to_ndo=True,
+                values=[("ndo2db_user"            , "idnagios"),
+                        ("ndo2db_group"           , "idg"),
+                        ("socket_type"            , "unix"),
+                        ("socket_name"            , "%s/ido.sock" % (self.__r_dir_dict["var"])),
+                        ("tcp_port"               , 5668),
+                        ("db_servertype"          , db_server),
+                        ("db_host"                , sql_dict["MYSQL_HOST"]),
+                        ("db_port"                , sql_dict["PORT"]),
+                        ("db_name"                , sql_dict["NAGIOS_DATABASE"]),
+                        ("db_prefix"              , "%s_" % (global_config["MD_TYPE"])),
+                        ("db_user"                , sql_dict["MYSQL_USER"]),
+                        ("db_pass"                , sql_dict["MYSQL_PASSWD"]),
+                        # time limits one week
+                        ("max_timedevents_age"    , 1440),
+                        ("max_systemcommands_age" , 1440),
+                        ("max_servicechecks_age"  , 1440),
+                        ("max_hostchecks_age"     , 1440),
+                        ("max_eventhandlers_age"  , 1440),
+                        ("debug_level"            , 0),
+                        ("debug_verbosity"        , 1),
+                        ("debug_file"             , "%s/ndo2db.debug" % (self.__r_dir_dict["var"])),
+                        ("max_debug_file_size"    , 1000000)])
         manual_dir = "%s/manual" % (self.__w_dir_dict["etc"])
         if not os.path.isdir(manual_dir):
             os.mkdir(manual_dir)
         settings_dir = "%s/df_settings" % (self.__w_dir_dict["etc"])
         if not os.path.isdir(settings_dir):
             os.mkdir(settings_dir)
-        main_values = [("log_file"                         , "%s/%s.log" % (self.__r_dir_dict["var"],
-                                                                            global_config["MD_TYPE"])),
-                       ("cfg_file"                         , []),
-                       ("cfg_dir"                          , os.path.join(self.__r_dir_dict["etc"], "manual")),
-                       ("resource_file"                    , "%s/%s.cfg" % (self.__r_dir_dict["etc"], resource_cfg.get_name())),
-                       ("%s_user" % (global_config["MD_TYPE"]) , "idnagios"),
-                       ("%s_group" % (global_config["MD_TYPE"]) , "idg"),
-                       ("check_external_commands"          , 1),
-                       ("command_check_interval"           , 1),
-                       ("command_file"                     , self.get_command_name()),
-                       ("command_check_interval"           , "5s"),
-                       ("lock_file"                        , "%s/%s" % (self.__r_dir_dict["var"], global_config["MD_LOCK_FILE"])),
-                       ("temp_file"                        , "%s/temp.tmp" % (self.__r_dir_dict["var"])),
-                       ("log_rotation_method"              , "d"),
-                       ("log_archive_path"                 , self.__r_dir_dict["var/archives"]),
-                       ("use_syslog"                       , 0),
-                       ("host_inter_check_delay_method"    , "s"),
-                       ("service_inter_check_delay_method" , "s"),
-                       ("service_interleave_factor"        , "s"),
-                       ("max_concurrent_checks"            , global_config["MAX_CONCURRENT_CHECKS"]),
-                       ("service_reaper_frequency"         , 12),
-                       ("sleep_time"                       , 1),
-                       ("retain_state_information"         , global_config["RETAIN_SERVICE_STATUS"]),# if self.master else 0),
-                       ("state_retention_file"             , "%s/retention.dat" % (self.__r_dir_dict["var"])),
-                       ("retention_update_interval"        , 60),
-                       ("use_retained_program_state"       , 0),
-                       ("use_retained_scheduling_info"     , 0),
-                       ("interval_length"                  , 60 if not self.master else 60),
-                       ("use_aggressive_host_checking"     , 0),
-                       ("execute_service_checks"           , 1),
-                       ("accept_passive_host_checks"       , 1),
-                       ("accept_passive_service_checks"    , 1),
-                       ("enable_notifications"             , 1 if self.master else 0),
-                       ("enable_event_handlers"            , 1),
-                       ("process_performance_data"         , (1 if global_config["ENABLE_PNP"] else 0) if self.master else 0),
-                       ("obsess_over_services"             , 1 if not self.master else 0),
-                       ("obsess_over_hosts"                , 1 if not self.master else 0),
-                       ("check_for_orphaned_services"      , 0),
-                       ("check_service_freshness"          , 0),
-                       ("freshness_check_interval"         , 15),
-                       ("enable_flap_detection"            , 0),
-                       ("date_format"                      , "euro"),
-                       ("illegal_object_name_chars"        , r"~!$%^&*|'\"<>?),()"),
-                       ("illegal_macro_output_chars"       , r"~$&|'\"<>"),
-                       ("admin_email"                      , "lang-nevyjel@init.at"),
-                       ("admin_pager"                      , "????"),
-                       #("debug_file"      , os.path.join(self.__r_dir_dict["var"], "icinga.dbg")),
-                       #("debug_level"     , -1),
-                       #("debug_verbosity" , 2),
-                       # NDO stuff
-                       ]
+        main_values = [
+            ("log_file"                         , "%s/%s.log" % (self.__r_dir_dict["var"],
+                                                                 global_config["MD_TYPE"])),
+            ("cfg_file"                         , []),
+            ("cfg_dir"                          , os.path.join(self.__r_dir_dict["etc"], "manual")),
+            ("resource_file"                    , "%s/%s.cfg" % (self.__r_dir_dict["etc"], resource_cfg.get_name())),
+            ("%s_user" % (global_config["MD_TYPE"]) , "idnagios"),
+            ("%s_group" % (global_config["MD_TYPE"]) , "idg"),
+            ("check_external_commands"          , 1),
+            ("command_check_interval"           , 1),
+            ("command_file"                     , self.get_command_name()),
+            ("command_check_interval"           , "5s"),
+            ("lock_file"                        , "%s/%s" % (self.__r_dir_dict["var"], global_config["MD_LOCK_FILE"])),
+            ("temp_file"                        , "%s/temp.tmp" % (self.__r_dir_dict["var"])),
+            ("log_rotation_method"              , "d"),
+            ("log_archive_path"                 , self.__r_dir_dict["var/archives"]),
+            ("use_syslog"                       , 0),
+            ("host_inter_check_delay_method"    , "s"),
+            ("service_inter_check_delay_method" , "s"),
+            ("service_interleave_factor"        , "s"),
+            ("max_concurrent_checks"            , global_config["MAX_CONCURRENT_CHECKS"]),
+            ("service_reaper_frequency"         , 12),
+            ("sleep_time"                       , 1),
+            ("retain_state_information"         , global_config["RETAIN_SERVICE_STATUS"]),# if self.master else 0),
+            ("state_retention_file"             , "%s/retention.dat" % (self.__r_dir_dict["var"])),
+            ("retention_update_interval"        , 60),
+            ("use_retained_program_state"       , 0),
+            ("use_retained_scheduling_info"     , 0),
+            ("interval_length"                  , 60 if not self.master else 60),
+            ("use_aggressive_host_checking"     , 0),
+            ("execute_service_checks"           , 1),
+            ("accept_passive_host_checks"       , 1),
+            ("accept_passive_service_checks"    , 1),
+            ("enable_notifications"             , 1 if self.master else 0),
+            ("enable_event_handlers"            , 1),
+            ("process_performance_data"         , (1 if global_config["ENABLE_PNP"] else 0) if self.master else 0),
+            ("obsess_over_services"             , 1 if not self.master else 0),
+            ("obsess_over_hosts"                , 1 if not self.master else 0),
+            ("check_for_orphaned_services"      , 0),
+            ("check_service_freshness"          , 0),
+            ("freshness_check_interval"         , 15),
+            ("enable_flap_detection"            , 0),
+            ("date_format"                      , "euro"),
+            ("illegal_object_name_chars"        , r"~!$%^&*|'\"<>?),()"),
+            ("illegal_macro_output_chars"       , r"~$&|'\"<>"),
+            ("admin_email"                      , "lang-nevyjel@init.at"),
+            ("admin_pager"                      , "????"),
+            #("debug_file"      , os.path.join(self.__r_dir_dict["var"], "icinga.dbg")),
+            #("debug_level"     , -1),
+            #("debug_verbosity" , 2),
+            # NDO stuff
+        ]
         if self.master:
             if global_config["ENABLE_LIVESTATUS"]:
                 main_values.extend([
@@ -692,12 +699,14 @@ class main_config(object):
                 ("stalking_event_handlers_for_services", 1),
             ])
         if global_config["MD_VERSION"] >= 3 or global_config["MD_TYPE"] == "icinga":
-            main_values.extend([("object_cache_file"            , "%s/object.cache" % (self.__r_dir_dict["var"])),
-                                ("use_large_installation_tweaks", "1"),
-                                ("enable_environment_macros"    , "0"),
-                                ("max_service_check_spread"     , global_config["MAX_SERVICE_CHECK_SPREAD"]),
-                                ("max_host_check_spread"        , global_config["MAX_HOST_CHECK_SPREAD"]),
-                                ])
+            main_values.extend(
+                [
+                    ("object_cache_file"            , "%s/object.cache" % (self.__r_dir_dict["var"])),
+                    ("use_large_installation_tweaks", "1"),
+                    ("enable_environment_macros"    , "0"),
+                    ("max_service_check_spread"     , global_config["MAX_SERVICE_CHECK_SPREAD"]),
+                    ("max_host_check_spread"        , global_config["MAX_HOST_CHECK_SPREAD"]),
+                ])
         else:
             # values for Nagios 1.x, 2.x
             main_values.extend([("comment_file"                     , "%s/comment.log" % (self.__r_dir_dict["var"])),
@@ -2720,6 +2729,7 @@ class server_process(threading_tools.process_pool):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
+        self.__enable_livestatus = global_config["ENABLE_LIVESTATUS"]
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         if not global_config["DEBUG"]:
@@ -2760,11 +2770,12 @@ class server_process(threading_tools.process_pool):
         if os.path.isdir(self.__esd):
             ofile = "%s/%s.mvd" % (self.__esd, self.__nvn)
             try:
-                file(ofile, "w").write("\n".join(["nag.tot:0:Number of devices monitored by %s:1:1:1" % (global_config["MD_TYPE"]),
-                                                  "nag.up:0:Number of devices up:1:1:1",
-                                                  "nag.down:0:Number of devices down:1:1:1",
-                                                  "nag.unknown:0:Number of devices unknown:1:1:1",
-                                                  ""]))
+                file(ofile, "w").write("\n".join([
+                    "nag.tot:0:Number of devices monitored by %s:1:1:1" % (global_config["MD_TYPE"]),
+                    "nag.up:0:Number of devices up:1:1:1",
+                    "nag.down:0:Number of devices down:1:1:1",
+                    "nag.unknown:0:Number of devices unknown:1:1:1",
+                    ""]))
             except:
                 self.log("cannot write %s: %s" % (ofile, process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
@@ -2772,39 +2783,65 @@ class server_process(threading_tools.process_pool):
                 init_ok = True
         self.__em_ok = init_ok
     def _update(self):
-        sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM %s_hoststatus nhs, %s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (	
-            global_config["MD_TYPE"],
-            global_config["MD_TYPE"])
-        cursor = connections["monitor"].cursor()
-        nag_suc = cursor.execute(sql_str)
-        nag_dict = dict([(db_rec[1], db_rec[0]) for db_rec in cursor.fetchall()])
-        num_tot, num_up, num_down = (len(nag_dict.keys()),
-                                     nag_dict.values().count(NAG_HOST_UP),
-                                     nag_dict.values().count(NAG_HOST_DOWN))
-        num_unknown = num_tot - (num_up + num_down)
-        self.log("%s status is: %d up, %d down, %d unknown (%d total)" % (
-            global_config["MD_TYPE"],
-            num_up,
-            num_down,
-            num_unknown,
-            num_tot))
-        if not self.__em_ok:
-            self._init_em()
-        if self.__em_ok:
-            ofile = "%s/%s.mvv" % (self.__esd, self.__nvn)
-            try:
-                file(ofile, "w").write("\n".join(["nag.tot:i:%d" % (num_tot),
-                                                  "nag.up:i:%d" % (num_up),
-                                                  "nag.down:i:%d" % (num_down),
-                                                  "nag.unknown:i:%d" % (num_unknown),
-                                                  ""]))
-            except:
-                self.log("cannot write to file %s: %s" % (ofile,
-                                                          process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+        res_dict = {}
+        if self.__enable_livestatus:
+            if mk_livestatus:
+                sock_name = "/opt/%s/var/live" % (global_config["MD_TYPE"])
+                cur_s = mk_livestatus.Socket(sock_name)
+                try:
+                    query = cur_s.query("GET hosts\nColumns: name state\n")
+                except:
+                    self.log("cannot query socket %s: %s" % (sock_name, process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_CRITICAL)
+                else:
+                    q_list = [int(value["state"]) for value in query.get_list()]
+                    res_dict = dict([(s_name, q_list.count(value)) for s_name, value in [
+                        ("unknown", NAG_HOST_UNKNOWN),
+                        ("up"     , NAG_HOST_UP),
+                        ("down"   , NAG_HOST_DOWN)]])
+                    res_dict["tot"] = sum(res_dict.values())
+                #cur_s.peer.close()
+                del cur_s
             else:
-                pass
-        cursor.close()
+                self.log("mk_livestatus enabled but module not loaded", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            # old code, ask SQL Server
+            sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM %s_hoststatus nhs, %s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (	
+                global_config["MD_TYPE"],
+                global_config["MD_TYPE"])
+            cursor = connections["monitor"].cursor()
+            nag_suc = cursor.execute(sql_str)
+            nag_dict = dict([(db_rec[1], db_rec[0]) for db_rec in cursor.fetchall()])
+            res_dict = {"tot"  : len(nag_dict.keys()),
+                        "up"   : nag_dict.values().count(NAG_HOST_UP),
+                        "down" : nag_dict.values().count(NAG_HOST_DOWN)}
+            res_dict["unknown"] = res_dict["tot"] - (res_dict["up"] + res_dict["down"])
+            cursor.close()
+        if res_dict:
+            self.log("%s status is: %d up, %d down, %d unknown (%d total)" % (
+                global_config["MD_TYPE"],
+                res_dict["up"],
+                res_dict["down"],
+                res_dict["unknown"],
+                res_dict["tot"]))
+            if not self.__em_ok:
+                self._init_em()
+            if self.__em_ok:
+                ofile = "%s/%s.mvv" % (self.__esd, self.__nvn)
+                try:
+                    file(ofile, "w").write("\n".join(["nag.tot:i:%d" % (res_dict["tot"]),
+                                                      "nag.up:i:%d" % (res_dict["up"]),
+                                                      "nag.down:i:%d" % (res_dict["down"]),
+                                                      "nag.unknown:i:%d" % (res_dict["unknown"]),
+                                                      ""]))
+                except:
+                    self.log("cannot write to file %s: %s" % (ofile,
+                                                              process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    pass
+        else:
+            self.log("empty result dict for _update()", logging_tools.LOG_LEVEL_WARN)
     def _log_config(self):
         self.log("Config info:")	
         for line, log_level in global_config.get_log(clear=True):
