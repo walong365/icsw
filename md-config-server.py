@@ -586,9 +586,6 @@ class main_config(object):
                         ("debug_verbosity"        , 1),
                         ("debug_file"             , "%s/ndo2db.debug" % (self.__r_dir_dict["var"])),
                         ("max_debug_file_size"    , 1000000)])
-        manual_dir = "%s/manual" % (self.__w_dir_dict["etc"])
-        if not os.path.isdir(manual_dir):
-            os.mkdir(manual_dir)
         settings_dir = "%s/df_settings" % (self.__w_dir_dict["etc"])
         if not os.path.isdir(settings_dir):
             os.mkdir(settings_dir)
@@ -596,7 +593,6 @@ class main_config(object):
             ("log_file"                         , "%s/%s.log" % (self.__r_dir_dict["var"],
                                                                  global_config["MD_TYPE"])),
             ("cfg_file"                         , []),
-            ("cfg_dir"                          , os.path.join(self.__r_dir_dict["etc"], "manual")),
             ("resource_file"                    , "%s/%s.cfg" % (self.__r_dir_dict["etc"], resource_cfg.get_name())),
             ("%s_user" % (global_config["MD_TYPE"]) , "idnagios"),
             ("%s_group" % (global_config["MD_TYPE"]) , "idg"),
@@ -645,6 +641,12 @@ class main_config(object):
             # NDO stuff
         ]
         if self.master:
+            manual_dir = "%s/manual" % (self.__w_dir_dict["etc"])
+            if not os.path.isdir(manual_dir):
+                os.mkdir(manual_dir)
+            main_values.append(
+                ("cfg_dir", os.path.join(self.__r_dir_dict["etc"], "manual")),
+            )
             if global_config["ENABLE_LIVESTATUS"]:
                 main_values.extend([
                     ("*broker_module", "%s/mk-livestatus/livestatus.o %s/live" % (
