@@ -184,8 +184,12 @@ function sidebar_handler() {
                 var root_node = $("#sidebar_tree").dynatree("getRoot");
                 $(xml).find("device_groups device_group").each(function() {
                     var cur_dg = $(this);
+                    var title_str = cur_dg.attr("name");
+                    if (cur_dg.find("device[meta_device='0']").length) {
+                        title_str += " (" + cur_dg.find("device[meta_device='0']").length + ")";
+                    };
                     var dg_node = root_node.addChild({
-                        title    : cur_dg.attr("name"),
+                        title    : title_str,
                         isFolder : true,
                         isLazy   : false,
                         select   : cur_dg.attr("tree_selected") == "selected" ? true : false,
@@ -197,9 +201,10 @@ function sidebar_handler() {
                         if (cur_dev.attr("meta_device") == "1") {
                         } else {
                             dg_node.addChild({
-                                title  : cur_dev.attr("title"),
-                                select : cur_dev.attr("tree_selected") == "selected" ? true : false,
-                                key    : cur_dev.attr("key")
+                                title   : cur_dev.attr("title"),
+                                select  : cur_dev.attr("tree_selected") == "selected" ? true : false,
+                                key     : cur_dev.attr("key"),
+                                tooltip : "UUID: " + cur_dev.attr("uuid")
                             });
                         };
                     });
