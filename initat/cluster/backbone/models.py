@@ -473,6 +473,7 @@ class device(models.Model):
             curl=unicode(self.curl),
             enable_perfdata="1" if self.enable_perfdata else "0",
             automap_root_nagvis="1" if self.automap_root_nagvis else "0",
+            uuid=self.uuid or "",
         )
         if kwargs.get("with_monitoring", False):
             r_xml.attrib.update(
