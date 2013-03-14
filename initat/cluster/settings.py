@@ -16,7 +16,7 @@ if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
 if "START_VIA_RC" in os.environ:
     DEBUG = False
 else:
-    DEBUG = os.uname()[1] in ["slayer", "eddie"]
+    DEBUG = os.uname()[1] in ["slayer", "eddie", "treutner"]
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (

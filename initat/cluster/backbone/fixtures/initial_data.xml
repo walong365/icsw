@@ -226,24 +226,6 @@
         <field type="CharField" name="sarg1_descr"></field>
         <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
     </object>
-    <object pk="1" model="backbone.snmp_class">
-        <field type="CharField" name="name">default_class</field>
-        <field type="CharField" name="descr">Standard Class for SNMP-devices (v2c)</field>
-        <field type="CharField" name="read_community">public</field>
-        <field type="CharField" name="write_community">private</field>
-        <field type="IntegerField" name="snmp_version">2</field>
-        <field type="IntegerField" name="update_freq">60</field>
-        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
-    </object>
-    <object pk="2" model="backbone.snmp_class">
-        <field type="CharField" name="name">default_class</field>
-        <field type="CharField" name="descr">Standard Class for SNMP-devices (v1)</field>
-        <field type="CharField" name="read_community">public</field>
-        <field type="CharField" name="write_community">private</field>
-        <field type="IntegerField" name="snmp_version">1</field>
-        <field type="IntegerField" name="update_freq">60</field>
-        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
-    </object>
     <object pk="1" model="backbone.device_class">
         <field type="CharField" name="classname">normal</field>
         <field type="IntegerField" name="priority">0</field>
