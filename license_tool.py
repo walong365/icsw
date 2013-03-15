@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2012 Andreas Lang-Nevyjel
+# Copyright (C) 2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # encoding: -*- utf8 -*-
@@ -21,8 +21,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+""" ask license server and return XML-represenation of license situation """
+
 import sys
-import os
 import subprocess
 import logging_tools
 import time
@@ -64,11 +65,14 @@ class license_check(object):
         ret_struct = E.license_info(server_address=self.server_addr,
                                     server_port="%d" % (self.server_port))
         if ext_code:
-            ret_struct.attrib.update({"state" : "%d" % (logging_tools.LOG_LEVEL_ERROR),
-                                      "info"  : "%s" % (ext_lines)})
+            ret_struct.attrib.update({
+                "state" : "%d" % (logging_tools.LOG_LEVEL_ERROR),
+                "info"  : "%s" % (ext_lines)})
+            line_num = 0
         else:
-            ret_struct.attrib.update({"state" : "%d" % (logging_tools.LOG_LEVEL_OK),
-                                      "info"  : "call successfull"})
+            ret_struct.attrib.update({
+                "state" : "%d" % (logging_tools.LOG_LEVEL_OK),
+                "info"  : "call successfull"})
             ret_struct.append(E.license_servers())
             ret_struct.append(E.licenses())
             found_server = set()
