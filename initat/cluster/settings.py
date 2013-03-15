@@ -16,7 +16,8 @@ if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
 if "START_VIA_RC" in os.environ:
     DEBUG = False
 else:
-    DEBUG = os.uname()[1] in ["slayer", "eddie", "treutner"]
+    DEBUG = os.uname()[1].split(".")[0] in ["slayer", "eddie", "treutner"]
+DEBUG = False
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -24,7 +25,11 @@ ADMINS = (
     ("Andreas Lang-Nevyjel", "lang-nevyjel@init.at"),
 )
 
+ALLOWED_HOSTS = ["*"]
+
 MANAGERS = ADMINS
+
+MAIL_SERVER = "localhost"
 
 DATABASES = {
     "default": {
@@ -189,12 +194,16 @@ TEMPLATE_LOADERS = (
 MIDDLEWARE_CLASSES = (
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    
     #'django.middleware.csrf.CsrfViewMiddleware',
+
     "django.middleware.transaction.TransactionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
     "backbone.middleware.database_debug",
 )
 
@@ -304,19 +313,19 @@ if CLUSTER_LICENSE["rest"]:
         )
     }
 
-##LOGGING = {
-##    'version': 1,
-##    'disable_existing_loggers': True,
-##    'formatters': {
-##        'verbose': {
-##            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s %(thread)d %(message)s'
-##        },
-##        'simple': {
-##            'format': '%(levelname)s %(message)s'
-##        },
-##    },
-##    'handlers': {
-##        'null': {
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': True,
+    'formatters': {
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s %(thread)d %(message)s'
+        },
+        'simple': {
+            'format': '%(levelname)s %(message)s'
+        },
+    },
+    'handlers': {
+###        'null': {
 ##            'level': 'DEBUG',
 ##            'class': 'django.utils.log.NullHandler',
 ##        },
@@ -329,18 +338,18 @@ if CLUSTER_LICENSE["rest"]:
 ##            'level': 'ERROR',
 ##            'class': 'django.utils.log.AdminEmailHandler',
 ##        },
-##        "init.at" : {
-##            "level" : "INFO",
-##            "class" : "logging_tools.init_handler",
-##            "formatter" : "verbose",
-##        },
-##    },
-##    'loggers': {
-##        'django': {
-##            'handlers': ['init.at'],
-##            'propagate': True,
-##            'level': 'INFO',
-##        },
+        "init.at" : {
+            "level" : "ERROR",
+            "class" : "logging_tools.init_handler",
+            "formatter" : "verbose",
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['init.at'],
+            'propagate': True,
+            'level': 'ERROR',
+        },
 ##        #'django.request': {
 ##        #    'handlers': ['init.at'],
 ##        #    'level': 'INFO',
@@ -350,5 +359,5 @@ if CLUSTER_LICENSE["rest"]:
 ##            'handlers': ["init.at"],
 ##            'level': 'INFO',
 ##        }
-##    }
-##}
+    }
+}
