@@ -108,8 +108,8 @@ class device_tree
                 create_input_el(cur_dg, "description", line_prefix, {master_xml : @xml})
             )
         )
-        new_tr.append($("<th>").text(if cur_dg.attr("is_cdg") == 1 then "Cluster device group" else  "device group"))
         new_tr.append($("<th>").text("device type"))
+        new_tr.append($("<th>").text(if cur_dg.attr("is_cdg") == 1 then "Cluster device group" else  "device group"))
         new_tr.append($("<th>").text("motherserver"))
         new_tr.append($("<th>").text("cURL"))
         if cur_dg.attr("is_cdg") == "1"
