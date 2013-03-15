@@ -28,8 +28,10 @@ class device_tree
         @xml.find("device_group").each (index, cur_dg) =>
             new_table.append(@build_group($(cur_dg)))
         new_table.append(@build_new_group)
-        new_table.append(@build_new_device)
-        new_table.append(@build_selected)
+        @num_devgs = @xml.find("device_group[is_cdg='0']").length
+        if @num_devgs
+            new_table.append(@build_new_device)
+            new_table.append(@build_selected)
         @top_div.append(new_table)
         @update_device_group_info()
         #new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; })
@@ -44,7 +46,7 @@ class device_tree
             dg_pk = cur_tr.attr("id").split("__")[1]
             @recolor_device_group(dg_pk)
             info_th = cur_tr.find("span[id^='devg__'][id$='__info']")
-            num_devs = @xml.find("device_group[pk='#{dg_pk}'] device[device_type!='" + @md_dt + "']").length
+            num_devs = @xml.find("device_group[pk='#{dg_pk}'] device[device_type!='#{@md_dt}']").length
             info_th.text(num_devs)
     toggle_device_group: (line_prefix, state, name) =>
         dg_pk = line_prefix.split("__")[1]
@@ -58,7 +60,7 @@ class device_tree
         dev_id = cur_el.attr("id").split("__")[1]
         new_dg_id = cur_el.attr("value")
         cur_el.parents("tr:first").remove()
-        new_dg = @xml.find("device_group[pk='" + new_dg_id + "']")
+        new_dg = @xml.find("device_group[pk='#{new_dg_id}']")
         dev_xml = @xml.find("device[pk='#{dev_id}']")
         # important: set device group
         dev_xml.attr("device_group", new_dg_id)
@@ -133,7 +135,7 @@ class device_tree
                 )
             ))
         dummy_div = $("<div>").append(new_tr)
-        cur_dg.find("device[device_type!='" + @md_dt + "']").each (index, cur_d) =>
+        cur_dg.find("device[device_type!='#{@md_dt}']").each (index, cur_d) =>
             dummy_div.append(@build_device(cur_dg, $(cur_d)))
         return dummy_div.children()
     build_device: (cur_dg, cur_d) ->
@@ -199,8 +201,8 @@ class device_tree
         new_tr.hide()
         return new_tr
     delete_device: (dev_pk) =>
-        @top_div.find("tr[id^='dev__'][id$='__" + dev_pk + "']").remove()
-        @xml.find("device[pk='" + dev_pk + "']").remove()
+        @top_div.find("tr[id^='dev__'][id$='__#{dev_pk}']").remove()
+        @xml.find("device[pk='#{dev_pk}']").remove()
         @update_device_group_info()
     create_device: (dev_xml) =>
         cur_dg = @xml.find("device_group[pk='" + dev_xml.attr("device_group") + "']")
@@ -211,24 +213,31 @@ class device_tree
         force_expansion_state(dg_tr, true)
         @update_device_group_info()
     delete_device_group: (devg_pk) =>
-        @top_div.find("tr[id='devg__" + devg_pk + "']").remove()
-        @xml.find("device_group[pk='" + devg_pk + "']").remove()
-        @update_device_group_info()
-        @top_div.find("select[id$='__device_group'] option[value='" + devg_pk + "']").each (index, opt_el) =>
+        @top_div.find("tr[id='devg__#{devg_pk}']").remove()
+        @xml.find("device_group[pk='#{devg_pk}']").remove()
+        @top_div.find("select[id$='__device_group'] option[value='#{devg_pk}']").each (index, opt_el) =>
             $(opt_el).remove()
+        @num_devgs--
+        if not @num_devgs
+            @top_div.find("table tr")[-2..].remove()
+        @update_device_group_info()
     create_device_group: (devg_xml) =>
         @xml.find("response").append(devg_xml)
         @top_div.find("tr[id='device_group__new']").before(@build_group(devg_xml))
-        @update_device_group_info()
         @top_div.find("select[id$='__device_group']").each (index, sel_el) =>
             $(sel_el).append($("<option>").attr({
                 "value" : devg_xml.attr("pk")
             }).text(devg_xml.attr("name")))
+        @num_devgs++
+        if @num_devgs == 1
+            @top_div.find("table").append(@build_new_device)
+            @top_div.find("table").append(@build_selected)
+        @update_device_group_info()
     update_dg_changes: (dg_el) =>
         dg_pk = dg_el.attr("id").split("__")[1]
-        new_name = @xml.find("device_group[pk='" + dg_pk + "']").attr("name")
+        new_name = @xml.find("device_group[pk='#{dg_pk}']").attr("name")
         @top_div.find("select[id$='__device_group']").each (index, sel_el) =>
-            $(sel_el).find("option[value='" + dg_pk + "']").each (index, opt_el) =>
+            $(sel_el).find("option[value='#{dg_pk}']").each (index, opt_el) =>
                 $(opt_el).text(new_name)
     build_new_group: =>
         # new device group
@@ -379,7 +388,7 @@ class device_tree
             }).bind("click", (event) ->
                 sel_list = $("table#device_tree input[id^='dev__'][id$='__sel']:checked")
                 if sel_list.length
-                    if confirm("really delete selected " + sel_list.length + " devices ?")
+                    if confirm("really delete selected #{sel_list.length} devices ?")
                         $(sel_list).each (index, cur_sel) ->
                             $(cur_sel).parents("tr:first").find("input[value='delete']").trigger("click", ["noask"])
             )
