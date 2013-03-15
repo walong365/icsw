@@ -105,7 +105,7 @@ IDOMOD_PROCESS_ACKNOWLEDGEMENT_DATA   = 2 ** 22
 IDOMOD_PROCESS_STATECHANGE_DATA       = 2 ** 23
 IDOMOD_PROCESS_CONTACT_STATUS_DATA    = 2 ** 24
 IDOMOD_PROCESS_ADAPTIVE_CONTACT_DATA  = 2 ** 25
- 
+
 BROKER_PROGRAM_STATE        = 2 ** 0
 BROKER_TIMED_EVENTS         = 2 ** 1
 BROKER_SERVICE_CHECKS       = 2 ** 2
@@ -155,7 +155,7 @@ class snmp_settings(object):
                     ret_dict[s_key] = self.__snmp_vars[key][s_key]
                     break
         return ret_dict
-        
+
 class main_config(object):
     def __init__(self, b_proc, monitor_server, **kwargs):
         self.__build_process = b_proc
@@ -388,11 +388,11 @@ class main_config(object):
                     ("graphvizpath", "/opt/cluster/bin/"),
                     ]),
                 ("wui", [
-                   ("maplocktime", 5),
-                   ("grid_show", 0),
-                   ("grid_color", "#D5DCEF"),
-                   ("grid_steps", 32),
-                   ]),
+                    ("maplocktime", 5),
+                    ("grid_show", 0),
+                    ("grid_color", "#D5DCEF"),
+                    ("grid_steps", 32),
+                    ]),
                 ("worker", [
                     ("interval", "10"),
                     ("requestmaxparams", 0),
@@ -650,8 +650,8 @@ class main_config(object):
             if global_config["ENABLE_LIVESTATUS"]:
                 main_values.extend([
                     ("*broker_module", "%s/mk-livestatus/livestatus.o %s/live" % (
-                    self.__r_dir_dict["lib64"],
-                    self.__r_dir_dict["var"]))
+                        self.__r_dir_dict["lib64"],
+                        self.__r_dir_dict["var"]))
                 ])
             if global_config["ENABLE_PNP"]:
                 main_values.extend([
@@ -662,7 +662,7 @@ class main_config(object):
                     ("service_perfdata_file_mode", "a"),
                     ("service_perfdata_file_processing_interval", "15"),
                     ("service_perfdata_file_processing_command", "process-service-perfdata-file"),
-                    
+
                     ("host_perfdata_file", os.path.join(global_config["PNP_DIR"], "var/host-perfdata")),
                     ("host_perfdata_file_template", "DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$"),
                     ("host_perfdata_file_mode", "a"),
@@ -856,7 +856,7 @@ class main_config(object):
                                             perm_name.split(".")[0].title(),
                                             perm_name.split(".")[1],
                                             perm_name.split(".")[2]
-                                        )).lastrowid
+                                            )).lastrowid
                                         self.log("permission '%s' has id %d" % (perm_name, perms_dict[perm_name]))
                                     add_perms.append(perm_name)
                             # add perms
@@ -875,7 +875,7 @@ class main_config(object):
                         new_userid = cur_c.execute("INSERT INTO users VALUES(Null, '%s', '%s')" % (
                             cur_u.login,
                             binascii.hexlify(base64.b64decode(cur_u.password.split(":", 1)[1])),
-                        )).lastrowid
+                            )).lastrowid
                         cur_c.execute("INSERT INTO users2roles VALUES(%d, %d)" % (
                             new_userid,
                             role_dict[target_role],
@@ -978,7 +978,7 @@ class base_config(object):
             for act_v in value:
                 c_lines.append("%s=%s" % (key, act_v))
         self.act_content = self.headers + c_lines
-        
+
 class nag_config(object):
     def __init__(self, name, **kwargs):
         self.__name = name
@@ -1127,7 +1127,7 @@ class host_type_config(object):
                                    (not first_entry and ["  use %s_%d" % (TEMPLATE_NAME, mother_service)] or []) + \
                                    add_lines + ["  %s %s" % (act_key, val), "}", ""])
         return my_idx
-    
+
 class time_periods(host_type_config):
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
@@ -1152,7 +1152,7 @@ class time_periods(host_type_config):
         return self.__obj_list
     def values(self):
         return self.__dict.values()
-        
+
 class all_servicegroups(host_type_config):
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
@@ -1180,7 +1180,7 @@ class all_servicegroups(host_type_config):
         return [obj for obj in self.__obj_list if self.__host_srv_lut[obj["name"]]]
     def values(self):
         return self.__dict.values()
-    
+
 class all_commands(host_type_config):
     def __init__(self, gen_conf, build_proc):
         check_command.gen_conf = gen_conf
@@ -1346,7 +1346,7 @@ class all_commands(host_type_config):
         return self.__dict.values()
     def __getitem__(self, key):
         return self.__dict[key]
-    
+
 class all_contacts(host_type_config):
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
@@ -1410,7 +1410,7 @@ class all_contacts(host_type_config):
         return self.__obj_list
     def values(self):
         return self.__dict.values()
-        
+
 class all_contact_groups(host_type_config):
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
@@ -1443,7 +1443,7 @@ class all_contact_groups(host_type_config):
         return self.__obj_list
     def values(self):
         return self.__dict.values()
-        
+
 class all_host_groups(host_type_config):
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
@@ -1481,7 +1481,7 @@ class all_host_groups(host_type_config):
         return self.__obj_list
     def values(self):
         return self.__dict.values()
-        
+
 class all_hosts(host_type_config):
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
@@ -1507,7 +1507,7 @@ class all_hosts(host_type_config):
         return self.__dict.keys()
     #def _add_hosts_from_db(self, gen_conf):
     #    pass
-    
+
 class all_hosts_extinfo(host_type_config):
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
@@ -1533,7 +1533,7 @@ class all_hosts_extinfo(host_type_config):
         return self.__dict.keys()
     def _add_hosts_from_db(self, gen_conf):
         pass
-    
+
 class all_services(host_type_config):
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
@@ -1555,7 +1555,7 @@ class all_services(host_type_config):
         self.__obj_list.remove(host_obj)
     def _add_services_from_db(self, gen_conf):
         pass
-    
+
 class check_command(object):
     def __init__(self, name, com_line, config, template, descr, device=0, special=None, **kwargs):
         self.__name = name
@@ -1595,7 +1595,7 @@ class check_command(object):
             try:
                 """
                 handle the various input formats:
-                
+
                 ${ARG#:var_name:default}
                 ${ARG#:var_name:default}$
                 ${ARG#:default}
@@ -1707,7 +1707,7 @@ class check_command(object):
         return (self.__arg_lut, self.__arg_list)
     def __repr__(self):
         return "%s [%s]" % (self.__name, self.command_line)
-        
+
 class device_templates(dict):
     def __init__(self, build_proc):
         dict.__init__(self)
@@ -2659,7 +2659,7 @@ class build_process(threading_tools.process_obj):
                         "}",
                     ]))
             cache_dir = os.path.join(global_config["NAGVIS_DIR"], "var")
-	    if os.path.isdir(cache_dir):
+            if os.path.isdir(cache_dir):
                 rem_ok, rem_failed = (0, 0)
                 for entry in os.listdir(cache_dir):
                     full_name = os.path.join(cache_dir, entry)
@@ -2742,7 +2742,7 @@ class build_process(threading_tools.process_obj):
             valid_ips = sum([net_devices[nd_pk] for val, nd_pk, loc_trace in traces], [])
             #(",".join([",".join([y for y in net_devices[x]]) for x in targ_netdev_idxs])).split(",")
         return valid_ips, traces
-        
+
 class server_process(threading_tools.process_pool):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
