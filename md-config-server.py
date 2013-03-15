@@ -2659,20 +2659,21 @@ class build_process(threading_tools.process_obj):
                         "}",
                     ]))
             cache_dir = os.path.join(global_config["NAGVIS_DIR"], "var")
-            rem_ok, rem_failed = (0, 0)
-            for entry in os.listdir(cache_dir):
-                full_name = os.path.join(cache_dir, entry)
-                if os.path.isfile(full_name):
-                    try:
-                        os.unlink(full_name)
-                    except:
-                        rem_failed += 1
-                    else:
-                        rem_ok += 1
-            self.log("cleaned cache_dir %s (%d ok, %d failed)" % (
-                cache_dir,
-                rem_ok,
-                rem_failed), logging_tools.LOG_LEVEL_ERROR if rem_failed else logging_tools.LOG_LEVEL_OK)
+	    if os.path.isdir(cache_dir):
+                rem_ok, rem_failed = (0, 0)
+                for entry in os.listdir(cache_dir):
+                    full_name = os.path.join(cache_dir, entry)
+                    if os.path.isfile(full_name):
+                        try:
+                            os.unlink(full_name)
+                        except:
+                            rem_failed += 1
+                        else:
+                            rem_ok += 1
+                self.log("cleaned cache_dir %s (%d ok, %d failed)" % (
+                    cache_dir,
+                    rem_ok,
+                    rem_failed), logging_tools.LOG_LEVEL_ERROR if rem_failed else logging_tools.LOG_LEVEL_OK)
         end_time = time.time()
         self.log("created configs for %s hosts in %s" % (
             host_info_str,
