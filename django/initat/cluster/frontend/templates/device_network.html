@@ -4,15 +4,83 @@
 
 {% block title %}{% trans "Device network settings" %}{% endblock %}
 
+{% block tab_js %}
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/d3js/d3.v3.min.js"></script>
+    <style>
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+.link {
+  stroke: #999;
+  stroke-opacity: .6;
+}
+
+    </style>
+{% endblock %}
+
 {% block content %}
 
 <h1 class="center">Device network settings</h1>
 
 <div id="network_table"></div>
 
-<div id="network_copy">Set all networks from <select id="network_copy"></select></div>
+<div id="network_copy">Set all networks from <select id="network_copy"></select>, show graph <input type="button" id="create_graph" value="create graph"/></div>
+
+<div id="network_graph"></div>
 
 <script type="text/javascript">
+
+var width = 960,
+    height = 500;
+
+var color = d3.scale.category20();
+
+var force = d3.layout.force()
+    .charge(-120)
+    .linkDistance(30)
+    .size([width, height]);
+
+var svg = d3.select("div#network_graph").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+function draw_graph(json) {
+    d3.json(json, function(error, graph) {
+      force
+          .nodes(graph.nodes)
+          .links(graph.links)
+          .start();
+    
+      var link = svg.selectAll(".link")
+          .data(graph.links)
+        .enter().append("line")
+          .attr("class", "link")
+          .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+    
+      var node = svg.selectAll(".node")
+          .data(graph.nodes)
+        .enter().append("circle")
+          .attr("class", "node")
+          .attr("r", 5)
+          .style("fill", function(d) { return color(d.group); })
+          .call(force.drag);
+    
+      node.append("title")
+          .text(function(d) { return d.name; });
+    
+      force.on("tick", function() {
+        link.attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return d.target.y; });
+    
+        node.attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return d.y; });
+      });
+    });
+};
 
 {% inlinecoffeescript %}
 
@@ -33,6 +101,7 @@ class network_table
                     @DEVICE_NETWORKS = $(xml)
                     @draw_network_table()
                     @init_copy_widget()
+                    @init_create_widget()
     draw_network_table: =>
         @new_table = $("<table>").attr({"id" : "network_tree"}).addClass("devicelist")
         @DEVICE_NETWORKS.find("device").each (idx, cur_dev) =>
@@ -523,6 +592,11 @@ class network_table
                 cur_dev = $(cur_dev)
                 c_w.append($("<option>").attr({"value" : cur_dev.attr("pk")}).text(cur_dev.attr("name")))
         c_w.off("change").on("change", @copy_network)
+    init_create_widget: =>
+        c_w = $("input#create_graph")
+        c_w.bind("click", @create_graph)
+    create_graph : =>
+        draw_graph("{% url 'network:json_network' %}")
     copy_network: (event) =>
         cur_el = $(event.target)
         c_val = cur_el.val()

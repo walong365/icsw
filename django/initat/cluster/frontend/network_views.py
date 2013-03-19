@@ -5,22 +5,27 @@
 
 import json
 import pprint
+import time
+
 import logging_tools
 import process_tools
+import server_command
+import net_tools
+import ipvx_tools
+import config_tools
+
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from lxml import etree
 from lxml.builder import E
+from django.http import HttpResponse
 from django.db.models import Q
 from django.core.exceptions import ValidationError
 from initat.cluster.backbone.models import device, network, net_ip, \
      network_type, network_device_type, netdevice, peer_information, \
      netdevice_speed, device_variable, device_group, to_system_tz
-import server_command
-import net_tools
-import ipvx_tools
-import time
+import json
 
 @login_required
 @init_logging
@@ -245,6 +250,13 @@ def get_valid_peers(request):
     request.xml_response["valid_peers"] = _get_valid_peers()
     return request.xml_response.create_response()
 
+@login_required
+@init_logging
+def json_network(request):
+    from networkx.readwrite import json_graph
+    r_obj = config_tools.router_object(request.log)
+    return HttpResponse(json_graph.dumps(r_obj.nx), mimetype="application/json")
+    
 @login_required
 @init_logging
 def copy_network(request):

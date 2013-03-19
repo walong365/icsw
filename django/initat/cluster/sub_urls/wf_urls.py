@@ -107,6 +107,7 @@ network_patterns = patterns(
     url("^delete_peer$"       , "network_views.delete_peer"           , name="delete_peer"          ),
     url("^get_valid_peers$"   , "network_views.get_valid_peers"       , name="get_valid_peers"      ),
     url("^copy_network$"      , "network_views.copy_network"          , name="copy_network"         ),
+    url("^json_network$"      , "network_views.json_network"          , name="json_network"         ),
 )
 
 monitoring_patterns = patterns(
