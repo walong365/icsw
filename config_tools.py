@@ -64,7 +64,6 @@ class router_object(object):
             latest_gen = latest_gen.generation
         if latest_gen != self.__cur_gen:
             s_time = time.time()
-            self.__cur_gen = latest_gen
             self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).values_list("idx", "device", "routing", "penalty")
             self.dev_dict = {}
             for cur_nd in self.all_nds:
@@ -99,11 +98,18 @@ class router_object(object):
             self.nx = networkx.Graph()
             self.add_nodes()
             self.add_edges()
-            self.log("update generation from %d to %d in %s" % (
-                self.__cur_gen,
-                latest_gen,
-                logging_tools.get_diff_time_str(time.time() - s_time),
-            ))
+            if self.__cur_gen:
+                self.log("update generation from %d to %d in %s" % (
+                    self.__cur_gen,
+                    latest_gen,
+                    logging_tools.get_diff_time_str(time.time() - s_time),
+                ))
+            else:
+                self.log("init with generation %d in %s" % (
+                    latest_gen,
+                    logging_tools.get_diff_time_str(time.time() - s_time),
+                ))
+            self.__cur_gen = latest_gen
     def check_for_update(self):
         self._update()
     def get_penalty(self, in_path):
