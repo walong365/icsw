@@ -292,7 +292,7 @@ try:
             # add hostname and parent process id (to handle multiprocessing logging)
             if sys.platform in ["linux2", "linux3"]:
                 kwargs.setdefault("extra", {})
-                kwargs["extra"].setdefault("host", os.uname()[1])
+                kwargs["extra"].setdefault("host", os.uname()[1].split(".")[0])
                 kwargs["extra"].setdefault("ppid", os.getppid())
             elif sys.platform in ["win32"]:
                 kwargs.setdefault("extra", {})
