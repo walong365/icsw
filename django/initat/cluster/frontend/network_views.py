@@ -255,7 +255,12 @@ def get_valid_peers(request):
 def json_network(request):
     from networkx.readwrite import json_graph
     r_obj = config_tools.router_object(request.log)
-    return HttpResponse(json_graph.dumps(r_obj.nx), mimetype="application/json")
+    for cur_nd in netdevice.objects.filter(Q(pk__in=r_obj.nx.nodes())):
+        r_obj.nx.node[cur_nd.pk]["name"] = unicode(cur_nd)
+    pprint.pprint(r_obj.nx.nodes())
+    json_obj = json_graph.dumps(r_obj.nx)
+    pprint.pprint(json_obj)
+    return HttpResponse(json_obj, mimetype="application/json")
     
 @login_required
 @init_logging

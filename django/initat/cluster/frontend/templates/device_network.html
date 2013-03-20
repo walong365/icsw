@@ -7,15 +7,6 @@
 {% block tab_js %}
     <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/d3js/d3.v3.min.js"></script>
     <style>
-.node {
-  stroke: #fff;
-  stroke-width: 1.5px;
-}
-
-.link {
-  stroke: #999;
-  stroke-opacity: .6;
-}
 
     </style>
 {% endblock %}
@@ -26,7 +17,7 @@
 
 <div id="network_table"></div>
 
-<div id="network_copy">Set all networks from <select id="network_copy"></select>, show graph <input type="button" id="create_graph" value="create graph"/></div>
+<div id="network_copy">Set all networks from <select id="network_copy"></select>, show graph <input type="button" id="redraw_graph" value="redraw graph"/></div>
 
 <div id="network_graph"></div>
 
@@ -52,6 +43,7 @@ class network_table
                     @draw_network_table()
                     @init_copy_widget()
                     @init_create_widget()
+                    @redraw_graph()
     draw_network_table: =>
         @new_table = $("<table>").attr({"id" : "network_tree"}).addClass("devicelist")
         @DEVICE_NETWORKS.find("device").each (idx, cur_dev) =>
@@ -543,40 +535,38 @@ class network_table
                 c_w.append($("<option>").attr({"value" : cur_dev.attr("pk")}).text(cur_dev.attr("name")))
         c_w.off("change").on("change", @copy_network)
     init_create_widget: =>
-        c_w = $("input#create_graph")
-        c_w.bind("click", @create_graph)
+        c_w = $("input#redraw_graph")
+        c_w.bind("click", @redraw_graph)
+    draw_graph: (graph) =>
         width = 960
         height = 500
-        @draw_started = false
-        @color = d3.scale.category20()
+        $("div#network_graph").children().remove()
+        color = d3.scale.category20()
         @svg = d3.select("div#network_graph").append("svg").attr("width", width).attr("height", height)
-        @force = d3.layout.force().charge(-120).linkDistance(30).size([width, height])
-    draw_graph: (graph) =>
-        if @draw_started
-            @force.nodes([]).links([]).stop()
+        @force = d3.layout.force().charge(-120).linkDistance(50).size([width, height])
+            .linkDistance((d) -> return 50 - 2 * d.weight)
         @force.nodes(graph.nodes).links(graph.links).start()
         link = @svg.selectAll(".link").data(graph.links).enter().append("line").attr("class", "link").style("stroke-width", (d) ->
-            return Math.sqrt(d.value)
-        )
-        node = @svg.selectAll(".node").data(graph.nodes).enter().append("circle")
-            .attr("class", "node")
-            .attr("r", 10)
-            .style("fill", (d) => return @color(d.group))
-            .call(@force.drag)
+            return d.weight
+        ).style("stroke", "black").style("stroke-opacity", "0.8")
+        nodes = @svg.selectAll(".node").data(graph.nodes)
+        
+        centers = nodes.enter().append("g").call(@force.drag)
+        
+        circles = centers.append("circle").attr("r", "14").attr("fill", "white").attr("stroke", "grey")
       
-        node.append("title").text((d) -> return d.name )
+        centers.append("text").text((d) -> return d.name )
       
-        if not @draw_started
-            @force.on("tick", ->
-                link.attr("x1", (d) -> return d.source.x )
-                    .attr("y1", (d) -> return d.source.y )
-                    .attr("x2", (d) -> return d.target.x )
-                    .attr("y2", (d) -> return d.target.y )
-                node.attr("cx", (d) -> return d.x )
-                    .attr("cy", (d) -> return d.y )
+        @force.on("tick", ->
+            link.attr("x1", (d) -> return d.source.x )
+                .attr("y1", (d) -> return d.source.y )
+                .attr("x2", (d) -> return d.target.x )
+                .attr("y2", (d) -> return d.target.y )
+            centers.attr("transform", (d) -> 
+                return "translate(#{d.x},#{d.y})"
             )
-        @draw_started = true
-    create_graph : =>
+        )
+    redraw_graph : =>
         $.ajax
             url      : "{% url 'network:json_network' %}"
             dataType : "json"
