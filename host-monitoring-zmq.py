@@ -96,8 +96,9 @@ def client_code():
                 error_result = result.xpath(None, ".//ns:result[@state != '0']")
                 if error_result:
                     error_result = error_result[0]
-                    ret_state, ret_str = (int(error_result.attrib["state"]),
-                                          error_result.attrib["reply"])
+                    ret_state, ret_str = (
+                        int(error_result.attrib["state"]),
+                        error_result.attrib["reply"])
                 else:
                     ret_state, ret_str = com_struct.interpret(result, cur_ns)
             else:
@@ -222,6 +223,10 @@ class id_discovery(object):
         # last discovery try
         id_discovery.last_try = {}
     @staticmethod
+    def destroy():
+        for value in list(id_discovery.pending.values()):
+            value.close()
+    @staticmethod
     def set_mapping(conn_str, uuid):
         id_discovery.mapping[conn_str] = uuid
     @staticmethod
@@ -272,6 +277,8 @@ class host_connection(object):
         new_sock.setsockopt(zmq.LINGER, 0)
         new_sock.setsockopt(zmq.SNDHWM, host_connection.backlog_size)
         new_sock.setsockopt(zmq.RCVHWM, host_connection.backlog_size)
+        new_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
+        new_sock.setsockopt(zmq.RECONNECT_IVL, 200)
         new_sock.setsockopt(zmq.BACKLOG, host_connection.backlog_size)
         host_connection.zmq_socket = new_sock
         host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)
@@ -306,11 +313,13 @@ class host_connection(object):
         host_connection.relayer_process.log("[hc] %s" % (what), log_level)
     def check_timeout(self, cur_time):
         to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time, host_connection.timeout)]
-        for to_mes in to_messages:
-            if not self.tcp_con:
-                pass
-                # self.__backlog_counter -= 1
-            self.return_error(to_mes, "timeout (after %.2f seconds)" % (to_mes.get_runtime(cur_time)))
+        if to_messages:
+            #print "TO", len(to_messages), self.__conn_str
+            for to_mes in to_messages:
+                if not self.tcp_con:
+                    pass
+                    # self.__backlog_counter -= 1
+                self.return_error(to_mes, "timeout (after %.2f seconds)" % (to_mes.get_runtime(cur_time)))
     def _open(self):
         if not self.__open:
             try:
@@ -428,6 +437,7 @@ class host_connection(object):
                 #self.send_result(cur_mes, res_tuple)
         else:
             # FIXME
+            #print "ID", mes_id
             #print self.log("unknown id '%s' in _handle_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
             pass
     def _handle_old_result(self, mes_id, result):
@@ -1368,6 +1378,7 @@ class relay_process(threading_tools.process_pool):
     def loop_end(self):
         self._close_ipc_sockets()
         self._close_io_sockets()
+        id_discovery.destroy()
         from initat.host_monitoring import modules
         for cur_mod in modules.module_list:
             cur_mod.close_module()
@@ -1522,9 +1533,9 @@ class server_process(threading_tools.process_pool):
         # hm, really needed ?
         for sys_name, sys_value in [
             ("net.core.rmem_default", 524288),
-            ("net.core.rmem_max", 5242880),
+            ("net.core.rmem_max"    , 5242880),
             ("net.core.wmem_default", 524288),
-            ("net.core.wmem_max", 5242880)]:
+            ("net.core.wmem_max"    , 5242880)]:
             f_path = "/proc/sys/%s" % (sys_name.replace(".", "/"))
             if os.path.isfile(f_path):
                 cur_value = int(open(f_path, "r").read().strip())
@@ -1632,14 +1643,17 @@ class server_process(threading_tools.process_pool):
                         zmq_id_dict[target_ip] = (wc_urn, wc_virtual)
         self.log("0MQ bind info")
         for key in sorted(zmq_id_dict.iterkeys()):
-            self.log("bind address %-15s: %s%s" % (key,
-                                                   zmq_id_dict[key][0],
-                                                   " is virtual" if zmq_id_dict[key][1] else ""))
+            self.log("bind address %-15s: %s%s" % (
+                key,
+                zmq_id_dict[key][0],
+                " is virtual" if zmq_id_dict[key][1] else ""))
         for bind_ip, (bind_0mq_id, is_virtual) in zmq_id_dict.iteritems():
             client = self.zmq_context.socket(zmq.ROUTER)
             client.setsockopt(zmq.IDENTITY, bind_0mq_id)
-            client.setsockopt(zmq.SNDHWM, 256)
-            client.setsockopt(zmq.RCVHWM, 256)
+            client.setsockopt(zmq.SNDHWM, 16)
+            client.setsockopt(zmq.RCVHWM, 16)
+            client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
+            client.setsockopt(zmq.RECONNECT_IVL, 200)
             try:
                 client.bind("tcp://%s:%d" % (
                     bind_ip,
