@@ -183,6 +183,10 @@ class main_config(object):
                     self.slave_ip,
                     self.master_ip
                 ))
+            # target config version directory for distribute
+            self.__tcv_dict = {}
+            self.dist_ok = True
+            self.__send_version = None
         else:
             self.__dir_offset = ""
             #self.__main_dir = os.path.join(self.__main_dir, "slaves", self.__slave_name)
@@ -221,43 +225,92 @@ class main_config(object):
         return os.path.join(
             self.__r_dir_dict["var"],
             "ext_com" if global_config["MD_TYPE"] == "nagios" else "icinga.cmd")
-    def distribute(self, cur_version):
+    def file_content_info(self, srv_com):
+        file_name, version, file_status = (
+            srv_com["file_name"].text,
+            int(srv_com["version"].text),
+            int(srv_com["result"].attrib["state"]),
+        )
+        self.log("file_content_status for %s is %s (%d), version %d" % (
+            file_name,
+            srv_com["result"].attrib["reply"],
+            file_status,
+            version,
+            ), file_status)
+        if type(self.__tcv_dict[file_name]) in [int, long]:
+            if self.__tcv_dict[file_name] == version:
+                if file_status in [logging_tools.LOG_LEVEL_OK]:
+                    self.__tcv_dict[file_name] = True
+                else:
+                    self.__tcv_dict[file_name] = False
+            else:
+                self.log("key %s has waits for different version: %d != %d" % (file_name, version, self.__tcv_dict[file_name]), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("key %s already set to %s" % (file_name, str(self.__tcv_dict[file_name])), logging_tools.LOG_LEVEL_ERROR)
+        self._show_pending_info()
+    def check_for_resend(self):
+        if not self.dist_ok and self.__send_version and abs(self.send_time - time.time()) > 60:
+            self.log("resending files")
+            self.distribute()
+    def distribute(self, cur_version=None):
+        if cur_version:
+            self.__send_version = cur_version
         if self.slave_ip:
-            self.log("start send to slave (version %d)" % (cur_version))
-            self.__build_process.send_pool_message("register_slave", self.slave_ip, self.monitor_server.uuid)
-            srv_com = server_command.srv_command(
-                command="register_master",
-                host="DIRECT",
-                port="0",
-                master_ip=self.master_ip,
-                master_port="%d" % (SERVER_COM_PORT))
-            time.sleep(0.2)
-            self.__build_process.send_pool_message("send_command", self.monitor_server.uuid, unicode(srv_com))
-            # send content of /etc
-            for cur_file in os.listdir(self.__w_dir_dict["etc"]):
-                full_r_path = os.path.join(self.__w_dir_dict["etc"], cur_file)
-                full_w_path = os.path.join(self.__r_dir_dict["etc"], cur_file)
-                if os.path.isfile(full_r_path):
-                    srv_com = server_command.srv_command(
-                        command="file_content",
-                        host="DIRECT",
-                        port="0",
-                        uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
-                        gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
-                        version="%d" % (cur_version),
-                        file_name="%s" % (full_w_path),
-                        content=base64.b64encode(file(full_r_path, "r").read())
-                    )
-                    self.__build_process.send_pool_message("send_command", self.monitor_server.uuid, unicode(srv_com))
-            srv_com = server_command.srv_command(
-                command="call_command",
-                host="DIRECT",
-                port="0",
-                version="%d" % (cur_version),
-                cmdline="/etc/init.d/icinga reload")
-            self.__build_process.send_pool_message("send_command", self.monitor_server.uuid, unicode(srv_com))
+            send_version = self.__send_version
+            if send_version:
+                self.send_time = time.time()
+                self.dist_ok = False
+                self.log("start send to slave (version %d)" % (send_version))
+                self.__build_process.send_pool_message("register_slave", self.slave_ip, self.monitor_server.uuid)
+                srv_com = server_command.srv_command(
+                    command="register_master",
+                    host="DIRECT",
+                    port="0",
+                    master_ip=self.master_ip,
+                    master_port="%d" % (SERVER_COM_PORT))
+                time.sleep(0.2)
+                self.__build_process.send_pool_message("send_command", self.monitor_server.uuid, unicode(srv_com))
+                # send content of /etc
+                for cur_file in os.listdir(self.__w_dir_dict["etc"]):
+                    full_r_path = os.path.join(self.__w_dir_dict["etc"], cur_file)
+                    full_w_path = os.path.join(self.__r_dir_dict["etc"], cur_file)
+                    if os.path.isfile(full_r_path):
+                        self.__tcv_dict[full_w_path] = send_version
+                        srv_com = server_command.srv_command(
+                            command="file_content",
+                            host="DIRECT",
+                            slave_name=self.__slave_name,
+                            port="0",
+                            uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
+                            gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
+                            version="%d" % (send_version),
+                            file_name="%s" % (full_w_path),
+                            content=base64.b64encode(file(full_r_path, "r").read())
+                        )
+                        self.__build_process.send_pool_message("send_command", self.monitor_server.uuid, unicode(srv_com))
+                srv_com = server_command.srv_command(
+                    command="call_command",
+                    host="DIRECT",
+                    port="0",
+                    version="%d" % (send_version),
+                    cmdline="/etc/init.d/icinga reload")
+                self.__build_process.send_pool_message("send_command", self.monitor_server.uuid, unicode(srv_com))
+                self._show_pending_info()
+            else:
+                self.log("no send version set", logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
+    def _show_pending_info(self):
+        pend_keys = [key for key, value in self.__tcv_dict.iteritems() if type(value) != bool]
+        error_keys = [key for key, value in self.__tcv_dict.iteritems() if value == False]
+        self.log("%d total, %s pending, %s error" % (
+            len(self.__tcv_dict),
+            logging_tools.get_plural("remote file", len(pend_keys)),
+            logging_tools.get_plural("remote file", len(error_keys))),
+                 )
+        if not pend_keys and not error_keys:
+            self.log("actual distribution_set %d is OK" % (self.__send_version))
+            self.dist_ok = True
     def _create_directories(self):
         dir_names = [
             "",
@@ -1803,7 +1856,7 @@ class build_process(threading_tools.process_obj):
         self.router_obj = config_tools.router_object(self.log)
         self.__gen_config = main_config(self, master_server, distributed=True if len(slave_servers) else False)
         self.send_pool_message("external_cmd_file", self.__gen_config.get_command_name())
-        self.__slave_configs = {}
+        self.__slave_configs, self.__slave_lut = ({}, {})
         if len(slave_servers):
             self.log("found %s: %s" % (logging_tools.get_plural("slave_server", len(slave_servers)),
                                        ", ".join(sorted([cur_dev.name for cur_dev in slave_servers]))))
@@ -1814,9 +1867,12 @@ class build_process(threading_tools.process_obj):
                     slave_name=cur_dev.name, 
                     master_server=master_server,
                 )
+                self.__slave_lut[cur_dev.name] = cur_dev.pk
         else:
             self.log("no slave-servers found")
         self.register_func("rebuild_config", self._rebuild_config)
+        self.register_func("file_content_info", self._file_content_info)
+        self.register_func("check_for_redistribute", self._check_for_redistribute)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
@@ -1917,6 +1973,16 @@ class build_process(threading_tools.process_obj):
         if log_lines:
             for log_line in log_lines:
                 self.log(log_line)
+    def _check_for_redistribute(self, *args, **kwargs):
+        for slave_config in self.__slave_configs.itervalues():
+            slave_config.check_for_resend()
+    def _file_content_info(self, *args, **kwargs):
+        srv_com = server_command.srv_command(source=args[0])
+        slave_name = srv_com["slave_name"].text
+        if slave_name in self.__slave_lut:
+            self.__slave_configs[self.__slave_lut[slave_name]].file_content_info(srv_com)
+        else:
+            self.log("unknown slave_name '%s'" % (slave_name), logging_tools.LOG_LEVEL_ERROR)
     def _rebuild_config(self, *args, **kwargs):
         self.version += 1
         self.log("config_version is %d" % (self.version))
@@ -2784,11 +2850,14 @@ class server_process(threading_tools.process_pool):
         self.add_process(build_process("build"), start=True)
         self._init_em()
         self.register_timer(self._check_db, 3600, instant=True)
+        self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
         self.register_timer(self._update, 30, instant=True)
         #self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
         self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
     def _check_db(self):
         self.send_to_process("db_verify", "validate")
+    def _check_for_redistribute(self):
+        self.send_to_process("build", "check_for_redistribute")
     def _init_em(self):
         self.__esd, self.__nvn = ("/tmp/.machvect_es", "nagios_ov")
         init_ok = False
@@ -2981,13 +3050,6 @@ class server_process(threading_tools.process_pool):
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
         self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
-        submit_c, log_lines = process_tools.submit_at_command("/etc/init.d/host-relay reload")
-        for log_line in log_lines:
-            self.log(log_line)
-        # needed ? FIXME
-        #submit_c, log_lines = process_tools.submit_at_command("/etc/init.d/snmp-relay reload")
-        #for log_line in log_lines:
-        #    self.log(log_line)
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
@@ -3057,7 +3119,6 @@ class server_process(threading_tools.process_pool):
         self.log("init send of %s bytes to %s" % (len(srv_com), full_uuid))
         self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)
         self.com_socket.send_unicode(srv_com)
-        self.log("done")
     def _set_external_cmd_file(self, *args, **kwargs):
         src_proc, src_id, ext_name = args
         self.log("setting external cmd_file to '%s'" % (ext_name))
@@ -3106,6 +3167,10 @@ class server_process(threading_tools.process_pool):
                     self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
                 elif cur_com in ["ocsp-event", "ochp-event"]:
                     self._handle_ocp_event(srv_com)
+                elif cur_com in ["file_content"]:
+                    self.send_to_process("build", "file_content_info", unicode(srv_com))
+                else:
+                    self.log("got unknown command '%s'" % (cur_com), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:
                     srv_com["result"] = None
                     # blabla
