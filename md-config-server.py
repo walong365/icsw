@@ -1267,7 +1267,7 @@ class all_commands(host_type_config):
         # Nagios V2.x
         nag_conf = nag_config("notify-by-email",
                               command_name="notify-by-email",
-                              command_line=r"%s -f '%s' -s '$NOTIFICATIONTYPE$ alert - $HOSTNAME$@%s ($HOSTALIAS$)/$SERVICEDESC$ is $SERVICESTATE$' -t $CONTACTEMAIL$ '***** %s %s *****\n\n" % (
+                              command_line=r"%s -f '%s' -s '$NOTIFICATIONTYPE$ alert - $HOSTNAME$@%s ($HOSTALIAS$)/$SERVICEDESC$ is $SERVICESTATE$' -t $CONTACTEMAIL$ -- '***** %s %s *****\n\n" % (
                                   send_mail_prog,
                                   from_addr,
                                   cluster_name,
@@ -1282,7 +1282,7 @@ class all_commands(host_type_config):
         self.__obj_list.append(nag_conf)
         nag_conf = nag_config("host-notify-by-email",
                               command_name="host-notify-by-email",
-                              command_line=r"%s -f '%s'  -s 'Host $HOSTSTATE$ alert for $HOSTNAME$@%s' -t $CONTACTEMAIL$ '***** %s %s *****\n\n" % (
+                              command_line=r"%s -f '%s'  -s 'Host $HOSTSTATE$ alert for $HOSTNAME$@%s' -t $CONTACTEMAIL$ -- '***** %s %s *****\n\n" % (
                                   send_mail_prog,
                                   from_addr,
                                   cluster_name,
