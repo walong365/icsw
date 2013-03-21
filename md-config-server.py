@@ -239,7 +239,7 @@ class main_config(object):
             ), file_status)
         if type(self.__tcv_dict[file_name]) in [int, long]:
             if self.__tcv_dict[file_name] == version:
-                if file_status in [logging_tools.LOG_LEVEL_OK]:
+                if file_status in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN]:
                     self.__tcv_dict[file_name] = True
                 else:
                     self.__tcv_dict[file_name] = False
