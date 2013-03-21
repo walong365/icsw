@@ -1215,15 +1215,15 @@ class relay_process(threading_tools.process_pool):
         if cur_com == "file_content":
             t_file = srv_com["file_name"].text
             new_vers = int(srv_com["version"].text)
+            ret_com = server_command.srv_command(
+                command="file_content_result",
+                version="%d" % (new_vers),
+                slave_name=srv_com["slave_name"].text,
+                file_name=t_file,
+            )
+            srv_com["result"] = None
             if self._check_version(t_file, new_vers):
                 content = base64.b64decode(srv_com["content"].text)
-                ret_com = server_command.srv_command(
-                    command="file_content_result",
-                    version="%d" % (new_vers),
-                    slave_name=srv_com["slave_name"].text,
-                    file_name=t_file,
-                )
-                srv_com["result"] = None
                 try:
                     file(t_file, "w").write(content)
                     os.chown(t_file, int(srv_com["uid"].text), int(srv_com["gid"].text))
@@ -1242,9 +1242,13 @@ class relay_process(threading_tools.process_pool):
                     srv_com["result"].attrib.update({
                         "reply" : "file created",
                         "state" : "%d" % (logging_tools.LOG_LEVEL_OK)})
-                srv_com["host"] = self.master_ip
-                srv_com["port"] = "%d" % (self.master_port)
-                self._send_to_nhm_service(None, srv_com, None, register=False)
+            else:
+                srv_com["result"].attrib.update({
+                    "reply" : "file not newer",
+                    "state" : "%d" % (logging_tools.LOG_LEVEL_WARN)})
+            srv_com["host"] = self.master_ip
+            srv_com["port"] = "%d" % (self.master_port)
+            self._send_to_nhm_service(None, ret_com, None, register=False)
         elif cur_com == "call_command":
             # also check for version ? compare with file versions ? deleted files ? FIXME
             cmdline = srv_com["cmdline"].text
