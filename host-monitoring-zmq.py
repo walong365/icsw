@@ -806,6 +806,7 @@ class relay_process(threading_tools.process_pool):
         self.__delayed = []
         self.register_timer(self._check_timeout, 2)
         self.register_func("twisted_result", self._twisted_result)
+        self.version_dict = {}
         self._show_config()
         if not self._init_commands():
             self._sigint("error init")
@@ -1191,8 +1192,17 @@ class relay_process(threading_tools.process_pool):
         self.__num_messages += 1
         if self.__num_messages % 1000 == 0:
             cur_mem = process_tools.get_mem_info()
-            self.log("memory usage is %s after %s" % (logging_tools.get_size_str(cur_mem),
-                                                      logging_tools.get_plural("message", self.__num_messages)))
+            self.log("memory usage is %s after %s" % (
+                logging_tools.get_size_str(cur_mem),
+                logging_tools.get_plural("message", self.__num_messages)))
+    def _check_version(self, key, new_vers):
+        if new_vers == self.version_dict.get(key):
+            self.log("no newer version for %s (%d)" % (key, new_vers))
+            return False
+        else:
+            self.log("newer version for %d (%d -> %d)" % (key, self.version_dict.get(key, 0), new_vers))
+            self.version_dict[key] = new_vers
+            return True
     def _handle_direct_command(self, src_id, srv_com):
         # only DIRECT command from ccollclientzmq
         #print "*", src_id
@@ -1202,20 +1212,33 @@ class relay_process(threading_tools.process_pool):
             self.log("got DIRECT command %s" % (cur_com))
         if cur_com == "file_content":
             t_file = srv_com["file_name"].text
-            content = base64.b64decode(srv_com["content"].text)
-            try:
-                file(t_file, "w").write(content)
-                os.chown(t_file, int(srv_com["uid"].text), int(srv_com["gid"].text))
-            except:
-                self.log("error creating file %s: %s" % (
-                    t_file,
-                    process_tools.get_except_info()), 
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                self.log("created %s (%d bytes)" % (
-                    t_file,
-                    len(content)))
+            if self._check_for_newer_version(t_file, int(srv_com["version"])):
+                content = base64.b64decode(srv_com["content"].text)
+                ret_com = server_command.srv_command("file_content_result")
+                srv_com["result"] = None
+                try:
+                    file(t_file, "w").write(content)
+                    os.chown(t_file, int(srv_com["uid"].text), int(srv_com["gid"].text))
+                except:
+                    self.log("error creating file %s: %s" % (
+                        t_file,
+                        process_tools.get_except_info()), 
+                             logging_tools.LOG_LEVEL_ERROR)
+                    srv_com["result"].attrib.update({
+                        "reply" : "file not created: %s" % (process_tools.get_except_info()),
+                        "state" : "%d" % (logging_tools.LOG_LEVEL_ERROR)})
+                else:
+                    self.log("created %s (%d bytes)" % (
+                        t_file,
+                        len(content)))
+                    srv_com["result"].attrib.update({
+                        "reply" : "file created",
+                        "state" : "%d" % (logging_tools.LOG_LEVEL_OK)})
+                srv_com["host"] = self.master_ip
+                srv_com["port"] = "%d" % (self.master_port)
+                self._send_to_nhm_service(None, srv_com, None, register=False)
         elif cur_com == "call_command":
+            # also check for version ? compare with file versions ? deleted files ? FIXME
             cmdline = srv_com["cmdline"].text
             self.log("got command '%s'" % (cmdline))
             new_ss = hm_classes.subprocess_struct(
