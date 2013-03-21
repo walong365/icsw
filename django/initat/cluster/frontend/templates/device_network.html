@@ -555,7 +555,7 @@ class network_table
         
         circles = centers.append("circle").attr("r", "14").attr("fill", "white").attr("stroke", "grey")
       
-        centers.append("text").text((d) -> return d.name )
+        centers.append("text").attr("text-anchor", "middle").text((d) -> return d.name )
       
         @force.on("tick", ->
             link.attr("x1", (d) -> return d.source.x )
