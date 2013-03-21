@@ -3167,7 +3167,7 @@ class server_process(threading_tools.process_pool):
                     self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
                 elif cur_com in ["ocsp-event", "ochp-event"]:
                     self._handle_ocp_event(srv_com)
-                elif cur_com in ["file_content"]:
+                elif cur_com in ["file_content_result"]:
                     self.send_to_process("build", "file_content_info", unicode(srv_com))
                 else:
                     self.log("got unknown command '%s'" % (cur_com), logging_tools.LOG_LEVEL_ERROR)
