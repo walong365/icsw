@@ -87,7 +87,8 @@ class srv_command(object):
                                       pid="%d" % (os.getpid())),
                 self.__builder.command(kwargs.pop("command", "not set")),
                 self.__builder.identity(kwargs.pop("identity", "not set")),
-                version="%d" % (kwargs.pop("version", 1)))
+                # set srv_command version
+                srvc_version="%d" % (kwargs.pop("srvc_version", 1)))
             for key, value in kwargs.iteritems():
                 self[key] = value
     def xpath(self, start_el=None, *args, **kwargs):
