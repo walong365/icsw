@@ -221,9 +221,9 @@ class main_config(object):
         return os.path.join(
             self.__r_dir_dict["var"],
             "ext_com" if global_config["MD_TYPE"] == "nagios" else "icinga.cmd")
-    def distribute(self):
+    def distribute(self, cur_version):
         if self.slave_ip:
-            self.log("start send to slave")
+            self.log("start send to slave (version %d)" % (cur_version))
             self.__build_process.send_pool_message("register_slave", self.slave_ip, self.monitor_server.uuid)
             srv_com = server_command.srv_command(
                 command="register_master",
@@ -244,6 +244,7 @@ class main_config(object):
                         port="0",
                         uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
                         gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
+                        version="%d" % (cur_version),
                         file_name="%s" % (full_w_path),
                         content=base64.b64encode(file(full_r_path, "r").read())
                     )
@@ -252,6 +253,7 @@ class main_config(object):
                 command="call_command",
                 host="DIRECT",
                 port="0",
+                version="%d" % (cur_version),
                 cmdline="/etc/init.d/icinga reload")
             self.__build_process.send_pool_message("send_command", self.monitor_server.uuid, unicode(srv_com))
         else:
@@ -1793,6 +1795,8 @@ class build_process(threading_tools.process_obj):
         self.__nagios_lock_file_name = "%s/var/%s" % (global_config["MD_BASEDIR"], global_config["MD_LOCK_FILE"])
         connection.close()
         self.__mach_loggers = {}
+        self.version = int(time.time())
+        self.log("initial config_version is %d" % (self.version))
         # slave configs
         slave_servers = device.objects.filter(Q(device_config__config__name="monitor_slave"))
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
@@ -1914,6 +1918,8 @@ class build_process(threading_tools.process_obj):
             for log_line in log_lines:
                 self.log(log_line)
     def _rebuild_config(self, *args, **kwargs):
+        self.version += 1
+        self.log("config_version is %d" % (self.version))
         if global_config["DEBUG"]:
             cur_query_count = len(connection.queries)
         h_list = args[0] if len(args) else []
@@ -1958,7 +1964,7 @@ class build_process(threading_tools.process_obj):
                 cur_gc.refresh()
                 if not cur_gc.master:
                     cur_gc._write_entries()
-                    cur_gc.distribute()
+                    cur_gc.distribute(self.version)
         cfgs_written = self.__gen_config._write_entries()
         if bc_valid and (cfgs_written or rebuild_gen_config):
             # send reload to remote instance ?
