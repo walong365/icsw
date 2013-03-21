@@ -1010,15 +1010,17 @@ class relay_process(threading_tools.process_pool):
         self.client_socket = self.zmq_context.socket(zmq.ROUTER)
         self.client_socket.setsockopt(zmq.IDENTITY, "ccollclient:%s" % (process_tools.get_machine_name()))
         self.client_socket.setsockopt(zmq.LINGER, 0)
-        self.client_socket.setsockopt(zmq.SNDHWM, 10)
-        self.client_socket.setsockopt(zmq.RCVHWM, 10)
+        self.client_socket.setsockopt(zmq.SNDHWM, 2)
+        self.client_socket.setsockopt(zmq.RCVHWM, 2)
         self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
         uuid = "%s:relayer" % (uuid_tools.get_uuid().get_urn())
         client.setsockopt(zmq.IDENTITY, uuid)
-        client.setsockopt(zmq.SNDHWM, 256)
-        client.setsockopt(zmq.RCVHWM, 256)
+        client.setsockopt(zmq.SNDHWM, 10)
+        client.setsockopt(zmq.RCVHWM, 10)
+        client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
+        client.setsockopt(zmq.RECONNECT_IVL, 200)
         conn_str = "tcp://*:%d" % (
             global_config["COM_PORT"])
         try:
@@ -1200,7 +1202,7 @@ class relay_process(threading_tools.process_pool):
             self.log("no newer version for %s (%d)" % (key, new_vers))
             return False
         else:
-            self.log("newer version for %d (%d -> %d)" % (key, self.version_dict.get(key, 0), new_vers))
+            self.log("newer version for %s (%d -> %d)" % (key, self.version_dict.get(key, 0), new_vers))
             self.version_dict[key] = new_vers
             return True
     def _handle_direct_command(self, src_id, srv_com):
@@ -1212,9 +1214,15 @@ class relay_process(threading_tools.process_pool):
             self.log("got DIRECT command %s" % (cur_com))
         if cur_com == "file_content":
             t_file = srv_com["file_name"].text
-            if self._check_for_newer_version(t_file, int(srv_com["version"])):
+            new_vers = int(srv_com["version"].text)
+            if self._check_version(t_file, new_vers):
                 content = base64.b64decode(srv_com["content"].text)
-                ret_com = server_command.srv_command("file_content_result")
+                ret_com = server_command.srv_command(
+                    command="file_content_result",
+                    version="%d" % (new_vers),
+                    slave_name=srv_com["slave_name"].text,
+                    file_name=t_file,
+                )
                 srv_com["result"] = None
                 try:
                     file(t_file, "w").write(content)
