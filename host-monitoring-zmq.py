@@ -1221,7 +1221,7 @@ class relay_process(threading_tools.process_pool):
                 slave_name=srv_com["slave_name"].text,
                 file_name=t_file,
             )
-            srv_com["result"] = None
+            ret_com["result"] = None
             if self._check_version(t_file, new_vers):
                 content = base64.b64decode(srv_com["content"].text)
                 try:
@@ -1232,22 +1232,22 @@ class relay_process(threading_tools.process_pool):
                         t_file,
                         process_tools.get_except_info()), 
                              logging_tools.LOG_LEVEL_ERROR)
-                    srv_com["result"].attrib.update({
+                    ret_com["result"].attrib.update({
                         "reply" : "file not created: %s" % (process_tools.get_except_info()),
                         "state" : "%d" % (logging_tools.LOG_LEVEL_ERROR)})
                 else:
                     self.log("created %s (%d bytes)" % (
                         t_file,
                         len(content)))
-                    srv_com["result"].attrib.update({
+                    ret_com["result"].attrib.update({
                         "reply" : "file created",
                         "state" : "%d" % (logging_tools.LOG_LEVEL_OK)})
             else:
-                srv_com["result"].attrib.update({
+                ret_com["result"].attrib.update({
                     "reply" : "file not newer",
                     "state" : "%d" % (logging_tools.LOG_LEVEL_WARN)})
-            srv_com["host"] = self.master_ip
-            srv_com["port"] = "%d" % (self.master_port)
+            ret_com["host"] = self.master_ip
+            ret_com["port"] = "%d" % (self.master_port)
             self._send_to_nhm_service(None, ret_com, None, register=False)
         elif cur_com == "call_command":
             # also check for version ? compare with file versions ? deleted files ? FIXME
