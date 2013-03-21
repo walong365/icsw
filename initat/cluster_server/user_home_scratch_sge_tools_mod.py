@@ -45,11 +45,11 @@ class create_user_home(cs_base_class.server_com):
         # createdir : used for creation
         # when using NFSv4 createdir can be different from homeexport (homeexport is for instance relative to nfsv4root)
         try:
-            cur_user = user.objects.select_related("group").get(Q(login=self.option_dict["username"]))
+            cur_user = user.objects.select_related("group").get(Q(login=cur_inst.option_dict["username"]))
         except user.DoesNotExist:
             cur_inst.srv_com["result"].attrib.update({
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error cannot find user '%s'" % (self.option_dict["username"])
+                "reply" : "error cannot find user '%s'" % (cur_inst.option_dict["username"])
             })
         else:
             # get homedir and / or createdir of export entry
@@ -59,7 +59,7 @@ class create_user_home(cs_base_class.server_com):
             if not len(hd_exports):
                 cur_inst.srv_com["result"].attrib.update({
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "no createdir / homeexport found for user '%s'" % (self.option_dict["username"])
+                    "reply" : "no createdir / homeexport found for user '%s'" % (cur_inst.option_dict["username"])
                 })
             else:
                 exp_dict = dict([(hd_export.name, hd_export.value) for hd_export in hd_exports])
@@ -161,7 +161,7 @@ class delete_user_home(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["username"]
     def _call(self, cur_inst):
-        user = self.option_dict["username"]
+        user = cur_inst.option_dict["username"]
         self.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='homeexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
         if self.dc.rowcount == 1:
             dset = self.dc.fetchone()
@@ -192,7 +192,7 @@ class create_user_scratch(cs_base_class.server_com):
             for entry in entries:
                 fname = "%s/%s" % (t_dir, entry)
                 os.chown(fname, uid, gid)
-        user = self.option_dict["username"]
+        user = cur_inst.option_dict["username"]
         self.dc.execute("SELECT u.login, u.uid, u.scratch, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='scratchexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export_scr = dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
         if self.dc.rowcount == 1:
             dset = self.dc.fetchone()
@@ -236,7 +236,7 @@ class delete_user_scratch(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["username"]
     def _call(self, cur_inst):
-        user = self.option_dict["username"]
+        user = cur_inst.option_dict["username"]
         self.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='scratchexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export_scr=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
         if self.dc.rowcount == 1:
             dset = self.dc.fetchone()
@@ -308,7 +308,7 @@ class create_sge_user(cs_base_class.server_com):
             fshare = 30
             f_str = "default fairshare-value"
         f_str += " %s" % (str(fshare))
-        user = self.option_dict["username"]
+        user = cur_inst.option_dict["username"]
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
@@ -351,7 +351,7 @@ class delete_sge_user(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["username"]
     def _call(self, cur_inst):
-        user = self.option_dict["username"]
+        user = cur_inst.option_dict["username"]
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
@@ -381,8 +381,8 @@ class rename_sge_user(cs_base_class.server_com):
         needed_configs = ["sge_server"]
         needed_option_keys = ["username", "old_username"]
     def _call(self, cur_inst):
-        user, old_user = (self.option_dict["username"],
-                          self.option_dict["old_username"])
+        user, old_user = (cur_inst.option_dict["username"],
+                          cur_inst.option_dict["old_username"])
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
@@ -435,7 +435,7 @@ class create_user_quota(cs_base_class.server_com):
         self.dc.execute("SELECT cs.value FROM new_config c, config_str cs, device_config dc WHERE cs.new_config=c.new_config_idx AND cs.name='dummyuser' AND dc.new_config=c.new_config_idx AND dc.device=%d AND c.name='quota'" % (global_config["SERVER_IDX"]))
         if self.dc.rowcount == 1:
             quota_prot = self.dc.fetchone()["value"]
-            user = self.option_dict["username"]
+            user = cur_inst.option_dict["username"]
             cstat, cout = commands.getstatusoutput("/usr/sbin/edquota -p %s %s" % (quota_prot, user))
             if cstat:
                 cur_inst.srv_com["result"].attrib.update({
