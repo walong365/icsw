@@ -17,7 +17,7 @@
 
 <div id="network_table"></div>
 
-<div id="network_copy">Set all networks from <select id="network_copy"></select>, show graph <input type="button" id="redraw_graph" value="redraw graph"/></div>
+<div id="network_copy">Set all networks from <select id="network_copy"></select><br>Show network topology: <input type="button" id="redraw_graph" value="Redraw"/></div>
 
 <div id="network_graph"></div>
 
@@ -539,21 +539,21 @@ class network_table
         c_w.bind("click", @redraw_graph)
     draw_graph: (graph) =>
         width = 960
-        height = 500
+        height = 600
         $("div#network_graph").children().remove()
         color = d3.scale.category20()
         @svg = d3.select("div#network_graph").append("svg").attr("width", width).attr("height", height)
-        @force = d3.layout.force().charge(-120).linkDistance(50).size([width, height])
-            .linkDistance((d) -> return 50 - 2 * d.weight)
+        @force = d3.layout.force().charge(-220).linkDistance(150).size([width, height])
+            .linkDistance((d) -> return 100 - 2 * d.networkidx)
         @force.nodes(graph.nodes).links(graph.links).start()
-        link = @svg.selectAll(".link").data(graph.links).enter().append("line").attr("class", "link").style("stroke-width", (d) ->
-            return d.weight
-        ).style("stroke", "black").style("stroke-opacity", "0.8")
+        link = @svg.selectAll(".link").data(graph.links).enter().append("line").attr("class", "link").style("stroke", (d) -> 
+            return color(d.networkidx)
+        ).style("stroke-opacity", "1").style("stroke-width", "3")
         nodes = @svg.selectAll(".node").data(graph.nodes)
         
         centers = nodes.enter().append("g").call(@force.drag)
         
-        circles = centers.append("circle").attr("r", "14").attr("fill", "white").attr("stroke", "grey")
+        centers.append("circle").attr("r", (n) -> return 18).attr("fill", "white").attr("stroke", "grey")
       
         centers.append("text").attr("text-anchor", "middle").text((d) -> return d.name )
       
