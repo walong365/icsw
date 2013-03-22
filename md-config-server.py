@@ -817,7 +817,7 @@ class main_config(object):
         if self.master:
             # wsgi config
             if os.path.isfile("/etc/debian_version"):
-                www_user, www_group = ("apache", "apache")
+                www_user, www_group = ("www-data", "www-data")
             else:
                 www_user, www_group = ("wwwrun", "www")
             wsgi_config = base_config(
