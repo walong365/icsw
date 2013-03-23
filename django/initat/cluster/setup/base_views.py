@@ -5,25 +5,15 @@
 
 import logging_tools
 import process_tools
-from initat.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
-     net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
-     mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
-     tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
-     mon_contactgroup, get_related_models, network_device_type, network_type, device_class, \
-     device_location, network, mon_device_templ, user, group, package_search, device_variable, \
-     mon_host_cluster, mon_service_cluster, config_type, partition_table, mon_device_esc_templ, \
-     mon_service_esc_templ, rrd_class, rrd_rra
+from initat.cluster.backbone.models import device_group, device, \
+     get_related_models, device_class, KPMC_MAP
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
-from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
-from lxml import etree
 from lxml.builder import E
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
 import pprint
-import net_tools
-import server_command
 import re
 
 HIDDEN_FIELDS = set(["password",])
@@ -57,43 +47,7 @@ def change_xml_entry(request):
     except:
         request.log("cannot parse", logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
-        mod_obj = {"devg"    : device_group,
-                   "dev"     : device,
-                   "nd"      : netdevice,
-                   "ip"      : net_ip,
-                   "routing" : peer_information,
-                   "conf"    : config,
-                   "varstr"  : config_str,
-                   "varint"  : config_int,
-                   "varbool" : config_bool,
-                   "varblob" : config_blob,
-                   "cscript" : config_script,
-                   "moncc"   : mon_check_command,
-                   "moncon"  : mon_contact,
-                   "pdisc"   : partition_disc,
-                   "part"    : partition,
-                   "monper"  : mon_period,
-                   "mondt"   : mon_device_templ,
-                   "monst"   : mon_service_templ,
-                   "mondet"  : mon_device_esc_templ,
-                   "monset"  : mon_service_esc_templ,
-                   "moncg"   : mon_contactgroup,
-                   "monhc"   : mon_host_cluster,
-                   "monsc"   : mon_service_cluster,
-                   "nwdt"    : network_device_type,
-                   "nwt"     : network_type,
-                   "dc"      : device_class,
-                   "dl"      : device_location,
-                   "nw"      : network,
-                   "user"    : user,
-                   "ps"      : package_search,
-                   "group"   : group,
-                   "dv"      : device_variable,
-                   "ctype"   : config_type,
-                   "ptable"  : partition_table,
-                   "rrdc"    : rrd_class,
-                   "rrdrra"  : rrd_rra,
-                   }.get(object_type, None)
+        mod_obj = KPMC_MAP.get(object_type, None)
         if not mod_obj:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
         else:

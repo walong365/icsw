@@ -199,38 +199,40 @@ class sidebar_tree
             )
         return ret_list
     show_device_info: (dtnode, event) =>
-        di_div = $("div#device_info")
-        # clear div
-        di_div.text("").children().remove()
-        $.ajax
-            url  : "{% url 'device:device_info' %}"
-            data :
-                "key"    : dtnode.data.key
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    dev_xml = $(xml).find("device")
-                    console.log dev_xml
-                    di_div.append(
-                        $("<h2>").text(dev_xml.attr("name"))
-                    ).append(
-                        $("<h3>").text("UUID: #{dev_xml.attr('uuid')}")
-                    )
-                    nd_ul = $("<ul>")
-                    dev_xml.find("netdevice").each (nd_idx, nd_xml) =>
-                        nd_xml = $(nd_xml)
-                        nd_li = $("<li>").text(nd_xml.attr("devname"))
-                        nd_ul.append(nd_li)
-                        ip_ul = $("<ul>")
-                        nd_xml.find("net_ip").each (ip_idx, ip_xml) =>
-                            ip_xml = $(ip_xml)
-                            ip_li = $("<li>").text(ip_xml.attr("ip"))
-                            ip_ul.append(ip_li)
-                        nd_li.append(ip_ul)
-                    di_div.append(nd_ul)
-                    di_div.modal
-                        opacity    : 50
-                        position   : [event.pageY, event.pageX]
-                        autoResize : true
+        if dtnode.data.key.match(/^dev__/)
+            $.ajax
+                url  : "{% url 'device:device_info' %}"
+                data :
+                    "key"    : dtnode.data.key
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        dev_xml = $(xml).find("device")
+                        di_div = $("div#device_info")
+                        # clear div
+                        di_div.text("").children().remove()
+                        di_div.append(
+                            $("<h2>").text(dev_xml.attr("name"))
+                        ).append(
+                            $("<h3>").text("UUID: #{dev_xml.attr('uuid')}")
+                        )
+                        nd_ul = $("<ul>")
+                        dev_xml.find("netdevice").each (nd_idx, nd_xml) =>
+                            nd_xml = $(nd_xml)
+                            nd_li = $("<li>").text(nd_xml.attr("devname"))
+                            nd_ul.append(nd_li)
+                            ip_ul = $("<ul>")
+                            nd_xml.find("net_ip").each (ip_idx, ip_xml) =>
+                                ip_xml = $(ip_xml)
+                                ip_li = $("<li>").text(ip_xml.attr("ip"))
+                                ip_ul.append(ip_li)
+                            nd_li.append(ip_ul)
+                        di_div.append(nd_ul)
+                        # working :-)
+                        di_div.append($("<span>").append(create_input_el(dev_xml, "name", dev_xml.attr("key"), {master_xml : dev_xml})))
+                        di_div.modal
+                            opacity    : 50
+                            position   : [event.pageY, event.pageX]
+                            autoResize : true
     
 root.init_sidebar = ->
     root.sidebar = new sidebar_tree($("div#sidebar_tree"))

@@ -284,7 +284,7 @@ def copy_network(request):
         for peer_info in peer_information.objects.filter(Q(s_netdevice__in=src_nds) | Q(d_netdevice__in=src_nds)):
             s_local, d_local = (peer_info.s_netdevice_id in src_nds,
                                 peer_info.d_netdevice_id in src_nds)
-            print "*", s_local, d_local
+            #print "*", s_local, d_local
             if s_local and d_local:
                 if peer_info.s_netdevice_id != peer_info.d_netdevice_id:
                     request.log("host peering detection, not handled", logging_tools.LOG_LEVEL_CRITICAL)
