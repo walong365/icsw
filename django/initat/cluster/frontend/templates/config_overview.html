@@ -131,9 +131,9 @@ class config_table
             create_input_el(cur_conf, "parent_config", line_prefix, {label : "Parent" , select_source : @configs.find("config"), add_null_entry : "none", select_source_attribute : "name", master_xml : @configs})
         ))
         if cur_conf
-            c_line.append(get_expand_td(line_prefix, "var", undefined, @toggle_config_line));
-            c_line.append(get_expand_td(line_prefix, "moncc", undefined, @toggle_config_line));
-            c_line.append(get_expand_td(line_prefix, "cscript", undefined, @toggle_config_line));
+            c_line.append(get_expand_td(line_prefix, "var", undefined, @toggle_config_line))
+            c_line.append(get_expand_td(line_prefix, "moncc", undefined, @toggle_config_line))
+            c_line.append(get_expand_td(line_prefix, "cscript", undefined, @toggle_config_line))
         else
             c_line.append($("<td>").attr({"colspan" : "3"}))
         num_confs = if cur_conf then parseInt(cur_conf.attr("num_device_configs")) else 0
@@ -163,7 +163,7 @@ class config_table
             # add monitoring commands
             mon_div = $("<table>")
             mon_div.append(@add_header(cur_conf, line_prefix, "moncc"))
-            mon_div.append(@add_monitoring_line(cur_conf, line_prefix));
+            mon_div.append(@add_monitoring_line(cur_conf, line_prefix))
             cur_conf.find("mon_check_commands").children().each (idx, cur_mon) =>
                 mon_div.append(@add_monitoring_line(cur_conf, line_prefix, $(cur_mon)))
             dummy_div.append($("<tr>").attr("id", "#{line_prefix}__moncc").append($("<td>").append(mon_div)).hide())
@@ -379,7 +379,7 @@ class config_table
                     unlock_elements(lock_list)
     inject_monitoring_command_line: (new_nc) =>
         header_tr = @table.find("tr[id$='conf__" + new_nc.attr("config") + "__moncc_new']")
-        cur_config = @configs.find("config[pk='" + new_nc.attr("config") + "']");
+        cur_config = @configs.find("config[pk='" + new_nc.attr("config") + "']")
         header_tr.find("input[id$='__name']").attr("value", "")
         header_tr.after(@add_monitoring_line(cur_config, "conf__" + new_nc.attr("config"), new_nc).show())
         @recolor_table(header_tr.parents("table:first"))
@@ -470,7 +470,7 @@ class config_table
                         @remove_config_script_line(cur_el)
                     unlock_elements(lock_list)
     inject_config_script_line: (new_cs) =>
-        header_tr = @table.find("tr[id$='conf__" + new_cs.attr("config") + "__cscript_new']");
+        header_tr = @table.find("tr[id$='conf__" + new_cs.attr("config") + "__cscript_new']")
         cur_config = @configs.find("config[pk='" + new_cs.attr("config") + "']")
         header_tr.find("input[id$='__name']").attr("value", "")
         new_lines = @add_config_script_line(cur_config, "conf__" + new_cs.attr("config"), new_cs).show()
@@ -524,7 +524,7 @@ class config_table
     update_expand_info: =>
         @table.find("tr td div[id*='__expand__']").each (idx, cur_div) =>
             cur_div = $(cur_div)
-            div_id = cur_div.attr("id");
+            div_id = cur_div.attr("id")
             if !div_id.match(/__info$/)
                 num_tr = @table.find("tr[id^='" + div_id.replace(/^(conf__\d+__)[a-z]+__(.*)$/, "$1$2") + "']").length - 3
                 if div_id.match(/__cscript$/)

@@ -185,13 +185,13 @@ class sidebar_tree
                     data :
                         "key"    : key_list
                         "double" : 0
-                @ADS_RUNNING = false;
+                @ADS_RUNNING = false
     resolve_device_keys: (key_list) =>
         list_len = key_list.length
         ret_list = list_len + (if list_len == 1 then " device" else " devices")
         if list_len
             ret_list = "#{ret_list}: "
-            d_tree = @top_div.dynatree("getTree");
+            d_tree = @top_div.dynatree("getTree")
             $.each(key_list, (idx, val) =>
                 if idx > 0
                     ret_list = "#{ret_list},"

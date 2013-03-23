@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n coffeescript %}
 
 <ul id="main_navigation" class="sf-menu">
     <li>
@@ -107,13 +107,15 @@
 
 <script type="text/javascript">
 
-function init_menu() {
-    $("#main_navigation").superfish({
-        speed : 1,
+{% inlinecoffeescript %}
+
+root = exports ? this
+
+root.init_menu = () ->
+    $("#main_navigation").superfish
+        speed : 1
         delay : 500
-    });
-    // new jquery implementation, wait for 1.10 ...
-    // $("#main_navigation").menu();
-};
+
+{% endinlinecoffeescript %}
 
 </script>

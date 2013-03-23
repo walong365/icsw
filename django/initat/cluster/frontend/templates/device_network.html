@@ -50,7 +50,6 @@ class network_table
             @new_table.append(@draw_device_networks($(cur_dev)).children())
         @top_div.children().remove()
         @top_div.append(@new_table)
-        #new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; });
         @show_ip_peer_numbers()
     draw_device_networks: (cur_dev) =>
         # init global flag
@@ -76,7 +75,7 @@ class network_table
             num_nds = cur_dev.find("netdevices netdevice").length
             cur_tr.append($("<th>").attr({
                 "id"      : "#{line_prefix}__devname",
-                "rowspan" : num_nds + 1}).text(cur_dev.attr("name")));
+                "rowspan" : num_nds + 1}).text(cur_dev.attr("name")))
         else
             cur_tr = $("<tr>").attr({
                 "id"    : line_prefix,
@@ -228,7 +227,7 @@ class network_table
                 data    : create_dict(@new_table, cur_el.attr("id"))
                 success : (xml) =>
                     if parse_xml_response(xml)
-                        @inject_netdevice_line(cur_dev, $(xml).find("response values value netdevice"));
+                        @inject_netdevice_line(cur_dev, $(xml).find("response values value netdevice"))
                         $("div#network_table").find("input[id^='nd__" + cur_el.attr("id").split("__")[1] + "__new__devname']").attr("value", "")
                     unlock_elements(lock_list)
         else
@@ -254,7 +253,7 @@ class network_table
     inject_netdevice_line: (cur_dev, new_nd) =>
         # add new_nd to DEVICE_NETWORKS
         @DEVICE_NETWORKS.find("device[pk='" + new_nd.attr("device") + "'] netdevices").append(new_nd)
-        @FIRST_NETDEVICE_LINE = false;
+        @FIRST_NETDEVICE_LINE = false
         header_tr = $("div#network_table tr[id='nd__" + cur_dev.attr("pk") + "__new']")
         header_tr.next().next().after(
             @add_netdevice_line(cur_dev, new_nd).children()
@@ -334,9 +333,9 @@ class network_table
                     if parse_xml_response(xml)
                         $(xml).find("value[name='new_peer_information'] peer_information").each (p_idx, new_peer) =>
                             new_peer = $(new_peer)
-                            @inject_peer(new_peer, "s_netdevice");
+                            @inject_peer(new_peer, "s_netdevice")
                             if new_peer.attr("s_netdevice") != new_peer.attr("d_netdevice")
-                                @inject_peer(new_peer, "d_netdevice");
+                                @inject_peer(new_peer, "d_netdevice")
         cur_sel.attr("value", "0")
     inject_peer: (new_peer, attr_name) =>
         cur_nd = @DEVICE_NETWORKS.find("netdevice[pk='" + new_peer.attr(attr_name) + "']")
@@ -494,7 +493,7 @@ class network_table
             if cur_ns.attr("pk") == sel_val
                 cur_opt.attr("selected", "selected")
             cur_el.append(cur_opt)
-        return cur_el;
+        return cur_el
     update_network_device_type_string: (cur_el) =>
         cur_nd = @DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "'] netdevice[pk='" + cur_el.attr("id").split("__")[2] + "']")
         cur_el.parents("tr:first").find("span[id$='__devinfo']").text(@DEVICE_NETWORKS.find("network_device_type_list network_device_type[pk='" + cur_nd.attr("network_device_type") + "']").text())

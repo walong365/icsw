@@ -71,7 +71,7 @@ class config_table
             # not working, FIXME
             if (@show_list != disp_list) or force_reload
                 @display_list = (@configs.find("config[key='#{name}']")[0] for name in disp_list)
-                @update_config_info(disp_list.length);
+                @update_config_info(disp_list.length)
                 cur_exp_list = @get_expand_list()
                 @draw_tables()
                 @restore_expansion(cur_exp_list)
@@ -95,7 +95,7 @@ class config_table
     draw_tables : =>
         @selected = {}
         @meta_selected = {}
-        @top_div.children().remove();
+        @top_div.children().remove()
         c_table = $("<table>").attr({"id" : "config"}).addClass("devicelist")
         @devices.find("device_group").each (idx, cur_dg) =>
             cur_dg = $(cur_dg)

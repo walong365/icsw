@@ -77,7 +77,7 @@ class config_table
                 }).addClass("ui-widget ui-widget-header").text("all devices"))
             c_table.append(new_tr)
             c_table.append(@draw_device(undefined))
-        @top_div.append(c_table);
+        @top_div.append(c_table)
         c_table.find("select[id$='mon_ext_host']").msDropdown({
             useSprite : "smallIcons",
             visibleRows : 15

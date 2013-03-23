@@ -34,7 +34,6 @@ class device_tree
             new_table.append(@build_selected)
         @top_div.append(new_table)
         @update_device_group_info()
-        #new_table.find("tr").mouseover(function() { $(this).addClass("highlight") ; }).mouseout(function() { $(this).removeClass("highlight") ; })
         new_table.find("input#new__device__name").focus()
     update_device_group_info: () =>
         if not @xml.find("device_group[is_cdg='0']").length

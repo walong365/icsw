@@ -150,7 +150,7 @@ class var_table
                 success : (xml) =>
                     if parse_xml_response(xml)
                         @remove_variable_line(cur_el)
-                    unlock_elements(lock_list);
+                    unlock_elements(lock_list)
     inject_variable_line: (new_cs) =>
         dev_pk = new_cs.attr("device")
         header_tr = @v_table.find("tr[id$='dev__#{dev_pk}__dv__new']")

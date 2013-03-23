@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n crispy_forms_tags %}
+{% load i18n crispy_forms_tags coffeescript %}
 
 {% block title %}{% trans "init.at login" %}{% endblock %}
 
@@ -20,11 +20,14 @@
 
 <script type="text/javascript">
 
-function addHandlers() {
-    $("form#uniForm").uniform();
-}
+{% inlinecoffeescript %}
 
-$(document).ready(addHandlers);
+addHandlers = ->
+    $("form#uniForm").uniform()
+
+$(document).ready(addHandlers)
+
+{% endinlinecoffeescript %}
 
 </script>
 

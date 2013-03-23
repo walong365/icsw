@@ -79,7 +79,7 @@ class kernel_option extends option_list
         kernel_sel.append($("<option>").attr({"value" : "0"}).text("not set"))
         boot.xml_dict[@short].find("kernel").each (k_idx, cur_kernel) =>
             cur_kernel = $(cur_kernel)
-            kernel_sel.append($("<option>").attr({"value" : cur_kernel.attr("pk")}).text(cur_kernel.attr("name")));
+            kernel_sel.append($("<option>").attr({"value" : cur_kernel.attr("pk")}).text(cur_kernel.attr("name")))
         cur_td.append(kernel_sel)
         if not @global_mode
             cur_td.append(", actual kernel: ").append($("<span>").attr({
@@ -158,7 +158,7 @@ class hard_control_option extends option_list
         cur_td.append(hard_con)
         return @full_line(cur_td)
     _set_option: (dev_xml) =>
-        new_hcon = @cur_td.find("span#" + @dev_key + "__hard_control");
+        new_hcon = @cur_td.find("span#" + @dev_key + "__hard_control")
         if dev_xml.find("cd_connection").length
             new_hcon.text("")
             dev_xml.find("cd_connection").each (index, new_cd) =>
@@ -289,18 +289,18 @@ class boot_device_option extends option_list
         cur_td.append($("<input>").attr({
             "id"       : "#{@dev_key}__boot_dev_macaddr",
             "type"     : "text",
-            "disabled" : "disabled"}));
-        cur_td.append(", DHCP: ");
+            "disabled" : "disabled"}))
+        cur_td.append(", DHCP: ")
         cur_td.append($("<input>").attr({
             "id"       : "#{@dev_key}__write_dhcp",
             "type"     : "checkbox",
-            "disabled" : "disabled"}));
-        cur_td.append(", driver: ");
+            "disabled" : "disabled"}))
+        cur_td.append(", driver: ")
         cur_td.append($("<input>").attr({
             "id"       : "#{@dev_key}__boot_dev_driver",
             "type"     : "text",
-            "disabled" : "disabled"}));
-        cur_td.append(", greedy mode: ");
+            "disabled" : "disabled"}))
+        cur_td.append(", greedy mode: ")
         cur_td.append($("<input>").attr({
             "id"       : "#{@dev_key}__greedy_mode",
             "type"     : "checkbox",
@@ -321,7 +321,7 @@ class boot_device_option extends option_list
         if dev_xml.attr("dhcp_write") == "1"
             boot_dev_dhcp.attr({"checked" : "checked"})
         else
-            boot_dev_dhcp.removeAttr("checked");
+            boot_dev_dhcp.removeAttr("checked")
         boot_dev_macaddr.removeAttr("disabled")
         boot_dev_driver.removeAttr("disabled")
         boot_dev_greedy_mode.removeAttr("disabled")
@@ -353,12 +353,12 @@ class partition_option extends option_list
         super(dev_xml, "p")
     draw: (boot) =>
         cur_td = $("<td>")
-        cur_td.append("Partition ");
+        cur_td.append("Partition ")
         part_sel = $("<select>").attr({
             "disabled" : "disabled",
             "id"       : "#{@dev_key}__new_part"
         })
-        part_sel.append($("<option>").attr({"value" : "0"}).text("not set"));
+        part_sel.append($("<option>").attr({"value" : "0"}).text("not set"))
         boot.xml_dict[@short].find("partition_table").each (index, cur_part) =>
             cur_part = $(cur_part)
             part_opt = $("<option>").attr({"value" : cur_part.attr("pk")}).text(cur_part.attr("name"))
@@ -389,12 +389,12 @@ class image_option extends option_list
     draw: (boot) =>
         cur_td = $("<td>")
         cur_td.attr({"colspan" : "5"})
-        cur_td.append("Image ");
+        cur_td.append("Image ")
         img_sel = $("<select>").attr({
             "disabled" : "disabled",
             "id"       : "#{@dev_key}__new_image"
         })
-        img_sel.append($("<option>").attr({"value" : "0"}).text("not set"));
+        img_sel.append($("<option>").attr({"value" : "0"}).text("not set"))
         boot.xml_dict[@short].find("image").each (index, cur_img) =>
             cur_img = $(cur_img)
             img_opt = $("<option>").attr({"value" : cur_img.attr("pk")}).text(cur_img.attr("name"))
@@ -404,13 +404,13 @@ class image_option extends option_list
         cur_td.append(img_sel)
         return @full_line(cur_td)
     _set_option: (dev_xml) =>
-        new_img = @cur_td.find("select#" + @dev_key + "__new_image");
+        new_img = @cur_td.find("select#" + @dev_key + "__new_image")
         new_img.val(dev_xml.attr("new_image"))
         new_img.removeAttr("disabled")
         new_img.bind("change", @change)
     change: (event) =>
         el = $(event.target)
-        img_tr = el.parents("tr:first");
+        img_tr = el.parents("tr:first")
         $.ajax
             url     : "{% url 'boot:set_image' %}"
             data    : {
@@ -602,7 +602,7 @@ class boot_table
         return dummy_div.children()
     draw_device: (cur_dg, cur_dev) =>
         dummy_div = $("<div>")
-        line_prefix = cur_dev.attr("key");
+        line_prefix = cur_dev.attr("key")
         new_tr = $("<tr>").attr({
             "class" : "ui-widget ui-widget-header",
             "id"    : line_prefix,
@@ -748,7 +748,7 @@ class boot_table
                             if call_mother
                                 dev_tr.find("td#recv_str").text("rcv: " + cur_dev.attr("recvstate"))
                                 dev_tr.find("td#req_str").text("req: " + cur_dev.attr("reqstate"))
-                                net_state = cur_dev.attr("net_state");
+                                net_state = cur_dev.attr("net_state")
                                 tr_class = {"down" : "error", "unknown" : "error", "ping" : "warn", "up" : "ok"}[net_state]
                                 dev_tr.find("td#network").text(cur_dev.attr("network") + " (#{net_state})")
                                 dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok error warn").addClass(tr_class)

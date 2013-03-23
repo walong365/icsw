@@ -64,7 +64,7 @@ class device_table
         pack_pk = pack_key.split("__")[1]
         t_state = cur_el.val()
         if t_state != "0"
-            cur_el.val("0");
+            cur_el.val("0")
             @table.find("tr[id^='pdc__'] ").each (idx, cur_tr) =>
                 cur_tr = $(cur_tr)
                 if @xml.find("package_device_connections package_device_connection[pk='" + cur_tr.attr("id").split("__")[1] + "'][package='" + pack_pk + "']").length
