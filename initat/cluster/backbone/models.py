@@ -3648,3 +3648,44 @@ def get_related_models(in_obj):
         rel_field_name = rel_obj.field.name
         used_objs += rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})).count()
     return used_objs
+
+# mapping key prefix -> model class
+
+KPMC_MAP = {
+    "devg"    : device_group,
+    "dev"     : device,
+    "nd"      : netdevice,
+    "ip"      : net_ip,
+    "routing" : peer_information,
+    "conf"    : config,
+    "varstr"  : config_str,
+    "varint"  : config_int,
+    "varbool" : config_bool,
+    "varblob" : config_blob,
+    "cscript" : config_script,
+    "moncc"   : mon_check_command,
+    "moncon"  : mon_contact,
+    "pdisc"   : partition_disc,
+    "part"    : partition,
+    "monper"  : mon_period,
+    "mondt"   : mon_device_templ,
+    "monst"   : mon_service_templ,
+    "mondet"  : mon_device_esc_templ,
+    "monset"  : mon_service_esc_templ,
+    "moncg"   : mon_contactgroup,
+    "monhc"   : mon_host_cluster,
+    "monsc"   : mon_service_cluster,
+    "nwdt"    : network_device_type,
+    "nwt"     : network_type,
+    "dc"      : device_class,
+    "dl"      : device_location,
+    "nw"      : network,
+    "user"    : user,
+    "ps"      : package_search,
+    "group"   : group,
+    "dv"      : device_variable,
+    "ctype"   : config_type,
+    "ptable"  : partition_table,
+    "rrdc"    : rrd_class,
+    "rrdrra"  : rrd_rra,
+}
