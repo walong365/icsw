@@ -796,13 +796,13 @@ class main_config(object):
                     ("default_statuswrl_layout" , 4),
                     ("refresh_rate"             , 60),
                     ("lock_author_name"         , 1),
-                    ("authorized_for_system_information"        , def_user),
-                    ("authorized_for_system_commands"           , def_user),
-                    ("authorized_for_configuration_information" , def_user),
-                    ("authorized_for_all_hosts"                 , def_user),
-                    ("authorized_for_all_host_commands"         , def_user),
-                    ("authorized_for_all_services"              , def_user),
-                    ("authorized_for_all_service_commands"      , def_user)] + 
+                    ("authorized_for_system_information"       , def_user),
+                    ("authorized_for_system_commands"          , def_user),
+                    ("authorized_for_configuration_information", def_user),
+                    ("authorized_for_all_hosts"                , def_user),
+                    ("authorized_for_all_host_commands"        , def_user),
+                    ("authorized_for_all_services"             , def_user),
+                    ("authorized_for_all_service_commands"     , def_user)] + 
             [("tac_show_only_hard_state", 1)] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else [])
         if sql_suc:
             pass
