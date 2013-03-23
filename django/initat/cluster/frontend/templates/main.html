@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="{{ MEDIA_URL }}uni_form/uni-form.css" type="text/css" />
     <link rel="stylesheet" href="{{ MEDIA_URL }}uni_form/default.uni-form.css" type="text/css" />
     
-   {# <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/jqModal.css" /> #}
+    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}css/jqModal.css" />
 {% endcompress %}
 
 <style type="text/css" media="screen">
@@ -51,8 +51,9 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/jquery.jnotify.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/underscore-min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/jquery.dd.min.js"></script>
-   {# <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/jqModal.js"></script> #}
     <script src="{{ MEDIA_URL }}uni_form/uni-form.jquery.js" type="text/javascript"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery.simplemodal-latest.min.js"></script>
+
 
 {% endcompress %}
 
@@ -96,61 +97,53 @@
 {% block footer %}
 <script type="text/javascript">
 
-var page_time="{% now "G:i:s" %}";
+{% inlinecoffeescript %}
 
-function save_layout_state(p_name) {
-};
+save_layout_state = ->
 
-function init_layout() {
-    if ($("div.ui-layout-center").length) {
-        my_layout = $("body").layout({
-            applyDefaultStyles  : true,
-            spacing_open        : 6,
-            west__size          : 300,
-            west__maxSize       : 400,
-            west__minSize       : 100,
-            north__spacing_open : 0,
-            south__initClosed   : true,
-            west__initClosed    : {% if request.session.west_closed %}true{% else %}false{% endif %},
-            onopen : function(p_name) {
-                save_layout_state(p_name);
-            },
-            onclose : function(p_name) {
-                save_layout_state(p_name);
-            }
-        });
-        my_layout.allowOverflow("north");
-    };
-};
+init_layout = ->
+    if $("div.ui-layout-center").length
+        my_layout = $("body").layout
+            applyDefaultStyles  : true
+            spacing_open        : 6
+            west__size          : 300
+            west__maxSize       : 400
+            west__minSize       : 100
+            north__spacing_open : 0
+            south__initClosed   : true
+            west__initClosed    : {% if request.session.west_closed %}true{% else %}false{% endif %}
+            onopen : (p_name) ->
+                save_layout_state(p_name)
+            onclose : (p_name) ->
+                save_layout_state(p_name)
+        my_layout.allowOverflow("north")
 
-function add_handlers_main() {
-    init_layout();
-    update_time();
-    try {
+update_time = ->
+    page_time = new Date()
+    $("span#cur_time").text($.sprintf("%02d:%02d:%02d", page_time.getHours(), page_time.getMinutes(), page_time.getSeconds()))
+
+add_handlers_main = ->
+    init_layout()
+    update_time()
+    try
         {% if user.is_authenticated %}
-        init_menu();
+        init_menu()
         {% endif %}
-        sidebar_handler();
-    } catch(err) {
-        // in case no menu or sidebar is present
-    };
-    // init jnotify
-    $.jnotify.setup({
-        "fadeSpeed" : 50,
+        init_sidebar()
+    catch err
+        # in case no menu or sidebar is present
+    # init jnotify
+    $.jnotify.setup
+        "fadeSpeed" : 50
         "delay"     : 10000
-    });
-    // show time
-    $(document).everyTime(1000, "show_time", function(i) {
-        update_time();
-    });
-}
+    # show time
+    $(document).everyTime(1000, "show_time", (i) ->
+        update_time()
+    )
 
-function update_time() {
-    var page_time = new Date();
-    $("span#cur_time").text($.sprintf("%02d:%02d:%02d", page_time.getHours(), page_time.getMinutes(), page_time.getSeconds()));
-}
+$(document).ready(add_handlers_main)
 
-$(document).ready(add_handlers_main);
+{% endinlinecoffeescript %}
 
 </script>
 {% endblock %}

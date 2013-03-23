@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n coffeescript %}
 
 <table border="0" width="100%" cellpadding="0" cellspacing="0">
     <tr>
@@ -9,7 +9,7 @@
     </tr>
     <tr>
         <td id="device_selection">
-            <input type="text" id="device_selection" onKeyUp="apply_device_selection();"/>
+            <input type="text" id="device_selection"/>
         </td>
     </tr>
     <tr>
@@ -21,208 +21,224 @@
     <tr>
         <td>
             <div id="devselclear_div">
-                <input type="button" onClick="clear_selection();" value="clear selection" />
+                <input type="button" id="devsel_clear" value="clear selection" />
             </div>
         </td>
     </tr>
 </table>
 
+<div id="device_info" style="display:none;">
+test<a href="#">close</a>
+</div>
+
 <div id="ajax_info">
 </div>
+
 <script type="text/javascript">
 
-DYN_DTS_LOCKCOUNT = 0;
-CALL_DEVSEL_LINK_WHEN_LOADED = false;
-CUR_DEVICE_SELECTION = undefined;
-ADS_RUNNING = false;
-DBL_HANDLING = false;
+{% inlinecoffeescript %}
 
-function toggle_south(event) {
-    my_layout.toggle("south");
-}
+root = exports ? this
 
-function toggle_west(event) {
-    my_layout.toggle("west");
-}
+root.sidebar_target_func = undefined
+root.sidebar_call_devsel_link_when_loaded = false
 
-function apply_device_selection() {
-    var cur_text = $("input#device_selection").attr("value");
-    if (cur_text != CUR_DEVICE_SELECTION) {
-        CUR_DEVICE_SELECTION = cur_text;
-        if (CUR_DEVICE_SELECTION) {
-           ADS_RUNNING = true;
-            var cur_re = new RegExp(CUR_DEVICE_SELECTION);
-            var key_list = new Array();
-            // traverse tree
-            $("div#sidebar_tree").dynatree("getRoot").visit(function(node) {
-                if (node.data.title.match(cur_re)) {
-                    node.makeVisible(true);
-                    node.select(true);
-                    key_list.push(node.data.key);
-                } else {
-                    node.select(false);
-                };
-            });
-            // traverse tree, unexpand subtrees
-            $("div#sidebar_tree").dynatree("getRoot").visit(function(node) {
-                if (node.hasChildren()) {
-                    var any_selected = false;
-                    // count active
-                    node.visit(function(sub_node) {
-                        if (sub_node.isSelected()) {
-                            any_selected = true;
-                        };
-                    });
-                    if (! any_selected) {
-                        node.expand(false);
-                    };
-                };
-                return "skip";
-            });
-            $.ajax({
-                url  : "{% url 'device:add_selection' %}",
-                data : {
-                    "key"    : key_list,
-                    "double" : 0
-                }
-            });
-           ADS_RUNNING = false;
-        };
-    };
-};
-
-function clear_selection() {
-    $("input#device_selection").val("");
-    $.ajax({
-        url     : "{% url 'device:clear_selection' %}",
-        success : function(xml) {
-            DYN_DTS_LOCKCOUNT = 1;
-            $.each($("div#sidebar_tree").dynatree("getSelectedNodes"), function(index, value) {
-                value.select(false);
-            });
-            DYN_DTS_LOCKCOUNT = 0;
-        }
-    });
-};
-
-function install_devsel_link(t_func, fire_when_loaded) {
-    $("div#devsel_div").children().remove();
-    $("div#devsel_div").text("");
-    $("div#devsel_div").append($("<button>").attr({"id" : "devsel_button"}).text("use selection").bind("click", function(event) {
-        t_func($("div#sidebar_tree"));
-    }));
-    CALL_DEVSEL_LINK_WHEN_LOADED = fire_when_loaded;
-};
-
-function resolve_device_keys(key_list) {
-    var list_len = key_list.length;
-    var ret_list = list_len + (list_len == 1 ? " device" : " devices");
-    if (list_len) {
-        ret_list = ret_list + ": ";
-        var d_tree = $("div#sidebar_tree").dynatree("getTree");
-        $.each(key_list, function(idx, val) {
-            if (idx > 0) ret_list = ret_list + ",";
-            ret_list = ret_list + " " + d_tree.getNodeByKey(val).data.title;
-        });
-    };
-    return ret_list;
-};
-
-function sidebar_handler() {
-    $("div#sidebar_tree").dynatree({
-        autoFocus  : false,
-        checkbox   : true,
-        onDblClick : function(dtnode, event) {
-            if (!ADS_RUNNING) {
-                if (! DYN_DTS_LOCKCOUNT) {
-                    DBL_HANDLING = true;
-                    dtnode.toggleSelect();
-                    DBL_HANDLING = false;
-                    $.ajax({
-                        url  : "{% url 'device:add_selection' %}",
-                        data : {
-                            "key"    : dtnode.data.key,
-                            "add"    : dtnode.isSelected() ? 1 : 0,
-                            "double" : 1
-                        }
-                    });
-                };
-            }
-        },
-        onSelect : function(flag, dtnode) {
-            if (!ADS_RUNNING && !DBL_HANDLING) {
-                if (! dtnode.isExpanded()) {
-                    dtnode.expand(true);
-                };
-                if (! DYN_DTS_LOCKCOUNT) {
-                    $.ajax({
-                        url  : "{% url 'device:add_selection' %}",
-                        data : {
-                            "key"    : dtnode.data.key,
-                            "add"    : dtnode.isSelected() ? 1 : 0,
-                            "double" : 0
-                        }
-                    });
-                    DYN_DTS_LOCKCOUNT ++;
-                    dtnode.visit(function(cur_node) {
-                        cur_node.toggleSelect();
-                    }, false);
-                    DYN_DTS_LOCKCOUNT --;
-                };
-            };
-        },
-        debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
-    });
-    $.ajax({
-        url     : "{% url 'device:get_group_tree' %}",
-        data    : {
-            "ignore_cdg"      : "0",
-            "permission_tree" : "1"
-        },
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                var root_node = $("#sidebar_tree").dynatree("getRoot");
-                $(xml).find("device_groups device_group").each(function() {
-                    var cur_dg = $(this);
-                    var title_str = cur_dg.attr("name");
-                    if (cur_dg.find("device[meta_device='0']").length) {
-                        title_str += " (" + cur_dg.find("device[meta_device='0']").length + ")";
-                    };
-                    var dg_node = root_node.addChild({
-                        title    : title_str,
-                        isFolder : true,
-                        isLazy   : false,
-                        select   : cur_dg.attr("tree_selected") == "selected" ? true : false,
-                        expand   : cur_dg.attr("tree_selected") == "selected" ? true : false,
-                        key      : cur_dg.attr("key")
-                    });
-                    cur_dg.find("device").each(function() {
-                        var cur_dev = $(this);
-                        if (cur_dev.attr("meta_device") == "1") {
-                        } else {
-                            dg_node.addChild({
-                                title   : cur_dev.attr("title"),
-                                select  : cur_dev.attr("tree_selected") == "selected" ? true : false,
-                                key     : cur_dev.attr("key"),
-                                tooltip : "UUID: " + cur_dev.attr("uuid")
-                            });
-                        };
-                    });
-                });
-                $.each($("div#sidebar_tree").dynatree("getSelectedNodes"), function(index, value) {
-                    value.expand(true);
-                    value.makeVisible(true);
-                });
-                if (CALL_DEVSEL_LINK_WHEN_LOADED) {
-                    $("div#devsel_div button#devsel_button").trigger("click");
-                };
-            }
-        }
-    });
+class sidebar_tree
+    constructor: (@top_div) ->
+        @DYN_DTS_LOCKCOUNT = 0
+        @ADS_RUNNING       = false
+        @DBL_HANDLING      = false
+        @CALL_DEVSEL_LINK_WHEN_LOADED = root.sidebar_call_devsel_link_when_loaded
+        @CUR_DEVICE_SELECTION         = undefined
+        @init_sidebar()
+        @load_xml()
+        @top_div.find("ul").css({"border" : "none", "margin" : "0px"})
+        @top_div.css({"border" : "1px dotted gray", "background-color" : "#FFFFFF"})
+        $("input#device_selection").focus().bind("keyup", @apply_device_selection)
+        $("input#devsel_clear").on("click", @clear_selection)
+        # check for installed sidebar_target_func
+        if root.sidebar_target_func
+            $("div#devsel_div").text("").children().remove()
+            $("div#devsel_div").append(
+                $("<button>").attr(
+                    "id" : "devsel_button"
+                ).text("use selection").bind("click", (event) =>
+                    root.sidebar_target_func(@top_div)
+                )
+            )
+    init_sidebar: =>
+        @top_div.dynatree
+            autoFocus  : false
+            checkbox   : true
+            onDblClick : (dtnode, event) =>
+                if !@ADS_RUNNING
+                    if @DYN_DTS_LOCKCOUNT
+                        @DBL_HANDLING = true
+                        dtnode.toggleSelect()
+                        @DBL_HANDLING = false
+                        $.ajax
+                            url  : "{% url 'device:add_selection' %}"
+                            data :
+                                "key"    : dtnode.data.key
+                                "add"    : if dtnode.isSelected() then  else 0
+                                "double" : 1
+            onClick : (dtnode, event) =>
+                if !@ADS_RUNNING
+                    if dtnode.getEventTargetType(event) == "title"
+                        @show_device_info(dtnode, event)
+            onSelect : (flat, dtnode) =>
+                if !@ADS_RUNNING and !@DBL_HANDLING
+                    if !dtnode.isExpanded()
+                        dtnode.expand(true)
+                    if !@DYN_DTS_LOCKCOUNT
+                        $.ajax
+                            url  : "{% url 'device:add_selection' %}"
+                            data :
+                                "key"    : dtnode.data.key
+                                "add"    : if dtnode.isSelected() then 1 else 0
+                                "double" : 0
+                        @DYN_DTS_LOCKCOUNT++
+                        dtnode.visit(
+                            (cur_node) ->
+                                cur_node.toggleSelect()
+                            false)
+                        @DYN_DTS_LOCKCOUNT--
+            debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
+    load_xml: =>
+        $.ajax
+            url     : "{% url 'device:get_group_tree' %}"
+            data    :
+                "ignore_cdg"      : "0"
+                "permission_tree" : "1"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    root_node = @top_div.dynatree("getRoot")
+                    $(xml).find("device_groups device_group").each (dg_idx, cur_dg) =>
+                        cur_dg = $(cur_dg)
+                        title_str = cur_dg.attr("name")
+                        if cur_dg.find("device[meta_device='0']").length
+                            title_str = "#{title_str} (" + cur_dg.find("device[meta_device='0']").length + ")"
+                        dg_node = root_node.addChild(
+                            title    : title_str
+                            isFolder : true
+                            isLazy   : false
+                            select   : if cur_dg.attr("tree_selected") == "selected" then true else false
+                            expand   : if cur_dg.attr("tree_selected") == "selected" then true else false
+                            key      : cur_dg.attr("key")
+                        )
+                        cur_dg.find("device").each (d_idx, cur_dev) =>
+                            cur_dev = $(cur_dev)
+                            if cur_dev.attr("meta_device") != "1"
+                                dg_node.addChild
+                                    title   : cur_dev.attr("title")
+                                    select  : if cur_dev.attr("tree_selected") == "selected" then true else false
+                                    key     : cur_dev.attr("key")
+                                    tooltip : "UUID: " + cur_dev.attr("uuid")
+                    $.each(@top_div.dynatree("getSelectedNodes"),  (index, value) =>
+                        value.expand(true)
+                        value.makeVisible(true)
+                    )
+                    if @CALL_DEVSEL_LINK_WHEN_LOADED
+                        $("div#devsel_div button#devsel_button").trigger("click")
+    clear_selection: =>
+        $("input#device_selection").val("")
+        $.ajax
+            url     : "{% url 'device:clear_selection' %}"
+            success : (xml) =>
+                @DYN_DTS_LOCKCOUNT = true
+                $.each(@top_div.dynatree("getSelectedNodes"), (index, value) =>
+                    value.select(false)
+                )
+                @DYN_DTS_LOCKCOUNT = false
+    apply_device_selection: =>
+        cur_text = $("input#device_selection").val()
+        if cur_text != @CUR_DEVICE_SELECTION
+            @CUR_DEVICE_SELECTION = cur_text
+            if @CUR_DEVICE_SELECTION
+                @ADS_RUNNING = true
+                cur_re = new RegExp(@CUR_DEVICE_SELECTION)
+                key_list = []
+                # traverse tree
+                @top_div.dynatree("getRoot").visit((node) ->
+                    if node.data.title.match(cur_re)
+                        node.makeVisible(true)
+                        node.select(true)
+                        key_list.push(node.data.key)
+                    else
+                        node.select(false)
+                )
+                # traverse tree, unexpand subtrees
+                @top_div.dynatree("getRoot").visit((node) ->
+                    if node.hasChildren()
+                        any_selected = false
+                        # count active
+                        node.visit((sub_node) ->
+                            if sub_node.isSelected()
+                                any_selected = true
+                        )
+                        if !any_selected
+                            node.expand(false)
+                    return "skip"
+                )
+                $.ajax
+                    url  : "{% url 'device:add_selection' %}"
+                    data :
+                        "key"    : key_list
+                        "double" : 0
+                @ADS_RUNNING = false;
+    resolve_device_keys: (key_list) =>
+        list_len = key_list.length
+        ret_list = list_len + (if list_len == 1 then " device" else " devices")
+        if list_len
+            ret_list = "#{ret_list}: "
+            d_tree = @top_div.dynatree("getTree");
+            $.each(key_list, (idx, val) =>
+                if idx > 0
+                    ret_list = "#{ret_list},"
+                ret_list = ret_list + " " + d_tree.getNodeByKey(val).data.title
+            )
+        return ret_list
+    show_device_info: (dtnode, event) =>
+        di_div = $("div#device_info")
+        # clear div
+        di_div.text("").children().remove()
+        $.ajax
+            url  : "{% url 'device:device_info' %}"
+            data :
+                "key"    : dtnode.data.key
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    dev_xml = $(xml).find("device")
+                    console.log dev_xml
+                    di_div.append(
+                        $("<h2>").text(dev_xml.attr("name"))
+                    ).append(
+                        $("<h3>").text("UUID: #{dev_xml.attr('uuid')}")
+                    )
+                    nd_ul = $("<ul>")
+                    dev_xml.find("netdevice").each (nd_idx, nd_xml) =>
+                        nd_xml = $(nd_xml)
+                        nd_li = $("<li>").text(nd_xml.attr("devname"))
+                        nd_ul.append(nd_li)
+                        ip_ul = $("<ul>")
+                        nd_xml.find("net_ip").each (ip_idx, ip_xml) =>
+                            ip_xml = $(ip_xml)
+                            ip_li = $("<li>").text(ip_xml.attr("ip"))
+                            ip_ul.append(ip_li)
+                        nd_li.append(ip_ul)
+                    di_div.append(nd_ul)
+                    di_div.modal
+                        opacity    : 50
+                        position   : [event.pageY, event.pageX]
+                        autoResize : true
     
-    $("div#sidebar_tree ul").css({"border" : "none", "margin" : "0px"});
-    $("div#sidebar_tree").css({"border" : "1px dotted gray", "background-color" : "#FFFFFF"});
-    $("input#device_selection").focus();
-};
+root.init_sidebar = ->
+    root.sidebar = new sidebar_tree($("div#sidebar_tree"))
+    
+root.install_devsel_link = (t_func, fire_when_loaded) ->
+    root.sidebar_target_func = t_func
+    root.sidebar_call_devsel_link_when_loaded = fire_when_loaded
+
+{% endinlinecoffeescript %}
 
 </script>

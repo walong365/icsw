@@ -107,7 +107,7 @@ root.notify_generate_link = (sel_list) ->
         root.GENERATE_DEV_LIST = sel_list
     else
         sel_list = CUR_DEVICES
-    $("span#generate_info").text(resolve_device_keys(if sel_list then sel_list else CUR_DEVICES))
+    $("span#generate_info").text(root.sidebar.resolve_device_keys(if sel_list then sel_list else CUR_DEVICES))
 
 root.generate_configs = ->
     $("input#generate_button").attr("disabled", "disabled")

@@ -91,6 +91,7 @@ device_patterns = patterns(
     url("variables$"          , "device_views.variables"          , name="variables"          ),
     url("variables/create$"   , "device_views.create_variable"    , name="create_variable"    ),
     url("variables/delete$"   , "device_views.delete_variable"    , name="delete_variable"    ),
+    url("dev_info$"           , "device_views.device_info"        , name="device_info"        ),
 )
 
 network_patterns = patterns(

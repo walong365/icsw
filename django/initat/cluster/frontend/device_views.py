@@ -335,3 +335,10 @@ def delete_variable(request):
     _post = request.POST
     pprint.pprint(_post)
     return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def device_info(request):
+    dev_key = request.POST["key"].split("__")[1]
+    request.xml_response["response"] = device.objects.get(Q(pk=dev_key)).get_xml()
+    return request.xml_response.create_response()
