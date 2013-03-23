@@ -3,55 +3,53 @@
 <script type="text/javascript">
 
 String.prototype.toTitle = function () {
-    return this.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
-};
-
-AJAX_UUID = 0;
-AJAX_DICT = new Object();
-
-$.ajaxSetup({
-    type       : "POST",
-    timeout    : 50000,
-    dataType   : "xml",
-    beforeSend : function(xhr, settings) {
-        xhr.inituuid = AJAX_UUID;
-        AJAX_UUID++;
-        AJAX_DICT[xhr.inituuid] = {
-            "state" : "pending",
-            "start" : new Date()
-        };
-        var ai_div = $("div#ajax_info");
-        if (! ai_div.find("ul").length) {
-            ai_div.append($("<ul>"));
-        };
-        ai_ul = ai_div.find("ul");
-        ai_ul.append($("<li>").attr({
-            "id" : xhr.inituuid
-        }).text("pending..."));
-    },
-    complete   : function(xhr, textstatus) {
-        AJAX_DICT[xhr.inituuid]["state"] = "done";
-        AJAX_DICT[xhr.inituuid]["runtime"] = new Date() - AJAX_DICT[xhr.inituuid]["start"];
-        var ai_div = $("div#ajax_info");
-        ai_div.find("li#" + xhr.inituuid).remove();
-    },
-    error      : function(xhr, status, except) {
-    //alert(xhr.status + "," + status + ", " + except);
-        if (status == "timeout") {
-            alert("timeout");
-        } else {
-            if (xhr.status ) {
-                // if status is != 0 an error has occured
-                alert("*** " + status + " ***\nxhr.status : " + xhr.status + "\nxhr.statusText : " + xhr.statusText);
-            }
+    return this.replace(/\w\S*/g, function(txt)
+        {
+            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
         }
-        return false;
-    }
-});
+    );
+};
 
 {% inlinecoffeescript %}
 
 root = exports ? this
+
+AJAX_UUID = 0
+AJAX_DICT = new Object()
+
+$.ajaxSetup
+    type       : "POST"
+    timeout    : 50000
+    dataType   : "xml"
+    beforeSend : (xhr, settings) ->
+        xhr.inituuid = AJAX_UUID
+        AJAX_UUID++
+        AJAX_DICT[xhr.inituuid] = {
+            "state" : "pending"
+            "start" : new Date()
+        }
+        ai_div = $("div#ajax_info")
+        if not ai_div.find("ul").length
+            ai_div.append($("<ul>"))
+        ai_ul = ai_div.find("ul")
+        ai_ul.append(
+            $("<li>").attr({
+                "id" : xhr.inituuid
+            }).text("pending...")
+        )
+    complete   : (xhr, textstatus) ->
+        AJAX_DICT[xhr.inituuid]["state"] = "done"
+        AJAX_DICT[xhr.inituuid]["runtime"] = new Date() - AJAX_DICT[xhr.inituuid]["start"]
+        ai_div = $("div#ajax_info")
+        ai_div.find("li#" + xhr.inituuid).remove()
+    error      : (xhr, status, except) ->
+        if status == "timeout"
+            alert("timeout")
+        else
+            if xhr.status 
+                # if status is != 0 an error has occured
+                alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
+        return false
 
 root.draw_ds_tables = (t_div, master_array, master_xml=undefined) ->
     t_div.children().remove()
@@ -506,6 +504,218 @@ toggle_config_line_ev = (event, cb_func) ->
         cur_el.addClass("ui-icon-triangle-1-e")
         cb_func(line_prefix, false, name)
 
+get_xml_value = (xml, key) ->
+    ret_value = undefined
+    $(xml).find("response values value[name='#{key}']").each (idx, val) ->
+        value_xml = $(val)
+        if value_xml.attr("type") == "integer"
+            ret_value = parseInt(value_xml.text())
+        else
+            ret_value = value_xml.text()
+    return ret_value
+
+# create a dictionary from a list of elements
+create_dict = (top_el, id_prefix) ->
+    in_list = top_el.find("input[id^='#{id_prefix}'], select[id^='#{id_prefix}'], textarea[id^='#{id_prefix}']")
+    out_dict = {}
+    in_list.each (idx, cur_el) ->
+        cur_el = $(cur_el)
+        if cur_el.prop("tagName") == "TEXTAREA"
+            out_dict[cur_el.attr("id")] = cur_el.text()
+        else if cur_el.is(":checkbox")
+            out_dict[cur_el.attr("id")] = if cur_el.is(":checked") then "1" else "0"
+        else if cur_el.prop("tagName") == "SELECT" and cur_el.attr("multiple")
+            sel_field = []
+            cur_el.find("option:selected").each (idx, opt_field) ->
+                sel_field.push($(opt_field).attr("value"))
+            out_dict[cur_el.attr("id")] = sel_field.join("::")
+        else
+            out_dict[cur_el.attr("id")] = cur_el.attr("value")
+    return out_dict
+
+replace_xml_element = (master_xml, xml) ->
+    # replace element in master_xml
+    xml.find("value[name='object'] > *").each (idx, new_el) ->
+        new_el = $(new_el)
+        master_xml.find("[key='" + new_el.attr("key") + "']").replaceWith(new_el)
+
+submit_change = (cur_el, callback, modify_data_dict, modify_data_dict_opts, master_xml) ->
+    is_textarea = false
+    el_value = get_value(cur_el)
+    reset_value = false
+    if cur_el.attr("type") == "password"
+        check_pw = prompt("Please reenter password", "")
+        if check_pw != el_value
+            alert("Password mismatch");
+            return
+        else
+            reset_value = true
+    data_field = {
+        "id"       : cur_el.attr("id")
+        "checkbox" : cur_el.is(":checkbox")
+        "value"    : el_value
+    }
+    if modify_data_dict != undefined
+        modify_data_dict(data_field)
+    if data_field.lock_list
+        lock_list = $(data_field.lock_list.join(", ")).attr("disabled", "disabled")
+    else
+        lock_list = undefined
+    $.ajax
+        url     : "{% url 'base:change_xml_entry' %}"
+        data    : data_field
+        success : (xml) ->
+            if parse_xml_response(xml)
+                replace_xml_element(master_xml, $(xml))
+                if callback != undefined and typeof callback == "function"
+                    callback(cur_el)
+                else
+                    # set values
+                    $(xml).find("changes change").each (idx, cur_os) ->
+                        cur_os = $(cur_os)
+                        set_value(cur_os.attr("id"), cur_os.text())
+                    if reset_value
+                        cur_el.val("")
+            else
+                # set back to previous value 
+                if is_textarea
+                    $(cur_el).text(get_xml_value(xml, "original_value"))
+                else
+                    $(cur_el).attr("value", get_xml_value(xml, "original_value"))
+                if reset_value
+                    cur_el.val("")
+            if lock_list
+                unlock_elements(lock_list)
+
+force_expansion_state = (cur_tr, state) ->
+    cur_el = cur_tr.find("div[id*='__expand__']")
+    cur_el.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s")
+    if state
+        cur_el.addClass("ui-icon-triangle-1-s")
+    else
+        cur_el.addClass("ui-icon-triangle-1-e")
+
+create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
+    dummy_div = $("<div>")
+    kwargs = kwargs or {}
+    if kwargs["select_source"] == undefined
+        if kwargs.button
+            # manual callback
+            new_el = $("<input>").attr
+                "type"  : "button"
+                "id"    : "#{id_prefix}__#{attr_name}"
+            new_el.val(attr_name)
+        else if kwargs.boolean
+            # checkbox input style
+            new_el = $("<input>").attr
+                "type"  : "checkbox"
+                "id"    : "#{id_prefix}__#{attr_name}"
+            if (xml_el and xml_el.attr(attr_name) == "1") or (not xml_el and kwargs.new_default)
+                new_el.prop("checked", true)
+        else if kwargs.textarea
+            # textarea input style
+            new_el = $("<textarea>").attr({
+                "id"    : "#{id_prefix}__#{attr_name}"
+            }).text(if xml_el == undefined then (kwargs.new_default or "") or xml_el.attr(attr_name))
+        else
+            # text input style
+            if kwargs.ro
+                # experimental, FIXME, too many if-levels
+                new_el = $("<span>").attr({
+                    "id"    : "#{id_prefix}__#{attr_name}"
+                }).text(if xml_el == undefined then (kwargs.new_default or (if kwargs.number then "0" else "")) else xml_el.attr(attr_name))
+            else
+                new_el = $("<input>").attr({
+                    "type"  : if kwargs.password then "password" else (if kwargs.number then "number" else "text")
+                    "id"    : "#{id_prefix}__#{attr_name}"
+                    "value" : if xml_el == undefined then (kwargs.new_default or (if kwargs.number then "0" else "")) else xml_el.attr(attr_name)
+                })
+        # copy attributes
+        for attr_name in ["size", "min", "max"]
+            if kwargs.hasOwnProperty(attr_name)
+                new_el.attr(attr_name, kwargs[attr_name])
+    else
+        # select input
+        if typeof(kwargs.select_source) == "string"
+            sel_source = kwargs.master_xml.find(kwargs.select_source)
+        else if typeof(kwargs.select_source) == "function"
+            sel_source = kwargs.select_source(xml_el, kwargs)
+        else
+            sel_source = kwargs.select_source
+        if sel_source.length or kwargs.add_null_entry or kwargs.add_extra_entry
+            new_el = $("<select>").attr
+                "id"    : "#{id_prefix}__#{attr_name}"
+            if kwargs["css"]
+                $.each(kwargs["css"], (key, value) ->
+                    new_el.css(key, value)
+                )
+            if kwargs.manytomany
+                sel_val = if xml_el == undefined then [] else xml_el.attr(attr_name).split("::")
+                new_el.attr
+                    "multiple" : "multiple"
+                    "size"     : 5
+            else
+                sel_val = if xml_el == undefined then "0" else xml_el.attr(attr_name)
+                new_el.val(sel_val) # attr("value", sel_val);
+            if kwargs.add_null_entry
+                new_el.append(
+                    $("<option>").attr({"value" : "0"}).text(kwargs.add_null_entry)
+                )
+            if kwargs.add_extra_entry
+                new_el.append(
+                    $("<option>").attr({"value" : kwargs.extra_entry_id or "-1"}).text(kwargs.add_extra_entry)
+                )
+            sel_source.each (idx, cur_ns) ->
+                cur_ns = $(cur_ns)
+                new_opt = $("<option>").attr({"value" : cur_ns.attr("pk")})
+                if kwargs.select_source_attribute == undefined
+                    new_opt.text(cur_ns.text())
+                else
+                    new_opt.text(cur_ns.attr(kwargs.select_source_attribute))
+                if kwargs.manytomany
+                    if cur_ns.attr("pk") in sel_val
+                        new_opt.attr("selected", "selected")
+                else
+                    if (cur_ns.attr("pk") == sel_val)
+                        new_opt.attr("selected", "selected")
+                if cur_ns.attr("data-image")
+                    new_opt.attr("data-image", cur_ns.attr("data-image"))
+                new_el.append(new_opt)
+        else
+            if kwargs.ignore_missing_source
+                new_el = $("<span>")
+            else
+                new_el = $("<span>").addClass("error").text("no #{attr_name} defined")
+    if kwargs["title"]
+        new_el.attr("title", kwargs["title"])
+    if xml_el != undefined and (kwargs.bind == undefined or kwargs.bind)
+        if kwargs.change_cb
+            if kwargs.button
+                new_el.bind("click", kwargs.change_cb)
+            else
+                new_el.bind("change", kwargs.change_cb)
+            new_el.bind("change", kwargs.change_cb)
+        else
+            new_el.bind("change", (event) ->
+                submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.modify_data_dict_opts, kwargs.master_xml)
+            )
+    else if kwargs.change_cb
+        new_el.bind("change", kwargs.change_cb)
+    if kwargs and kwargs.ro and new_el.get(0).tagName != "SPAN" and not kwargs.trigger
+        new_el.attr("disabled", "disabled")
+    if kwargs["label"]
+        dummy_div.append($("<label>").attr({"for" : attr_name}).text(kwargs["label"]))
+    dummy_div.append(new_el)
+    if kwargs and kwargs.draw_result_cb
+        dummy_div = kwargs.draw_result_cb(xml_el, dummy_div)
+    if kwargs.enclose_td
+        kwargs.enclose_tag = "<td>"
+    if kwargs.enclose_tag
+        # will not work when draw_result_cb
+        enc_td = $(kwargs.enclose_tag).append(dummy_div.children())
+        dummy_div.append(enc_td)
+    return dummy_div.children()
+
 root.get_value             = get_value
 root.set_value             = set_value
 root.draw_setup            = draw_setup
@@ -517,273 +727,13 @@ root.lock_elements         = lock_elements
 root.unlock_elements       = unlock_elements
 root.get_expand_td         = get_expand_td
 root.toggle_config_line_ev = toggle_config_line_ev
+root.get_xml_value         = get_xml_value
+root.create_dict           = create_dict
+root.replace_xml_element   = replace_xml_element
+root.submit_change         = submit_change
+root.force_expansion_state = force_expansion_state
+root.create_input_el       = create_input_el
 
 {% endinlinecoffeescript %}
-
-function get_xml_value(xml, key) {
-    var ret_value = undefined;
-    $(xml).find("response values value[name='" + key + "']").each(function() {
-        var value_xml =$(this);
-        if ($(value_xml).attr("type") == "integer") {
-            ret_value = parseInt($(value_xml).text());
-        } else {
-            ret_value = $(value_xml).text();
-        };
-    });
-    return ret_value;
-};
-
-// create a dictionary from a list of elements
-function create_dict(top_el, id_prefix) {
-    var in_list = top_el.find("input[id^='" + id_prefix + "'], select[id^='" + id_prefix + "'], textarea[id^='" + id_prefix + "']");
-    var out_dict = {};
-    in_list.each(function(idx, value) {
-        var cur_el = $(this);
-        if (cur_el.prop("tagName") == "TEXTAREA") {
-            out_dict[cur_el.attr("id")] = cur_el.text();
-        } else if (cur_el.is(":checkbox")) {
-            out_dict[cur_el.attr("id")] = cur_el.is(":checked") ? "1" : "0";
-        } else if (cur_el.prop("tagName") == "SELECT" && cur_el.attr("multiple")) {
-            var sel_field = [];
-            cur_el.find("option:selected").each(function(idx) {
-                sel_field.push($(this).attr("value"));
-            });
-            out_dict[cur_el.attr("id")] = sel_field.join("::");
-        } else {
-            out_dict[cur_el.attr("id")] = cur_el.attr("value");
-        };
-    });
-    return out_dict;
-};
-
-function replace_xml_element(master_xml, xml) {
-    // replace element in master_xml
-    xml.find("value[name='object'] > *").each(function() {
-        var new_el = $(this);
-        master_xml.find("[key='" + new_el.attr("key") + "']").replaceWith(new_el);
-    });
-};
-
-function submit_change(cur_el, callback, modify_data_dict, modify_data_dict_opts, master_xml) {
-    var is_textarea = false;
-    var el_value = get_value(cur_el);
-    reset_value = false;
-    if (cur_el.attr("type") == "password") {
-        var check_pw = prompt("Please reenter password", "");
-        if (check_pw != el_value) {
-            alert("Password mismatch");
-            return;
-        } else {
-            reset_value = true;
-        };
-    };
-    var data_field = {
-        "id"       : cur_el.attr("id"),
-        "checkbox" : cur_el.is(":checkbox"),
-        "value"    : el_value
-    };
-    if (modify_data_dict !== undefined) {
-        modify_data_dict(data_field);
-    };
-    if (data_field.lock_list) {
-        lock_list = $(data_field.lock_list.join(", ")).attr("disabled", "disabled");
-    } else {
-        lock_list = undefined;
-    };
-    $.ajax({
-        url  : "{% url 'base:change_xml_entry' %}",
-        data : data_field,
-        success : function(xml) {
-            if (parse_xml_response(xml)) {
-                replace_xml_element(master_xml, $(xml));
-                if (callback != undefined && typeof callback == "function") {
-                    callback(cur_el);
-                } else {
-                    // set values
-                    $(xml).find("changes change").each(function() {
-                        var cur_os = $(this);
-                        set_value(cur_os.attr("id"), cur_os.text());
-                    });
-                    if (reset_value) cur_el.val("");
-                };
-            } else {
-                <!-- set back to previous value -->
-                if (is_textarea) {
-                    $(cur_el).text(get_xml_value(xml, "original_value"));
-                } else {
-                    $(cur_el).attr("value", get_xml_value(xml, "original_value"));
-                };
-                if (reset_value) cur_el.val("");
-            };
-            if (lock_list) unlock_elements(lock_list);
-        }
-    })
-};
-
-function in_array(in_array, s_str) {
-    var res = false;
-    for (var idx=0 ; idx < in_array.length; idx++) {
-        if (in_array[idx] == s_str) {
-            res = true;
-            break;
-        };
-    };
-    return res;
-};
-
-function force_expansion_state(cur_tr, state) {
-    var cur_el = cur_tr.find("div[id*='__expand__']");
-    cur_el.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s");
-    if (state) {
-        cur_el.addClass("ui-icon-triangle-1-s");
-    } else {
-        cur_el.addClass("ui-icon-triangle-1-e");
-    }
-};
-
-function create_input_el(xml_el, attr_name, id_prefix, kwargs) {
-    var dummy_div = $("<div>");
-    kwargs = kwargs || {};
-    if (kwargs["select_source"] === undefined) {
-        if (kwargs.button) {
-            // manual callback
-            var new_el = $("<input>").attr({
-                "type"  : "button",
-                "id"    : id_prefix + "__" + attr_name
-            });
-            new_el.val(attr_name);
-        } else if (kwargs.boolean) {
-            // checkbox input style
-            var new_el = $("<input>").attr({
-                "type"  : "checkbox",
-                "id"    : id_prefix + "__" + attr_name
-            });
-            if ((xml_el && xml_el.attr(attr_name) == "1") || (! xml_el && kwargs.new_default)) new_el.prop("checked", true);
-        } else if (kwargs.textarea) {
-            // textarea input style
-            var new_el = $("<textarea>").attr({
-                "id"    : id_prefix + "__" + attr_name
-            }).text(xml_el === undefined ? (kwargs.new_default || "") : xml_el.attr(attr_name));
-        } else {
-            // text input style
-            if (kwargs.ro) {
-                // experimental, FIXME, too many if-levels
-                var new_el = $("<span>").attr({
-                    "id"    : id_prefix + "__" + attr_name
-                }).text(xml_el === undefined ? (kwargs.new_default || (kwargs.number ? "0" : "")) : xml_el.attr(attr_name));
-            } else {
-                var new_el = $("<input>").attr({
-                    "type"  : kwargs.password ? "password" : (kwargs.number ? "number" : "text"),
-                    "id"    : id_prefix + "__" + attr_name,
-                    "value" : xml_el === undefined ? (kwargs.new_default || (kwargs.number ? "0" : "")) : xml_el.attr(attr_name)
-                });
-            };
-        };
-        // copy attributes
-        var attr_list = ["size", "min", "max"];
-        for (idx=0 ; idx < attr_list.length; idx ++) {
-            var attr_name = attr_list[idx];
-            if (kwargs.hasOwnProperty(attr_name)) {
-                new_el.attr(attr_name, kwargs[attr_name]);
-            };
-        }
-    } else {
-        // select input
-        if (typeof(kwargs.select_source) == "string") {
-            var sel_source = kwargs.master_xml.find(kwargs.select_source);
-        } else if (typeof(kwargs.select_source) == "function") {
-            var sel_source = kwargs.select_source(xml_el, kwargs);
-        } else {
-            var sel_source = kwargs.select_source;
-        };
-        if (sel_source.length || kwargs.add_null_entry || kwargs.add_extra_entry) {
-            var new_el = $("<select>").attr({
-                "id"    : id_prefix + "__" + attr_name
-            });
-            if (kwargs["css"]) {
-                $.each(kwargs["css"], function(key, value) {
-                    new_el.css(key, value);
-                });
-            };
-            if (kwargs.manytomany) {
-                var sel_val = xml_el === undefined ? [] : xml_el.attr(attr_name).split("::");
-                new_el.attr({
-                    "multiple" : "multiple",
-                    "size"     : 5
-                });
-            } else {
-                var sel_val = xml_el === undefined ? "0" : xml_el.attr(attr_name);
-                new_el.val(sel_val);//attr("value", sel_val);
-            };
-            if (kwargs.add_null_entry) {
-                new_el.append($("<option>").attr({"value" : "0"}).text(kwargs.add_null_entry));
-            };
-            if (kwargs.add_extra_entry) {
-                new_el.append($("<option>").attr({"value" : kwargs.extra_entry_id || "-1"}).text(kwargs.add_extra_entry));
-            };
-            sel_source.each(function() {
-                var cur_ns = $(this);
-                var new_opt = $("<option>").attr({"value" : cur_ns.attr("pk")});
-                if (kwargs.select_source_attribute === undefined) {
-                    new_opt.text(cur_ns.text());
-                } else {
-                    new_opt.text(cur_ns.attr(kwargs.select_source_attribute));
-                };
-                if (kwargs.manytomany) {
-                    if (in_array(sel_val, cur_ns.attr("pk"))) new_opt.attr("selected", "selected");
-                } else {
-                    if (cur_ns.attr("pk") == sel_val) new_opt.attr("selected", "selected");
-                };
-                if (cur_ns.attr("data-image")) {
-                    new_opt.attr("data-image", cur_ns.attr("data-image"));
-                };
-                new_el.append(new_opt);
-            });
-            //new_el.msDropdown();
-        } else {
-            if (kwargs.ignore_missing_source) {
-                var new_el = $("<span>");
-            } else {
-                var new_el = $("<span>").addClass("error").text("no " + attr_name + " defined");
-            };
-        };
-    };
-    if (kwargs["title"]) {
-        new_el.attr("title", kwargs["title"]);
-    };
-    if (xml_el !== undefined && (kwargs.bind === undefined || kwargs.bind)) {
-        if (kwargs.change_cb) {
-            if (kwargs.button) {
-                new_el.bind("click", kwargs.change_cb);
-            } else {
-                new_el.bind("change", kwargs.change_cb);
-            };
-            new_el.bind("change", kwargs.change_cb);
-        } else {
-            new_el.bind("change", function(event) {
-                submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.modify_data_dict_opts, kwargs.master_xml);
-            })
-        };
-    } else if (kwargs.change_cb) {
-        new_el.bind("change", kwargs.change_cb);
-    };
-    if (kwargs && kwargs.ro && new_el.get(0).tagName != "SPAN" && ! kwargs.trigger) {
-        new_el.attr("disabled", "disabled");
-    };
-    if (kwargs["label"]) {
-        dummy_div.append($("<label>").attr({"for" : attr_name}).text(kwargs["label"]));
-    };
-    dummy_div.append(new_el);
-    if (kwargs && kwargs.draw_result_cb) dummy_div = kwargs.draw_result_cb(xml_el, dummy_div);
-    if (kwargs.enclose_td) {
-        kwargs.enclose_tag = "<td>";
-    };
-    if (kwargs.enclose_tag) {
-        // will not work when draw_result_cb
-        var enc_td = $(kwargs.enclose_tag).append(dummy_div.children());
-        dummy_div.append(enc_td);
-    };
-    return dummy_div.children();
-};
 
 </script>
