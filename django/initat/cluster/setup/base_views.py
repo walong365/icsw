@@ -5,6 +5,7 @@
 
 import logging_tools
 import process_tools
+import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_group, device, \
      get_related_models, device_class, KPMC_MAP
 from django.db.models import Q
@@ -95,7 +96,7 @@ def change_xml_entry(request):
                         old_value = set(m2m_rel.all().values_list("pk", flat=True))
                         rem_values = old_value - new_value
                         add_values = new_value - old_value
-                        glob_obj = globals()[backward_m2m_relations[attr_name]]
+                        glob_obj = getattr(initat.cluster.backbone.models, backward_m2m_relations[attr_name])
                         if rem_values:
                             m2m_rel.remove(*list(glob_obj.objects.filter(Q(pk__in=rem_values))))
                         if add_values:
@@ -169,9 +170,8 @@ def change_xml_entry(request):
 def create_object(request, *args, **kwargs):
     _post = request.POST
     obj_name = kwargs["obj_name"]
-    pprint.pprint(_post)
     request.log("obj_name for create_object is '%s'" % (obj_name))
-    new_obj_class = globals()[obj_name]
+    new_obj_class = getattr(initat.cluster.backbone.models, obj_name)
     key_pf = min([(len(key), key) for key in _post.iterkeys() if key.count("__new")])[1]
     set_dict, extra_dict = ({}, {})
     m2m_dict = {}
@@ -265,7 +265,7 @@ def delete_object(request, *args, **kwargs):
     _post = request.POST
     obj_name = kwargs["obj_name"]
     force_delete = _post.get("force_delete", "false").lower() == "true"
-    del_obj_class = globals()[obj_name]
+    del_obj_class = getattr(initat.cluster.backbone.models, obj_name)
     key_pf = min([(len(key), key) for key in _post.iterkeys() if key.count("__")])[1]
     del_index = int(_post.get("delete_index", "1"))
     request.log("obj_name for delete_object is '%s' (delete_index is %d), force_delete flag is %s" % (
