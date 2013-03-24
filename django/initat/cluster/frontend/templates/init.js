@@ -544,6 +544,7 @@ submit_change = (cur_el, callback, modify_data_dict, modify_data_dict_opts, mast
     el_value = get_value(cur_el)
     reset_value = false
     if cur_el.attr("type") == "password"
+        #$.modal($("<div>").append($("<h1>").text("xxx")), {opacity : 50})
         check_pw = prompt("Please reenter password", "")
         if check_pw != el_value
             alert("Password mismatch");
@@ -595,6 +596,53 @@ force_expansion_state = (cur_tr, state) ->
     else
         cur_el.addClass("ui-icon-triangle-1-e")
 
+enter_password = (event) ->
+    $.modal(
+        $("<h2>").text("Please enter password")
+        .append(
+            $("<ul>").append(
+                $("<li>").text("Password:").append(
+                    $("<input>").attr
+                        id   : "pwd0"
+                        type : "password"
+                )
+            ).append(
+                $("<li>").text("again:").append(
+                    $("<input>").attr
+                        id   : "pwd1"
+                        type : "password"
+                )
+            )
+        ).append(
+            $("<h4>").attr
+                id : "error"
+        ),
+        {
+            onShow : (dialog) ->
+                stat_h4 = dialog.data.find("h4")
+                stat_h4.text("password empty")
+                dialog.data.find("input").bind("change", () ->
+                    pwd0 = dialog.data.find("input#pwd0").val()
+                    pwd1 = dialog.data.find("input#pwd1").val()
+                    if pwd0 == pwd1
+                        if not pwd0
+                            stat_h4.text("password empty")
+                        else
+                            stat_h4.text("password OK")
+                    else
+                        stat_h4.text("password mismatch")
+                )
+            onClose : (dialog) ->
+                pwd0 = dialog.data.find("input#pwd0").val()
+                pwd1 = dialog.data.find("input#pwd1").val()
+                if pwd0 == pwd1
+                    $(event.target).val(pwd0)
+                else
+                    $(event.target).val("")
+                $.modal.close()
+        }
+    )
+    
 create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
     dummy_div = $("<div>")
     kwargs = kwargs or {}
@@ -630,6 +678,8 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
                     "id"    : "#{id_prefix}__#{attr_name}"
                     "value" : if xml_el == undefined then (kwargs.new_default or (if kwargs.number then "0" else "")) else xml_el.attr(attr_name)
                 })
+                if kwargs.password
+                    new_el.bind("focus", enter_password)
         # copy attributes
         for attr_name in ["size", "min", "max"]
             if kwargs.hasOwnProperty(attr_name)
