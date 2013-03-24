@@ -3434,6 +3434,8 @@ def group_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "groupname")
         _check_integer(cur_inst, "gid", min_val=100, max_val=65535)
+        if cur_inst.homestart and not cur_inst.homestart.startswith("/"):
+            raise ValidationError("homestart has to start with '/'")
 
 @receiver(signals.post_save, sender=group)
 def group_post_save(sender, **kwargs):
