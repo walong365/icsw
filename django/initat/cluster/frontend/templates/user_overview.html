@@ -11,21 +11,13 @@
 
 <div id="ug_tables"></div>
 
-<input type="button" id="sync_users" value="Sync Users" onClick="sync_users();"/>
+<input type="button" id="sync_users" value="Sync Users"/>
 
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
 
 root = exports ? this
-
-root.sync_users = ->
-    $("input#sync_users").attr("disable", "disable")
-    $.ajax
-        url     : "{% url 'user:sync_users' %}"
-        success : (xml) ->
-            $("input#sync_users").removeAttr("disable")
-            parse_xml_response(xml)
 
 master_array = {
     "group" : new draw_setup("Group", "group", "group",
@@ -80,6 +72,15 @@ load_users_groups = ->
         success : (xml) ->
             if parse_xml_response(xml)
                 draw_ds_tables($("div#ug_tables"), master_array, $(xml).find("value[name='response']"))
+                sync_input = $("input#sync_users")
+                sync_input.bind("click", () ->
+                    sync_input.attr("disable", "disable")
+                    $.ajax
+                        url     : "{% url 'user:sync_users' %}"
+                        success : (xml) ->
+                            sync_input.removeAttr("disable")
+                            parse_xml_response(xml)
+                )
 
 $(document).ready(load_users_groups)
 

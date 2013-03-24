@@ -6,34 +6,44 @@
 
 root = exports ? this
 
-AJAX_UUID = 0
-AJAX_DICT = new Object()
+class ajax_struct
+    constructor: (@top_div_name) ->
+        @AJAX_UUID = 0
+        @AJAX_DICT = {}
+        @top_div = undefined
+    new_connection: =>
+        cur_id = @AJAX_UUID
+        if not @top_div
+            @top_div = $(@top_div_name)
+        if not @top_div.find("ul").length
+            @top_div.append($("<ul>"))
+        ai_ul = @top_div.find("ul")
+        ai_ul.append(
+            $("<li>").attr({
+                "id" : cur_id
+            }).text("pending...")
+        )
+        @AJAX_DICT[cur_id] = {
+            "state" : "pending"
+            "start" : new Date()
+        }
+        @AJAX_UUID++
+        return cur_id
+    close_connection: (xhr_id) =>
+        @AJAX_DICT[xhr_id]["state"] = "done"
+        @AJAX_DICT[xhr_id]["runtime"] = new Date() - @AJAX_DICT[xhr_id]["start"]
+        @top_div.find("li##{xhr_id}").remove()
+        
+my_ajax_struct = new ajax_struct("div#ajax_info")
 
 $.ajaxSetup
     type       : "POST"
     timeout    : 50000
     dataType   : "xml"
     beforeSend : (xhr, settings) ->
-        xhr.inituuid = AJAX_UUID
-        AJAX_UUID++
-        AJAX_DICT[xhr.inituuid] = {
-            "state" : "pending"
-            "start" : new Date()
-        }
-        ai_div = $("div#ajax_info")
-        if not ai_div.find("ul").length
-            ai_div.append($("<ul>"))
-        ai_ul = ai_div.find("ul")
-        ai_ul.append(
-            $("<li>").attr({
-                "id" : xhr.inituuid
-            }).text("pending...")
-        )
+        xhr.inituuid = my_ajax_struct.new_connection()
     complete   : (xhr, textstatus) ->
-        AJAX_DICT[xhr.inituuid]["state"] = "done"
-        AJAX_DICT[xhr.inituuid]["runtime"] = new Date() - AJAX_DICT[xhr.inituuid]["start"]
-        ai_div = $("div#ajax_info")
-        ai_div.find("li#" + xhr.inituuid).remove()
+        my_ajax_struct.close_connection(xhr.inituuid)
     error      : (xhr, status, except) ->
         if status == "timeout"
             alert("timeout")
