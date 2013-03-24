@@ -543,14 +543,6 @@ submit_change = (cur_el, callback, modify_data_dict, modify_data_dict_opts, mast
     is_textarea = false
     el_value = get_value(cur_el)
     reset_value = false
-    if cur_el.attr("type") == "password"
-        #$.modal($("<div>").append($("<h1>").text("xxx")), {opacity : 50})
-        check_pw = prompt("Please reenter password", "")
-        if check_pw != el_value
-            alert("Password mismatch");
-            return
-        else
-            reset_value = true
     data_field = {
         "id"       : cur_el.attr("id")
         "checkbox" : cur_el.is(":checkbox")
@@ -635,11 +627,11 @@ enter_password = (event) ->
             onClose : (dialog) ->
                 pwd0 = dialog.data.find("input#pwd0").val()
                 pwd1 = dialog.data.find("input#pwd1").val()
+                $.modal.close()
                 if pwd0 == pwd1
-                    $(event.target).val(pwd0)
+                    $(event.target).val(pwd0).trigger("change")
                 else
                     $(event.target).val("")
-                $.modal.close()
         }
     )
     
