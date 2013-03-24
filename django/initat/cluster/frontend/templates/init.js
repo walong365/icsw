@@ -2,14 +2,6 @@
 
 <script type="text/javascript">
 
-String.prototype.toTitle = function () {
-    return this.replace(/\w\S*/g, function(txt)
-        {
-            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-        }
-    );
-};
-
 {% inlinecoffeescript %}
 
 root = exports ? this
@@ -314,6 +306,11 @@ class draw_line
             dummy_div.children()[1..].hide()
         return dummy_div.children()
 
+String.prototype.toTitle = () ->
+    return @.replace(/\w\S*/g, (txt) ->
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+    )
+        
 class draw_info
     constructor: (@name, @kwargs={}) ->
         @label = @kwargs.label or @name.toTitle()
