@@ -907,18 +907,22 @@ class main_config(object):
                                 for dev_name in devg_lut.get(cur_devg, []):
                                     perm_name = "map.view.%s" % (dev_name)
                                     if perm_name not in perms_dict:
-                                        perms_dict[perm_name] = cur_c.execute("INSERT INTO perms VALUES(Null, '%s', '%s', '%s')" % (
-                                            perm_name.split(".")[0].title(),
-                                            perm_name.split(".")[1],
-                                            perm_name.split(".")[2]
-                                            )).lastrowid
-                                        self.log("permission '%s' has id %d" % (perm_name, perms_dict[perm_name]))
-                                    add_perms.append(perm_name)
+                                        try:
+                                            perms_dict[perm_name] = cur_c.execute("INSERT INTO perms VALUES(Null, '%s', '%s', '%s')" % (
+                                                perm_name.split(".")[0].title(),
+                                                perm_name.split(".")[1],
+                                                perm_name.split(".")[2]
+                                                )).lastrowid
+                                            self.log("permission '%s' has id %d" % (perm_name, perms_dict[perm_name]))
+                                        except:
+                                            self.log("cannot create permission '%s': %s" % (perm_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                                        add_perms.append(perm_name)
                             # add perms
                             for new_perm in add_perms:
-                                cur_c.execute("INSERT INTO roles2perms VALUES(%d, %d)" % (
-                                    role_dict[target_role],
-                                    perms_dict[new_perm]))
+                                if new_perm in perms_dict:
+                                    cur_c.execute("INSERT INTO roles2perms VALUES(%d, %d)" % (
+                                        role_dict[target_role],
+                                        perms_dict[new_perm]))
                             self.log("creating new role '%s' with perms %s" % (
                                 target_role,
                                 ", ".join(add_perms)
@@ -1895,6 +1899,11 @@ class build_process(threading_tools.process_obj):
         self.__mach_loggers[mach_name].log(lev, what)
         if kwargs.get("global_flag", False):
             self.log(what, lev)
+    def close_mach_log(self):
+        if self.__cached_mach_name:
+            mach_name = self.__cached_mach_name
+            self.__mach_loggers[mach_name].close()
+            del self.__mach_loggers[mach_name]
     def _check_nagios_config(self):
         c_stat, out = commands.getstatusoutput("%s/bin/%s -v %s/etc/%s.cfg" % (
             global_config["MD_BASEDIR"],
@@ -2355,7 +2364,7 @@ class build_process(threading_tools.process_obj):
                             act_host["check_command"] = act_def_dev.ccommand
                         # check for nagvis map
                         if host.automap_root_nagvis and cur_gc.master:
-                            map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.name))
+                            map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.name.encode("ascii", errors="ignore")))
                             map_dict = {
                                 "sources"      : "automap",
                                 "alias"        : host.comment or host.name,
@@ -2550,6 +2559,7 @@ class build_process(threading_tools.process_obj):
         glob_log_str = "%s, %s" % (glob_log_str, info_str)
         self.log(glob_log_str)
         self.mach_log(info_str)
+        self.close_mach_log()
     def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map):
         """
         d_map : distance map
@@ -2705,6 +2715,7 @@ class build_process(threading_tools.process_obj):
                 if parent_list:
                     host["parents"] = ",".join(set(parent_list))
                     self.mach_log("Setting parent to %s" % (", ".join(parent_list)), logging_tools.LOG_LEVEL_OK, host["name"])
+                    self.close_mach_log()
         # remove old nagvis maps
         if cur_gc.master:
             self.log("created %s" % (logging_tools.get_plural("nagvis map", len(nagvis_maps))))
