@@ -994,8 +994,9 @@ class relay_process(threading_tools.process_pool):
                 process_tools.bind_zmq_socket(cur_socket, sock_name)
                 #client.bind("tcp://*:8888")
             except zmq.core.error.ZMQError:
-                self.log("error binding %s: %s" % (short_sock_name,
-                                                   process_tools.get_except_info()),
+                self.log("error binding %s: %s" % (
+                    short_sock_name,
+                    process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_CRITICAL)
                 raise
             else:
