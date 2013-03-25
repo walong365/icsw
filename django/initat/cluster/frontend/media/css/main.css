@@ -177,24 +177,3 @@ div.leftfloat {
 
 tr.highlight, th.highlight, td.highlight { color: #000000 ; background-color: #ffe060 !important ; }
 
-#basic-modal-content {display:none;}
-#simplemodal-overlay {background-color:#fff;}
-#simplemodal-container {
-    height : 360px;
-    width  : 600px;
-    color  : #222;
-    background-color :#eee;
-    border  : 2px solid #000;
-    padding : 12px;
-}
-#simplemodal-container a.modalCloseImg {
-    background : url(/cluster/static/initat/core/static/icons/x.png) no-repeat;
-    width    : 25px;
-    height   : 29px;
-    display  : inline;
-    z-index  : 3200;
-    position : absolute;
-    top    : -15px;
-    right  : -16px;
-    cursor : pointer;
-}
