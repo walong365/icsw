@@ -114,6 +114,7 @@ network_patterns = patterns(
 monitoring_patterns = patterns(
     "initat.cluster.frontend",
     url("^setup$"              , "monitoring_views.setup"            , name="setup"            ),
+    url("^extsetup$"           , "monitoring_views.extended_setup"   , name="extended_setup"   ),
     url("^create_command$"     , "monitoring_views.create_command"   , name="create_command"   ),
     url("^delete_command$"     , "monitoring_views.delete_command"   , name="delete_command"   ),
     url("xml/dev_config$"      , "monitoring_views.device_config"    , name="device_config"    ),

@@ -60,6 +60,9 @@
         <a>{% trans "Monitoring" %}</a>
         <ul>
             <li><a href="{% url 'mon:setup' %}">{% trans "Basic setup" %}</a></li>
+            {% if settings.CLUSTER_LICENSE.monext %}
+                <li><a href="{% url 'mon:extended_setup' %}">{% trans "Extended setup" %}</a></li>
+            {% endif %}
             <li><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
             <li><a href="{% url 'mon:call_icinga' %}">{% trans "Icinga" %}</a></li>
             {% if settings.CLUSTER_LICENSE.ganglia %}
