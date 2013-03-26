@@ -44,6 +44,7 @@ class config_table
         @top_div.children().remove()
         c_table = $("<table>").attr({"id" : "config"})
         @c_table = c_table
+        ref_width = {% if settings.CLUSTER_LICENSE.monext %}10{% else %}8{% endif %}
         @devices.find("device_group").each (devg_index, cur_dg) =>
             cur_dg = $(cur_dg)
             line_prefix = cur_dg.attr("key")
@@ -59,7 +60,7 @@ class config_table
                 )
             ).append(
                 $("<th>").attr({
-                    "colspan" : "10"
+                    "colspan" : ref_width
                 }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")))
             c_table.append(new_tr)
             # at first append metadevice
@@ -73,7 +74,7 @@ class config_table
             })
             new_tr.append(
                 $("<th>").attr({
-                    "colspan" : "11"
+                    "colspan" : ref_width + 1
                 }).addClass("ui-widget ui-widget-header").text("all devices"))
             c_table.append(new_tr)
             c_table.append(@draw_device(undefined))
@@ -175,6 +176,7 @@ class config_table
                 })
             )
         )
+        {% if settings.CLUSTER_LICENSE.monext %}
         if d_el
             new_tr.append(
                 $("<td>").append(
@@ -202,6 +204,7 @@ class config_table
         else
             new_tr.append($("<td>"))
             new_tr.append($("<td>"))
+        {% endif %}
         dummy_div.append(new_tr)
         return dummy_div.children()
     change_d_sel : (event) =>
