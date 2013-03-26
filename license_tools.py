@@ -31,6 +31,7 @@ LICENSE_FILE="/etc/sysconfig/cluster/cluster_license"
 
 LICENSE_CAPS = [
     ("monitor", "Monitoring services"),
+    ("monext" , "Extended monitoring services"),
     ("boot"   , "boot/config facility for nodes"),
     ("package", "Package installation"),
     ("rms"    , "Resource Management system"),
