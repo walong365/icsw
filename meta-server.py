@@ -82,7 +82,7 @@ class main_thread(threading_tools.process_pool):
         else:
             self["exit_requested"] = True
     def _init_network_sockets(self):
-        client = self.zmq_context.socket(zmq.XREP)
+        client = self.zmq_context.socket(zmq.ROUTER)
         #client.setsockopt(zmq.IDENTITY, "ms")
         try:
             client.bind("tcp://*:%d" % (self.__glob_config["COM_PORT"]))
