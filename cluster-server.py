@@ -995,7 +995,7 @@ def main():
     cluster_location.read_config_from_db(global_config, "server", [
         ("COM_PORT"             , configfile.int_c_var(SERVER_PORT)),
         ("IMAGE_SOURCE_DIR"     , configfile.str_c_var("/usr/local/share/cluster/images")),
-        ("UPDATE_SITE"          , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
+        #("UPDATE_SITE"          , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
         ("MAILSERVER"           , configfile.str_c_var("localhost")),
         ("FROM_NAME"            , configfile.str_c_var("quotawarning")),
         ("FROM_ADDR"            , configfile.str_c_var(long_host_name)),
