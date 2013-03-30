@@ -663,7 +663,7 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
             # textarea input style
             new_el = $("<textarea>").attr({
                 "id"    : "#{id_prefix}__#{attr_name}"
-            }).text(if xml_el == undefined then (kwargs.new_default or "") or xml_el.attr(attr_name))
+            }).text(if xml_el then xml_el.attr(attr_name) else (kwargs.new_default or ""))
         else
             # text input style
             if kwargs.ro
