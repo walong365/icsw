@@ -136,12 +136,14 @@ def scan_for_images(request):
             if int(srv_result["result"].attrib["state"]) == server_command.SRV_REPLY_STATE_OK:
                 img_list = srv_result.xpath(None, ".//ns:image_list")
                 if len(img_list):
-                    f_img_list = E.images(src=img_list[0].attrib["image_dir"])
-                    for f_image in srv_result.xpath(None, ".//ns:image"):
+                    f_img_list = E.found_images(src=img_list[0].attrib["image_dir"])
+                    for f_num, f_image in enumerate(srv_result.xpath(None, ".//ns:image")):
                         f_img_list.append(
                             E.found_image(
                                 f_image.text,
                                 present="1" if f_image.text in present_img_names else "0",
+                                name=f_image.text,
+                                pk="%d" % (f_num + 1),
                                 **f_image.attrib)
                         )
                     request.xml_response["response"] = f_img_list
@@ -158,9 +160,8 @@ def scan_for_images(request):
 @init_logging
 def take_image(request):
     _post = request.POST
-    take_id = _post["take_id"]
-    img_name = take_id.split("__", 1)[1]
-    request.log("take_image called, take_id is '%s' (image_name %s)" % (take_id, img_name))
+    img_name = _post["img_name"]
+    request.log("take_image called, image_name %s" % (img_name))
     try:
         cur_img = image.objects.get(Q(name=img_name))
     except image.DoesNotExist:

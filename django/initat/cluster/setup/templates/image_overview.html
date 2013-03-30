@@ -30,24 +30,22 @@ class image_tree
                     @show_all_images()
     show_all_images: () =>
         $("span#num_images").text(@images.find("image").length)
-        new_img_list = $("<select>").attr({
-            "id"        : "all_images",
-            "size"      : 5}).bind("change", @choose_image)
-        @images.find("image").each (index, cur_img) =>
-            cur_img = $(cur_img);
-            cur_opt = $("<option>").attr({
-                "value" : cur_img.attr("pk")
-            })
-            opt_str = cur_img.attr("name") + " ("
-            if (cur_img.attr("enabled") == 0)
-                opt_str = "#{opt_str}, not enabled"
-            opt_str = "#{opt_str})"
-            cur_opt.text(opt_str)
-            new_img_list.append(cur_opt)
+        img_ma = {
+            "image" : new draw_setup("Images", "image", "image",
+                undefined,
+                undefined,
+                [
+                    new draw_info("name", {size : 40, ro : true}),
+                    new draw_info("enabled", {ro : true, boolean : true}),
+                    new draw_info("version", {ro : true, integer : true}),
+                    new draw_info("release", {ro : true, integer : true}),
+                    new draw_info("architecture", {ro : true}),
+                    new draw_info("details", {button : true, trigger : true, change_cb : @choose_image}),
+                ]
+            )
+        }
+        draw_ds_tables(@list_div, img_ma, @images)
         @detail_div.children().remove()
-        @list_div.children().remove()
-        if new_img_list.find("option").length
-            @list_div.append(new_img_list)
         @scan_button = $("<input>").attr({
             "type"   : "button",
             "id"     : "scan_for_images",
@@ -61,38 +59,30 @@ class image_tree
             success : (xml) =>
                 @scan_button.removeAttr("disabled")
                 if parse_xml_response(xml)
-                    found_table = $("<table>").attr({
-                        "id" : "found_images"
-                    })
-                    $(xml).find("found_image").each (index, cur_fi) =>
-                        cur_fi = $(cur_fi)
-                        fi_tr = $("<tr>")
-                        fi_tr.append($("<th>").append(cur_fi.text() + " (at " + $(xml).find("images").attr("src") + ")"))
-                        fi_tr.append($("<td>").append(cur_fi.attr("vendor")))
-                        fi_tr.append($("<td>").append(cur_fi.attr("version")))
-                        fi_tr.append($("<td>").append(cur_fi.attr("arch")))
-                        fi_tr.append($("<td>").append(cur_fi.attr("bitcount")))
-                        if cur_fi.attr("present") == "1"
-                            fi_tr.append($("<td>").text("already present"))
-                        else
-                            fi_tr.append($("<td>").append($("<input>").attr({
-                                "type"  : "button",
-                                "value" : "take",
-                                "id"    : "image__" + cur_fi.text()}).bind("click", @take_image)))
-                        found_table.append(fi_tr)
-                    @found_div.append(found_table)
+                    @found_images = $(xml).find("found_images")
+                    found_ma = {
+                        "image" : new draw_setup("Found Images", "found_image", "found_image",
+                            undefined,
+                            undefined,
+                            [
+                                new draw_info("name", {size : 40, ro : true}),
+                                new draw_info("vendor", {ro : true}),
+                                new draw_info("take", {button : true, trigger : true, change_cb : @take_image}),
+                            ]
+                        )
+                    }
+                    draw_ds_tables(@found_div, found_ma, @found_images)
     choose_image : (event) =>
         img_sel = $(event.target)
-        cur_img_pk = img_sel.val()
-        console.log cur_img_pk
+        console.log img_sel.attr("id")
     take_image: () =>
         button_el = $(event.target)
-        take_id = button_el.attr("id")
+        take_id = button_el.attr("id").split("__")[1]
         button_el.attr("disabled", "disabled")
         $.ajax
             url     : "{% url 'setup:take_image' %}"
             data    : {
-                "take_id" : take_id
+                "img_name" : @found_images.find("found_image[pk='#{take_id}']").attr("name")
             }
             success : (xml) =>
                 button_el.removeAttr("disabled")
