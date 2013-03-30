@@ -36,6 +36,7 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
+import logging_tools
 
 XML_NS = "http://www.initat.org/lxml/ns"
 
@@ -57,6 +58,13 @@ SRV_REPLY_STATE_WARN     = 1
 SRV_REPLY_STATE_ERROR    = 2
 SRV_REPLY_STATE_CRITICAL = 3
 SRV_REPLY_STATE_UNSET    = 4
+
+def srv_reply_to_log_level(srv_reply_state):
+    return {
+        SRV_REPLY_STATE_OK    : logging_tools.LOG_LEVEL_OK,
+        SRV_REPLY_STATE_WARN  : logging_tools.LOG_LEVEL_WARN,
+        SRV_REPLY_STATE_ERROR : logging_tools.LOG_LEVEL_ERROR,
+    }.get(srv_reply_state, logging_tools.LOG_LEVEL_ERROR)
 
 def compress(in_str, **kwargs):
     if kwargs.get("marshal", False):
