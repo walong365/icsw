@@ -17,98 +17,90 @@
 
 {% inlinecoffeescript %}
 
-# all images
-ALL_IMAGES = undefined
-
-take_image = ->
-    button_el = $(event.target)
-    take_id = button_el.attr("id")
-    button_el.attr("disabled", "disabled")
-    $.ajax
-        url     : "{% url 'setup:take_image' %}"
-        data    : {
-            "take_id" : take_id
-        }
-        error   : handle_ajax_error
-        success : (xml) ->
-            button_el.removeAttr("disabled")
-            if parse_xml_response(xml)
-                button_el.parents("tr:first").remove()
-
-scan_for_images = ->
-    $("div#found_images").children().remove()
-    scan_button = $("intput#scan_for_images")
-    scan_button.attr("disabled", "disabled")
-    $.ajax
-        url     : "{% url 'setup:scan_for_images' %}"
-        error   : handle_ajax_error
-        success : (xml) ->
-            scan_button.removeAttr("disabled")
-            if parse_xml_response(xml)
-                found_table = $("<table>").attr({
-                    "id" : "found_images"
-                })
-                $(xml).find("found_image").each (index, cur_fi) ->
-                    cur_fi = $(cur_fi)
-                    fi_tr = $("<tr>")
-                    fi_tr.append($("<th>").append(cur_fi.text() + " (at " + $(xml).find("images").attr("src") + ")"))
-                    fi_tr.append($("<td>").append(cur_fi.attr("vendor")))
-                    fi_tr.append($("<td>").append(cur_fi.attr("version")))
-                    fi_tr.append($("<td>").append(cur_fi.attr("arch")))
-                    fi_tr.append($("<td>").append(cur_fi.attr("bitcount")))
-                    if cur_fi.attr("present") == "1"
-                        fi_tr.append($("<td>").text("already present"))
-                    else
-                        fi_tr.append($("<td>").append($("<input>").attr({
-                            "type"  : "button",
-                            "value" : "take",
-                            "id"    : "image__" + cur_fi.text()}).bind("click", take_image)))
-                    found_table.append(fi_tr)
-                $("div#found_images").append(found_table)
-
-choose_image = (event) ->
-    img_sel = $(event.target)
-    cur_img_pk = img_sel.val()
-    console.log cur_img_pk
-
-show_all_images = ->
-    $("span#num_images").text(ALL_IMAGES.find("image").length)
-    new_img_list = $("<select>").attr({
-        "id"        : "all_images",
-        "size"      : 5}).bind("change", choose_image)
-    ALL_IMAGES.find("image").each (index, cur_img) =>
-        cur_img = $(cur_img);
-        cur_opt = $("<option>").attr({
-            "value" : cur_img.attr("pk")
-        })
-        opt_str = cur_img.attr("name") + " ("
-        if (cur_img.attr("enabled") == 0)
-            opt_str = opt_str + ", not enabled"
-        opt_str = opt_str + ")"
-        cur_opt.text(opt_str)
-        new_img_list.append(cur_opt)
-    $("div#image_detail").children().remove()
-    $("div#image_list").children().remove()
-    if new_img_list.find("option").length
-        $("div#image_list").append(new_img_list)
-    $("div#image_list").append(
-        $("<input>").attr({
+class image_tree
+    constructor: (@list_div, @found_div, @detail_div) ->
+        @images = undefined
+        @load_images()
+    load_images: () =>
+        $.ajax
+            url     : "{% url 'setup:image_overview' %}"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @images = $(xml).find("images")
+                    @show_all_images()
+    show_all_images: () =>
+        $("span#num_images").text(@images.find("image").length)
+        new_img_list = $("<select>").attr({
+            "id"        : "all_images",
+            "size"      : 5}).bind("change", @choose_image)
+        @images.find("image").each (index, cur_img) =>
+            cur_img = $(cur_img);
+            cur_opt = $("<option>").attr({
+                "value" : cur_img.attr("pk")
+            })
+            opt_str = cur_img.attr("name") + " ("
+            if (cur_img.attr("enabled") == 0)
+                opt_str = "#{opt_str}, not enabled"
+            opt_str = "#{opt_str})"
+            cur_opt.text(opt_str)
+            new_img_list.append(cur_opt)
+        @detail_div.children().remove()
+        @list_div.children().remove()
+        if new_img_list.find("option").length
+            @list_div.append(new_img_list)
+        @scan_button = $("<input>").attr({
             "type"   : "button",
             "id"     : "scan_for_images",
-            "value"  : "scan for images"}).bind("click", scan_for_images)
-        )
-
-load_images = ->
-    $.ajax
-        url     : "{% url 'setup:image_overview' %}"
-        error   : handle_ajax_error
-        success : (xml) ->
-            if parse_xml_response(xml)
-                ALL_IMAGES = $(xml).find("images")
-                show_all_images()
+            "value"  : "scan for images"}).bind("click", @scan_for_images)
+        @list_div.append(@scan_button)
+    scan_for_images: () =>
+        @found_div.children().remove()
+        @scan_button.attr("disabled", "disabled")
+        $.ajax
+            url     : "{% url 'setup:scan_for_images' %}"
+            success : (xml) =>
+                @scan_button.removeAttr("disabled")
+                if parse_xml_response(xml)
+                    found_table = $("<table>").attr({
+                        "id" : "found_images"
+                    })
+                    $(xml).find("found_image").each (index, cur_fi) =>
+                        cur_fi = $(cur_fi)
+                        fi_tr = $("<tr>")
+                        fi_tr.append($("<th>").append(cur_fi.text() + " (at " + $(xml).find("images").attr("src") + ")"))
+                        fi_tr.append($("<td>").append(cur_fi.attr("vendor")))
+                        fi_tr.append($("<td>").append(cur_fi.attr("version")))
+                        fi_tr.append($("<td>").append(cur_fi.attr("arch")))
+                        fi_tr.append($("<td>").append(cur_fi.attr("bitcount")))
+                        if cur_fi.attr("present") == "1"
+                            fi_tr.append($("<td>").text("already present"))
+                        else
+                            fi_tr.append($("<td>").append($("<input>").attr({
+                                "type"  : "button",
+                                "value" : "take",
+                                "id"    : "image__" + cur_fi.text()}).bind("click", @take_image)))
+                        found_table.append(fi_tr)
+                    @found_div.append(found_table)
+    choose_image : (event) =>
+        img_sel = $(event.target)
+        cur_img_pk = img_sel.val()
+        console.log cur_img_pk
+    take_image: () =>
+        button_el = $(event.target)
+        take_id = button_el.attr("id")
+        button_el.attr("disabled", "disabled")
+        $.ajax
+            url     : "{% url 'setup:take_image' %}"
+            data    : {
+                "take_id" : take_id
+            }
+            success : (xml) =>
+                button_el.removeAttr("disabled")
+                if parse_xml_response(xml)
+                    button_el.parents("tr:first").remove()
 
 add_handlers = ->
-    load_images()
+    my_it = new image_tree($("div#image_list"), $("div#found_images"), $("div#image_detail"))
 
 $(document).ready(add_handlers)
 

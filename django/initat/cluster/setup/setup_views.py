@@ -132,19 +132,23 @@ def scan_for_images(request):
     else:
         if srv_result is not None:
             present_img_names = image.objects.all().values_list("name", flat=True)
-            img_list = srv_result.xpath(None, ".//ns:image_list")
-            if len(img_list):
-                f_img_list = E.images(src=img_list[0].attrib["image_dir"])
-                for f_image in srv_result.xpath(None, ".//ns:image"):
-                    f_img_list.append(
-                        E.found_image(
-                            f_image.text,
-                            present="1" if f_image.text in present_img_names else "0",
-                            **f_image.attrib)
-                    )
-                request.xml_response["response"] = f_img_list
+            print srv_result.pretty_print()
+            if int(srv_result["result"].attrib["state"]) == server_command.SRV_REPLY_STATE_OK:
+                img_list = srv_result.xpath(None, ".//ns:image_list")
+                if len(img_list):
+                    f_img_list = E.images(src=img_list[0].attrib["image_dir"])
+                    for f_image in srv_result.xpath(None, ".//ns:image"):
+                        f_img_list.append(
+                            E.found_image(
+                                f_image.text,
+                                present="1" if f_image.text in present_img_names else "0",
+                                **f_image.attrib)
+                        )
+                    request.xml_response["response"] = f_img_list
+                else:
+                    request.log("no images found", logging_tools.LOG_LEVEL_WARN, xml=True)
             else:
-                request.log("no images found", logging_tools.LOG_LEVEL_WARN, xml=True)
+                request.log("server problem: %s" % (srv_result["result"].attrib["reply"]), server_command.srv_reply_to_log_level(int(srv_result["result"].attrib["state"])), xml=True)
         else:
             request.log("got empty response",
                         logging_tools.LOG_LEVEL_ERROR, xml=True)

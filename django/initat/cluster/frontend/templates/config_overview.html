@@ -253,8 +253,9 @@ class config_table
             "id" : line_prefix
         })
         var_dict = {
-            master_xml : @configs,
-            enclose_td  :true
+            master_xml  : @configs,
+            enclose_td  : true,
+            size        : 40
         }
         if c_var
             if c_var.attr("type") == "bool"
@@ -262,11 +263,11 @@ class config_table
             else if c_var.attr("type") == "int"
                 var_dict.number = true
         cv_tr.append(
-            create_input_el(c_var, "name", line_prefix, {master_xml : @configs, enclose_td : true})
+            create_input_el(c_var, "name", line_prefix, {master_xml : @configs, enclose_td : true, size : 40})
         ).append(
             create_input_el(c_var, "value", line_prefix, var_dict)
         ).append(
-            create_input_el(c_var, "description", line_prefix, {master_xml : @configs, enclose_td : true})
+            create_input_el(c_var, "description", line_prefix, {master_xml : @configs, enclose_td : true, size : 40})
         )
         if c_var
             cv_tr.append($("<td>").addClass("center").append($("<span>").text(c_var.attr("type"))))
