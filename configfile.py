@@ -568,7 +568,7 @@ class my_server(Server):
         try:
             while _run:
                 try:
-                    while 1:
+                    while True:
                         try:
                             c = self.listener.accept()
                         except (OSError, IOError):
@@ -577,7 +577,7 @@ class my_server(Server):
                         t.daemon = True
                         t.start()
                 except (KeyboardInterrupt, SystemExit):
-                    #print "+++", process_tools.get_except_info()
+                    print "+++", process_tools.get_except_info()
                     pass
         finally:
             #print "***", process_tools.get_except_info()

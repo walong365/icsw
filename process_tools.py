@@ -117,7 +117,7 @@ class exception_info(object):
         self.log_lines.append(get_except_info(self.except_info))
 
 def zmq_identity_str(id_string):
-    return "%s:%s:%d" % (os.uname()[1],
+    return "%s:%s:%d" % (get_machine_name(),
                          id_string,
                          os.getpid())
 
@@ -1102,7 +1102,7 @@ def change_user_group_path(path, user, group):
         logging_tools.my_syslog("  ... path '%s' does not exist" % (path))
     return ok
     
-def become_daemon(debug=None, wait=0, mother_hook=None, mother_hook_args=None):
+def become_daemon(debug=None, wait=0, mother_hook=None, mother_hook_args=None, **kwargs):
     os.chdir("/")
     debug_f = None
     if debug:
@@ -1422,13 +1422,17 @@ def get_programm_name():
         p_name = p_name[:-3]
     return p_name
 
-def get_machine_name():
+def get_machine_name(short=True):
     if sys.platform in ["linux2", "linux3"]:
         # for linux
-        return os.uname()[1]
+        m_name = os.uname()[1]
     else:
         # for windows
-        return os.getenv("COMPUTERNAME")
+        m_name = os.getenv("COMPUTERNAME")
+    if short:
+        return m_name.split(".")[0]
+    else:
+        return m_name
         
 def get_cluster_name(f_name="/etc/sysconfig/cluster/cluster_name"):
     if os.path.isfile(f_name):
