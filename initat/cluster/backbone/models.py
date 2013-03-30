@@ -1043,6 +1043,9 @@ class image(models.Model):
             pk="%d" % (self.pk),
             key="image__%d" % (self.pk),
             name="%s" % (self.name),
+            enabled="1" if self.enabled else "0",
+            version="%d" % (self.version),
+            release="%d" % (self.release),
         )
         return cur_img
     def __unicode__(self):
@@ -1052,15 +1055,15 @@ class image(models.Model):
         db_table = u'image'
         ordering = ("name", )
 
-class image_excl(models.Model):
-    idx = models.AutoField(db_column="image_excl_idx", primary_key=True)
-    image = models.ForeignKey("image")
-    exclude_path = models.TextField()
-    valid_for_install = models.BooleanField()
-    valid_for_upgrade = models.BooleanField()
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'image_excl'
+##class image_excl(models.Model):
+##    idx = models.AutoField(db_column="image_excl_idx", primary_key=True)
+##    image = models.ForeignKey("image")
+##    exclude_path = models.TextField()
+##    valid_for_install = models.BooleanField()
+##    valid_for_upgrade = models.BooleanField()
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'image_excl'
 
 # package related models
 class package_repo(models.Model):
