@@ -1975,7 +1975,7 @@ def main():
         ])
     elif prog_name == "collrelay":
         global_config.add_config_entries([
-            ("COM_PORT"   , configfile.int_c_var(2004, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
+            ("COM_PORT" , configfile.int_c_var(2004, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
             ("TIMEOUT"  , configfile.int_c_var(8, help_string="timeout for calls to distance machines [%(default)d]")),
             ("AUTOSENSE", configfile.bool_c_var(False, help_string="enable autosensing of 0MQ/TCP Clients [%(default)s]")),
             ])
