@@ -296,4 +296,3 @@ def delete_object(request, *args, **kwargs):
             del_obj.delete()
             request.log("deleted %s '%s'" % (del_obj._meta.object_name, del_info), xml=True)
     return request.xml_response.create_response()
-

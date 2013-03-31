@@ -54,6 +54,9 @@ $.ajaxSetup
         return false
 
 root.draw_ds_tables = (t_div, master_array, master_xml=undefined) ->
+    # remove accordion if already exists
+    if t_div.hasClass("ui-accordion")
+        t_div.accordion("destroy")
     t_div.children().remove()
     master_tables = []
     for key, value of master_array
@@ -326,15 +329,15 @@ class draw_info
         @label = @kwargs.label or @name.toTitle()
         @span = @kwargs.span or 1
         for attr_name in ["size", "default", "select_source", "boolean", "min", "max", "ro",
-        "button", "change_cb", "trigger", "draw_result_cb", "draw_conditional",
+        "button", "change_cb", "trigger", "draw_result_cb", "draw_conditional", "text_source",
         "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group",
         "css", "select_source_attribute", "password", "keep_td", "clear_after_create", "callback"]
             @[attr_name] = @kwargs[attr_name] ? undefined
         @size = @kwargs.size or undefined
     get_kwargs: () ->
         kwargs = {new_default : @default}
-        for attr_name in ["size", "select_source", "boolean", "min", "max", "ro", "button", "change_cb",
-            "draw_result_cb", "trigger", "callback",
+        for attr_name in ["size", "select_source", "boolean", "min", "max", "ro", "button",
+            "change_cb", "draw_result_cb", "trigger", "callback", "text_source",
             "number", "manytomany", "add_null_entry", "css", "select_source_attribute", "password",]
             kwargs[attr_name] = @[attr_name]
         kwargs.master_xml = @draw_setup.master_xml
@@ -386,7 +389,12 @@ class draw_info
         else
             draw_el = false
         if draw_el
-            new_els = create_input_el(xml_el, @name, line_prefix, kwargs)
+            # faster without get_kwargs, check, FIXME, AL 20130331
+            if false
+                @master_xml = @draw_setup.master_xml
+                new_els = create_input_el(xml_el, @name, line_prefix, @)
+            else
+                new_els = create_input_el(xml_el, @name, line_prefix, kwargs)
         else
             new_els = []
         return new_els
@@ -665,17 +673,24 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
                 "id"    : "#{id_prefix}__#{attr_name}"
             }).text(if xml_el then xml_el.attr(attr_name) else (kwargs.new_default or ""))
         else
+            if xml_el
+                text_default = xml_el.attr(attr_name)
+            else
+                text_default = kwargs.new_default or (if kwargs.number then "0" else "")
+            if kwargs.text_source
+                # foreign key lookup
+                text_default = kwargs.master_xml.find("#{kwargs.text_source}[pk='#{text_default}']").text()
             # text input style
             if kwargs.ro
                 # experimental, FIXME, too many if-levels
                 new_el = $("<span>").attr({
                     "id"    : "#{id_prefix}__#{attr_name}"
-                }).text(if xml_el == undefined then (kwargs.new_default or (if kwargs.number then "0" else "")) else xml_el.attr(attr_name))
+                }).text(text_default)
             else
                 new_el = $("<input>").attr({
                     "type"  : if kwargs.password then "password" else (if kwargs.number then "number" else "text")
                     "id"    : "#{id_prefix}__#{attr_name}"
-                    "value" : if xml_el == undefined then (kwargs.new_default or (if kwargs.number then "0" else "")) else xml_el.attr(attr_name)
+                    "value" : text_default
                 })
                 if kwargs.password
                     new_el.bind("focus", enter_password)

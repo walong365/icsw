@@ -39,9 +39,10 @@ setup_patterns = patterns(
     url(r"xml/create_part"    , "setup_views.create_partition"          , name="create_partition"),
     url(r"xml/delete_part"    , "setup_views.delete_partition"          , name="delete_partition"),
     url(r"xml/validate"       , "setup_views.validate_partition"        , name="validate_partition"),
-    url(r"i_overview"         , "setup_views.image_overview"            , name="image_overview"),
-    url(r"xml/scan_for_images", "setup_views.scan_for_images"           , name="scan_for_images"),
-    url(r"xml/take_image"     , "setup_views.take_image"                , name="take_image"),
+    url(r"i_overview"         , "setup_views.image_overview"            , name="image_overview"    ),
+    url(r"xml/scan_for_images", "setup_views.scan_for_images"           , name="scan_for_images"   ),
+    url(r"xml/use_image"      , "setup_views.use_image"                 , name="use_image"         ),
+    url(r"xml/delete_image"   , "setup_views.delete_image"              , name="delete_image"      ),
     url(r"xml/show_devloccl"  , "setup_views.show_device_class_location", name="show_device_class_location"),
 )
 

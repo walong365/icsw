@@ -14,7 +14,7 @@ import pprint
 from lxml.builder import E
 import process_tools
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
-     partition_fs, image, architecture, device_class, device_location
+     partition_fs, image, architecture, device_class, device_location, get_related_models
 import server_command
 import net_tools
 
@@ -110,10 +110,16 @@ def image_overview(request):
     if request.method == "GET":
         return render_me(request, "image_overview.html", {})()
     else:
+        img_list = E.images()
+        for cur_img in image.objects.all().prefetch_related("new_image"):
+            img_xml = cur_img.get_xml()
+            img_xml.attrib["usecount"] = "%d" % (len(cur_img.new_image.all()))
+            img_list.append(img_xml)
         xml_resp = E.response(
-            E.images(
-                *[cur_img.get_xml() for cur_img in image.objects.all()]
-            )
+            img_list,
+            E.architectures(
+                *[cur_arch.get_xml() for cur_arch in architecture.objects.all()]
+            ),
         )
         request.xml_response["response"] = xml_resp
         #print etree.tostring(xml_resp, pretty_print=True)
@@ -158,10 +164,29 @@ def scan_for_images(request):
 
 @login_required
 @init_logging
-def take_image(request):
+def delete_image(request):
     _post = request.POST
     img_name = _post["img_name"]
-    request.log("take_image called, image_name %s" % (img_name))
+    try:
+        del_image = image.objects.get(Q(name=img_name))
+    except image.DoesNotExist:
+        request.log("image '%s' does not exist" % (img_name), logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        num_ref = get_related_models(del_image)
+        if num_ref:
+            request.log("cannot delete image '%s' because of reference" % (img_name),
+                        logging_tools.LOG_LEVEL_ERROR, xml=True)
+        else:
+            del_image.delete()
+            request.log("deleted image '%s" % (img_name), xml=True)
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def use_image(request):
+    _post = request.POST
+    img_name = _post["img_name"]
+    request.log("use_image called, image_name %s" % (img_name))
     try:
         cur_img = image.objects.get(Q(name=img_name))
     except image.DoesNotExist:
