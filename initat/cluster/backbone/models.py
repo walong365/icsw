@@ -137,6 +137,13 @@ class architecture(models.Model):
     idx = models.AutoField(db_column="architecture_idx", primary_key=True)
     architecture = models.CharField(default="", unique=True, max_length=128)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.architecture(
+            self.architecture,
+            pk="%d" % (self.idx),
+            key="arch__%d" % (self.idx),
+            architecture=self.architecture,
+        )
     class Meta:
         db_table = u'architecture'
     def __unicode__(self):
@@ -1046,6 +1053,7 @@ class image(models.Model):
             enabled="1" if self.enabled else "0",
             version="%d" % (self.version),
             release="%d" % (self.release),
+            architecture="%d" % (self.architecture_id or 0),
         )
         return cur_img
     def __unicode__(self):
