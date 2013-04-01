@@ -3343,6 +3343,7 @@ def user_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         _check_integer(cur_inst, "uid", min_val=100, max_val=65535)
         _check_empty_string(cur_inst, "login")
+        _check_empty_string(cur_inst, "password")
 
 @receiver(signals.post_save, sender=user)
 def user_post_save(sender, **kwargs):

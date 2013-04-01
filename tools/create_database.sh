@@ -18,5 +18,5 @@ if [ "${UID:-X}" = "0" ] ; then
         echo "migration directory ${MIG_DIR} present, refuse to operate"
     fi
 else
-    echo "need tó be root to create database"
+    echo "need to be root to create database"
 fi  
