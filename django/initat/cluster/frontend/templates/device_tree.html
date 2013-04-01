@@ -333,7 +333,9 @@ class device_tree
                     success : (xml) =>
                         $(event.target).removeAttr("disabled")
                         if parse_xml_response(xml)
-                            @create_device($(xml).find("value[name='new_entry'] device"))
+                            $(xml).find("value[name='new_entry'] device").each (idx, cur_dev) =>
+                                console.log cur_dev
+                                @create_device($(cur_dev))
             )
         ))
         return new_tr

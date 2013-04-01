@@ -102,7 +102,12 @@ class xml_response(object):
         :param key: the key of the new item
         :param value: the value of the new item
         """
-        self.val_dict[key] = value
+        if key in self.val_dict:
+            if type(self.val_dict[key]) != list:
+                self.val_dict[key] = [self.val_dict[key]]
+            self.val_dict[key].append(value)
+        else:
+            self.val_dict[key] = value
     def __getitem__(self, key):
         """
         :param key: delivered key, his value will be returned
@@ -126,6 +131,26 @@ class xml_response(object):
             return True if max([log_lev for log_lev, log_str in self.log_buffer]) == logging_tools.LOG_LEVEL_OK else False
         else:
             return True
+    def _get_value_xml(self, key, value):
+        if type(value) == list:
+            ret_val = E.value_list(**{
+                "name" : key,
+                "num"  : "%d" % (len(value)),
+                "type"  :"list",
+            })
+            for val_num, sub_val in enumerate(value):
+                ret_val.append(self._get_value_xml(key, sub_val))
+        else:
+            ret_val = E.value(value if type(value) == etree._Element else unicode(value), **{
+               "name" : key,
+               "type" : {
+                   int            : "integer",
+                   long           : "integer",
+                   str            : "string",
+                   unicode        : "string",
+                   float          : "float",
+                   etree._Element : "xml"}.get(type(value), "unknown")})
+        return ret_val
     def build_response(self):
         """
         builds the xml response
@@ -143,15 +168,7 @@ class xml_response(object):
                    "warnings" : "%d" % (num_warnings),
                    "messages" : "%d" % (len(self.log_buffer))}),
             E.values(
-                *[E.value(value if type(value) == etree._Element else unicode(value), **{
-                    "name" : key,
-                    "type" : {
-                        int            : "integer",
-                        long           : "integer",
-                        str            : "string",
-                        unicode        : "string",
-                        float          : "float",
-                        etree._Element : "xml"}.get(type(value), "unknown")}) for key, value in self.val_dict.iteritems()]
+                *[self._get_value_xml(key, value) for key, value in self.val_dict.iteritems()]
             )
         )
     def __unicode__(self):

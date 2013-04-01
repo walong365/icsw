@@ -8,11 +8,11 @@ root = exports ? this
 
 class ajax_struct
     constructor: (@top_div_name) ->
-        @AJAX_UUID = 0
-        @AJAX_DICT = {}
+        @ajax_uuid = 0
+        @ajax_dict = {}
         @top_div = undefined
     new_connection: =>
-        cur_id = @AJAX_UUID
+        cur_id = @ajax_uuid
         if not @top_div
             @top_div = $(@top_div_name)
         if not @top_div.find("ul").length
@@ -23,15 +23,15 @@ class ajax_struct
                 "id" : cur_id
             }).text("pending...")
         )
-        @AJAX_DICT[cur_id] = {
+        @ajax_dict[cur_id] = {
             "state" : "pending"
             "start" : new Date()
         }
-        @AJAX_UUID++
+        @ajax_uuid++
         return cur_id
     close_connection: (xhr_id) =>
-        @AJAX_DICT[xhr_id]["state"] = "done"
-        @AJAX_DICT[xhr_id]["runtime"] = new Date() - @AJAX_DICT[xhr_id]["start"]
+        @ajax_dict[xhr_id]["state"]   = "done"
+        @ajax_dict[xhr_id]["runtime"] = new Date() - @ajax_dict[xhr_id]["start"]
         @top_div.find("li##{xhr_id}").remove()
         
 my_ajax_struct = new ajax_struct("div#ajax_info")
