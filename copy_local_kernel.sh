@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*- coding: iso-8859-1 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -28,8 +28,8 @@ if [ "$#" -lt "2" ] ; then
     echo ""
     echo "Xen versions found:"
     echo "$(find ${IMAGE_ROOT}/boot -type f -name "xen*gz" -printf '%f\n')"
-	echo ""
-	echo "set IMAGE_ROOT to change root directory from ''"
+    echo ""
+    echo "set IMAGE_ROOT to change root directory from ''"
     exit -1
 fi
 
@@ -39,6 +39,7 @@ xen_version=${3:-0}
 
 lib_dir=${IMAGE_ROOT}/lib/modules/${k_name}
 firm_dir=${IMAGE_ROOT}/lib/firmware/
+firm_dir_local=${IMAGE_ROOT}/lib/firmware/${k_name}
 targ_dir=$loc_dir/${k_name}
 config_file=config-${k_name}
 
@@ -60,8 +61,8 @@ fi
 if [ "${xen_version}" != "0" ] ; then
     xen_file=${IMAGE_ROOT}/boot/xen-${xen_version}
     if [ ! -f $xen_file ] ; then
-	echo "Xen file $xen_file not found"
-	exit -1
+    echo "Xen file $xen_file not found"
+    exit -1
     fi
 else
     xen_file="not set"
@@ -105,6 +106,8 @@ cp -a $lib_dir ${targ_dir}/lib/modules
 echo "Copying firmware (${firm_dir} -> ${targ_dir}/lib/firmware/${k_name})"
 mkdir -p ${targ_dir}/lib/firmware
 cp -a ${firm_dir} ${targ_dir}/lib/firmware/${k_name}
+echo "Copying local firmware (${firm_dir_local} -> ${targ_dir}/lib/firmware/${k_name})"
+cp -a ${firm_dir_local}/* ${targ_dir}/lib/firmware/${k_name}
 
 echo "Compressing modules"
 pushd . > /dev/null
