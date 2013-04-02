@@ -101,7 +101,7 @@ class repo_type_rpm_zypper(repo_type):
                 cur_repo = package_repo(name=repo.attrib["name"])
                 new_repos.append(cur_repo)
             cur_repo.alias = repo.attrib["alias"]
-            cur_repo.repo_type = repo.attrib["type"]
+            cur_repo.repo_type = repo.attrib.get("type", "unknown")
             cur_repo.enabled = True if int(repo.attrib["enabled"]) else False
             cur_repo.autorefresh = True if int(repo.attrib["autorefresh"]) else False
             cur_repo.gpg_check = True if int(repo.attrib["gpgcheck"]) else False
