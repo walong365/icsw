@@ -461,6 +461,7 @@ def main():
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("COMPRESSION"         , configfile.str_c_var("xz", help_string="compression method [%(default)s]", choices=["bz2", "gz", "xz"])),
+        #("COMPRESSION_OPTION"  , configfile.str_c_var("", help_string="options for compressor [%(default)s]")),
         ("VERBOSE"             , configfile.bool_c_var(False, help_string="be verbose [%(default)s]", action="store_true", only_commandline=True, short_options="v")),
         ("IMAGE_NAME"          , configfile.str_c_var(all_imgs[0], help_string="image to build [%(default)s]", choices=all_imgs)),
         ("MODIFY_IMAGE"        , configfile.bool_c_var(True, short_options="m", help_string="do not modify image (no chroot calls) [%(default)s]", action="store_false")),
