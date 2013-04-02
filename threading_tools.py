@@ -1034,7 +1034,7 @@ class process_obj(multiprocessing.Process, timer_base):
                 try:
                     if self.loop_timer:
                         cur_time = time.time()
-                        if self.__next_timeout and cur_time > self.__next_timeout:
+                        if self.next_timeout and cur_time > self.next_timeout:
                             self._handle_timer(cur_time)
                         while cur_q.poll(timeout=self.loop_timer):
                             self._handle_message(cur_q.recv_pyobj())
