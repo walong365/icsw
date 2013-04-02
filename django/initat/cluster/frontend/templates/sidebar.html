@@ -27,10 +27,6 @@
     </tr>
 </table>
 
-<div id="device_info" style="display:none;">
-test<a href="#">close</a>
-</div>
-
 <div id="ajax_info">
 </div>
 
@@ -207,28 +203,9 @@ class sidebar_tree
                 success : (xml) =>
                     if parse_xml_response(xml)
                         dev_xml = $(xml).find("device")
-                        di_div = $("div#device_info")
-                        # clear div
-                        di_div.text("").children().remove()
-                        di_div.append(
-                            $("<h2>").text(dev_xml.attr("name"))
-                        ).append(
-                            $("<h3>").text("UUID: #{dev_xml.attr('uuid')}")
-                        )
-                        nd_ul = $("<ul>")
-                        dev_xml.find("netdevice").each (nd_idx, nd_xml) =>
-                            nd_xml = $(nd_xml)
-                            nd_li = $("<li>").text(nd_xml.attr("devname"))
-                            nd_ul.append(nd_li)
-                            ip_ul = $("<ul>")
-                            nd_xml.find("net_ip").each (ip_idx, ip_xml) =>
-                                ip_xml = $(ip_xml)
-                                ip_li = $("<li>").text(ip_xml.attr("ip"))
-                                ip_ul.append(ip_li)
-                            nd_li.append(ip_ul)
-                        di_div.append(nd_ul)
                         # working :-)
                         # di_div.append($("<span>").append(create_input_el(dev_xml, "name", dev_xml.attr("key"), {master_xml : dev_xml})))
+                        di_div = build_device_info_div(dev_xml)
                         di_div.modal
                             opacity    : 50
                             position   : [event.pageY, event.pageX]

@@ -53,6 +53,53 @@ $.ajaxSetup
                 alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
         return false
 
+root.build_device_info_div = (dev_xml) ->
+    dev_div = $("<div>")
+    dev_div.append(
+        $("<h3>").text(dev_xml.attr("name"))
+    ).append(
+        $("<h3>").text("UUID: #{dev_xml.attr('uuid')}")
+    )
+    tabs_div = $("<div>").attr("id", "tabs")
+    dev_div.append(tabs_div)
+    tabs_div.append(
+        $("<ul>").append(
+            $("<li>").append(
+                $("<a>").attr("href", "#network").text("Network")
+            )
+        ).append(
+            $("<li>").append(
+                $("<a>").attr("href", "#edit").text("Edit")
+            )
+        )
+    )
+    # network div
+    nw_div = $("<div>").attr("id", "network")
+    if dev_xml.find("netdevice").length
+        nd_ul = $("<ul>")
+        dev_xml.find("netdevice").each (nd_idx, nd_xml) =>
+            nd_xml = $(nd_xml)
+            nd_li = $("<li>").text(nd_xml.attr("devname"))
+            nd_ul.append(nd_li)
+            ip_ul = $("<ul>")
+            nd_xml.find("net_ip").each (ip_idx, ip_xml) =>
+                ip_xml = $(ip_xml)
+                ip_li = $("<li>").text(ip_xml.attr("ip"))
+                ip_ul.append(ip_li)
+            nd_li.append(ip_ul)
+    else
+        nd_ul = $("<span>").text("no netdevices found")
+    nw_div.append(nd_ul)
+    # edit div
+    edit_div = $("<div>").attr("id", "edit")
+    # working :-)
+    edit_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "name", dev_xml.attr("key"), {master_xml : dev_xml, title : "device name", label : "Device name"})))
+    edit_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "monitor_checks", dev_xml.attr("key"), {master_xml : dev_xml, title : "Enable checks", label : "Monitoring", boolean : true})))
+    tabs_div.append(nw_div)
+    tabs_div.append(edit_div)
+    tabs_div.tabs()
+    return dev_div
+
 root.draw_ds_tables = (t_div, master_array, master_xml=undefined) ->
     # remove accordion if already exists
     if t_div.hasClass("ui-accordion")
@@ -761,6 +808,7 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
             new_el.bind("change", kwargs.change_cb)
         else
             new_el.bind("change", (event) ->
+                console.log "c"
                 submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.modify_data_dict_opts, kwargs.master_xml)
             )
     else if kwargs.change_cb
