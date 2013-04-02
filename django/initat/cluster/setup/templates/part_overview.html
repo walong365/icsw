@@ -49,7 +49,6 @@ class partition_table
     revalidate_partition: (event) =>
         $.ajax
             url     : "{% url 'setup:validate_partition' %}"
-            error   : handle_ajax_error
             data    : {"pt_pk" : @xml.attr("pk")}
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -116,7 +115,6 @@ class partition_table
         if cur_el.attr("value").match(/^creat/)
             $.ajax
                 url     : "{% url 'setup:create_part_disc' %}"
-                error   : handle_ajax_error
                 data    : {
                     "pt_pk" : cur_pt_pk,
                     "disc"  : cur_el.parents("tr:first").find("input[id$='__disc']").val()
@@ -127,7 +125,6 @@ class partition_table
         else
             $.ajax
                 url     : "{% url 'setup:delete_part_disc' %}"
-                error   : handle_ajax_error
                 data    : {
                     "pt_pk" : cur_pt_pk,
                     "pd_pk" : cur_el.attr("id").split("__")[3]
@@ -218,7 +215,6 @@ class partition_table
         if cur_el.attr("value").match(/^creat/)
             $.ajax
                 url     : "{% url 'setup:create_partition' %}"
-                error   : handle_ajax_error
                 data    : {
                     "pt_pk"  : cur_pt_pk,
                     "pd_pk"  : cur_pd_pk,
@@ -231,7 +227,6 @@ class partition_table
         else
             $.ajax
                 url     : "{% url 'setup:delete_partition' %}"
-                error   : handle_ajax_error
                 data    : {
                     "part_pk" : cur_el.attr("id").split("__")[5]
                 }
@@ -262,7 +257,6 @@ master_array = {
 load_partition_tables = ->
     $.ajax
         url     : "{% url 'setup:partition_overview' %}"
-        error   : handle_ajax_error
         success : (xml) ->
             if parse_xml_response(xml)
                 ALL_PARTITIONS = $(xml).find("value[name='response']")

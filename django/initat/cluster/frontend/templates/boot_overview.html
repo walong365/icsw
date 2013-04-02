@@ -37,9 +37,9 @@ class option_list
         return true
     get_devlog_info_from_server: ->
         return false
-    draw: (boot) =>
+    draw: (boot) ->
         return $("<td>").text("not used")
-    set_option: (cur_dev) =>
+    set_option: (cur_dev) ->
         if not @set
             @set = true
             if not @_set_option
@@ -51,11 +51,11 @@ class option_list
                 @_set_option_again(cur_dev)
     tr_id: () =>
         return @dev_key + "__opt__" + @short
-    dummy_line: () =>
+    dummy_line: () ->
         return $("<tr>").attr({
             "id" : @tr_id()
         })
-    full_line: (cur_td) =>
+    full_line: (cur_td) ->
         @cur_td = cur_td
         if not cur_td.attr("colspan")
             cur_td.attr("colspan", 5)
