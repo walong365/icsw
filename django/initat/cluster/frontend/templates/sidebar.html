@@ -203,8 +203,6 @@ class sidebar_tree
                 success : (xml) =>
                     if parse_xml_response(xml)
                         dev_xml = $(xml).find("device")
-                        # working :-)
-                        # di_div.append($("<span>").append(create_input_el(dev_xml, "name", dev_xml.attr("key"), {master_xml : dev_xml})))
                         di_div = build_device_info_div(dev_xml)
                         di_div.modal
                             opacity    : 50
