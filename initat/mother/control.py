@@ -299,7 +299,7 @@ class host(machine):
             self.log("clearing bootnetdevice")
             self.__bnd = val
         else:
-            self.log("chaning bootnetdevice_name from '%s' to '%s'" % (self.__bnd.devname if self.__bnd else "unset", val))
+            self.log("changing bootnetdevice_name from '%s' to '%s'" % (self.__bnd.devname if self.__bnd else "unset", val))
             self.__bnd = val
     bootnetdevice = property(get_bnd, set_bnd)
     def get_sip_d(self):
@@ -865,6 +865,7 @@ class host(machine):
             elif om_shell_com == "delete":
                 om_array.extend(['open',
                                  'remove'])
+            om_array.append("")
             simple_command.process.set_check_freq(200)
             simple_command("echo -e '%s' | /usr/bin/omshell" % ("\n".join(om_array)),
                            done_func=self.omshell_done,
@@ -1402,8 +1403,12 @@ class node_control_process(threading_tools.process_obj):
                                 macaddr=in_dict["macaddr"].lower()).save()
                         else:
                             # no feed to device
-                            print greedy_devs[0].name
-                            machine.get_device(greedy_devs[0].name).feed_dhcp(in_dict, in_line)
+                            cur_mach = machine.get_device(greedy_devs[0].name)
+                            if cur_mach:
+                                cur_mach.feed_dhcp(in_dict, in_line)
+                            else:
+                                # FIXME
+                                self.log("no device found with name '%s', resync ?" % (greedy_devs[0].name), logging_tools.LOG_LEVEL_ERROR)
                     else:
                         all_greedy_devs = device.objects.filter(Q(dhcp_mac=True)).select_related("bootnetdevice").order_by("name")
                         if all_greedy_devs:
