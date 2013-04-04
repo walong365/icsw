@@ -2999,6 +2999,7 @@ class simple_request(object):
         bs_list = []
         for cur_conf in conf_list:
             srv_routing = cur_conf.get_route_to_other_device(
+                self.cc.router_obj,
                 dev_sc,
                 filter_ip=self.src_ip,
                 allow_route_to_other_networks=False)
@@ -3060,6 +3061,7 @@ class simple_request(object):
                 fetch_network_info=True)
             # check if there is a route between us and server
             srv_routing = valid_server_struct.get_route_to_other_device(
+                self.cc.router_obj,
                 dev_sc,
                 filter_ip=self.src_ip,
                 allow_route_to_other_networks=False)
@@ -3109,6 +3111,7 @@ class config_control(object):
         self.__log_template = None
         self.device = cur_dev
         self.create_logger()
+        config_control.router_obj.check_for_update()
         self.__com_dict = {
             "get_kernel"              : self._handle_get_kernel,
             "get_kernel_name"         : self._handle_get_kernel,
@@ -3379,6 +3382,7 @@ class config_control(object):
         config_control.__queue_num = 0
         config_control.pending_config_requests = {}
         config_control.done_config_requests = {}
+        config_control.router_obj = config_tools.router_object(config_control.cc_log)
     @staticmethod
     def queue(cc_obj, s_req, req_name):
         config_control.__queue_num += 1
