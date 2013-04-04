@@ -818,12 +818,12 @@ elif [ -x /sbin/syslogd ] ; then
     /sbin/syslogd &
 elif [ -x /sbin/rsyslogd ] ; then
     SYSLOG_BIN=rsyslogd
-    echo -e "$ModLoad imuxsock.so " > /etc/rsyslog.conf
-    echo -e "$ModLoad imklog.so " >> /etc/rsyslog.conf
-    echo -e "$ModLoad imudp.so " >> /etc/rsyslog.conf
+    echo -e "\$ModLoad imuxsock.so" > /etc/rsyslog.conf
+    echo -e "\$ModLoad imklog.so" >> /etc/rsyslog.conf
+    echo -e "\$ModLoad imudp.so" >> /etc/rsyslog.conf
     echo -e "*.*\t@logserver:514\n" >> /etc/rsyslog.conf
     echo -e "starting rsyslogd"
-    /sbin/rsyslogd &
+    /sbin/rsyslogd -c 5 -f /etc/rsyslog.conf &
 else
     SYSLOG_BIN=0
 fi
@@ -1309,7 +1309,7 @@ umount /$basedir || err_exit "Cannot umount new system /$basedir"
 killall hoststatus_zmq
 umount /conf
 # DEBUG
-start_shell
+#err_exit
 [ "$SYSLOG_BIN" != "0" ] && killall $SYSLOG_BIN
 killall klogd
 umount /sys

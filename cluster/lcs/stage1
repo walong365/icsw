@@ -50,12 +50,6 @@ else
     echo_opt="-e"
 fi
 
-which () {
-    for p in /bin /sbin /usr/bin /usr/sbin ; do
-    [ -x ${p}/${1} ] && { echo "1" ; break ; }
-    done
-}
-
 start_shell () {
     alias > /.bashrc
     [ ! -d /proc ] && mkdir /proc
@@ -467,13 +461,11 @@ set_hoststat ${BM_MESG}
 if [ -x "$(which sntp)" ] ; then
     echo ${echo_opt} "trying to get time from $motherserver via sntp"
     sntp -P no -r $motherserver
+elif [ -x "$(which ntpdate)" ] ; then
+    echo ${echo_opt} "trying to get time from $motherserver via ntpdate"
+    ntpdate $motherserver
 else
-    if [ -z "$(which ntpdate)" ] ; then
-        echo ${echo_opt} "no sntp or ntpdate command found"
-    else
-        echo ${echo_opt} "trying to get time from $motherserver via ntpdate"
-        ntpdate $motherserver
-    fi
+    echo ${echo_opt} "no sntp or ntpdate command found"
 fi
 
 export motherserver ipaddr valid_net basedir eto

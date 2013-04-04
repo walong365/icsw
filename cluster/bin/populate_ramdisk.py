@@ -78,9 +78,9 @@ stage1_file_dict = {
         "readlink", "ethtool", "cp", "mount", "cat", "ls", "mount", "mkdir", "find", "head",
         "tar", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "rm", "chmod", "basename",
         "sed", "dmesg", "ping", "mknod", "true", "false", "logger", "modprobe", "bash", "load_firmware.sh",
-        "lsmod", "depmod", "insmod", "mkfs.ext2",
+        "lsmod", "depmod", "insmod", "mkfs.ext2", "date",
         "ifconfig", "pivot_root", "switch_root", "init", "tell_mother_zmq", "bzip2", "bunzip2", "cut", "tr", "chroot",
-        "killall", "seq", "hoststatus_zmq", "chown", "ldconfig",
+        "killall", "seq", "hoststatus_zmq", "chown", "ldconfig", "which",
         "df", "wc", "tftp", "mkfifo", "sleep", "reboot", "stty", "reset", "du", "tail", "lspci", "tee",
     ]
 }
@@ -106,7 +106,7 @@ stage2_file_dict = {
         "df", "tar", "gzip", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "basename",
         "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
         "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
-        "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "udevadm",
+        "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "udevadm", "which",
         "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
         "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
         ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
