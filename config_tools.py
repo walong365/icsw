@@ -186,6 +186,8 @@ class topology_object(object):
                     network_id = net_ip.objects.get(Q(netdevice__exact=s_nd_id) & Q(network__network_type__identifier__in=["p", "o", "b"])).network.pk
                     print(network_id)
                     self.simple_peer_dict[(src_device_id, dst_device_id)] = network_id
+                except net_ip.MultipleObjectsReturned:
+                    print "netdevice " + str(s_nd_id) + " in more than one network" 
                 except net_ip.DoesNotExist:
                     print "netdevice " + str(s_nd_id) + " not in any network" 
             if self.nx:
