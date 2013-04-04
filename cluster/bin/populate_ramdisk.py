@@ -48,63 +48,102 @@ from django.db.models import Q
 from initat.cluster.backbone.models import kernel
 import module_dependency_tools
 
-MOD_REFUSE_LIST = ["3w-9xxx", "3w-xxxx", "af_packet", "ata_piix",
-                   "autofs", "eata", "gdth",
-                   "jbd", "libata", "mptbase",
-                   "mptctl", "mptscsih", "reiserfs",
-                   "sata_promise", "sata_via",
-                   "scsi_mod", "sg", "sym53c8xx", "unix"]
+MOD_REFUSE_LIST = [
+    "3w-9xxx", "3w-xxxx", "af_packet", "ata_piix",
+    "autofs", "eata", "gdth",
+    "jbd", "libata", "mptbase",
+    "mptctl", "mptscsih", "reiserfs",
+    "sata_promise", "sata_via",
+    "scsi_mod", "sg", "sym53c8xx", "unix",
+]
 
 LINUXRC_NAMES = ["init", "linuxrc"]
 
-stage1_dir_dict = {0 : ["var/empty",
-                        "sys",
-                        "dev/pts"],
-                   1 : ["root", "tmp", "dev", "etc/pam.d", "proc",
-                        "var/run", "var/log", "sbin", "usr/lib", "usr/share"]}
-stage1_file_dict = {0 : ["inetd", "xinetd", "in.rshd", "tcpd", "in.rlogind", "whoami", "ntpdate", "ps", "rmmod", "rmmod.old", "lsmod.old", "depmod.old",
-                         "insmod.old", "modprobe.old", "route", "free", "arp", "login", "mount.nfs", "lsof", "xz"],
-                    1 : ["readlink", "ethtool", "cp", "mount", "cat", "ls", "mount", "mkdir", "find", "head",
-                         "tar", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "rm", "chmod", "basename",
-                         "sed", "dmesg", "ping", "mknod", "true", "false", "logger", "modprobe", "bash", "load_firmware.sh",
-                         "lsmod", "depmod", "insmod", "mkfs.ext2",
-                         "ifconfig", "pivot_root", "switch_root", "init", "tell_mother_zmq", "bzip2", "bunzip2", "cut", "tr", "chroot",
-                         "killall", "seq", "hoststatus_zmq", "chown", "ldconfig",
-                         "df", "wc", "tftp", "mkfifo", "sleep", "reboot", "stty", "reset", "du", "tail", "lspci", "tee"]}
+stage1_dir_dict = {
+    0 : [
+        "var/empty",
+        "sys",
+        "dev/pts"
+        ],
+    1 : [
+        "root", "tmp", "dev", "etc/pam.d", "proc",
+        "var/run", "var/log", "sbin", "usr/lib", "usr/share"]}
 
-stage2_dir_dict = {0 : ["sys",
-                        "var/empty"],
-                   1 : ["root", "tmp", "dev", "etc/pam.d", "proc",
-                        "var/run", "var/log", "dev/pts", "sbin", "usr/lib", "usr/share"]}
-stage2_file_dict = {0 : ["inetd", "xinetd", "mkfs.xfs", "mkfs.btrfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
-                         "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "xz"],
-                    1 : ["ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
-                         "df", "tar", "gzip", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "basename",
-                         "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
-                         "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
-                         "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "udevadm",
-                         "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
-                         "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
-                         ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
-                         "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
-                         "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty", "reset", "id", "lspci"]}
+stage1_file_dict = {
+    0 : [
+        "inetd", "xinetd", "in.rshd", "tcpd", "in.rlogind", "whoami", "ntpdate", "sntp", "ps", "rmmod", "rmmod.old", "lsmod.old", "depmod.old",
+        "insmod.old", "modprobe.old", "route", "free", "arp", "login", "mount.nfs", "lsof", "xz",
+        ],
+    1 : [
+        "readlink", "ethtool", "cp", "mount", "cat", "ls", "mount", "mkdir", "find", "head",
+        "tar", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "rm", "chmod", "basename",
+        "sed", "dmesg", "ping", "mknod", "true", "false", "logger", "modprobe", "bash", "load_firmware.sh",
+        "lsmod", "depmod", "insmod", "mkfs.ext2",
+        "ifconfig", "pivot_root", "switch_root", "init", "tell_mother_zmq", "bzip2", "bunzip2", "cut", "tr", "chroot",
+        "killall", "seq", "hoststatus_zmq", "chown", "ldconfig",
+        "df", "wc", "tftp", "mkfifo", "sleep", "reboot", "stty", "reset", "du", "tail", "lspci", "tee",
+    ]
+}
 
-stageloc_dir_dict = {0 : ["sys",
-                          "var/empty"],
-                     1 : ["root", "tmp", "dev", "etc/pam.d", "proc",
-                          "var/run", "var/log", "dev/pts", "sbin", "usr/lib", "usr/share"]}
-stageloc_file_dict = {0 : ["inetd", "xinetd", "mkfs.xfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
-                           "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs"],
-                      1 : ["awk", "ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
-                           "df", "tar", "gzip", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "basename",
-                           "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
-                           "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
-                           "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "pivot_root",
-                           "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
-                           "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
-                           ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
-                           "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
-                           "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty", "reset", "id", "lspci"]}
+stage2_dir_dict = {
+    0 : [
+        "sys",
+        "var/empty",
+        ],
+    1 : [
+        "root", "tmp", "dev", "etc/pam.d", "proc",
+        "var/run", "var/log", "dev/pts", "sbin", "usr/lib", "usr/share",
+    ]
+}
+
+stage2_file_dict = {
+    0 : [
+        "inetd", "xinetd", "mkfs.xfs", "mkfs.btrfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
+        "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "xz",
+        ],
+    1 : [
+        "ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
+        "df", "tar", "gzip", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "basename",
+        "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
+        "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
+        "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "udevadm",
+        "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
+        "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
+        ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
+        "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
+        "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty", "reset", "id", "lspci",
+    ]
+}
+
+stageloc_dir_dict = {
+    0 : [
+        "sys",
+        "var/empty",
+        ],
+    1 : [
+        "root", "tmp", "dev", "etc/pam.d", "proc",
+        "var/run", "var/log", "dev/pts", "sbin", "usr/lib", "usr/share",
+    ]
+}
+
+stageloc_file_dict = {
+    0 : [
+        "inetd", "xinetd", "mkfs.xfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
+        "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs",
+        ],
+    1 : [
+        "awk", "ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
+        "df", "tar", "gzip", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "basename",
+        "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
+        "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
+        "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "pivot_root",
+        "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
+        "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
+        ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
+        "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
+        "chown", "wc", ["portmap", "rpcbind"], "klogd", "arp", "ln", "find", "tftp", "uname", "rsync", "stty", "reset", "id", "lspci",
+    ]
+}
 
 def make_debian_fixes(in_dict):
     for key, val in in_dict.iteritems():
@@ -329,9 +368,12 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     root_64bit = get_system_bitcount("/")
     pam_dir = "/lib%s/security" % ({0 : "",
                                     1 : "64"}[root_64bit])
+    rsyslog_dir = "/lib%s/rsyslog" % ({0 : "",
+                                       1 : "64"}[root_64bit])
     main_lib_dir = "/lib%s" % ({0 : "",
                                 1 : "64"}[root_64bit])
     dir_dict[pam_dir] = 1
+    dir_dict[rsyslog_dir] = 0
     dir_dict["/etc/xinetd.d"] = 0
     sev_dict = {"W" : 0,
                 "E" : 0}
@@ -383,8 +425,9 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         pam_lib_list = ["pam_permit.so"]
     if verbose:
         print "Resolving libraries ..."
-    pam_lib_list = [norm_path("/%s/%s" % (pam_dir, x)) for x in pam_lib_list]
-    if stage_num == 2 or stage_num == 1:
+    pam_lib_list = [norm_path("/%s/%s" % (pam_dir, x)) for x in pam_lib_list] + \
+        [norm_path("%s/%s" % (rsyslog_dir, entry)) for entry in os.listdir(rsyslog_dir)]
+    if stage_num in [1, 2]:
         for special_lib in os.listdir(main_lib_dir):
             if special_lib.startswith("libnss") or special_lib.startswith("libnsl"):
                 if not [x for x in [re.match(".*%s.*" % (x), special_lib) for x in ["win", "ldap", "hesiod", "nis"]] if x]:
@@ -904,12 +947,16 @@ def main_normal():
     verbose = my_args.verbose
     script = sys.argv[0]
     local_script = "%s_local.py" % (script[:-3])
-    stage_add_dict = {1 : {0 : [],
-                           1 : []},
-                      2 : {0 : [],
-                           1 : []},
-                      3 : {0 : [],
-                           1 : []}}
+    stage_add_dict = {
+        1 : {
+            0 : [],
+            1 : []},
+        2 : {
+            0 : [],
+            1 : []},
+        3 : {
+            0 : [],
+            1 : []}}
 ##    for opt, arg in opts:
 ##        if opt in ["-h", "--help"]:
 ##            print " -M MODFILE           read list of kernel-modules from this file"
