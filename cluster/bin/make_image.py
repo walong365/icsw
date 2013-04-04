@@ -128,8 +128,13 @@ class build_process(threading_tools.process_obj):
         self.log("size is %s (target file is %s)" % (logging_tools.get_size_str(t_size),
                                                      t_file))
         c_flag = COMPRESS_MAP[global_config["COMPRESSION"]]
-        self._call("cd %s ; tar -c%sf %s --preserve-permissions --preserve-order %s" % (
+        comp_opt = ""
+        if global_config["COMPRESSION_OPTION"]:
+            if global_config["COMPRESSION"] == "xz":
+                comp_opt = "export XZ_OPT='%s'" % (global_config["COMPRESSION_OPTION"])
+        self._call("cd %s ; %s; tar -c%sf %s --preserve-permissions --preserve-order %s" % (
             system_dir,
+            comp_opt,
             c_flag,
             t_file,
             " ".join(file_list) if file_list else target_dir,
@@ -461,7 +466,7 @@ def main():
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("COMPRESSION"         , configfile.str_c_var("xz", help_string="compression method [%(default)s]", choices=["bz2", "gz", "xz"])),
-        #("COMPRESSION_OPTION"  , configfile.str_c_var("", help_string="options for compressor [%(default)s]")),
+        ("COMPRESSION_OPTION"  , configfile.str_c_var("", help_string="options for compressor [%(default)s]")),
         ("VERBOSE"             , configfile.bool_c_var(False, help_string="be verbose [%(default)s]", action="store_true", only_commandline=True, short_options="v")),
         ("IMAGE_NAME"          , configfile.str_c_var(all_imgs[0], help_string="image to build [%(default)s]", choices=all_imgs)),
         ("MODIFY_IMAGE"        , configfile.bool_c_var(True, short_options="m", help_string="do not modify image (no chroot calls) [%(default)s]", action="store_false")),
