@@ -709,7 +709,7 @@ class build_container(object):
                     del CONFIG
                     sys.stdout, sys.stderr = (old_stdout, old_stderr)
                     code_obj = None
-        print unicode(self.g_tree)
+        #print unicode(self.g_tree)
         # remove local vars
         for key in local_vars.iterkeys():
             del conf_dict[key]
@@ -1078,7 +1078,7 @@ def do_nets(conf):
                        "ONBOOT"    : "yes"}
             if global_config["WRITE_REDHAT_HWADDR_ENTRY"]:
                 new_co += {"HWADDR" : cur_nd.macaddr.lower()}
-        print log_str
+        #print log_str
     # handle virtual interfaces for Systems above SUSE 9.0
     for orig, virtuals in append_dict.iteritems():
         for virt, stuff in virtuals.iteritems():
@@ -2702,6 +2702,8 @@ class build_process(threading_tools.process_obj):
                     #if cur_ip.network_id 
                     if cur_ip.network_id in act_prod_net.idx_list:
                         take_it, cause = (True, "network_index in list")
+                    elif cur_ip.network.network_type.identifier == "l":
+                        take_it, cause = (True, "network_type is loopback")
                     else:
                         if cur_ip.network.write_other_network_config:
                             take_it, cause = (True, "network_index not in list but write_other_network_config set")
