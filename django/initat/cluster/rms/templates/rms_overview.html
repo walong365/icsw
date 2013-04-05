@@ -80,7 +80,7 @@ function addHandlers() {
     $("table#node_table").dataTable({
         "bProcessing"     : true,
         "bServerSide"     : true,
-        "sAjaxSource"     : "{% url rms:get_node_xml %}",
+        "sAjaxSource"     : "{% url 'rms:get_node_xml' %}",
         "sServerMethod"   : "POST",
         "bJQueryUI"       : true,
         "sPaginationType" : "full_numbers",
@@ -117,7 +117,7 @@ function addHandlers() {
     $("table#run_job_table").dataTable({
         "bProcessing"     : true,
         "bServerSide"     : true,
-        "sAjaxSource"     : "{% url rms:get_run_jobs_xml %}",
+        "sAjaxSource"     : "{% url 'rms:get_run_jobs_xml' %}",
         "sServerMethod"   : "POST",
         "bJQueryUI"       : true,
         "sPaginationType" : "full_numbers",
@@ -131,7 +131,7 @@ function addHandlers() {
     $("table#wait_job_table").dataTable({
         "bProcessing"     : true,
         "bServerSide"     : true,
-        "sAjaxSource"     : "{% url rms:get_wait_jobs_xml %}",
+        "sAjaxSource"     : "{% url 'rms:get_wait_jobs_xml' %}",
         "sServerMethod"   : "POST",
         "bJQueryUI"       : true,
         "sPaginationType" : "full_numbers",
