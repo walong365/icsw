@@ -35,7 +35,7 @@ import networkx
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME       = "/etc/hosts"
-GROUP_DIR                = "/etc/dsh/group"
+GROUP_DIR                = "/opt/cluster/pdsh/etc"
 
 class write_etc_hosts(cs_base_class.server_com):
     class Meta:
@@ -158,8 +158,9 @@ class write_etc_hosts(cs_base_class.server_com):
             for entry in sorted(loc_dict[pen_value]):
                 act_out_list.add_line([entry[0]] + entry[1:])
             host_lines = str(act_out_list).split("\n")
-            out_file.extend(["# penalty %d, %s" % (pen_value,
-                                                   logging_tools.get_plural("host entry", len(host_lines))), ""] + host_lines + [""])
+            out_file.extend(["# penalty %d, %s" % (
+                pen_value,
+                logging_tools.get_plural("host entry", len(host_lines))), ""] + host_lines + [""])
         if not os.path.isdir(GROUP_DIR):
             try:
                 os.makedirs(GROUP_DIR)
@@ -178,7 +179,7 @@ class write_etc_hosts(cs_base_class.server_com):
             for dev_name, dg_name in all_devs:
                 dg_dict.setdefault(dg_name, []).append(dev_name)
             for file_name, content in dg_dict.iteritems():
-                codecs.open(os.path.join(GROUP_DIR, file_name), "w", "utf-8").write("\n".join(content))
+                codecs.open(os.path.join(GROUP_DIR, file_name), "w", "utf-8").write("\n".join(sorted(set(content)) + [""]))
         file_list.append(ETC_HOSTS_FILENAME)
         codecs.open(ETC_HOSTS_FILENAME, "w+", "utf-8").write("\n".join(
             ["### AEH-START-PRE insert pre-host lines below"] +
