@@ -2745,14 +2745,19 @@ class build_process(threading_tools.process_obj):
             if os.path.isdir(cache_dir):
                 rem_ok, rem_failed = (0, 0)
                 for entry in os.listdir(cache_dir):
-                    full_name = os.path.join(cache_dir, entry)
-                    if os.path.isfile(full_name):
-                        try:
-                            os.unlink(full_name)
-                        except:
-                            rem_failed += 1
-                        else:
-                            rem_ok += 1
+                    try:
+                        full_name = os.path.join(cache_dir, entry)
+                    except:
+                        self.log("error building full_name from entry '%s'" % (entry), logging_tools.LOG_LEVEL_CRITICAL)
+                        rem_failed += 1
+                    else:
+                        if os.path.isfile(full_name):
+                            try:
+                                os.unlink(full_name)
+                            except:
+                                rem_failed += 1
+                            else:
+                                rem_ok += 1
                 self.log("cleaned cache_dir %s (%d ok, %d failed)" % (
                     cache_dir,
                     rem_ok,
