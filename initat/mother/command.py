@@ -49,9 +49,17 @@ class hc_command(object):
             unicode(cur_cd.parent),
             cur_cd.parent.curl,
             unicode(cur_cd.child)))
-        var_list = {"ipmi" : [
-            ("IPMI_USERNAME", "admin"),
-            ("IPMI_PASSWORD", "admin")]}.get(self.curl_base, [])
+        # better use subclasses, FIXME
+        var_list = {
+            "ipmi" : [
+                ("IPMI_USERNAME", "admin"),
+                ("IPMI_PASSWORD", "admin"),
+                ],
+            "ilo4" : [
+                ("ILO_USERNAME", "Administrator"),
+                ("ILO_PASSWORD", "passwd"),
+                ]
+            }.get(self.curl_base, [])
         var_dict = dict([(key, self.get_var(key, def_val)) for key, def_val in var_list])
         for key in sorted(var_dict):
             self.log(" var %-20s : %s" % (
@@ -79,8 +87,18 @@ class hc_command(object):
                 com_ip,
                 var_dict["IPMI_USERNAME"],
                 var_dict["IPMI_PASSWORD"],
-                {"on" : "on",
-                 "off" : "off",
+                {"on"    : "on",
+                 "off"   : "off",
+                 "cycle" : "cycle"}.get(command, "status")
+            )
+        elif self.curl_base == "ilo4":
+            com_str = "%s -I lanplus -H %s -U %s -P %s chassis power %s" % (
+                process_tools.find_file("ipmitool"),
+                com_ip,
+                var_dict["ILO_USERNAME"],
+                var_dict["ILO_PASSWORD"],
+                {"on"    : "on",
+                 "off"   : "off",
                  "cycle" : "cycle"}.get(command, "status")
             )
         else:

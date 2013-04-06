@@ -8,7 +8,7 @@
 #
 ### BEGIN INIT INFO
 # Provides:      mother
-# Should-Start: logcheck-server mysql
+# Should-Start: logcheck-server mysql postgresql
 # Required-Start: $network logging-server
 # Required-Stop: $network logging-server logcheck-server
 # Default-Start: 3 5
