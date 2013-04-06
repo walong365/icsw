@@ -3068,10 +3068,10 @@ class simple_request(object):
                 filter_ip=self.src_ip,
                 allow_route_to_other_networks=False)
             if not srv_routing:
-                valid_server_struct = None
                 self.log("found valid_server_struct %s but no route" % (
                     valid_server_struct.server_info_str),
                          logging_tools.LOG_LEVEL_ERROR)
+                valid_server_struct = None
             else:
                 self.server_ip = srv_routing[0][2][1][0]
                 self.log("found valid_server_struct %s (device %s) with ip %s" % (
