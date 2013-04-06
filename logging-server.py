@@ -230,8 +230,7 @@ class log_receiver(threading_tools.process_obj):
                 subject = "Python error for pid %d on %s@%s (%s" % (ep, global_config["LONG_HOST_NAME"], c_name,
                                                                     process_tools.get_machine_name())
                 msg_body = "\n".join(["Processinfo %s" % (self._get_process_info(es))] +
-                                     ["%3d %s" % (x[0] + 1, x[1]) for x in zip(range(len(es["errors"])),
-                                                                               es["errors"])])
+                                     ["%3d %s" % (line_num + 1, line) for line_num, line in enumerate(es["errors"])])
                 self._send_mail(subject, msg_body)
                 mails_sent += 1
                 ep_dels.append(ep)
