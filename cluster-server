@@ -1,8 +1,7 @@
 #! /bin/bash
 #
-# Copyright (c) 2003,2004,2005,2006,2007,2008,2012 lang-nevyjel@init.at
+# Copyright (c) 2003,2004,2005,2006,2007,2008,2012,2013 lang-nevyjel@init.at
 #
-
 #
 # RedHat stuff
 # chkconfig: 2345 79 21
@@ -12,7 +11,7 @@
 # Provides:      cluster-server
 # Required-Start: $network $syslog logging-server
 # Required-Stop: $network $syslog logging-server
-# Should-Start: mysql
+# Should-Start: mysql postgresql
 # Default-Start: 3 5
 # Default-Stop: 0 1 2 6
 # Description:   starts cluster-server
