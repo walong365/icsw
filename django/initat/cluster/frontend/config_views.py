@@ -492,9 +492,10 @@ def upload_config(request):
                 request.log("creating new config_type '%s'" % (unicode(cur_ct)))
                 cur_ct.save()
             try:
-                cur_obj = config.objects.get(Q(name=cur_conf.attrib["name"]))
+                new_conf = config.objects.get(Q(name=cur_conf.attrib["name"]))
             except config.DoesNotExist:
                 new_conf = config(config_type=cur_ct, **cur_conf.attrib)
+                new_conf.create_default_entries = False
                 new_conf.save()
                 request.log("creating new config '%s'" % (unicode(new_conf)))
                 for new_obj in cur_conf.xpath(".//config_str|.//config_int|.//config_bool|.//config_blob|.//mon_check_command|.//config_script"):
@@ -506,6 +507,13 @@ def upload_config(request):
                         if del_attr in new_obj.attrib:
                             del new_obj.attrib[del_attr]
                     new_sub_obj = new_sub_obj(config=new_conf, **new_obj.attrib)
+                    request.log(
+                        "creating new %s (value '%s') named %s" % (
+                            new_sub_obj._meta.object_name,
+                            unicode(new_sub_obj),
+                            new_sub_obj.name,
+                        )
+                    )
                     if new_obj.tag == "mon_check_command":
                         new_sub_obj.mon_check_command_type = default_mct
                         new_sub_obj.mon_service_templ = default_mst
