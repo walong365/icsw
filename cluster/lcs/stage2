@@ -313,7 +313,7 @@ function do_sfdisk_call() {
         set_hoststat "${PART_MESG} using parted"
         parted -s $dev print > /conf/.output/parted_before
         dd if=/dev/zero of=$dev count=512 bs=1024
-        parted -s $dev mklabel msdos
+        parted -s $dev mklabel gpt
         # get the size of the disk; a little hack
         # two cases:
         # old parted (up to 1.6.21/22/23): report as <LOWER>-<UPPER> MB
