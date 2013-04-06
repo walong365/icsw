@@ -150,9 +150,9 @@ class topology_object(object):
     def add_nodes(self):
         self.nx.add_nodes_from(self.nd_dict.keys())
     def add_edges(self):
-        for node_pair, networkindex in self.simple_peer_dict.iteritems():
+        for node_pair, network_idx_list in self.simple_peer_dict.iteritems():
             src_node, dst_node = node_pair
-            self.nx.add_edge(src_node, dst_node, networkidx=networkindex)
+            self.nx.add_edge(src_node, dst_node, networkidx=sum(network_idx_list))
     def _update(self):
         latest_gen = route_generation.objects.all().order_by("-generation")
         if latest_gen:
@@ -164,11 +164,6 @@ class topology_object(object):
         if latest_gen != self.__cur_gen:
             s_time = time.time()
             self.all_nds = device.objects.exclude(Q(device_type__identifier="MD")).values_list("idx", "name")
-#             for cur_nd in self.all_nds:
-#                 if cur_nd[1] not in self.dev_dict:
-#                     self.dev_dict[cur_nd[1]] = []
-#                 self.dev_dict[cur_nd[1]].append(cur_nd)
-#             self.nd_lut = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
             self.nd_dict = dict([(cur_nd[0], cur_nd) for cur_nd in self.all_nds])
             self.log("init topology helper object, %s / %s" % (
                 logging_tools.get_plural("netdevice", len(self.all_nds)),
@@ -178,18 +173,15 @@ class topology_object(object):
             all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id")
             for s_nd_id, d_nd_id in all_peers:
                 src_netdevice = netdevice.objects.select_related().get(pk=s_nd_id)
-                src_device_id = src_netdevice.device.pk;
+                src_device_id = src_netdevice.device.pk
                 
                 dst_netdevice = netdevice.objects.select_related().get(pk=d_nd_id)
-                dst_device_id = dst_netdevice.device.pk;
-                try:
-                    network_id = net_ip.objects.get(Q(netdevice__exact=s_nd_id) & Q(network__network_type__identifier__in=["p", "o", "b"])).network.pk
-                    print(network_id)
-                    self.simple_peer_dict[(src_device_id, dst_device_id)] = network_id
-                except net_ip.MultipleObjectsReturned:
-                    print "netdevice " + str(s_nd_id) + " in more than one network" 
-                except net_ip.DoesNotExist:
-                    print "netdevice " + str(s_nd_id) + " not in any network" 
+                dst_device_id = dst_netdevice.device.pk
+                for network_id in net_ip.objects.filter(Q(netdevice__exact=s_nd_id) & Q(network__network_type__identifier__in=["p", "o", "b", "s"])).values_list("network__pk", flat=True):
+                    src_device_id, dst_device_id = (min(src_device_id, dst_device_id),
+                                                    max(src_device_id, dst_device_id))
+                    self.simple_peer_dict.setdefault((src_device_id, dst_device_id), set()).add(network_id)
+                    pprint.pprint(self.simple_peer_dict)
             if self.nx:
                 del self.nx
             self.nx = networkx.Graph()
