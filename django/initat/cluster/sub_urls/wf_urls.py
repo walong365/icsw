@@ -48,17 +48,20 @@ setup_patterns = patterns(
 
 config_patterns = patterns(
     "initat.cluster.frontend",
-    url("^config_types$"     , "config_views.show_config_types"       , name="show_config_types" ),
-    url("^show_config$"      , "config_views.show_configs"            , name="show_configs"      ),
-    url("^get_dev_confs_xml$", "config_views.get_device_configs"      , name="get_device_configs"),
-    url("^create_config$"    , "config_views.create_config"           , name="create_config"     ),
-    url("^delete_config$"    , "config_views.delete_config"           , name="delete_config"     ),
-    url("^create_var$"       , "config_views.create_var"              , name="create_var"        ),
-    url("^delete_var$"       , "config_views.delete_var"              , name="delete_var"        ),
-    url("^create_script$"    , "config_views.create_script"           , name="create_script"     ),
-    url("^delete_script$"    , "config_views.delete_script"           , name="delete_script"     ),
-    url("^set_config_cb$"    , "config_views.alter_config_cb"         , name="alter_config_cb"   ),
-    url("^generate_config$"  , "config_views.generate_config"         , name="generate_config"   ),
+    url("^config_types$"        , "config_views.show_config_types"       , name="show_config_types" ),
+    url("^show_config$"         , "config_views.show_configs"            , name="show_configs"      ),
+    url("^get_dev_confs_xml$"   , "config_views.get_device_configs"      , name="get_device_configs"),
+    url("^create_config$"       , "config_views.create_config"           , name="create_config"     ),
+    url("^delete_config$"       , "config_views.delete_config"           , name="delete_config"     ),
+    url("^create_var$"          , "config_views.create_var"              , name="create_var"        ),
+    url("^delete_var$"          , "config_views.delete_var"              , name="delete_var"        ),
+    url("^create_script$"       , "config_views.create_script"           , name="create_script"     ),
+    url("^delete_script$"       , "config_views.delete_script"           , name="delete_script"     ),
+    url("^set_config_cb$"       , "config_views.alter_config_cb"         , name="alter_config_cb"   ),
+    url("^generate_config$"     , "config_views.generate_config"         , name="generate_config"   ),
+    url("^download_hash$"       , "config_views.download_hash"           , name="download_hash"     ),
+    url("^download_config/(?P<hash>.*)$", "config_views.download_configs", name="download_configs"  ),
+    url("^upload_config$"       , "config_views.upload_config"           , name="upload_config"     ),
 )
 
 boot_patterns = patterns(

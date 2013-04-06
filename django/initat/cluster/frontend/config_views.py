@@ -9,8 +9,11 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
      tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
-     mon_contactgroup, get_related_models, network_device_type, network_type, get_related_models
+     mon_contactgroup, get_related_models, network_device_type, network_type, get_related_models, \
+     mon_check_command_type, mon_service_templ
+from django.http import HttpResponse, HttpResponseRedirect
 from django.db.models import Q
+from django.core.urlresolvers import reverse
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
@@ -18,6 +21,8 @@ from lxml import etree
 from lxml.builder import E
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
+import datetime
+import tempfile
 import pprint
 import net_tools
 import server_command
@@ -412,3 +417,98 @@ def generate_config(request):
         request.log("build done", xml=True)
     #print etree.tostring(request.xml_response.build_response(), pretty_print=True)
     return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def download_hash(request):
+    _post = request.POST
+    conf_ids = [int(value) for value in _post.getlist("config_ids[]")]
+    request.log("got download request for %s: %s" % (
+        logging_tools.get_plural("config", len(conf_ids)),
+        ", ".join(["%d" % (val) for val in sorted(conf_ids)])))
+    hash_value = "QQ".join(["%d" % (conf_id) for conf_id in conf_ids])
+    request.xml_response["download_link"] = reverse("config:download_configs", args=[hash_value])
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def download_configs(request, **kwargs):
+    conf_ids = [int(value) for value in kwargs["hash"].split("QQ")]
+    request.log("got download request for %s: %s" % (
+        logging_tools.get_plural("config", len(conf_ids)),
+        ", ".join(["%d" % (val) for val in sorted(conf_ids)])))
+    res_xml = E.configuration()
+    configs = E.configs()
+    res_xml.append(configs)
+    conf_list = config.objects.filter(Q(pk__in=conf_ids)).prefetch_related(
+        "config_type",
+        "config_str_set",
+        "config_int_set",
+        "config_bool_set",
+        "config_blob_set",
+        "mon_check_command_set",
+        "config_script_set")
+    for cur_conf in conf_list:
+        cur_xml = cur_conf.get_xml()
+        cur_xml.append(cur_conf.config_type.get_xml())
+        configs.append(cur_xml)
+    # remove all pks and keys
+    for pk_el in res_xml.xpath(".//*[@pk]"):
+        del pk_el.attrib["pk"]
+        del pk_el.attrib["key"]
+    # remove attributes from config
+    for pk_el in res_xml.xpath(".//config"):
+        for del_attr in ["parent_config", "num_device_configs", "device_list", "config_type"]:
+            if del_attr in pk_el.attrib:
+                del pk_el.attrib[del_attr]
+    act_resp = HttpResponse(etree.tostring(res_xml, pretty_print=True),
+                            mimetype="application/xml")
+    act_resp["Content-disposition"] = "attachment; filename=config_%s.xml" % (datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+    return act_resp
+
+@login_required
+@init_logging
+def upload_config(request):
+    try:
+        default_mct = mon_check_command_type.objects.all()[0]
+    except:
+        default_mct = None
+    try:
+        default_mst = mon_service_templ.objects.all()[0]
+    except:
+        default_mst = None
+    try:
+        conf_xml = etree.fromstring(request.FILES["config"].read())
+    except:
+        request.log("cannot interpret upload file: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+    else:
+        for cur_conf in conf_xml.xpath(".//config"):
+            # check config_type
+            conf_type = cur_conf.find("config_type")
+            try:
+                cur_ct = config_type.objects.get(Q(name=conf_type.attrib["name"]))
+            except config_type.DoesNotExist:
+                cur_ct = config_type(**conf_type.attrib)
+                request.log("creating new config_type '%s'" % (unicode(cur_ct)))
+                cur_ct.save()
+            try:
+                cur_obj = config.objects.get(Q(name=cur_conf.attrib["name"]))
+            except config.DoesNotExist:
+                new_conf = config(config_type=cur_ct, **cur_conf.attrib)
+                new_conf.save()
+                request.log("creating new config '%s'" % (unicode(new_conf)))
+                for new_obj in cur_conf.xpath(".//config_str|.//config_int|.//config_bool|.//config_blob|.//mon_check_command|.//config_script"):
+                    if "type" in new_obj.attrib:
+                        new_sub_obj = globals()["config_%s" % (new_obj.attrib["type"])]
+                    else:
+                        new_sub_obj = globals()[new_obj.tag]
+                    for del_attr in ["config", "type", "mon_check_command_type", "mon_service_templ"]:
+                        if del_attr in new_obj.attrib:
+                            del new_obj.attrib[del_attr]
+                    new_sub_obj = new_sub_obj(config=new_conf, **new_obj.attrib)
+                    if new_obj.tag == "mon_check_command":
+                        new_sub_obj.mon_check_command_type = default_mct
+                        new_sub_obj.mon_service_templ = default_mst
+                    new_sub_obj.save()
+    return HttpResponseRedirect(reverse("config:show_configs"))
+    

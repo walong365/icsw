@@ -258,7 +258,7 @@ def json_network(request):
     for cur_d in device.objects.filter(Q(pk__in=r_obj.nx.nodes())):
         r_obj.nx.node[cur_d.pk]["name"] = unicode(cur_d.name)
     json_obj = json_graph.dumps(r_obj.nx)
-    pprint.pprint(json_obj)
+    #pprint.pprint(json_obj)
     return HttpResponse(json_obj, mimetype="application/json")
     
 @login_required

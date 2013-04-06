@@ -129,6 +129,8 @@ def _get_group_tree(request, sel_list, **kwargs):
     all_dgs = all_dgs.prefetch_related(
         "device_group",
         "device_group__device_type",
+        "device_group__netdevice_set",
+        "device_group__bootnetdevice",
         #"device_group__mon_host_cluster_set"
     )
     if with_monitoring:

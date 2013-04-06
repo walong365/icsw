@@ -33,6 +33,14 @@
     Configurations, <span id="config_info">none defined</span>, filter: <input type="text" id="filter" value=""/>
 </h1>
 
+<h4>
+    <form method="post" action="{% url 'config:upload_config' %}" enctype="multipart/form-data">
+        <input type="button" value="Download" id="download_button"/> selected configurations,
+        <input name="config" type="file"/>
+        <input type="submit" action="submit" value="Submit"/>
+    </form>
+</h4>
+
 <div id="config">
 </div>
 
@@ -48,6 +56,7 @@ class config_table
     constructor: (@top_div) ->
         @cur_filter = ""
         @codemirror_dict = {}
+        $("input#download_button").bind("click", @download_selected)
     use_devs: (dt_div) =>
         sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
         notify_generate_link(sel_list)
@@ -71,7 +80,7 @@ class config_table
         @top_div.find("textarea").each (idx, cur_ta) =>
             @init_textarea($(cur_ta))
         @update_expand_info()
-    
+        
     # filter function
     
     apply_filter: =>
@@ -107,6 +116,26 @@ class config_table
                         cur_tr.hide()
             @update_config_info(num_shown)
     
+    # donwload functions
+    
+    download_selected: (event) =>
+        dl_ids = []
+        @table.find("tr[id^='conf__']:visible").each (idx, cur_tr) =>
+            cur_tr = $(cur_tr)
+            if cur_tr.attr("id") != "conf__new" and cur_tr.attr("id").split("__").length == 2
+                dl_ids.push(cur_tr.attr("id"))
+        cur_but = $(event.target)
+        cur_but.attr("disabled", "disabled")
+        if dl_ids.length
+            $.ajax
+                url     : "{% url 'config:download_hash' %}"
+                data    :
+                    config_ids : (value.split("__")[1] for value in dl_ids)
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        window.location = $(xml).find("value[name='download_link']").text()
+                        cur_but.removeAttr("disabled")
+                    
     # config functions
     
     draw_config: (cur_conf) =>
