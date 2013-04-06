@@ -129,7 +129,7 @@ def main():
         sys.exit(1)
     print "Found error_file %s with %s" % (err_file_name, logging_tools.get_plural("line", len(err_lines)))
     errs_found, act_err = ([], None)
-    act_idx, idx_dict = (0, {})
+    act_idx, idx_dict, prev_dt = (0, {}, None)
     for line in err_lines:
         line_parts = line.split(":")
         # date is always the first 4 parts
@@ -149,7 +149,7 @@ def main():
             info_parts.pop(0)
             info_parts.pop(0)
         except:
-            print "Error pre-parsing line '%s'" % (line)
+            print "Error pre-parsing line '%s': %s" % (line, process_tools.get_except_info())
         else:
             try:
                 # get pid
@@ -166,7 +166,13 @@ def main():
                     line_s_name = info_parts[0][1:-1]
                     line_uid, line_gid = (-1, -1)
                     line_uname, line_gname = ("unknown", "unknown")
-                if not act_err or act_err.get_pid() != line_pid:
+                cur_dt = datetime.datetime.strptime(line_date, "%a %b %d %H:%M:%S %Y")
+                if prev_dt:
+                    dt_change = abs(cur_dt - prev_dt).seconds > 5
+                else:
+                    dt_change = False
+                prev_dt = cur_dt
+                if not act_err or act_err.get_pid() != line_pid or dt_change:
                     act_idx += 1
                     act_err = error_rec(
                         line_pid,
@@ -181,7 +187,7 @@ def main():
                 if err_line.strip() or not options.noempty:
                     act_err.add_line(line_date, line_state, err_line)
             except:
-                print "Error parsing line '%s'" % (line)
+                print "Error parsing line '%s': %s" % (line, process_tools.get_except_info())
     print "Found %s" % (logging_tools.get_plural("error record", len(errs_found)))
     if options.overview:
         if errs_found:
