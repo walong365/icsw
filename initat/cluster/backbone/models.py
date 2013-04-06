@@ -276,9 +276,17 @@ class config_int(models.Model):
             value="%d" % (self.value or 0)
         )
     def __unicode__(self):
+        if type(self.value) in [str, unicode]:
+            self.value = int(self.value)
         return "%d" % (self.value or 0)
     class Meta:
         db_table = u'config_int'
+
+@receiver(signals.pre_save, sender=config_int)
+def config_int_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_inter(cur_inst, "value")
 
 class config_script(models.Model):
     idx = models.AutoField(db_column="config_script_idx", primary_key=True)
@@ -2046,7 +2054,7 @@ def config_pre_save(sender, **kwargs):
 def config_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        if kwargs["created"]:
+        if kwargs["created"] and getattr(cur_inst, "create_default_entries", True):
             add_list = []
             if cur_inst.name.count("export"):
                 if cur_inst.name.count("home"):
@@ -2814,8 +2822,6 @@ class partition_table(models.Model):
             new_valid = not any([log_level in [
                 logging_tools.LOG_LEVEL_ERROR,
                 logging_tools.LOG_LEVEL_CRITICAL] for log_level, what, is_global in prob_list])
-            print new_valid
-            pprint.pprint(prob_list)
             # validate 
             if new_valid != self.valid:
                 self.valid = new_valid
@@ -3586,6 +3592,7 @@ def config_str_pre_save(sender, **kwargs):
             list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
+        print "*", cur_inst.name, cur_inst.config.name, all_var_names
         if cur_inst.name in all_var_names:
             raise ValidationError("name already used")
 
