@@ -543,7 +543,7 @@ class network_table
         color = d3.scale.category20()
         @svg = d3.select("div#network_graph").append("svg").attr("width", width).attr("height", height)
         @force = d3.layout.force().charge(-220).linkDistance(150).size([width, height])
-            .linkDistance((d) -> return 100 - 2 * d.networkidx)
+            .linkDistance((d) -> return 100)
         @force.nodes(graph.nodes).links(graph.links).start()
         link = @svg.selectAll(".link").data(graph.links).enter().append("line").attr("class", "link").style("stroke", (d) -> 
             return color(d.networkidx)
