@@ -2013,7 +2013,8 @@ class config(models.Model):
             r_xml.attrib["num_device_configs"] = "%d" % (len(dev_names))
             r_xml.attrib["device_list"] = logging_tools.compress_list(sorted(dev_names))
             r_xml.extend([
-                E.config_vars(*[cur_var.get_xml() for cur_var in list(self.config_str_set.all()) + \
+                E.config_vars(*[cur_var.get_xml() for cur_var in 
+                                list(self.config_str_set.all()) + \
                                 list(self.config_int_set.all()) + \
                                 list(self.config_bool_set.all()) + \
                                 list(self.config_blob_set.all())]),
