@@ -27,13 +27,10 @@ module gets included from configfile
 import sys
 import re
 import os
-import commands
 import pprint
 import configfile
-import configfile_old
 import array
 import process_tools
-import netifaces
 import time
 import logging_tools
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
@@ -181,7 +178,6 @@ class topology_object(object):
                     src_device_id, dst_device_id = (min(src_device_id, dst_device_id),
                                                     max(src_device_id, dst_device_id))
                     self.simple_peer_dict.setdefault((src_device_id, dst_device_id), set()).add(network_id)
-                    pprint.pprint(self.simple_peer_dict)
             if self.nx:
                 del self.nx
             self.nx = networkx.Graph()
