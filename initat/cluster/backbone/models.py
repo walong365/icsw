@@ -3592,7 +3592,6 @@ def config_str_pre_save(sender, **kwargs):
             list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
-        print "*", cur_inst.name, cur_inst.config.name, all_var_names
         if cur_inst.name in all_var_names:
             raise ValidationError("name already used")
 
