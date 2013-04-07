@@ -14,7 +14,8 @@ import pprint
 from lxml.builder import E
 import process_tools
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
-     partition_fs, image, architecture, device_class, device_location, get_related_models
+     partition_fs, image, architecture, device_class, device_location, get_related_models, \
+     kernel
 import server_command
 import net_tools
 
@@ -127,6 +128,26 @@ def image_overview(request):
 
 @login_required
 @init_logging
+def kernel_overview(request):
+    if request.method == "GET":
+        return render_me(request, "kernel_overview.html", {})()
+    else:
+        kernel_list = E.kernels()
+        for cur_kernel in kernel.objects.all():
+            kernel_xml = cur_kernel.get_xml()
+            kernel_list.append(kernel_xml)
+        xml_resp = E.response(
+            kernel_list,
+            E.architectures(
+                *[cur_arch.get_xml() for cur_arch in architecture.objects.all()]
+            ),
+        )
+        request.xml_response["response"] = xml_resp
+        #print etree.tostring(xml_resp, pretty_print=True)
+        return request.xml_response.create_response()
+
+@login_required
+@init_logging
 def scan_for_images(request):
     _post = request.POST
     try:
@@ -138,7 +159,7 @@ def scan_for_images(request):
     else:
         if srv_result is not None:
             present_img_names = image.objects.all().values_list("name", flat=True)
-            print srv_result.pretty_print()
+            #print srv_result.pretty_print()
             if int(srv_result["result"].attrib["state"]) == server_command.SRV_REPLY_STATE_OK:
                 img_list = srv_result.xpath(None, ".//ns:image_list")
                 if len(img_list):

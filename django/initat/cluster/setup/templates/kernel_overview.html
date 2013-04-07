@@ -1,0 +1,123 @@
+{% extends "main.html" %}
+
+{% load i18n extra_tags coffeescript %}
+
+{% block title %}{% trans "Kernel Overview" %}{% endblock %}
+
+{% block content %}
+
+<h1 class="center">Kernels (<span id="num_kernels">???</span> defined)</h1>
+<div id="kernel_list"></div>
+
+<div id="found_kernels"></div>
+
+<div id="kernel_detail"></div>
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+class kernel_tree
+    constructor: (@list_div, @found_div, @detail_div) ->
+        @kernels = undefined
+        @load_kernels()
+    load_kernels: () =>
+        $.ajax
+            url     : "{% url 'setup:kernel_overview' %}"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @kernels = $(xml).find("response")
+                    @show_all_kernels()
+    show_all_kernels: () =>
+        # clear divs
+        @detail_div.children().remove()
+        @found_div.children().remove()
+        $("span#num_kernels").text(@kernels.find("kernel").length)
+        kernel_ma = {
+            "kernel" : new draw_setup("Kernels", "kernel", "kernel",
+                undefined,
+                undefined,
+                [
+                    new draw_info("name", {size : 40, ro : true}),
+                    new draw_info("enabled", {ro : true, boolean : true}),
+                    new draw_info("version", {ro : true, integer : true}),
+                    new draw_info("release", {ro : true, integer : true}),
+                    #new draw_info("architecture", {ro : true, text_source : "architectures architecture"}),
+                    #new draw_info("sys_vendor", {ro : true}),
+                    new draw_info("major", {ro : true}),
+                    new draw_info("minor", {ro : true}),
+                    new draw_info("bitcount", {ro : true}),
+                    new draw_info("delete", {button : true, trigger : true, change_cb : @delete_image}),
+                    new draw_info("details", {button : true, trigger : true, change_cb : @choose_image}),
+                ]
+            )
+        }
+        draw_ds_tables(@list_div, kernel_ma, @kernels)
+        #@scan_button = $("<input>").attr({
+        #    "type"   : "button",
+        #    "id"     : "scan_for_images",
+        #    "value"  : "scan for images"}).bind("click", @scan_for_images)
+        #@list_div.append(@scan_button)
+    scan_for_images: () =>
+        @found_div.children().remove()
+        @scan_button.attr("disabled", "disabled")
+        $.ajax
+            url     : "{% url 'setup:scan_for_images' %}"
+            success : (xml) =>
+                @scan_button.removeAttr("disabled")
+                if parse_xml_response(xml)
+                    @found_images = $(xml).find("found_images")
+                    found_ma = {
+                        "image" : new draw_setup("Found Images", "found_image", "found_image",
+                            undefined,
+                            undefined,
+                            [
+                                new draw_info("name", {size : 40, ro : true}),
+                                new draw_info("vendor", {ro : true}),
+                                new draw_info("present", {boolean : true, ro : true}),
+                                new draw_info("use", {button : true, trigger : true, change_cb : @use_image}),
+                            ]
+                        )
+                    }
+                    draw_ds_tables(@found_div, found_ma, @found_images)
+    delete_image : (event) =>
+        img_pk = $(event.target).attr("id").split("__")[1]
+        cur_img = @images.find("images image[pk='#{img_pk}']")
+        if not parseInt(cur_img.attr("usecount"))
+            if confirm("Really delete image #{cur_img.attr['name']} ?")
+                $.ajax
+                    url     : "{% url 'setup:delete_image' %}"
+                    data    : {
+                        "img_name" : cur_img.attr("name")
+                    }
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            @load_images()
+    choose_image : (event) =>
+        img_sel = $(event.target)
+        console.log img_sel.attr("id")
+    use_image: () =>
+        button_el = $(event.target)
+        use_id = button_el.attr("id").split("__")[1]
+        button_el.attr("disabled", "disabled")
+        $.ajax
+            url     : "{% url 'setup:use_image' %}"
+            data    : {
+                "img_name" : @found_images.find("found_image[pk='#{use_id}']").attr("name")
+            }
+            success : (xml) =>
+                button_el.removeAttr("disabled")
+                if parse_xml_response(xml)
+                    button_el.parents("tr:first").remove()
+                    @load_images()
+
+add_handlers = ->
+    my_it = new kernel_tree($("div#kernel_list"), $("div#found_kernels"), $("div#kernel_detail"))
+
+$(document).ready(add_handlers)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}
