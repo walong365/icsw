@@ -1378,7 +1378,13 @@ class kernel(models.Model):
         return E.kernel(
             pk="%d" % (self.pk),
             key="kernel__%d" % (self.pk),
-            name=self.name
+            name=self.name,
+            major=self.major,
+            minor=self.minor,
+            version="%d" % (self.version),
+            release="%d" % (self.release),
+            enabled="1" if self.enabled else "0",
+            bitcount="%d" % (self.bitcount or 0),
         )
     def __unicode__(self):
         return self.name
