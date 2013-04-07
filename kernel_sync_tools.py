@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007,2008,2009,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007,2008,2009,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -174,6 +174,7 @@ class kernel_helper(object):
     def __getitem__(self, key):
         return self.__option_dict[key]
     def check_md5_sums(self):
+        self.__checks.append("md5")
         files_to_check = sorted([os.path.normpath("%s/%s" % (self.path, f_name)) for f_name in ["bzImage", "initrd.gz", "xen.gz", "modules.tar.bz2"] +
                                  ["initrd_%s.gz" % (key) for key in KNOWN_INITRD_FLAVOURS]])
         md5s_to_check  = dict([(p_name, os.path.normpath("%s/.%s_md5" % (self.path, os.path.basename(p_name)))) for p_name in files_to_check if os.path.exists(p_name)])
@@ -261,7 +262,8 @@ class kernel_helper(object):
                         setattr(self.__db_kernel, key, value)
                         self.__db_kernel.save()
             else:
-                self.log("not master of kernel", logging_tools.LOG_LEVEL_WARN)
+                self.log("not master of kernel (keys: %s)" % (", ".join(sorted(kwargs.keys()))),
+                         logging_tools.LOG_LEVEL_WARN)
     def check_initrd(self):
         # update initrd_built and module_list from initrd.gz
         # check for presence of stage-files
@@ -371,6 +373,13 @@ class kernel_helper(object):
                          logging_tools.LOG_LEVEL_WARN)
         else:
             self.log("initrd_built already set")
+    def check_unset_master(self):
+        self.__checks.append("unset_master")
+        if self.__db_kernel:
+            if self.__db_kernel.master_server in [0, None]:
+                self.__db_kernel.master_server = self.__local_master_server.pk
+                self.log("set master_server to local_master (was: 0)")
+                self.__db_kernel.save()
     def check_comment(self):
         self.__checks.append("comment")
         comment_file = "%s/.comment" % (self.root_dir)
@@ -457,6 +466,7 @@ class kernel_helper(object):
     def check_kernel_dir(self):
         # if not in database read values from disk
         self.log("Checking directory %s ..." % (self.path))
+        self.check_unset_master()
         self.check_comment()
         self.check_xen()
         self.check_config()
