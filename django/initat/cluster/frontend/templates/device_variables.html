@@ -6,7 +6,7 @@
 
 {% block content %}
 
-<h1 class="center">Device variables</h1>
+<h1 class="center">Device variables, filter : <input type="text" id="filter" value=""/></h1>
 
 <div id="variables"></div>
 
@@ -16,6 +16,8 @@
 
 class var_table
     constructor: (@top_div) ->
+        @cur_filter = ""
+        $("input#filter").bind("keyup", => @apply_filter())
     use_devs: (dt_div) =>
         sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
         $.ajax
@@ -110,20 +112,23 @@ class var_table
         return cs_tr
     toggle_variable_line: (line_prefix, state, line_spec) =>
         exp_line  = @v_table.find("tr[id^='#{line_prefix}__#{line_spec}']")
+        # when called from variable filter
+        force_expansion_state(@v_table.find("tr[id='#{line_prefix}']"), state)
         if state then exp_line.show() else exp_line.hide()
     update_expand_info: () =>
         @v_table.find("tr td div[id*='__expand__']").each (idx, cur_div) =>
             cur_div = $(cur_div)
             div_id = cur_div.attr("id")
             start_tr = cur_div.parents("tr:first")
-            num_lines = -1
+            num_lines = 0
             act_class = "even"
             while true
                 start_tr = start_tr.next()
                 if start_tr and start_tr.attr("id") and start_tr.attr("id").match(/^dev__\d+__dv__/)
                     start_tr.removeClass("even odd").addClass(act_class)
                     act_class = if act_class == "odd" then "even" else "odd"
-                    num_lines++
+                    if start_tr.attr("id").match(/__dv__(\d+)$/)
+                        num_lines++
                 else
                     break
             cur_div.next().text(num_lines)
@@ -163,6 +168,32 @@ class var_table
         cs_line.remove()
         @update_expand_info()
 
+    # filter functions
+    
+    apply_filter: (event) =>
+        cur_text = $("input#filter").attr("value")
+        if cur_text != @cur_filter
+            @cur_filter = cur_text
+            cur_re = new RegExp("^.*#{@cur_filter}.*$")
+            # first iteration: build list of devices to show / hide
+            dev_show = {}
+            @v_table.find("tr[id*='__dv__']").each (idx, cur_tr) =>
+                cur_tr = $(cur_tr)
+                if cur_tr.attr("id").match(/__dv__(\d+)$/)
+                    dev_key = cur_tr.attr("id").split("__")[0...2].join("__")
+                    if dev_key not of dev_show
+                        dev_show[dev_key] = false
+                    if cur_tr.find("input[id$='__name']").val().match(cur_re)
+                        dev_show[dev_key] = true
+            for key, value of dev_show
+                @toggle_variable_line(key, value, "dv")
+            # second iteration: hide lines normally shown
+            @v_table.find("tr[id*='__dv__']").each (idx, cur_tr) =>
+                cur_tr = $(cur_tr)
+                if cur_tr.attr("id").match(/__dv__(\d+)$/)
+                    if not cur_tr.find("input[id$='__name']").val().match(cur_re)
+                        cur_tr.hide()
+            
 add_config_handlers = ->
     var_t = new var_table($("div#variables"))
     install_devsel_link(var_t.use_devs, true)

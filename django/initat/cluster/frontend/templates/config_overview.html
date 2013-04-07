@@ -57,6 +57,7 @@ class config_table
         @cur_filter = ""
         @codemirror_dict = {}
         $("input#download_button").bind("click", @download_selected)
+        $("input#filter").bind("keyup", => @apply_filter())
     use_devs: (dt_div) =>
         sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
         notify_generate_link(sel_list)
@@ -574,7 +575,6 @@ add_config_handlers = ->
     conf_t = new config_table($("div#config"))
     install_devsel_link(conf_t.use_devs, true)
     conf_t.load_configs()
-    $("input#filter").bind("keyup", => conf_t.apply_filter())
 
 $(document).ready(add_config_handlers)
 
