@@ -1061,6 +1061,11 @@ class image(models.Model):
             enabled="1" if self.enabled else "0",
             version="%d" % (self.version),
             release="%d" % (self.release),
+            sys_vendor="%s" % (self.sys_vendor),
+            sys_version="%s" % (self.sys_version),
+            sys_release="%s" % (self.sys_release),
+            size_string="%s" % (self.size_string),
+            size="%d" % (self.size),
             architecture="%d" % (self.architecture_id or 0),
         )
         return cur_img
@@ -1070,6 +1075,12 @@ class image(models.Model):
     class Meta:
         db_table = u'image'
         ordering = ("name", )
+
+@receiver(signals.pre_save, sender=image)
+def image_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        cur_inst.size_string = logging_tools.get_size_str(cur_inst.size * 1024 * 1024)
 
 ##class image_excl(models.Model):
 ##    idx = models.AutoField(db_column="image_excl_idx", primary_key=True)
