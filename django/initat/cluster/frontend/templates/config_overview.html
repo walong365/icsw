@@ -21,8 +21,22 @@
 {% endcompress %}
 
 <style type="text/css">
-.CodeMirror {border-top: 1px solid black; border-bottom: 1px solid black;}
-.CodeMirror-activeline-background {background: #ffff00 !important;}
+.CodeMirror {
+    border-top: 1px solid black;
+    border-bottom: 1px solid black;
+    height: auto;
+}
+
+.CodeMirror-scroll {
+    overflow-y: hidden;
+    overflow-x: auto;
+    max-height: 220px;
+}
+
+.CodeMirror-activeline-background {
+    background: #ffff00 !important;
+}
+
 </style>
 
 {% endblock %}
