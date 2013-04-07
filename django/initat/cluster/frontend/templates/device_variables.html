@@ -33,6 +33,7 @@ class var_table
                     @draw_var_table()
     draw_var_table: () =>
         @v_table = $("<table>").attr({"id" : "variables"}).addClass("devicelist")
+        @dev_keys = []
         @DEVICES.find("device_group").each (idx, cur_dg) =>
             cur_dg = $(cur_dg)
             new_tr = $("<tr>").attr({
@@ -47,25 +48,35 @@ class var_table
             @v_table.append(new_tr)
             # at first append metadevice
             cur_dg.find("devices device[tree_selected='selected'][meta_device='1']").each (idx, cur_dev) =>
+                @dev_keys.push($(cur_dev).attr("key"))
                 @v_table.append(@draw_device($(cur_dev)))
             cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each (idx, cur_dev) =>
+                @dev_keys.push($(cur_dev).attr("key"))
                 @v_table.append(@draw_device($(cur_dev)))
+        @v_table.append(@draw_device())
         @top_div.children().remove()
         @top_div.append(@v_table)
         @update_expand_info()
     draw_device: (d_el) =>
         dummy_div = $("<div>")
-        line_prefix = d_el.attr("key")
+        line_prefix = if d_el then d_el.attr("key") else "all"
         new_tr = $("<tr>").attr({
             "class" : "ui-widget ui-widget-header devicegroup",
             "id"    : line_prefix
         })
-        is_meta = d_el.attr("meta_device") == "1"
+        if d_el
+            is_meta = d_el.attr("meta_device") == "1"
+            all_devs = false
+            dev_name = d_el.attr("name")
+        else
+            all_devs = true
+            is_meta = false
+            dev_name = ""
         new_tr.append(get_expand_td(line_prefix, "dv", "variable", @toggle_variable_line))
         new_tr.append($("<th>").attr({
             "colspan" : "5",
             "class"   : "left"
-        }).text((if is_meta then "Meta device" else "device") + " " + d_el.text()))
+        }).text((if is_meta then "Meta device" else (if all_devs then "all devices" else "device")) + " " + dev_name))
         dummy_div.append(new_tr)
         header_tr = $("<tr>").attr({
             "id"    : "#{line_prefix}__dv__header",
@@ -75,8 +86,9 @@ class var_table
             header_tr.append($("<th>").text(header_name))
         dummy_div.append(header_tr.hide())
         dummy_div.append(@add_dv_line(d_el, line_prefix))
-        d_el.find("device_variables device_variable").each (idx, cur_var) =>
-            dummy_div.append(@add_dv_line(d_el, line_prefix, $(cur_var)))
+        if d_el
+            d_el.find("device_variables device_variable").each (idx, cur_var) =>
+                dummy_div.append(@add_dv_line(d_el, line_prefix, $(cur_var)))
         return dummy_div.children()
     add_dv_line: (c_el, line_prefix, cs_com) =>
         cs_key = if cs_com then cs_com.attr("key") else "dv__new"
@@ -137,14 +149,32 @@ class var_table
         lock_list = lock_elements(@v_table)
         if cur_el.attr("id").match(/new$/)
             # create variable
-            $.ajax
-                url     : "{% url 'base:create_object' 'device_variable' %}"
-                data    : create_dict(@v_table, cur_el.attr("id"))
-                success : (xml) =>
-                    if parse_xml_response(xml)
-                        new_cs = $(xml).find("value[name='new_entry']").children()
-                        @inject_variable_line(new_cs)
-                    unlock_elements(lock_list)
+            if cur_el.attr("id") == "all__dv__new"
+                @v_table.find("tr[id*='__dv__']")
+                new_key = cur_el.attr("id")
+                new_dict = create_dict(@v_table, new_key)
+                for dev_key in @dev_keys
+                    send_key = "#{dev_key}__new"
+                    send_dict = {}
+                    for key, value of new_dict
+                        send_dict[key.replace(new_key, send_key)] = value
+                    $.ajax
+                        url     : "{% url 'base:create_object' 'device_variable' %}"
+                        data    : send_dict
+                        success : (xml) =>
+                            if parse_xml_response(xml)
+                                new_cs = $(xml).find("value[name='new_entry']").children()
+                                @inject_variable_line(new_cs)
+                unlock_elements(lock_list)
+            else
+                $.ajax
+                    url     : "{% url 'base:create_object' 'device_variable' %}"
+                    data    : create_dict(@v_table, cur_el.attr("id"))
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            new_cs = $(xml).find("value[name='new_entry']").children()
+                            @inject_variable_line(new_cs)
+                        unlock_elements(lock_list)
         else
             # delete variable
             del_dict = create_dict(@v_table, cur_el.attr("id"))
@@ -177,12 +207,12 @@ class var_table
             cur_re = new RegExp("^.*#{@cur_filter}.*$")
             # first iteration: build list of devices to show / hide
             dev_show = {}
+            for dev_key in @dev_keys
+                dev_show[dev_key] = false
             @v_table.find("tr[id*='__dv__']").each (idx, cur_tr) =>
                 cur_tr = $(cur_tr)
                 if cur_tr.attr("id").match(/__dv__(\d+)$/)
                     dev_key = cur_tr.attr("id").split("__")[0...2].join("__")
-                    if dev_key not of dev_show
-                        dev_show[dev_key] = false
                     if cur_tr.find("input[id$='__name']").val().match(cur_re)
                         dev_show[dev_key] = true
             for key, value of dev_show
