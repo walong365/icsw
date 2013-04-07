@@ -47,7 +47,7 @@ import pprint
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
-VERSION_STRING = "1.2"
+VERSION_STRING = "1.3"
 SLASH_NAME = "slash"
 
 NEEDED_PACKAGES = [
@@ -217,6 +217,7 @@ class server_process(threading_tools.process_pool):
             self.log("removing buildlock")
             cur_img = self._get_image()
             cur_img.build_lock = False
+            cur_img.release += 1
             cur_img.save()
         e_time = time.time()
         self.log("build took %s" % (logging_tools.get_diff_time_str(e_time - self.__start_time)))
