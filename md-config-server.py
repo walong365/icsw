@@ -946,7 +946,12 @@ class main_config(object):
         start_time = time.time()
         for key, stuff in self.__dict.iteritems():
             if isinstance(stuff, base_config) or isinstance(stuff, host_type_config):
-                act_cfg_name = os.path.normpath("%s/%s.cfg" % (self.__w_dir_dict["etc"], key))
+                if isinstance(stuff, base_config):
+                    act_cfg_name = stuff.get_file_name(self.__w_dir_dict["etc"])
+                else:
+                    act_cfg_name = os.path.normpath(os.path.join(
+                        self.__w_dir_dict["etc"],
+                       "%s.cfg" % (key)))
                 stuff.create_content()
                 if stuff.act_content != stuff.old_content:
                     try:
@@ -1005,6 +1010,11 @@ class base_config(object):
         self.act_content = []
     def get_name(self):
         return self.__name
+    def get_file_name(self, etc_dir):
+        if self.__name in ["uwsgi"]:
+            return "/opt/cluster/etc/uwsgi/icinga.wsgi.ini"
+        else:
+            return os.path.normpath(os.path.join(etc_dir, "%s.cfg" % (self.__name)))
     def __setitem__(self, key, value):
         if key.startswith("*"):
             key, multiple = (key[1:], True)
