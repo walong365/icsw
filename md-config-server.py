@@ -821,7 +821,7 @@ class main_config(object):
             else:
                 www_user, www_group = ("wwwrun", "www")
             wsgi_config = base_config(
-                "wsgi",
+                "uwsgi",
                 is_host_file=True,
                 headers=["[uwsgi]"],
                 values=[
@@ -957,8 +957,12 @@ class main_config(object):
                     try:
                         codecs.open(act_cfg_name, "w", "Utf-8").write(u"\n".join(stuff.act_content + [u""]))
                     except IOError:
-                        self.log("Error writing content of %s to %s: %s" % (key, act_cfg_name, process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_CRITICAL)
+                        self.log(
+                            "Error writing content of %s to %s: %s" % (
+                                key,
+                                act_cfg_name,
+                                process_tools.get_except_info()),
+                            logging_tools.LOG_LEVEL_CRITICAL)
                         stuff.act_content = []
                     else:
                         os.chmod(act_cfg_name, 0644)
