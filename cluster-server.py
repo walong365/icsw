@@ -565,6 +565,8 @@ class server_process(threading_tools.process_pool):
             self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(days=0)).replace(hour=2, minute=0, second=0)
         else:
             self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(seconds=2 if first else 600))
+        while self.__next_backup_dt < datetime.datetime.now():
+            self.__next_backup_dt += datetime.timedelta(days=1)
         self.log("setting %s backup-time to %s" % (
             "first" if first else "next",
             self.__next_backup_dt))
