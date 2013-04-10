@@ -209,18 +209,18 @@ class soft_control_option extends option_list
         return @full_line(cur_td)
     soft_control: (event) =>
         cur_el = $(event.target)
-        console.log "sc", cur_el.attr("id")
+        #console.log "sc", cur_el.attr("id")
         if cur_el.val() != "status"
             cur_el.removeAttr("checked")
             #console.log @cur_td.find("input[type='radio'][id='#{@dev_key}__status']").length
             @cur_td.find("input[type='radio'][id='#{@dev_key}__status']").attr("checked", "checked")
-            #$.ajax
-            #    url     : "{% url 'boot:soft_control' %}"
-            #    data    : {
-            #        "key" : cur_el.attr("id")
-            #    }
-            #    success : (xml) =>
-            #        parse_xml_response(xml)
+            $.ajax
+                url     : "{% url 'boot:soft_control' %}"
+                data    : {
+                    "key" : cur_el.attr("id")
+                }
+                success : (xml) =>
+                    parse_xml_response(xml)
     global_soft_control: (event) =>
         cur_el = $(event.target)
         cur_val = cur_el.val()
