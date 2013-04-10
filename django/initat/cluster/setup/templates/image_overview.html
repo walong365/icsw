@@ -39,18 +39,19 @@ class image_tree
                 undefined,
                 [
                     new draw_info("name", {size : 40, ro : true}),
-                    new draw_info("enabled", {ro : true, boolean : true}),
+                    new draw_info("enabled", {boolean : true}),
                     new draw_info("version", {ro : true, integer : true}),
                     new draw_info("release", {ro : true, integer : true}),
                     new draw_info("architecture", {ro : true, text_source : "architectures architecture"}),
-                    new draw_info("sys_vendor", {ro : true}),
-                    new draw_info("sys_version", {ro : true}),
+                    new draw_info("sys_vendor", {ro : true, label : "Vendor"}),
+                    new draw_info("sys_version", {ro : true, label : "version"}),
                     new draw_info("sys_release", {ro : true}),
                     new draw_info("size", {ro : true}),
                     new draw_info("size_string", {ro : true}),
                     new draw_info("delete", {button : true, trigger : true, change_cb : @delete_image}),
                     new draw_info("details", {button : true, trigger : true, change_cb : @choose_image}),
-                ]
+                ],
+                {change : true},
             )
         }
         draw_ds_tables(@list_div, img_ma, @images)

@@ -426,7 +426,7 @@ class draw_info
             cur_el.append(new_opt)
     draw: (cur_line, xml_el, line_prefix) ->
         kwargs = @get_kwargs()
-        if not cur_line.cur_ds.create_url
+        if not cur_line.cur_ds.create_url and not cur_line.cur_ds.kwargs.change
             kwargs.ro = true
         if (@trigger and xml_el) or not @trigger
             if @draw_conditional
@@ -808,7 +808,6 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
             new_el.bind("change", kwargs.change_cb)
         else
             new_el.bind("change", (event) ->
-                console.log "c"
                 submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.modify_data_dict_opts, kwargs.master_xml)
             )
     else if kwargs.change_cb

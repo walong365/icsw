@@ -79,7 +79,7 @@ def get_addon_info(request):
     request.log("requested addon dictionary '%s'" % (addon_long))
     addon_list = E.list()
     if addon_class:
-        for obj in addon_class.objects.filter(Q(enabled=True)):
+        for obj in addon_class.objects.all():#filter(Q(enabled=True)):
             addon_list.append(obj.get_xml())
     if addon_type == "t":
         prod_nets = network.objects.filter(Q(network_type__identifier="p"))
@@ -142,7 +142,6 @@ def set_boot(request):
 @init_logging
 def set_partition(request):
     _post = request.POST
-    pprint.pprint(_post)
     cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
     if not int(_post["new_part"]):
         cur_dev.partition_table = None

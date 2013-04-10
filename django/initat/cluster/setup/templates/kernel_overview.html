@@ -39,7 +39,7 @@ class kernel_tree
                 undefined,
                 [
                     new draw_info("name", {size : 40, ro : true}),
-                    new draw_info("enabled", {ro : true, boolean : true}),
+                    new draw_info("enabled", {boolean : true}),
                     new draw_info("version", {ro : true, integer : true}),
                     new draw_info("release", {ro : true, integer : true}),
                     #new draw_info("architecture", {ro : true, text_source : "architectures architecture"}),
@@ -49,7 +49,8 @@ class kernel_tree
                     new draw_info("bitcount", {ro : true}),
                     new draw_info("delete", {button : true, trigger : true, change_cb : @delete_image}),
                     new draw_info("details", {button : true, trigger : true, change_cb : @choose_image}),
-                ]
+                ],
+                {change : true},
             )
         }
         draw_ds_tables(@list_div, kernel_ma, @kernels)

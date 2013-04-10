@@ -79,7 +79,11 @@ class kernel_option extends option_list
         kernel_sel.append($("<option>").attr({"value" : "0"}).text("not set"))
         boot.xml_dict[@short].find("kernel").each (k_idx, cur_kernel) =>
             cur_kernel = $(cur_kernel)
-            kernel_sel.append($("<option>").attr({"value" : cur_kernel.attr("pk")}).text(cur_kernel.attr("name")))
+            kern_text = "#{cur_kernel.attr('name')} (#{cur_kernel.attr('bitcount')} bit)"
+            kern_opt = $("<option>").attr({"value" : cur_kernel.attr("pk")}).text(kern_text)
+            if cur_kernel.attr("enabled") == "0"
+                kern_opt.attr("disabled", "disabled")
+            kernel_sel.append(kern_opt)
         cur_td.append(kernel_sel)
         if not @global_mode
             cur_td.append(", actual kernel: ").append($("<span>").attr({
@@ -397,8 +401,9 @@ class image_option extends option_list
         img_sel.append($("<option>").attr({"value" : "0"}).text("not set"))
         boot.xml_dict[@short].find("image").each (index, cur_img) =>
             cur_img = $(cur_img)
-            img_opt = $("<option>").attr({"value" : cur_img.attr("pk")}).text(cur_img.attr("name"))
-            if cur_img.attr("valid") == 0
+            img_text = "#{cur_img.attr('name')} (vers #{cur_img.attr('version')}.#{cur_img.attr('release')}, #{cur_img.attr('size_string')})"
+            img_opt = $("<option>").attr({"value" : cur_img.attr("pk")}).text(img_text)
+            if cur_img.attr("enabled") == "0"
                 img_opt.attr("disabled", "disabled")
             img_sel.append(img_opt)
         cur_td.append(img_sel)
