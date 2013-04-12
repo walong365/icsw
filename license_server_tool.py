@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # encoding: -*- utf8 -*-
@@ -91,12 +91,14 @@ class license_object(object):
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         logging_tools.my_syslog(what, lev)
     def _write_scripts(self):
-        start_lines = ["#!/bin/bash",
-                       "%s -c %s -x lmdown -l +%s >>%s 2>&1" % (self["LMGRD_BINARY"],
-                                                                self["LICENSE_FILE"],
-                                                                self["DEBUG_LOG"],
-                                                                self["STDOUT_LOG"]),
-                       ""]
+        start_lines = [
+            "#!/bin/bash",
+            "%s -c %s -x lmdown -l +%s >>%s 2>&1" % (
+                self["LMGRD_BINARY"],
+                self["LICENSE_FILE"],
+                self["DEBUG_LOG"],
+                self["STDOUT_LOG"]),
+            ""]
         file(self["START_SCRIPT"], "w").write("\n".join(start_lines))
         os.chmod(self["START_SCRIPT"], 0550)
     def get_pid(self):
@@ -116,10 +118,12 @@ class license_object(object):
                 start_com = self["START_SCRIPT"]
             stat, out = commands.getstatusoutput(start_com)
             if stat:
-                self.log("error calling start_script via %s (%d): %s" % (start_com,
-                                                                         stat,
-                                                                         out),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error calling start_script via %s (%d): %s" % (
+                        start_com,
+                        stat,
+                        out),
+                    logging_tools.LOG_LEVEL_ERROR)
                 return 1, "start error"
             else:
                 self.log("successfully called %s" % (start_com))
