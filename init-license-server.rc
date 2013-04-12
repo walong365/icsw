@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2002,2003,2004,2005,2006,2007,2012 lang-nevyjel@init.at
+# Copyright (c) 2002,2003,2004,2005,2006,2007,2013 lang-nevyjel@init.at
 #
 #
 # RedHat stuff
@@ -36,28 +36,28 @@ rc_reset
 export HOSTNAME=`/bin/hostname`
 case "$1" in
     start)     
-		echo -n "Starting license servers "
-		${TOOLS_BIN} -u ${TOOLS_USER} -g ${TOOLS_GROUP} -l ${2:-all} start
-		rc_status -v
-		;;
+        echo -n "Starting license servers "
+        ${TOOLS_BIN} -u ${TOOLS_USER} -g ${TOOLS_GROUP} -l ${2:-all} start
+        rc_status -v
+        ;;
     stop)
-		echo -n "Stopping license servers "
-		${TOOLS_BIN} -u ${TOOLS_USER} -g ${TOOLS_GROUP} -l ${2:-all} stop
-		rc_status -v
-		;;
+        echo -n "Stopping license servers "
+        ${TOOLS_BIN} -u ${TOOLS_USER} -g ${TOOLS_GROUP} -l ${2:-all} stop
+        rc_status -v
+        ;;
     status)
-		echo -n "Checking license servers "
-		${TOOLS_BIN} -u ${TOOLS_USER} -g ${TOOLS_GROUP} -l ${2:-all} status
-		rc_status -v
-		;;
+        echo -n "Checking license servers "
+        ${TOOLS_BIN} -u ${TOOLS_USER} -g ${TOOLS_GROUP} -l ${2:-all} status
+        rc_status -v
+        ;;
     restart)
-		echo "Restarting License-servers"
-		$0 stop ${2:-all} && sleep 2 ; $0 start ${2:-all} || return=$rc_failed
-		;;
+        echo "Restarting License-servers"
+        $0 stop ${2:-all} && sleep 2 ; $0 start ${2:-all} || return=$rc_failed
+        ;;
     *)
-		echo "Usage: $0 {start|stop|restart|status}"
-		exit 1
-		;;
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
 esac
 
 rc_exit

@@ -30,6 +30,7 @@ import time
 from lxml import etree
 from lxml.builder import E
 import datetime
+import argparse
 
 class license_check(object):
     def __init__(self, **kwargs):
@@ -46,7 +47,6 @@ class license_check(object):
         self.log("license server at %s (port %d)" % (self.server_addr, self.server_port))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         what = u"[lc] %s" % (what)
-        # not implementd, FIXME
         if self.log_com:
             self.log_com(log_level, what)
         else:
@@ -134,7 +134,7 @@ class license_check(object):
                                     num_lics = 1
                                 start_data = " ".join(lparts[7:])
                                 # remove linger info (if present)
-                                start_data (start_data.split("(")[0]).strip()
+                                start_data = (start_data.split("(")[0]).strip()
                                 co_datetime = datetime.datetime.strptime(
                                     "%d %s" % (cur_year,
                                                start_data.title()), "%Y %a %m/%d %H:%M")
@@ -152,10 +152,41 @@ class license_check(object):
         return ret_struct
         
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=1055, help="license server [%(default)d]")
+    parser.add_argument("--server", type=str, default="localhost", help="license port [%(default)s]")
+    parser.add_argument("--mode", type=str, default="xml", choices=["xml", "check", "csv"], help="output mode [%(default)s]")
+    parser.add_argument("--check-eval", type=str, default="true", help="check string, should return true or false")
+    opts = parser.parse_args()
     my_lc = license_check(
-        server="/etc/license_server",
-        port="/etc/license_port")
-    print etree.tostring(my_lc.check(), pretty_print=True)
+        server=opts.server,
+        port=opts.port,
+    )
+    xml_res = my_lc.check()
+    ret_code = 0
+    if opts.mode == "xml":
+        print etree.tostring(xml_res, pretty_print=True)
+    elif opts.mode == "check":
+        glob_dict = {}
+        for cur_lic in xml_res.findall(".//license"):
+            lic_name = cur_lic.attrib["name"]
+            for attr_name in ["issued", "used", "free", "reserved"]:
+                glob_dict["%s_%s" % (lic_name, attr_name)] = int(cur_lic.attrib[attr_name])
+        ret_val = eval(opts.check_eval, glob_dict)
+        if not ret_val:
+            ret_code = 1
+    elif opts.mode == "csv":
+        for cur_lic in xml_res.findall(".//license"):
+            print ",".join(
+                [
+                    cur_lic.attrib["name"],
+                    cur_lic.attrib["issued"],
+                    cur_lic.attrib["used"],
+                    cur_lic.attrib["free"],
+                    cur_lic.attrib["reserved"],
+                ]
+            )
+    sys.exit(ret_code)
 
 if __name__ == "__main__":
     main()
