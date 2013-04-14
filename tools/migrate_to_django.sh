@@ -19,6 +19,14 @@ echo "dump basename is ${dump_name}, postfixes are full and data"
 mysql_dump.sh > ${dump_name}.full
 mysql_dump.sh -d > ${dump_name}.data
 
+group_xml=/tmp/cgroup.xml
+user_xml=/tmp/cuser.xml
+echo "group XML dump is ${group_xml}, user XML dump is ${user_xml}"
+echo "SELECT * FROM ggroup" | mysql_session.sh cdbase -X > ${group_xml}
+echo "SELECT * FROM user" | mysql_session.sh cdbase -X > ${user_xml}
+echo "protecting ${group_xml} and ${user_xml}"
+chmod 0400 ${group_xml} ${user_xml}
+
 C_DIR="/opt/python-init/lib/python/site-packages/init/cluster/"
 CLUSTER_DIR=/opt/cluster
 MIG_DIR="${C_DIR}/backbone/migrations/"
