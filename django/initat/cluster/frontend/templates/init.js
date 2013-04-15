@@ -456,9 +456,9 @@ class draw_collapse extends draw_info
         return get_expand_td(line_prefix, "exp", undefined, @expand_cb, @default ? true)
     expand_cb: (line_prefix, state, name) =>
         if state
-            @draw_setup.table_div.find("tr[id^='#{line_prefix}']")[1..].show()
+            @draw_setup.table_div.find("tr[id='#{line_prefix}']")[1..].show()
         else
-            @draw_setup.table_div.find("tr[id^='#{line_prefix}']")[1..].hide()
+            @draw_setup.table_div.find("tr[id='#{line_prefix}']")[1..].hide()
         
 class draw_link extends draw_info
     constructor: (name="link", kwargs={}) ->

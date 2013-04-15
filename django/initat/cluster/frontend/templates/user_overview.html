@@ -59,6 +59,7 @@ master_array = {
             new draw_info("export", {select_source : "homedir_exports homedir_export", keep_td : true}),
             new draw_info("allowed_device_groups", {select_source : "device_groups device_group", manytomany : true}),
             new draw_info("permissions", {select_source : "permissions permission", manytomany : true}),
+            new draw_info("comment", {default : "...", newline : true, cspan : 8, show_label : true, label : "Comment", size : 64}),
         ], {
             "required_xml" : ["group"],
             "lock_div"     : "ug_tables"
