@@ -3310,7 +3310,8 @@ class user(models.Model):
             for add_perm in new_perms - cur_perms:
                 dj_user.user_permissions.add(Permission.objects.get(Q(pk=add_perm)))
     permissions = property(get_permissions, set_permissions)
-    def get_xml(self, with_permissions=False, with_allowed_device_groups=True):
+    def get_xml(self, with_permissions=False, with_allowed_device_groups=True, user_perm_dict=None,
+                allowed_device_group_dict=None):
         user_xml = E.user(
             unicode(self),
             pk="%d" % (self.pk),
@@ -3322,17 +3323,27 @@ class user(models.Model):
             active="1" if self.active else "0",
             export="%d" % (self.export_id or 0),
             home_dir_created="1" if self.home_dir_created else "0",
+            first_name=self.first_name or "",
+            last_name=self.last_name or "",
+            title=self.title or "",
+            email=self.email or "",
+            pager=self.pager or "",
+            tel=self.tel or "",
+            comment=self.comment or "",
         )
         if with_allowed_device_groups:
-            user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
+            if allowed_device_group_dict:
+                user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in allowed_device_group_dict.get(self.login, [])])
+            else:
+                user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
         if with_permissions:
-            user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(user__username=self.login))])
+            if user_perm_dict:
+                user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in user_perm_dict.get(self.login, [])])
+            else:
+                user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(user__username=self.login))])
         else:
             # empty field
             user_xml.attrib["permissions"] = ""
-        for attr_name in ["first_name", "last_name",
-                          "title", "email", "pager", "tel", "comment"]:
-            user_xml.attrib[attr_name] = getattr(self, attr_name)
         return user_xml
     class Meta:
         db_table = u'user'
