@@ -943,17 +943,17 @@ class dmi_key(models.Model):
     class Meta:
         db_table = u'dmi_key'
 
-class extended_log(models.Model):
-    idx = models.AutoField(db_column="extended_log_idx", primary_key=True)
-    devicelog = models.ForeignKey("devicelog", null=True)
-    log_source = models.ForeignKey("log_source", null=True)
-    user = models.ForeignKey("user", null=True)
-    users = models.CharField(max_length=765, blank=True)
-    subject = models.CharField(max_length=765, blank=True)
-    description = models.TextField(blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'extended_log'
+##class extended_log(models.Model):
+##    idx = models.AutoField(db_column="extended_log_idx", primary_key=True)
+##    devicelog = models.ForeignKey("devicelog", null=True)
+##    log_source = models.ForeignKey("log_source", null=True)
+##    user = models.ForeignKey("user", null=True)
+##    users = models.CharField(max_length=765, blank=True)
+##    subject = models.CharField(max_length=765, blank=True)
+##    description = models.TextField(blank=True)
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'extended_log'
 
 class genstuff(models.Model):
     idx = models.AutoField(db_column="genstuff_idx", primary_key=True)
