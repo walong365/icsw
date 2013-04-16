@@ -94,6 +94,10 @@ td.warn {
 td.error {
     background-color: #ff8888;
 }
+input.delete {
+    color      : #ff0000;
+    font-style : italic;
+}
 td.ok {
     background-color: #88ff88;
 }

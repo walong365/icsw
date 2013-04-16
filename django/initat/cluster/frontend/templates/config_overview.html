@@ -175,9 +175,9 @@ class config_table
             create_input_el(cur_conf, "parent_config", line_prefix, {label : "Parent" , select_source : @configs.find("config"), add_null_entry : "none", select_source_attribute : "name", master_xml : @configs})
         ))
         if cur_conf
-            c_line.append(get_expand_td(line_prefix, "var", undefined, @toggle_config_line))
-            c_line.append(get_expand_td(line_prefix, "moncc", undefined, @toggle_config_line))
-            c_line.append(get_expand_td(line_prefix, "cscript", undefined, @toggle_config_line))
+            c_line.append(get_expand_td(line_prefix, "var", "variables", @toggle_config_line))
+            c_line.append(get_expand_td(line_prefix, "moncc", "monitoring config", @toggle_config_line))
+            c_line.append(get_expand_td(line_prefix, "cscript", "config scripts", @toggle_config_line))
         else
             c_line.append($("<td>").attr({"colspan" : "3"}))
         num_confs = if cur_conf then parseInt(cur_conf.attr("num_device_configs")) else 0
@@ -188,7 +188,7 @@ class config_table
         else   
             c_line.append(
                 $("<td>").append(
-                    $("<input>").attr({
+                    $("<input>").addClass(if conf_pk == "new" then "" else "delete").attr({
                         "type"  : "button",
                         "value" : if conf_pk == "new" then "create" else "delete",
                         "id"    : line_prefix
@@ -203,21 +203,39 @@ class config_table
             var_div.append(@add_config_var_line(cur_conf, line_prefix))
             cur_conf.find("config_vars").children().each (idx, cur_var) =>
                 var_div.append(@add_config_var_line(cur_conf, line_prefix, $(cur_var)))
-            dummy_div.append($("<tr>").attr("id", "#{line_prefix}__var").append($("<td>").append(var_div)).hide())
+            dummy_div.append(
+                $("<tr>").attr(
+                    "id" : "#{line_prefix}__var"
+                ).append(
+                    $("<td>").attr("colspan", "5").append(var_div)
+                ).hide()
+            )
             # add monitoring commands
             mon_div = $("<table>")
             mon_div.append(@add_header(cur_conf, line_prefix, "moncc"))
             mon_div.append(@add_monitoring_line(cur_conf, line_prefix))
             cur_conf.find("mon_check_commands").children().each (idx, cur_mon) =>
                 mon_div.append(@add_monitoring_line(cur_conf, line_prefix, $(cur_mon)))
-            dummy_div.append($("<tr>").attr("id", "#{line_prefix}__moncc").append($("<td>").append(mon_div)).hide())
+            dummy_div.append(
+                $("<tr>").attr(
+                    "id" : "#{line_prefix}__moncc"
+                ).append(
+                    $("<td>").attr("colspan", "5").append(mon_div)
+                ).hide()
+            )
             # add config scripts
             conf_div = $("<table>")
             conf_div.append(@add_header(cur_conf, line_prefix, "cscript"))
             conf_div.append(@add_config_script_line(cur_conf, line_prefix))
             cur_conf.find("config_scripts").children().each (idx, cur_script) =>
                 conf_div.append(@add_config_script_line(cur_conf, line_prefix, $(cur_script)))
-            dummy_div.append($("<tr>").attr("id", "#{line_prefix}__cscript").append($("<td>").append(conf_div)).hide())
+            dummy_div.append(
+                $("<tr>").attr(
+                    "id" : "#{line_prefix}__cscript"
+                ).append(
+                    $("<td>").attr("colspan", "5").append(conf_div)
+                ).hide()
+            )
             for cur_t in dummy_div.find("table")
                 @recolor_table(cur_t)
         return dummy_div.children()
@@ -324,7 +342,7 @@ class config_table
             ))
         cv_tr.append(
             $("<td>").append(
-                $("<input>").attr({
+                $("<input>").addClass(if c_var then "delete" else "").attr({
                     "type"  : "button",
                     "value" : if c_var then "delete" else "create",
                     "id"    : line_prefix
@@ -379,11 +397,11 @@ class config_table
             "id"  : line_prefix
         })
         nc_tr.append(
-            create_input_el(n_com, "name", line_prefix, {master_xml : @configs, enclose_td : true})
+            create_input_el(n_com, "name", line_prefix, {master_xml : @configs, enclose_td : true, size: 32})
         ).append(
-            create_input_el(n_com, "command_line", line_prefix, {master_xml : @configs, enclose_td : true})
+            create_input_el(n_com, "command_line", line_prefix, {master_xml : @configs, enclose_td : true, size : 80})
         ).append(
-            create_input_el(n_com, "description", line_prefix, {master_xml : @configs, enclose_td : true})
+            create_input_el(n_com, "description", line_prefix, {master_xml : @configs, enclose_td : true, size : 40})
         ).append(
             create_input_el(n_com, "enable_perfdata", line_prefix, {boolean : true, master_xml : @configs, enclose_td : true})
         ).append(
@@ -392,7 +410,7 @@ class config_table
             create_input_el(n_com, "mon_service_templ", line_prefix, {select_source : @configs.find("mon_service_templates mon_service_templ"), master_xml : @configs, enclose_td : true})
         ).append(
             $("<td>").append(
-                $("<input>").attr({
+                $("<input>").addClass(if n_com then "delete" else "").attr({
                     "type"  : "button",
                     "value" : if n_com then "delete" else "create",
                     "id"    : line_prefix
@@ -470,7 +488,7 @@ class config_table
             )
         cs_tr.append(
             $("<td>").append(
-                $("<input>").attr({
+                $("<input>").addClass(if cs_com then "delete" else "").attr({
                     "type"  : "button",
                     "value" : if cs_com then "delete" else "create",
                     "id"    : line_prefix
@@ -574,7 +592,8 @@ class config_table
                 num_tr = @table.find("tr[id^='" + div_id.replace(/^(conf__\d+__)[a-z]+__(.*)$/, "$1$2") + "']").length - 3
                 if div_id.match(/__cscript$/)
                     num_tr = (num_tr - 1) / 2
-                cur_div.next().text(num_tr)
+                info_type = $(cur_div).attr("id").split("__")[3][0]
+                cur_div.next().text("#{info_type} [#{num_tr}]")
     update_config_info: (num_shown) =>
         num_confs = @configs.find("config").length
         info_str = "configs defined: #{num_confs}" 

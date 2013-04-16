@@ -351,13 +351,15 @@ class draw_line
             new_td.append(new_els)
         @cur_ds.element_info[xml_pk] = el_list
         if @cur_ds.create_url
+            cd_td = $("<td>").append(
+                $("<input>").addClass(if xml_pk == "new" then "" else "delete").attr(
+                    "type"  : "button"
+                    "value" : if xml_pk == "new" then "create" else "delete"
+                    "id"    : line_prefix,
+                )
+            )
             n_line.append(
-                $("<td>").append(
-                    $("<input>").attr(
-                        "type"  : "button"
-                        "value" : if xml_pk == "new" then "create" else "delete"
-                        "id"    : line_prefix)
-                ).bind("click", (event) =>
+                cd_td.bind("click", (event) =>
                     @cur_ds.create_delete_element(event)
                 )
             )
@@ -651,40 +653,62 @@ force_expansion_state = (cur_tr, state) ->
         cur_el.addClass("ui-icon-triangle-1-e")
 
 enter_password = (event) ->
-    $.modal(
-        $("<h2>").text("Please enter password")
-        .append(
-            $("<ul>").append(
-                $("<li>").text("Password:").append(
-                    $("<input>").attr
-                        id   : "pwd0"
-                        type : "password"
-                )
-            ).append(
-                $("<li>").text("again:").append(
-                    $("<input>").attr
-                        id   : "pwd1"
-                        type : "password"
-                )
+    top_div = $("<div>")
+    top_div.append(
+        $("<h3>").text("Please enter password")
+    )
+    tabs_div = $("<div>").attr("id", "tabs")
+    top_div.append(tabs_div)
+    tabs_div.append(
+        $("<ul>").append(
+            $("<li>").append(
+                $("<a>").attr("href", "#password").text("password")
+            )
+        )
+    )
+    # password div
+    pw_div = $("<div>").attr("id", "password")
+    pw_div.append(
+        $("<ul>").append(
+            $("<li>").text("Password:").append(
+                $("<input>").attr
+                    id   : "pwd0"
+                    type : "password"
             )
         ).append(
-            $("<h4>").attr
+            $("<li>").text("again:").append(
+                $("<input>").attr
+                    id   : "pwd1"
+                    type : "password"
+            )
+        )
+    ).append(
+        $("<h4>").append(
+            $("<span>").attr
                 id : "error"
-        ),
+        )
+    )
+    tabs_div.append(pw_div)
+    top_div.tabs()
+    $.modal(
+        top_div,
         {
             onShow : (dialog) ->
-                stat_h4 = dialog.data.find("h4")
+                stat_h4 = dialog.data.find("span#error")
                 stat_h4.text("password empty")
                 dialog.data.find("input").bind("change", () ->
                     pwd0 = dialog.data.find("input#pwd0").val()
                     pwd1 = dialog.data.find("input#pwd1").val()
                     if pwd0 == pwd1
-                        if not pwd0
+                        if not pwd0 or not pwd1
                             stat_h4.text("password empty")
+                            stat_h4.attr("class", "warn")
                         else
                             stat_h4.text("password OK")
+                            stat_h4.attr("class", "ok")
                     else
                         stat_h4.text("password mismatch")
+                        stat_h4.attr("class", "error")
                 )
             onClose : (dialog) ->
                 pwd0 = dialog.data.find("input#pwd0").val()
