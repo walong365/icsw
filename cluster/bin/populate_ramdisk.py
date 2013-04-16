@@ -370,10 +370,12 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                                     1 : "64"}[root_64bit])
     rsyslog_dir = "/lib%s/rsyslog" % ({0 : "",
                                        1 : "64"}[root_64bit])
+    rsyslog_dirs = [os.path.join("/usr", rsyslog_dir), rsyslog_dir]
     main_lib_dir = "/lib%s" % ({0 : "",
                                 1 : "64"}[root_64bit])
     dir_dict[pam_dir] = 1
-    dir_dict[rsyslog_dir] = 0
+    for syslog_dir in rsyslog_dirs:
+        dir_dict[rsyslog_dir] = 0
     dir_dict["/etc/xinetd.d"] = 0
     sev_dict = {"W" : 0,
                 "E" : 0}
@@ -425,8 +427,10 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         pam_lib_list = ["pam_permit.so"]
     if verbose:
         print "Resolving libraries ..."
-    pam_lib_list = [norm_path("/%s/%s" % (pam_dir, x)) for x in pam_lib_list] + \
-        [norm_path("%s/%s" % (rsyslog_dir, entry)) for entry in os.listdir(rsyslog_dir)]
+    pam_lib_list = [norm_path("/%s/%s" % (pam_dir, x)) for x in pam_lib_list]
+    for rsyslog_dir in rsyslog_dirs:
+        if os.path.isdir(rsyslog_dir):
+            pam_lib_list.extend([norm_path("%s/%s" % (rsyslog_dir, entry)) for entry in os.listdir(rsyslog_dir)])
     if stage_num in [1, 2]:
         for special_lib in os.listdir(main_lib_dir):
             if special_lib.startswith("libnss") or special_lib.startswith("libnsl"):
