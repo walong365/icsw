@@ -961,6 +961,11 @@ class host(machine):
         self.log("got info '%s' from %s" % (in_text, instance))
         self.set_recv_state(in_text)
         self.device.save(update_fields=["recvstate", "recvstate_timestamp"])
+        devicelog.new_log(
+            self.device,
+            machine.process.node_src,
+            cached_log_status("i"),
+            in_text)
         return "ok got it"
     def nodestatus(self, in_text, instance):
         self.log("got status '%s' from %s" % (in_text, instance))
@@ -1371,8 +1376,14 @@ class node_control_process(threading_tools.process_obj):
             try:
                 ip_dev = device.objects.select_related("bootnetdevice").get(Q(netdevice__net_ip__ip=in_dict["ip"]))
             except device.DoesNotExist:
-                self.log("got %s for unknown ip %s" % (in_dict["key"],
-                                                       in_dict["ip"]), logging_tools.LOG_LEVEL_WARN)
+                self.log("got %s for unknown ip %s" % (
+                    in_dict["key"],
+                    in_dict["ip"]), logging_tools.LOG_LEVEL_WARN)
+                ip_dev = None
+            except device.MultipleObjectsReturned:
+                self.log("got %s for multiple ip %s" % (
+                    in_dict["key"],
+                    in_dict["ip"]), logging_tools.LOG_LEVEL_WARN)
                 ip_dev = None
             else:
                 if ip_dev.bootserver:
