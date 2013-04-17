@@ -3266,7 +3266,7 @@ class sys_partition(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sys_partition'
-
+        
 class user(models.Model):
     idx = models.AutoField(db_column="user_idx", primary_key=True)
     active = models.BooleanField(default=True)
