@@ -1288,7 +1288,7 @@ class usv_apc_battery_scheme(snmp_scheme):
         elif run_time < 10 * 60:
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
             prob_f.append("run time below 10 minutes")
-        return ret_state, "bat temperatur is %d C, bat load is %d %%, support time is %s %s%s" % (
+        return ret_state, "bat temperature is %d C, bat load is %d %%, support time is %s %s%s" % (
             act_temp,
             act_bat_load,
             logging_tools.get_plural("min", int(run_time / 60)),

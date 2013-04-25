@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -131,31 +131,40 @@ class mail_log_object(file_object):
         return self.__num_dict.copy()
     def _parse_line(self, in_line, act_time):
         l_ps = in_line.split()
-        act_month = {"jan" : 1,
-                     "feb" : 2,
-                     "mar" : 3,
-                     "apr" : 4,
-                     "may" : 5,
-                     "jun" : 6,
-                     "jul" : 7,
-                     "aug" : 8,
-                     "sep" : 9,
-                     "okt" : 10,
-                     "oct" : 10,
-                     "nov" : 11,
-                     "dec" : 12}.get(l_ps[0].lower(), 0)
-        act_day = int(l_ps[1])
-        act_hms_str = l_ps[2]
-        # check timestamp and correct year if necessary
-        diff_days = int((time.mktime([self.__act_year, act_month, act_day] + [int(x) for x in act_hms_str.split(":")] + [0, 0, -1]) - act_time) / (3600 * 24))
-        if diff_days < -150:
-            self.__act_year += 1
-        elif diff_days > 150:
-            self.__act_year -= 1
+        if len(l_ps[0]) > 3:
+            # format YYYY-MM-DDT....
+            dts = l_ps[0].split("-")
+            self.__act_year = int(l_ps[0][0:4])
+            act_month = int(l_ps[0][5:7])
+            act_day = int(l_ps[0][8:10])
+            act_prog = l_ps[1]
+            act_text = " ".join(l_ps[2:])
+        else:
+            act_month = {"jan" : 1,
+                         "feb" : 2,
+                         "mar" : 3,
+                         "apr" : 4,
+                         "may" : 5,
+                         "jun" : 6,
+                         "jul" : 7,
+                         "aug" : 8,
+                         "sep" : 9,
+                         "okt" : 10,
+                         "oct" : 10,
+                         "nov" : 11,
+                         "dec" : 12}.get(l_ps[0].lower(), 0)
+            act_day = int(l_ps[1])
+            act_hms_str = l_ps[2]
+            # check timestamp and correct year if necessary
+            diff_days = int((time.mktime([self.__act_year, act_month, act_day] + [int(x) for x in act_hms_str.split(":")] + [0, 0, -1]) - act_time) / (3600 * 24))
+            if diff_days < -150:
+                self.__act_year += 1
+            elif diff_days > 150:
+                self.__act_year -= 1
+            act_text = " ".join(l_ps[5:])
+            # parse act_prog
+            act_prog = l_ps[4]
         act_event = None
-        act_text = " ".join(l_ps[5:])
-        # parse act_prog
-        act_prog = l_ps[4]
         if act_prog.count("["):
             act_prog, prog_pid = act_prog.split("[")
             prog_pid = int(prog_pid.split("]")[0])
