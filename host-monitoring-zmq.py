@@ -140,6 +140,8 @@ class id_discovery(object):
             new_sock.setsockopt(zmq.SNDHWM, id_discovery.backlog_size)
             new_sock.setsockopt(zmq.RCVHWM, id_discovery.backlog_size)
             new_sock.setsockopt(zmq.BACKLOG, id_discovery.backlog_size)
+            new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
+            new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
             self.socket = new_sock
             id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)
             #id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.error)
@@ -280,6 +282,8 @@ class host_connection(object):
         new_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
         new_sock.setsockopt(zmq.RECONNECT_IVL, 200)
         new_sock.setsockopt(zmq.BACKLOG, host_connection.backlog_size)
+        new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         host_connection.zmq_socket = new_sock
         host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)
         #host_connection.relayer_process.register_poller(new_sock, zmq.POLLERR, host_connection.error)
@@ -1013,6 +1017,8 @@ class relay_process(threading_tools.process_pool):
         self.client_socket.setsockopt(zmq.LINGER, 0)
         self.client_socket.setsockopt(zmq.SNDHWM, 2)
         self.client_socket.setsockopt(zmq.RCVHWM, 2)
+        self.client_socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        self.client_socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
@@ -1022,6 +1028,8 @@ class relay_process(threading_tools.process_pool):
         client.setsockopt(zmq.RCVHWM, 10)
         client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
         client.setsockopt(zmq.RECONNECT_IVL, 200)
+        client.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         conn_str = "tcp://*:%d" % (
             global_config["COM_PORT"])
         try:
@@ -1690,6 +1698,8 @@ class server_process(threading_tools.process_pool):
             client.setsockopt(zmq.RCVHWM, 16)
             client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
             client.setsockopt(zmq.RECONNECT_IVL, 200)
+            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
+            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
             try:
                 client.bind("tcp://%s:%d" % (
                     bind_ip,
