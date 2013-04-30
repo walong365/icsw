@@ -1304,7 +1304,6 @@ class all_commands(host_type_config):
                 r"\n".join(service_str_field)
             )
         )
-        
         self.__obj_list.append(nag_conf)
         nag_conf = nag_config(
             "notify-by-sms",
