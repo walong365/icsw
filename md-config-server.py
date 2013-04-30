@@ -1263,6 +1263,10 @@ class all_commands(host_type_config):
         self._add_commands_from_db(gen_conf)
     def get_name(self):
         return "command"
+    def _expand_str(self, in_str):
+        for key, value in self._str_repl_dict.iteritems():
+            in_str = in_str.replace(key, value)
+        return in_str
     def _add_notify_commands(self):
         try:
             cdg = device.objects.get(Q(device_group__cluster_device_group=True))
@@ -1282,35 +1286,52 @@ class all_commands(host_type_config):
             send_mail_prog = "/usr/local/bin/send_mail.py"
         from_addr = "%s@%s" % (global_config["MD_TYPE"],
                                global_config["FROM_ADDR"])
+        
+        self._str_repl_dict = {
+            "$INIT_MONITOR_INFO$" : "%s %s" % (md_type, md_vers),
+            "$INIT_CLUSTER_NAME$" : "%s" % (cluster_name),
+        }
+        service_str_field = [self._expand_str(global_config["NOTIFY_BY_EMAIL_LINE%02d" % (idx)]) for idx in xrange(1, 16)]
+        host_str_field = [self._expand_str(global_config["HOST_NOTIFY_BY_EMAIL_LINE%02d" % (idx)]) for idx in xrange(1, 16)]
         # Nagios V2.x
-        nag_conf = nag_config("notify-by-email",
-                              command_name="notify-by-email",
-                              command_line=r"%s -f '%s' -s '$NOTIFICATIONTYPE$ alert - $HOSTNAME$@%s ($HOSTALIAS$)/$SERVICEDESC$ is $SERVICESTATE$' -t $CONTACTEMAIL$ -- '***** %s %s *****\n\n" % (
-                                  send_mail_prog,
-                                  from_addr,
-                                  cluster_name,
-                                  md_type,
-                                  md_vers) + \
-                              r"Notification Type: $NOTIFICATIONTYPE$\n\nCluster: %s\nService: $SERVICEDESC$\nHost   : $HOSTALIAS$\nAddress: $HOSTADDRESS$\n" % (cluster_name) + \
-                              r"State  : $SERVICESTATE$\n\nDate/Time: $LONGDATETIME$\n\nAdditional Info:\n\n$SERVICEOUTPUT$'")
+        nag_conf = nag_config(
+            "notify-by-email",
+            command_name="notify-by-email",
+            command_line=r"%s -f '%s' -s '%s' -t $CONTACTEMAIL$ -- '%s'" % (
+                send_mail_prog,
+                from_addr,
+                self._expand_str(global_config["NOTIFY_BY_EMAIL_SUBJECT"]),
+                r"\n".join(service_str_field)
+            )
+        )
+        
         self.__obj_list.append(nag_conf)
-        nag_conf = nag_config("notify-by-sms",
-                              command_name="notify-by-sms",
-                              command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '$NOTIFICATIONTYPE$ alert - $SERVICEDESC$ is $SERVICESTATE$ on $HOSTNAME$'")
+        nag_conf = nag_config(
+            "notify-by-sms",
+            command_name="notify-by-sms",
+            command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '%s'" % (
+                self._expand_str(global_config["NOTIFY_BY_SMS_LINE01"])
+            )
+        )
         self.__obj_list.append(nag_conf)
-        nag_conf = nag_config("host-notify-by-email",
-                              command_name="host-notify-by-email",
-                              command_line=r"%s -f '%s'  -s 'Host $HOSTSTATE$ alert for $HOSTNAME$@%s' -t $CONTACTEMAIL$ -- '***** %s %s *****\n\n" % (
-                                  send_mail_prog,
-                                  from_addr,
-                                  cluster_name,
-                                  md_type,
-                                  md_vers) + \
-                              r"Notification Type: $NOTIFICATIONTYPE$\n\nCluster: %s\nHost   : $HOSTNAME$\nState  : $HOSTSTATE$\nAddress: $HOSTADDRESS$\nInfo   : $HOSTOUTPUT$\n\nDate/Time: $LONGDATETIME$'" % (cluster_name))
+        nag_conf = nag_config(
+            "host-notify-by-email",
+            command_name="host-notify-by-email",
+            command_line=r"%s -f '%s'  -s '%s' -t $CONTACTEMAIL$ -- '%s'" % (
+                send_mail_prog,
+                from_addr,
+                self._expand_str(global_config["HOST_NOTIFY_BY_EMAIL_SUBJECT"]),
+                r"\n".join(host_str_field)
+            )
+        )
         self.__obj_list.append(nag_conf)
-        nag_conf = nag_config("host-notify-by-sms",
-                              command_name="host-notify-by-sms",
-                              command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '$HOSTSTATE$ alert for $HOSTNAME$ ($HOSTADDRESS$)'")
+        nag_conf = nag_config(
+            "host-notify-by-sms",
+            command_name="host-notify-by-sms",
+            command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '%s'" % (
+                self._expand_str(global_config["HOST_NOTIFY_BY_SMS_LINE01"])
+            )
+        )
         self.__obj_list.append(nag_conf)
     def _add_commands_from_db(self, gen_conf):
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
@@ -3306,6 +3327,40 @@ def main():
         ("MAX_CONCURRENT_CHECKS"       , configfile.int_c_var(500)),
         ("ALL_HOSTS_NAME"              , configfile.str_c_var("***ALL***")),
         ("SERVER_SHORT_NAME"           , configfile.str_c_var(mach_name)),
+        ("NOTIFY_BY_EMAIL_SUBJECT"     , configfile.str_c_var("$NOTIFICATIONTYPE$ alert - $HOSTNAME$@$INIT_CLUSTER_NAME$ ($HOSTALIAS$)/$SERVICEDESC$ is $SERVICESTATE$")),
+        ("NOTIFY_BY_EMAIL_LINE01"      , configfile.str_c_var("***** $INIT_MONITOR_INFO$ *****")),
+        ("NOTIFY_BY_EMAIL_LINE02"      , configfile.str_c_var("")),
+        ("NOTIFY_BY_EMAIL_LINE03"      , configfile.str_c_var("Notification Type: $NOTIFICATIONTYPE$")),
+        ("NOTIFY_BY_EMAIL_LINE04"      , configfile.str_c_var("")),
+        ("NOTIFY_BY_EMAIL_LINE05"      , configfile.str_c_var("Cluster: $INIT_CLUSTER_NAME$")),
+        ("NOTIFY_BY_EMAIL_LINE06"      , configfile.str_c_var("Service: $SERVICEDESC$")),
+        ("NOTIFY_BY_EMAIL_LINE07"      , configfile.str_c_var("Host   : $HOSTALIAS$")),
+        ("NOTIFY_BY_EMAIL_LINE08"      , configfile.str_c_var("Address: $HOSTADDRESS$")),
+        ("NOTIFY_BY_EMAIL_LINE09"      , configfile.str_c_var("State  : $SERVICESTATE$")),
+        ("NOTIFY_BY_EMAIL_LINE10"      , configfile.str_c_var("")),
+        ("NOTIFY_BY_EMAIL_LINE11"      , configfile.str_c_var("Date/Time: $LONGDATETIME")),
+        ("NOTIFY_BY_EMAIL_LINE12"      , configfile.str_c_var("")),
+        ("NOTIFY_BY_EMAIL_LINE13"      , configfile.str_c_var("Additional Info:")),
+        ("NOTIFY_BY_EMAIL_LINE14"      , configfile.str_c_var("")),
+        ("NOTIFY_BY_EMAIL_LINE15"      , configfile.str_c_var("$SERVICEOUTPUT$")),
+        ("NOTIFY_BY_SMS_LINE01"        , configfile.str_c_var("$NOTIFICATIONTYPE$ alert - $SERVICEDESC$ is $SERVICESTATE$ on $HOSTNAME$")),
+        ("HOST_NOTIFY_BY_EMAIL_SUBJECT", configfile.str_c_var("Host $HOSTSTATE$ alert for $HOSTNAME$@$INIT_CLUSTER_NAME$")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE01" , configfile.str_c_var("***** $INIT_MONITOR_INFO$ *****")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE02" , configfile.str_c_var("")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE03" , configfile.str_c_var("Notification Type: $NOTIFICATIONTYPE$")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE04" , configfile.str_c_var("")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE05" , configfile.str_c_var("Cluster: $INIT_CLUSTER_NAME$")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE06" , configfile.str_c_var("Host   : $HOSTNAME$")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE07" , configfile.str_c_var("State  : $HOSTSTATE$")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE08" , configfile.str_c_var("Address: $HOSTADDRESS$")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE09" , configfile.str_c_var("Info   : $HOSTOUTPUT$")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE10" , configfile.str_c_var("")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE11" , configfile.str_c_var("Date/Time: $LONGDATETIME$")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE12" , configfile.str_c_var("")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE13" , configfile.str_c_var("")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE14" , configfile.str_c_var("")),
+        ("HOST_NOTIFY_BY_EMAIL_LINE15" , configfile.str_c_var("")),
+        ("HOST_NOTIFY_BY_SMS_LINE01"   , configfile.str_c_var("$HOSTSTATE$ alert for $HOSTNAME$ ($HOSTADDRESS$)")),
     ])
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/md-config-server"])
