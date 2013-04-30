@@ -2522,16 +2522,22 @@ def mon_period_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if not cur_inst.name.strip():
             raise ValidationError("name is empty")
-        range_re = re.compile("^[0-9]{1,2}:[0-9]{1,2}-[0-9]{1,2}:[0-9]{1,2}$")
+        range_re1 = re.compile("^[0-9]{1,2}:[0-9]{1,2}-[0-9]{1,2}:[0-9]{1,2}$")
+        range_re2 = re.compile("^[0-9]{1,2}-[0-9]{1,2}$")
         for day in ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]:
             r_name = "%s_range" % (day)
             cur_val = getattr(cur_inst, r_name)
-            if not range_re.match(cur_val):
+            re_t1 = range_re1.match(cur_val)
+            re_t2 = range_re2.match(cur_val)
+            if not (re_t1 or re_t2):
                 raise ValidationError("range for %s not correct" % (day))
             else:
                 new_val = []
                 for cur_time in cur_val.split("-"):
-                    hours, minutes = [int(val) for val in cur_time.split(":")]
+                    if re_t1:
+                        hours, minutes = [int(val) for val in cur_time.split(":")]
+                    else:
+                        hours, minutes = (int(cur_time), 0)
                     if (hours, minutes) in [(24, 0)]:
                         pass
                     elif hours < 0 or hours > 23 or minutes < 0 or minutes > 60:
