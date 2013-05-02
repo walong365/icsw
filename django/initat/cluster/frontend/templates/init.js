@@ -94,6 +94,7 @@ root.build_device_info_div = (dev_xml) ->
     edit_div = $("<div>").attr("id", "edit")
     # working :-)
     edit_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "name", dev_xml.attr("key"), {master_xml : dev_xml, title : "device name", label : "Device name"})))
+    edit_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "comment", dev_xml.attr("key"), {master_xml : dev_xml, title : "comment", label : "Comment", textarea : true})))
     edit_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "monitor_checks", dev_xml.attr("key"), {master_xml : dev_xml, title : "Enable checks", label : "Monitoring", boolean : true})))
     tabs_div.append(nw_div)
     tabs_div.append(edit_div)
@@ -483,12 +484,17 @@ get_value = (cur_el) ->
         el_value = if cur_el.is(":checked") then "1" else "0"
     else if cur_el.prop("tagName") == "TEXTAREA"
         is_textarea = true
-        el_value = cur_el.text()
+        if cur_el.is(":visible")
+            # normal elements (not wrapped in codemirror)
+            el_value = cur_el.val()
+        else
+            # wrapped in codemirror
+            el_value = cur_el.text()
     else if cur_el.prop("tagName") == "SELECT" and cur_el.attr("multiple")
         el_value = ($(element).attr("value") for element in cur_el.find("option:selected")).join("::")
     else
         el_value = cur_el.attr("value")
-    return el_value;
+    return el_value
 
 set_value = (el_id, el_value) ->
     $("#" + el_id).val(el_value)
