@@ -208,6 +208,8 @@ class init_logging(object):
     def __init__(self, func):
         """ decorator for catching exceptions and logging, has to be the first decorator in the decorator queue (above login_required) to catch redirects """
         self.__name__ = func.__name__
+        self.__doc__ = func.__doc__
+        #self.__repr__ = func.__repr__
         self.__logger = logging_pool.get_logger("http")
         self._func = func
         self.__write_iter_count = 0

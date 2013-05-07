@@ -45,6 +45,9 @@ from django.db import transaction
 @login_required
 @init_logging
 def show_boot(request):
+    """
+    * test
+    """
     return render_me(
         request, "boot_overview.html",
     )()

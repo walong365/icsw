@@ -30,6 +30,9 @@ import server_command
 @init_logging
 @login_required
 def show_config_types(request):
+    """
+    * short test
+    """
     if request.method == "GET":
         return render_me(
             request, "cluster_config_type.html",
