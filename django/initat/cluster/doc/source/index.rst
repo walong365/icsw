@@ -11,8 +11,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   modules
-   frontend/test
+   frontend/index
 
 
 Indices and tables
