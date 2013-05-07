@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 2
 
    modules
+   frontend/test
 
 
 Indices and tables

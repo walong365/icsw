@@ -13,6 +13,7 @@ from django.http import HttpResponse
 import logging_tools
 import process_tools
 import smtplib
+import functools
 import pprint
 import email
 import email.mime
@@ -203,17 +204,18 @@ def keyword_check(*kwarg_list):
 ##    def as_view(self, *args, **kwargs):
 ##        print args, kwargs
 ##        return self._func.as_view(*args, **kwargs)
-    
+
 class init_logging(object):
     def __init__(self, func):
         """ decorator for catching exceptions and logging, has to be the first decorator in the decorator queue (above login_required) to catch redirects """
         self.__name__ = func.__name__
         self.__doc__ = func.__doc__
-        #self.__repr__ = func.__repr__
         self.__logger = logging_pool.get_logger("http")
         self._func = func
         self.__write_iter_count = 0
         #self._backup_stdout = sys.stdout
+    def __repr__(self):
+        return self._func
     def log(self, what="", log_level=logging_tools.LOG_LEVEL_OK, **kwargs):
         if kwargs.get("request_vars", False):
             self.log_request_vars(kwargs["request"])
@@ -233,8 +235,9 @@ class init_logging(object):
         if settings.DEBUG:
             if not isinstance(self.orig_stdout, logging_tools.log_adapter) and not isinstance(self.orig_stdout, init_logging):
                 if self.__write_iter_count > 10:
-                    logging_tools.my_syslog("iteration detected, type of self.orig_stdout is %s (%s)" % (str(type(self.orig_stdout)),
-                                                                                                         str(self.orig_stdout)))
+                    logging_tools.my_syslog("iteration detected, type of self.orig_stdout is %s (%s)" % (
+                        str(type(self.orig_stdout)),
+                        str(self.orig_stdout)))
                     sys.exit(-1)
                 else:
                     self.orig_stdout.write(what.encode("utf-8", "replace"))

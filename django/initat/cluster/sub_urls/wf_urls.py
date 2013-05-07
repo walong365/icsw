@@ -182,6 +182,14 @@ rrd_patterns = patterns(
     url(r"class$", "rrd_views.class_overview", name="class_overview"),
 )
 
+doc_patterns = patterns(
+    "",
+    url(r"^%s/(?P<path>.*)$" % (settings.REL_SITE_ROOT)    ,
+        "django.views.static.serve", {
+            "document_root" : os.path.join(settings.FILE_ROOT, "doc", "build", "html")
+            }, name="show"),
+)
+
 my_url_patterns = patterns(
     "",
     #url(r"static/(?P<path>.*)$"        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
@@ -199,6 +207,7 @@ my_url_patterns = patterns(
     url(r"^user/"     , include(user_patterns      , namespace="user"    )),
     url(r"^pack/"     , include(pack_patterns      , namespace="pack"    )),
     url(r"^rrd/"      , include(rrd_patterns       , namespace="rrd"     )),
+    url(r"^doc/"      , include(doc_patterns       , namespace="doc"     )),
 )
 
 if settings.CLUSTER_LICENSE["rest"]:

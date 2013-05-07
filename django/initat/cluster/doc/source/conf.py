@@ -17,7 +17,6 @@ import sys, os
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 add_path = os.path.normpath(os.path.join(os.path.abspath('.'), "..", "..", ".."))
-print "**", add_path
 sys.path.insert(0, add_path)
 
 # -- General configuration -----------------------------------------------------
@@ -98,7 +97,7 @@ html_theme = 'default'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {"nosidebar" : True}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -149,7 +148,7 @@ html_static_path = ['_static']
 #html_split_index = False
 
 # If true, links to the reST sources are added to the pages.
-#html_show_sourcelink = True
+html_show_sourcelink = False
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
 #html_show_sphinx = True
