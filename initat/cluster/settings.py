@@ -41,23 +41,30 @@ DATABASES = {
     }
 }
 
+NEW_CONF_FILE = "/etc/sysconfig/cluster/db.cf"
 OLD_CONF_FILE = "/etc/sysconfig/cluster/mysql.cf"
 
-if not os.path.isfile(OLD_CONF_FILE):
-    raise ImproperlyConfigured("config '%s' not found" % (OLD_CONF_FILE))
-else:
+if os.path.isfile(NEW_CONF_FILE):
     try:
-        file(OLD_CONF_FILE, "r").read()
+        conf_content = file(NEW_CONF_FILE, "r").read()
     except IOError:
-        raise ImproperlyConfigured("cannot read '%s', wrong permissions ?" % (OLD_CONF_FILE))
+        raise ImproperlyConfigured("cannot read '%s', wrong permissions ?" % (NEW_CONF_FILE))
+else:
+    if not os.path.isfile(OLD_CONF_FILE):
+        raise ImproperlyConfigured("config '%s' not found" % (OLD_CONF_FILE))
+    else:
+        try:
+            conf_content = file(OLD_CONF_FILE, "r").read()
+        except IOError:
+            raise ImproperlyConfigured("cannot read '%s', wrong permissions ?" % (OLD_CONF_FILE))
     
-sql_dict = dict([(key[6:], value) for key, value in [
-    line.strip().split("=", 1) for line in file("/etc/sysconfig/cluster/mysql.cf", "r").read().split("\n") if line.count("=") and line.startswith("MYSQL_")]])
+sql_dict = dict([(key.split("_")[1], value) for key, value in [
+    line.strip().split("=", 1) for line in conf_content.split("\n") if line.count("=") and line.count("_") and not line.count("NAGIOS")]])
 
-mon_dict = dict([(key[7:], value) for key, value in [
-    line.strip().split("=", 1) for line in file("/etc/sysconfig/cluster/mysql.cf", "r").read().split("\n") if line.count("=") and line.startswith("NAGIOS_")]])
+mon_dict = dict([(key.split("_")[1], value) for key, value in [
+    line.strip().split("=", 1) for line in conf_content.split("\n") if line.count("=") and line.count("_") and line.count("NAGIOS_")]])
 
-for src_key ,dst_key in [
+for src_key, dst_key in [
     ("DATABASE", "NAME"),
     ("USER"    , "USER"),
     ("PASSWD"  , "PASSWORD"),
