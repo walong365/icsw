@@ -1,4 +1,10 @@
 init.at Clustersoftware
 =======================
 
-To start with go to `Devicetree </cluster/device/device_tree>`_
+To start with go to 
+
+.. raw:: html
+
+  <a href="/cluster/device/device_tree" target="_parent">Device Tree</a>
+  
+  
