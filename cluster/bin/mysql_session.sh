@@ -1,6 +1,10 @@
 #!/bin/bash
 
-file_list=$(cat /etc/sysconfig/cluster/db_access  | grep "=" | cut -d "=" -f 2 | grep "^/" | tr ";" "\n")
+if [ -f /etc/sysconfig/cluster/db_access ] ; then
+    file_list=$(cat /etc/sysconfig/cluster/db_access  | grep "=" | cut -d "=" -f 2 | grep "^/" | tr ";" "\n")
+else
+    file_list="/etc/sysconfig/cluster/db.cf"
+fi
 
 for conf in $file_list ; do
     [ -r $conf ] && break
