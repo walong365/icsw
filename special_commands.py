@@ -414,8 +414,9 @@ class special_disc(special_base):
                     warn_level_str, crit_level_str = (
                         "%d" % (warn_level if warn_level else 100),
                         "%d" % (crit_level if crit_level else 100))
-                    part_list.append((part_p.mountpoint,
-                                      check_part, warn_level_str, crit_level_str))
+                    if part_p.mountpoint.strip():
+                        part_list.append((part_p.mountpoint,
+                                          check_part, warn_level_str, crit_level_str))
                 else:
                     self.log("Diskcheck on host %s requested an illegal partition %s -> skipped" % (self.host["name"], act_part), logging_tools.LOG_LEVEL_WARN)
         # LVM-partitions
@@ -519,10 +520,22 @@ class special_eonstor(special_base):
             info_dict = srv_reply["eonstor_info"]
             # disks
             for disk_id in sorted(info_dict.get("disc_ids", [])):
-                sc_array.append(("Disc %2d" % (disk_id), ["eonstor_disc_info", "%d" % (disk_id)]))
+                sc_array.append(
+                    self.get_arg_template(
+                        "Disc %2d" % (disk_id),
+                        arg3="eonstor_disc_info",
+                        arg4="%d" % (disk_id),
+                    )
+                )
             # lds
             for ld_id in sorted(info_dict.get("ld_ids", [])):
-                sc_array.append(("LD %2d" % (ld_id), ["eonstor_ld_info", "%d" % (ld_id)]))
+                sc_array.append(
+                    self.get_arg_template(
+                        "LD %2d" % (ld_id),
+                        arg3="eonstor_ld_info",
+                        arg4="%d" % (ld_id)
+                    )
+                )
             # env_dicts
             for env_dict_name in sorted(info_dict.get("ent_dict", {}).keys()):
                 env_dict = info_dict["ent_dict"][env_dict_name]
@@ -558,8 +571,8 @@ class special_eonstor(special_base):
                             self.get_arg_template(
                                 nag_name,
                                 # not correct, fixme
-                                arg1="eonstor_%s_info" % (env_dict_name),
-                                arg2="%d" % (idx)
+                                arg3="eonstor_%s_info" % (env_dict_name),
+                                arg4="%d" % (idx)
                             )
                         )
         # rewrite sc_array to include community and version
