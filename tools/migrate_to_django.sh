@@ -1,10 +1,15 @@
 #!/bin/bash
 
-file_list=$(cat /etc/sysconfig/cluster/db_access  | grep "=" | cut -d "=" -f 2 | grep "^/" | tr ";" "\n")
+if [ -f /etc/sysconfig/cluster/db_access ] ; then
+    file_list=$(cat /etc/sysconfig/cluster/db_access  | grep "=" | cut -d "=" -f 2 | grep "^/" | tr ";" "\n")
+else
+    file_list="/etc/sysconfig/cluster/db.cf"
+fi
 
 for conf in $file_list ; do
     [ -r $conf ] && break
 done
+    
 
 [ -r $conf ] || { echo "No readable mysql-configfiles found, exiting..." ; exit -1 ; }
 
@@ -27,7 +32,7 @@ echo "SELECT * FROM user" | mysql_session.sh cdbase -X > ${user_xml}
 echo "protecting ${group_xml} and ${user_xml}"
 chmod 0400 ${group_xml} ${user_xml}
 
-C_DIR="/opt/python-init/lib/python/site-packages/init/cluster/"
+C_DIR="/opt/python-init/lib/python/site-packages/initat/cluster/"
 CLUSTER_DIR=/opt/cluster
 MIG_DIR="${C_DIR}/backbone/migrations/"
 if [ -d ${MIG_DIR} ] ; then
@@ -42,6 +47,8 @@ else
     # put old models file in place, a little hacky but working
     cp -a ${C_DIR}/backbone/models.py ${C_DIR}/backbone/models_new.py
     cp -a ${C_DIR}/backbone/models_old_csw.py ${C_DIR}/backbone/models.py
+    # delete all created pyo/pyc models files
+    rm -f ${C_DIR}/backbone/models.py?
     # put old initial_data in place
     cp -a ${C_DIR}/backbone/fixtures/initial_data.xml ${C_DIR}/backbone/fixtures/initial_data_new.xml
     cp -a ${C_DIR}/backbone/fixtures/initial_data_old_csw.xml ${C_DIR}/backbone/fixtures/initial_data.xml
@@ -53,7 +60,8 @@ else
     
     ${C_DIR}/manage.py schemamigration backbone --initial
     ${C_DIR}/manage.py migrate backbone --no-initial-data
-    
+    ${C_DIR}/manage.py migrate reversion
+
     echo "reinsert data"
     
     cat ${dump_name}.data | /opt/cluster/sbin/db_magic.py | mysql -u ${MYSQL_USER} -h ${MYSQL_HOST} -P ${MYSQL_PORT} -p${MYSQL_PASSWD} ${MYSQL_DATABASE}
@@ -61,11 +69,16 @@ else
     # restore new models file
     cp -a ${C_DIR}/backbone/models.py ${C_DIR}/backbone/models_old_csw.py
     cp -a ${C_DIR}/backbone/models_new.py ${C_DIR}/backbone/models.py
+    # delete all created pyo/pyc models files
+    rm -f ${C_DIR}/backbone/models.py?
     # restore fixture file
     cp -a ${C_DIR}/backbone/fixtures/initial_data.xml ${C_DIR}/backbone/fixtures/initial_data_old_csw.xml
     cp -a ${C_DIR}/backbone/fixtures/initial_data_new.xml ${C_DIR}/backbone/fixtures/initial_data.xml
 
     echo "database migrated. Now please call"
-    echo " - ${CLUSTER_DIR}/sbin/create_django_users.py    to migrate the users"
-    echo " - ${CLUSTER_DIR}/sbin/update_django_db.sh       to update to the latest database schema"
+    echo " - ${CLUSTER_DIR}/sbin/create_django_users.py                           to migrate the users or"
+    echo " - ${CLUSTER_DIR}/sbin/restore_user_group.py ${group_xml} ${user_xml}   to restore the users"
+    echo " - ${CLUSTER_DIR}/sbin/update_django_db.sh                              to update to the latest database schema, then"
+    echo " - ${CLUSTER_DIR}/sbin/fix_models.py                                    to fix wrong foreign keys (from 0 to None)"
 fi
+

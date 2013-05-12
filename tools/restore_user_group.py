@@ -115,6 +115,12 @@ def main():
                     prim_field,
                     prim_value)
                       )
+                if c_type == "user":
+                    if db_obj.export_id == 0:
+                        db_obj.export = None
+                    if db_obj.export_scr_id == 0:
+                        db_obj.export_scr = None
+                db_obj.save()
             if c_type == "group":
                 # store by primary value and db_pk
                 group_lut[src_dict["ggroup_idx"]] = db_obj

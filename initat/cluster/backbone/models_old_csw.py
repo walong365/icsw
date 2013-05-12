@@ -810,7 +810,7 @@ class lvm_vg(models.Model):
 
 class mac_ignore(models.Model):
     idx = models.AutoField(db_column="mac_ignore_idx", primary_key=True)
-    macadr = models.CharField(max_length=192)
+    macadr = models.CharField(max_length=192, db_column="macadr", default="00:00:00:00:00:00")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'mac_ignore'
@@ -818,9 +818,9 @@ class mac_ignore(models.Model):
 class macbootlog(models.Model):
     idx = models.AutoField(db_column="macbootlog_idx", primary_key=True)
     device = models.ForeignKey("device")
-    type = models.CharField(max_length=96)
-    ip = models.CharField(max_length=96)
-    macadr = models.CharField(max_length=192)
+    type = models.CharField(max_length=96, default="???")
+    ip = models.CharField(max_length=96, default="0.0.0.0")
+    macadr = models.CharField(max_length=192, default="00:00:00:00:00:00")
     log_source = models.ForeignKey("log_source", null=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
@@ -1319,17 +1319,17 @@ class package(models.Model):
     idx = models.AutoField(db_column="package_idx", primary_key=True)
     name = models.CharField(max_length=255)
     version = models.CharField(max_length=255)
-    release = models.CharField(max_length=255)
-    architecture = models.ForeignKey("architecture")
+    release = models.CharField(max_length=255, default="0")
+    architecture = models.ForeignKey("architecture", null=True)
     size = models.IntegerField(null=True, blank=True)
-    pgroup = models.TextField()
-    summary = models.TextField()
-    distribution = models.ForeignKey("distribution")
-    vendor = models.ForeignKey("vendor")
+    pgroup = models.TextField(default='not set')
+    summary = models.TextField(default="unknown")
+    distribution = models.ForeignKey("distribution", null=True)
+    vendor = models.ForeignKey("vendor", null=True)
     buildtime = models.IntegerField(null=True, blank=True)
     buildhost = models.CharField(max_length=765, blank=True)
     packager = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
+    date = models.DateTimeField(auto_now_add=True, default=datetime.datetime.now())
     class Meta:
         db_table = u'package'
 

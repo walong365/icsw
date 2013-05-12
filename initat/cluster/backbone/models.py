@@ -1525,7 +1525,7 @@ class lvm_vg(models.Model):
 
 class mac_ignore(models.Model):
     idx = models.AutoField(db_column="mac_ignore_idx", primary_key=True)
-    macaddr = models.CharField(max_length=192, db_column="macadr", default="")
+    macaddr = models.CharField(max_length=192, db_column="macadr", default="00:00:00:00:00:00")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'mac_ignore'
@@ -1533,9 +1533,9 @@ class mac_ignore(models.Model):
 class macbootlog(models.Model):
     idx = models.AutoField(db_column="macbootlog_idx", primary_key=True)
     device = models.ForeignKey("device", null=True)
-    entry_type = models.CharField(max_length=96, db_column="type")
-    ip_action = models.CharField(max_length=96, default="", db_column="ip")
-    macaddr = models.CharField(max_length=192, db_column="macadr")
+    entry_type = models.CharField(max_length=96, db_column="type", default="???")
+    ip_action = models.CharField(max_length=96, db_column="ip", default="0.0.0.0")
+    macaddr = models.CharField(max_length=192, db_column="macadr", default="00:00:00:00:00:00")
     log_source = models.ForeignKey("log_source", null=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
