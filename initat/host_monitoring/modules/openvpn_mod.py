@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009,2010,2011,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -432,6 +432,9 @@ class openvpn_status_command(hm_classes.hm_command):
         else:
             ret_dict = {}
         srv_com["openvpn_instances"] = ret_dict
+    def interpret_old(self, result, parsed_coms):
+        inst_dict = hm_classes.net_to_sys(result[3:])
+        return self._interpret(inst_dict, parsed_coms, self.NOGOOD_srv_com["host"].text)
     def interpret(self, srv_com, cur_ns):
         inst_dict = srv_com["openvpn_instances"]
         return self._interpret(inst_dict, cur_ns, srv_com["host"].text)

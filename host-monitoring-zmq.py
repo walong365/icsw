@@ -1987,7 +1987,7 @@ def main():
         global_config.add_config_entries([
             ("COM_PORT" , configfile.int_c_var(2004, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
             ("TIMEOUT"  , configfile.int_c_var(8, help_string="timeout for calls to distance machines [%(default)d]")),
-            ("AUTOSENSE", configfile.bool_c_var(False, help_string="enable autosensing of 0MQ/TCP Clients [%(default)s]")),
+            ("AUTOSENSE", configfile.bool_c_var(True, help_string="enable autosensing of 0MQ/TCP Clients [%(default)s]")),
             ])
     global_config.parse_file()
     options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,

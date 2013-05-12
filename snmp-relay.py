@@ -605,6 +605,11 @@ class relay_process(threading_tools.process_pool):
                     com_part = parts[3].split(";")
                 if all([com_part[idx].isdigit() and (len(com_part[idx + 1]) == int(com_part[idx])) for idx in xrange(0, len(com_part), 2)]):
                     arg_list = [com_part[idx + 1] for idx in xrange(0, len(com_part), 2)]
+                elif len(com_part):
+                    self.log("cannot parse %s" % (body), logging_tools.LOG_LEVEL_ERROR)
+                    arg_list = []
+                else:
+                    arg_list = []
                 host, snmp_version, snmp_community = parts[0:3]
                 comline = " ".join(arg_list)
                 parameter_ok = True

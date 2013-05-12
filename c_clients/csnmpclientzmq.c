@@ -160,6 +160,7 @@ int main(int argc, char **argv)
             snmp_community);
     act_pos = sendbuff;
     if (verbose) {
+        printf("sendbuffer before arguments: '%s'\n", sendbuff);
         printf("argument info (%d length)\n", argc);
     };
     for (i = optind; i < argc; i++) {
