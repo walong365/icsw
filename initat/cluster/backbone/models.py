@@ -2251,7 +2251,7 @@ class mon_check_command(models.Model):
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     mon_check_command_type = models.ForeignKey("mon_check_command_type")
-    mon_service_templ = models.ForeignKey("mon_service_templ")
+    mon_service_templ = models.ForeignKey("mon_service_templ", null=True)
     # only unique per config
     name = models.CharField(max_length=192)#, unique=True)
     command_line = models.CharField(max_length=765)
@@ -2266,7 +2266,7 @@ class mon_check_command(models.Model):
             key="moncc__%d" % (self.pk),
             config="%d" % (self.config_id),
             mon_check_command_type="%d" % (self.mon_check_command_type_id),
-            mon_service_templ="%d" % (self.mon_service_templ_id),
+            mon_service_templ="%d" % (self.mon_service_templ_id or 0),
             name=self.name or "",
             command_line=self.command_line or "",
             description=self.description or "",

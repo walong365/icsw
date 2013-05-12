@@ -79,6 +79,6 @@ else
     echo " - ${CLUSTER_DIR}/sbin/create_django_users.py                           to migrate the users or"
     echo " - ${CLUSTER_DIR}/sbin/restore_user_group.py ${group_xml} ${user_xml}   to restore the users"
     echo " - ${CLUSTER_DIR}/sbin/update_django_db.sh                              to update to the latest database schema, then"
-    echo " - ${CLUSTER_DIR}/sbin/fix_models.py                                    to fix wrong foreign keys (from 0 to None)"
+    echo " - ${CLUSTER_DIR}/sbin/fix_models.py ${dump_name}.data                  to fix wrong foreign keys (from 0 to None)"
 fi
 
