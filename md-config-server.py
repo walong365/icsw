@@ -336,14 +336,18 @@ class main_config(object):
             else:
                 self.log("already exists : %s" % (full_path))
     def _clear_etc_dir(self):
-        for dir_e in os.listdir(self.__w_dir_dict["etc"]):
-            full_path = "%s/%s" % (self.__w_dir_dict["etc"], dir_e)
-            if os.path.isfile(full_path):
-                try:
-                    os.unlink(full_path)
-                except:
-                    self.log("Cannot delete file %s: %s" % (full_path, process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
+        if self.master:
+            self.log("not clearing %s dir (master)" % (self.__w_dir_dict["etc"]))
+        else:
+            self.log("not clearing %s dir (slave)" % (self.__w_dir_dict["etc"]))
+            for dir_e in os.listdir(self.__w_dir_dict["etc"]):
+                full_path = "%s/%s" % (self.__w_dir_dict["etc"], dir_e)
+                if os.path.isfile(full_path):
+                    try:
+                        os.unlink(full_path)
+                    except:
+                        self.log("Cannot delete file %s: %s" % (full_path, process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
     def _create_nagvis_base_entries(self):
         if os.path.isdir(global_config["NAGVIS_DIR"]):
             self.log("creating base entries for nagvis (under %s)" % (global_config["NAGVIS_DIR"]))
@@ -3233,9 +3237,11 @@ class server_process(threading_tools.process_pool):
                 else:
                     del cur_com
         else:
-            self.log("wrong count of input data frames: %d, first one is %s" % (len(in_data),
-                                                                                in_data[0]),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "wrong count of input data frames: %d, first one is %s" % (
+                    len(in_data),
+                    in_data[0]),
+                logging_tools.LOG_LEVEL_ERROR)
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
