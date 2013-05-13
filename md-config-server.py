@@ -2557,10 +2557,10 @@ class build_process(threading_tools.process_obj):
                         # add service checks
                         msc_checks = host.main_mon_service_cluster.all().prefetch_related("devices")
                         if len(msc_checks):
-                            self.mach_log("adding %s" % (logging_tools.get_plural("service_cluster check", len(mhc_checks))))
+                            self.mach_log("adding %s" % (logging_tools.get_plural("service_cluster check", len(msc_checks))))
                             for msc_check in msc_checks:
                                 c_com = cur_gc["command"][msc_check.mon_check_command.name]
-                                dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.name, c_com.get_description()) for cur_dev in mhc_check.devices.all()])
+                                dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.name, c_com.get_description()) for cur_dev in msc_check.devices.all()])
                                 s_check = cur_gc["command"]["check_service_cluster"]
                                 serv_temp = serv_templates[msc_check.mon_service_templ_id]
                                 serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
