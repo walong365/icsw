@@ -2174,34 +2174,36 @@ class build_process(threading_tools.process_obj):
             cur_gc.add_config(all_services(cur_gc, self))
             end_time = time.time()
             cur_gc.log("created host_configs in %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
-    def _get_ng_ext_hosts(self):
-        all_ext_hosts = dict([(cur_ext.pk, cur_ext) for cur_ext in mon_ext_host.objects.all()])
-        return all_ext_hosts
+    def _get_mon_ext_hosts(self):
+        return dict([(cur_ext.pk, cur_ext) for cur_ext in mon_ext_host.objects.all()])
     def _check_image_maps(self):
         min_width, max_width, min_height, max_height = (16, 64, 16, 64)
-        all_image_stuff = self._get_ng_ext_hosts()
+        all_image_stuff = self._get_mon_ext_hosts()
         self.log("Found %s" % (logging_tools.get_plural("ext_host entry", len(all_image_stuff.keys()))))
         logos_dir = "%s/share/images/logos" % (global_config["MD_BASEDIR"])
-        base_names = []
+        base_names = set()
         if os.path.isdir(logos_dir):
             logo_files = os.listdir(logos_dir)
             for log_line in [entry.split(".")[0] for entry in logo_files]:
                 if log_line not in base_names:
                     if "%s.png" % (log_line) in logo_files and "%s.gd2" % (log_line) in logo_files:
-                        base_names.append(log_line)
+                        base_names.add(log_line)
+        name_case_lut = {}
         if base_names:
             stat, out = commands.getstatusoutput("file %s" % (" ".join([os.path.join(logos_dir, "%s.png" % (entry)) for entry in base_names])))
             if stat:
                 self.log("error getting filetype of %s" % (logging_tools.get_plural("logo", len(base_names))), logging_tools.LOG_LEVEL_ERROR)
             else:
-                base_names = []
+                base_names = set()
                 for logo_name, logo_data in [
                     (os.path.basename(y[0].strip()), [z.strip() for z in y[1].split(",") if z.strip()]) for y in [
                         line.strip().split(":", 1) for line in out.split("\n")] if len(y) == 2]:
                     if len(logo_data) == 4:
                         width, height = [int(value.strip()) for value in logo_data[1].split("x")]
                         if min_width <= width and width <= max_width and min_height <= height and height <= max_height:
-                            base_names.append(logo_name[:-4])
+                            base_name = logo_name[:-4]
+                            base_names.add(base_name)
+                            name_case_lut[base_name.lower()] = base_name
                         else:
                             self.log("width or height (%d x %d) not in range ([%d - %d] x [%d - %d])" % (
                                 width,
@@ -2210,19 +2212,30 @@ class build_process(threading_tools.process_obj):
                                 max_width,
                                 min_height,
                                 max_height))
+        name_lut = dict([(eh.name.lower(), pk) for pk, eh in all_image_stuff.iteritems()])
         all_images_present = set([eh.name for eh in all_image_stuff.values()])
         all_images_present_lower = set([name.lower() for name in all_images_present])
         base_names_lower = set([name.lower() for name in base_names])
         new_images = base_names_lower - all_images_present_lower
         del_images = all_images_present_lower - base_names_lower
+        present_images = base_names_lower & all_images_present_lower
         for new_image in new_images:
             mon_ext_host(name=new_image,
                          icon_image="%s.png" % (new_image),
                          statusmap_image="%s.gd2" % (new_image)).save()
+        for p_i in present_images:
+            img_stuff = all_image_stuff[name_lut[p_i]]
+            # check for wrong case
+            if img_stuff.icon_image != "%s.png" % (name_case_lut[img_stuff.name]):
+                # correct case
+                img_stuff.icon_image = "%s.png" % (name_case_lut[img_stuff.name])
+                img_stuff.statusmap_image = "%s.gd2" % (name_case_lut[img_stuff.name])
+                img_stuff.save()
         if del_images:
             mon_ext_host.objects.filter(Q(name__in=del_images)).delete()
-        self.log("Inserted %s, deleted %s" % (logging_tools.get_plural("new ext_host_entry", len(new_images)),
-                                              logging_tools.get_plural("ext_host_entry", len(del_images))))
+        self.log("Inserted %s, deleted %s" % (
+            logging_tools.get_plural("new ext_host_entry", len(new_images)),
+            logging_tools.get_plural("ext_host_entry", len(del_images))))
     def _get_int_str(self, i_val, size=3):
         if i_val:
             return ("%%%dd" % (size)) % (i_val)
@@ -2618,7 +2631,7 @@ class build_process(threading_tools.process_obj):
         main_dir = global_config["MD_BASEDIR"]
         etc_dir = os.path.normpath("%s/etc" % (main_dir))
         # get ext_hosts stuff
-        ng_ext_hosts = self._get_ng_ext_hosts()
+        ng_ext_hosts = self._get_mon_ext_hosts()
         # all hosts
         all_hosts_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.all().select_related("device_type")])
         # check_hosts
