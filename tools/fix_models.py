@@ -31,7 +31,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, device_class, device_group, \
      mon_contact, mon_contactgroup, mon_check_command_type, mon_check_command, \
      config, mon_service_templ, user, mon_period, mon_ext_host, mon_service_templ, \
-     mon_device_templ
+     mon_device_templ, device_group, group, user
 from django.db.models.base import ModelBase
      
 def _parse_value(in_str):
@@ -72,7 +72,28 @@ def main():
         "ng_device_templ"       : (mon_device_templ, ["pk", "name", ("mon_service_templ", mon_service_templ), "ccommand", "max_attempts", "ninterval", ("mon_period", mon_period), "nrecovery", "ndown", "nunreachable", "is_default"], []),
     }
     copy_dict = {
-        "device" : (device, [(11, "mon_ext_host", "mon_ext_host"), (10, "mon_device_templ", mon_device_templ)])
+        "device" : (device, [(11, "mon_ext_host", "mon_ext_host"), (10, "mon_device_templ", mon_device_templ)]),
+        "group" : (
+            group, [
+                (6, "first_name", None),
+                (7, "last_name", None),
+                (8, "title", None),
+                (9, "email", None),
+                (10, "tel", None),
+                (11, "comment", None),
+                ]
+            ),
+        "user"  : (
+            user, [
+                (13, "first_name", None),
+                (14, "last_name", None),
+                (15, "title", None),
+                (16, "email", None),
+                (17, "pager", None),
+                (18, "tel", None),
+                (19, "comment", None),
+            ]
+            ),
     }
     lut_dict = {
         "ng_ext_host" : ("mon_ext_host", mon_ext_host, 1, "name"),
@@ -132,6 +153,8 @@ def main():
                         else:
                             if type(val_obj_name) in [str, unicode]:
                                 val = lut_table[val_obj_name].get(val, None)
+                            elif val_obj_name is None:
+                                pass
                             else:
                                 try:
                                     val = val_obj_name.objects.get(Q(pk=val))
@@ -140,6 +163,22 @@ def main():
                                     val = None
                         setattr(cur_obj, attr_name, val)
                     cur_obj.save()
+            # n2m relations
+            if t_obj_name == "ng_device_contact":
+                values = [_parse_value(val) for val in line.split(None, 4)[-1][1:-2].split("),(")]
+                for value in values:
+                    c_group = mon_contactgroup.objects.get(Q(pk=value[2]))
+                    c_group.device_groups.add(device_group.objects.get(Q(pk=value[1])))
+            elif t_obj_name == "ng_ccgroup":
+                values = [_parse_value(val) for val in line.split(None, 4)[-1][1:-2].split("),(")]
+                for value in values:
+                    c_group = mon_contactgroup.objects.get(Q(pk=value[2]))
+                    c_group.members.add(mon_contact.objects.get(Q(pk=value[1])))
+            elif t_obj_name == "ng_cgservicet":
+                values = [_parse_value(val) for val in line.split(None, 4)[-1][1:-2].split("),(")]
+                for value in values:
+                    c_group = mon_contactgroup.objects.get(Q(pk=value[1]))
+                    c_group.service_templates.add(mon_service_templ.objects.get(Q(pk=value[2])))
     fix_dict = {
         "device" : {
             "zero_to_null" : [

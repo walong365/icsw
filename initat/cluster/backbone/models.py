@@ -2317,7 +2317,7 @@ class mon_contact(models.Model):
             sncommand = self.sncommand,
             hncommand = self.hncommand,
         )
-        for bf in ["snrecovery", "sncritical", "snunknown",
+        for bf in ["snrecovery", "sncritical", "snunknown", "snwarning",
                    "hnrecovery", "hndown", "hnunreachable"]:
             ret_xml.attrib[bf] = "1" if getattr(self, bf) else "0"
         return ret_xml
