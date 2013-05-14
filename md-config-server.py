@@ -2531,29 +2531,32 @@ class build_process(threading_tools.process_obj):
                             self.mach_log("adding %s" % (logging_tools.get_plural("host_cluster check", len(mhc_checks))))
                             for mhc_check in mhc_checks:
                                 dev_names = ",".join(["$HOSTSTATEID:%s$" % (cur_dev.name) for cur_dev in mhc_check.devices.all()])
-                                s_check = cur_gc["command"]["check_host_cluster"]
-                                serv_temp = serv_templates[mhc_check.mon_service_templ_id]
-                                serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
-                                sub_list = self.get_service(
-                                    host,
-                                    act_host,
-                                    s_check,
-                                    [special_commands.arg_template(
+                                if dev_names.strip():
+                                    s_check = cur_gc["command"]["check_host_cluster"]
+                                    serv_temp = serv_templates[mhc_check.mon_service_templ_id]
+                                    serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                    sub_list = self.get_service(
+                                        host,
+                                        act_host,
                                         s_check,
-                                        "%s %s" % (s_check.get_description(), mhc_check.description),
-                                        arg1=mhc_check.description,
-                                        arg2=mhc_check.warn_value,
-                                        arg3=mhc_check.error_value,
-                                        arg4=dev_names)
-                                     ],
-                                    act_def_serv,
-                                    serv_cgs,
-                                    checks_are_active,
-                                    serv_temp,
-                                    cur_gc,
-                                    dev_variables)
-                                service_nc.extend(sub_list)
-                                num_ok += len(sub_list)
+                                        [special_commands.arg_template(
+                                            s_check,
+                                            "%s %s" % (s_check.get_description(), mhc_check.description),
+                                            arg1=mhc_check.description,
+                                            arg2=mhc_check.warn_value,
+                                            arg3=mhc_check.error_value,
+                                            arg4=dev_names)
+                                         ],
+                                        act_def_serv,
+                                        serv_cgs,
+                                        checks_are_active,
+                                        serv_temp,
+                                        cur_gc,
+                                        dev_variables)
+                                    service_nc.extend(sub_list)
+                                    num_ok += len(sub_list)
+                                else:
+                                    self.mach_log("ignoring empty host_cluster", logging_tools.LOG_LEVEL_WARN)
                         # add service checks
                         msc_checks = host.main_mon_service_cluster.all().prefetch_related("devices")
                         if len(msc_checks):
@@ -2561,29 +2564,32 @@ class build_process(threading_tools.process_obj):
                             for msc_check in msc_checks:
                                 c_com = cur_gc["command"][msc_check.mon_check_command.name]
                                 dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.name, c_com.get_description()) for cur_dev in msc_check.devices.all()])
-                                s_check = cur_gc["command"]["check_service_cluster"]
-                                serv_temp = serv_templates[msc_check.mon_service_templ_id]
-                                serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
-                                sub_list = self.get_service(
-                                    host,
-                                    act_host,
-                                    s_check,
-                                    [special_commands.arg_template(
+                                if dev_names.strip():
+                                    s_check = cur_gc["command"]["check_service_cluster"]
+                                    serv_temp = serv_templates[msc_check.mon_service_templ_id]
+                                    serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                    sub_list = self.get_service(
+                                        host,
+                                        act_host,
                                         s_check,
-                                        s_check.get_description(), 
-                                        arg1=msc_check.description,
-                                        arg2=msc_check.warn_value,
-                                        arg3=msc_check.error_value,
-                                        arg4=dev_names)
-                                     ],
-                                    act_def_serv,
-                                    serv_cgs,
-                                    checks_are_active,
-                                    serv_temp,
-                                    cur_gc,
-                                    dev_variables)
-                                service_nc.extend(sub_list)
-                                num_ok += len(sub_list)
+                                        [special_commands.arg_template(
+                                            s_check,
+                                            s_check.get_description(), 
+                                            arg1=msc_check.description,
+                                            arg2=msc_check.warn_value,
+                                            arg3=msc_check.error_value,
+                                            arg4=dev_names)
+                                         ],
+                                        act_def_serv,
+                                        serv_cgs,
+                                        checks_are_active,
+                                        serv_temp,
+                                        cur_gc,
+                                        dev_variables)
+                                    service_nc.extend(sub_list)
+                                    num_ok += len(sub_list)
+                                else:
+                                    self.mach_log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
                         host_nc[act_host["name"]] = act_host
                     else:
                         self.mach_log("Host %s is disabled" % (host.name))
