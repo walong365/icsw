@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-backbone-sql
 #
@@ -119,6 +119,7 @@ class db_device_variable(object):
             act_dv = device_variable.objects.get(Q(name=var_name) & Q(device=self.__device))
         except device_variable.DoesNotExist:
             self.__act_dv = None
+            self.__var_value = None
         else:
             self.__act_dv = act_dv
             self.set_stuff(var_type = act_dv.var_type,
