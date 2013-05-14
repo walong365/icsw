@@ -1313,8 +1313,19 @@ class process_pool(timer_base):
                 "args"   : list(b_args),
                 "kwargs" : dict(b_kwargs)})
             del self.__socket_buffer[t_process]
+    def get_process_names(self):
+        return self.__processes.keys() + [self.get_name()]
     def get_process(self, p_name):
-        return self.__processes[p_name]
+        if p_name == self.get_name():
+            return self
+        else:
+            return self.__processes[p_name]
+    def get_info_dict(self):
+        p_dict = dict([(key, {"alive" : self.get_process(key).is_alive()}) for key in self.get_process_names()])
+        return p_dict
+    def is_alive(self):
+        # dummy function
+        return True
     def start_process(self, p_name):
         if not self.__processes[p_name].is_alive():
             self.log("starting process %s" % (p_name))
