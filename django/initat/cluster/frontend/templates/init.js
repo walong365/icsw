@@ -612,11 +612,13 @@ replace_xml_element = (master_xml, xml) ->
 submit_change = (cur_el, callback, modify_data_dict, modify_data_dict_opts, master_xml) ->
     is_textarea = false
     el_value = get_value(cur_el)
+    console.log el_value
     reset_value = false
     data_field = {
-        "id"       : cur_el.attr("id")
-        "checkbox" : cur_el.is(":checkbox")
-        "value"    : el_value
+        "id"         : cur_el.attr("id")
+        "checkbox"   : cur_el.is(":checkbox")
+        "value"      : el_value,
+        "ignore_nop" : 1
     }
     if modify_data_dict != undefined
         modify_data_dict(data_field)

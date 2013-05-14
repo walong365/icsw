@@ -24,6 +24,7 @@ HIDDEN_FIELDS = set(["password",])
 def change_xml_entry(request):
     _post = request.POST
     #pprint.pprint(_post)
+    ignore_nop = True if int(_post.get("ignore_nop", "0")) else False
     try:
         if _post["id"].count("__") == 2:
             # old version:
@@ -101,7 +102,8 @@ def change_xml_entry(request):
                             m2m_rel.remove(*list(glob_obj.objects.filter(Q(pk__in=rem_values))))
                         if add_values:
                             m2m_rel.add(*list(glob_obj.objects.filter(Q(pk__in=add_values))))
-                        request.log("added %d, removed %d" % (len(add_values), len(rem_values)), xml=True)
+                        if (add_values or rem_values) or not (ignore_nop):
+                            request.log("added %d, removed %d" % (len(add_values), len(rem_values)), xml=True)
                     else:
                         # check field ? hack for compound fields
                         check_field = attr_name not in compound_fields
@@ -118,7 +120,8 @@ def change_xml_entry(request):
                                 m2m_rel.remove(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=rem_value))
                             for add_value in add_values:
                                 m2m_rel.add(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=add_value))
-                            request.log("added %d, removed %d" % (len(add_values), len(rem_values)), xml=True)
+                            if (add_values or rem_values) or not (ignore_nop):
+                                request.log("added %d, removed %d" % (len(add_values), len(rem_values)), xml=True)
                         else:
                             # others may be present but are not used right now
                             old_value = getattr(cur_obj, attr_name)
