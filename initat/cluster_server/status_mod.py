@@ -23,8 +23,13 @@ import sys
 import cs_base_class
 import configfile
 import os
+import pprint
 import server_command
+import logging_tools
 from initat.cluster_server.config import global_config
+from initat.cluster.backbone.models import device, device_group
+from django.db.models import Q
+import cluster_location
 
 CLUSTER_NAME_FILE = "/etc/sysconfig/cluster/cluster_name"
 
@@ -32,41 +37,21 @@ class status(cs_base_class.server_com):
     class Meta:
         show_execution_time = False
     def _call(self, cur_inst):
-        self.dc.execute("SELECT d.device_idx FROM device d, device_group dg WHERE d.device_group=dg.device_group_idx AND dg.cluster_device_group")
-        if self.dc.rowcount:
-            cd_idx = self.dc.fetchone()["device_idx"]
-            dv = configfile.device_variable(self.dc, cd_idx, "CLUSTER_NAME")
-            if dv.is_set():
-                cluster_name = dv.get_value()
-                if os.path.isfile(CLUSTER_NAME_FILE):
-                    try:
-                        old_name = file(CLUSTER_NAME_FILE, "r").read().strip().split()[0]
-                    except:
-                        old_name = ""
-                else:
-                    old_name = ""
-                if cluster_name != old_name:
-                    try:
-                        file(CLUSTER_NAME_FILE, "w").write(cluster_name)
-                    except:
-                        pass
-            else:
-                cluster_name = "not found"
-        else:
-            cluster_name = "not set"
+        p_dict = self.process_pool.get_info_dict()
+        cur_cdg = device.objects.get(Q(device_group__cluster_device_group=True))
+        cluster_name = cluster_location.db_device_variable(cur_cdg, "CLUSTEdR_NAME").get_value() or "CN_not_set"
         cur_inst.srv_com["clustername"] = cluster_name
         cur_inst.srv_com["version"] = global_config["VERSION"]
+        num_running = len([True for value in p_dict.itervalues() if value["alive"]])
+        num_stopped = len([True for value in p_dict.itervalues() if not value["alive"]])
+        all_running = num_stopped == 0
         cur_inst.srv_com["result"].attrib.update({
-            "reply" : "all threads and processes running, clustername is %s, version is %s" % (
+            "reply" : "%s running,%s clustername is %s, version is %s" % (
+                logging_tools.get_plural("process", num_running),
+                "%s stopped, " % (logging_tools.get_plural("process", num_stopped)) if num_stopped else "",
                 cluster_name,
                 global_config["VERSION"]),
-            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
-        #num_threads, num_ok = (tp.num_threads(False),
-        #                       tp.num_threads_running(False))
-        #if num_ok == num_threads:
-        #    ret_str = "OK: all %d threads running, version %s" % (num_ok, call_params.get_l_config()["VERSION_STRING"])
-        #else:
-        #    ret_str = "ERROR: only %d of %d threads running, version %s" % (num_ok, num_threads, #call_params.get_l_config()["VERSION_STRING"])
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK if all_running else server_command.SRV_REPLY_STATE_ERROR)})
     
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
