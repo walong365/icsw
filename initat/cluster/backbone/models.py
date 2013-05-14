@@ -2417,7 +2417,7 @@ def mon_device_templ_pre_save(sender, **kwargs):
             raise ValidationError("name must not be zero")
         for attr_name, min_val, max_val in [
             ("max_attempts", 1, 10),
-            ("ninterval"   , 0, 60)]:
+            ("ninterval"   , 0, 60 * 24)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
                     
 class mon_device_esc_templ(models.Model):
@@ -2465,9 +2465,11 @@ def mon_device_esc_templ_pre_save(sender, **kwargs):
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
+    # png
     icon_image = models.CharField(max_length=192, blank=True)
     icon_image_alt = models.CharField(max_length=192, blank=True)
     vrml_image = models.CharField(max_length=192, blank=True)
+    # gd2
     statusmap_image = models.CharField(max_length=192, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self, with_images=False):
