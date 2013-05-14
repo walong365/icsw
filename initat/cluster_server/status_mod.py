@@ -39,7 +39,7 @@ class status(cs_base_class.server_com):
     def _call(self, cur_inst):
         p_dict = self.process_pool.get_info_dict()
         cur_cdg = device.objects.get(Q(device_group__cluster_device_group=True))
-        cluster_name = cluster_location.db_device_variable(cur_cdg, "CLUSTEdR_NAME").get_value() or "CN_not_set"
+        cluster_name = cluster_location.db_device_variable(cur_cdg, "CLUSTER_NAME").get_value() or "CN_not_set"
         cur_inst.srv_com["clustername"] = cluster_name
         cur_inst.srv_com["version"] = global_config["VERSION"]
         num_running = len([True for value in p_dict.itervalues() if value["alive"]])
