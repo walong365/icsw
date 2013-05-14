@@ -7,7 +7,8 @@
 {% block content %}
 
 <h1 class="center">Device configuration, <span id="config_info">none defined</span>, filter:
-<input type="text" id="filter" value=""/>
+<input type="text" id="filter" value=""/>, only selected:
+<input type="checkbox" id="filter_assoc"/>,
 <input type="button" id="filter_clear" value="clear"/></h1>
 
 <div id="config"></div>
@@ -24,6 +25,10 @@ class config_table
     constructor: (@top_div) ->
         @cur_filter = ""
         @show_list = ""
+        @only_associated = false
+        $("input#filter").bind("keyup", => @apply_filter(false))
+        $("input#filter_clear").bind("click", => @clear_filter())
+        $("input#filter_assoc").bind("click", @change_assoc_filter)
     use_devs: (dt_div) =>
         sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
         notify_generate_link(sel_list)
@@ -57,6 +62,10 @@ class config_table
                 if parse_xml_response(xml)
                     @configs = $(xml).find("value[name='response']")
                     @apply_filter(true)
+    change_assoc_filter: (event) =>
+        cur_el = $(event.target)
+        @only_associated = cur_el.is(":checked")
+        @apply_filter(true)
     apply_filter : (force_reload) =>
         cur_text = $("input#filter").attr("value")
         if (cur_text != @cur_filter) or force_reload
@@ -67,7 +76,12 @@ class config_table
             @configs.find("config").each (idx, c_config) =>
                 c_config = $(c_config)
                 if c_config.attr("name").match(cur_re)
-                    disp_list.push(c_config.attr("key"))
+                    if @only_associated
+                        conf_pk = c_config.attr("pk")
+                        if @device_configs.find("device_config[config='#{conf_pk}']").length
+                            disp_list.push(c_config.attr("key"))
+                    else
+                        disp_list.push(c_config.attr("key"))
             # not working, FIXME
             if (@show_list != disp_list) or force_reload
                 @display_list = (@configs.find("config[key='#{name}']")[0] for name in disp_list)
@@ -78,7 +92,7 @@ class config_table
             @show_list = disp_list
     get_expand_list : =>
         if @c_table
-            ret_list = ($(cur_el).attr("id") for cur_el in @c_table.find("tr span[id*='__expand__'][class*='-1-s']"))
+            ret_list = ($(cur_el).attr("id") for cur_el in @c_table.find("tr div[id*='__expand__'][class*='-1-s']"))
         else
             ret_list = []
         return ret_list
@@ -91,6 +105,8 @@ class config_table
         $("span#config_info").text(info_str)
     clear_filter : =>
         $("input#filter").val("")
+        $("input#filter_assoc").removeAttr("checked")
+        @only_associated = false
         @apply_filter(false)
     draw_tables : =>
         @selected = {}
@@ -203,8 +219,10 @@ class config_table
         exp_line  = @c_table.find("tr[id^='#{line_prefix}__#{line_spec}']")
         if state
             exp_line.show()
+            force_expansion_state(conf_line, true)
         else
             exp_line.hide()
+            force_expansion_state(conf_line, false)
     update_device_info: (dev_pk, dev_th) =>
         selected = @selected[dev_pk].length
         meta_selected = @meta_selected[dev_pk].length
@@ -262,8 +280,6 @@ class config_table
 
 add_dcon_handlers = ->
     conf_t = new config_table($("div#config"))
-    $("input#filter").bind("keyup", => conf_t.apply_filter(false))
-    $("input#filter_clear").bind("click", => conf_t.clear_filter())
     install_devsel_link(conf_t.use_devs, true)
 
 $(document).ready(add_dcon_handlers)
