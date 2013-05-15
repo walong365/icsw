@@ -72,7 +72,13 @@ def main():
         "ng_device_templ"       : (mon_device_templ, ["pk", "name", ("mon_service_templ", mon_service_templ), "ccommand", "max_attempts", "ninterval", ("mon_period", mon_period), "nrecovery", "ndown", "nunreachable", "is_default"], []),
     }
     copy_dict = {
-        "device" : (device, [(11, "mon_ext_host", "mon_ext_host"), (10, "mon_device_templ", mon_device_templ)]),
+        "device" : (
+            device, [
+                (11, "mon_ext_host", "mon_ext_host"),
+                (10, "mon_device_templ", mon_device_templ),
+                (57, "monitor_checks", None),
+                ]
+            ),
         "group" : (
             group, [
                 (6, "first_name", None),
