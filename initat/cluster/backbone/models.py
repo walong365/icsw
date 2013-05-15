@@ -680,7 +680,7 @@ class device_group(models.Model):
         return new_md
     def get_metadevice_name(self):
         return "METADEV_%s" % (self.name)
-    def get_xml(self, full=True, with_devices=True, with_variables=False, add_title=False, with_monitoring=False):
+    def get_xml(self, full=True, with_devices=True, with_variables=False, add_title=False, with_monitoring=False, ignore_enabled=False):
         cur_xml = E.device_group(
             unicode(self),
             pk="%d" % (self.pk),
@@ -691,7 +691,10 @@ class device_group(models.Model):
             enabled="1" if self.enabled else "0",
         )
         if with_devices:
-            sub_list = self.device_group.filter(Q(enabled=True))
+            if ignore_enabled:
+                sub_list = self.device_group.all()
+            else:
+                sub_list = self.device_group.filter(Q(enabled=True))
             cur_xml.append(
                 E.devices(*[cur_dev.get_xml(
                     full=full,
