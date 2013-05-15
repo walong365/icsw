@@ -435,6 +435,8 @@ class device(models.Model):
     automap_root_nagvis = models.BooleanField(default=False)
     # parent nagvis
     nagvis_parent = models.ForeignKey("device", null=True, related_name="nagvis_childs")
+    # enabled ?
+    enabled = models.BooleanField(default=True)
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
@@ -489,6 +491,7 @@ class device(models.Model):
             enable_perfdata="1" if self.enable_perfdata else "0",
             automap_root_nagvis="1" if self.automap_root_nagvis else "0",
             uuid=self.uuid or "",
+            enabled="1" if self.enabled else "0",
         )
         if kwargs.get("with_monitoring", False):
             r_xml.attrib.update(
@@ -664,6 +667,7 @@ class device_group(models.Model):
     device = models.ForeignKey("device", db_column="device", null=True, blank=True, related_name="group_device")
     # flag
     cluster_device_group = models.BooleanField()
+    enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     def _add_meta_device(self):
         new_md = device(name=self.get_metadevice_name(),
@@ -683,7 +687,8 @@ class device_group(models.Model):
             key="devg__%d" % (self.pk),
             name=self.name,
             description=self.description or "",
-            is_cdg="1" if self.cluster_device_group else "0"
+            is_cdg="1" if self.cluster_device_group else "0",
+            enabled="1" if self.enabled else "0",
         )
         if with_devices:
             sub_list = self.device_group.all()
@@ -730,7 +735,6 @@ def device_group_post_save(sender, **kwargs):
         if device_group.objects.count() == 1 and not cur_inst.cluster_device_group:
             cur_inst.cluster_device_group = True
             cur_inst.save()
-
     if not kwargs["raw"]:
         # meta_device is always created
         if not cur_inst.device_id:
@@ -738,6 +742,10 @@ def device_group_post_save(sender, **kwargs):
         if cur_inst.device_id and cur_inst.device.name != cur_inst.get_metadevice_name():
             cur_inst.device.name = cur_inst.get_metadevice_name()
             cur_inst.device.save()
+        if cur_inst.cluster_device_group and not cur_inst.enabled:
+            # always enable cluster device group
+            cur_inst.enabled = True
+            cur_inst.save()
 
 class device_location(models.Model):
     idx = models.AutoField(db_column="device_location_idx", primary_key=True)
