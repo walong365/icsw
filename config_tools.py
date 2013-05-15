@@ -172,7 +172,7 @@ class topology_object(object):
                 dst_device_id = nd_dict[d_nd_id]
                 src_device_id, dst_device_id = (min(src_device_id, dst_device_id),
                                                 max(src_device_id, dst_device_id))
-                self.simple_peer_dict.setdefault((src_device_id, dst_device_id), set()).update(set(nd_lut[s_nd_id]) | set(nd_lut[d_nd_id]))
+                self.simple_peer_dict.setdefault((src_device_id, dst_device_id), set()).update(set(nd_lut.get(s_nd_id, [])) | set(nd_lut.get(d_nd_id, [])))
         if self.nx:
             del self.nx
         self.nx = networkx.Graph()
