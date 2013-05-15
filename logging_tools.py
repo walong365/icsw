@@ -28,6 +28,7 @@ import os
 import os.path
 import gzip
 import stat
+import traceback
 try:
     import bz2
 except:
@@ -367,6 +368,67 @@ class init_handler(zmq_handler):
     def emit(self, record):
         if not record.name.startswith("init.at."):
             record.name = "init.at.%s" % (record.name)
+        if hasattr(record, "request"):
+            record.request = "request"
+        zmq_handler.emit(self, record)
+
+class init_email_handler(zmq_handler):
+    zmq_context = None
+    def __init__(self, filename=None, *args, **kwargs):
+        if not init_handler.zmq_context:
+            init_handler.zmq_context = zmq.Context()
+        cur_context = init_handler.zmq_context
+        pub = cur_context.socket(zmq.PUSH)
+        pub.connect(rewrite_log_destination("uds:/var/lib/logging-server/py_err_zmq"))
+        zmq_handler.__init__(self, pub, None)
+        self.__lens = {"name"       : 1,
+                       "threadName" : 1,
+                       "lineno"     : 1}
+    def emit(self, record):
+        print "EMAIL", record
+        record.IOS_type = "error"
+        if getattr(record, "exc_info", None):
+            tb_object = record.exc_info[2]
+            frame_info = []
+            for file_name, line_no, name, line in traceback.extract_tb(tb_object):
+                frame_info.append("File '%s', line %d, in %s" % (file_name, line_no, name))
+                if line:
+                    frame_info.append(" - %d : %s" % (line_no, line))
+            record.error_str = record.msg % ("\n".join(frame_info))
+        else:
+            record.error_str = record.msg
+        record.uid = os.getuid()
+        record.gid = os.getgid()
+        record.pid = os.getpid()
+        record.ppid = os.getppid()
+        if hasattr(record, "request"):
+            record.request = "request"
+        zmq_handler.emit(self, record)
+
+class init_handler_unified(zmq_handler):
+    zmq_context = None
+    def __init__(self, filename=None, *args, **kwargs):
+        if not init_handler.zmq_context:
+            init_handler.zmq_context = zmq.Context()
+        cur_context = init_handler.zmq_context
+        pub = cur_context.socket(zmq.PUSH)
+        pub.connect(rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq"))
+        zmq_handler.__init__(self, pub, None)
+        self.__lens = {"name"       : 1,
+                       "threadName" : 1,
+                       "lineno"     : 1}
+    def emit(self, record):
+        print "UNIFIED", record
+        if record.name.startswith("init.at."):
+            record.name = record.name[8:]
+        for key in self.__lens.keys():
+            cur_val = getattr(record, key)
+            if type(cur_val) in [int, long]:
+                cur_val = "%d" % (cur_val)
+            self.__lens[key] = max(self.__lens[key], len(cur_val))
+        form_str = "%%-%(name)ds/%%%(threadName)ds[%%%(lineno)dd]" % self.__lens
+        record.threadName = form_str % (record.name, record.threadName, record.lineno)
+        record.name = "init.at.unified"
         if hasattr(record, "request"):
             record.request = "request"
         zmq_handler.emit(self, record)
