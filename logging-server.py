@@ -578,7 +578,7 @@ class main_process(threading_tools.process_pool):
     def _update(self):
         self.send_to_process("receiver", "update")
     def _recv_data(self, zmq_socket):
-        #zmq_socket.recv()
+        #zmq_socket.recv()        
         in_data = zmq_socket.recv()
         self.send_to_process("receiver", "log_recv", in_data)
     def process_start(self, src_process, src_pid):
