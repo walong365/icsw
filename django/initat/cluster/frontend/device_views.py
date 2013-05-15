@@ -39,7 +39,7 @@ def get_xml_tree(request):
         "device_group__device_type").distinct().order_by("-cluster_device_group", "name")
     xml_resp = E.response()
     for cur_dg in full_tree:
-        xml_resp.append(cur_dg.get_xml(with_devices=True, full=False))
+        xml_resp.append(cur_dg.get_xml(with_devices=True, full=False, ignore_enabled=True))
     # add device type
     xml_resp.append(
         E.device_types(
