@@ -109,6 +109,11 @@ class device_tree
                 create_input_el(cur_dg, "description", line_prefix, {master_xml : @xml})
             )
         )
+        new_tr.append(
+            $("<th>").append(
+                create_input_el(cur_dg, "enabled", line_prefix, {master_xml : @xml, boolean: true})
+            )
+        )
         new_tr.append($("<th>").text("device type"))
         new_tr.append($("<th>").text(if cur_dg.attr("is_cdg") == 1 then "Cluster device group" else  "device group"))
         new_tr.append($("<th>").text("motherserver"))
@@ -117,7 +122,7 @@ class device_tree
             new_tr.append($("<th>"))
         else
             new_tr.append($("<th>").append(
-                $("<input>").attr({
+                $("<input>").addClass("delete").attr({
                     "type"  : "button",
                     "value" : "delete"
                 }).bind("click", (event) =>
@@ -149,6 +154,11 @@ class device_tree
         # description / comment
         new_tr.append($("<td>").append(create_input_el(cur_d, "comment", line_prefix, {master_xml : @xml})))
         # device_type
+        new_tr.append(
+            $("<td>").append(
+                create_input_el(cur_d, "enabled", line_prefix, {master_xml : @xml, boolean: true})
+            )
+        )
         new_tr.append($("<th>").append(
             create_input_el(cur_d, "device_type", line_prefix, {
                 select_source           : "device_types device_type[identifier!='MD']"
@@ -179,7 +189,7 @@ class device_tree
         ))
         # device_group, cdg is not an option
         new_tr.append($("<td>").append(
-            $("<input>").attr({
+            $("<input>").addClass("delete").attr({
                 "type"  : "button",
                 "value" : "delete",
                 "id"    : "dev__del__" + cur_d.attr("pk")
@@ -254,7 +264,7 @@ class device_tree
         new_tr.append($("<th>").append(
             create_input_el(undefined, "description", line_prefix, {master_xml : @xml})
         ))
-        new_tr.append($("<th>").attr({"colspan" : "4"}))
+        new_tr.append($("<th>").attr({"colspan" : "5"}))
         new_tr.append($("<th>").append(
             $("<input>").attr({
                 "id"    : line_prefix
@@ -287,6 +297,9 @@ class device_tree
         )
         new_tr.append($("<th>").append(
             create_input_el(undefined, "comment", line_prefix, {master_xml : @xml})
+        ))
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "enabled", line_prefix, {master_xml : @xml, boolean: true, new_default: true})
         ))
         new_tr.append($("<th>").append(
             create_input_el(undefined, "device_type", line_prefix, {
@@ -338,6 +351,14 @@ class device_tree
             )
         ))
         return new_tr
+    get_enable_list: =>
+        return $("<list>").append(
+            $("<entry>").attr("pk", "0").text("-- keep --")
+        ).append(
+            $("<entry>").attr("pk", "2").text("enable")
+        ).append(
+            $("<entry>").attr("pk", "1").text("disable")
+        ).children()
     build_selected: =>
         # selected devices
         line_prefix = "device__sel"
@@ -348,6 +369,12 @@ class device_tree
             $("<th>").attr({"colspan" : "4"}
             ).append("action on selected devices")
         )
+        new_tr.append($("<th>").append(
+            create_input_el(undefined, "enabled", line_prefix, {
+                select_source : @get_enable_list,
+                change_cb     : @change_sel_device_enabled,
+            })
+        ))
         new_tr.append($("<th>").append(
             create_input_el(undefined, "type", line_prefix, {
                 select_source           : "device_types device_type[identifier!='MD']"
@@ -394,6 +421,10 @@ class device_tree
             )
         ))
         return new_tr
+    change_sel_device_enabled: (event) =>
+        targ_el = $(event.target)
+        @propagate_sel_change(parseInt(targ_el.val()) - 1, "enabled")
+        targ_el.val("0")
     change_sel_device_type_cb: (event) =>
         targ_el = $(event.target)
         @propagate_sel_change(targ_el.val(), "device_type")
@@ -416,8 +447,14 @@ class device_tree
         @top_div.find("tr input[id^='dev__'][id$='__sel']:checked").each (index, cur_el) =>
             dev_pk = $(cur_el).attr("id").split("__")[1]
             targ_sel = @top_div.find("#dev__#{dev_pk}__#{postfix}")
-            if targ_sel.attr("value") != new_val
-                targ_sel.attr("value", new_val).trigger("change")
+            if targ_sel.is(":checkbox")
+                if not new_val and targ_sel.is(":checked")
+                    targ_sel.removeAttr("checked").trigger("change")
+                else if new_val and not targ_sel.is(":checked")
+                    targ_sel.attr("checked", "checked").trigger("change")
+            else
+                if targ_sel.attr("value") != new_val
+                    targ_sel.attr("value", new_val).trigger("change")
 
 root = exports ? this
 

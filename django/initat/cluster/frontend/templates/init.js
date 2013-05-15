@@ -612,7 +612,6 @@ replace_xml_element = (master_xml, xml) ->
 submit_change = (cur_el, callback, modify_data_dict, modify_data_dict_opts, master_xml) ->
     is_textarea = false
     el_value = get_value(cur_el)
-    console.log el_value
     reset_value = false
     data_field = {
         "id"         : cur_el.attr("id")

@@ -126,7 +126,7 @@ def _get_group_tree(request, sel_list, **kwargs):
             all_dgs = all_dgs.filter(Q(pk__in= request.session["db_user"].allowed_device_groups.all()))
     if ignore_cdg:
         all_dgs = all_dgs.exclude(Q(cluster_device_group=True))
-    all_dgs = all_dgs.prefetch_related(
+    all_dgs = all_dgs.filter(Q(enabled=True)).prefetch_related(
         "device_group",
         "device_group__device_type",
         "device_group__netdevice_set",
