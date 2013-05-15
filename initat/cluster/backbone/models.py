@@ -691,7 +691,7 @@ class device_group(models.Model):
             enabled="1" if self.enabled else "0",
         )
         if with_devices:
-            sub_list = self.device_group.all()
+            sub_list = self.device_group.filter(Q(enabled=True))
             cur_xml.append(
                 E.devices(*[cur_dev.get_xml(
                     full=full,
