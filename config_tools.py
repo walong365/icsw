@@ -61,13 +61,13 @@ class router_object(object):
             latest_gen = latest_gen.generation
         if latest_gen != self.__cur_gen:
             s_time = time.time()
-            self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).values_list("idx", "device", "routing", "penalty")
+            self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)).values_list("idx", "device", "routing", "penalty")
             self.dev_dict = {}
             for cur_nd in self.all_nds:
                 if cur_nd[1] not in self.dev_dict:
                     self.dev_dict[cur_nd[1]] = []
                 self.dev_dict[cur_nd[1]].append(cur_nd)
-            self.nd_lut = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
+            self.nd_lut = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device") if value[1] in self.dev_dict])
             self.nd_dict = dict([(cur_nd[0], cur_nd) for cur_nd in self.all_nds])
             self.log("init router helper object, %s / %s" % (
                 logging_tools.get_plural("netdevice", len(self.all_nds)),
@@ -76,9 +76,10 @@ class router_object(object):
             self.peer_dict, self.simple_peer_dict = ({}, {})
             all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id", "penalty")
             for s_nd_id, d_nd_id, penalty in all_peers:
-                self.peer_dict[(s_nd_id, d_nd_id)] = penalty + self.nd_dict[s_nd_id][2] + self.nd_dict[d_nd_id][2]
-                self.peer_dict[(d_nd_id, s_nd_id)] = penalty + self.nd_dict[s_nd_id][2] + self.nd_dict[d_nd_id][2]
-                self.simple_peer_dict[(s_nd_id, d_nd_id)] = penalty
+                if s_nd_id in self.nd_lut and d_nd_id in self.nd_lut:
+                    self.peer_dict[(s_nd_id, d_nd_id)] = penalty + self.nd_dict[s_nd_id][2] + self.nd_dict[d_nd_id][2]
+                    self.peer_dict[(d_nd_id, s_nd_id)] = penalty + self.nd_dict[s_nd_id][2] + self.nd_dict[d_nd_id][2]
+                    self.simple_peer_dict[(s_nd_id, d_nd_id)] = penalty
             # add simple peers for device-internal networks
             for nd_list in self.dev_dict.itervalues():
                 route_nds = [cur_nd for cur_nd in nd_list if cur_nd[2]]
@@ -141,65 +142,44 @@ class router_object(object):
 class topology_object(object):
     def __init__(self, log_com):
         self.__log_com = log_com
-        self.__cur_gen = 0
         self.nx = None
         self._update()
     def add_nodes(self):
-        self.nx.add_nodes_from(self.nd_dict.keys())
+        self.nx.add_nodes_from(self.dev_dict.keys())
     def add_edges(self):
         for node_pair, network_idx_list in self.simple_peer_dict.iteritems():
             src_node, dst_node = node_pair
             self.nx.add_edge(src_node, dst_node, networkidx=sum(network_idx_list))
     def _update(self):
-        latest_gen = route_generation.objects.all().order_by("-generation")
-        if latest_gen:
-            latest_gen = latest_gen[0].generation
-        else:
-            latest_gen = route_generation(generation=1)
-            latest_gen.save()
-            latest_gen = latest_gen.generation
-        if latest_gen != self.__cur_gen:
-            s_time = time.time()
-            self.all_nds = device.objects.exclude(Q(device_type__identifier="MD")).values_list("idx", "name")
-            self.nd_dict = dict([(cur_nd[0], cur_nd) for cur_nd in self.all_nds])
-            self.log("init topology helper object, %s / %s" % (
-                logging_tools.get_plural("netdevice", len(self.all_nds)),
-                logging_tools.get_plural("peer information", peer_information.objects.count())))
-            # peer dict
-            self.peer_dict, self.simple_peer_dict = ({}, {})
-            all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id")
-            for s_nd_id, d_nd_id in all_peers:
-                src_netdevice = netdevice.objects.select_related().get(pk=s_nd_id)
-                src_device_id = src_netdevice.device.pk
-                
-                dst_netdevice = netdevice.objects.select_related().get(pk=d_nd_id)
-                dst_device_id = dst_netdevice.device.pk
-                for network_id in net_ip.objects.filter(Q(netdevice__exact=s_nd_id) & Q(network__network_type__identifier__in=["p", "o", "b", "s"])).values_list("network__pk", flat=True):
-                    src_device_id, dst_device_id = (min(src_device_id, dst_device_id),
-                                                    max(src_device_id, dst_device_id))
-                    self.simple_peer_dict.setdefault((src_device_id, dst_device_id), set()).add(network_id)
-            if self.nx:
-                del self.nx
-            self.nx = networkx.Graph()
-            self.add_nodes()
-            self.add_edges()
-            if self.__cur_gen:
-                self.log("update generation from %d to %d in %s" % (
-                    self.__cur_gen,
-                    latest_gen,
-                    logging_tools.get_diff_time_str(time.time() - s_time),
-                ))
-            else:
-                self.log("init with generation %d in %s" % (
-                    latest_gen,
-                    logging_tools.get_diff_time_str(time.time() - s_time),
-                ))
-            self.__cur_gen = latest_gen
-    def check_for_update(self):
-        self._update()
+        s_time = time.time()
+        self.all_devs = device.objects.exclude(Q(device_type__identifier="MD")).filter(Q(enabled=True) & Q(device_group__enabled=True)).values_list("idx", "name")
+        self.dev_dict = dict([(cur_dev[0], cur_dev) for cur_dev in self.all_devs])
+        nd_dict = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
+        ip_dict = dict([(value[0], (value[1], value[2])) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")])
+        # reorder ip_dict
+        nd_lut = {}
+        for net_ip_pk, (nd_pk, nw_pk) in ip_dict.iteritems():
+            nd_lut.setdefault(nd_pk, []).append(nw_pk)
+        self.log("init topology helper object, %s / %s" % (
+            logging_tools.get_plural("device", len(self.all_devs)),
+            logging_tools.get_plural("peer information", peer_information.objects.count())))
+        # peer dict
+        self.peer_dict, self.simple_peer_dict = ({}, {})
+        all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id")
+        for s_nd_id, d_nd_id in all_peers:
+            if nd_dict[s_nd_id] in self.dev_dict and nd_dict[d_nd_id] in self.dev_dict:
+                src_device_id = nd_dict[s_nd_id]
+                dst_device_id = nd_dict[d_nd_id]
+                src_device_id, dst_device_id = (min(src_device_id, dst_device_id),
+                                                max(src_device_id, dst_device_id))
+                self.simple_peer_dict.setdefault((src_device_id, dst_device_id), set()).update(set(nd_lut[s_nd_id]) | set(nd_lut[d_nd_id]))
+        if self.nx:
+            del self.nx
+        self.nx = networkx.Graph()
+        self.add_nodes()
+        self.add_edges()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[router] %s" % (what), log_level)
-
+        self.__log_com("[topology] %s" % (what), log_level)
 
 def get_config_var_list(config_obj, config_dev):
     r_dict = {}
