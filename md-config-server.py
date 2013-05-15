@@ -1558,7 +1558,7 @@ class all_host_groups(host_type_config):
             # hostgroups
             if all_hosts_written:
                 # distinct is important here
-                for h_group in device_group.objects.filter(Q(device_group__name__in=all_hosts_written)).prefetch_related("device_group").distinct():
+                for h_group in device_group.objects.filter(Q(enabled=True) & Q(device_group__name__in=all_hosts_written)).prefetch_related("device_group").distinct():
                     nag_conf = nag_config(h_group.name,
                                           hostgroup_name=h_group.name,
                                           alias=h_group.description or h_group.name,
@@ -2092,13 +2092,14 @@ class build_process(threading_tools.process_obj):
     def _build_distance_map(self, root_node):
         self.log("building distance map, root node is '%s'" % (root_node))
         # exclude all without attached netdevices
-        dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.exclude(netdevice=None).prefetch_related("netdevice_set")])
+        dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(enabled=True)).exclude(netdevice=None).prefetch_related("netdevice_set")])
         nd_dict = dict([(pk, set(cur_dev.netdevice_set.all().values_list("pk", flat=True))) for pk, cur_dev in dm_dict.iteritems()])
-        nd_lut = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
+        nd_lut = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device") if value[1] in dm_dict.keys()])
         for cur_dev in dm_dict.itervalues():
             # set 0 for root_node, -1 for all other devices
             cur_dev.md_dist_level = 0 if cur_dev.pk == root_node.pk else -1
         all_pks = set(dm_dict.keys())
+        all_nd_pks = set(nd_lut.keys())
         max_level = 0
         # limit for loop
         for cur_iter in xrange(128):
@@ -2118,16 +2119,19 @@ class build_process(threading_tools.process_obj):
                     if dst_nd not in src_nds:
                         nb_list.append((src_nd, dst_nd))
             for src_nd, dst_nd, in nb_list:
-                src_dev, dst_dev = (dm_dict[nd_lut[src_nd]], dm_dict[nd_lut[dst_nd]])
-                new_level = src_dev.md_dist_level + 1
-                if dst_dev.md_dist_level >= 0 and new_level > dst_dev.md_dist_level:
-                    self.log("pushing node %s farther away from root (%d => %d)" % (
-                        unicode(dst_dev),
-                        dst_dev.md_dist_level,
-                        new_level))
-                dst_dev.md_dist_level = max(dst_dev.md_dist_level, new_level)
-                max_level = max(max_level, dst_dev.md_dist_level)
-                run_again = True
+                if src_nd in all_nd_pks and dst_nd in all_nd_pks:
+                    src_dev, dst_dev = (dm_dict[nd_lut[src_nd]], dm_dict[nd_lut[dst_nd]])
+                    new_level = src_dev.md_dist_level + 1
+                    if dst_dev.md_dist_level >= 0 and new_level > dst_dev.md_dist_level:
+                        self.log("pushing node %s farther away from root (%d => %d)" % (
+                            unicode(dst_dev),
+                            dst_dev.md_dist_level,
+                            new_level))
+                    dst_dev.md_dist_level = max(dst_dev.md_dist_level, new_level)
+                    max_level = max(max_level, dst_dev.md_dist_level)
+                    run_again = True
+                else:
+                    self.log("dropping link (%d, %d), devices disabled?" % (src_nd, dst_nd), logging_tools.LOG_LEVEL_WARN)
             if not run_again:
                 break
         self.log("max distance level: %d" % (max_level))
@@ -2633,7 +2637,7 @@ class build_process(threading_tools.process_obj):
         # get ext_hosts stuff
         ng_ext_hosts = self._get_mon_ext_hosts()
         # all hosts
-        all_hosts_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.all().select_related("device_type")])
+        all_hosts_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(enabled=True)).select_related("device_type")])
         # check_hosts
         if hosts:
             h_filter = Q(name__in=hosts)
@@ -2645,6 +2649,7 @@ class build_process(threading_tools.process_obj):
             #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
+        h_filter &= Q(enabled=True)
         # dictionary with all parent / slave relations
         ps_dict = {}
         for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):
@@ -2789,7 +2794,9 @@ class build_process(threading_tools.process_obj):
                                                                 process_tools.get_except_info()),
                                      logging_tools.LOG_LEVEL_ERROR)
                 # create group maps
-                dev_groups = device_group.objects.filter(Q(device_group__name__in=[os.path.basename(entry).split(".")[0] for entry in nagvis_maps])).distinct()
+                dev_groups = device_group.objects.filter(
+                    Q(enabled=True) &
+                    Q(device_group__name__in=[os.path.basename(entry).split(".")[0] for entry in nagvis_maps])).distinct()
                 self.log("creating maps for %s" % (logging_tools.get_plural("device group", len(dev_groups))))
                 for dev_group in dev_groups:
                     map_name = os.path.join(nagvis_map_dir, "%s.cfg" % (dev_group.name.replace(" ", "_")))
