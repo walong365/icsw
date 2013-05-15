@@ -1738,16 +1738,21 @@ class check_command(object):
                 # need some logging, FIXME
                 new_parts.append(com_part)
         self.__md_com_line = " ".join(new_parts)
-        self.log("command_line in  is '%s'" % (self.command_line))
-        self.log("command_line out is '%s'" % (self.md_command_line))
-        self.log("lut : %s; %s" % (
-            logging_tools.get_plural("key", len(arg_lut)),
-            ", ".join(["'%s' => '%s'" % (key, value) for key, value in arg_lut.iteritems()])
-        ))
-        self.log("list: %s; %s" % (
-            logging_tools.get_plural("item", len(arg_list)),
-            ", ".join(arg_list)
-        ))
+        if self.command_line == self.md_command_line:
+            self.log("command_line in/out is '%s'" % (self.command_line))
+        else:
+            self.log("command_line in     is '%s'" % (self.command_line))
+            self.log("command_line out    is '%s'" % (self.md_command_line))
+        if arg_lut:
+            self.log("lut : %s; %s" % (
+                logging_tools.get_plural("key", len(arg_lut)),
+                ", ".join(["'%s' => '%s'" % (key, value) for key, value in arg_lut.iteritems()])
+            ))
+        if arg_list:
+            self.log("list: %s; %s" % (
+                logging_tools.get_plural("item", len(arg_list)),
+                ", ".join(arg_list)
+            ))
         self.__arg_lut, self.__arg_list = (arg_lut, arg_list)
     def correct_argument_list(self, arg_temp, dev_variables):
         out_list = []
