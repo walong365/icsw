@@ -96,12 +96,16 @@ class license_check(object):
                 if lline.strip().startswith("users of"):
                     cur_srv = None
                     cur_lic_version = None
-                    cur_lic = E.license(name=lparts[2][:-1],
-                                        issued=lparts[5],
-                                        used=lparts[10],
-                                        reserved="0",
-                                        free="%d" % (int(lparts[5]) - int(lparts[10])))
-                    ret_struct.find("licenses").append(cur_lic)
+                    lic_stat = lparts[3].strip("(:)")
+                    if lic_stat == "error":
+                        pass
+                    else:
+                        cur_lic = E.license(name=lparts[2][:-1],
+                                            issued=lparts[5],
+                                            used=lparts[10],
+                                            reserved="0",
+                                            free="%d" % (int(lparts[5]) - int(lparts[10])))
+                        ret_struct.find("licenses").append(cur_lic)
                 if cur_lic is not None:
                     if "\"%s\"" % (cur_lic.attrib["name"]) == lparts[0]:
                         cur_lic_version = E.version(
