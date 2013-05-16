@@ -106,7 +106,9 @@ def sync_users(request):
         request.log("trying to create user_home for '%s'" % (unicode(create_user)))
         srv_com = server_command.srv_command(command="create_user_home")
         srv_com["server_key:username"] = create_user.login
+        print "send0"
         result = net_tools.zmq_connection("webfrontend", timeout=30).add_connection("tcp://localhost:8004", srv_com)
+        print "send0111", result
         if result is not None:
             request.log(*result.get_log_tuple())
         else:
@@ -117,4 +119,12 @@ def sync_users(request):
         request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
         request.log(*result.get_log_tuple(), xml=True)
+    srv_com = server_command.srv_command(command="sync_http_users")
+    result = net_tools.zmq_connection("webfrontend", timeout=10).add_connection("tcp://localhost:8010", srv_com)
+    if not result:
+        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        res_node = result.xpath(None, ".//ns:result")[0]
+        print etree.tostring(res_node, pretty_print=True)
+        request.log(res_node.attrib["reply"], int(res_node.attrib["state"]), xml=True)
     return request.xml_response.create_response()
