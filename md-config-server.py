@@ -2042,6 +2042,15 @@ class build_process(threading_tools.process_obj):
             cur_query_count = len(connection.queries)
         h_list = args[0] if len(args) else []
         cdg = device.objects.get(Q(device_group__cluster_device_group=True))
+        # delete old gauge variables
+        device_variable.objects.filter(Q(name="_SYS_GAUGE_") & Q(is_public=False) & Q(device=cdg)).delete()
+        # init build variable
+        build_dv = device_variable(
+            device=cdg,
+            is_public=False,
+            name="_SYS_GAUGE_",
+            description="mon config rebuild on %s" % (self.__gen_config.monitor_server.name),
+            var_type="i")
         # fetch SNMP-stuff of cluster
         snmp_stack = snmp_settings(cdg)
         rebuild_gen_config = False
@@ -2073,8 +2082,11 @@ class build_process(threading_tools.process_obj):
             self.router_obj.check_for_update()
             # build distance map
             cur_dmap = self._build_distance_map(self.__gen_config.monitor_server)
+            total_hosts = sum([self._get_number_of_hosts(cur_gc, h_list) for cur_gc in [self.__gen_config] + self.__slave_configs.values()])
+            self.log("init gauge with max=%d" % (total_hosts))
+            build_dv.init_as_gauge(total_hosts)
             for cur_gc in [self.__gen_config] + self.__slave_configs.values():
-                self._create_host_config_files(cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap)
+                self._create_host_config_files(build_dv, cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap)
                 if cur_gc.master:
                     # recreate access files
                     cur_gc._create_access_entries()
@@ -2083,6 +2095,7 @@ class build_process(threading_tools.process_obj):
                 if not cur_gc.master:
                     cur_gc._write_entries()
                     cur_gc.distribute(self.version)
+            build_dv.delete()
         cfgs_written = self.__gen_config._write_entries()
         if bc_valid and (cfgs_written or rebuild_gen_config):
             # send reload to remote instance ?
@@ -2626,7 +2639,20 @@ class build_process(threading_tools.process_obj):
         self.log(glob_log_str)
         self.mach_log(info_str)
         self.close_mach_log()
-    def _create_host_config_files(self, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map):
+    def _get_number_of_hosts(self, cur_gc, hosts):
+        if hosts:
+            h_filter = Q(name__in=hosts)
+        else:
+            h_filter = Q()
+        # add master/slave related filters
+        if cur_gc.master:
+            pass
+            #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
+        else:
+            h_filter &= Q(monitor_server=cur_gc.monitor_server)
+        h_filter &= Q(enabled=True)
+        return device.objects.filter(h_filter).count()
+    def _create_host_config_files(self, build_dv, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map):
         """
         d_map : distance map
         """
@@ -2667,6 +2693,8 @@ class build_process(threading_tools.process_obj):
         meta_devices = dict([(md.device_group.pk, md) for md in device.objects.filter(Q(device_type__identifier='MD')).prefetch_related("device_config_set", "device_config_set__config").select_related("device_group")])
         all_configs = {}
         for cur_dev in device.objects.filter(h_filter).prefetch_related("device_config_set", "device_config_set__config"):
+            time.sleep(1)
+            build_dv.count()
             loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
             if cur_dev.device_group_id in meta_devices:
                 loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
