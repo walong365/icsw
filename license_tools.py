@@ -38,6 +38,7 @@ LICENSE_CAPS = [
     ("ganglia", "Ganglia monitoring system"),
     ("rest"   , "REST server"),
     ("rrd"    , "RRD functionality"),
+    ("docu"   , "show documentation"),
 ]
 
 
