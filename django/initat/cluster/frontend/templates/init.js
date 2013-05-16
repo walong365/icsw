@@ -11,7 +11,7 @@ class ajax_struct
         @ajax_uuid = 0
         @ajax_dict = {}
         @top_div = undefined
-    new_connection: =>
+    new_connection: (settings) =>
         cur_id = @ajax_uuid
         if not @top_div
             @top_div = $(@top_div_name)
@@ -30,9 +30,10 @@ class ajax_struct
         @ajax_uuid++
         return cur_id
     close_connection: (xhr_id) =>
-        @ajax_dict[xhr_id]["state"]   = "done"
-        @ajax_dict[xhr_id]["runtime"] = new Date() - @ajax_dict[xhr_id]["start"]
-        @top_div.find("li##{xhr_id}").remove()
+        if xhr_id?
+            @ajax_dict[xhr_id]["state"]   = "done"
+            @ajax_dict[xhr_id]["runtime"] = new Date() - @ajax_dict[xhr_id]["start"]
+            @top_div.find("li##{xhr_id}").remove()
         
 my_ajax_struct = new ajax_struct("div#ajax_info")
 
@@ -41,7 +42,8 @@ $.ajaxSetup
     timeout    : 50000
     dataType   : "xml"
     beforeSend : (xhr, settings) ->
-        xhr.inituuid = my_ajax_struct.new_connection()
+        if not settings.hidden
+            xhr.inituuid = my_ajax_struct.new_connection(settings)
     complete   : (xhr, textstatus) ->
         my_ajax_struct.close_connection(xhr.inituuid)
     error      : (xhr, status, except) ->

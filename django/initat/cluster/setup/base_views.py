@@ -7,7 +7,7 @@ import logging_tools
 import process_tools
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_group, device, \
-     get_related_models, device_class, KPMC_MAP
+     get_related_models, device_class, KPMC_MAP, device_variable
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from django.contrib.auth.decorators import login_required
@@ -262,6 +262,19 @@ def create_object(request, *args, **kwargs):
             new_obj._meta.object_name), xml=True)
     return request.xml_response.create_response()
 
+@init_logging
+def get_gauge_info(request):
+    gauge_info = E.gauge_info()
+    for gauge_dv in device_variable.objects.filter(Q(name="_SYS_GAUGE_") & Q(is_public=False)).order_by("description"):
+        gauge_info.append(
+            E.gauge_element(
+                gauge_dv.description,
+                value="%d" % (gauge_dv.val_int),
+            )
+        )
+    request.xml_response["response"] = gauge_info
+    return request.xml_response.create_response()
+    
 @init_logging
 @login_required
 def delete_object(request, *args, **kwargs):

@@ -27,6 +27,9 @@
     </tr>
 </table>
 
+<div id="gauge_info">
+</div>
+
 <div id="ajax_info">
 </div>
 
@@ -208,6 +211,22 @@ class sidebar_tree
                             opacity    : 50
                             position   : [event.pageY, event.pageX]
                             autoResize : true
+
+update_gauge = ->
+    $.ajax
+        url     : "{% url 'base:get_gauge_info' %}",
+        hidden  : true,
+        success : (xml) ->
+            if parse_xml_response(xml)
+                gauge_div = $("div#gauge_info")
+                gauge_div.children().remove()
+                $(xml).find("gauge_info gauge_element").each (idx, gauge_el) ->
+                    gauge_el = $(gauge_el)
+                    gauge_div.append(
+                        $("<div>").text(gauge_el.text()).progressbar({
+                            "value" : parseInt(gauge_el.attr("value")),
+                        })
+                    )
     
 root.init_sidebar = ->
     root.sidebar = new sidebar_tree($("div#sidebar_tree"))
@@ -216,6 +235,12 @@ root.install_devsel_link = (t_func, fire_when_loaded) ->
     root.sidebar_target_func = t_func
     root.sidebar_call_devsel_link_when_loaded = fire_when_loaded
 
+root.init_gauge = ->
+    update_gauge()
+    $(document).everyTime(2000, "get_gauge_info", (i) ->
+        update_gauge()
+    )
+    
 {% endinlinecoffeescript %}
 
 </script>
