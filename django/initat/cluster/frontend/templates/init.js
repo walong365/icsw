@@ -21,7 +21,7 @@ class ajax_struct
         ai_ul.append(
             $("<li>").attr({
                 "id" : cur_id
-            }).text("pending...")
+            }).text(settings.title or "pending...")
         )
         @ajax_dict[cur_id] = {
             "state" : "pending"

@@ -25,7 +25,7 @@
 import os
 from django.http import HttpResponse
 from initat.core.render import render_me
-from initat.cluster.frontend.helper_functions import init_logging, logging_pool
+from initat.cluster.frontend.helper_functions import init_logging, logging_pool, contact_server
 from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
@@ -106,25 +106,16 @@ def sync_users(request):
         request.log("trying to create user_home for '%s'" % (unicode(create_user)))
         srv_com = server_command.srv_command(command="create_user_home")
         srv_com["server_key:username"] = create_user.login
-        print "send0"
-        result = net_tools.zmq_connection("webfrontend", timeout=30).add_connection("tcp://localhost:8004", srv_com)
-        print "send0111", result
+        result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
         if result is not None:
             request.log(*result.get_log_tuple())
-        else:
-            request.log("no server result", logging_tools.LOG_LEVEL_ERROR)
     srv_com = server_command.srv_command(command="sync_ldap_config")
-    result = net_tools.zmq_connection("webfrontend", timeout=30).add_connection("tcp://localhost:8004", srv_com)
-    if not result:
-        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
+    result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+    if result:
         request.log(*result.get_log_tuple(), xml=True)
     srv_com = server_command.srv_command(command="sync_http_users")
-    result = net_tools.zmq_connection("webfrontend", timeout=10).add_connection("tcp://localhost:8010", srv_com)
-    if not result:
-        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
+    result = contact_server(request, "tcp://localhost:8010", srv_com)
+    if result:
         res_node = result.xpath(None, ".//ns:result")[0]
-        print etree.tostring(res_node, pretty_print=True)
         request.log(res_node.attrib["reply"], int(res_node.attrib["state"]), xml=True)
     return request.xml_response.create_response()

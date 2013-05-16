@@ -15,6 +15,7 @@ import process_tools
 import smtplib
 import functools
 import pprint
+import net_tools
 import email
 import email.mime
 import email.header
@@ -354,6 +355,14 @@ def send_emergency_mail(**kwargs):
     srv.connect(settings.MAIL_SERVER, 25)
     srv.sendmail(mesg["From"], mesg["To"].split(","), mesg.as_string())
     srv.close()
+
+def contact_server(request, conn_str, send_com, **kwargs):
+    result = net_tools.zmq_connection(
+        kwargs.get("connection_id", "webfrontend"),
+        timeout=kwargs.get("timeout", 10)).add_connection(conn_str, send_com)
+    if not result:
+        request.log("error contacting server %s" % (conn_str), logging_tools.LOG_LEVEL_ERROR, xml=True)
+    return result
 
 if __name__ == "__main__":
     print "Loadable module, exiting..."

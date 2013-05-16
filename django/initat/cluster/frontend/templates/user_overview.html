@@ -78,6 +78,7 @@ load_users_groups = ->
                     sync_input.attr("disable", "disable")
                     $.ajax
                         url     : "{% url 'user:sync_users' %}"
+                        title   : "syncing users"
                         success : (xml) ->
                             sync_input.removeAttr("disable")
                             parse_xml_response(xml)
