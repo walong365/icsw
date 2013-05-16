@@ -859,6 +859,15 @@ class device_variable(models.Model):
             self.name,
             self.var_type,
             str(self.get_value()))
+    def init_as_gauge(self, max_value, start=0):
+        self.__max, self.__cur = (max_value, start)
+        self._update_gauge()
+    def count(self, num=1):
+        self.__cur += num
+        self._update_gauge()
+    def _update_gauge(self):
+        self.val_int = min(100, int(float(100 * self.__cur) / float(self.__max)))
+        self.save()
     class Meta:
         db_table = u'device_variable'
         ordering = ("name",)
