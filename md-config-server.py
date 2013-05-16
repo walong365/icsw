@@ -1918,6 +1918,7 @@ class build_process(threading_tools.process_obj):
         else:
             self.log("no slave-servers found")
         self.register_func("rebuild_config", self._rebuild_config)
+        self.register_func("sync_http_users", self._sync_http_users)
         self.register_func("file_content_info", self._file_content_info)
         self.register_func("check_for_redistribute", self._check_for_redistribute)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -2035,6 +2036,9 @@ class build_process(threading_tools.process_obj):
             self.__slave_configs[self.__slave_lut[slave_name]].file_content_info(srv_com)
         else:
             self.log("unknown slave_name '%s'" % (slave_name), logging_tools.LOG_LEVEL_ERROR)
+    def _sync_http_users(self, *args, **kwargs):
+        self.log("syncing http-users")
+        self.__gen_config._create_access_entries()
     def _rebuild_config(self, *args, **kwargs):
         self.version += 1
         self.log("config_version is %d" % (self.version))
@@ -2086,10 +2090,10 @@ class build_process(threading_tools.process_obj):
             self.log("init gauge with max=%d" % (total_hosts))
             build_dv.init_as_gauge(total_hosts)
             for cur_gc in [self.__gen_config] + self.__slave_configs.values():
-                self._create_host_config_files(build_dv, cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap)
                 if cur_gc.master:
                     # recreate access files
                     cur_gc._create_access_entries()
+                self._create_host_config_files(build_dv, cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap)
                 # refresh implies _write_entries
                 cur_gc.refresh()
                 if not cur_gc.master:
@@ -3280,6 +3284,9 @@ class server_process(threading_tools.process_pool):
                 if cur_com == "rebuild_host_config":
                     send_return = True
                     self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
+                elif cur_com == "sync_http_users":
+                    send_return = True
+                    self.send_to_process("build", "sync_http_users")
                 elif cur_com in ["ocsp-event", "ochp-event"]:
                     self._handle_ocp_event(srv_com)
                 elif cur_com in ["file_content_result"]:
