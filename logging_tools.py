@@ -385,7 +385,6 @@ class init_email_handler(zmq_handler):
                        "threadName" : 1,
                        "lineno"     : 1}
     def emit(self, record):
-        print "EMAIL", record
         record.IOS_type = "error"
         if getattr(record, "exc_info", None):
             tb_object = record.exc_info[2]
@@ -418,7 +417,6 @@ class init_handler_unified(zmq_handler):
                        "threadName" : 1,
                        "lineno"     : 1}
     def emit(self, record):
-        print "UNIFIED", record
         if record.name.startswith("init.at."):
             record.name = record.name[8:]
         for key in self.__lens.keys():
