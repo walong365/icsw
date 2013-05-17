@@ -42,7 +42,7 @@ class config_table
         @top_div.children().remove()
         c_table = $("<table>").attr({"id" : "config"})
         @c_table = c_table
-        ref_width = {% if settings.CLUSTER_LICENSE.monext %}10{% else %}8{% endif %}
+        ref_width = {% if settings.CLUSTER_LICENSE.monext %}11{% else %}9{% endif %}
         @devices.find("device_group").each (devg_index, cur_dg) =>
             cur_dg = $(cur_dg)
             line_prefix = cur_dg.attr("key")
@@ -106,12 +106,12 @@ class config_table
         ).append(
             $("<td>").append(
                 create_input_el(d_el, "mon_device_templ", line_prefix, {
-                    select_source  : "mon_device_templs mon_device_templ",
-                    add_null_entry : "not set",
-                    css            : {width : "100px"},
-                    change_cb      : if d_el then undefined else @change_monitor_template,
-                    master_xml     : @devices,
-                    title          : "device template"
+                    select_source   : "mon_device_templs mon_device_templ",
+                    add_null_entry  : "not set",
+                    css             : {width : "100px"},
+                    change_cb       : if d_el then undefined else @change_monitor_template,
+                    master_xml      : @devices,
+                    title           : "device template"
                 })
             )
         ).append(
@@ -123,6 +123,8 @@ class config_table
                     title      : "checks enabled",
                 })
             )
+        ).append(
+            @get_device_part(d_el, line_prefix)
         ).append(
             $("<td>").append(
                 create_input_el(d_el, "mon_ext_host", line_prefix, {
@@ -205,6 +207,30 @@ class config_table
         {% endif %}
         dummy_div.append(new_tr)
         return dummy_div.children()
+    get_device_part : (d_el, line_prefix) =>
+        dev_td = $("<td>").addClass("right")
+        if d_el
+            if parseInt(d_el.attr("act_partition_table"))
+                dev_td.append($("<span>").text("set"))
+            else:
+                dev_td.append($("<span>").text("N/A"))
+            dev_td.append(
+                create_input_el(undefined, "partition", line_prefix, {
+                    select_source : @get_part_read_list,
+                    change_cb     : @read_device_part
+                })
+            )
+        return dev_td
+    read_device_part: (event) =>
+        cur_el = $(event.target)
+        console.log cur_el.attr("id")
+        cur_el.prev().text("ok")
+    get_part_read_list: =>
+        return $("<list>").append(
+            $("<entry>").attr("pk", "0").text("-- keep --")
+        ).append(
+            $("<entry>").attr("pk", "1").text("read from device")
+        ).children()
     change_d_sel : (event) =>
     change_dg_sel : (event) =>
         cur_el = $(event.target)

@@ -164,7 +164,7 @@ class config_table
         c_line.append($("<th>").append(
             create_input_el(cur_conf, "name", line_prefix, {label : "Name", master_xml: @configs})
         ).append(
-            create_input_el(cur_conf, "priority", line_prefix, {label : "Priority", number : true, master_xml: @configs})
+            create_input_el(cur_conf, "priority", line_prefix, {label : "Priority", number : true, master_xml: @configs, min: -9999, max : 9999})
         ).append(
             create_input_el(cur_conf, "description", line_prefix, {label : "Description", master_xml: @configs})
         ).append(

@@ -9,7 +9,8 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, mon_period, mon_contact, user, \
      mon_contactgroup, get_related_models, network_type, network_device_type, mon_device_templ, \
-     mon_ext_host, mon_host_cluster, mon_service_cluster, mon_device_esc_templ, mon_service_esc_templ
+     mon_ext_host, mon_host_cluster, mon_service_cluster, mon_device_esc_templ, mon_service_esc_templ, \
+     partition_table
 from django.db.models import Q
 from initat.cluster.frontend.helper_functions import init_logging
 from initat.core.render import render_me
@@ -133,7 +134,9 @@ def device_config(request):
                 dev_xml.attrib["monitor_type"] = "slave"
             dev_xml.text = "%s [%s]" % (dev_xml.attrib["name"], dev_xml.attrib["monitor_type"])
             srv_list.append(dev_xml)
-        request.xml_response["response"] = E.response(srv_list)
+        part_list = E.partition_tables(*[cur_pt.get_xml() for cur_pt in partition_table.objects.all()])
+        request.xml_response["response"] = E.response(srv_list, part_list)
+        print unicode(request.xml_response)
         return request.xml_response.create_response()
 
 @init_logging

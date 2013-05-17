@@ -173,6 +173,10 @@ th.left {
     text-align: left;
 }
 
+td.right {
+    text-align: right;
+}
+
 div.leftfloat {
     float : left;
 }
