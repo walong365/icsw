@@ -139,7 +139,7 @@ def device_config(request):
 @init_logging
 @login_required
 def create_config(request):
-    srv_com = server_command.srv_command(command="rebuild_host_config")
+    srv_com = server_command.srv_command(command="rebuild_host_config", cache_mode="ALWAYS")
     #srv_com["devices"] = srv_com.builder(
     #    "devices",
     #    *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
@@ -152,7 +152,6 @@ def create_config(request):
                     int(res_node.attrib["state"]),
                     xml=True)
         request.xml_response["result"] = E.devices()
-    print etree.tostring(request.xml_response.build_response(), pretty_print=True)
     return request.xml_response.create_response()
 
 @login_required
