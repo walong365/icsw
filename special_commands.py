@@ -305,7 +305,7 @@ class special_base(object):
             # show information
             self._show_cache_info()
             # use cache flag, dependent on the cache mode
-            if self.cache_mode == "ALWAS":
+            if self.cache_mode == "ALWAYS":
                 self.__use_cache = True
             elif self.cache_mode == "DYNAMIC":
                 self.__use_cache = self.__cache_valid
