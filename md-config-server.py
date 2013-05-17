@@ -2041,7 +2041,11 @@ class build_process(threading_tools.process_obj):
         self.__gen_config._create_access_entries()
     def _rebuild_config(self, *args, **kwargs):
         self.version += 1
-        self.log("config_version is %d" % (self.version))
+        cache_mode = kwargs.get("cache_mode", "???")
+        if cache_mode not in special_commands.CACHE_MODES:
+            # take first cache mode
+            cache_mode = special_commands.DEFAULT_CACHE_MODE
+        self.log("config_version is %d, cache_mode is %s" % (self.version, cache_mode))
         if global_config["DEBUG"]:
             cur_query_count = len(connection.queries)
         h_list = args[0] if len(args) else []
@@ -2090,6 +2094,7 @@ class build_process(threading_tools.process_obj):
             self.log("init gauge with max=%d" % (total_hosts))
             build_dv.init_as_gauge(total_hosts)
             for cur_gc in [self.__gen_config] + self.__slave_configs.values():
+                cur_gc.cache_mode = cache_mode
                 if cur_gc.master:
                     # recreate access files
                     cur_gc._create_access_entries()
@@ -2536,7 +2541,10 @@ class build_process(threading_tools.process_obj):
                                 if special:
                                     sc_array = []
                                     try:
-                                        cur_special = getattr(special_commands, "special_%s" % (special.lower()))(self, s_check, host, valid_ip, global_config)
+                                        cur_special = getattr(special_commands, "special_%s" % (special.lower()))(
+                                            self,
+                                            s_check,
+                                            host, valid_ip, global_config, cache_mode=cur_gc.cache_mode)
                                     except:
                                         self.log("unable to initialize special '%s': %s" % (
                                             special,
@@ -2697,8 +2705,6 @@ class build_process(threading_tools.process_obj):
         meta_devices = dict([(md.device_group.pk, md) for md in device.objects.filter(Q(device_type__identifier='MD')).prefetch_related("device_config_set", "device_config_set__config").select_related("device_group")])
         all_configs = {}
         for cur_dev in device.objects.filter(h_filter).prefetch_related("device_config_set", "device_config_set__config"):
-            time.sleep(1)
-            build_dv.count()
             loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
             if cur_dev.device_group_id in meta_devices:
                 loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
@@ -2773,6 +2779,7 @@ class build_process(threading_tools.process_obj):
         # build lookup-table
         nagvis_maps = set()
         for host_name, host in sorted([(cur_dev.name, cur_dev) for cur_dev in check_hosts.itervalues()]):
+            build_dv.count()
             self._create_single_host_config(
                 cur_gc,
                 host,
@@ -2970,7 +2977,7 @@ class server_process(threading_tools.process_pool):
         self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
         self.register_timer(self._update, 30, instant=True)
         #self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
-        self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
+        self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"], cache_mode="DYNAMIC")
     def _check_db(self):
         self.send_to_process("db_verify", "validate")
     def _check_for_redistribute(self):
@@ -3166,7 +3173,7 @@ class server_process(threading_tools.process_pool):
             self["exit_requested"] = True
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
-        self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
+        self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"], cache_mode="DYNAMIC")
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
@@ -3283,7 +3290,7 @@ class server_process(threading_tools.process_pool):
                 send_return = False
                 if cur_com == "rebuild_host_config":
                     send_return = True
-                    self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
+                    self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"], cache_mode=srv_com.get("cache_mode", "DYNAMIC"))
                 elif cur_com == "sync_http_users":
                     send_return = True
                     self.send_to_process("build", "sync_http_users")

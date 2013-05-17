@@ -27,17 +27,32 @@ import re
 import logging_tools
 import os
 import process_tools
+import server_command
+import time
+import bz2
+import copy
+import base64
 from initat.md_config_server.config import global_config
 from initat.host_monitoring import ipc_comtools
 from initat.host_monitoring.modules import supermicro_mod
 from initat.cluster.backbone.models import partition, partition_disc, partition_table, partition_fs, \
      netdevice, net_ip, network, lvm_vg, lvm_lv, device, device_variable
 from django.db.models import Q
-import time
-import bz2
-import base64
+from lxml import etree
+from lxml.builder import E
 
 EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
+
+"""
+cache_modes, how to handle to chache for special commands
+in case of connection problems always use the cache (if set, of course)
+ALWAYS   : always use value from cache, even if empty
+DYNAMIC  : use cache only when set and not too old, otherwise try to connect to device
+REFRESH  : always try to contact device
+"""
+
+CACHE_MODES = ["ALWAYS", "DYNAMIC", "REFRESH"]
+DEFAULT_CACHE_MODE = "ALWAYS"
 
 def parse_expected():
     ret_dict = {}
@@ -67,36 +82,76 @@ class special_base(object):
     class Meta:
         # number of retries in case of error
         retries = 1
+        # timeout for connection to server
         timeout = 15
-    def __init__(self, build_proc, s_check, host, valid_ip, global_config):
+        # how long the cache is valid
+        cache_timeout = 7 * 24 * 3600
+        # wait time in case of connection error
+        error_wait = 5
+        # contact server
+        server_contact = False
+    def __init__(self, build_proc, s_check, host, valid_ip, global_config, **kwargs):
         for key in dir(special_base.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(special_base.Meta, key))
+        self.cache_mode = kwargs.get("cache_mode", DEFAULT_CACHE_MODE)
         self.build_process = build_proc
         self.s_check = s_check
         self.host = host
         self.valid_ip = valid_ip
     def _cache_name(self):
-        return "/tmp/.md-config-server/%s_%s" % (self.host.name,
-                                                 self.valid_ip)
+        return "/tmp/.md-config-server/%s_%s" % (
+            self.host.name,
+            self.valid_ip)
     def _store_cache(self):
         c_name = self._cache_name()
         if not os.path.isdir(os.path.dirname(c_name)):
             os.makedirs(os.path.dirname(c_name))
-        _coded = [base64.b64encode(unicode(srv_reply)) for srv_reply in self.__server_results]
-        file(c_name, "wb").write(bz2.compress("".join([u"%08d%s" % (len(b64), b64) for b64 in _coded])))
-        self.log("stored cached in %s" % (c_name))
+        cache = E.cache(
+            *[cur_res.tree for cur_res in self.__server_results],
+            num_entries="%d" % (len(self.__server_results)),
+            created="%d" % (int(time.time()))
+        )
+        file(c_name, "wb").write(etree.tostring(cache, pretty_print=True))
+        self.log("stored tree to %s" % (c_name))
     def _load_cache(self):
-        self.__cache = []
-        self.__use_cache = False
+        self.__cache, self.__cache_created, self.__cache_age = ([], 0, 0)
+        self.__cache_valid = False
         c_name = self._cache_name()
         if os.path.isfile(c_name):
-            c_content = bz2.decompress(file(c_name, "rb").read())
-            while c_content:
-                b64_len = len(c_content[0:8])
-                self.__cache.append(base64.b64decode(c_content[8:b64_len + 8]))
-                c_content = c_content[b64_len + 8:]
-            self.log("loaded cache from %s" % (c_name))
+            try:
+                c_tree = etree.fromstring(file(c_name, "rb").read())
+            except:
+                self.log("cannot read xml_tree from %s: %s" % (
+                    c_name,
+                    process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+                try:
+                    os.unlink(c_name)
+                except:
+                    self.log("cannot remove invalid cache_file %s: %s" % (c_name, process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("loaded cache (%s) from %s" % (
+                    logging_tools.get_plural("entry", int(c_tree.attrib["num_entries"])),
+                    c_name)
+                         )
+                self.__cache_created = int(c_tree.get("created", "0"))
+                self.__cache_age = abs(time.time()- self.__cache_created)
+                self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
+                # the copy.deepcopy is important to preserve the root element
+                self.__cache = [server_command.srv_command(source=copy.deepcopy(entry)) for entry in c_tree]
+    def _show_cache_info(self):
+        if self.__cache:
+            self.log("cache is present (%s, age is %s, timeout %s, %s)" % (
+                logging_tools.get_plural("entry", len(self.__cache)),
+                logging_tools.get_diff_time_str(self.__cache_age),
+                logging_tools.get_diff_time_str(self.Meta.cache_timeout),
+                "valid" if self.__cache_valid else "invalid",
+            )
+                     )
+        else:
+            self.log("no cache set")
     def cleanup(self):
         self.build_process = None
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -118,63 +173,90 @@ class special_base(object):
             **kwargs
         )
     def _call_server(self, command, server_name, *args, **kwargs):
+        if not self.Meta.server_contact:
+            # not beautifull but working
+            self.log("not allowed to make an external call", logging_tools.LOG_LEVEL_CRITICAL)
+            return None
         self.log("calling server '%s' for %s, command is '%s', %s, %s" % (
             server_name,
             self.valid_ip,
             command,
             "args is '%s'" % (", ".join([str(value) for value in args])) if args else "no arguments",
-            ", ".join(["%s='%s'" % (key, value) for key, value in kwargs.iteritems()]) if kwargs else "no kwargs"
+            ", ".join(["%s='%s'" % (key, value) for key, value in kwargs.iteritems()]) if kwargs else "no kwargs",
         ))
         connect_to_localhost = kwargs.pop("connect_to_localhost", False)
         conn_ip = "127.0.0.1" if connect_to_localhost else self.valid_ip
-        for cur_iter in xrange(self.Meta.retries):
-            self.log("iteration %d of %d" % (cur_iter, self.Meta.retries))
-            try:
-                srv_reply = ipc_comtools.send_and_receive_zmq(
-                    conn_ip,
-                    command,
-                    *args,
-                    server=server_name,
-                    zmq_context=self.build_process.zmq_context,
-                    port=2001,
-                    **kwargs)
-            except:
-                self.log("error connecting to '%s' (%s, %s): %s" % (
-                    server_name,
-                    conn_ip,
-                    command,
-                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-                srv_reply = None
-            else:
-                srv_error = srv_reply.xpath(None, ".//ns:result[@state != '0']")
-                if srv_error:
-                    self.log("got an error (%d): %s" % (
-                        int(srv_error[0].attrib["state"]),
-                        srv_error[0].attrib["reply"]),
-                             logging_tools.LOG_LEVEL_ERROR)
+        if not self.__use_cache:
+            # contact the server / device
+            srv_reply = None
+            for cur_iter in xrange(self.Meta.retries):
+                log_str, log_level = (
+                    "iteration %d of %d (timeout=%d)" % (cur_iter, self.Meta.retries, self.Meta.timeout),
+                    logging_tools.LOG_LEVEL_ERROR,
+                )
+                s_time = time.time()
+                try:
+                    srv_reply = ipc_comtools.send_and_receive_zmq(
+                        conn_ip,
+                        command,
+                        *args,
+                        server=server_name,
+                        zmq_context=self.build_process.zmq_context,
+                        port=2001,
+                        timeout=self.Meta.timeout,
+                        **kwargs)
+                except:
+                    log_str = "%s, error connecting to '%s' (%s, %s): %s" % (
+                        log_str,
+                        server_name,
+                        conn_ip,
+                        command,
+                        process_tools.get_except_info()
+                    )
                     srv_reply = None
+                    self.__server_contact_ok = False
                 else:
-                    self.__server_results.append(srv_reply)
-            if srv_reply is not None:
-                break
-            self.log("waiting for %d seconds" % (self.Meta.timeout), logging_tools.LOG_LEVEL_WARN)
-            time.sleep(self.Meta.timeout)
-        if srv_reply == None and self.__server_calls == 0 and len(self.__cache):
-            self.__use_cache = True
+                    srv_error = srv_reply.xpath(None, ".//ns:result[@state != '0']")
+                    if srv_error:
+                        self.__server_contact_ok = False
+                        log_str = "%s, got an error (%d): %s" % (
+                            log_str,
+                            int(srv_error[0].attrib["state"]),
+                            srv_error[0].attrib["reply"],
+                        )
+                        srv_reply = None
+                    else:
+                        e_time = time.time()
+                        log_str = "%s, got a valid result in %s" % (
+                            log_str,
+                            logging_tools.get_diff_time_str(e_time - s_time),
+                        )
+                        log_level = logging_tools.LOG_LEVEL_OK
+                        self.__server_contacts += 1
+                        self.__server_results.append(srv_reply)
+                self.log(log_str, log_level)
+                if srv_reply is not None:
+                    break
+                self.log("waiting for %d seconds" % (self.Meta.error_timeout), logging_tools.LOG_LEVEL_WARN)
+                time.sleep(self.Meta.error_timeout)
+            if srv_reply is None and self.__call_idx == 0 and len(self.__cache):
+                # use cache only when first call went wrong and we have something in the cache
+                self.__use_cache = True
         if self.__use_cache:
-            if len(self.__cache) > self.__server_calls:
-                srv_reply = self.__cache[self.__server_calls]
+            if len(self.__cache) > self.__call_idx:
+                srv_reply = self.__cache[self.__call_idx]
                 self.log("take result from cache [index %d]" % (
-                    self.__server_calls
+                    self.__call_idx
                 ))
             else:
                 self.log(
-                    "cache too small (%d <= %d)" % (
-                        len(self.__cache),
-                        self.__server_calls),
-                    logging_tools.LOG_LEVEL_WARN)
-        self.__server_calls += 1
+                    "cache too small (%s)" % (
+                        "%d <= %d" % (len(self.__cache), self.__call_idx) if self.__cache else "is empty",
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
+                srv_reply = None
+        self.__call_idx += 1
         return srv_reply
     def real_parameter_name(self, in_name):
         return "{MDC}_%s" % (in_name)
@@ -217,16 +299,43 @@ class special_base(object):
         s_name = self.__class__.__name__.split("_", 1)[1]
         self.log("starting %s for %s" % (s_name, self.host.name))
         s_time = time.time()
-        self._load_cache()
-        # init result list and number of server calls
-        self.__server_results, self.__server_calls = ([], 0)
+        if self.Meta.server_contact:
+            # at first we load the current cache
+            self._load_cache()
+            # show information
+            self._show_cache_info()
+            # use cache flag, dependent on the cache mode
+            if self.cache_mode == "ALWAS":
+                self.__use_cache = True
+            elif self.cache_mode == "DYNAMIC":
+                self.__use_cache = self.__cache_valid
+            elif self.cache_mode == "REFRESH":
+                self.__use_cache = False
+            # anything got from a direct all
+            self.__server_contact_ok, self.__server_contacts = (True, 0)
+            # init result list and number of server calls
+            self.__server_results, self.__call_idx = ([], 0)
         cur_ret = self._call()
         e_time = time.time()
-        self.log("took %s, (%d of %d ok)" % (logging_tools.get_diff_time_str(e_time - s_time),
-                                             len(self.__server_results),
-                                             self.__server_calls))
-        if len(self.__server_results) == self.__server_calls and self.__server_calls:
-            self._store_cache()
+        if self.Meta.server_contact:
+            self.log(
+                "took %s, (%d of %d ok, %d server contacts [%s])" % (
+                    logging_tools.get_diff_time_str(e_time - s_time),
+                    len(self.__server_results),
+                    self.__call_idx,
+                    self.__server_contacts,
+                    "ok" if self.__server_contact_ok else "failed"
+                ))
+            # anything set (from cache or direct) and all server contacts ok (a little bit redundant)
+            if len(self.__server_results) == self.__call_idx and self.__call_idx:
+                if self.__server_contacts and self.__server_contact_ok:
+                    self._store_cache()
+        else:
+            self.log(
+                "took %s" % (
+                    logging_tools.get_diff_time_str(e_time - s_time),
+                )
+            )
         return cur_ret
     def get_arg_template(self, *args, **kwargs):
         return arg_template(self, *args, **kwargs)
@@ -274,6 +383,8 @@ class arg_template(dict):
                     self.info)
 
 class special_openvpn(special_base):
+    class Meta:
+        server_contact = True
     def _call(self):
         sc_array = []
         exp_dict = parse_expected()
@@ -303,6 +414,8 @@ class special_openvpn(special_base):
         return sc_array
 
 class special_supermicro(special_base):
+    class Meta:
+        server_contact = True
     def _call(self):
         # parameter list
         para_list = ["num_ibqdr", "num_power", "num_gigabit", "num_blade", "num_cmm"]
@@ -489,6 +602,8 @@ class special_net(special_base):
         return sc_array
 
 class special_libvirt(special_base):
+    class Meta:
+        server_contact = True
     def _call(self):
         sc_array = []
         srv_result = self.collrelay("domain_overview")
@@ -510,6 +625,7 @@ class special_libvirt(special_base):
 class special_eonstor(special_base):
     class Meta:
         retries = 4
+        server_contact = True
     def _call(self):
         sc_array = []
         srv_reply = self.snmprelay(
