@@ -694,7 +694,8 @@ class device_group(models.Model):
             if ignore_enabled:
                 sub_list = self.device_group.all()
             else:
-                sub_list = self.device_group.filter(Q(enabled=True))
+                # manual filtering, otherwise we would trigger a new DB-query
+                sub_list = [cur_dev for cur_dev in self.device_group.all() if cur_dev.enabled]
             cur_xml.append(
                 E.devices(*[cur_dev.get_xml(
                     full=full,
@@ -2085,7 +2086,7 @@ def config_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "name")
         # priority
-        _check_integer(cur_inst, "priority")
+        _check_integer(cur_inst, "priority", min_val=-9999, max_val=9999)
 
 @receiver(signals.post_save, sender=config)
 def config_post_save(sender, **kwargs):
