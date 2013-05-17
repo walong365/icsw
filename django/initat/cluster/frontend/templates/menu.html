@@ -69,6 +69,9 @@
             {% if settings.CLUSTER_LICENSE.ganglia %}
                 <li><a href="/ganglia-web">{% trans "Ganglia" %}</a></li>
             {% endif %}
+            <li>
+                <input id="create_monitoring_config" type="button" value="rebuild config"/>
+            </li>
         </ul>
     </li>
     {% endif %}
@@ -119,6 +122,18 @@ root.init_menu = () ->
     $("#main_navigation").superfish
         speed : 1
         delay : 500
+    $("#main_navigation input[type='button']").button()
+    {% if settings.CLUSTER_LICENSE.monitor %}
+    $("#main_navigation input#create_monitoring_config").bind("click", ->
+        $.ajax
+            url     : "{% url 'mon:create_config' %}"
+            title   : "create config"
+            success : (xml) =>
+                parse_xml_response(xml)
+        
+    )
+    {% endif %}
+    
 
 {% endinlinecoffeescript %}
 
