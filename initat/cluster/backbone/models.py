@@ -2686,7 +2686,9 @@ class partition(models.Model):
     fs_freq = models.IntegerField(null=True, blank=True, default=0)
     fs_passno = models.IntegerField(null=True, blank=True, default=0)
     partition_fs = models.ForeignKey("partition_fs")
-    lut_blob = models.TextField(blank=True, null=True)
+    #lut_blob = models.TextField(blank=True, null=True)
+    # comma-delimited list of /dev/disk/by-* entries
+    disk_by_info = models.TextField(default="")
     warn_threshold = models.IntegerField(null=True, blank=True)
     crit_threshold = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)

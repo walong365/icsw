@@ -102,20 +102,6 @@
         <field type="CharField" name="hexid">83</field>
         <field type="DateTimeField" name="date">2006-06-01T07:44:27+00:00</field>
     </object>
-    <object pk="3" model="backbone.partition_fs">
-        <field type="CharField" name="name">ext4</field>
-        <field type="CharField" name="identifier">f</field>
-        <field type="CharField" name="descr">Extended 4 Filesystem</field>
-        <field type="CharField" name="hexid">83</field>
-        <field type="DateTimeField" name="date">2012-10-21T07:44:27+00:00</field>
-    </object>
-    <object pk="3" model="backbone.partition_fs">
-        <field type="CharField" name="name">btrfs</field>
-        <field type="CharField" name="identifier">f</field>
-        <field type="CharField" name="descr">BTRFS Filesystem</field>
-        <field type="CharField" name="hexid">83</field>
-        <field type="DateTimeField" name="date">2012-10-30T07:44:27+00:00</field>
-    </object>
     <object pk="4" model="backbone.partition_fs">
         <field type="CharField" name="name">swap</field>
         <field type="CharField" name="identifier">s</field>
@@ -150,6 +136,20 @@
         <field type="CharField" name="descr">XFS Filesystem</field>
         <field type="CharField" name="hexid">82</field>
         <field type="DateTimeField" name="date">2012-11-16T11:50:19+00:00</field>
+    </object>
+    <object pk="9" model="backbone.partition_fs">
+        <field type="CharField" name="name">ext4</field>
+        <field type="CharField" name="identifier">f</field>
+        <field type="CharField" name="descr">Extended 4 Filesystem</field>
+        <field type="CharField" name="hexid">83</field>
+        <field type="DateTimeField" name="date">2012-10-21T07:44:27+00:00</field>
+    </object>
+    <object pk="10" model="backbone.partition_fs">
+        <field type="CharField" name="name">btrfs</field>
+        <field type="CharField" name="identifier">f</field>
+        <field type="CharField" name="descr">BTRFS Filesystem</field>
+        <field type="CharField" name="hexid">83</field>
+        <field type="DateTimeField" name="date">2012-10-30T07:44:27+00:00</field>
     </object>
     <object pk="1" model="backbone.log_status">
         <field type="CharField" name="identifier">c</field>
