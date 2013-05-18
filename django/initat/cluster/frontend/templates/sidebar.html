@@ -212,6 +212,11 @@ class sidebar_tree
                             opacity    : 50
                             position   : [event.pageY, event.pageX]
                             autoResize : true
+    set_next_gauge: (next_to) =>
+        $(document).stopTime("get_gauge_info")
+        $(document).everyTime(next_to, "get_gauge_info", (i) =>
+            @update_gauge_info()
+        )
     update_gauge_info: =>
         $.ajax
             url     : "{% url 'base:get_gauge_info' %}",
@@ -229,11 +234,8 @@ class sidebar_tree
                                 "value" : parseInt(gauge_el.attr("value")),
                             })
                         )
-                    $(document).stopTime("get_gauge_info")
                     next_to = if any_defined then 2000 else 30000
-                    $(document).everyTime(next_to, "get_gauge_info", (i) =>
-                        @update_gauge_info()
-                    )
+                    @set_next_gauge(next_to)
     
 root.init_sidebar = ->
     root.sidebar = new sidebar_tree($("div#sidebar_tree"))

@@ -136,7 +136,6 @@ def device_config(request):
             srv_list.append(dev_xml)
         part_list = E.partition_tables(*[cur_pt.get_xml() for cur_pt in partition_table.objects.all()])
         request.xml_response["response"] = E.response(srv_list, part_list)
-        print unicode(request.xml_response)
         return request.xml_response.create_response()
 
 @init_logging

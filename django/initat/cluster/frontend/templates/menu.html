@@ -131,7 +131,7 @@ root.init_menu = () ->
             success : (xml) =>
                 if parse_xml_response(xml)
                     try
-                        root.sidebar.update_gauge_info() 
+                        root.sidebar.set_next_gauge(2000)
                     catch err
         
     )
