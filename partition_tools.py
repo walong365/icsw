@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008,2009,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -108,7 +108,23 @@ class lvm_struct(object):
             path_found = [x for x in ["%s/%ss" % (y, bn) for y in lvm_path] if os.path.isfile(x)]
             if path_found:
                 self.__lvm_bin_dict[bn] = (path_found[0], bn_opts)
+    def _read_dm_links(self):
+        m_dict = {"dmtolv" : {}, "lvtodm" : {}}
+        s_dir = "/dev/mapper"
+        for entry in os.listdir(s_dir):
+            f_path = os.path.join(s_dir, entry)
+            if os.path.islink(f_path):
+                target = os.path.normpath(os.path.join(s_dir, os.readlink(f_path)))
+                m_dict["lvtodm"][entry] = target
+                m_dict["lvtodm"][os.path.join("/dev", *entry.split("-"))] = target
+                m_dict["dmtolv"][target] = f_path
+                #m_dict[os.path.basename(target)] = entry
+                #m_dict[target] = entry
+        return m_dict
     def update(self):
+        # read all dm-links
+        self.dm_dict = self._read_dm_links()
+        #pprint.pprint(self.dm_dict)
         self.lv_dict = {}
         if self.__source == "bin" and self.__lvm_bin_dict:
             self.lvm_present = True
@@ -217,32 +233,32 @@ class lvm_struct(object):
 class disk_lut(object):
     def __init__(self, **args):
         self.start_path = args.get("start_path", "/dev/disk")
-        self.__lut = {}
+        self.__rev_lut, self.__fw_lut, self.__lut = ({}, {}, {})
         if os.path.isdir(self.start_path):
-            for entry in os.listdir(self.start_path):
-                if entry.startswith("by-"):
-                    entry_type = entry[3:]
-                    loc_dict = {}
-                    loc_dir = "%s/%s" % (self.start_path, entry)
-                    for sub_entry in os.listdir(loc_dir):
-                        full_path = "%s/by-%s/%s" % (self.start_path, entry_type, sub_entry)
-                        if os.path.islink(full_path):
-                            target = os.path.normpath(os.path.join(loc_dir, os.readlink(full_path)))
-                            loc_dict.setdefault(target, []).append(sub_entry)
-                            loc_dict[sub_entry] = target
-                    self.__lut[entry_type] = loc_dict
+            for top_entry in os.listdir(self.start_path):
+                top_path = os.path.join(self.start_path, top_entry)
+                cur_lut = self.__lut.setdefault(top_entry, {})
+                if os.path.isdir(top_path):
+                    for entry in os.listdir(top_path):
+                        cur_path = os.path.join(top_path, entry)
+                        if os.path.islink(cur_path):
+                            target = os.path.normpath(os.path.join(top_path, os.readlink(cur_path)))
+                            cur_lut[entry] = target
+                            self.__fw_lut[cur_path] = target
+                            self.__rev_lut.setdefault(target, []).append(cur_path)
     def get_top_keys(self):
         return self.__lut.keys()
     def __getitem__(self, key):
         entry_type = None
         if type(key) == type(""):
-            if key.startswith("/dev/disk/by-"):
-                entry_type, key = key.split("-", 1)[1].split("/")
-            else:
+            if key.startswith("by-"):
                 return self.__lut[key]
+            elif key.startswith("/dev/disk/by-"):
+                return self.__fw_lut[key]
+            else:
+                return self.__rev_lut[key]
         else:
-            entry_type, key = key
-        return self.__lut[entry_type][key]
+            return self.__lut[entry_type][key]
 
 def test_it():
     my_lut = disk_lut()

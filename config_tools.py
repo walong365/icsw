@@ -138,7 +138,6 @@ class router_object(object):
     def map_path_to_device(self, in_path):
         return [self.nd_lut[value] for value in in_path]
 
-
 class topology_object(object):
     def __init__(self, log_com):
         self.__log_com = log_com

@@ -1116,6 +1116,12 @@ class debug_zmq_ctx(zmq.Context):
         debug_zmq_ctx.ctx_idx += 1
         zmq.Context.__init__(self, *args, **kwargs)
         self._sockets_open = set()
+    def __setattr__(self, key, value):
+        if key in ["zmq_idx", "_sockets_open"]:
+            # not defined in zmq.Context
+            self.__dict__[key] = value
+        else:
+            super(debug_zmq_ctx, self).__setattr__(key, value)
     def log(self, out_str):
         print "[[%d]] %s" % (self.zmq_idx, out_str)
     def socket(self, sock_type, *args, **kwargs):
@@ -1131,6 +1137,8 @@ class debug_zmq_ctx(zmq.Context):
     def term(self):
         self.log("term, %s open" % (logging_tools.get_plural("socket", len(self._sockets_open))))
         super(debug_zmq_ctx, self).term()
+
+import commands 
 
 class process_pool(timer_base):
     def __init__(self, name, **kwargs):
