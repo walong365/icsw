@@ -542,8 +542,7 @@ class server_process(threading_tools.process_pool):
         self.register_func("bg_finished", self._bg_finished)
         self._log_config()
         self._check_uuid()
-        #self.__is_server = not self.__server_com
-        self._load_modules()#self.__loc_config, self.log, self.__is_server)
+        self._load_modules()
         self._init_capabilities()
         self.__options = options
         self._set_next_backup_time(True)
@@ -561,7 +560,7 @@ class server_process(threading_tools.process_pool):
             self.__log_cache.append((lev, what))
     def _set_next_backup_time(self, first=False):
         self.__next_backup_dt = datetime.datetime.now().replace(microsecond=0)
-        if not global_config["DEBUG"]:
+        if not global_config["DEBUG"] or True:
             self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(days=0)).replace(hour=2, minute=0, second=0)
         else:
             self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(seconds=2 if first else 600))
