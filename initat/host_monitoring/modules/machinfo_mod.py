@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -389,44 +389,42 @@ class _general(hm_classes.hm_module):
         #if self.__check_nameserver:
         #    self._check_nameserver_stats(logger, mv)
     def _partinfo_int(self):
+        # lookup tables for /dev/disk-by
         my_disk_lut = partition_tools.disk_lut()
+        #print self.local_lvm_info
         #IGNORE_LVM_PARTITIONS = False
+        file_dict = {}
+        # read files
+        file_list = ["/proc/mounts", "/proc/devices", "/etc/fstab", "/proc/partitions"]
+        for file_name in file_list:
+            b_name = os.path.basename(file_name)
+            try:
+                cur_list = [line.strip().split() for line in open(file_name, "r").read().split("\n") if line.strip()]
+            except:
+                pass
+            else:
+                file_dict[b_name] = cur_list
+        read_err_list = [os.path.basename(file_name) for file_name in file_list if os.path.basename(file_name) not in file_dict]
+        file_dict["partitions"] = [line[0:4] for line in file_dict["partitions"] if len(line) > 3]
         dev_dict, sys_dict = ({}, {})
-        read_err_list = []
-        try:
-            mount_list = [x.strip().split() for x in open("/proc/mounts", "r").read().split("\n") if x.strip()]
-        except:
-            read_err_list.append("/proc/mounts")
-        try:
-            devices_list = [x.strip().split() for x in open("/proc/devices", "r").read().split("\n") if x.strip()]
-        except:
-            read_err_list.append("/proc/devices")
-        try:
-            fstab_list = [x.strip().split() for x in open("/etc/fstab", "r").read().split("\n") if x.strip()]
-        except:
-            read_err_list.append("/etc/fstab")
-        try:
-            parts_list = [y[0:4] for y in [x.strip().split() for x in open("/proc/partitions", "r").read().split("\n") if x.strip()] if len(y) >=4]
-        except:
-            read_err_list.append("/proc/partitions")
         try:
             real_root_dev = int(open("/proc/sys/kernel/real-root-dev", "r").read().strip())
         except:
             read_err_list.append("/proc/sys/kernel/real-root-dev")
         if read_err_list:
-            ret_str = "error reading %s" % (" and ".join(read_err_list))
+            ret_str = "error reading %s" % (", ".join(read_err_list))
         else:
             ret_str = ""
             # build devices-dict
             while True:
-                stuff = devices_list.pop(0)
+                stuff = file_dict.get("devices", []).pop(0)
                 if stuff[0].lower().startswith("block"):
                     break
-            devices_dict = dict([(int(x), y) for x, y in devices_list])
+            devices_dict = dict([(int(x), y) for x, y in file_dict.get("devices", [])])
             #print devices_dict
             # build partition-dict
             part_dict, real_root_dev_name = ({}, None)
-            for major, minor, blocks, part_name in parts_list:
+            for major, minor, blocks, part_name in file_dict.get("partitions", []):
                 if major.isdigit() and minor.isdigit() and blocks.isdigit():
                     major = int(major)
                     minor = int(minor)
@@ -437,7 +435,7 @@ class _general(hm_classes.hm_module):
                         dev_dict["/dev/%s" % (part_name)] = {}
                     part_dict.setdefault(major, {}).setdefault(minor, (part_name, blocks))
             if not real_root_dev_name and real_root_dev:
-                real_root_list = [x[0] for x in mount_list if x[1] == "/" and x[0] != "rootfs"]
+                real_root_list = [x[0] for x in file_dict.get("mounts", []) if x[1] == "/" and x[0] != "rootfs"]
                 if real_root_list:
                     real_root_dev = real_root_list[0]
                     if not real_root_dev.startswith("/"):
@@ -465,29 +463,26 @@ class _general(hm_classes.hm_module):
                     if stat:
                         ret_str = "error reading partition table of %s (%d): %s" % (dev, stat, out)
                         break
-                    lines = [[z for z in [y.strip() for y in x.strip().split()] if z != "*"] for x in out.split("\n") if x.startswith(dev)]
-                    for stuff in lines:
-                        part    = stuff.pop(0)
-                        start   = stuff.pop(0)
-                        end     = stuff.pop(0)
-                        size    = stuff.pop(0)
-                        hextype = stuff.pop(0)
-                        info = " ".join(stuff)
+                    lines = [[part.strip() for part in line.strip().split() if part.strip() != "*"] for line in out.split("\n") if line.startswith(dev)]
+                    for line in lines:
+                        part    = line.pop(0)
+                        start   = line.pop(0)
+                        end     = line.pop(0)
+                        size    = line.pop(0)
+                        hextype = line.pop(0)
+                        info = " ".join(line)
                         if size.endswith("+"):
                             size = size[:-1]
-                        start = int(start)
-                        end  = int(start)
-                        size = int(size) / 1000
+                        start, end, size = (int(start), int(end), int(size) / 1000)
                         hextype = "0x%02x" % (int(hextype, 16))
                         part_num = part[len(dev):]
-                        dev_dict[dev][part_num] = {"size"    : size,
-                                                   "hextype" : hextype,
-                                                   "info"    : info}
+                        dev_dict[dev][part_num] = {
+                            "size"    : size,
+                            "hextype" : hextype,
+                            "info"    : info}
                         part_lut[part] = (dev, part_num)
                 # kick empty devices
-                empty_dev_list = [k for k, v in dev_dict.iteritems() if not v]
-                for ed in empty_dev_list:
-                    del dev_dict[ed]
+                dev_dict = dict([(key, value) for key, value in dev_dict.iteritems() if value])
                 if not ret_str:
                     if not dev_dict:
                         # no device_dict up to now, maybe xen-machine, check part_dict
@@ -511,637 +506,103 @@ class _general(hm_classes.hm_module):
                     # drop unneeded entries
                     real_mounts, sys_mounts = ([], [])
                     parts_found = []
-                    for part, mp, fstype, opts, dump, fsck in mount_list:
-                        # rewrite from by-id to real device
-                        if part.count("by-id"):
-                            part = os.path.normpath(os.path.join(part, "..", os.readlink(part)))
-                        if part not in parts_found:
-                            parts_found.append(part)
-                            if fstype in ["subfs", "autofs"]:
-                                pass
-                            elif part == "rootfs" or part.startswith("automount(") or part.count(":"):
-                                if part.startswith("automount("):
-                                    auto_mps.append(mp)
-                            else:
-                                if part == "/dev/root":
-                                    part = "/dev/%s" % (real_root_dev_name)
-                                if part.startswith("/") and part != mp:
-                                    if ([x for x in auto_mps if mp.startswith(x)]):
-                                        # ignore automounted stuff
-                                        pass
-                                    elif part.startswith("/dev/loop"):
-                                        # ignore loop mounted stuff
-                                        pass
-                                    else:
-                                        real_mounts.append((part, mp, fstype, opts, int(dump), int(fsck)))
-                                        if not part_lut.has_key(part):
-                                            # check for LVM-partition
-                                            try:
-                                                if part.startswith("/dev/mapper"):
-                                                    vg_name, lv_name = part.split("/")[3].split("-")
-                                                else:
-                                                    vg_name, lv_name = part.split("/")[2:4]
-                                            except:
-                                                self.log("error splitting path %s: %s" % (part,
-                                                                                          process_tools.get_except_info()),
-                                                         logging_tools.LOG_LEVEL_ERROR)
-                                            else:
-                                                #print self.local_lvm_info
-                                                act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
-                                                act_lv["mount_options"] = {
-                                                    "mountpoint" : mp,
-                                                    "fstype"     : fstype,
-                                                    "options"    : opts,
-                                                    "dump"       : int(dump),
-                                                                           "fsck"       : int(fsck)}
-                                        else:
-                                            dev, part_num = part_lut[part]
-                                            dev_dict[dev][part_num]["mountpoint"] = mp
-                                            dev_dict[dev][part_num]["fstype"]     = fstype
-                                            dev_dict[dev][part_num]["options"]    = opts
-                                            dev_dict[dev][part_num]["dump"]       = int(dump)
-                                            dev_dict[dev][part_num]["fsck"]       = int(fsck)
-                                            if not dev_dict[dev][part_num]["info"]:
-                                                if fstype not in ["swap"]:
-                                                    dev_dict[dev][part_num]["hextype"] = "0x83"
-                                                    dev_dict[dev][part_num]["info"] = "Linux"
-                                                else:
-                                                    dev_dict[dev][part_num]["hextype"] = "0x82"
-                                                    dev_dict[dev][part_num]["info"] = "Linux swap / Solaris"
-                                            # add lookup
-                                            local_lut = {}
-                                            for add_key in sorted(my_disk_lut.get_top_keys()):
-                                                if my_disk_lut[add_key].has_key(part):
-                                                    local_lut[add_key] = my_disk_lut[(add_key, part)]
-                                            dev_dict[dev][part_num]["lut"] = local_lut
-                                else:
-                                    if part == mp:
-                                        part = "none"
-                                    if not sys_dict.has_key(part) or not len([x for x in sys_dict[part] if x["mountpoint"] == mp]):
-                                        sys_dict.setdefault(part, []).append({"mountpoint" : mp,
-                                                                              "fstype"     : fstype,
-                                                                              "options"    : opts})
-                                        sys_mounts.append((part, mp, fstype, opts))
-                    ret_str = ""
-        return ret_str, dev_dict, sys_dict
-
-class my_modclass(hm_classes.hm_fileinfo):
-    def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "machinfo",
-                                        "returns basic hardware information about this machine",
-                                        **args)
-    def init(self, mode, logger, basedir_name, **args):
-        mtype = os.uname()[4]
-        if re.match("^i.*86$", mtype) or re.match("^x86.64$", mtype):
-            self.mach_arch = "i386"
-        else:
-            self.mach_arch = "alpha"
-        if mode == "i":
-            self.vdict, self.cdict = pci_database.get_pci_dicts()
-            conf_file = "/etc/sysconfig/ethtool/config"
-            if not os.path.isdir(os.path.dirname(conf_file)):
-                try:
-                    os.mkdir(os.path.dirname(conf_file))
-                except:
-                    logger.error("cannot create directory %s: %s" % (os.path.dirname(conf_file),
-                                                                     process_tools.get_except_info()))
-            try:
-                conf_data = open(conf_file, "w")
-            except:
-                logger.error("cannot open file %s for writing:: %s" % (conf_file,
-                                                                       process_tools.get_except_info()))
-            else:
-                net_dir = "/sys/class/net"
-                drv_dict = {}
-                if os.path.isdir(net_dir):
-                    for entry in os.listdir(net_dir):
-                        device_link = "%s/%s/device" % (net_dir, entry)
-                        driver_link = "%s/%s/driver" % (net_dir, entry)
-                        if not os.path.islink(driver_link):
-                            driver_link = "%s/driver" % (device_link)
-                        if os.path.islink(device_link) and os.path.islink(driver_link):
-                            driver   = os.path.basename(os.path.normpath("%s/%s/%s" % (net_dir, entry, os.readlink(driver_link))))
-                            pci_info = os.path.basename(os.path.normpath("%s/%s/%s" % (net_dir, entry, os.readlink(device_link))))
-                            drv_dict.setdefault(driver, []).append(entry)
-                            conf_data.write("pci_%s=\"%s\"\n" % (entry, pci_info))
-                            conf_data.write("drv_%s=\"%s\"\n" % (entry, driver))
-                            #print entry, pci_info, driver
-                for driv_name, driv_nets in drv_dict.iteritems():
-                    conf_data.write("net_%s=\"%s\"\n" % (driv_name, " ".join(driv_nets)))
-                conf_data.close()
-            #self._rescan_valid_disk_stuff(logger)
-            # check for lvm-bins
-            self.local_lvm_info = partition_tools.lvm_struct("bin")
-            self.cpu_list = ["0"]
-            self.disk_dict, self.vmstat_dict, self.disk_stat = ({}, {}, {})
-            self.disk_dict_last_update = 0
-            self.last_time = 0.
-    def process_server_args(self, glob_config, logger):
-        self.__glob_config = glob_config
-        self.__check_nameserver = False
-        if self.__glob_config["CHECK_NAMESERVER"]:
-            rndc_bin_locs = ["/usr/sbin/rndc"]
-            for rndc_bin_loc in rndc_bin_locs:
-                if os.path.isfile(rndc_bin_loc):
-                    self.__check_nameserver, self.__rndc_com = (True, rndc_bin_loc)
-                    logger.info("enabled nameserver stats")
-                    self.__nameserver_dict, self.__nameserver_check = ({}, time.time())
-        return (True, "")
-    def process_client_args(self, opts, hmb):
-        ok, why = (1, "")
-        my_lim = limits.limits()
-        cpu_range = limits.range_parameter("cpuspeed")
-        for opt, arg in opts:
-            #print opt, arg
-            if hmb.name in ["machinfo", "pciinfo", "hwinfo", "cpuinfo", "lvminfo", "dmiinfo"]:
-                if opt in ("-r", "--raw"):
-                    my_lim.set_add_flags("R")
-            if hmb.name in ["lvminfo"]:
-                my_lim.set_add_flags("L")
-            if opt == "-w":
-                if my_lim.set_warn_val(arg) == 0:
-                    ok = 0
-                    why = "Can't parse warning value !"
-            if opt == "-c":
-                if my_lim.set_crit_val(arg) == 0:
-                    ok = 0
-                    why = "Can't parse critical value !"
-            if hmb.name in ["cpuinfo"]:
-                if opt == "--cpulow":
-                    cpu_range.set_lower_boundary(arg)
-                if opt == "--cpuhigh":
-                    cpu_range.set_upper_boundary(arg)
-            if hmb.name in ["general"]:
-                if opt in ["-l", "-A"]:
-                    my_lim.set_add_flags("l")
-                if opt in ["-u", "-A"]:
-                    my_lim.set_add_flags("u")
-                if opt in ["-i", "-A"]:
-                    my_lim.set_add_flags("i")
-                if opt in ["-k", "-A"]:
-                    my_lim.set_add_flags("k")
-                if opt in ["-d", "-A"]:
-                    my_lim.set_add_flags("d")
-        return ok, why, [my_lim, cpu_range]
-    def proc_stat_info(self, first_line):
-        if len(first_line) >= 9:
-            # kernel 2.5 and above with additional steal-value
-            what_list = ["user", "nice", "sys", "idle", "iowait", "irq", "softirq", "steal"]
-            kernel = 26
-        elif len(first_line) == 8:
-            # kernel 2.5 and above
-            what_list = ["user", "nice", "sys", "idle", "iowait", "irq", "softirq"]
-            kernel = 26
-        else:
-            # up to kernel 2.4
-            what_list = ["user", "nice", "sys", "idle"]
-            kernel = 24
-        return what_list, kernel
-    # initialises machine vector
-    def _mem_int(self):
-        m_dict = dict([(s_pair[0][0:-1], s_pair[1]) for s_pair in [l_split.split() for l_split in [r_line.strip() for r_line in open("/proc/meminfo", "r").readlines()]
-                                                                   if l_split.endswith("kB")]
-                       if len(s_pair) > 1])
-        m_array = {}
-        for s_key in ["MemTotal", "MemFree", "Buffers", "Cached", "SwapTotal", "SwapFree", "MemShared"]:
-            if m_dict.has_key(s_key):
-                m_array[s_key.lower()] = int(m_dict[s_key])
-            else:
-                m_array[s_key.lower()] = 0
-        return m_array
-    def _load_int(self):
-        return [float(x) for x in open("/proc/loadavg", "r").read().strip().split()[0:3]]
-    def _partinfo_int(self):
-        my_disk_lut = partition_tools.disk_lut()
-        #IGNORE_LVM_PARTITIONS = False
-        dev_dict, sys_dict = ({}, {})
-        read_err_list = []
-        try:
-            mount_list = [x.strip().split() for x in open("/proc/mounts", "r").read().split("\n") if x.strip()]
-        except:
-            read_err_list.append("/proc/mounts")
-        try:
-            devices_list = [x.strip().split() for x in open("/proc/devices", "r").read().split("\n") if x.strip()]
-        except:
-            read_err_list.append("/proc/devices")
-        try:
-            fstab_list = [x.strip().split() for x in open("/etc/fstab", "r").read().split("\n") if x.strip()]
-        except:
-            read_err_list.append("/etc/fstab")
-        try:
-            parts_list = [y[0:4] for y in [x.strip().split() for x in open("/proc/partitions", "r").read().split("\n") if x.strip()] if len(y) >=4]
-        except:
-            read_err_list.append("/proc/partitions")
-        try:
-            real_root_dev = int(open("/proc/sys/kernel/real-root-dev", "r").read().strip())
-        except:
-            read_err_list.append("/proc/sys/kernel/real-root-dev")
-        if read_err_list:
-            ret_str = "error reading %s" % (" and ".join(read_err_list))
-        else:
-            ret_str = ""
-            # build devices-dict
-            while True:
-                stuff = devices_list.pop(0)
-                if stuff[0].lower().startswith("block"):
-                    break
-            devices_dict = dict([(int(x), y) for x, y in devices_list])
-            #print devices_dict
-            # build partition-dict
-            part_dict, real_root_dev_name = ({}, None)
-            for major, minor, blocks, part_name in parts_list:
-                if major.isdigit() and minor.isdigit() and blocks.isdigit():
-                    major = int(major)
-                    minor = int(minor)
-                    if major * 256 + minor == real_root_dev:
-                        real_root_dev_name = part_name
-                    blocks = int(blocks)
-                    if not minor or not part_name[-1].isdigit():
-                        dev_dict["/dev/%s" % (part_name)] = {}
-                    part_dict.setdefault(major, {}).setdefault(minor, (part_name, blocks))
-            if not real_root_dev_name and real_root_dev:
-                real_root_list = [x[0] for x in mount_list if x[1] == "/" and x[0] != "rootfs"]
-                if real_root_list:
-                    real_root_dev = real_root_list[0]
-                    if not real_root_dev.startswith("/"):
-                        ret_str = "error determining real_root_device"
-            if not real_root_dev_name:
-                # try to get root-dev-name from /dev/root
-                if os.path.islink("/dev/root"):
-                    real_root_dev_name = os.readlink("/dev/root")
-                    if real_root_dev_name.startswith("/dev/"):
-                        real_root_dev_name = real_root_dev_name[5:]
-            # still no real_root_dev_name: try /etc/mtab
-            if not real_root_dev_name:
-                if os.path.isfile("/etc/mtab"):
-                    root_list = [parts[0] for parts in [line.split() for line in open("/etc/mtab", "r").read().split("\n") if line.strip()] if len(parts) > 2 and parts[1] == "/"]
-                    if root_list:
-                        real_root_dev_name = root_list[0]
-                        if real_root_dev_name.startswith("/dev/"):
-                            real_root_dev_name = real_root_dev_name[5:]
-            if not ret_str:
-                # partition lookup dict
-                part_lut = {}
-                # fetch fdisk information
-                for dev in dev_dict.keys():
-                    stat, out = commands.getstatusoutput("/sbin/fdisk -l %s" % (dev))
-                    if stat:
-                        ret_str = "error reading partition table of %s (%d): %s" % (dev, stat, out)
-                        break
-                    lines = [[z for z in [y.strip() for y in x.strip().split()] if z != "*"] for x in out.split("\n") if x.startswith(dev)]
-                    for stuff in lines:
-                        part    = stuff.pop(0)
-                        start   = stuff.pop(0)
-                        end     = stuff.pop(0)
-                        size    = stuff.pop(0)
-                        hextype = stuff.pop(0)
-                        info = " ".join(stuff)
-                        if size.endswith("+"):
-                            size = size[:-1]
-                        start = int(start)
-                        end  = int(start)
-                        size = int(size) / 1000
-                        hextype = "0x%02x" % (int(hextype, 16))
-                        part_num = part[len(dev):]
-                        dev_dict[dev][part_num] = {"size"    : size,
-                                                   "hextype" : hextype,
-                                                   "info"    : info}
-                        part_lut[part] = (dev, part_num)
-                # kick empty devices
-                empty_dev_list = [k for k, v in dev_dict.iteritems() if not v]
-                for ed in empty_dev_list:
-                    del dev_dict[ed]
-                if not ret_str:
-                    if not dev_dict:
-                        # no device_dict up to now, maybe xen-machine, check part_dict
-                        for major, m_stuff in part_dict.iteritems():
-                            for minor, part_stuff in m_stuff.iteritems():
-                                part_name, part_size = part_stuff
-                                dev_name = part_name
-                                while dev_name[-1].isdigit():
-                                    dev_name = dev_name[:-1]
-                                part_num = int(part_name[len(dev_name):])
-                                dev_name = "/dev/%s" % (dev_name)
-                                if not dev_dict.has_key(dev_name):
-                                    dev_dict[dev_name] = {}
-                                dev_dict[dev_name]["%d" % (part_num)] = {"size"    : part_size / 1024,
-                                                                         "hextype" : "0x00",
-                                                                         "info"    : ""}
-                                part_lut["/dev/%s" % (part_name)] = (dev_name, "%d" % (part_num))
-                    # automount mointpoints
-                    auto_mps = []
-                    # drop unneeded entries
-                    real_mounts, sys_mounts = ([], [])
-                    parts_found = []
-                    for part, mp, fstype, opts, dump, fsck in mount_list:
-                        # rewrite from by-id to real device
-                        if part.count("by-id"):
-                            part = os.path.normpath(os.path.join(part, "..", os.readlink(part)))
-                        if part not in parts_found:
-                            parts_found.append(part)
-                            if fstype in ["subfs", "autofs"]:
-                                pass
-                            elif part == "rootfs" or part.startswith("automount(") or part.count(":"):
-                                if part.startswith("automount("):
-                                    auto_mps.append(mp)
-                            else:
-                                if part == "/dev/root":
-                                    part = "/dev/%s" % (real_root_dev_name)
-                                if part.startswith("/") and part != mp:
-                                    if ([x for x in auto_mps if mp.startswith(x)]):
-                                        # ignore automounted stuff
-                                        pass
-                                    elif part.startswith("/dev/loop"):
-                                        # ignore loop mounted stuff
-                                        pass
-                                    else:
-                                        real_mounts.append((part, mp, fstype, opts, int(dump), int(fsck)))
-                                        if not part_lut.has_key(part):
-                                            # check for LVM-partition
-                                            try:
-                                                if part.startswith("/dev/mapper"):
-                                                    vg_name, lv_name = part.split("/")[3].split("-")
-                                                else:
-                                                    vg_name, lv_name = part.split("/")[2:4]
-                                            except:
-                                                self.log("error splitting path %s: %s" % (part,
-                                                                                          process_tools.get_except_info()),
-                                                         logging_tools.LOG_LEVEL_ERROR)
-                                            else:
-                                                #print self.local_lvm_info
-                                                act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
-                                                act_lv["mount_options"] = {"mountpoint" : mp,
-                                                                           "fstype"     : fstype,
-                                                                           "options"    : opts,
-                                                                           "dump"       : int(dump),
-                                                                           "fsck"       : int(fsck)}
-                                        else:
-                                            dev, part_num = part_lut[part]
-                                            dev_dict[dev][part_num]["mountpoint"] = mp
-                                            dev_dict[dev][part_num]["fstype"]     = fstype
-                                            dev_dict[dev][part_num]["options"]    = opts
-                                            dev_dict[dev][part_num]["dump"]       = int(dump)
-                                            dev_dict[dev][part_num]["fsck"]       = int(fsck)
-                                            if not dev_dict[dev][part_num]["info"]:
-                                                if fstype not in ["swap"]:
-                                                    dev_dict[dev][part_num]["hextype"] = "0x83"
-                                                    dev_dict[dev][part_num]["info"] = "Linux"
-                                                else:
-                                                    dev_dict[dev][part_num]["hextype"] = "0x82"
-                                                    dev_dict[dev][part_num]["info"] = "Linux swap / Solaris"
-                                            # add lookup
-                                            local_lut = {}
-                                            for add_key in sorted(my_disk_lut.get_top_keys()):
-                                                if my_disk_lut[add_key].has_key(part):
-                                                    local_lut[add_key] = my_disk_lut[(add_key, part)]
-                                            dev_dict[dev][part_num]["lut"] = local_lut
-                                else:
-                                    if part == mp:
-                                        part = "none"
-                                    if not sys_dict.has_key(part) or not len([x for x in sys_dict[part] if x["mountpoint"] == mp]):
-                                        sys_dict.setdefault(part, []).append({"mountpoint" : mp,
-                                                                              "fstype"     : fstype,
-                                                                              "options"    : opts})
-                                        sys_mounts.append((part, mp, fstype, opts))
-                    ret_str = ""
-        return ret_str, dev_dict, sys_dict
-    def _vmstat_int(self, logger, mvect):
-        lines = open("/proc/stat", "r").read().split("\n")
-        act_time = time.time()
-        # disk_stat format: device -> (sectors read/written, milliseconds spent read/written)
-        stat_dict, disk_stat = ({}, {})
-        kernel, what_list = (None, None)
-        for lines in [x.split() for x in [y.strip() for y in lines] if x]:
-            if lines[0].startswith("cpu"):
-                stat_dict[lines[0]] = [long(x) for x in lines[1:]]
-
-                if not kernel:
-                    what_list, kernel = self.proc_stat_info(lines)
-            elif lines[0] == "ctxt":
-                stat_dict["ctxt"] = long(lines[1])
-            elif lines[0] == "intr":
-                stat_dict["intr"] = long(lines[1])
-            elif lines[0] == "swap":
-                stat_dict["swap"] = [long(lines[1]), long(lines[2])]
-            elif lines[0] == "disk_io:":
-                blks_read, blks_written = (0, 0)
-                for io in [[y.strip() for y in x.split(":")[1][1:-1].split(",")] for x in lines[1:]]:
-                    blks_read += long(io[2])
-                    blks_written += long(io[4])
-                disk_stat["total"] = (blks_read, blks_written, 0, 0, 0)
-                dev_list, unique_dev_list = (["total"], ["total"])
-                #stat_dict["disk_io"] = []
-            # check for diskstats-file
-        if os.path.isfile("/proc/diskstats"):
-            try:
-                ds_dict = dict([(y[2].strip(), [int(y[0]), int(y[1])] + [long(z) for z in y[3:]]) for y in [x.strip().split() for x in open("/proc/diskstats", "r").read().split("\n")] if len(y) == 14])# and y[2].strip() in self.valid_block_devs.keys()])
-            except:
-                pass
-            else:
-                # get list of mounts
-                try:
-                    mount_list = [y.split("/", 2)[2] for y in [x.strip().split()[0] for x in open("/proc/mounts", "r").read().split("\n") if x.startswith("/dev/")]]
-                except:
-                    # cannot read, take all devs
-                    mount_list = ds_dict.keys()
-                else:
-                    pass
-                # get unique devices
-                ds_keys_ok_by_name = sorted([key for key, value in ds_dict.iteritems() if key in self.valid_block_devs.keys()])
-                # sort out partition stuff
-                last_name = ""
-                ds_keys_ok_by_major = []
-                for d_name in sorted([key for key, value in ds_dict.iteritems() if value[0] in self.valid_major_nums.keys()]):
-                    if last_name and not (d_name.startswith("dm-") or d_name.startswith("md")) and d_name.startswith(last_name):
-                        pass
-                    else:
-                        ds_keys_ok_by_major.append(d_name)
-                        last_name = d_name
-                if ds_keys_ok_by_name != ds_keys_ok_by_major:
-                    self._rescan_valid_disk_stuff(logger)
-                    ds_keys_ok_by_major = ds_keys_ok_by_name
-                    self.local_lvm_info.update()
-                mounted_lvms = {}
-                if self.local_lvm_info.lvm_present:
-                    for loc_lvm_name, loc_lvm_info in self.local_lvm_info.lv_dict.get("lv", {}).iteritems():
-                        lv_k_major, lv_k_minor = (int(loc_lvm_info["kernel_major"]),
-                                                  int(loc_lvm_info["kernel_minor"]))
-                        if lv_k_major in self.valid_major_nums.keys():
-                            mount_dev = "%s/%s" % (loc_lvm_info["vg_name"],
-                                                   loc_lvm_info["name"])
-                            mounted_lvms[mount_dev] = "%s-%d" % (self.valid_major_nums[lv_k_major][0].split("-")[0], lv_k_minor)
-                # problem: LVM devices are not handled properly
-                dev_list = [x for x in ds_keys_ok_by_name if [True for y in mount_list if y.startswith(x)]] + \
-                           [value for key, value in mounted_lvms.iteritems() if key in mount_list]
-                for dl in dev_list:
-                    disk_stat[dl] = (ds_dict[dl][4],
-                                     ds_dict[dl][8],
-                                     ds_dict[dl][5],
-                                     ds_dict[dl][9],
-                                     ds_dict[dl][11])
-                disk_stat["total"] = []
-                for idx in range(5):
-                    disk_stat["total"].append(sum([disk_stat[x][idx] for x in dev_list]))
-                dev_list.append("total")
-                unique_dev_list = dev_list
-        #print dev_list, disk_stat
-        #stat_dict["disk_io"] = [blks_read, blks_written]
-        if not what_list:
-            what_list = ["user", "nice", "sys", "idle"]
-        stat_d = {}
-        if self.last_time != 0.:
-            tdiff = act_time - self.last_time
-            if self.mach_arch == "alpha":
-                vms_tdiff = tdiff * 1024. / 100.
-            else:
-                vms_tdiff = tdiff
-            if stat_dict.has_key("ctxt") and self.vmstat_dict.has_key("ctxt"):
-                mvect.reg_update(logger, "num.context", int((stat_dict["ctxt"] - self.vmstat_dict["ctxt"]) / tdiff))
-            for cpui in ["-"] + self.cpu_list:
-                cpustr = "cpu"
-                name_p = ""
-                if cpui != "-":
-                    cpustr += cpui
-                    name_p = ".p%s" % (cpui)
-                    if len(self.cpu_list) < 2:
-                        break
-                if stat_dict.has_key(cpustr) and self.vmstat_dict.has_key(cpustr):
-                    idx = 0
-                    for name in what_list:
-                        mvect.reg_update(logger, "vms.%s%s" % (name, name_p), float(sub_wrap(stat_dict[cpustr][idx], self.vmstat_dict[cpustr][idx]) / vms_tdiff))
-                        idx += 1
-                else:
-                    break
-            if stat_dict.has_key("intr") and self.vmstat_dict.has_key("intr"):
-                mvect.reg_update(logger, "num.interrupts", int(sub_wrap(stat_dict["intr"], self.vmstat_dict["intr"]) / tdiff))
-            if stat_dict.has_key("swap") and self.vmstat_dict.has_key("swap"):
-                for name, idx in [("in", 0), ("out", 1)]:
-                    mvect.reg_update(logger, "swap.%s" % (name), int(sub_wrap(stat_dict["swap"][idx], self.vmstat_dict["swap"][idx]) / tdiff))
-            for act_disk in unique_dev_list:
-                if not self.disk_stat.has_key(act_disk):
-                    info_str = act_disk == "total" and "total" or "on /dev/$2"
-                    mvect.reg_entry("io.%s.blks.read" % (act_disk)   , 0 , "number of blocks read per second %s" % (info_str)   , "1/s")
-                    mvect.reg_entry("io.%s.blks.written" % (act_disk), 0 , "number of blocks written per second %s" % (info_str), "1/s")
-                    mvect.reg_entry("io.%s.time.read" % (act_disk)   , 0., "milliseconds spent reading %s" % (info_str)         , "s"  )
-                    mvect.reg_entry("io.%s.time.written" % (act_disk), 0., "milliseconds spent writing %s" % (info_str)         , "s"  )
-                    mvect.reg_entry("io.%s.time.io" % (act_disk)     , 0., "milliseconds spent doing IO %s" % (info_str)        , "s"  )
-            for old_disk in self.disk_stat.keys():
-                if not disk_stat.has_key(old_disk):
-                    mvect.unreg_entry("io.%s.blks.read" % (old_disk))
-                    mvect.unreg_entry("io.%s.blks.written" % (old_disk))
-                    mvect.unreg_entry("io.%s.time.read" % (old_disk))
-                    mvect.unreg_entry("io.%s.time.written" % (old_disk))
-                    mvect.unreg_entry("io.%s.time.io" % (old_disk))
-            for act_disk in [d for d in unique_dev_list if self.disk_stat.has_key(d)]:
-                #print act_disk, disk_stat[act_disk]
-                for idx, what in [(0, "read"), (1, "written")]:
-                    mvect.reg_update(logger, "io.%s.blks.%s" % (act_disk, what), int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff))
-                for idx, what in [(2, "read"), (3, "written"), (4, "io")]:
-                    mvect.reg_update(logger, "io.%s.time.%s" % (act_disk, what), float(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / (1000 * tdiff)))
-            self.vmstat_dict = stat_dict
-            self.disk_stat = disk_stat
-        else:
-            tdiff = None
-        self.last_time = act_time
-    def _df_int(self, logger, mvect=None):
-        act_time, update_dict = (time.time(), False)
-        if mvect or abs(self.disk_dict_last_update - act_time) > 90:
-            update_dict = True
-        if update_dict:
-            self.disk_dict_last_update = act_time
-            ram_match = re.compile("^.*/ram\d+$")
-            dev_match = re.compile("^/dev/.*$")
-            smount_lines = [line.strip().split() for line in open("/etc/mtab", "r").readlines()]
-            link_list = []
-            mlist = []
-            for line in smount_lines:
-                if line[2] not in ["none"] and line[0].startswith("/") and not ram_match.match(line[0]) and dev_match.match(line[0]):
-                    mlist.append(line)
-                    if os.path.islink(line[0]):
-                        link_list.append((os.path.normpath(os.path.join(os.path.dirname(line[0]),
-                                                                        os.readlink(line[0]))),
-                                          line[0]))
-            #print self.disk_dict
-            n_dict = {}
-            for mnt in mlist:
-                try:
-                    osres = os.statvfs(mnt[1])
-                except:
-                    pass
-                else:
-                    fact = float(osres[statvfs.F_FRSIZE]) / (1024.)
-                    try:
-                        blocks, bfree, bavail = int(osres[statvfs.F_BLOCKS]), int(osres[statvfs.F_BFREE]), int(osres[statvfs.F_BAVAIL])
-                    except:
-                        pass
-                    else:
-                        if blocks:
-                            sizetot = blocks * fact
-                            sizeused = (blocks - bfree) * fact
-                            sizeavail = bavail * fact
-                            sizefree = sizetot - sizeused
-                            proc = int((100.*float(blocks - bfree)) / float(blocks - bfree + bavail))
-                            n_dict[mnt[0]] = [mnt[1], proc, int(sizetot), int(sizeused), int(sizefree)]
-            for link_dst, link_src in link_list:
-                n_dict[link_dst] = n_dict[link_src]
-        else:
-            n_dict = self.disk_dict
-        if mvect:
-            # delete old keys
-            for key in self.disk_dict.keys():
-                if not n_dict.has_key(key):
-                    mvect.unreg_entry("df.%s.f" % (key))
-                    mvect.unreg_entry("df.%s.u" % (key))
-                    mvect.unreg_entry("df.%s.t" % (key))
-            for key in n_dict.keys():
-                if not self.disk_dict.has_key(key):
-                    mvect.reg_entry("df.%s.f" % (key), 0, "free space on $2 (%s)" % (n_dict[key][0]), "Byte", 1000, 1000)
-                    mvect.reg_entry("df.%s.u" % (key), 0, "used space on $2 (%s)" % (n_dict[key][0]), "Byte", 1000, 1000)
-                    mvect.reg_entry("df.%s.t" % (key), 0, "size of $2 (%s)"       % (n_dict[key][0]), "Byte", 1000, 1000)
-            self.disk_dict = n_dict
-            for key in self.disk_dict.keys():
-                mvect.reg_update(logger, "df.%s.f" % (key), self.disk_dict[key][4])
-                mvect.reg_update(logger, "df.%s.u" % (key), self.disk_dict[key][3])
-                mvect.reg_update(logger, "df.%s.t" % (key), self.disk_dict[key][2])
-        else:
-            return n_dict
-    def _check_nameserver_stats(self, logger, mv):
-        c_stat, c_out = commands.getstatusoutput("%s stats" % (self.__rndc_com))
-        #print "cns:", c_stat, c_out
-        if c_stat:
-            logger.error("error querying nameserver (%d): %s" % (c_stat, c_out))
-        else:
-            stat_f_name = "/var/lib/named/log/named.stats"
-            if os.path.isfile(stat_f_name):
-                stat_dict = {}
-                for line in open(stat_f_name, "r").read().split("\n"):
-                    if line.strip():
-                        if line.startswith("+++"):
-                            stat_dict = {}
-                        elif line.startswith("---"):
-                            pass
+                    # build fs_tab_dict
+                    fs_tab_dict = {}
+                    for value in file_dict.get("fstab", []):
+                        key = value[0]
+                        # rewrite key to 'real' devices /dev/sdXY
+                        # at first try to make a lookup in the lvm lut
+                        if key in self.local_lvm_info.dm_dict["lvtodm"]:
+                            key = self.local_lvm_info.dm_dict["lvtodm"][key]
                         else:
-                            line_spl = line.split()
-                            stat_dict[line_spl[0]] = int(line_spl[1])
-                #print stat_dict
-                act_time = time.time()
-                diff_time = abs(act_time - self.__nameserver_check)
-                for key, value in stat_dict.iteritems():
-                    if not self.__nameserver_dict.has_key(key):
-                        mv.reg_entry("ns.query.%s" % (key), 0., "namserver query %s per minute" % (key), "1/min")
-                        diff_value = 0
-                    else:
-                        diff_value = (stat_dict[key] - self.__nameserver_dict[key])
-                    mv.reg_update(logger, "ns.query.%s" % (key), diff_value * 60. / diff_time)
-                self.__nameserver_dict, self.__nameserver_check = (stat_dict, act_time)
-                try:
-                    os.unlink(stat_f_name)
-                except:
-                    logger.error("error removing %s: %s" % (stat_f_name,
-                                                            process_tools.get_except_info()))
-            else:
-                logger.error("no file named '%s' found" % (stat_f_name))
+                            if key.count("by-"):
+                                key = my_disk_lut[key]
+                        fs_tab_dict[key] = value
+                    for mount_idx, (part, mp, fstype, opts, ignore_1, ignore_2) in enumerate(file_dict.get("mounts", [])):
+                        # rewrite from /dev/disk to real device
+                        if part.startswith("/dev/disk"):
+                            part = dd_lut["fw_lut"][part]
+                        if part in parts_found:
+                            # already touches
+                            continue
+                        parts_found.append(part)
+                        if fstype in ["subfs", "autofs"]:
+                            continue
+                        if part == "rootfs" or part.startswith("automount(") or part.count(":"):
+                            if part.startswith("automount("):
+                                auto_mps.append(mp)
+                            continue
+                        if part == "/dev/root":
+                            part = "/dev/%s" % (real_root_dev_name)
+                        if part.startswith("/") and part != mp:
+                            if any([mp.startswith(entry) for entry in auto_mps]):
+                                # ignore automounted stuff
+                                continue
+                            elif part.startswith("/dev/loop"):
+                                # ignore loop mounted stuff
+                                continue
+                            # now we are at the real devices
+                            fs_tab_entry = fs_tab_dict.get(part, None)
+                            if fs_tab_entry:
+                                dump, fsck = (int(fs_tab_entry[-2]),
+                                              int(fs_tab_entry[-1]))
+                            else:
+                                dump, fsck = (0, 0)
+                            real_mounts.append((part, mp, fstype, opts, dump, fsck))
+                            if not part_lut.has_key(part):
+                                # check for LVM-partition
+                                part = self.local_lvm_info.dm_dict["dmtolv"].get(part, part)
+                                try:
+                                    if part.startswith("/dev/mapper"):
+                                        vg_name, lv_name = part.split("/")[3].split("-")
+                                    else:
+                                        vg_name, lv_name = part.split("/")[2:4]
+                                except:
+                                    self.log(
+                                        "error splitting path %s (line %d): %s" % (
+                                            part,
+                                            mount_idx,
+                                            process_tools.get_except_info()),
+                                        logging_tools.LOG_LEVEL_ERROR
+                                    )
+                                else:
+                                    #print self.local_lvm_info
+                                    act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
+                                    act_lv["mount_options"] = {
+                                        "mountpoint" : mp,
+                                        "fstype"     : fstype,
+                                        "options"    : opts,
+                                        "dump"       : dump,
+                                        "fsck"       : fsck}
+                            else:
+                                dev, part_num = part_lut[part]
+                                dev_dict[dev][part_num]["mountpoint"] = mp
+                                dev_dict[dev][part_num]["fstype"]     = fstype
+                                dev_dict[dev][part_num]["options"]    = opts
+                                dev_dict[dev][part_num]["dump"]       = dump
+                                dev_dict[dev][part_num]["fsck"]       = fsck
+                                if not dev_dict[dev][part_num]["info"]:
+                                    if fstype not in ["swap"]:
+                                        dev_dict[dev][part_num]["hextype"] = "0x83"
+                                        dev_dict[dev][part_num]["info"] = "Linux"
+                                    else:
+                                        dev_dict[dev][part_num]["hextype"] = "0x82"
+                                        dev_dict[dev][part_num]["info"] = "Linux swap / Solaris"
+                                # add lookup
+                                local_lut = my_disk_lut[part]
+                                dev_dict[dev][part_num]["lut"] = local_lut
+                                
+                        else:
+                            if part == mp:
+                                part = "none"
+                            if not sys_dict.has_key(part) or not any([entry["mountpoint"] == mp for entry in sys_dict[part]]):
+                                sys_dict.setdefault(part, []).append({
+                                    "mountpoint" : mp,
+                                    "fstype"     : fstype,
+                                    "options"    : opts})
+                                sys_mounts.append((part, mp, fstype, opts))
+                    ret_str = ""
+        return ret_str, dev_dict, sys_dict
 
 class df_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -2182,8 +1643,12 @@ class partinfo_command(hm_classes.hm_command):
                     mount_info = ""
                 lut_info = part_stuff.get("lut", None)
                 if lut_info:
-                    lut_keys = sorted(lut_info.keys())
-                    lut_str = "; ".join(["%s: %s" % (lut_key, ",".join(sorted(lut_info[lut_key]))) for lut_key in lut_keys])
+                    if type(lut_info) == dict:
+                        # old version
+                        lut_keys = sorted(lut_info.keys())
+                        lut_str = "; ".join(["%s: %s" % (lut_key, ",".join(sorted(lut_info[lut_key]))) for lut_key in lut_keys])
+                    else:
+                        lut_str = "; ".join(lut_info)
                 else:
                     lut_str = "---"
                 to_list.append([logging_tools.form_entry(part_name, header="partition"),
