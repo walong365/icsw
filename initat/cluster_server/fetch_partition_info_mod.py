@@ -139,6 +139,9 @@ class fetch_partition_info(cs_base_class.server_com):
                                                      description=partition_info)
                     new_part_table.save()
                     for dev, dev_stuff in dev_dict.iteritems():
+                        if dev.startswith("/dev/sr"):
+                            self.log("skipping device %s" % (dev), logging_tools.LOG_LEVEL_WARN)
+                            continue
                         self.log("handling device %s" % (dev))
                         new_disc = partition_disc(partition_table=new_part_table,
                                                   disc=dev)
@@ -185,6 +188,8 @@ class fetch_partition_info(cs_base_class.server_com):
                                         size=part_stuff["size"],
                                         pnum=part,
                                     )
+                                    new_part = None
+                                    self.log("no mountpoint defined", logging_tools.LOG_LEVEL_ERROR)
                             if new_part is not None:
                                 new_part.save()
                             part_name = "%s%s" % (dev, part)
@@ -228,19 +233,30 @@ class fetch_partition_info(cs_base_class.server_com):
                             mount_options["fstype_idx"] = None
                             if mount_options["fstype"]:
                                 mount_options["fstype_idx"] = fs_dict.get("83", {}).get(mount_options["fstype"].lower(), None)
-                            new_lv = lvm_lv(
-                                partition_table=new_part_table,
-                                lvm_vg=lvm_info.lv_dict.get("vg", {})[lv_stuff["vg_name"]]["db"],
-                                name=lv_stuff["name"],
-                                size=lv_stuff["size"],
-                                mountpoint=mount_options["mountpoint"],
-                                mount_options=mount_options["options"],
-                                fs_freq=mount_options["dump"],
-                                fs_passno=mount_options["fsck"],
-                                partition_fs=mount_options["fstype_idx"],
-                            )
-                            new_lv.save()
-                            lv_stuff["db"] = new_lv
+                                if mount_options["fstype_idx"]:
+                                    new_lv = lvm_lv(
+                                        partition_table=new_part_table,
+                                        lvm_vg=lvm_info.lv_dict.get("vg", {})[lv_stuff["vg_name"]]["db"],
+                                        name=lv_stuff["name"],
+                                        size=lv_stuff["size"],
+                                        mountpoint=mount_options["mountpoint"],
+                                        mount_options=mount_options["options"],
+                                        fs_freq=mount_options["dump"],
+                                        fs_passno=mount_options["fsck"],
+                                        partition_fs=mount_options["fstype_idx"],
+                                    )
+                                    new_lv.save()
+                                    lv_stuff["db"] = new_lv
+                                else:
+                                    self.log(
+                                        "no fstype found for LV %s (fstype %s)" % (
+                                            lv_stuff["name"],
+                                            mount_options["fstype"],
+                                            ),
+                                        logging_tools.LOG_LEVEL_ERROR)
+                            else:
+                                self.log("no fstype found for LV %s" % (lv_stuff["name"]),
+                                         logging_tools.LOG_LEVEL_ERROR)
                     # set partition table
                     cur_inst.log("set partition_table for '%s'" % (unicode(target_dev)))
                     target_dev.act_partition_table = new_part_table
