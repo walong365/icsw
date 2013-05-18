@@ -150,37 +150,29 @@ def kernel_overview(request):
 @init_logging
 def scan_for_images(request):
     _post = request.POST
-    try:
-        srv_com = server_command.srv_command(command="get_image_list")
-        srv_result = net_tools.zmq_connection("sfi_webfrontend", timeout=10).add_connection("tcp://localhost:8004", srv_com)
-    except:
-        request.log("error contacting server: %s" % (process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
-        if srv_result is not None:
-            present_img_names = image.objects.all().values_list("name", flat=True)
-            #print srv_result.pretty_print()
-            if int(srv_result["result"].attrib["state"]) == server_command.SRV_REPLY_STATE_OK:
-                img_list = srv_result.xpath(None, ".//ns:image_list")
-                if len(img_list):
-                    f_img_list = E.found_images(src=img_list[0].attrib["image_dir"])
-                    for f_num, f_image in enumerate(srv_result.xpath(None, ".//ns:image")):
-                        f_img_list.append(
-                            E.found_image(
-                                f_image.text,
-                                present="1" if f_image.text in present_img_names else "0",
-                                name=f_image.text,
-                                pk="%d" % (f_num + 1),
-                                **f_image.attrib)
-                        )
-                    request.xml_response["response"] = f_img_list
-                else:
-                    request.log("no images found", logging_tools.LOG_LEVEL_WARN, xml=True)
+    srv_com = server_command.srv_command(command="get_image_list")
+    srv_result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=10, log_result=False)
+    if srv_result:
+        present_img_names = image.objects.all().values_list("name", flat=True)
+        #print srv_result.pretty_print()
+        if int(srv_result["result"].attrib["state"]) == server_command.SRV_REPLY_STATE_OK:
+            img_list = srv_result.xpath(None, ".//ns:image_list")
+            if len(img_list):
+                f_img_list = E.found_images(src=img_list[0].attrib["image_dir"])
+                for f_num, f_image in enumerate(srv_result.xpath(None, ".//ns:image")):
+                    f_img_list.append(
+                        E.found_image(
+                            f_image.text,
+                            present="1" if f_image.text in present_img_names else "0",
+                            name=f_image.text,
+                            pk="%d" % (f_num + 1),
+                            **f_image.attrib)
+                    )
+                request.xml_response["response"] = f_img_list
             else:
-                request.log("server problem: %s" % (srv_result["result"].attrib["reply"]), server_command.srv_reply_to_log_level(int(srv_result["result"].attrib["state"])), xml=True)
+                request.log("no images found", logging_tools.LOG_LEVEL_WARN, xml=True)
         else:
-            request.log("got empty response",
-                        logging_tools.LOG_LEVEL_ERROR, xml=True)
+            request.log("server problem: %s" % (srv_result["result"].attrib["reply"]), server_command.srv_reply_to_log_level(int(srv_result["result"].attrib["state"])), xml=True)
     return request.xml_response.create_response()
 
 @login_required
@@ -212,7 +204,7 @@ def use_image(request):
         cur_img = image.objects.get(Q(name=img_name))
     except image.DoesNotExist:
         srv_com = server_command.srv_command(command="get_image_list")
-        srv_result = net_tools.zmq_connection("sfi_webfrontend", timeout=10).add_connection("tcp://localhost:8004", srv_com)
+        srv_result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=10, log_result=False)
         img_xml = srv_result.xpath(None, ".//ns:image[text() = '%s']" % (img_name))
         if len(img_xml):
             img_xml = img_xml[0]

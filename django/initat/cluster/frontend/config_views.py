@@ -403,10 +403,9 @@ def generate_config(request):
     srv_com["devices"] = srv_com.builder(
         "devices",
         *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
-    result = net_tools.zmq_connection("config_webfrontend", timeout=30).add_connection("tcp://localhost:8005", srv_com)
-    if not result:
-        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
+    result = contact_server(request, "tcp://localhost:8005", srv_com, timeout=30, log_result=False)
+    #result = net_tools.zmq_connection("config_webfrontend", timeout=30).add_connection("tcp://localhost:8005", srv_com, log_result=False)
+    if result:
         request.xml_response["result"] = E.devices()
         for dev_node in result.xpath(None, ".//ns:device"):
             res_node = E.device(dev_node.text, **dev_node.attrib)

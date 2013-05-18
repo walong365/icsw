@@ -223,8 +223,15 @@ class config_table
         return dev_td
     read_device_part: (event) =>
         cur_el = $(event.target)
-        console.log cur_el.attr("id")
-        cur_el.prev().text("ok")
+        $.ajax
+            url     : "{% url 'mon:fetch_partition' %}"
+            data    : {
+                "pk" : cur_el.attr("id").split("__")[1]
+            },
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    cur_el.val("0")
+                    cur_el.prev().text("ok")
     get_part_read_list: =>
         return $("<list>").append(
             $("<entry>").attr("pk", "0").text("-- keep --")

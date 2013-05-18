@@ -12,7 +12,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
      mon_ext_host, mon_host_cluster, mon_service_cluster, mon_device_esc_templ, mon_service_esc_templ, \
      partition_table
 from django.db.models import Q
-from initat.cluster.frontend.helper_functions import init_logging
+from initat.cluster.frontend.helper_functions import init_logging, contact_server
 from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from lxml import etree
@@ -146,14 +146,9 @@ def create_config(request):
     #srv_com["devices"] = srv_com.builder(
     #    "devices",
     #    *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
-    result = net_tools.zmq_connection("config_webfrontend", timeout=5).add_connection("tcp://localhost:8010", srv_com)
-    if not result:
-        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
-        res_node = result.xpath(None, ".//ns:result")[0]
-        request.log(res_node.attrib["reply"],
-                    int(res_node.attrib["state"]),
-                    xml=True)
+    result = contact_server(request, "tcp://localhost:8010", srv_com)
+    #result = net_tools.zmq_connection("config_webfrontend", timeout=5).add_connection("tcp://localhost:8010", srv_com)
+    if result:
         request.xml_response["result"] = E.devices()
     return request.xml_response.create_response()
 
@@ -161,15 +156,18 @@ def create_config(request):
 @init_logging
 def rebuild_config(request):
     srv_com = server_command.srv_command(command="rebuild_config")
-    result = net_tools.zmq_connection("webfrontend", timeout=30).add_connection("tcp://localhost:8010", srv_com)
-    if not result:
-        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
-        res_node = result.xpath(None, ".//ns:result")[0]
-        request.log(res_node.attrib["reply"], int(res_node.attrib["state"]), xml=True)
+    result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
     return request.xml_response.create_response()
 
 @login_required
 @init_logging
 def call_icinga(request):
     return HttpResponseRedirect("http://%s/icinga" % (request.META["HTTP_HOST"]))
+
+@login_required
+@init_logging
+def fetch_partition(request):
+    _post = request.POST
+    part_dev = device.objects.get(Q(pk=_post["pk"]))
+    request.log("reading partition info from %s" % (unicode(part_dev)))
+    return request.xml_response.create_response()

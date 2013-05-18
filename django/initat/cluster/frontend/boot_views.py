@@ -138,7 +138,7 @@ def set_boot(request):
     srv_com["devices"] = srv_com.builder(
         "devices",
         srv_com.builder("device", name=cur_dev.name, pk="%d" % (cur_dev.pk)))
-    net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+    contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False, log_error=False)
     return request.xml_response.create_response()
 
 @login_required
@@ -185,7 +185,7 @@ def set_kernel(request):
     srv_com["devices"] = srv_com.builder(
         "devices",
         srv_com.builder("device", pk="%d" % (cur_dev.pk)))
-    net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+    contact_server(request, "tcp://localhost:8000", srv_com, timeout=10)
     request.log("updated kernel settings of %s" % (unicode(cur_dev)), xml=True)
     return request.xml_response.create_response()
     
@@ -212,7 +212,7 @@ def set_target_state(request):
     srv_com["devices"] = srv_com.builder(
         "devices",
         srv_com.builder("device", pk="%d" % (cur_dev.pk)))
-    net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+    contact_server(request, "tcp://localhost:8000", srv_com, timeout=10)
     request.log("updated target state of %s" % (unicode(cur_dev)), xml=True)
     return request.xml_response.create_response()
 
@@ -231,12 +231,8 @@ def get_boot_info(request):
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_result])
-        result = net_tools.zmq_connection("boot_full_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
-        if not result:
-            request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
-        else:
-            #print result.pretty_print()
-            pass
+        result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False)
+        #result = net_tools.zmq_connection("boot_full_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
     xml_resp = E.boot_info()
     # lut for connections
     dev_lut = {}
@@ -307,10 +303,9 @@ def soft_control(request):
     srv_com["devices"] = srv_com.builder(
         "devices",
         srv_com.builder("device", soft_command=soft_state, pk="%d" % (cur_dev.pk)))
-    result = net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
-    if not result:
-        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
+    result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False)
+    #result = net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+    if result:
         request.log("sent %s to %s" % (soft_state, unicode(cur_dev)), xml=True)
     return request.xml_response.create_response()
 
@@ -330,11 +325,5 @@ def hard_control(request):
     srv_com["devices"] = srv_com.builder(
         "devices",
         srv_com.builder("device", command=command, cd_con="%d" % (cur_cd_con.pk)))
-    result = net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
-    if not result:
-        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
-        request.log(result.xpath(None, ".//ns:result")[0].get("reply"),
-                    int(result.xpath(None, ".//ns:result")[0].get("state")),
-                    xml=True)
+    contact_server(request, "tcp://localhost:8000", srv_com, timeout=10)
     return request.xml_response.create_response()

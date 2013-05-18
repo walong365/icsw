@@ -123,9 +123,10 @@ monitoring_patterns = patterns(
     url("^extsetup$"           , "monitoring_views.extended_setup"   , name="extended_setup"   ),
     url("^create_command$"     , "monitoring_views.create_command"   , name="create_command"   ),
     url("^delete_command$"     , "monitoring_views.delete_command"   , name="delete_command"   ),
-    url("xml/dev_config$"      , "monitoring_views.device_config"    , name="device_config"    ),
-    url("create_config$"       , "monitoring_views.create_config"    , name="create_config"    ),
-    url("to_icinga$"           , "monitoring_views.call_icinga"      , name="call_icinga"      ),
+    url("^xml/dev_config$"     , "monitoring_views.device_config"    , name="device_config"    ),
+    url("^create_config$"      , "monitoring_views.create_config"    , name="create_config"    ),
+    url("^to_icinga$"          , "monitoring_views.call_icinga"      , name="call_icinga"      ),
+    url("^xml/read_part$"      , "monitoring_views.fetch_partition"  , name="fetch_partition"  ),
 )
 
 user_patterns = patterns(

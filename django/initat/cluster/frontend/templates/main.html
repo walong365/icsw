@@ -128,11 +128,10 @@ add_handlers_main = ->
     init_layout()
     update_time()
     try
+        init_sidebar()
         {% if user.is_authenticated %}
         init_menu()
         {% endif %}
-        init_sidebar()
-        init_gauge()
     catch err
         # in case no menu or sidebar is present
     # init jnotify

@@ -360,8 +360,12 @@ def contact_server(request, conn_str, send_com, **kwargs):
     result = net_tools.zmq_connection(
         kwargs.get("connection_id", "webfrontend"),
         timeout=kwargs.get("timeout", 10)).add_connection(conn_str, send_com)
-    if not result:
-        request.log("error contacting server %s" % (conn_str), logging_tools.LOG_LEVEL_ERROR, xml=True)
+    if result:
+        if kwargs.get("log_result", True):
+            request.log(*result.get_log_tuple(), xml=True)
+    else:
+        if kwargs.get("log_error", True):
+            request.log("error contacting server %s" % (conn_str), logging_tools.LOG_LEVEL_ERROR, xml=True)
     return result
 
 if __name__ == "__main__":

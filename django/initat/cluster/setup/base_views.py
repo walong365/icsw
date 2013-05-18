@@ -272,6 +272,7 @@ def get_gauge_info(request):
                 value="%d" % (gauge_dv.val_int),
             )
         )
+    #gauge_info.append(E.gauge_element("test", value="40"))
     request.xml_response["response"] = gauge_info
     return request.xml_response.create_response()
     

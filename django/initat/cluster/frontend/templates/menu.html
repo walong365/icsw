@@ -129,7 +129,10 @@ root.init_menu = () ->
             url     : "{% url 'mon:create_config' %}"
             title   : "create config"
             success : (xml) =>
-                parse_xml_response(xml)
+                if parse_xml_response(xml)
+                    try
+                        root.sidebar.update_gauge_info() 
+                    catch err
         
     )
     {% endif %}

@@ -65,6 +65,7 @@ class sidebar_tree
                     root.sidebar_target_func(@top_div)
                 )
             )
+        @update_gauge_info()
     init_sidebar: =>
         @top_div.dynatree
             autoFocus  : false
@@ -211,21 +212,27 @@ class sidebar_tree
                             opacity    : 50
                             position   : [event.pageY, event.pageX]
                             autoResize : true
-
-update_gauge = ->
-    $.ajax
-        url     : "{% url 'base:get_gauge_info' %}",
-        hidden  : true,
-        success : (xml) ->
-            if parse_xml_response(xml)
-                gauge_div = $("div#gauge_info")
-                gauge_div.children().remove()
-                $(xml).find("gauge_info gauge_element").each (idx, gauge_el) ->
-                    gauge_el = $(gauge_el)
-                    gauge_div.append(
-                        $("<div>").text(gauge_el.text()).progressbar({
-                            "value" : parseInt(gauge_el.attr("value")),
-                        })
+    update_gauge_info: =>
+        $.ajax
+            url     : "{% url 'base:get_gauge_info' %}",
+            hidden  : true,
+            success : (xml) ->
+                if parse_xml_response(xml)
+                    gauge_div = $("div#gauge_info")
+                    gauge_div.children().remove()
+                    any_defined = false
+                    $(xml).find("gauge_info gauge_element").each (idx, gauge_el) ->
+                        any_defined = true
+                        gauge_el = $(gauge_el)
+                        gauge_div.append(
+                            $("<div>").text(gauge_el.text()).progressbar({
+                                "value" : parseInt(gauge_el.attr("value")),
+                            })
+                        )
+                    $(document).stopTime("get_gauge_info")
+                    next_to = if any_defined then 2000 else 30000
+                    $(document).everyTime(next_to, "get_gauge_info", (i) =>
+                        @update_gauge_info()
                     )
     
 root.init_sidebar = ->
@@ -235,12 +242,6 @@ root.install_devsel_link = (t_func, fire_when_loaded) ->
     root.sidebar_target_func = t_func
     root.sidebar_call_devsel_link_when_loaded = fire_when_loaded
 
-root.init_gauge = ->
-    update_gauge()
-    $(document).everyTime(2000, "get_gauge_info", (i) ->
-        update_gauge()
-    )
-    
 {% endinlinecoffeescript %}
 
 </script>

@@ -107,15 +107,8 @@ def sync_users(request):
         srv_com = server_command.srv_command(command="create_user_home")
         srv_com["server_key:username"] = create_user.login
         result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
-        if result is not None:
-            request.log(*result.get_log_tuple())
     srv_com = server_command.srv_command(command="sync_ldap_config")
     result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
-    if result:
-        request.log(*result.get_log_tuple(), xml=True)
     srv_com = server_command.srv_command(command="sync_http_users")
     result = contact_server(request, "tcp://localhost:8010", srv_com)
-    if result:
-        res_node = result.xpath(None, ".//ns:result")[0]
-        request.log(res_node.attrib["reply"], int(res_node.attrib["state"]), xml=True)
     return request.xml_response.create_response()

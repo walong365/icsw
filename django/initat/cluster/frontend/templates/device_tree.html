@@ -109,11 +109,16 @@ class device_tree
                 create_input_el(cur_dg, "description", line_prefix, {master_xml : @xml})
             )
         )
-        new_tr.append(
-            $("<th>").append(
-                create_input_el(cur_dg, "enabled", line_prefix, {master_xml : @xml, boolean: true})
+        if cur_dg.attr("is_cdg") == "1"
+            new_tr.append(
+                $("<th>").text("enabled")
             )
-        )
+        else
+            new_tr.append(
+                $("<th>").append(
+                    create_input_el(cur_dg, "enabled", line_prefix, {master_xml : @xml, boolean: true})
+                )
+            )
         new_tr.append($("<th>").text("device type"))
         new_tr.append($("<th>").text(if cur_dg.attr("is_cdg") == 1 then "Cluster device group" else  "device group"))
         new_tr.append($("<th>").text("motherserver"))

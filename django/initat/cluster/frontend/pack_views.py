@@ -66,18 +66,13 @@ def create_search(request):
     else:
         transaction.commit()
         srv_com = server_command.srv_command(command="reload_searches")
-        result = net_tools.zmq_connection("config_webfrontend", timeout=5).add_connection("tcp://localhost:8007", srv_com)
-        if not result:
-            request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
+        result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=5, log_result=False)
         request.xml_response["new_entry"] = new_search.get_xml()
     return request.xml_response.create_response()
 
 def reload_searches(request):
     srv_com = server_command.srv_command(command="reload_searches")
-    result = net_tools.zmq_connection("config_webfrontend", timeout=5).add_connection("tcp://localhost:8007", srv_com)
-    if not result:
-        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    return result
+    return contact_server(request, "tcp://localhost:8007", srv_com, timeout=5, log_result=False)
     
 @transaction.commit_manually
 @login_required
@@ -250,10 +245,8 @@ def change_package_flag(request):
 @init_logging
 def synchronize(request):
     srv_com = server_command.srv_command(command="new_config")
-    result = net_tools.zmq_connection("pack_webfrontend", timeout=10).add_connection("tcp://localhost:8007", srv_com)
-    if not result:
-        request.log("error contacting server", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
+    result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=False)
+    if result:
         #print result.pretty_print()
         request.log("sent sync to server", xml=True)
     return request.xml_response.create_response()
