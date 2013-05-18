@@ -170,4 +170,8 @@ def fetch_partition(request):
     _post = request.POST
     part_dev = device.objects.get(Q(pk=_post["pk"]))
     request.log("reading partition info from %s" % (unicode(part_dev)))
+    srv_com = server_command.srv_command(command="fetch_partition_info")
+    srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
+    srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
+    result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
     return request.xml_response.create_response()

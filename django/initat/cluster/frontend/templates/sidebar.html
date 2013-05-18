@@ -216,7 +216,7 @@ class sidebar_tree
         $.ajax
             url     : "{% url 'base:get_gauge_info' %}",
             hidden  : true,
-            success : (xml) ->
+            success : (xml) =>
                 if parse_xml_response(xml)
                     gauge_div = $("div#gauge_info")
                     gauge_div.children().remove()
