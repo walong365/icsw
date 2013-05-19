@@ -66,7 +66,7 @@ class _general(hm_classes.hm_module):
         if ethtool_path:
             self.log("ethtool found at %s" % (ethtool_path))
         else:
-            self.log("not ethtool found", logging_tools.LOG_LEVEL_WARN)
+            self.log("no ethtool found", logging_tools.LOG_LEVEL_WARN)
         self.ethtool_path = ethtool_path
         iptables_path = process_tools.find_file("iptables")
         if iptables_path:
@@ -394,19 +394,21 @@ class my_modclass(hm_classes.hm_fileinfo):
                                                                    flood_ping=False))
     def _init_mvect_ping_hosts(self):
         self._mvect_phd_synced = False
-        self._mvect_phd = dict([(key, {"reached"      : True,
-                                       "latency_min"  : 0.0,
-                                       "latency_mean" : 0.0,
-                                       "latency_max"  : 0.0,
-                                       "info"         : value}) for key, value in self.ping_hosts.iteritems()])
+        self._mvect_phd = dict([(key, {
+            "reached"      : True,
+            "latency_min"  : 0.0,
+            "latency_mean" : 0.0,
+            "latency_max"  : 0.0,
+            "info"         : value}) for key, value in self.ping_hosts.iteritems()])
     def _icmp_finish(self, icmp_obj):
         for host, res in icmp_obj.get_result().iteritems():
             if host in self._mvect_phd:
                 if res["received"]:
-                    self._mvect_phd[host].update({"reached"      : True,
-                                                  "latency_min"  : res["min_time"],
-                                                  "latency_mean" : res["mean_time"],
-                                                  "latency_max"  : res["max_time"]})
+                    self._mvect_phd[host].update({
+                        "reached"      : True,
+                        "latency_min"  : res["min_time"],
+                        "latency_mean" : res["mean_time"],
+                        "latency_max"  : res["max_time"]})
                 else:
                     self._mvect_phd[host]["reached"] = False
     def _check_for_bridges(self, logger):
@@ -566,8 +568,10 @@ class netspeed(object):
         self.ethtool_path = ethtool_path
         cur_head = sum([part.split() for part in file("/proc/net/dev", "r").readlines()[1].strip().split("|")], [])
         if len(cur_head) == 17:
-            self.nd_mapping = ["rx", None, "rxerr", "rxdrop", None, None, None, None,
-                               "tx", None, "txerr", "txdrop", None, None, "carrier", None]
+            self.nd_mapping = [
+                "rx", None, "rxerr", "rxdrop", None, None, None, None,
+                "tx", None, "txerr", "txdrop", None, None, "carrier", None
+            ]
         else:
             raise ValueError, "unknown /proc/net/dev layout"
         self.nst_size = 10
@@ -580,13 +584,14 @@ class netspeed(object):
         # extra info (infiniband and so on)
         self.extra_dict = {}
         #self.__b_array = bonding
-        self.__idx_dict = {"rx"      : 0,
-                           "tx"      : 8,
-                           "rxerr"   : 2,
-                           "txerr"   : 10,
-                           "rxdrop"  : 3,
-                           "txdrop"  : 11,
-                           "carrier" : 14}
+        self.__idx_dict = {
+            "rx"      : 0,
+            "tx"      : 8,
+            "rxerr"   : 2,
+            "txerr"   : 10,
+            "rxdrop"  : 3,
+            "txdrop"  : 11,
+            "carrier" : 14}
         self.__keys = set(self.__idx_dict.keys())
         self.__is_xen_host = False
         try:
@@ -731,15 +736,17 @@ class net_command(hm_classes.hm_command):
         self.parser.add_argument("--duplex", dest="duplex", type=str)
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
-            srv_com["result"].attrib.update({"reply" : "missing argument",
-                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com["result"].attrib.update({
+                "reply" : "missing argument",
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
             net_device = srv_com["arguments:arg0"].text.strip()
             if net_device in self.module.act_nds:
                 srv_com["device"] = self.module.act_nds[net_device].get_xml(srv_com)
             else:
-                srv_com["result"].attrib.update({"reply" : "netdevice %s not found" % (net_device),
-                                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                srv_com["result"].attrib.update({
+                    "reply" : "netdevice %s not found" % (net_device),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
     def _parse_duplex_str(self, in_dup):
         if in_dup.lower().count("unk"):
             return "unknown"
@@ -1018,8 +1025,9 @@ class net_command(hm_classes.hm_command):
                         try:
                             targ_speed_bit = parse_speed_bit(parsed_coms.speed)
                         except ValueError:
-                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '%s' for net: %s" % (parsed_coms.speed,
-                                                                                                               process_tools.get_except_info())
+                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '%s' for net: %s" % (
+                                parsed_coms.speed,
+                                process_tools.get_except_info())
                         else:
                             if ethtool_stuff.has_key("rate"):
                                 if targ_speed_bit == parse_ib_speed_bit(ethtool_stuff["rate"]):
@@ -1083,12 +1091,13 @@ class net_command(hm_classes.hm_command):
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
             state = limits.get_state_str(ret_state)
         report_device = result.get("report_device", device)
-        return ret_state, "%s, %s rx; %s tx%s%s%s" % (device,
-                                                      b_str(result[rx_str]),
-                                                      b_str(result[tx_str]),
-                                                      add_oks and "; %s" % ("; ".join(add_oks)) or "",
-                                                      add_errors and "; %s" % ("; ".join(add_errors)) or "",
-                                                      report_device != device and "; reporting device is %s" % (report_device) or "")
+        return ret_state, "%s, %s rx; %s tx%s%s%s" % (
+            device,
+            b_str(result[rx_str]),
+            b_str(result[tx_str]),
+            add_oks and "; %s" % ("; ".join(add_oks)) or "",
+            add_errors and "; %s" % ("; ".join(add_errors)) or "",
+            report_device != device and "; reporting device is %s" % (report_device) or "")
         
 class bridge_info_command(hm_classes.hm_command):
     info_str = "bridge information"
