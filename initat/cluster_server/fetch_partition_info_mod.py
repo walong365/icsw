@@ -149,8 +149,21 @@ class fetch_partition_info(cs_base_class.server_com):
                         for part in sorted(dev_stuff):
                             part_stuff = dev_stuff[part]
                             self.log("   handling partition %s" % (part))
+                            if "multipath" in part_stuff:
+                                # see machinfo_mod.py
+                                real_disk = [entry for entry in part_stuff["multipath"]["list"] if entry["status"] == "active"]
+                                if real_disk:
+                                    real_disk = real_disk[0]
+                                    real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part[4:])
+                                    real_part = dev_dict[real_disk][real_part]
+                                    for key in ["hextype", "info", "size"]:
+                                        part_stuff[key] = real_part[key]
                             hex_type = part_stuff["hextype"][2:].lower()
-                            if part.startswith("p"):
+                            if part.startswith("part"):
+                                # multipath
+                                part = part[4:]
+                            elif part.startswith("p"):
+                                # compaq array
                                 part = part[1:]
                             if part_stuff.has_key("mountpoint"):
                                 fs_stuff = fs_dict.get(hex_type, {}).get(part_stuff["fstype"].lower(), None)
