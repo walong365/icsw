@@ -2740,7 +2740,7 @@ def partition_pre_save(sender, **kwargs):
         try:
             p_num = int(p_num)
         except:
-            raise ValidationError("partition number not parseable")
+            raise ValidationError("partition number '%s' not parseable" % (p_num))
         if p_num < 1 or p_num > 9:
             raise ValidationError("partition number out of bounds [1, 9]")
         all_part_nums = partition.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_disc=cur_inst.partition_disc)).values_list("pnum", flat=True)
@@ -2818,7 +2818,7 @@ class partition_disc(models.Model):
 @receiver(signals.pre_save, sender=partition_disc)
 def partition_disc_pre_save(sender, **kwargs):
     if "instance" in kwargs:
-        disc_re = re.compile("^/dev/([shv]d[a-z]|dm-(\d+))$")
+        disc_re = re.compile("^/dev/([shv]d[a-z]|dm-(\d+)|mapper/.*)$")
         cur_inst = kwargs["instance"]
         d_name = cur_inst.disc.strip().lower()
         if not d_name:
