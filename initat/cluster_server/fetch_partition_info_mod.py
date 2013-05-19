@@ -27,6 +27,9 @@ import pprint
 import partition_tools
 import process_tools
 import config_tools
+import base64
+import bz2
+import pickle
 from lxml import etree
 from django.db.models import Q
 from initat.cluster_server.config import global_config
@@ -53,7 +56,7 @@ class fetch_partition_info(cs_base_class.server_com):
                 add_penalty=True)
             cur_dev.target_ip = None
             if routes:
-                for route in routes:
+                for route in sorted(routes):
                     found_ips = net_ip.objects.filter(Q(netdevice=route[2]))
                     if found_ips:
                         cur_dev.target_ip = found_ips[0].ip
@@ -107,7 +110,12 @@ class fetch_partition_info(cs_base_class.server_com):
                     num_errors += 1
                     ret_f.append("%s: error missing keys in dict" % (target_dev))
                 else:
-                    lvm_info = partition_tools.lvm_struct("xml", xml=lvm_dict)
+                    try:
+                        old_stuff = bz2.decompress(base64.b64decode(lvm_dict.text))
+                    except:
+                        lvm_info = partition_tools.lvm_struct("xml", xml=lvm_dict)
+                    else:
+                        raise ValueError, "it seems the client is using pickled transfers"
                     partition_name, partition_info = (
                         "%s_part" % (target_dev),
                         "generated partition_setup from device '%s'" % (target_dev))
