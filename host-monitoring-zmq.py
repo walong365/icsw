@@ -89,9 +89,10 @@ def client_code():
                 for arg_index, arg in enumerate(cur_ns.arguments):
                     srv_com["arguments:arg%d" % (arg_index)] = arg
             srv_com["arguments:rest"] = " ".join(rest)
-            result = net_tools.zmq_connection("%s:%d" % (global_config["IDENTITY_STRING"],
-                                                         os.getpid()),
-                                              timeout=global_config["TIMEOUT"]).add_connection(conn_str, srv_com)
+            result = net_tools.zmq_connection(
+                "%s:%d" % (global_config["IDENTITY_STRING"],
+                           os.getpid()),
+                timeout=global_config["TIMEOUT"]).add_connection(conn_str, srv_com)
             if result:
                 error_result = result.xpath(None, ".//ns:result[@state != '0']")
                 if error_result:
@@ -109,8 +110,10 @@ def client_code():
             cm_str = "close matches: %s" % (", ".join(c_matches))
         else:
             cm_str = "no matches found"
-        ret_str = "unknown command %s, %s" % (com_name, cm_str)
-        ret_state = limits.nag_STATE_CRITICAL
+        ret_state, ret_str = (
+            limits.nag_STATE_CRITICAL,
+            "unknown command %s, %s" % (com_name, cm_str)
+        )
     print ret_str
     return ret_state
 

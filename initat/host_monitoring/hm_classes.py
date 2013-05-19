@@ -270,10 +270,11 @@ class hmb_command(object):
             self.source_host, self.source_port = addr
             if self.log_level:
                 start_time = time.time()
-                self.module_info.log("calling %s in module %s from %s (%s)" % (self.name,
-                                                                               self.module_name,
-                                                                               self.source_port and "%s (port %d)" % (self.source_host, self.source_port) or self.source_host,
-                                                                               args and "args: %s" % (" ".join(args)) or "no args"))
+                self.module_info.log("calling %s in module %s from %s (%s)" % (
+                    self.name,
+                    self.module_name,
+                    self.source_port and "%s (port %d)" % (self.source_host, self.source_port) or self.source_host,
+                    args and "args: %s" % (" ".join(args)) or "no args"))
             self.logger = logger
             result = self.server_call(args)
             self.logger = None

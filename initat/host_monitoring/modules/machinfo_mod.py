@@ -54,6 +54,7 @@ nw_classes = ["ethernet", "network", "infiniband"]
 class _general(hm_classes.hm_module):
     def init_module(self):
         self.local_lvm_info = partition_tools.lvm_struct("bin")
+        self.local_mp_info = partition_tools.multipath_struct("bin")
         self.disk_dict, self.vmstat_dict, self.disk_stat = ({}, {}, {})
         self.disk_dict_last_update = 0
         self.last_vmstat_time = None
@@ -477,9 +478,10 @@ class _general(hm_classes.hm_module):
                         hextype = "0x%02x" % (int(hextype, 16))
                         part_num = part[len(dev):]
                         dev_dict[dev][part_num] = {
-                            "size"    : size,
-                            "hextype" : hextype,
-                            "info"    : info}
+                            "size"      : size,
+                            "hextype"   : hextype,
+                            "info"      : info,
+                        }
                         part_lut[part] = (dev, part_num)
                 # kick empty devices
                 dev_dict = dict([(key, value) for key, value in dev_dict.iteritems() if value])
@@ -566,14 +568,28 @@ class _general(hm_classes.hm_module):
                                         logging_tools.LOG_LEVEL_ERROR
                                     )
                                 else:
-                                    #print self.local_lvm_info
-                                    act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
-                                    act_lv["mount_options"] = {
-                                        "mountpoint" : mp,
-                                        "fstype"     : fstype,
-                                        "options"    : opts,
-                                        "dump"       : dump,
-                                        "fsck"       : fsck}
+                                    if vg_name in self.local_mp_info.dev_dict and lv_name not in self.local_lvm_info.lv_dict["lv"]:
+                                        # handled by multipath and not present in lvm-struct
+                                        dm_struct = self.local_mp_info.dev_dict[vg_name]
+                                        dm_name = os.path.normpath(os.path.join("/dev/mapper", os.readlink("/dev/mapper/%s-%s" % (vg_name, lv_name))))
+                                        dev_dict.setdefault("/dev/mapper/%s" % (vg_name), {})[lv_name] = {
+                                            "mountpoint" : mp,
+                                            "fstype"     : fstype,
+                                            "options"    : opts,
+                                            "dump"       : dump,
+                                            "fsck"       : fsck,
+                                            "multipath"  : dm_struct,
+                                            "dm_name"    : dm_name,
+                                            "lut"        : my_disk_lut[dm_name],
+                                        }
+                                    else:
+                                        act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
+                                        act_lv["mount_options"] = {
+                                            "mountpoint" : mp,
+                                            "fstype"     : fstype,
+                                            "options"    : opts,
+                                            "dump"       : dump,
+                                            "fsck"       : fsck}
                             else:
                                 dev, part_num = part_lut[part]
                                 dev_dict[dev][part_num]["mountpoint"] = mp
@@ -589,8 +605,7 @@ class _general(hm_classes.hm_module):
                                         dev_dict[dev][part_num]["hextype"] = "0x82"
                                         dev_dict[dev][part_num]["info"] = "Linux swap / Solaris"
                                 # add lookup
-                                local_lut = my_disk_lut[part]
-                                dev_dict[dev][part_num]["lut"] = local_lut
+                                dev_dict[dev][part_num]["lut"] = my_disk_lut[part]
                                 
                         else:
                             if part == mp:
@@ -683,11 +698,12 @@ class df_command(hm_classes.hm_command):
                 part_str = "%s (is %s)" % (result["mapped_disk"], result["part"])
             else:
                 part_str = result["part"]
-            return ret_state, "%.0f %% (%s of %s%s) used on %s" % (result["perc"],
-                                                                   self._get_size_str(result["used"]),
-                                                                   self._get_size_str(result["total"]),
-                                                                   ", mp %s" % (result["mountpoint"]) if result.has_key("mountpoint") else "",
-                                                                   part_str)
+            return ret_state, "%.0f %% (%s of %s%s) used on %s" % (
+                result["perc"],
+                self._get_size_str(result["used"]),
+                self._get_size_str(result["total"]),
+                ", mp %s" % (result["mountpoint"]) if result.has_key("mountpoint") else "",
+                part_str)
         else:
             # all-partition result
             max_stuff = {"perc" : -1}
@@ -1633,12 +1649,25 @@ class partinfo_command(hm_classes.hm_command):
             all_parts = sorted(dev_dict[disk].keys())
             for part in all_parts:
                 part_stuff = dev_dict[disk][part]
-                part_name = "%s%s" % (disk, part)
+                is_multipath = "multipath" in part_stuff
+                if is_multipath:
+                    part_name = "%s-%s" % (disk, part)
+                    real_disk = [entry for entry in part_stuff["multipath"]["list"] if entry["status"] == "active"]
+                    if real_disk:
+                        real_disk = real_disk[0]
+                        real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part[4:])
+                        # copy data from real disk
+                        real_part = dev_dict[real_disk][real_part]
+                        for key in ["hextype", "info", "size"]:
+                            part_stuff[key] = real_part[key]
+                else:
+                    part_name = "%s%s" % (disk, part)
                 if part_stuff.has_key("mountpoint"):
-                    mount_info = "fstype %s, opts %s, (%d/%d)" % (part_stuff["fstype"],
-                                                                  part_stuff["options"],
-                                                                  part_stuff["dump"],
-                                                                  part_stuff["fsck"])
+                    mount_info = "fstype %s, opts %s, (%d/%d)" % (
+                        part_stuff["fstype"],
+                        part_stuff["options"],
+                        part_stuff["dump"],
+                        part_stuff["fsck"])
                 else:
                     mount_info = ""
                 lut_info = part_stuff.get("lut", None)
@@ -1651,6 +1680,8 @@ class partinfo_command(hm_classes.hm_command):
                         lut_str = "; ".join(lut_info)
                 else:
                     lut_str = "---"
+                print "***", part_name
+                pprint.pprint(part_stuff)
                 to_list.append([logging_tools.form_entry(part_name, header="partition"),
                                 logging_tools.form_entry(part_stuff["hextype"], header="hex"),
                                 logging_tools.form_entry(part_stuff["info"], header="info"),
