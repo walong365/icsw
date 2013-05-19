@@ -528,10 +528,9 @@ class special_disc(special_base):
                     warn_level, crit_level = (
                         part_p.warn_threshold,
                         part_p.crit_threshold)
-                    # if not set use 100 as warn/crit level
                     warn_level_str, crit_level_str = (
-                        "%d" % (warn_level if warn_level else 100),
-                        "%d" % (crit_level if crit_level else 100))
+                        "%d" % (warn_level if warn_level else 85),
+                        "%d" % (crit_level if crit_level else 95))
                     if part_p.mountpoint.strip():
                         part_list.append((part_p.mountpoint,
                                           check_part, warn_level_str, crit_level_str))
@@ -543,8 +542,8 @@ class special_disc(special_base):
                 warn_level, crit_level = (lvm_part.warn_threshold or 0,
                                           lvm_part.crit_threshold or 0)
                 warn_level_str, crit_level_str = (
-                    "%d" % (warn_level if warn_level else 100),
-                    "%d" % (crit_level if crit_level else 100))
+                    "%d" % (warn_level if warn_level else 85),
+                    "%d" % (crit_level if crit_level else 95))
                 part_list.append((
                     "%s (LVM)" % (lvm_part.mountpoint),
                     "/dev/mapper/%s-%s" % (lvm_part.lvm_vg.name, lvm_part.name),

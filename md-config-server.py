@@ -2924,7 +2924,7 @@ class build_process(threading_tools.process_obj):
         traces = []
         targ_netdev_idxs = None
         pathes = self.router_obj.get_ndl_ndl_pathes(my_net_idxs, net_devices.keys(), add_penalty=True)
-        for penalty, cur_path in pathes:
+        for penalty, cur_path in sorted(pathes):
             if net_devices.has_key(cur_path[-1]):
                 dev_path = self.router_obj.map_path_to_device(cur_path)
                 dev_path.reverse()
