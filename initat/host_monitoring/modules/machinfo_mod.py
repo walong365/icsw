@@ -1651,6 +1651,7 @@ class partinfo_command(hm_classes.hm_command):
                 part_stuff = dev_dict[disk][part]
                 is_multipath = "multipath" in part_stuff
                 if is_multipath:
+                    # see fetch_partition_info_mod.py
                     part_name = "%s-%s" % (disk, part)
                     real_disk = [entry for entry in part_stuff["multipath"]["list"] if entry["status"] == "active"]
                     if real_disk:
