@@ -25,6 +25,7 @@ import sys
 import process_tools
 import logging_tools
 import pprint
+import re
 try:
     from lxml import etree
 except:
@@ -74,6 +75,67 @@ class lvm_object(dict):
                          ["%-20s: (%s) %s" % (key, str(type(value)), str(value)) for key, value in self.iteritems()] +
                          ["}"])
     
+class multipath_struct(object):
+    def __init__(self, source, **kwargs):
+        self.multi_present = False
+        self.__source = source
+        if self.__source == "bin":
+            self._check_binary_paths()
+            self.update()
+    def _check_binary_paths(self):
+        mp_path = ["/sbin", "/usr/sbin", "/usr/local/sbin"]
+        mp_bins = {"multipath" : "-ll"}
+        self.__mp_bin_dict = {}
+        for bn, bn_opts in mp_bins.iteritems():
+            path_found = [entry for entry in ["%s/%s" % (name, bn) for name in mp_path] if os.path.isfile(entry)]
+            if path_found:
+                self.__mp_bin_dict[bn] = (path_found[0], bn_opts)
+    def update(self):
+        dev_dict = {}
+        if self.__mp_bin_dict:
+            cur_stat, cur_out = commands.getstatusoutput("%s %s" % self.__mp_bin_dict["multipath"])
+            if not cur_stat:
+                re_dict = {
+                    "header"  : re.compile("^(?P<name>\S+)\s+\((?P<id>\S+)\)\s+(?P<devname>\S+)\s+(?P<info>.*)$"),
+                    "feature" : re.compile("^size=(?P<size>\S+)\s+features=\'(?P<features>[^\']+)\' hwhandler=\'(?P<hwhandler>\d+)\'\s+(?P<wp_info>\S+)$"),
+                    "policy"  : re.compile("^.*policy=\'(?P<policy>[^\']+)\'\s+prio=(?P<prio>\d+)\s+status=(?P<status>\S+)$"),
+                    "device"  : re.compile("^.*(?P<scsiid>\d+:\d+:\d+:\d+)\s+(?P<device>\S+)\s+(?P<major>\d+):(?P<minor>\d+)\s+(?P<active>\S+)\s+(?P<ready>\S+)\s+(?P<running>\S+)$"),
+                }
+                result_list = []
+                prev_re, all_parsed = (None, True)
+                for line in cur_out.split("\n"):
+                    re_line = [(re_name, cur_re.match(line).groupdict()) for re_name, cur_re in re_dict.iteritems() if cur_re.match(line)]
+                    if re_line:
+                        re_type, re_obj = re_line[0]
+                        # check for correct order
+                        if re_type in {None : ["header"], "header" : ["feature"], "feature" : ["policy"], "policy" : ["device"], "device" : ["policy", "header"]}.get(prev_re, []):
+                            result_list.append((re_type, re_obj))
+                            prev_re = re_type
+                        else:
+                            all_parsed = False
+                            break
+                if all_parsed:
+                    # for integer cleanup
+                    _int_set = ["hwhandler", "major" ,"minor", "prio"]
+                    # build dict
+                    for re_name, g_dict in result_list:
+                        for key, value in g_dict.iteritems():
+                            # tidy
+                            g_dict[key] = value.strip()
+                            if key in _int_set:
+                                g_dict[key] = int(g_dict[key])
+                        if re_name == "header":
+                            new_dev = g_dict
+                            dev_dict[g_dict["name"]] = new_dev
+                        elif re_name == "feature":
+                            new_dev.update(g_dict)
+                        elif re_name == "policy":
+                            cur_entry = g_dict
+                            new_dev.setdefault("list", []).append(cur_entry)
+                        else:
+                            cur_entry.update(g_dict)
+        self.dev_dict = dev_dict
+                        
 class lvm_struct(object):
     def __init__(self, source, **kwargs):
         # represents the LVM-information of a machine, source can be
@@ -105,7 +167,7 @@ class lvm_struct(object):
                             "seg_start", "seg_size", "seg_tags", "devices", "vg_name"]}
         self.__lvm_bin_dict = {}
         for bn, bn_opts in lvm_bins.iteritems():
-            path_found = [x for x in ["%s/%ss" % (y, bn) for y in lvm_path] if os.path.isfile(x)]
+            path_found = [entry for entry in ["%s/%ss" % (name, bn) for name in lvm_path] if os.path.isfile(entry)]
             if path_found:
                 self.__lvm_bin_dict[bn] = (path_found[0], bn_opts)
     def _read_dm_links(self):
@@ -246,6 +308,9 @@ class disk_lut(object):
                             cur_lut[entry] = target
                             self.__fw_lut[cur_path] = target
                             self.__rev_lut.setdefault(target, []).append(cur_path)
+        #pprint.pprint(self.__lut)
+        #pprint.pprint(self.__fw_lut)
+        #pprint.pprint(self.__rev_lut)
     def get_top_keys(self):
         return self.__lut.keys()
     def __getitem__(self, key):
