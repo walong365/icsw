@@ -609,7 +609,8 @@ replace_xml_element = (master_xml, xml) ->
     # replace element in master_xml
     xml.find("value[name='object'] > *").each (idx, new_el) ->
         new_el = $(new_el)
-        master_xml.find("[key='" + new_el.attr("key") + "']").replaceWith(new_el)
+        if master_xml
+            master_xml.find("[key='" + new_el.attr("key") + "']").replaceWith(new_el)
 
 submit_change = (cur_el, callback, modify_data_dict, modify_data_dict_opts, master_xml) ->
     is_textarea = false
