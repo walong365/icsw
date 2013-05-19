@@ -634,11 +634,14 @@ class df_command(hm_classes.hm_command):
         return "%.2f %sB" % (rst, pf_list[0])
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
-            srv_com["result"].attrib.update({"reply" : "missing argument",
-                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com["result"].attrib.update({
+                "reply" : "missing argument",
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
             disk = srv_com["arguments:arg0"].text.strip()
+            orig_disk = disk
             if disk.startswith("/dev/mapper"):
+                # follow mapper links
                 if os.path.islink(disk):
                     disk = os.path.normpath(os.path.join(os.path.dirname(disk),
                                                          os.readlink(disk)))
@@ -652,14 +655,16 @@ class df_command(hm_classes.hm_command):
             try:
                 n_dict = self.module._df_int()
             except:
-                srv_com["result"].attrib.update({"reply" : "error reading mtab: %s" % (process_tools.get_except_info()),
-                                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                srv_com["result"].attrib.update({
+                    "reply" : "error reading mtab: %s" % (process_tools.get_except_info()),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             else:
                 if disk == "ALL":
-                    srv_com["df_result"] = dict([(disk, {"mountpoint" : n_dict[disk][0],
-                                                         "perc"       : n_dict[disk][1],
-                                                         "used"       : n_dict[disk][3],
-                                                         "total"      : n_dict[disk][2]}) for disk in n_dict.keys()])
+                    srv_com["df_result"] = dict([(disk, {
+                        "mountpoint" : n_dict[disk][0],
+                        "perc"       : n_dict[disk][1],
+                        "used"       : n_dict[disk][3],
+                        "total"      : n_dict[disk][2]}) for disk in n_dict.keys()])
                 else:
                     store_info = True
                     if not mapped_disk in n_dict:
@@ -668,9 +673,11 @@ class df_command(hm_classes.hm_command):
                             all_maps = self.__disk_lut["id"][mapped_disk]
                         except KeyError:
                             store_info = False
-                            srv_com["result"].attrib.update({"reply" : "invalid partition %s (key is %s)" % (disk,
-                                                                                                             mapped_disk),
-                                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                            srv_com["result"].attrib.update({
+                                "reply" : "invalid partition %s (key is %s)" % (
+                                    disk,
+                                    mapped_disk),
+                                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
                         else:
                             disk_found = False
                             for mapped_disk in ["/dev/disk/by-id/%s" % (cur_map) for cur_map in all_maps]:
@@ -679,26 +686,34 @@ class df_command(hm_classes.hm_command):
                                     break
                             if not disk_found:
                                 store_info = False
-                                srv_com["result"].attrib.update({"reply" : "invalid partition %s" % (disk),
-                                                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                                srv_com["result"].attrib.update({
+                                    "reply" : "invalid partition %s" % (disk),
+                                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
                     if store_info:
-                        srv_com["df_result"] = {"part"        : disk,
-                                                "mapped_disk" : mapped_disk,
-                                                "mountpoint"  : n_dict[mapped_disk][0],
-                                                "perc"        : n_dict[mapped_disk][1],
-                                                "used"        : n_dict[mapped_disk][3],
-                                                "total"       : n_dict[mapped_disk][2]}
+                        srv_com["df_result"] = {
+                            "part"        : disk,
+                            "mapped_disk" : mapped_disk,
+                            "orig_disk"   : orig_disk,
+                            "mountpoint"  : n_dict[mapped_disk][0],
+                            "perc"        : n_dict[mapped_disk][1],
+                            "used"        : n_dict[mapped_disk][3],
+                            "total"       : n_dict[mapped_disk][2]}
     def interpret(self, srv_com, cur_ns):
         result = srv_com["df_result"]
+        pprint.pprint(result)
+        print cur_ns
         #print result
         if result.has_key("perc"):
             # single-partition result
             ret_state = limits.check_ceiling(result["perc"], cur_ns.warn, cur_ns.crit)
-            if result.has_key("mapped_disk"):
-                part_str = "%s (is %s)" % (result["mapped_disk"], result["part"])
-            else:
-                part_str = result["part"]
-            return ret_state, "%.0f %% (%s of %s%s) used on %s" % (
+            other_keys = []
+            for key in ["mapped_disk", "orig_disk"]:
+                if key in result and result[key] != result["part"]:
+                    other_keys.append(result[key])
+            part_str = "%s%s" % (result["part"],
+                                 " (%s)" % (", ".join(other_keys)) if other_keys else "",
+                                 )
+            return ret_state, u"%.0f %% (%s of %s%s) used on %s" % (
                 result["perc"],
                 self._get_size_str(result["used"]),
                 self._get_size_str(result["total"]),
@@ -714,10 +729,11 @@ class df_command(hm_classes.hm_command):
                     max_stuff = d_stuff
                     max_part = part_name
             ret_state = limits.check_ceiling(max_stuff["perc"], cur_ns.warn, cur_ns.crit)
-            return ret_state, "%.0f %% used on %s (%s, %s)" % (max_stuff["perc"],
-                                                               max_part,
-                                                               max_stuff["mountpoint"],
-                                                               logging_tools.get_plural("partition", len(all_parts)))
+            return ret_state, "%.0f %% used on %s (%s, %s)" % (
+                max_stuff["perc"],
+                max_part,
+                max_stuff["mountpoint"],
+                logging_tools.get_plural("partition", len(all_parts)))
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
         if result.has_key("perc"):
