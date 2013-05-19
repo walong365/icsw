@@ -505,7 +505,12 @@ class special_disc(special_base):
                     first_disc = act_disc
                 if act_disc == first_disc and part_dev:
                     act_disc = part_dev
-                part_pf = "p" if ("cciss" in act_disc or "ida" in act_disc) else ""
+                if "dev/mapper" in act_disc:
+                    part_pf = "-part"
+                elif "cciss" in act_disc or "ida" in act_disc:
+                    part_pf = "p"
+                else:
+                    part_pf = ""
                 act_part = "%s%s%d" % (act_disc, part_pf, act_pnum)
                 # which partition to check
                 check_part = act_part
