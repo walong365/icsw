@@ -257,7 +257,7 @@ class lvm_struct(object):
             pf_list.pop(0)
             rst /= 1024.
         return "%.2f %sB" % (rst, pf_list[0])
-    def get_info(self):
+    def get_info(self, short=True):
         vg_names = sorted(self.lv_dict.get("vg", {}).keys())
         vg_info = {}
         for vg_name in vg_names:
@@ -272,19 +272,43 @@ class lvm_struct(object):
             lv_stuff = self.lv_dict.get("lv", {})[lv_name]
             vg_name = lv_stuff["vg_name"]
             lv_size = lv_stuff["size"]
-            lv_info.setdefault(vg_name, []).append("%s%s (%s)" % (lv_name,
-                                                                  lv_stuff["attr"][5] == "o" and "[open]" or "",
-                                                                  self._get_size_str(lv_size)))
+            lv_info.setdefault(vg_name, []).append("%s%s (%s)" % (
+                lv_name,
+                lv_stuff["attr"][5] == "o" and "[open]" or "",
+                self._get_size_str(lv_size)))
             #print "*", lv_name, vg_stuff["name"], vg_extent_size, vg_extent_count, vg_size, lv_extents
-        ret_info = []
-        for vg_name in vg_names:
-            ret_info.append("%s (%s, %s free, %s: %s)" % (vg_name,
-                                                           vg_info[vg_name][0],
-                                                           vg_info[vg_name][1],
-                                                           logging_tools.get_plural("LV", len(lv_info.get(vg_name, []))),
-                                                           ", ".join(lv_info.get(vg_name, [])) or "NONE"))
-        return "%s: %s" % (logging_tools.get_plural("VG", len(ret_info)),
-                           "; ".join(ret_info))
+        if short:
+            ret_info = []
+            for vg_name in vg_names:
+                ret_info.append("%s (%s, %s free, %s: %s)" % (
+                    vg_name,
+                    vg_info[vg_name][0],
+                    vg_info[vg_name][1],
+                    logging_tools.get_plural("LV", len(lv_info.get(vg_name, []))),
+                    ", ".join(lv_info.get(vg_name, [])) or "NONE"))
+            return "%s: %s" % (logging_tools.get_plural("VG", len(ret_info)),
+                               "; ".join(ret_info))
+        else:
+            ret_info = logging_tools.new_form_list()
+            for vg_name in vg_names:
+                ret_info.append([
+                    logging_tools.form_entry("VG", header="type"),
+                    logging_tools.form_entry(vg_name, header="name"),
+                    logging_tools.form_entry_right(vg_info[vg_name][0], header="size"),
+                    logging_tools.form_entry_right(vg_info[vg_name][1], header="free"),
+                    logging_tools.form_entry("", header="options"),
+                ])
+                for lv_name in lv_names:
+                    lv_stuff = self.lv_dict.get("lv", {})[lv_name]
+                    if lv_stuff["vg_name"] == vg_name:
+                        ret_info.append([
+                            logging_tools.form_entry("  LV", header="type"),
+                            logging_tools.form_entry(lv_name, header="name"),
+                            logging_tools.form_entry_right(self._get_size_str(lv_stuff["size"]), header="size"),
+                            logging_tools.form_entry(""),
+                            logging_tools.form_entry(lv_stuff["attr"]),
+                        ])
+            return unicode(ret_info)
     def __repr__(self):
         order_list = ["pv", "vg", "lv"]
         ret_a = ["%s:" % (", ".join(["%s" % (logging_tools.get_plural(k, len(self.lv_dict.get(k, {}).keys()))) for k in order_list]))]
