@@ -158,54 +158,58 @@ class fetch_partition_info(cs_base_class.server_com):
                                     real_part = dev_dict[real_disk][real_part]
                                     for key in ["hextype", "info", "size"]:
                                         part_stuff[key] = real_part[key]
-                            hex_type = part_stuff["hextype"][2:].lower()
-                            if part.startswith("part"):
-                                # multipath
-                                part = part[4:]
-                            elif part.startswith("p"):
-                                # compaq array
-                                part = part[1:]
-                            if part_stuff.has_key("mountpoint"):
-                                fs_stuff = fs_dict.get(hex_type, {}).get(part_stuff["fstype"].lower(), None)
-                                if fs_stuff is not None:
-                                    new_part = partition(
-                                        partition_disc=new_disc,
-                                        mountpoint=part_stuff["mountpoint"],
-                                        size=part_stuff["size"],
-                                        pnum=part,
-                                        mount_options=part_stuff["options"] or "defaults",
-                                        fs_freq=part_stuff["dump"],
-                                        fs_passno=part_stuff["fsck"],
-                                        partition_fs=fs_stuff,
-                                        disk_by_info=",".join(part_stuff.get("lut", [])),
-                                    )
-                                else:
-                                    self.log("skipping partition because fs_stuff is None", logging_tools.LOG_LEVEL_WARN)
-                                    new_part = None
+                            hex_type = part_stuff["hextype"]
+                            if hex_type is None:
+                                cur_inst.log("ignoring partition because hex_type = None", logging_tools.LOG_LEVEL_WARN)
                             else:
-                                if fs_dict.has_key(hex_type):
-                                    new_part = partition(
-                                        partition_disc=new_disc,
-                                        partition_hex=hex_type,
-                                        size=part_stuff["size"],
-                                        pnum=part,
-                                        #partition_fs=fs_dict[hex_type],
-                                        mount_options="defaults",
-                                    )
-                                    self.log("skipping partition because no mountpoint and no matching fs_dict (hex_type %s)" % (hex_type), logging_tools.LOG_LEVEL_ERROR)
-                                    new_part = None
+                                hex_type = hex_type[2:].lower()
+                                if part.startswith("part"):
+                                    # multipath
+                                    part = part[4:]
+                                elif part.startswith("p"):
+                                    # compaq array
+                                    part = part[1:]
+                                if part_stuff.has_key("mountpoint"):
+                                    fs_stuff = fs_dict.get(hex_type, {}).get(part_stuff["fstype"].lower(), None)
+                                    if fs_stuff is not None:
+                                        new_part = partition(
+                                            partition_disc=new_disc,
+                                            mountpoint=part_stuff["mountpoint"],
+                                            size=part_stuff["size"],
+                                            pnum=part,
+                                            mount_options=part_stuff["options"] or "defaults",
+                                            fs_freq=part_stuff["dump"],
+                                            fs_passno=part_stuff["fsck"],
+                                            partition_fs=fs_stuff,
+                                            disk_by_info=",".join(part_stuff.get("lut", [])),
+                                        )
+                                    else:
+                                        self.log("skipping partition because fs_stuff is None", logging_tools.LOG_LEVEL_WARN)
+                                        new_part = None
                                 else:
-                                    new_part = partition(
-                                        partition_disc=new_disc,
-                                        partition_hex=hex_type,
-                                        size=part_stuff["size"],
-                                        pnum=part,
-                                    )
-                                    new_part = None
-                                    self.log("no mountpoint defined", logging_tools.LOG_LEVEL_ERROR)
-                            if new_part is not None:
-                                new_part.save()
-                            part_name = "%s%s" % (dev, part)
+                                    if fs_dict.has_key(hex_type):
+                                        new_part = partition(
+                                            partition_disc=new_disc,
+                                            partition_hex=hex_type,
+                                            size=part_stuff["size"],
+                                            pnum=part,
+                                            #partition_fs=fs_dict[hex_type],
+                                            mount_options="defaults",
+                                        )
+                                        self.log("skipping partition because no mountpoint and no matching fs_dict (hex_type %s)" % (hex_type), logging_tools.LOG_LEVEL_ERROR)
+                                        new_part = None
+                                    else:
+                                        new_part = partition(
+                                            partition_disc=new_disc,
+                                            partition_hex=hex_type,
+                                            size=part_stuff["size"],
+                                            pnum=part,
+                                        )
+                                        new_part = None
+                                        self.log("no mountpoint defined", logging_tools.LOG_LEVEL_ERROR)
+                                if new_part is not None:
+                                    new_part.save()
+                                part_name = "%s%s" % (dev, part)
                     for part, part_stuff in sys_dict.iteritems():
                         self.log("handling part %s (sys)" % (part))
                         if type(part_stuff) == type({}):
