@@ -119,32 +119,48 @@ class fetch_partition_info(cs_base_class.server_com):
                     partition_name, partition_info = (
                         "%s_part" % (target_dev),
                         "generated partition_setup from device '%s'" % (target_dev))
+                    prev_th_dict = {}
                     try:
                         cur_pt = partition_table.objects.get(Q(name=partition_name))
                     except partition_table.DoesNotExist:
                         pass
                     else:
-                        for rel_obj in cur_pt._meta.get_all_related_objects():
-                            if rel_obj.name in [
-                                "backbone:partition_disc",
-                                "backbone:lvm_lv",
-                                "backbone:lvm_vg",
-                                "backbone:sys_partition"]:
-                                pass
-                            elif rel_obj.name == "backbone:device":
-                                for ref_obj in  rel_obj.model.objects.filter(Q(**{rel_obj.field.name : cur_pt})):
-                                    self.log("cleaning %s of %s" % (rel_obj.field.name, unicode(ref_obj)))
-                                    setattr(ref_obj, rel_obj.field.name, None)
-                                    ref_obj.save()
-                            else:
-                                raise ValueError, "unknown related object %s for partition_info" % (rel_obj.name)
-                        cur_pt.delete()
+                        # read previous settings
+                        for entry in cur_pt.partition_disc_set.all().values_list("partition__mountpoint", "partition__warn_threshold", "partition__crit_threshold"):
+                            prev_th_dict[entry[0]] = (entry[1], entry[2])
+                        for entry in cur_pt.lvm_vg_set.all().values_list("lvm_lv__mountpoint", "lvm_lv__warn_threshold", "lvm_lv__crit_threshold"):
+                            prev_th_dict[entry[0]] = (entry[1], entry[2])
+                        if cur_pt.user_created:
+                            cur_inst.log(
+                                "prevision partition_table '%s' was user created, not deleting" % (unicode(cur_pt)),
+                                logging_tools.LOG_LEVEL_WARN)
+                        else:
+                            cur_inst.log("deleting previous partition_table %s" % (unicode(cur_pt)))
+                            for rel_obj in cur_pt._meta.get_all_related_objects():
+                                if rel_obj.name in [
+                                    "backbone:partition_disc",
+                                    "backbone:lvm_lv",
+                                    "backbone:lvm_vg",
+                                    "backbone:sys_partition"]:
+                                    pass
+                                elif rel_obj.name == "backbone:device":
+                                    for ref_obj in  rel_obj.model.objects.filter(Q(**{rel_obj.field.name : cur_pt})):
+                                        self.log("cleaning %s of %s" % (rel_obj.field.name, unicode(ref_obj)))
+                                        setattr(ref_obj, rel_obj.field.name, None)
+                                        ref_obj.save()
+                                else:
+                                    raise ValueError, "unknown related object %s for partition_info" % (rel_obj.name)
+                            cur_pt.delete()
+                        target_dev.act_partition_table = None
                     # fetch partition_fs
                     fs_dict = {}
                     for db_rec in partition_fs.objects.all():
                         fs_dict.setdefault(("%02x" % (int(db_rec.hexid, 16))).lower(), {})[db_rec.name] = db_rec
-                    new_part_table = partition_table(name=partition_name,
-                                                     description=partition_info)
+                    new_part_table = partition_table(
+                        name=partition_name,
+                        description=partition_info,
+                        user_created=False,
+                    )
                     new_part_table.save()
                     for dev, dev_stuff in dev_dict.iteritems():
                         if dev.startswith("/dev/sr"):
@@ -216,6 +232,8 @@ class fetch_partition_info(cs_base_class.server_com):
                                         new_part = None
                                         self.log("no mountpoint defined", logging_tools.LOG_LEVEL_ERROR)
                                 if new_part is not None:
+                                    if new_part.mountpoint in prev_th_dict:
+                                        new_part.warn_threshold, new_part.crit_threshold = prev_th_dict[new_part.mountpoint]
                                     new_part.save()
                                 part_name = "%s%s" % (dev, part)
                     for part, part_stuff in sys_dict.iteritems():
@@ -270,6 +288,8 @@ class fetch_partition_info(cs_base_class.server_com):
                                         fs_passno=mount_options["fsck"],
                                         partition_fs=mount_options["fstype_idx"],
                                     )
+                                    if new_lv.mountpoint in prev_th_dict:
+                                        new_lv.warn_threshold, new_lv.crit_threshold = prev_th_dict[new_lv.mountpoint]
                                     new_lv.save()
                                     lv_stuff["db"] = new_lv
                                 else:
