@@ -13,13 +13,18 @@
 
 {% block content %}
 
+<div id="network_div">
 <h1 class="center">Device network settings</h1>
 
 <div id="network_table"></div>
 
 <div id="network_copy">Set all networks from <select id="network_copy"></select><br>Show network topology: <input type="button" id="redraw_graph" value="Redraw"/></div>
 
+</div>
+
+<div id="network_graph_outer" style="border:1px solid black;">
 <div id="network_graph"></div>
+</div>
 
 <script type="text/javascript">
 
@@ -537,11 +542,55 @@ class network_table
         c_w = $("input#redraw_graph")
         c_w.bind("click", @redraw_graph)
     draw_graph: (graph) =>
-        width = 960
-        height = 600
+        # some DOM magic, FIXME
+        div_width  = $("div#network_graph_outer").outerWidth(true)
+        div_height = $("div#network_graph_outer").parent().height() - $("div#network_div").height() - 20
+        $("div#network_graph_outer").width(div_width).height(div_height)
         $("div#network_graph").children().remove()
+        width  = 1000
+        height = 500
+        # scale with 20 colors
         color = d3.scale.category20()
-        @svg = d3.select("div#network_graph").append("svg").attr("width", width).attr("height", height)
+        #x = d3.scale.linear().domain([-width / 2, width / 2]).range([0, width])
+        #y = d3.scale.linear().domain([-height / 2, height / 2]).range([height, 0])
+        #x_axis = d3.svg.axis()
+        #    .scale(x)
+        #    .orient("bottom")
+        #    .ticks(5)
+        #    .tickSize(-height)
+        #y_axis = d3.svg.axis()
+        #    .scale(y)
+        #    .orient("left")
+        #    .ticks(5)
+        #    .tickSize(-width)
+        #zoom = () =>
+        #    @svg.select(".x.axis").call(x_axis)
+        #    @svg.select(".y.axis").call(y_axis)
+        @svg = d3.select("div#network_graph").append("svg:svg").attr(
+            "width"   : div_width,
+            "height"  : div_height,
+            "viewBox" : "0 0 #{width} #{height}",
+            "preserveAspectRatio" : "xMidYMid",
+        ).append("g")
+        #.attr("transform", "translate(4, 10)").call(d3.behavior.zoom().x(x).y(y).scaleExtent([1, 8]).on("zoom", zoom))
+        @svg.append("rect").attr(
+            "x"      : 0,
+            "y"      : 0,
+            "width"  : width,
+            "height" : height,
+            
+        ).style(
+            "stroke"       : "#000000",
+            "fill"         : "none",
+            "stroke-width" : "1",
+        )
+        #@svg.append("g")
+        #    .attr("class", "x axis")
+        #    .attr("transform", "translate(0," + height + ")")
+        #    .call(x_axis)
+        #@svg.append("g")
+        #    .attr("class", "y axis")
+        #    .call(y_axis)
         @force = d3.layout.force().charge(-220).linkDistance(150).size([width, height])
             .linkDistance((d) -> return 100)
         @force.nodes(graph.nodes).links(graph.links).start()
@@ -555,8 +604,8 @@ class network_table
         centers.append("circle").attr("r", (n) -> return 18).attr("fill", "white").attr("stroke", "grey")
       
         centers.append("text").attr("text-anchor", "middle").text((d) -> return d.name )
-      
-        @force.on("tick", ->
+        d_list = [1, 2, 4]
+        @force.on("tick", =>
             link.attr("x1", (d) -> return d.source.x )
                 .attr("y1", (d) -> return d.source.y )
                 .attr("x2", (d) -> return d.target.x )
