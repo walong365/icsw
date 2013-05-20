@@ -1535,19 +1535,52 @@ class lvm_lv(models.Model):
     fs_passno = models.IntegerField(null=True, blank=True)
     name = models.CharField(max_length=192)
     partition_fs = models.ForeignKey("partition_fs")
-    warn_threshold = models.IntegerField(null=True, blank=True, default=0)
-    crit_threshold = models.IntegerField(null=True, blank=True, default=0)
+    warn_threshold = models.IntegerField(null=True, blank=True, default=85)
+    crit_threshold = models.IntegerField(null=True, blank=True, default=95)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.lvm_lv(
+            pk="%d" % (self.pk),
+            key="lvm_lv__%d" % (self.pk),
+            lvm_vg="%d" % (self.lvm_vg_id or 0),
+            mountpoint="%s" % (self.mountpoint),
+            name="%s" % (self.name),
+            warn_threshold="%d" % (self.warn_threshold or 0),
+            crit_threshold="%d" % (self.crit_threshold or 0),
+       )
     class Meta:
         db_table = u'lvm_lv'
+        ordering = ("name",)
+
+@receiver(signals.pre_save, sender=lvm_lv)
+def lvm_lv_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_integer(cur_inst, "warn_threshold", none_to_zero=True, min_val=0, max_val=100)
+        _check_integer(cur_inst, "crit_threshold", none_to_zero=True, min_val=0, max_val=100)
+        # fs_freq
+        _check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
+        # fs_passno
+        _check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
 
 class lvm_vg(models.Model):
     idx = models.AutoField(db_column="lvm_vg_idx", primary_key=True)
     partition_table = models.ForeignKey("partition_table")
     name = models.CharField(max_length=192)
     date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.lvm_vg(
+            E.lvm_lvs(
+                *[cur_lv.get_xml() for cur_lv in self.lvm_lv_set.all()]
+            ),
+            pk="%d" % (self.pk),
+            key="lvm_vg__%d" % (self.pk),
+            partition_table="%d" % (self.partition_table_id or 0),
+            name=self.name,
+        )
     class Meta:
         db_table = u'lvm_vg'
+        ordering = ("name",)
 
 class mac_ignore(models.Model):
     idx = models.AutoField(db_column="mac_ignore_idx", primary_key=True)
@@ -2888,6 +2921,9 @@ class partition_table(models.Model):
             E.partition_discs(
                 *[sub_disc.get_xml() for sub_disc in self.partition_disc_set.all()]
                 ),
+            E.lvm_info(
+                *[cur_vg.get_xml() for cur_vg in self.lvm_vg_set.all().prefetch_related("lvm_lv_set")]
+            ),
             name=self.name,
             pk="%d" % (self.pk),
             key="ptable__%d" % (self.pk),
@@ -3779,4 +3815,6 @@ KPMC_MAP = {
     "ptable"  : partition_table,
     "rrdc"    : rrd_class,
     "rrdrra"  : rrd_rra,
+    "lvm_vg"  : lvm_vg,
+    "lvm_lv"  : lvm_lv,
 }
