@@ -29,7 +29,6 @@ import os
 import process_tools
 import server_command
 import time
-import bz2
 import copy
 import base64
 from initat.md_config_server.config import global_config
@@ -482,12 +481,6 @@ class special_disc_all(special_base):
 class special_disc(special_base):
     def _call(self):
         part_dev = self.host.partdev
-        df_settings_dir = "%s/etc/df_settings" % (global_config["MD_BASEDIR"])
-        df_sd_ok = os.path.isdir(df_settings_dir)
-        self.log("part_dev '%s', df_settings_dir is '%s' (%s)" % (
-            part_dev or "NOT SET (Empty)",
-            df_settings_dir,
-            "OK" if df_sd_ok else "not reachable"))
         first_disc = None
         part_list = []
         #print self.get_parameter("num_discs", "df", "/dev/sda1")
@@ -550,20 +543,8 @@ class special_disc(special_base):
                     warn_level_str,
                     crit_level_str))
         # manual setting-dict for df
-        set_dict = {}
-        if df_sd_ok and os.path.isfile("%s/%s" % (df_settings_dir, self.host.name)):
-            lines = [line for line in file("%s/%s" % (df_settings_dir, self.host.name), "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
-            for line in lines:
-                parts = line.strip().split()
-                if len(parts) == 3:
-                    if parts[0].startswith("/") and parts[1].isdigit() and parts[2].isdigit():
-                        set_dict[parts[0]] = (int(parts[1]), int(parts[2]))
         sc_array = []
         for info_name, p_name, w_lev, c_lev in part_list:
-            if p_name in set_dict:
-                w_lev, c_lev = set_dict[p_name]
-                self.log("    setting w/c to %d/%d" % (w_lev, c_lev))
-                w_lev, c_lev = (str(w_lev) if w_lev > 0 else "", str(c_lev) if c_lev > 0 else "")
             self.log("  P: %-40s: %-40s (w: %-5s, c: %-5s)" % (
                 info_name,
                 p_name,
