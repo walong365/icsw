@@ -833,7 +833,8 @@ class main_config(object):
                     ("plugin-dir"      , "/opt/cluster/lib64"),
                     ("cgi-mode"        , "true"),
                     ("master"          , "true"),
-                    ("vacuum"          , "true"),
+                    # set vacuum to false because of problems with uwsgi 1.9
+                    ("vacuum"          , "false"),
                     ("workers"         , 16),
                     ("harakiri-verbose", 1),
                     ("plugins"         , "cgi"),
