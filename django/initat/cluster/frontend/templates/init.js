@@ -73,6 +73,10 @@ root.build_device_info_div = (dev_xml) ->
             $("<li>").append(
                 $("<a>").attr("href", "#edit").text("Edit")
             )
+        ).append(
+            $("<li>").append(
+                $("<a>").attr("href", "#disk").text("Disk")
+            )
         )
     )
     # network div
@@ -98,8 +102,31 @@ root.build_device_info_div = (dev_xml) ->
     edit_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "name", dev_xml.attr("key"), {master_xml : dev_xml, title : "device name", label : "Device name"})))
     edit_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "comment", dev_xml.attr("key"), {master_xml : dev_xml, title : "comment", label : "Comment", textarea : true})))
     edit_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "monitor_checks", dev_xml.attr("key"), {master_xml : dev_xml, title : "Enable checks", label : "Monitoring", boolean : true})))
+    # disk div
+    disk_div = $("<div>").attr("id", "disk")
+    if dev_xml.find("partition_table").length
+        disk_div.append($("<h3>").text("partition table"))
+        pt_ul = $("<ul>")
+        dev_xml.find("partition_table partition_discs partition_disc").each (idx, cur_disc) =>
+            cur_disc = $(cur_disc)
+            disk_li = $("<li>").text(cur_disc.attr("disc"))
+            disk_lu = $("<ul>")
+            disk_li.append(disk_lu)
+            cur_disc.find("partitions partition").each (p_idx, cur_part) =>
+                cur_part = $(cur_part)
+                part_li = $("<li>").text(cur_part.attr("mountpoint"))
+                part_li.append(
+                    create_input_el(cur_part, "warn_threshold", cur_part.attr("key"), {master_xml : cur_part, number: true, min:0, max: 100, label: ", warning at"})
+                    create_input_el(cur_part, "crit_threshold", cur_part.attr("key"), {master_xml : cur_part, number: true, min:0, max: 100, label: ", critical at"})
+                )
+                disk_lu.append(part_li)
+            pt_ul.append(disk_li)
+        disk_div.append(pt_ul)
+    else
+        disk_div.append($("<h3>").text("No partition table defined"))
     tabs_div.append(nw_div)
     tabs_div.append(edit_div)
+    tabs_div.append(disk_div)
     tabs_div.tabs()
     return dev_div
 

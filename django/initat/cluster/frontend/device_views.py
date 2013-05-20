@@ -342,5 +342,5 @@ def delete_variable(request):
 @login_required
 def device_info(request):
     dev_key = request.POST["key"].split("__")[1]
-    request.xml_response["response"] = device.objects.get(Q(pk=dev_key)).get_xml()
+    request.xml_response["response"] = device.objects.get(Q(pk=dev_key)).get_xml(with_partition=True, with_variables=True)
     return request.xml_response.create_response()
