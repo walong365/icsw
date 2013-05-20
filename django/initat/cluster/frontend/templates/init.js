@@ -58,9 +58,7 @@ $.ajaxSetup
 root.build_device_info_div = (dev_xml) ->
     dev_div = $("<div>")
     dev_div.append(
-        $("<h3>").text(dev_xml.attr("name"))
-    ).append(
-        $("<h3>").text("UUID: #{dev_xml.attr('uuid')}")
+        $("<h3>").text("#{dev_xml.attr('name')}, UUID: #{dev_xml.attr('uuid')}")
     )
     tabs_div = $("<div>").attr("id", "tabs")
     dev_div.append(tabs_div)

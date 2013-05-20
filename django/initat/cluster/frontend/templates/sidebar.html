@@ -8,6 +8,10 @@
             <input type="image" id="devsel_clear" src="{{ MEDIA_URL }}frontend/images/delete.png" width="22px" height="22px" style="vertical-align:middle;"/>
         </td>
     </tr>
+    <tr id="gauge_info">
+        <td id="gauge_info">
+        </td>
+    </tr>
     <tr>
         <td valign="top">
             <div id="sidebar_tree">
@@ -15,9 +19,6 @@
         </td>
     </tr>
 </table>
-
-<div id="gauge_info">
-</div>
 
 <div id="ajax_info">
 </div>
@@ -197,9 +198,13 @@ class sidebar_tree
                         #console.log dev_xml[0]
                         di_div = build_device_info_div(dev_xml)
                         di_div.modal
-                            opacity    : 50
-                            position   : [event.pageY, event.pageX]
-                            autoResize : true
+                            opacity      : 50
+                            position     : [event.pageY, event.pageX]
+                            autoResize   : true
+                            autoPosition : true
+                            onShow: (dialog) -> 
+                                dialog.container.draggable()
+                                $('#simplemodal-container').css('height', 'auto')
     set_next_gauge: (next_to) =>
         $(document).stopTime("get_gauge_info")
         $(document).everyTime(next_to, "get_gauge_info", (i) =>
@@ -211,13 +216,13 @@ class sidebar_tree
             hidden  : true,
             success : (xml) =>
                 if parse_xml_response(xml)
-                    gauge_div = $("div#gauge_info")
-                    gauge_div.children().remove()
+                    gauge_td = $("td#gauge_info")
+                    gauge_td.children().remove()
                     any_defined = false
                     $(xml).find("gauge_info gauge_element").each (idx, gauge_el) ->
                         any_defined = true
                         gauge_el = $(gauge_el)
-                        gauge_div.append(
+                        gauge_td.append(
                             $("<div>").text(gauge_el.text()).progressbar({
                                 "value" : parseInt(gauge_el.attr("value")),
                             })
