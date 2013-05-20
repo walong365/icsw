@@ -547,6 +547,11 @@ class device(models.Model):
                     *[cur_dv.get_xml() for cur_dv in self.device_variable_set.all()]
                 )
             )
+        if kwargs.get("with_partition", False):
+            if self.act_partition_table_id:
+                r_xml.append(
+                    self.act_partition_table.get_xml()
+                )
         return r_xml
     def __unicode__(self):
         return u"%s%s" % (self.name,
@@ -2689,8 +2694,8 @@ class partition(models.Model):
     #lut_blob = models.TextField(blank=True, null=True)
     # comma-delimited list of /dev/disk/by-* entries
     disk_by_info = models.TextField(default="")
-    warn_threshold = models.IntegerField(null=True, blank=True)
-    crit_threshold = models.IntegerField(null=True, blank=True)
+    warn_threshold = models.IntegerField(null=True, blank=True, default=85)
+    crit_threshold = models.IntegerField(null=True, blank=True, default=95)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         p_xml = E.partition(
@@ -2704,6 +2709,8 @@ class partition(models.Model):
             bootable="%d" % (1 if self.bootable else 0),
             fs_freq="%d" % (self.fs_freq),
             fs_passno="%d" % (self.fs_passno),
+            warn_threshold="%d" % (self.warn_threshold or 0),
+            crit_threshold="%d" % (self.crit_threshold or 0),
         )
         if hasattr(self, "problems"):
             p_xml.append(
@@ -2749,6 +2756,8 @@ def partition_pre_save(sender, **kwargs):
         cur_inst.pnum = p_num
         # size
         _check_integer(cur_inst, "size", min_val=0)
+        _check_integer(cur_inst, "warn_threshold", none_to_zero=True, min_val=0, max_val=100)
+        _check_integer(cur_inst, "crit_threshold", none_to_zero=True, min_val=0, max_val=100)
         # mountpoint
         if cur_inst.mountpoint.strip() and not cur_inst.mountpoint.startswith("/"):
             raise ValidationError("mountpoint must start with '/'")
