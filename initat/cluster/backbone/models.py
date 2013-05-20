@@ -2904,6 +2904,8 @@ class partition_table(models.Model):
     enabled = models.BooleanField(default=True)
     valid = models.BooleanField(default=False)
     modify_bootloader = models.IntegerField(default=0)
+    # non users-created partition tables can be deleted automatically
+    user_created = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self, **kwargs):
         _validate = kwargs.get("validate", False)
