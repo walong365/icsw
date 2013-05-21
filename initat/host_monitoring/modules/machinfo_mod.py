@@ -524,9 +524,9 @@ class _general(hm_classes.hm_module):
                                 # no hextype
                                 if any ([fs_name in (" ".join(parts)).lower() for fs_name in ["ext3", "ext4", "btrfs"]]):
                                     hextype = "0x83"
-                                if any ([fs_name in (" ".join(parts)).lower() for fs_name in ["swap"]]):
+                                elif any ([fs_name in (" ".join(parts)).lower() for fs_name in ["swap"]]):
                                     hextype = "0x82"
-                                if any ([fs_name in (" ".join(parts)).lower() for fs_name in ["lvmpv"]]):
+                                elif any ([fs_name in (" ".join(parts)).lower() for fs_name in ["lvmpv"]]):
                                     hextype = "0x8e"
                                 else:
                                     hextype = None
