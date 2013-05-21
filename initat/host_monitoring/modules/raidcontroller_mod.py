@@ -277,7 +277,7 @@ class ctrl_type_lsi(ctrl_type):
                         self._dict[cur_dict["c_name"]]["disks"].append(cur_dict)
         ccs.srv_com["result:ctrls"] = self._dict
     def _interpret(self, in_dict, cur_ns):
-        if in_dict["ctrls"]:
+        if "ctrls" in in_dict and in_dict["ctrls"]:
             ret_state = limits.nag_STATE_OK
             c_array = []
             for c_name in sorted(in_dict["ctrls"]):
