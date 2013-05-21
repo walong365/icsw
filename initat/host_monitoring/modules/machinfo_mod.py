@@ -522,7 +522,14 @@ class _general(hm_classes.hm_module):
                                 hextype = "0x%02x" % (int(parts.pop(-1).split("=", 1)[1], 16))
                             else:
                                 # no hextype
-                                hextype = None
+                                if any ([fs_name in (" ".join(parts)).lower() for fs_name in ["ext3", "ext4", "btrfs"]]):
+                                    hextype = "0x83"
+                                if any ([fs_name in (" ".join(parts)).lower() for fs_name in ["swap"]]):
+                                    hextype = "0x82"
+                                if any ([fs_name in (" ".join(parts)).lower() for fs_name in ["lvmpv"]]):
+                                    hextype = "0x8e"
+                                else:
+                                    hextype = None
                             dev_dict[d_name][part_num] = {
                                 "size"    : size,
                                 "hextype" : hextype,
@@ -534,7 +541,7 @@ class _general(hm_classes.hm_module):
                     # fetch fdisk information
                     for dev in dev_dict.keys():
                         cur_stat, out = commands.getstatusoutput("/sbin/fdisk -l %s" % (dev))
-                        if stat:
+                        if cur_stat:
                             ret_str = "error reading partition table of %s (%d): %s" % (dev, stat, out)
                             break
                         lines = [[part.strip() for part in line.strip().split() if part.strip() != "*"] for line in out.split("\n") if line.startswith(dev)]
