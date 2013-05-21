@@ -164,7 +164,7 @@ class ctrl_type(object):
         # override to update controllers, args optional
         pass
     def update_ok(self, srv_com):
-        # return True if update is OK, can be overrided to add more checks (maybe arguments)
+        # return True if update is OK, can be overridden to add more checks (maybe arguments)
         if self._check_exec:
             return True
         else:
@@ -182,6 +182,71 @@ class ctrl_check_struct(hm_classes.subprocess_struct):
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[ccs] %s" % (what), level)
         
+class ctrl_type_lsi(ctrl_type):
+    class Meta:
+        name = "lsi"
+        exec_name = "mpt-status"
+        description = "LSI 1030 RAID Controller"
+    def get_exec_list(self, ctrl_list=[]):
+        if ctrl_list == []:
+            ctrl_list = self._dict.keys()
+        return ["%s --controller %s" % (self._check_exec, ctrl_id[3:]) for ctrl_id in ctrl_list]
+    def scan_ctrl(self):
+        cur_stat, cur_lines = self.exec_command(" ", post="strip")
+        if not cur_stat:
+            c_ids = set()
+            for line in cur_lines:
+                if line.startswith("ioc"):
+                    parts = line.strip().split()
+                    c_ids.add(parts[0])
+            self._dict = dict([(key, {}) for key in c_ids])
+    def update_ctrl(self, ctrl_ids):
+        pass
+        #print ctrl_ids
+    def process(self, ccs):
+        ctrl_re = re.compile("^(?P<c_name>\S+) vol_id (?P<vol_id>\d+) type (?P<c_type>\S+), (?P<num_discs>\d+) phy, (?P<size>\S+) (?P<size_pfix>\S+), state (?P<state>\S+), flags (?P<flags>\S+)")
+        disk_re = re.compile("^(?P<c_name>\S+) phy (?P<phy_id>\d+) scsi_id (?P<scsi_id>\d+) (?P<disk_info>.*), (?P<size>\S+) (?P<size_pfix>\S+), state (?P<state>\S+), flags (?P<flags>\S+)$")
+        to_int = ["num_discs", "vol_id", "phy_id", "scsi_id"]
+        to_float = ["size"]
+        for line in ccs.read().split("\n"):
+            if line.strip():
+                line = " ".join(line.split())
+                for re_type, cur_re in [("c", ctrl_re), ("d", disk_re)]:
+                    cur_m = cur_re.match(line)
+                    if cur_m:
+                        break
+                if cur_m:
+                    cur_dict = cur_m.groupdict()
+                    for key, value in cur_dict.iteritems():
+                        if key in to_int:
+                            cur_dict[key] = int(value)
+                        elif key in to_float:
+                            cur_dict[key] = float(value)
+                    if re_type == "c":
+                        self._dict[cur_dict["c_name"]] = cur_dict
+                        self._dict[cur_dict["c_name"]]["disks"] = []
+                    elif cur_m:
+                        self._dict[cur_dict["c_name"]]["disks"].append(cur_dict)
+        ccs.srv_com["result:ctrls"] = self._dict
+    def _interpret(self, in_dict, cur_ns):
+        if in_dict["ctrls"]:
+            ret_state = limits.nag_STATE_OK
+            c_array = []
+            for c_name in sorted(in_dict["ctrls"]):
+                ctrl_dict = in_dict["ctrls"][c_name]
+                c_array.append("%s (%s, %s, %.2f %s) is %s" % (
+                    c_name,
+                    ctrl_dict["c_type"],
+                    logging_tools.get_plural("disc", ctrl_dict["num_discs"]),
+                    ctrl_dict["size"],
+                    ctrl_dict["size_pfix"],
+                    ctrl_dict["state"]))
+                if ctrl_dict["state"].lower() != "optimal":
+                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            return ret_state, "; ".join(c_array)
+        else:
+            return limits.nag_STATE_WARNING, "no controller found"
+    
 class ctrl_type_tw(ctrl_type):
     class Meta:
         name = "tw"
@@ -1402,20 +1467,20 @@ class hpacu_status_command(hm_classes.hm_command):
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("hpacu")._interpret(ctrl_dict, cur_ns)
 
-class ibmraid_status_command(hm_classes.hm_command):
+class lsi_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
     def __call__(self, srv_com, cur_ns):
-        ctrl_type.update("ibmraid")
+        ctrl_type.update("lsi")
         if "arguments:arg0" in srv_com:
             ctrl_list = [srv_com["arguments:arg0"].text]
         else:
             ctrl_list = []
-        return ctrl_check_struct(self.log, srv_com, ctrl_type.ctrl("ibmraid"), ctrl_list)
+        return ctrl_check_struct(self.log, srv_com, ctrl_type.ctrl("lsi"), ctrl_list)
     def interpret(self, srv_com, cur_ns):
         return self._interpret(dict([(srv_com._interpret_tag(cur_el, cur_el.tag), srv_com._interpret_el(cur_el)) for cur_el in srv_com["result"]]), cur_ns)
     def _interpret(self, ctrl_dict, cur_ns):
-        return ctrl_type.ctrl("ibmraid")._interpret(ctrl_dict, cur_ns)
+        return ctrl_type.ctrl("lsi")._interpret(ctrl_dict, cur_ns)
 
 if __name__ == "__main__":
     print "This is a loadable module."
