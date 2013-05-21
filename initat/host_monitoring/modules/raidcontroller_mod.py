@@ -292,7 +292,7 @@ class ctrl_type_lsi(ctrl_type):
                         logging_tools.get_size_str(vol_dict["size"] * 1024 * 1024),
                         vol_stat)
                                     )
-                    if vol_stat.lower() != "okey":
+                    if vol_stat.lower() != "okay":
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                 c_array.append("%s (%s%s)%s" % (
                     c_name,
