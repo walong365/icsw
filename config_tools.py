@@ -124,7 +124,7 @@ class router_object(object):
         for s_ndev in s_list:
             for d_ndev in d_list:
                 try:
-                    all_paths.append(networkx.shortest_path(self.nx, s_ndev, d_ndev, weight="weight"))
+                    all_paths.append(networkx.all_shortest_paths(self.nx, s_ndev, d_ndev, weight="weight"))
                 except networkx.exception.NetworkXNoPath:
                     pass
         if kwargs.get("add_penalty", False):
