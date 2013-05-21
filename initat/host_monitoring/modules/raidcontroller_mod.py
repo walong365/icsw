@@ -126,6 +126,8 @@ class ctrl_type(object):
                 self.log("  %3d %s" % (line_num + 1, cur_line), logging_tools.LOG_LEVEL_ERROR)
         if "post" in kwargs:
             lines = [getattr(cur_line, kwargs["post"])() for cur_line in lines]
+        if kwargs.get("super_strip", False):
+            lines = [" ".join(line.strip().split()) for line in lines]
         if not kwargs.get("empty_ok", False):
             lines = [cur_line for cur_line in lines if cur_line.strip()]
         #print cur_stat, lines
@@ -185,25 +187,71 @@ class ctrl_check_struct(hm_classes.subprocess_struct):
 class ctrl_type_lsi(ctrl_type):
     class Meta:
         name = "lsi"
-        exec_name = "mpt-status"
+        exec_name = "cfggen"
         description = "LSI 1030 RAID Controller"
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return ["%s --controller %s" % (self._check_exec, ctrl_id[3:]) for ctrl_id in ctrl_list]
+        return ["%s %s DISPLAY" % (self._check_exec, ctrl_id[3:]) for ctrl_id in ctrl_list]
     def scan_ctrl(self):
-        cur_stat, cur_lines = self.exec_command(" ", post="strip")
+        cur_stat, cur_lines = self.exec_command(" LIST", super_strip=True)
         if not cur_stat:
             c_ids = set()
             for line in cur_lines:
-                if line.startswith("ioc"):
-                    parts = line.strip().split()
-                    c_ids.add(parts[0])
+                if line.split()[0].isdigit():
+                    c_ids.add("ioc%s" % (line.split()[0]))
             self._dict = dict([(key, {}) for key in c_ids])
     def update_ctrl(self, ctrl_ids):
         pass
         #print ctrl_ids
     def process(self, ccs):
+        ctrl_id = "ioc%s" % (ccs.run_info["command"].split()[1])
+        ctrl_dict = self._dict[ctrl_id]
+        cur_mode = None
+        to_int = set(["device", "function", "maximum_physical_devices", "size", "slot", "enclosure"])
+        for line in ccs.read().split("\n"):
+            if line.strip():
+                space_line = line[0] == " "
+                if line.count("information") and not space_line:
+                    cur_mode = {"con" : "c",
+                                "ir " : "v",
+                                "phy" : "p",
+                                "enc" : "e"}.get(line.lower()[0:3], None)
+                elif line.startswith("---"):
+                    pass
+                else:
+                    if cur_mode:
+                        if space_line:
+                            #print cur_mode, "s", line
+                            if line.count(":"):
+                                key, value = line.strip().split(":", 1)
+                                key = (" ".join(key.strip().lower().split("(")[0].split()))
+                                if key.endswith("#"):
+                                    key = key[:-1].strip()
+                                key = key.replace(" ", "_")
+                                value = value.strip()
+                                if key in to_int or key.endswith("_id"):
+                                    try:
+                                        value = int(value.split("/")[0])
+                                    except:
+                                        pass
+                                if cur_mode == "c":
+                                    ctrl_dict[key] = value
+                                elif cur_mode == "v":
+                                    vol_dict[key] = value
+                                elif cur_mode == "p":
+                                    phys_dict[key] = value
+                        else:
+                            #print cur_mode, line
+                            if cur_mode == "v":
+                                vol_dict = {}
+                                ctrl_dict.setdefault("volumes", {})[line.split()[-1]] = vol_dict
+                            if cur_mode == "p":
+                                phys_dict = {}
+                                vol_dict.setdefault("disks", {})[line.split()[-1].replace("#", "")] = phys_dict
+        ccs.srv_com["result:ctrls"] = self._dict
+        return
+        # code mpt-status, not used any more
         ctrl_re = re.compile("^(?P<c_name>\S+) vol_id (?P<vol_id>\d+) type (?P<c_type>\S+), (?P<num_discs>\d+) phy, (?P<size>\S+) (?P<size_pfix>\S+), state (?P<state>\S+), flags (?P<flags>\S+)")
         disk_re = re.compile("^(?P<c_name>\S+) phy (?P<phy_id>\d+) scsi_id (?P<scsi_id>\d+) (?P<disk_info>.*), (?P<size>\S+) (?P<size_pfix>\S+), state (?P<state>\S+), flags (?P<flags>\S+)$")
         to_int = ["num_discs", "vol_id", "phy_id", "scsi_id"]
@@ -234,15 +282,24 @@ class ctrl_type_lsi(ctrl_type):
             c_array = []
             for c_name in sorted(in_dict["ctrls"]):
                 ctrl_dict = in_dict["ctrls"][c_name]
-                c_array.append("%s (%s, %s, %.2f %s) is %s" % (
+                vol_list = []
+                for vol_key in sorted(ctrl_dict.get("volumes", {})):
+                    vol_dict = ctrl_dict["volumes"][vol_key]
+                    vol_stat = vol_dict["status_of_volume"].split()[0]
+                    vol_list.append("vol%s, RAID%s, %s, %s" % (
+                        vol_key,
+                        vol_dict["raid_level"],
+                        logging_tools.get_size_str(vol_dict["size"] * 1024 * 1024),
+                        vol_stat)
+                                    )
+                    if vol_stat.lower() != "okey":
+                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                c_array.append("%s (%s%s)%s" % (
                     c_name,
-                    ctrl_dict["c_type"],
-                    logging_tools.get_plural("disc", ctrl_dict["num_discs"]),
-                    ctrl_dict["size"],
-                    ctrl_dict["size_pfix"],
-                    ctrl_dict["state"]))
-                if ctrl_dict["state"].lower() != "optimal":
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ctrl_dict["controller_type"],
+                    ", %s" % (logging_tools.get_plural("volume", len(ctrl_dict.get("volumes", {})))) if vol_list else "",
+                    ": %s" % (", ".join(vol_list)) if vol_list else "",
+                ))
             return ret_state, "; ".join(c_array)
         else:
             return limits.nag_STATE_WARNING, "no controller found"
