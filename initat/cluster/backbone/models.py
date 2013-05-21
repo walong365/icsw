@@ -230,6 +230,18 @@ class config_blob(models.Model):
     class Meta:
         db_table = u'config_blob'
 
+@receiver(signals.pre_save, sender=config_blob)
+def config_blob_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "name")
+        all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_blob_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True))
+        if cur_inst.name in all_var_names:
+            raise ValidationError("name already used")
+
 class config_bool(models.Model):
     idx = models.AutoField(db_column="config_bool_idx", primary_key=True)
     name = models.CharField(max_length=192)
@@ -255,6 +267,25 @@ class config_bool(models.Model):
     class Meta:
         db_table = u'config_bool'
 
+@receiver(signals.pre_save, sender=config_bool)
+def config_bool_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "name")
+        all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_bool_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
+            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
+        if cur_inst.name in all_var_names:
+            raise ValidationError("name already used")
+        try:
+            if type(cur_inst.value) == bool:
+                pass
+            else:
+                cur_inst.value = True if (cur_inst.value or "").lower() in ["1", "true", "yes"] else False
+        except ValueError:
+            raise ValidationError("value cannot be interpret as bool")
+        
 class config_int(models.Model):
     idx = models.AutoField(db_column="config_int_idx", primary_key=True)
     name = models.CharField(max_length=192)
@@ -286,7 +317,14 @@ class config_int(models.Model):
 def config_int_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_inter(cur_inst, "value")
+        _check_empty_string(cur_inst, "name")
+        all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_int_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
+            list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
+        if cur_inst.name in all_var_names:
+            raise ValidationError("name already used")
+        _check_integer(cur_inst, "value")
 
 class config_script(models.Model):
     idx = models.AutoField(db_column="config_script_idx", primary_key=True)
@@ -315,6 +353,18 @@ class config_script(models.Model):
         db_table = u'config_script'
         ordering = ("priority", "name",)
 
+@receiver(signals.pre_save, sender=config_script)
+def config_script_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name:
+            raise ValidationError("name is empty")
+        if not cur_inst.value:
+            raise ValidationError("value is empty")
+        if cur_inst.name in cur_inst.config.config_script_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
+            raise ValidationError("name already used")
+        _check_integer(cur_inst, "priority")
+
 class config_str(models.Model):
     idx = models.AutoField(db_column="config_str_idx", primary_key=True)
     name = models.CharField(max_length=192)
@@ -340,16 +390,17 @@ class config_str(models.Model):
         db_table = u'config_str'
         ordering = ("name",)
 
-# no longer needed, AL 20120706
-##class c.onfig_type(models.Model):
-##    # deprecated, do not use
-##    idx = models.AutoField(db_column="config_type_idx", primary_key=True)
-##    name = models.CharField(unique=True, max_length=192)
-##    identifier = models.CharField(unique=True, max_length=6)
-##    description = models.CharField(max_length=384, blank=True)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'config_type'
+@receiver(signals.pre_save, sender=config_str)
+def config_str_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "name")
+        all_var_names = list(cur_inst.config.config_str_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
+            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
+        if cur_inst.name in all_var_names:
+            raise ValidationError("name already used")
 
 class device(models.Model):
     idx = models.AutoField(db_column="device_idx", primary_key=True)
@@ -2333,7 +2384,20 @@ class mon_check_command(models.Model):
         )
     class Meta:
         db_table = u'ng_check_command'
+    def __unicode__(self):
+        return "mcc_%s" % (self.name)
 
+@receiver(signals.pre_save, sender=mon_check_command)
+def mon_check_command_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name:
+            raise ValidationError("name is empty")
+        if not cur_inst.command_line:
+            raise ValidationError("command_line is empty")
+        if cur_inst.name in cur_inst.config.mon_check_command_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
+            raise ValidationError("name already used")
+            
 class mon_check_command_type(models.Model):
     idx = models.AutoField(db_column="ng_check_command_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
@@ -3685,90 +3749,6 @@ class wc_files(models.Model):
     class Meta:
         db_table = u'wc_files'
             
-def config_str_general_check(cur_inst):
-    if not cur_inst.name:
-        raise ValidationError("name must not be zero")
-    
-@receiver(signals.pre_save, sender=config_str)
-def config_str_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        config_str_general_check(cur_inst)
-        all_var_names = list(cur_inst.config.config_str_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
-            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
-        if cur_inst.name in all_var_names:
-            raise ValidationError("name already used")
-
-@receiver(signals.pre_save, sender=config_int)
-def config_int_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        config_str_general_check(cur_inst)
-        all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_int_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
-            list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
-        if cur_inst.name in all_var_names:
-            raise ValidationError("name already used")
-        _check_integer(cur_inst, "value")
-
-@receiver(signals.pre_save, sender=config_bool)
-def config_bool_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        config_str_general_check(cur_inst)
-        all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_bool_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
-            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
-        if cur_inst.name in all_var_names:
-            raise ValidationError("name already used")
-        try:
-            if type(cur_inst.value) == bool:
-                pass
-            else:
-                cur_inst.value = True if (cur_inst.value or "").lower() in ["1", "true", "yes"] else False
-        except ValueError:
-            raise ValidationError("value cannot be interpret as bool")
-        
-
-@receiver(signals.pre_save, sender=config_blob)
-def config_blob_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        config_str_general_check(cur_inst)
-        all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_blob_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True))
-        if cur_inst.name in all_var_names:
-            raise ValidationError("name already used")
-
-@receiver(signals.pre_save, sender=mon_check_command)
-def mon_check_command_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if not cur_inst.name:
-            raise ValidationError("name is empty")
-        if not cur_inst.command_line:
-            raise ValidationError("command_line is empty")
-        if cur_inst.name in cur_inst.config.mon_check_command_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
-            raise ValidationError("name already used")
-
-@receiver(signals.pre_save, sender=config_script)
-def config_script_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if not cur_inst.name:
-            raise ValidationError("name is empty")
-        if not cur_inst.value:
-            raise ValidationError("value is empty")
-        if cur_inst.name in cur_inst.config.config_script_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
-            raise ValidationError("name already used")
-        _check_integer(cur_inst, "priority")
-            
 def get_related_models(in_obj):
     used_objs = 0
     for rel_obj in in_obj._meta.get_all_related_objects():
@@ -3776,6 +3756,14 @@ def get_related_models(in_obj):
         used_objs += rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})).count()
     return used_objs
 
+class md_check_data_store(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey(device)
+    name = models.CharField(max_length=64, default="")
+    mon_check_command = models.ForeignKey(mon_check_command)
+    data = models.TextField(default="")
+    created = models.DateTimeField(auto_now_add=True, auto_now=True)
+    
 # mapping key prefix -> model class
 
 KPMC_MAP = {
