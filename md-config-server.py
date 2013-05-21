@@ -54,7 +54,7 @@ from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_service, mon_ext_host, mon_check_command, mon_check_command_type, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
-     user, mon_host_cluster, mon_service_cluster, config
+     user, mon_host_cluster, mon_service_cluster, config, md_check_data_store
 from django.conf import settings
 import base64
 import uuid_tools
@@ -1434,7 +1434,9 @@ class all_commands(host_type_config):
                                  ngc.device_id,
                                  special,
                                  servicegroup_name=ngc.mon_check_command_type.name if ngc.mon_check_command_type_id else "other",
-                                 enable_perfdata=ngc.enable_perfdata)
+                                 enable_perfdata=ngc.enable_perfdata,
+                                 db_entry=ngc,
+                                 )
             nag_conf = cc_s.get_nag_config()
             self.__obj_list.append(nag_conf)
             self.__dict[nag_conf["command_name"]] = cc_s
@@ -1665,6 +1667,10 @@ class check_command(object):
         self.__descr = descr.replace(",", ".")
         self.enable_perfdata = kwargs.get("enable_perfdata", False)
         self.__special = special
+        self.mon_check_command = None
+        if "db_entry" in kwargs:
+            if kwargs["db_entry"].pk:
+                self.mon_check_command = kwargs["db_entry"]
         self._generate_md_com_line()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         check_command.gen_conf.log("[cc %s] %s" % (self.__name, what), log_level)

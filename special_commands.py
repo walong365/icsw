@@ -35,7 +35,7 @@ from initat.md_config_server.config import global_config
 from initat.host_monitoring import ipc_comtools
 from initat.host_monitoring.modules import supermicro_mod
 from initat.cluster.backbone.models import partition, partition_disc, partition_table, partition_fs, \
-     netdevice, net_ip, network, lvm_vg, lvm_lv, device, device_variable
+     netdevice, net_ip, network, lvm_vg, lvm_lv, device, device_variable, md_check_data_store
 from django.db.models import Q
 from lxml import etree
 from lxml.builder import E
@@ -93,31 +93,61 @@ class special_base(object):
         for key in dir(special_base.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(special_base.Meta, key))
+        self.Meta.name = self.__class__.__name__.split("_", 1)[1]
+        self.ds_name = self.Meta.name
         self.cache_mode = kwargs.get("cache_mode", DEFAULT_CACHE_MODE)
         self.build_process = build_proc
         self.s_check = s_check
         self.host = host
         self.valid_ip = valid_ip
     def _cache_name(self):
+        print self.ds_name, self.s_check.mon_check_command, self.host
         return "/tmp/.md-config-server/%s_%s" % (
             self.host.name,
             self.valid_ip)
     def _store_cache(self):
-        c_name = self._cache_name()
-        if not os.path.isdir(os.path.dirname(c_name)):
-            os.makedirs(os.path.dirname(c_name))
-        cache = E.cache(
-            *[cur_res.tree for cur_res in self.__server_results],
-            num_entries="%d" % (len(self.__server_results)),
-            created="%d" % (int(time.time()))
-        )
-        file(c_name, "wb").write(etree.tostring(cache, pretty_print=True))
-        self.log("stored tree to %s" % (c_name))
+        if self.__force_store_cache:
+            cache = E.cache(
+                *[cur_res.tree for cur_res in self.__cache],
+                num_entries="%d" % (len(self.__cache)),
+                created="%d" % (int(time.time()))
+            )
+        else:
+            cache = E.cache(
+                *[cur_res.tree for cur_res in self.__server_results],
+                num_entries="%d" % (len(self.__server_results)),
+                created="%d" % (int(time.time()))
+            )
+        if False:
+            # old file-based cache, ignore
+            c_name = self._cache_name()
+            if not os.path.isdir(os.path.dirname(c_name)):
+                os.makedirs(os.path.dirname(c_name))
+                file(c_name, "wb").write(etree.tostring(cache, pretty_print=True))
+            self.log("stored tree to %s" % (c_name))
+        else:
+            # new code for db
+            try:
+                cur_ds = md_check_data_store.objects.get(
+                    Q(device=self.host) & 
+                    Q(mon_check_command=self.s_check.mon_check_command) &
+                    Q(name=self.ds_name))
+            except md_check_data_store.DoesNotExist:
+                cur_ds = md_check_data_store(
+                    device=self.host,
+                    mon_check_command=self.s_check.mon_check_command,
+                    name=self.ds_name)
+                self.log("creating DB-cache")
+            else:
+                self.log("updating DB-cache")
+            cur_ds.data = etree.tostring(cache)
+            cur_ds.save()
     def _load_cache(self):
         self.__cache, self.__cache_created, self.__cache_age = ([], 0, 0)
         self.__cache_valid = False
         c_name = self._cache_name()
         if os.path.isfile(c_name):
+            # old code
             try:
                 c_tree = etree.fromstring(file(c_name, "rb").read())
             except:
@@ -135,6 +165,35 @@ class special_base(object):
                     logging_tools.get_plural("entry", int(c_tree.attrib["num_entries"])),
                     c_name)
                          )
+                self.__cache_created = int(c_tree.get("created", "0"))
+                self.__cache_age = abs(time.time()- self.__cache_created)
+                self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
+                # the copy.deepcopy is important to preserve the root element
+                self.__cache = [server_command.srv_command(source=copy.deepcopy(entry)) for entry in c_tree]
+                self.__force_store_cache = True
+            try:
+                os.unlink(c_name)
+            except:
+                self.log("cannot remove old cache_file %s: %s" % (
+                    c_name,
+                    process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("removed old cache_file %s" % (c_name))
+        else:
+            try:
+                cur_ds = md_check_data_store.objects.get(
+                    Q(device=self.host) & 
+                    Q(mon_check_command=self.s_check.mon_check_command) &
+                    Q(name=self.ds_name))
+            except md_check_data_store.DoesNotExist:
+                print "***"
+                pass
+            else:
+                c_tree = etree.fromstring(cur_ds.data)
+                self.log("loaded cache (%s) from db" % (
+                    logging_tools.get_plural("entry", int(c_tree.attrib["num_entries"]))
+                ))
                 self.__cache_created = int(c_tree.get("created", "0"))
                 self.__cache_age = abs(time.time()- self.__cache_created)
                 self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
@@ -298,6 +357,8 @@ class special_base(object):
         s_name = self.__class__.__name__.split("_", 1)[1]
         self.log("starting %s for %s" % (s_name, self.host.name))
         s_time = time.time()
+        # flag to force store the cache (in case of migration of cache entries from FS to DB)
+        self.__force_store_cache = False
         if self.Meta.server_contact:
             # at first we load the current cache
             self._load_cache()
@@ -326,8 +387,8 @@ class special_base(object):
                     "ok" if self.__server_contact_ok else "failed"
                 ))
             # anything set (from cache or direct) and all server contacts ok (a little bit redundant)
-            if len(self.__server_results) == self.__call_idx and self.__call_idx:
-                if self.__server_contacts and self.__server_contact_ok:
+            if (len(self.__server_results) == self.__call_idx and self.__call_idx) or self.__force_store_cache:
+                if (self.__server_contacts and self.__server_contact_ok) or self.__force_store_cache:
                     self._store_cache()
         else:
             self.log(
