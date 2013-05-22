@@ -187,7 +187,6 @@ class special_base(object):
                     Q(mon_check_command=self.s_check.mon_check_command) &
                     Q(name=self.ds_name))
             except md_check_data_store.DoesNotExist:
-                print "***"
                 pass
             else:
                 c_tree = etree.fromstring(cur_ds.data)
