@@ -18,7 +18,18 @@
 
 <div id="network_table"></div>
 
-<div id="network_copy">Set all networks from <select id="network_copy"></select><br>Show network topology: <input type="button" id="redraw_graph" value="Redraw"/></div>
+<div id="network_copy">
+Set all networks from <select id="network_copy"></select>
+<br>
+Show network topology: <input type="button" id="redraw_graph" value="Redraw"/>
+ <select id="nw_graph_sel">
+<option value="all">all</option>
+<option value="sel">selected</option>
+<option value="selp1">selected + 1</option>
+<option value="selp2">selected + 2</option>
+<option value="selp3">selected + 3</option>
+</select>
+</div>
 
 </div>
 
@@ -540,7 +551,8 @@ class network_table
         c_w.off("change").on("change", @copy_network)
     init_create_widget: =>
         c_w = $("input#redraw_graph")
-        c_w.bind("click", @redraw_graph)
+        # important to unbind to avoid cascades
+        c_w.unbind("click").bind("click", @redraw_graph)
     draw_graph: (graph) =>
         # some DOM magic, FIXME
         div_width  = $("div#network_graph_outer").outerWidth(true)
@@ -617,6 +629,8 @@ class network_table
     redraw_graph : =>
         $.ajax
             url      : "{% url 'network:json_network' %}"
+            data     : 
+                "graph_mode" : $("select#nw_graph_sel").val()
             dataType : "json"
             success  : (json) =>
                 @draw_graph(json)
