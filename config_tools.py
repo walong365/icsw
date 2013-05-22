@@ -139,9 +139,12 @@ class router_object(object):
         return [self.nd_lut[value] for value in in_path]
 
 class topology_object(object):
-    def __init__(self, log_com):
+    def __init__(self, log_com, graph_mode="all", **kwargs):
         self.__log_com = log_com
         self.nx = None
+        self.__graph_mode = graph_mode
+        if self.__graph_mode.startswith("sel"):
+            self.__dev_pks = kwargs["dev_list"]
         self._update()
     def add_nodes(self):
         self.nx.add_nodes_from(self.dev_dict.keys())
@@ -151,8 +154,20 @@ class topology_object(object):
             self.nx.add_edge(src_node, dst_node, networkidx=sum(network_idx_list))
     def _update(self):
         s_time = time.time()
-        self.all_devs = device.objects.exclude(Q(device_type__identifier="MD")).filter(Q(enabled=True) & Q(device_group__enabled=True)).values_list("idx", "name")
+        dev_sel = device.objects.exclude(Q(device_type__identifier="MD")).filter(Q(enabled=True) & Q(device_group__enabled=True))
+        if self.__graph_mode.startswith("sel"):
+            dev_sel = dev_sel.filter(Q(pk__in=self.__dev_pks))
+        self.all_devs = dev_sel.values_list("idx", "name")
         self.dev_dict = dict([(cur_dev[0], cur_dev) for cur_dev in self.all_devs])
+        if self.__graph_mode.startswith("selp"):
+            # add further rings
+            for idx in range(int(self.__graph_mode[-1])):
+                new_dev_pks = set(device.objects.filter(Q(netdevice__peer_s_netdevice__d_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True)) | \
+                    set(device.objects.filter(Q(netdevice__peer_d_netdevice__s_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True))
+                if new_dev_pks:
+                    self.dev_dict.update(dict([(value[0], value[1]) for value in device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=new_dev_pks)).values_list("idx", "name")]))
+                else:
+                    break
         nd_dict = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
         ip_dict = dict([(value[0], (value[1], value[2])) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")])
         # reorder ip_dict
@@ -169,8 +184,9 @@ class topology_object(object):
             if nd_dict[s_nd_id] in self.dev_dict and nd_dict[d_nd_id] in self.dev_dict:
                 src_device_id = nd_dict[s_nd_id]
                 dst_device_id = nd_dict[d_nd_id]
-                src_device_id, dst_device_id = (min(src_device_id, dst_device_id),
-                                                max(src_device_id, dst_device_id))
+                src_device_id, dst_device_id = (
+                    min(src_device_id, dst_device_id),
+                    max(src_device_id, dst_device_id))
                 self.simple_peer_dict.setdefault((src_device_id, dst_device_id), set()).update(set(nd_lut.get(s_nd_id, [])) | set(nd_lut.get(d_nd_id, [])))
         if self.nx:
             del self.nx
