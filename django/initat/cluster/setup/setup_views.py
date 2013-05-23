@@ -3,7 +3,7 @@
 import os
 from django.http import HttpResponse
 from initat.core.render import render_me
-from initat.cluster.frontend.helper_functions import init_logging, logging_pool
+from initat.cluster.frontend.helper_functions import init_logging, contact_server
 from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required

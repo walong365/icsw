@@ -5,7 +5,8 @@
 {% block title %}{% trans "Device network settings" %}{% endblock %}
 
 {% block tab_js %}
-    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/d3js/d3.v3.min.js"></script>
+
+    <!--[if gt IE8]><!--><script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/d3js/d3.v3.min.js"></script><!--<![endif]-->
     <style>
 
     </style>
@@ -563,6 +564,8 @@ class network_table
         $("div#network_graph").children().remove()
         width  = 1000
         height = 500
+        if $("html").hasClass("ie8")
+            return
         # scale with 20 colors
         color = d3.scale.category20()
         #x = d3.scale.linear().domain([-width / 2, width / 2]).range([0, width])

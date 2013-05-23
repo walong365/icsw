@@ -14,7 +14,7 @@ from initat.cluster.backbone.models import config_type, config, device_group, de
 from django.http import HttpResponse, HttpResponseRedirect
 from django.db.models import Q
 from django.core.urlresolvers import reverse
-from initat.cluster.frontend.helper_functions import init_logging
+from initat.cluster.frontend.helper_functions import init_logging, contact_server
 from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from lxml import etree

@@ -25,7 +25,7 @@
 import pprint
 import logging_tools
 import process_tools
-from initat.cluster.frontend.helper_functions import init_logging
+from initat.cluster.frontend.helper_functions import init_logging, contact_server
 from initat.core.render import render_me
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
