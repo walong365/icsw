@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -47,7 +47,6 @@ LICENSE_CAPS = [
     ("docu"   , "show documentation"),
 ]
 
-
 def check_license(lic_name):
     lic_xml = etree.fromstring(
         open(LICENSE_FILE, "r").read())
@@ -65,6 +64,13 @@ def get_all_licenses():
 def create_default_license():
     if not os.path.isfile(LICENSE_FILE):
         lic_xml = E.cluster(
+            E.license(
+                E.devicecount(
+                    E.data("10"),
+                    E.signature(),
+                ),
+                short="parameter"
+            ),
             E.licenses(
                 *[E.license(name, short=name, info=info, enabled="no") for name, info in LICENSE_CAPS]
             )
@@ -122,8 +128,8 @@ GwIDAQAB
         os.unlink(tmp)
 
     @property
-    def _license_monitor(self):
-        return self.xml.xpath("//license[@short='monitor']")[0]
+    def _license_parameter(self):
+        return self.xml.xpath("//license[@short='parameter']")[0]
 
     def _check_signature(self, element):
         """ Expects the element to have a data and a signature
@@ -150,7 +156,7 @@ GwIDAQAB
 
         Might raise SignatureNotCorrect() or BadLicenseXML().
         """
-        dev_count = self._license_monitor.xpath("./devicecount")
+        dev_count = self._license_parameter.xpath("./devicecount")
         if len(dev_count):
             dev_count = dev_count[0]
         else:
