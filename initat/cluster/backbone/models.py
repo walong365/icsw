@@ -491,6 +491,8 @@ class device(models.Model):
     nagvis_parent = models.ForeignKey("device", null=True, related_name="nagvis_childs")
     # enabled ?
     enabled = models.BooleanField(default=True)
+    # try to read relevant data from device via md-config-server
+    md_refresh_cache = models.BooleanField(default=False)
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):

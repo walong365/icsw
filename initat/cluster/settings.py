@@ -3,11 +3,14 @@
 import os
 import sys
 import pprint
-from initat.cluster.license_tools import check_license, get_all_licenses, License
+from django.core.exceptions import ImproperlyConfigured
+try:
+    from initat.cluster.license_tools import check_license, get_all_licenses, License
+except ImportError:
+    raise ImproperlyConfigured("cannot initialise license framework")
 
 ugettext = lambda s : s
 
-from django.core.exceptions import ImproperlyConfigured
 # monkey-patch threading for python 2.7.x
 if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
     import threading
@@ -299,7 +302,6 @@ all_lics = get_all_licenses()
 CLUSTER_LICENSE = {}
 for cur_lic in all_lics:
     CLUSTER_LICENSE[cur_lic] = check_license(cur_lic)
-
 CLUSTER_LICENSE["device_count"] = license.get_device_count()
 del license
 
