@@ -22,10 +22,16 @@
 #
 """ kernel sync tools """
 
+import base64
+import logging
 import sys
 import os
+import tempfile
+from M2Crypto import RSA, EVP
 from lxml import etree
 from lxml.builder import E
+
+logger = logging.getLogger(__name__)
 
 LICENSE_FILE="/etc/sysconfig/cluster/cluster_license"
 
@@ -82,6 +88,85 @@ def create_default_license():
             os.chmod(LICENSE_FILE, 0o644)
         else:
             print("license file '%s' already present" % (LICENSE_FILE))
-        
+
+
+class License(object):
+    public_key = \
+"""
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4p6JXKFMDbUpe45HhGZs
+/fBsQQki80YqQzgeRB42f0waKKqToia929RcMil1g4JRmpOu6IAWaKTthuueIKje
+B1bnXYZhHKwod4Bmp6cooU3A1i+62F6AHqLJQvmaxK6UPMWyAvX6BPqJKdRcyH+X
+tFXGXEDnokfxzI1Cxgm1hYtpRwvhinERFOl1BVNgKRJD3QoYcztHDpRf58eO7i/E
+glk1qrAYb+COX14ighkhQrUZ8Q3WcOMuUvEjupUCOiBTVIU5XTMnaggmdBZETg7q
+2V6hjXVdEVg7PBYpwcGFS2TQY8g82Di6nERR4LNEAsvUX/8tRzNokOBsjSfcSWSh
+GwIDAQAB
+-----END PUBLIC KEY-----
+"""
+
+    def __init__(self, filename=LICENSE_FILE):
+        self.filename = filename
+        with open(self.filename, "r") as f:
+            self.xml = etree.fromstring(f.read())
+        # Write the public key to a temporary file for loading. It seems that
+        # the API does not support loading public keys from strings
+        tmp = tempfile.mktemp(suffix="monit_key")
+        with open(tmp, "w") as f:
+            f.write(License.public_key)
+
+        rsa_key = RSA.load_pub_key(tmp)
+        self.key = EVP.PKey()
+        self.key.assign_rsa(rsa_key)
+
+        # Cleanup
+        os.unlink(tmp)
+
+    @property
+    def _license_monitor(self):
+        return self.xml.xpath("//license[@short='monitor']")[0]
+
+    def _check_signature(self, element):
+        """ Expects the element to have a data and a signature
+        child element.
+
+        The signature must be base64 encoded.
+        """
+        data = element.xpath("./data/text()")[0]
+        signature = base64.decodestring(element.xpath("./signature/text()")[0])
+        logger.info("Checking signature for data: %s", data)
+
+        self.key.verify_init()
+        self.key.verify_update(data)
+        # Only 1 means success
+        if self.key.verify_final(signature) != 1:
+            logger.error("Signature for data '%s' not correct", data)
+            raise SignatureNotCorrect("%s has invalid signature" % element.tag)
+        else:
+            logger.info("Signature for data '%s' is correct")
+            return data
+
+    def get_device_count(self):
+        """ Validate signature and return the device count.
+
+        Might raise SignatureNotCorrect() or BadLicenseXML().
+        """
+        dev_count = self._license_monitor.xpath("./devicecount")
+        if len(dev_count):
+            dev_count = dev_count[0]
+        else:
+            raise BadLicenseXML("No devicecount found!")
+        return int(self._check_signature(dev_count))
+
+
+class BadLicenseXML(Exception):
+    """ Raised if the license XML is misformed. """
+    pass
+
+
+class SignatureNotCorrect(Exception):
+    """ Raised if the GPG signature is not correct. """
+    pass
+
+
 if __name__ == "__main__":
     create_default_license()
