@@ -42,7 +42,7 @@ class config_table
         @top_div.children().remove()
         c_table = $("<table>").attr({"id" : "config"})
         @c_table = c_table
-        ref_width = {% if settings.CLUSTER_LICENSE.monext %}11{% else %}9{% endif %}
+        ref_width = {% if settings.CLUSTER_LICENSE.monext %}12{% else %}10{% endif %}
         @devices.find("device_group").each (devg_index, cur_dg) =>
             cur_dg = $(cur_dg)
             line_prefix = cur_dg.attr("key")
@@ -121,6 +121,15 @@ class config_table
                     change_cb  : if d_el then undefined else @change_monitor_checks,
                     master_xml : @devices,
                     title      : "checks enabled",
+                })
+            )
+        ).append(
+            $("<td>").append(
+                create_input_el(d_el, "md_refresh_cache", line_prefix, {
+                    boolean    : true,
+                    change_cb  : if d_el then undefined else @change_refresh_cache,
+                    master_xml : @devices,
+                    title      : "force refresh cache",
                 })
             )
         ).append(
@@ -277,6 +286,9 @@ class config_table
     change_monitor_checks : (event) =>
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
             $(sel_el).parents("tr:first").find("input[id$='__monitor_checks']").trigger("click")
+    change_refresh_cache : (event) =>
+        @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
+            $(sel_el).parents("tr:first").find("input[id$='__md_refresh_cache']").trigger("click")
     change_enable_perfdata : (event) =>
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
             $(sel_el).parents("tr:first").find("input[id$='__enable_perfdata']").trigger("click")
