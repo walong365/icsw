@@ -548,6 +548,7 @@ class device(models.Model):
             automap_root_nagvis="1" if self.automap_root_nagvis else "0",
             uuid=self.uuid or "",
             enabled="1" if self.enabled else "0",
+            md_refresh_cache="1" if self.md_refresh_cache else "0",
         )
         if kwargs.get("with_monitoring", False):
             r_xml.attrib.update(
