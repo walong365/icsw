@@ -13,7 +13,10 @@ if [ "${UID:-X}" = "0" ] ; then
         echo ""
         echo "creating superuser"
         echo ""
-        ${C_DIR}/manage.py createsuperuser
+        if test -z "$1"
+		then
+			${C_DIR}/manage.py createsuperuser
+		fi
     else
         echo "migration directory ${MIG_DIR} present, refuse to operate"
     fi
