@@ -341,6 +341,12 @@
     <field type="IntegerField" name="mac_bytes">20</field>
     <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
   </object>
+  <object pk="7" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">bridge</field>
+    <field type="CharField" name="description">generic bridge</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2013-05-23T08:50:00</field>
+  </object>
   <object pk="1" model="backbone.network_type">
     <field type="CharField" name="identifier">b</field>
     <field type="CharField" name="description">boot network</field>
