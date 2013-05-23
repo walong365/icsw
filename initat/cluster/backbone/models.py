@@ -18,12 +18,15 @@ import pytz
 import process_tools
 import hashlib
 import base64
+import logging
 import os
 from django.conf import settings
 from rest_framework import serializers
 from django.utils.functional import memoize
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
+
+logger = logging.getLogger(__name__)
 
 class cs_timer(object):
     def __init__(self):
@@ -618,6 +621,17 @@ def device_pre_save(sender, **kwargs):
         _check_empty_string(cur_inst, "name")
         if not cur_inst.uuid:
             cur_inst.uuid = str(uuid.uuid4())
+
+        # Check if the device limit is reached
+        dev_count = settings.CLUSTER_LICENSE["device_count"]
+
+        # Exclude special meta devices
+        md_type = device_type.objects.get(identifier="MD")
+        current_count = device.objects.exclude(device_type=md_type).count()
+
+        if dev_count > 0 and current_count >= dev_count:
+            logger.warning("Device limit %d reached", dev_count)
+            raise ValidationError("Device limit reached!")
 
 class device_class(models.Model):
     idx = models.AutoField(db_column="device_class_idx", primary_key=True)

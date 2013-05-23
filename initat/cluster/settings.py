@@ -3,7 +3,7 @@
 import os
 import sys
 import pprint
-from initat.cluster.license_tools import check_license, get_all_licenses
+from initat.cluster.license_tools import check_license, get_all_licenses, License
 
 ugettext = lambda s : s
 
@@ -293,11 +293,15 @@ if os.path.isfile(LOCAL_CONFIG):
     from local_settings import *
     sys.path.remove(local_dir)
 
+license = License()
 # check licenses
 all_lics = get_all_licenses()
 CLUSTER_LICENSE = {}
 for cur_lic in all_lics:
     CLUSTER_LICENSE[cur_lic] = check_license(cur_lic)
+
+CLUSTER_LICENSE["device_count"] = license.get_device_count()
+del license
 
 # add rest if enabled
 if CLUSTER_LICENSE["rest"]:
