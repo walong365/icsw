@@ -871,6 +871,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 if drives_missing:
                     num_e += 1
                     drive_stats.append("drives missing: %s" % (", ".join(["%d" % (m_drive) for m_drive in drives_missing])))
+            if not "virt" in ctrl_stuff:
+                num_w += 1
             if "enclosures" in ctrl_stuff:
                 for enc_num in sorted(ctrl_stuff["enclosures"].keys()):
                     num_enc += 1
