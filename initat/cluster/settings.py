@@ -321,50 +321,28 @@ if CLUSTER_LICENSE["rest"]:
     }
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': True,
-    'formatters': {
-        'verbose': {
-            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s %(thread)d %(message)s'
+    'version' : 1,
+    'disable_existing_loggers' : True,
+    'formatters' : {
+        'verbose' : {
+            'format' : '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s %(thread)d %(message)s'
         },
-        'simple': {
-            'format': '%(levelname)s %(message)s'
+        'simple' : {
+            'format' : '%(levelname)s %(message)s'
         },
     },
-    'handlers': {
-###        'null': {
-##            'level': 'DEBUG',
-##            'class': 'django.utils.log.NullHandler',
-##        },
-##        'console':{
-##            'level': 'DEBUG',
-##            'class': 'logging.StreamHandler',
-##            'formatter': 'simple'
-##        },
-##        'mail_admins': {
-##            'level': 'ERROR',
-##            'class': 'django.utils.log.AdminEmailHandler',
-##        },
+    'handlers' : {
         "init.at" : {
             "level" : "ERROR",
             "class" : "logging_tools.init_handler",
             "formatter" : "verbose",
         },
     },
-    'loggers': {
-        'django': {
-            'handlers': ['init.at'],
-            'propagate': True,
-            'level': 'ERROR',
+    'loggers' : {
+        'django' : {
+            'handlers' : ['init.at'],
+            'propagate' : True,
+            'level' : 'ERROR',
         },
-##        #'django.request': {
-##        #    'handlers': ['init.at'],
-##        #    'level': 'INFO',
-##        #    'propagate': False,
-##        #},
-##        'initat.cluster': {
-##            'handlers': ["init.at"],
-##            'level': 'INFO',
-##        }
     }
 }
