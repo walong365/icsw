@@ -2149,9 +2149,14 @@ class build_process(threading_tools.process_obj):
             # build list of src_nd, dst_nd tuples
             nb_list = []
             for src_nd in src_nds:
-                for dst_nd in networkx.all_neighbors(self.router_obj.nx, src_nd):
-                    if dst_nd not in src_nds:
-                        nb_list.append((src_nd, dst_nd))
+                try:
+                    for dst_nd in networkx.all_neighbors(self.router_obj.nx, src_nd):
+                        if dst_nd not in src_nds:
+                            nb_list.append((src_nd, dst_nd))
+                except networkx.exception.NetworkXError:
+                    self.log("netdevice %s is not in graph: %s" % (src_nd,
+                                                                   process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
             for src_nd, dst_nd, in nb_list:
                 if src_nd in all_nd_pks and dst_nd in all_nd_pks:
                     src_dev, dst_dev = (dm_dict[nd_lut[src_nd]], dm_dict[nd_lut[dst_nd]])
