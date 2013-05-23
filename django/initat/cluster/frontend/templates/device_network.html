@@ -550,13 +550,15 @@ class network_table
                 c_w.append($("<option>").attr({"value" : cur_dev.attr("pk")}).text(cur_dev.attr("name")))
         c_w.off("change").on("change", @copy_network)
     init_create_widget: =>
-        c_w = $("input#redraw_graph")
         # important to unbind to avoid cascades
-        c_w.unbind("click").bind("click", @redraw_graph)
+        $("input#redraw_graph").unbind("click").bind("click", @redraw_graph)
+        $("select#nw_graph_sel").unbind("change").bind("change", @redraw_graph)
     draw_graph: (graph) =>
         # some DOM magic, FIXME
         div_width  = $("div#network_graph_outer").outerWidth(true)
         div_height = $("div#network_graph_outer").parent().height() - $("div#network_div").height() - 20
+        div_width  = if div_width  < 800 then 800 else div_width
+        div_height = if div_height < 500 then 500 else div_height
         $("div#network_graph_outer").width(div_width).height(div_height)
         $("div#network_graph").children().remove()
         width  = 1000
@@ -616,7 +618,7 @@ class network_table
         centers.append("circle").attr("r", (n) -> return 18).attr("fill", "white").attr("stroke", "grey")
       
         centers.append("text").attr("text-anchor", "middle").text((d) -> return d.name )
-        d_list = [1, 2, 4]
+        #d_list = [1, 2, 4]
         @force.on("tick", =>
             link.attr("x1", (d) -> return d.source.x )
                 .attr("y1", (d) -> return d.source.y )
