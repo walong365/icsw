@@ -13,8 +13,7 @@ if [ "${UID:-X}" = "0" ] ; then
         echo ""
         echo "creating superuser"
         echo ""
-        if test -z "$1"
-		then
+        if [ -z "$1" ]; then
 			${C_DIR}/manage.py createsuperuser
 		fi
     else
