@@ -477,7 +477,8 @@ class _general(hm_classes.hm_module):
                         elif skip_until_next_blank_line:
                             skip_until_next_blank_line = False
                             continue
-                        if line.strip().lower().startswith("error"):
+                        if line.strip().lower().startswith("error") or line.strip().lower().startswith("warn"):
+                            # skip error or blank lines
                             skip_until_next_blank_line = True
                             continue
                         lline = line.lower()
