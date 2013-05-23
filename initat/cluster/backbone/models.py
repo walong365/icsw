@@ -1729,14 +1729,15 @@ class netdevice(models.Model):
     def find_matching_network_device_type(self):
         # remove digits
         name = self.devname.split(":")[0].strip("0123456789")
-        ndt_list = network_device_type.objects.filter(Q(identifier__startswith=name))
-        if len(ndt_list) == 0:
+        ndt_dict = dict([(cur_ndt.identifier, cur_ndt) for cur_ndt in network_device_type.objects.all()])
+        match_list = [ndt for nw_id, ndt in ndt_dict.iteritems() if nw_id.startswith(name) or name.endswith(nw_id)]
+        if len(match_list) == 0:
             return None
-        elif len(ndt_list) == 1:
-            return ndt_list[0]
+        elif len(match_list) == 1:
+            return match_list[0]
         else:
             # FIXME, enhance to full match
-            return ndt_list[0]
+            return match_list[0]
     def get_dummy_macaddr(self):
         return ":".join(["00"] * self.network_device_type.mac_bytes)
     class Meta:
