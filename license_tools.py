@@ -129,8 +129,10 @@ GwIDAQAB
 
     @property
     def _license_parameter(self):
-        return self.xml.xpath("//license[@short='parameter']")[0]
-
+        try:
+            return self.xml.xpath("//license[@short='parameter']")[0]
+        except:
+            raise BadLicenseXML("no license for parameter found")
     def _check_signature(self, element):
         """ Expects the element to have a data and a signature
         child element.
