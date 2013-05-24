@@ -492,7 +492,11 @@ class device(models.Model):
     # enabled ?
     enabled = models.BooleanField(default=True)
     # try to read relevant data from device via md-config-server
-    md_refresh_cache = models.BooleanField(default=False)
+    md_cache_mode = models.IntegerField(choices=[
+        (1, "automatic (server)"),
+        (2, "never use cache"),
+        (3, "once (until successfull)"),
+        ], default=1)
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
@@ -548,7 +552,8 @@ class device(models.Model):
             automap_root_nagvis="1" if self.automap_root_nagvis else "0",
             uuid=self.uuid or "",
             enabled="1" if self.enabled else "0",
-            md_refresh_cache="1" if self.md_refresh_cache else "0",
+            # to correct string entries
+            md_cache_mode="%d" % (int(self.md_cache_mode)),
         )
         if kwargs.get("with_monitoring", False):
             r_xml.attrib.update(
@@ -659,6 +664,7 @@ def device_class_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         _check_integer(cur_inst, "priority")
+        _check_integer(cur_inst, "md_cache_mode", min_val=1, max_val=3)
         
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)
