@@ -299,7 +299,7 @@ class config_table
         })
         header_lut = 
             "var"     : ["name", "value", "description", "type", "action"],
-            "moncc"   : ["value", "command", "info string", "perfdata", "group", "template", "action"],
+            "moncc"   : ["value", "command", "info string", "perfdata", "volatile", "group", "template", "action"],
             "cscript" : ["name", "description", "priority", "enabled", "save", "action"]
         for idx, header_entry of header_lut[h_type]
             cv_tr.append(
@@ -402,6 +402,8 @@ class config_table
             create_input_el(n_com, "description", line_prefix, {master_xml : @configs, enclose_td : true, size : 40})
         ).append(
             create_input_el(n_com, "enable_perfdata", line_prefix, {boolean : true, master_xml : @configs, enclose_td : true})
+        ).append(
+            create_input_el(n_com, "volatile", line_prefix, {boolean : true, master_xml : @configs, enclose_td : true})
         ).append(
             create_input_el(n_com, "mon_check_command_type", line_prefix, {select_source : @configs.find("mon_check_command_types mon_check_command_type"), master_xml : @configs, enclose_td : true})
         ).append(
