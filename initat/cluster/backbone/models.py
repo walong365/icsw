@@ -104,38 +104,6 @@ class apc_device(models.Model):
     class Meta:
         db_table = u'apc_device'
 
-##class app_config_con(models.Model):
-##    idx = models.AutoField(db_column="app_config_con_idx", primary_key=True)
-##    application = models.ForeignKey("application")
-##    config = models.ForeignKey("config")
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'app_config_con'
-##
-##class app_devgroup_con(models.Model):
-##    idx = models.AutoField(db_column="app_devgroup_con_idx", primary_key=True)
-##    application = models.ForeignKey("application")
-##    device_group = models.ForeignKey("device_group")
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'app_devgroup_con'
-##
-##class app_instpack_con(models.Model):
-##    idx = models.AutoField(db_column="app_instpack_con_idx", primary_key=True)
-##    application = models.ForeignKey("application")
-##    inst_package = models.ForeignKey("inst_package")
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'app_instpack_con'
-##
-##class application(models.Model):
-##    idx = models.AutoField(db_column="application_idx", primary_key=True)
-##    name = models.CharField(unique=True, max_length=255)
-##    description = models.TextField()
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'application'
-
 class architecture(models.Model):
     idx = models.AutoField(db_column="architecture_idx", primary_key=True)
     architecture = models.CharField(default="", unique=True, max_length=128)
@@ -2393,6 +2361,7 @@ class mon_check_command(models.Model):
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     enable_perfdata = models.BooleanField(default=False)
+    volatile = models.BooleanField(default=False)
     def get_xml(self):
         return E.mon_check_command(
             self.name,
@@ -2405,6 +2374,7 @@ class mon_check_command(models.Model):
             command_line=self.command_line or "",
             description=self.description or "",
             enable_perfdata="1" if self.enable_perfdata else "0",
+            volatile="1" if self.volatile else "0",
         )
     class Meta:
         db_table = u'ng_check_command'
