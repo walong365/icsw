@@ -595,6 +595,7 @@ def device_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "name")
+        _check_integer(cur_inst, "md_cache_mode", min_val=1, max_val=3)
         if not cur_inst.uuid:
             cur_inst.uuid = str(uuid.uuid4())
 
@@ -632,7 +633,6 @@ def device_class_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         _check_integer(cur_inst, "priority")
-        _check_integer(cur_inst, "md_cache_mode", min_val=1, max_val=3)
         
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)
