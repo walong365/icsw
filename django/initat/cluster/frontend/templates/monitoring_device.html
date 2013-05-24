@@ -123,16 +123,30 @@ class config_table
                     title      : "checks enabled",
                 })
             )
-        ).append(
-            $("<td>").append(
-                create_input_el(d_el, "md_refresh_cache", line_prefix, {
-                    boolean    : true,
-                    change_cb  : if d_el then undefined else @change_refresh_cache,
-                    master_xml : @devices,
-                    title      : "force refresh cache",
-                })
+        )
+        if d_el
+            new_tr.append(
+                $("<td>").append(
+                    create_input_el(d_el, "md_cache_mode", line_prefix, {
+                        select_source : @get_md_cache_modes,
+                        master_xml    : @devices,
+                        title         : "md cache mode",
+                    })
+                )
             )
-        ).append(
+        else
+            new_tr.append(
+                $("<td>").append(
+                    create_input_el(d_el, "md_cache_mode", line_prefix, {
+                        select_source : @get_md_cache_modes,
+                        change_cb     : @change_md_cache_mode,
+                        master_xml    : @devices,
+                        title         : "md cache mode",
+                        add_null_entry : "---keep---",
+                    })
+                )
+            )
+        new_tr.append(
             @get_device_part(d_el, line_prefix)
         ).append(
             $("<td>").append(
@@ -216,6 +230,14 @@ class config_table
         {% endif %}
         dummy_div.append(new_tr)
         return dummy_div.children()
+    get_md_cache_modes: () =>
+        return $("<list>").append(
+            $("<entry>").attr("pk", "1").text("automatic (server)")
+        ).append(
+            $("<entry>").attr("pk", "2").text("never use cache")
+        ).append(
+            $("<entry>").attr("pk", "3").text("once (until successfull)")
+        ).children()
     get_device_part : (d_el, line_prefix) =>
         dev_td = $("<td>").addClass("right")
         if d_el
@@ -286,9 +308,13 @@ class config_table
     change_monitor_checks : (event) =>
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
             $(sel_el).parents("tr:first").find("input[id$='__monitor_checks']").trigger("click")
-    change_refresh_cache : (event) =>
+    change_md_cache_mode : (event) =>
+        mon_val = $(event.target).val()
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
-            $(sel_el).parents("tr:first").find("input[id$='__md_refresh_cache']").trigger("click")
+            sel_el = $(sel_el).parents("tr:first").find("select[id$='__md_cache_mode']")
+            if sel_el.val() != mon_val
+                sel_el.val(mon_val).trigger("change")
+        $(event.target).val(0)
     change_enable_perfdata : (event) =>
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
             $(sel_el).parents("tr:first").find("input[id$='__enable_perfdata']").trigger("click")
