@@ -10,10 +10,10 @@ if [ "${UID:-X}" = "0" ] ; then
         unset NO_AUTO_ADD_APPLICATIONS
         ${C_DIR}/manage.py schemamigration backbone --initial
         ${C_DIR}/manage.py migrate
-        echo ""
-        echo "creating superuser"
-        echo ""
         if [ -z "$1" ]; then
+			echo ""
+			echo "creating superuser"
+			echo ""
 			${C_DIR}/manage.py createsuperuser
 		fi
     else
