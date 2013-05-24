@@ -1436,6 +1436,7 @@ class all_commands(host_type_config):
                                  servicegroup_name=ngc.mon_check_command_type.name if ngc.mon_check_command_type_id else "other",
                                  enable_perfdata=ngc.enable_perfdata,
                                  db_entry=ngc,
+                                 volatile=ngc.volatile,
                                  )
             nag_conf = cc_s.get_nag_config()
             self.__obj_list.append(nag_conf)
@@ -1666,6 +1667,7 @@ class check_command(object):
         self.servicegroup_name = kwargs.get("servicegroup_name", "other")
         self.__descr = descr.replace(",", ".")
         self.enable_perfdata = kwargs.get("enable_perfdata", False)
+        self.volatile = kwargs.get("volatile", False)
         self.__special = special
         self.mon_check_command = None
         if "db_entry" in kwargs:
@@ -2918,6 +2920,8 @@ class build_process(threading_tools.process_obj):
             if checks_are_active and not cur_gc.master:
                 # trace
                 act_serv["obsess_over_service"] = 1
+            # volatile
+            act_serv["volatile"] = serv_temp.volatile
             if global_config["ENABLE_PNP"]:
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
                 if host.enable_perfdata and s_check.enable_perfdata:
