@@ -54,17 +54,6 @@ def get_size(in_str):
     except:
         return 0
 
-def to_size_str(in_size):
-    rst, idx = (in_size, 0)
-    while rst > 1000:
-        rst /= 1000
-        idx += 1
-    return "%.2f %sB" % (rst, {0 : "",
-                               1 : "k",
-                               2 : "M",
-                               3 : "G",
-                               4 : "T"}[idx])
-
 def _split_config_line(line):
     key, val = line.split(":", 1)
     key = key.lower().strip().replace(" ", "_")
@@ -1219,10 +1208,18 @@ class ctrl_type_hpacu(ctrl_type):
         array_names, size_log, size_phys = ([], [], 0)
         #pprint.pprint(c_dict)
         error_f, warn_f = ([], [])
+        if "ctrl" not in ctrl_dict and len(ctrl_dict):
+            ctrl_dict = {"ctrl" : ctrl_dict}
+            new_style = False
+        else:
+            new_style = True
         for slot_num, c_stuff in ctrl_dict.get("ctrl", {}).iteritems():
             num_cont += 1
             # new code
-            status_dict = dict([(key, value) for key, value in c_stuff["config"].iteritems() if key.count("status") and not key.count("6_adg")])
+            if new_style:
+                status_dict = dict([(key, value) for key, value in c_stuff.get("config", {}).iteritems() if key.count("status") and not key.count("6_adg")])
+            else:
+                status_dict = dict([(key, value) for key, value in c_stuff.get("status", {}).iteritems()])
             if set(status_dict.values()) != set(["ok"]):
                 error_f.append("status of controller %s (slot %d): %s" % (c_stuff["info"], slot_num, ", ".join(["%s: %s" % (key, value) for key, value in status_dict.iteritems() if value != "ok"])))
             for array_name, array_stuff in c_stuff["arrays"].iteritems():
@@ -1230,10 +1227,26 @@ class ctrl_type_hpacu(ctrl_type):
                 num_array += 1
                 for log_num, log_stuff in array_stuff["logicals"].iteritems():
                     num_log += 1
-                    _lc = log_stuff["config"]
-                    size_log.append(get_size(_lc["size"]))
-                    if _lc["status"].lower() != "ok":
-                        error_f.append("status of log.drive %d (array %s) is %s (%s%s)" % (log_num, array_name, _lc["status"], _lc["fault_tolerance"], ", %s" % (_lc.get("parity_initialization_status", ""))))
+                    if "config" in log_stuff:
+                        # new format
+                        _lc = log_stuff["config"]
+                        size_log.append(get_size(_lc["size"]))
+                        if _lc["status"].lower() != "ok":
+                            error_f.append("status of log.drive %d (array %s) is %s (%s%s)" % (
+                                log_num,
+                                array_name,
+                                _lc["status"],
+                                _lc["fault_tolerance"],
+                                ", %s" % (_lc.get("parity_initialization_status", ""))))
+                    else:
+                        size_log.append(get_size(log_stuff["size_info"]))
+                        if log_stuff["status_info"].lower() != "okx":
+                            error_f.append("status of log.drive %d (array %s) is %s (%s)" % (
+                                log_num,
+                                array_name,
+                                log_stuff["status_info"],
+                                log_stuff["raid_info"],
+                            ))
                 for phys_num, phys_stuff in array_stuff["physicals"].iteritems():
                     num_phys += 1
                     _pc = phys_stuff["config"]
@@ -1248,23 +1261,25 @@ class ctrl_type_hpacu(ctrl_type):
             ret_state, ret_str = (limits.nag_STATE_OK, "OK")
             error_str = ""
         if num_array:
-            return ret_state, "%s: %s, %s (%s), %s (%s), %s (%s)%s" % (ret_str,
-                                                                       logging_tools.get_plural("controller", num_cont),
-                                                                       logging_tools.get_plural("array", num_array),
-                                                                       ", ".join(array_names),
-                                                                       logging_tools.get_plural("log.drive", num_log),
-                                                                       "+".join([to_size_str(act_size_log) for act_size_log in size_log]),
-                                                                       logging_tools.get_plural("phys.drive", num_phys),
-                                                                       to_size_str(size_phys),
-                                                                       error_str)
+            return ret_state, "%s: %s, %s (%s), %s (%s), %s (%s)%s" % (
+                ret_str,
+                logging_tools.get_plural("controller", num_cont),
+                logging_tools.get_plural("array", num_array),
+                ", ".join(array_names),
+                logging_tools.get_plural("log.drive", num_log),
+                "+".join([logging_tools.get_size_str(act_size_log) for act_size_log in size_log]),
+                logging_tools.get_plural("phys.drive", num_phys),
+                logging_tools.get_size_str(size_phys),
+                error_str)
         else:
-            return ret_state, "%s: %s, %s (%s), %s (%s)%s" % (ret_str,
-                                                              logging_tools.get_plural("controller", num_cont),
-                                                              logging_tools.get_plural("log.drive", num_log),
-                                                              to_size_str(size_log),
-                                                              logging_tools.get_plural("phys.drive", num_phys),
-                                                              to_size_str(size_phys),
-                                                              error_str)
+            return ret_state, "%s: %s, %s (%s), %s (%s)%s" % (
+                ret_str,
+                logging_tools.get_plural("controller", num_cont),
+                logging_tools.get_plural("log.drive", num_log),
+                "+".join([logging_tools.get_size_str(act_size_log) for act_size_log in size_log]),
+                logging_tools.get_plural("phys.drive", num_phys),
+                logging_tools.get_size_str(size_phys),
+                error_str)
 
 class ctrl_type_ibmraid(ctrl_type):
     class Meta:
