@@ -127,6 +127,9 @@ class srv_command(object):
         if tag_name[0].isdigit():
             tag_name = "__fdigit__%s" % (tag_name)
             kwargs["first_digit"] = "1"
+        if tag_name.count(":"):
+            tag_name = tag_name.replace(":", "__colon__")
+            kwargs["escape_colon"] = "1"
         # escape special chars
         for s_char in "[] ":
             tag_name = tag_name.replace(s_char, "_0x0%x_" % (ord(s_char)))
@@ -141,6 +144,8 @@ class srv_command(object):
             tag_name = tag_name.replace("__atsign__", "@")
         if "first_digit" in el.attrib:
             tag_name = tag_name.replace("__fdigit__", "")
+        if "escape_colon" in el.attrib:
+            tag_name = tag_name.replace("__colon__", ":")
         if tag_name.startswith("__int__"):
             tag_name = int(tag_name[7:])
         else:

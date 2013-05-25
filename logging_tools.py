@@ -133,6 +133,19 @@ def get_size_str(in_s, long_version=False, divider=1024):
                         pf_str,
                         b_str)
 
+def interpret_size_str(in_str, **kwargs):
+    size_re = re.compile("^(?P<value>\d+(\.\d+)*)\s*(?P<pfix>.*?)b*(yte)*s*$", re.IGNORECASE)
+    size_m = size_re.match(in_str)
+    if size_m:
+        value = float(size_m.group("value"))
+        pfix = size_m.group("pfix").lower()
+        value = int(value * {"m" : 1024 * 1024,
+                             "g" : 1024 * 1024 * 1024,
+                             "t" : 1024 * 1024 * 1024 * 1024}.get(pfix, 1))
+        return value
+    else:
+        return 0
+    
 def get_diff_time_str(diff_secs):
     abs_diffs = abs(diff_secs)
     is_int = type(abs_diffs) in [int, long]
