@@ -832,6 +832,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
         drive_stats = []
         num_enc = 0
         for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
+            if "virt" not in ctrl_stuff:
+                # rewrite from old to new format
+                ctrl_stuff["virt"] = dict([(key, {"lines" : [(line[0].lower().replace(" ", "_"), line[1]) for line in value]}) for key, value in ctrl_stuff["logical_lines"].iteritems()])
             for log_num, log_stuff in ctrl_stuff.get("virt", {}).iteritems():
                 #pprint.pprint(log_dict)
                 log_dict = dict(log_stuff["lines"])
@@ -848,15 +851,16 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         logging_tools.get_plural("disc", num_drives),
                         status))
                 drives_missing = []
-                for pd_num in xrange(num_drives):
-                    if not log_stuff["pd"].get(pd_num, {}).get("lines", None):
-                        drives_missing.append(pd_num)
-                    else:
-                        pd_dict = dict(log_stuff["pd"][pd_num]["lines"])
-                        cur_state = pd_dict.get("firmware_state", "unknown")
-                        if cur_state.lower() not in ["online, spun up"]:
-                            drive_stats.append("drive %d: %s" % (pd_num, cur_state))
-                            num_w += 1
+                if "pd" in log_stuff:
+                    for pd_num in xrange(num_drives):
+                        if not log_stuff["pd"].get(pd_num, {}).get("lines", None):
+                            drives_missing.append(pd_num)
+                        else:
+                            pd_dict = dict(log_stuff["pd"][pd_num]["lines"])
+                            cur_state = pd_dict.get("firmware_state", "unknown")
+                            if cur_state.lower() not in ["online, spun up"]:
+                                drive_stats.append("drive %d: %s" % (pd_num, cur_state))
+                                num_w += 1
                 if drives_missing:
                     num_e += 1
                     drive_stats.append("drives missing: %s" % (", ".join(["%d" % (m_drive) for m_drive in drives_missing])))
