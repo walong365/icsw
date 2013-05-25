@@ -56,6 +56,9 @@ class _general(hm_classes.hm_module):
         self.local_lvm_info = partition_tools.lvm_struct("bin")
         self.local_mp_info = partition_tools.multipath_struct("bin")
         self.disk_dict, self.vmstat_dict, self.disk_stat = ({}, {}, {})
+        # locate binaries
+        self.parted_path = process_tools.find_file("parted")
+        self.btrfs_path = process_tools.find_file("btrfs")
         self.disk_dict_last_update = 0
         self.last_vmstat_time = None
     def _proc_stat_info(self, first_line=None):
@@ -196,7 +199,7 @@ class _general(hm_classes.hm_module):
                             sizeavail = bavail * fact
                             sizefree = sizetot - sizeused
                             proc = int((100.*float(blocks - bfree)) / float(blocks - bfree + bavail))
-                            n_dict[mnt[0]] = [mnt[1], proc, int(sizetot), int(sizeused), int(sizefree)]
+                            n_dict[mnt[0]] = [mnt[1], proc, int(sizetot), int(sizeused), int(sizefree), mnt[2]]
             for link_dst, link_src in link_set:
                 n_dict[link_dst] = n_dict[link_src]
         else:
@@ -210,9 +213,21 @@ class _general(hm_classes.hm_module):
                     mvect.unregister_entry("df.%s.t" % (key))
             for key in n_dict:
                 if key not in self.disk_dict:
-                    mvect.register_entry("df.%s.f" % (key), 0., "free space on $2 (%s)" % (n_dict[key][0]), "Byte", 1000, 1000)
-                    mvect.register_entry("df.%s.u" % (key), 0., "used space on $2 (%s)" % (n_dict[key][0]), "Byte", 1000, 1000)
-                    mvect.register_entry("df.%s.t" % (key), 0., "size of $2 (%s)"       % (n_dict[key][0]), "Byte", 1000, 1000)
+                    mvect.register_entry(
+                        "df.%s.f" % (key),
+                        0.,
+                        "free space on $2 (%s, %s)" % (n_dict[key][0], n_dict[key][5]),
+                        "Byte", 1000, 1000)
+                    mvect.register_entry(
+                        "df.%s.u" % (key),
+                        0.,
+                        "used space on $2 (%s, %s)" % (n_dict[key][0], n_dict[key][5]),
+                        "Byte", 1000, 1000)
+                    mvect.register_entry(
+                        "df.%s.t" % (key),
+                        0.,
+                        "size of $2 (%s, %s)"       % (n_dict[key][0], n_dict[key][5]),
+                        "Byte", 1000, 1000)
             self.disk_dict = n_dict
             for key in self.disk_dict:
                 mvect["df.%s.f" % (key)] = self.disk_dict[key][4]
@@ -459,11 +474,7 @@ class _general(hm_classes.hm_module):
             if not ret_str:
                 # partition lookup dict
                 part_lut = {}
-                # try to find parted
-                part_bin = None
-                for p_path in ["/usr/sbin/parted", "/sbin/parted"]:
-                    if os.path.isfile(p_path):
-                        part_bin = p_path
+                part_bin = self.parted_path
                 if part_bin:
                     self.log("getting partition info via parted")
                     cur_stat, out = commands.getstatusoutput("%s -l" % (part_bin))
@@ -706,13 +717,6 @@ class df_command(hm_classes.hm_command):
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
         self.__disk_lut = partition_tools.disk_lut()
-    def _get_size_str(self, in_b):
-        pf_list = ["k", "M", "G", "T", "E", "P"]
-        rst = float(in_b)
-        while rst > 1024:
-            pf_list.pop(0)
-            rst /= 1024.
-        return "%.2f %sB" % (rst, pf_list[0])
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
             srv_com["result"].attrib.update({
@@ -771,14 +775,31 @@ class df_command(hm_classes.hm_command):
                                     "reply" : "invalid partition %s" % (disk),
                                     "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
                     if store_info:
-                        srv_com["df_result"] = {
+                        mapped_info = n_dict[mapped_disk]
+                        cur_fs = mapped_info[5]
+                        res_dict = {
                             "part"        : disk,
                             "mapped_disk" : mapped_disk,
                             "orig_disk"   : orig_disk,
-                            "mountpoint"  : n_dict[mapped_disk][0],
-                            "perc"        : n_dict[mapped_disk][1],
-                            "used"        : n_dict[mapped_disk][3],
-                            "total"       : n_dict[mapped_disk][2]}
+                            "mountpoint"  : mapped_info[0],
+                            "perc"        : mapped_info[1],
+                            "used"        : mapped_info[3],
+                            "total"       : mapped_info[2],
+                            "fs"          : cur_fs,
+                        }
+                        if cur_fs == "btrfs" and self.module.btrfs_path:
+                            cur_stat, cur_out = commands.getstatusoutput("%s fi df %s" % (self.module.btrfs_path, mapped_info[0]))
+                            if not cur_stat:
+                                btrfs_info = {}
+                                for line in cur_out.lower().strip().split("\n"):
+                                    l_type, l_data = line.split(":")
+                                    l_type, l_data = (l_type.split(","), l_data.split(","))
+                                    l_type = [entry.strip() for entry in l_type if entry.strip()]
+                                    l_data = [entry.strip().split("=") for entry in l_data if entry.strip()]
+                                    l_data = dict([(key, logging_tools.interpret_size_str(value)) for key, value in l_data])
+                                    btrfs_info[":".join(l_type)] = l_data
+                                res_dict["btrfs_info"] = btrfs_info
+                        srv_com["df_result"] = res_dict
     def interpret(self, srv_com, cur_ns):
         result = srv_com["df_result"]
         #print result
@@ -792,12 +813,41 @@ class df_command(hm_classes.hm_command):
             part_str = "%s%s" % (result["part"],
                                  " (%s)" % (", ".join(other_keys)) if other_keys else "",
                                  )
-            return ret_state, u"%.0f %% (%s of %s%s) used on %s" % (
+            if "btrfs_info" in result:
+                # check for btrfs info
+                btrfs_dict = result["btrfs_info"]
+                # only check metadata (and dup) for now
+                btrfs_result = {}
+                for key, value in btrfs_dict.iteritems():
+                    key = key.split(":")
+                    r_key = key[0]
+                    mult = 2 if (len(key) == 2 and key[1] == "dup") else 1
+                    loc_dict = btrfs_result.setdefault(r_key, {})
+                    for s_key, s_value in value.iteritems():
+                        if s_key not in loc_dict:
+                            loc_dict[s_key] = 0
+                        loc_dict[s_key] += mult * s_value
+                for res_key in ["used", "total"]:
+                    btrfs_result[res_key] = sum([value[res_key] for value in btrfs_result.itervalues() if type(value) == dict])
+                # report used data as total system + total metadata + used data
+                result["used"] = (btrfs_result["system"]["total"] +
+                                  btrfs_result["metadata"]["total"] +
+                                  btrfs_result["data"]["used"]) / 1024
+                # recalc perc
+                result["perc"] = result["used"] * 100 / result["total"]
+                # add an asterisk to show the df-info as recalced
+                result["fs"] = "%s*" % (result["fs"])
+            return ret_state, u"%.0f %% (%s of %s%s%s) used on %s | total=%d used=%d free=%d" % (
                 result["perc"],
-                self._get_size_str(result["used"]),
-                self._get_size_str(result["total"]),
-                ", mp %s" % (result["mountpoint"]) if result.has_key("mountpoint") else "",
-                part_str)
+                logging_tools.get_size_str(result["used"] * 1024),
+                logging_tools.get_size_str(result["total"] * 1024),
+                ", mp %s" % (result["mountpoint"]) if "mountpoint" in result else "",
+                ", %s" % (result["fs"]) if "fs" in result else "",
+                part_str,
+                (result["total"]) * 1024,
+                (result["used"]) * 1024,
+                (result["total"] - result["used"]) * 1024,
+            )
         else:
             # all-partition result
             max_stuff = {"perc" : -1}
@@ -824,8 +874,8 @@ class df_command(hm_classes.hm_command):
                 part_str = result["part"]
             return ret_state, "%.0f %% (%s of %s%s) used on %s" % (
                 result["perc"],
-                self._get_size_str(result["used"]),
-                self._get_size_str(result["total"]),
+                logging_tools.get_size_str(result["used"] * 1024),
+                logging_tools.get_size_str(result["total"] * 1024),
                 ", mp %s" % (result["mountpoint"]) if result.has_key("mountpoint") else "",
                 part_str)
         else:
@@ -926,8 +976,9 @@ class swap_command(hm_classes.hm_command):
         else:
             swap = 100 * float(swap_total - swap_free) / swap_total
             ret_state = limits.check_ceiling(swap, cur_ns.warn , cur_ns.crit)
-            return ret_state, "swapinfo: %d %% of %s swap" % (swap,
-                                                              logging_tools.get_size_str(swap_total * 1024))
+            return ret_state, "swapinfo: %d %% of %s swap" % (
+                swap,
+                logging_tools.get_size_str(swap_total * 1024))
     def interpret_old(self, result, parsed_coms):
         def k_str(i_val):
             f_val = float(i_val)
