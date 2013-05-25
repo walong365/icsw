@@ -307,9 +307,6 @@ class _general(hm_classes.hm_module):
         stat_d = {}
         if self.last_vmstat_time is not None:
             tdiff = act_time - self.last_vmstat_time
-##            if self.mach_arch == "alpha":
-##                vms_tdiff = tdiff * 1024. / 100.
-##            else:
             vms_tdiff = tdiff
             if "ctxt" in stat_dict and "ctxt" in self.vmstat_dict:
                 mvect["num.context"] = int((stat_dict["ctxt"] - self.vmstat_dict["ctxt"]) / tdiff)
@@ -1140,12 +1137,6 @@ class load_command(hm_classes.hm_command):
 class uptime_command(hm_classes.hm_command):
     info_string = "update information"
     def __call__(self, srv_com, cur_ns):
-##        cur_sps = hm_classes.subprocess_struct(srv_com, "ps auxw", self._process)
-##        return cur_sps
-##        return hm_classes.subprocess_struct(srv_com, "ps auxw ; sleep 10")
-##    def _process(self, sps):
-##        print sps.read()
-##        srv_com = sps.srv_com
         upt_data = [int(float(value)) for value in open("/proc/uptime", "r").read().strip().split()]
         srv_com["uptime"] = "%d" % (upt_data[0])
         if len(upt_data) > 1:
@@ -1204,71 +1195,6 @@ class date_command(hm_classes.hm_command):
                 warn_diff)
         else:
             return limits.nag_STATE_OK, "%s" % (time.ctime(remote_date))
-
-##class general_command(hm_classes.hmb_command):
-##    def __init__(self, **args):
-##        hm_classes.hmb_command.__init__(self, "general", **args)
-##        self.help_str = "returns an overview of the host"
-##        self.short_client_info = "-A -l -u -i -k -d"
-##        self.long_client_info = "Show (A)ll, (l)oad, (u)ptime, (i)mage, (k)ernel, (d)ate"
-##        self.short_client_opts = "Aluikd"
-##    def server_call(self, cm):
-##        big_dict = {}
-##        for com_ent in [machinfo_command, date_command, uptime_command, load_command, sysinfo_command]:
-##            local_result = com_ent(module=self.module_info)("general %s" % (" ".join(cm)), self.logger, addr=("local", 0))
-##            what_dict = hm_classes.net_to_sys(local_result[3:])
-##            for key in what_dict.keys():
-##                big_dict[key] = what_dict[key]
-##        return "ok %s" % (hm_classes.sys_to_net(big_dict))
-##    def client_call(self, result, parsed_coms):
-##        lim = parsed_coms[0]
-##        cmm = hm_classes.net_to_sys(result[3:])
-##        out_field = []
-##        #print cmm
-##        if lim.get_add_flag("k"):
-##            out_field.append("Linux %-14s" % ("%(kernel_version)s (%(arch)s)" % cmm))
-##        if lim.get_add_flag("i"):
-##            if cmm.has_key("imageinfo"):
-##                if cmm["imageinfo"].has_key("image_name") and cmm["imageinfo"].has_key("image_version"):
-##                    image_field = ["%(image_name)s %(image_version)s" % cmm["imageinfo"]]
-##            else:
-##                image_field = ["<no imageinfo>"]
-##            image_field.append("(%(vendor)s %(version)s)" % cmm)
-##            out_field.append(" ".join(image_field))
-##        if lim.get_add_flag("d"):
-##            out_field.append("%(date)s" % cmm)
-##        if lim.get_add_flag("u"):
-##            out_field.append("up for %(up_days)3s days %(up_hours)2s:%(up_minutes)02d" % cmm)
-##        if lim.get_add_flag("l"):
-##            out_field.append("load %(load1)5s %(load5)5s %(load15)5s" % cmm)
-##        return limits.nag_STATE_OK, "; ".join(out_field)#"%s (%s); %s; %s" % (kernel_str, ", ".join(image_field), up_str, load_str)
-##
-##class hwinfo_command(hm_classes.hmb_command):
-##    def __init__(self, **args):
-##        hm_classes.hmb_command.__init__(self, "hwinfo", **args)
-##        self.help_str = "returns hardware and pci specific information"
-##        self.short_client_info = "-r, --raw"
-##        self.long_client_info = "sets raw-output (for scripts)"
-##        self.short_client_opts = "r"
-##        self.long_client_opts = ["raw"]
-##    def server_call(self, cm):
-##        src_addr = ("local", 0)
-##        full_com = "hwinfo %s" % (" ".join(cm))
-##        return "ok %s" % (hm_classes.sys_to_net({"mach" : machinfo_command(module=self.module_info)(full_com, self.logger, addr=src_addr),
-##                                                 "pci"  : pciinfo_command(module=self.module_info)(full_com, self.logger, addr=src_addr),
-##                                                 "mac"  : macinfo_command(module=self.module_info)(full_com, self.logger, addr=src_addr),
-##                                                 "dmi"  : dmiinfo_command(module=self.module_info)(full_com, self.logger, addr=src_addr),
-##                                                 "uuid" : uuid_tools.get_uuid().get_urn()}))
-##    def client_call(self, result, parsed_coms):
-##        lim = parsed_coms[0]
-##        raw_output = lim.get_add_flag("R")
-##        if raw_output:
-##            return limits.nag_STATE_OK, result[3:]
-##        else:
-##            cmr = hm_classes.net_to_sys(result[3:])
-##            mi_s, mi_o = machinfo_command().client_call(cmr["mach"], parsed_coms)
-##            pci_s, pci_o = pciinfo_command().client_call(cmr["pci"], parsed_coms)
-##            return max(mi_s, pci_s), mi_o + pci_o
 
 class macinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
@@ -1474,178 +1400,6 @@ class pciinfo_command(hm_classes.hm_command):
                             out_str = "%s (rev %s)" % (out_str, s_dict["revision"])
                         cmr_b.append(out_str)
         return limits.nag_STATE_OK, "\n".join(cmr_b)
-
-##class machinfo_command(hm_classes.hmb_command):
-##    def __init__(self, **args):
-##        hm_classes.hmb_command.__init__(self, "machinfo", **args)
-##        self.help_str = "returns hardware specific information"
-##        self.short_client_info = "-r, --raw"
-##        self.long_client_info = "sets raw-output (for scripts) or list-mode"
-##        self.short_client_opts = "r"
-##        self.long_client_opts = ["raw"]
-##    def server_call(self, cm):
-##        hw_dict = {}
-##        hw_dict["hostname"] = posix.environ["HOSTNAME"]
-##        if posix.environ.has_key("MACHTYPE"):
-##            hw_dict["machine_type"] = posix.environ["MACHTYPE"].split("-")[0]
-##        else:
-##            hw_dict["machine_type"] = "i686"
-##        try:
-##            meml = open("/proc/meminfo", "r").read().split("\n")
-##            pcid = pci_database.get_actual_pci_struct(self.module_info.vdict, self.module_info.cdict)
-##            partl = open("/proc/partitions", "r").read().split("\n")
-##            hw_dict["kernel_version"] = open("/proc/sys/kernel/osrelease", "r").read().split("\n")[0]
-##            devl = open("/proc/devices", "r").read().split("\n")
-##            while not devl[0].lower().startswith("block"):
-##                del devl[0]
-##            del devl[0]
-##            ide_devl, scsi_l_devl, scsi_devl = ([], [], [])
-##            for dev in devl:
-##                devi = dev.strip().split()
-##                if len(devi) > 1:
-##                    if re.match("ide.*", devi[1]):
-##                        ide_devl.append(int(devi[0]))
-##                    elif re.match("(sd|ida|cciss).*", devi[1]):
-##                        scsi_l_devl.append((int(devi[0]), devi[1]))
-##                        scsi_devl.append(int(devi[0]))
-##            ide_hdl, ide_cdl = ([], [])
-##            try:
-##                idedn = "/proc/ide"
-##                for entr in os.listdir(idedn):
-##                    fn = "%s/%s" % (idedn, entr)
-##                    if os.path.islink(fn):
-##                        fn = os.readlink(fn)
-##                        drive = os.path.basename(fn)
-##                        media = open("%s/%s/media" % (idedn, fn), "r").read().split("\n")[0].strip()
-##                        if media == "cdrom":
-##                            ide_cdl.append(drive)
-##                        elif media == "disk":
-##                            ide_hdl.append(drive)
-##            except:
-##                pass
-##        except:
-##            return "error %s" % (process_tools.get_except_info())
-##        hw_dict["cpus"] = self.module_info._cpuinfo_int()
-##        memd = self.module_info._mem_int()
-##        hw_dict["mem_total"] = memd["memtotal"]
-##        hw_dict["swap_total"] = memd["swaptotal"]
-##        gfx = "<UNKNOWN / not set>"
-##        for pd in pcid.keys():
-##            for k0 in pcid[pd].keys():
-##                for k1 in pcid[pd][k0].keys():
-##                    for k2 in pcid[pd][k0][k1].keys():
-##                        actd = pcid[pd][k0][k1][k2]
-##                        dev_str = "%s (rev %s)" % (actd.get("devicename", "<no key devicename>"), actd.get("revision", "<no key revision>"))
-##                        if actd["class"] == "03":
-##                            gfx = dev_str
-##        hw_dict["gfx"] = gfx
-##        num_hd, num_cd = (len(ide_hdl), len(ide_cdl))
-##        num_str = 0
-##        try:
-##            scsil = open("/proc/scsi/scsi", "r").readlines()
-##        except:
-##            scsil = []
-##        channel, id_num, lun = (0, 0, 0)
-##        for line in scsil:
-##            lm = re.match("^.*ost:\s+\S+\s+.*annel:\s+(\d+)\s+.*d:\s+(\d+)\s+.*un:\s+(\d+).*$", line)
-##            if lm:
-##                channel = abs(int(lm.group(1)))
-##                id_num = abs(int(lm.group(2)))
-##                lun = abs(int(lm.group(3)))
-##            lm = re.match("^\s+Type:\s+([\S]+).*$", line)
-##            if lm:
-##                if lm.group(1) == "Direct-Access":
-##                    num_hd += 1
-##                elif lm.group(1) == "CD-ROM":
-##                    # removed as of 20.2.2008
-##                    #if channel + id_num + lun > 0:
-##                    num_cd += 1
-##                    channel = 0
-##                    id_num = 0
-##                    lun = 0
-##                elif lm.group(1) == "Sequential-Access":
-##                    num_str += 1
-##        size_hd = 0
-##        for major, name in scsi_l_devl:
-##            sn = re.match("^([a-z]+).*$", name)
-##            if sn:
-##                if sn.group(1) == "cciss":
-##                    drv_dir = "cciss"
-##                elif sn.group(1) == "ida":
-##                    drv_dir = "cpqarray"
-##                else:
-##                    drv_dir = None
-##                if drv_dir:
-##                    try:
-##                        snf = open("/proc/driver/%s/%s" % (drv_dir, name), "r").read().split("\n")
-##                    except:
-##                        pass
-##                    else:
-##                        for snl in snf:
-##                            if snl.startswith("cciss/c"):
-##                                # cciss part
-##                                num_hd += 1
-##                                size_str = snl.split()[1]
-##                                size_hd += float(size_str[:-2]) * {"k" : 1000,
-##                                                                   "m" : 1000 * 1000,
-##                                                                   "g" : 1000 * 1000 * 1000,
-##                                                                   "t" : 1000 * 1000 * 1000 * 1000}.get(size_str[-2].lower(), 1) / (1000 * 1000)
-##                            else:
-##                                snfm = re.match("^.*:[^=]+=(\d+)[^=]+=(\d+)$", snl)
-##                                if snfm:
-##                                    mb = int(float(snfm.group(1)) * float(snfm.group(2)) / (1000. * 1000.))
-##                                    size_hd += mb
-##                                    num_hd += 1
-##        for line in partl:
-##            lm = re.match("^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\D+)(\s+.*$|$)", line)
-##            if lm:
-##                major = int(lm.group(1))
-##                minor = int(lm.group(2))
-##                size  = int(lm.group(3))
-##                part  = lm.group(4)
-##                if major in ide_devl:
-##                    if part in ide_hdl:
-##                        size_hd = size_hd + size / 1000
-##                elif major in scsi_devl:
-##                    size_hd = size_hd + size / 1000
-##        hw_dict["num_ro"] = num_cd
-##        hw_dict["num_rw"] = num_hd
-##        hw_dict["rw_size"] = float(size_hd / 1000.)
-##        #print hw_dict
-##        return "ok %s" % (hm_classes.sys_to_net(hw_dict))
-##    def client_call(self, result, parsed_coms):
-##        lim = parsed_coms[0]
-##        raw_output = lim.get_add_flag("R")
-##        if raw_output:
-##            return limits.nag_STATE_OK, result[3:]
-##        else:
-##            cmr = hm_classes.net_to_sys(result[3:])
-##            cpu_info = cmr["cpus"]
-##            if type(cpu_info) == type([]):
-##                # old cpu_info
-##                return limits.nag_STATE_OK, "%1d %25s, %4s MHz , %4.0f MB, %6.2f MB Swap, %7d GB on %2d disk, %2d CD-Rom, Gfx: %-20s" % (len(cpu_info),
-##                                                                                                                                         trim_string(str(cpu_info[0].get("type", "not_set"))),
-##                                                                                                                                         cpu_info[0].get("speed", 0),
-##                                                                                                                                         cmr["mem_total"] / 1024.,
-##                                                                                                                                         cmr["swap_total"] / 1024.,
-##                                                                                                                                         cmr["rw_size"],
-##                                                                                                                                         cmr["num_rw"],
-##                                                                                                                                         cmr["num_ro"],
-##                                                                                                                                         cmr["gfx"])
-##            else:
-##                cpu_info["parse"] = True
-##                cpu_info = cpu_database.global_cpu_info(**cpu_info)
-##                # new cpu_info
-##                first_cpu = cpu_info[cpu_info.cpu_idxs()[0]]
-##                return limits.nag_STATE_OK, "%1d %25s, %4s MHz , %4.0f MB, %6.2f MB Swap, %7d GB on %2d disk, %2d CD-Rom, Gfx: %-20s" % (cpu_info.num_cores(),
-##                                                                                                                                         trim_string(first_cpu.get("model name", "unknown brand")),
-##                                                                                                                                         first_cpu.get("speed", 0),
-##                                                                                                                                         cmr["mem_total"] / 1024.,
-##                                                                                                                                         cmr["swap_total"] / 1024.,
-##                                                                                                                                         cmr["rw_size"],
-##                                                                                                                                         cmr["num_rw"],
-##                                                                                                                                         cmr["num_ro"],
-##                                                                                                                                         cmr["gfx"])
 
 class cpuflags_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):

@@ -144,8 +144,6 @@ class _general(hm_classes.hm_module):
                     total_dict.setdefault(s_key, 0)
                     total_dict[s_key] += s_value
             nd_dict[TOTAL_DEVICE_NAME] = total_dict
-    ##         import pprint
-    ##         pprint.pprint(nd_dict)
         for key in [x for x in self.dev_dict.keys() if not nd_dict.has_key(x)]:
             mvect.unregister_entry("net.%s.rx" % (key))
             mvect.unregister_entry("net.%s.tx" % (key))
@@ -343,8 +341,6 @@ class my_modclass(hm_classes.hm_fileinfo):
                     total_dict.setdefault(s_key, 0)
                     total_dict[s_key] += s_value
             nd_dict[TOTAL_DEVICE_NAME] = total_dict
-    ##         import pprint
-    ##         pprint.pprint(nd_dict)
         self.act_nds.unlock()
         for key in [x for x in self.dev_dict.keys() if not nd_dict.has_key(x)]:
             mvect.unreg_entry("net.%s.rx" % (key))
