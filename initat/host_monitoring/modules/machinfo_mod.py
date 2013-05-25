@@ -830,9 +830,11 @@ class df_command(hm_classes.hm_command):
                 for res_key in ["used", "total"]:
                     btrfs_result[res_key] = sum([value[res_key] for value in btrfs_result.itervalues() if type(value) == dict])
                 # report used data as total system + total metadata + used data
-                result["used"] = (btrfs_result["system"]["total"] +
-                                  btrfs_result["metadata"]["total"] +
-                                  btrfs_result["data"]["used"]) / 1024
+                result["used"] = (
+                    btrfs_result["system"]["total"] +
+                    btrfs_result["metadata"]["total"] +
+                    btrfs_result["data"]["used"]
+                    ) / 1024
                 # recalc perc
                 result["perc"] = result["used"] * 100 / result["total"]
                 # add an asterisk to show the df-info as recalced
