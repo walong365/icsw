@@ -895,12 +895,15 @@ class net_command(hm_classes.hm_command):
                     #else:
                     #    add_errors.append("Cannot check duplex mode: not present in ethtool information")
                     #    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-        return ret_state, "%s, %s rx; %s tx%s%s" % (
+        return ret_state, "%s, %s rx; %s tx%s%s | rx=%d tx=%d" % (
             dev_name,
             self.beautify_speed(value_dict["rx"]),
             self.beautify_speed(value_dict["tx"]),
             add_oks and "; %s" % ("; ".join(add_oks)) or "",
-            add_errors and "; %s" % ("; ".join(add_errors)) or "")
+            add_errors and "; %s" % ("; ".join(add_errors)) or "",
+            value_dict["rx"],
+            value_dict["tx"],
+        )
     def _check_speed(self, dev_name, cur_ns, dev_str, add_oks, add_errors, ret_state):
         str_prefix = "%s: " % (dev_name) if dev_name else ""
         target_speed = self._parse_speed_str(cur_ns.speed)
