@@ -212,6 +212,8 @@ class openvpn_instance(object):
         self.__client_config_files = {}
         # for machinevector
         self.mv_registered = False
+        # speed dict
+        self.__speed_dict = {}
         self.update()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_handle.log("[oi] %s" % (what), log_level)
@@ -220,8 +222,10 @@ class openvpn_instance(object):
     def __getitem__(self, key):
         return self.__act_dict[key]
     def update(self):
-        self.ovpn_type, self.__device = ("unknown",
-                                         "unknown")
+        self.ovpn_type, self.__device = (
+            "unknown",
+            "unknown",
+        )
         self.__conf_obj.update()
         self.__ccd = None
         self.__verify_script = None
@@ -275,14 +279,39 @@ class openvpn_instance(object):
                             line = line.strip().split(",")
                             if line and line[0]:
                                 key = line.pop(0)
-                                if key in ["CLIENT_LIST", "ROUTING_TABLE"]:
+                                if key in ["TIME"]:
+                                    cur_time = int(line[-1])
+                                    keys = self.__speed_dict.keys()
+                                    if cur_time not in keys:
+                                        # remove oldest one
+                                        if len(keys) > 1:
+                                            del self.__speed_dict[min(keys)]
+                                        self.__speed_dict[cur_time] = {}
+                                        # get keys again
+                                        keys = self.__speed_dict.keys()
+                                    if len(keys) == 2:
+                                        prev_speed_dict, cur_speed_dict = (self.__speed_dict[min(keys)], self.__speed_dict[max(keys)])
+                                        diff_time = abs(keys[0] - keys[1])
+                                    else:
+                                        diff_time = None
+                                elif key in ["CLIENT_LIST", "ROUTING_TABLE"]:
                                     if key == "CLIENT_LIST":
-                                        act_dict[line[0]] = {"online"    : True,
-                                                             "src"       : line[1],
-                                                             "remote"    : line[2],
-                                                             "rx"        : int(line[3]),
-                                                             "tx"        : int(line[4]),
-                                                             "connected" : int(line[6])}
+                                        c_name = line[0]
+                                        act_dict[c_name] = {
+                                            "online"    : True,
+                                            "src"       : line[1],
+                                            "remote"    : line[2],
+                                            "rx"        : int(line[3]),
+                                            "tx"        : int(line[4]),
+                                            "connected" : int(line[6])
+                                        }
+                                        if diff_time:
+                                            cur_speed_dict[c_name] = (int(line[3]), int(line[4]))
+                                            if c_name in prev_speed_dict:
+                                                act_dict[c_name].update({
+                                                    "rxs" : abs(int(line[3]) - prev_speed_dict[c_name][0]) / diff_time,
+                                                    "txs" : abs(int(line[4]) - prev_speed_dict[c_name][1]) / diff_time,
+                                                })
                                     elif key == "ROUTING_TABLE":
                                         act_dict[line[1]]["reference"] = int(line[4])
                         # try to add client dirs
@@ -310,12 +339,14 @@ class openvpn_instance(object):
             self.state, self.status_str = (False, "no status file defined")
         self.__act_dict = act_dict
     def get_repr(self):
-        return {"state"             : self.state,
-                "status"            : self.status_str,
-                "has_verify_script" : True if self.__verify_script else False,
-                "type"              : self.ovpn_type,
-                "dict"              : self.__act_dict,
-                "device"            : self.__device}
+        return {
+            "state"             : self.state,
+            "status"            : self.status_str,
+            "has_verify_script" : True if self.__verify_script else False,
+            "type"              : self.ovpn_type,
+            "dict"              : self.__act_dict,
+            "device"            : self.__device
+        }
     
 class certificate_status_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -452,7 +483,7 @@ class openvpn_status_command(hm_classes.hm_command):
                             host_exp_dict = exp_dict[host_name]
                             break
             if host_exp_dict is None:
-                ret_state, res_field = (limits.nag_STATE_WARNING, ["no host reference for %s" % (" or ".join(host_names))])
+                ret_state, res_field = (limits.nag_STATE_WARNING, ["no host reference for %s" % (" or ".join(set(host_names)))])
         else:
             ret_state, res_field = (limits.nag_STATE_OK, [])
             host_exp_dict = None
@@ -467,16 +498,18 @@ class openvpn_status_command(hm_classes.hm_command):
                 if type(res_dict[inst_name]) == type(()):
                     # old kind of result
                     inst_ok, inst_str, clients = res_dict[inst_name]
-                    i_type, vpn_device, p_ip = ("server",
-                                                "not set",
-                                                "")
+                    i_type, vpn_device, p_ip = (
+                        "server",
+                        "not set",
+                        "")
                 else:
                     # new kind
                     act_sdict = res_dict[inst_name]
-                    inst_ok, inst_str, clients, i_type = (act_sdict["state"],
-                                                          act_sdict["status"],
-                                                          act_sdict["dict"],
-                                                          act_sdict["type"])
+                    inst_ok, inst_str, clients, i_type = (
+                        act_sdict["state"],
+                        act_sdict["status"],
+                        act_sdict["dict"],
+                        act_sdict["type"])
                     vpn_device = act_sdict.get("device", "not set")
                 if inst_ok:
                     if i_type == "client":
@@ -506,15 +539,29 @@ class openvpn_status_command(hm_classes.hm_command):
                                     else:
                                         # no p_ip, set p_ip_str according to 
                                         p_ip_str = " at %s" % (remote_ip)
-                                res_field.append("%s (Srv on %s, client %s%s ok)" % (inst_name,
-                                                                                     vpn_device,
-                                                                                     peer_name,
-                                                                                     p_ip_str))
+                                if "rxs" in peer_dict:
+                                    res_field.append("%s (Srv on %s, client %s%s ok, %s/s %s/s) | rx=%d tx=%d" % (
+                                        inst_name,
+                                        vpn_device,
+                                        peer_name,
+                                        p_ip_str,
+                                        logging_tools.get_size_str(peer_dict["rxs"]),
+                                        logging_tools.get_size_str(peer_dict["txs"]),
+                                        peer_dict["rxs"],
+                                        peer_dict["txs"],
+                                    ))
+                                else:
+                                    res_field.append("%s (Srv on %s, client %s%s ok)" % (
+                                        inst_name,
+                                        vpn_device,
+                                        peer_name,
+                                        p_ip_str))
                             else:
-                                res_field.append("%s (Srv via %s, client %s%s not found)" % (inst_name,
-                                                                                             vpn_device,
-                                                                                             peer_name,
-                                                                                             p_ip_str))
+                                res_field.append("%s (Srv via %s, client %s%s not found)" % (
+                                    inst_name,
+                                    vpn_device,
+                                    peer_name,
+                                    p_ip_str))
                                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                         else:
                             if host_exp_dict is not None and host_exp_dict.has_key(inst_name):
@@ -523,10 +570,11 @@ class openvpn_status_command(hm_classes.hm_command):
                                     if host_exp_dict[inst_name].has_key(client):
                                         host_exp_dict[inst_name][client] = limits.nag_STATE_OK
                             if clients:
-                                res_field.append("%s (Srv via %s, %s: %s)" % (inst_name,
-                                                                              vpn_device,
-                                                                              logging_tools.get_plural("client", len(clients.keys())),
-                                                                              ",".join(sorted(clients.keys()))))
+                                res_field.append("%s (Srv via %s, %s: %s)" % (
+                                    inst_name,
+                                    vpn_device,
+                                    logging_tools.get_plural("client", len(clients.keys())),
+                                    ",".join(sorted(clients.keys()))))
                             else:
                                 res_field.append("%s (no clients)" % (inst_name))
                     else:
