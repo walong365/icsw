@@ -70,17 +70,6 @@ class _general(hm_classes.hm_module):
             logger.warning("cannot execute %s (%d): %s" % (com, stat, out))
             out = ""
         return out.split("\n")
-##    def process_client_args(self, opts, hmb):
-##        ok, why = (True, "")
-##        my_lim = limits.limits()
-##        my_lim.set_add_var("instance", "ALL")
-##        my_lim.set_add_var("peer", "ALL")
-##        for opt, arg in opts:
-##            if opt == "-i":
-##                my_lim.set_add_var("instance", arg)
-##            elif opt == "-p":
-##                my_lim.set_add_var("peer", arg)
-##        return ok, why, my_lim
     def init_machine_vector(self, mv):
         # register entries
         self.__base_mv_registered = False
