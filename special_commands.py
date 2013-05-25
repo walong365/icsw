@@ -294,8 +294,8 @@ class special_base(object):
                 self.log(log_str, log_level)
                 if srv_reply is not None:
                     break
-                self.log("waiting for %d seconds" % (self.Meta.error_timeout), logging_tools.LOG_LEVEL_WARN)
-                time.sleep(self.Meta.error_timeout)
+                self.log("waiting for %d seconds" % (self.Meta.error_wait), logging_tools.LOG_LEVEL_WARN)
+                time.sleep(self.Meta.error_wait)
             if srv_reply is None and self.__call_idx == 0 and len(self.__cache):
                 # use cache only when first call went wrong and we have something in the cache
                 self.__use_cache = True
