@@ -7,6 +7,8 @@ master=true
 vacuum=true
 workers=16
 
+buffer-size=32768
+
 harakiri-verbose=1
 socket=127.0.0.1:9002
 
