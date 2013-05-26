@@ -328,12 +328,17 @@ class srv_command(object):
         return etree.tostring(self.__tree, **kwargs)
     def get_log_tuple(self):
         # returns the reply / state attribute, mapped to logging_tool levels
-        res_node = self.xpath(None, ".//ns:result")[0]
-        ret_str, ret_state = res_node.attrib["reply"], int(res_node.attrib["state"])
-        ret_state = {0 : 20,
-                     1 : 30,
-                     2 : 40,
-                     3 : 50}.get(ret_state, 50)
+        res_node = self.xpath(None, ".//ns:result")
+        if len(res_node):
+            res_node = res_node[0]
+            ret_str, ret_state = res_node.attrib["reply"], int(res_node.attrib["state"])
+            ret_state = {
+                SRV_REPLY_STATE_OK       : logging_tools.LOG_LEVEL_OK,
+                SRV_REPLY_STATE_WARN     : logging_tools.LOG_LEVEL_WARN,
+                SRV_REPLY_STATE_ERROR    : logging_tools.LOG_LEVEL_ERROR,
+                SRV_REPLY_STATE_CRITICAL : logging_tools.LOG_LEVEL_CRITICAL}.get(ret_state, logging_tools.LOG_LEVEL_CRITICAL)
+        else:
+            ret_str, ret_state = ("no result element found", logging_tools.LOG_LEVEL_CRITICAL)
         return ret_str, ret_state
     def __del__(self):
         srv_command.srvc_open -= 1
