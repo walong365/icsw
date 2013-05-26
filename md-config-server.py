@@ -2902,6 +2902,7 @@ class build_process(threading_tools.process_obj):
             act_serv["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
             act_serv["service_description"]   = arg_temp.info.replace("(", "[").replace(")", "]")
             act_serv["host_name"]             = host.name
+            # volatile
             act_serv["is_volatile"]           = serv_temp.volatile
             act_serv["check_period"]          = cur_gc["timeperiod"][serv_temp.nsc_period_id]["name"]
             act_serv["max_check_attempts"]    = serv_temp.max_attempts
@@ -2920,8 +2921,6 @@ class build_process(threading_tools.process_obj):
             if checks_are_active and not cur_gc.master:
                 # trace
                 act_serv["obsess_over_service"] = 1
-            # volatile
-            act_serv["volatile"] = serv_temp.volatile
             if global_config["ENABLE_PNP"]:
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
                 if host.enable_perfdata and s_check.enable_perfdata:
