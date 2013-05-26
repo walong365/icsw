@@ -212,7 +212,7 @@ def set_target_state(request):
     srv_com["devices"] = srv_com.builder(
         "devices",
         srv_com.builder("device", pk="%d" % (cur_dev.pk)))
-    contact_server(request, "tcp://localhost:8000", srv_com, timeout=10)
+    contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False)
     request.log("updated target state of %s" % (unicode(cur_dev)), xml=True)
     return request.xml_response.create_response()
 
