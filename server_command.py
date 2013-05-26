@@ -109,7 +109,6 @@ class srv_command(object):
             start_el = self.__tree
         return start_el.xpath(*args, **kwargs)
     def set_result(self, ret_str, level=SRV_REPLY_STATE_OK):
-        print ret_str, level
         if "result" not in self:
             self["result"] = None
         self["result"].attrib.update({
