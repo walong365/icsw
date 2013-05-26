@@ -559,7 +559,7 @@ class host(machine):
                 open(self.get_ip_mac_file_name(), "w").write("DEFAULT ../../images/memtest.bin\n")
                 if (os.path.isdir(self.get_etherboot_dir())):
                     if global_config["PXEBOOT"]:
-                        open(self.get_pxe_file_name(), "w").write(self.__glob_config["PXELINUX_0"])
+                        open(self.get_pxe_file_name(), "w").write(global_config["PXELINUX_0"])
                     else:
                         self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
         else:
@@ -576,7 +576,7 @@ class host(machine):
                                                      "LOCALBOOT 0",
                                                      ""]))
                 if global_config["PXEBOOT"]:
-                    open(self.get_pxe_file_name(), "w").write(self.__glob_config["PXELINUX_0"])
+                    open(self.get_pxe_file_name(), "w").write(global_config["PXELINUX_0"])
                 else:
                     self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
     def write_kernel_config(self, new_kernel):
@@ -724,8 +724,8 @@ class host(machine):
                 open(self.get_ip_mac_file_name(), "w").write("\n".join(pxe_lines))
                 open(self.get_menu_file_name()  , "w").write("\n".join(menu_lines))
                 if new_kernel.xen_host_kernel:
-                    if self.__glob_config["XENBOOT"]:
-                        open(self.get_mboot_file_name(), "w").write(self.__glob_config["MBOOT.C32"])
+                    if global_config["XENBOOT"]:
+                        open(self.get_mboot_file_name(), "w").write(global_config["MBOOT.C32"])
                     else:
                         self.log("not XENBOOT capable (MBOOT.C32 not found)", logging_tools.LOG_LEVEL_ERROR)
                 if global_config["PXEBOOT"]:
@@ -1164,6 +1164,7 @@ class node_control_process(threading_tools.process_obj):
             machine.iterate("refresh_target_kernel")
             machine.iterate("read_dot_files")
         if id_str:
+            in_com.set_result("ok refreshed", server_command.SRV_REPLY_STATE_OK)
             self.send_pool_message("send_return", id_str, unicode(in_com))
     def _soft_control(self, zmq_id, in_com, *args, **kwargs):
         # soft_control takes the same path as ping but uses a different hoststatus command (not status)
