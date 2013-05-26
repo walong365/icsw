@@ -116,7 +116,7 @@ def set_boot(request):
     cur_dev = device.objects.get(Q(pk=dev_id))
     boot_mac = _post["boot_dev_macaddr"]
     boot_driver = _post["boot_dev_driver"]
-    dhcp_write = True if int(_post["write_dhcp"]) else False
+    dhcp_write = True if int(_post["write_dhcp"])  else False
     dhcp_mac   = True if int(_post["greedy_mode"]) else False
     any_error = False
     cur_dev.dhcp_mac = dhcp_mac
@@ -231,7 +231,7 @@ def get_boot_info(request):
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_result])
-        result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False)
+        result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status")
         #result = net_tools.zmq_connection("boot_full_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
     xml_resp = E.boot_info()
     # lut for connections
