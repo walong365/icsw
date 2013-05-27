@@ -1171,6 +1171,7 @@ class package_repo(models.Model):
     gpg_check = models.BooleanField(default=True)
     url = models.CharField(max_length=384, default="")
     created = models.DateTimeField(auto_now_add=True)
+    publish_to_nodes = models.BooleanField(default=False)
     def get_xml(self):
         return E.package_repo(
             unicode(self),
@@ -1182,9 +1183,27 @@ class package_repo(models.Model):
             enabled="1" if self.enabled else "0",
             autorefresh="1" if self.autorefresh else "0",
             gpg_check="1" if self.gpg_check else "0",
+            publish_to_nodes="1" if self.publish_to_nodes else "0",
             url=self.url)
     def __unicode__(self):
         return self.name
+    @property
+    def distributable(self):
+        is_d = False
+        if self.publish_to_nodes:
+            is_d = True if not self.url.startswith("dir:") else False
+        return is_d
+    def repo_str(self):
+        return "\n".join([
+            "[%s]" % (self.alias),
+            "name=%s" % (self.name),
+            "enabled=%d" % (1 if self.enabled else 0),
+            "autorefresh=%d" % (1 if self.autorefresh else 0),
+            "baseurl=%s" % (self.url),
+            "type=%s" % (self.repo_type),
+            "keeppackages=0",
+            "",
+        ])
     class Meta:
         ordering = ("name", )
         
@@ -3761,44 +3780,45 @@ class md_check_data_store(models.Model):
 # mapping key prefix -> model class
 
 KPMC_MAP = {
-    "devg"    : device_group,
-    "dev"     : device,
-    "nd"      : netdevice,
-    "ip"      : net_ip,
-    "routing" : peer_information,
-    "conf"    : config,
-    "varstr"  : config_str,
-    "varint"  : config_int,
-    "varbool" : config_bool,
-    "varblob" : config_blob,
-    "cscript" : config_script,
-    "image"   : image,
-    "kernel"  : kernel,
-    "pdisc"   : partition_disc,
-    "part"    : partition,
-    "monper"  : mon_period,
-    "mondt"   : mon_device_templ,
-    "monst"   : mon_service_templ,
-    "mondet"  : mon_device_esc_templ,
-    "monset"  : mon_service_esc_templ,
-    "moncg"   : mon_contactgroup,
-    "monhc"   : mon_host_cluster,
-    "monsc"   : mon_service_cluster,
-    "moncc"   : mon_check_command,
-    "moncon"  : mon_contact,
-    "nwdt"    : network_device_type,
-    "nwt"     : network_type,
-    "dc"      : device_class,
-    "dl"      : device_location,
-    "nw"      : network,
-    "user"    : user,
-    "ps"      : package_search,
-    "group"   : group,
-    "dv"      : device_variable,
-    "ctype"   : config_type,
-    "ptable"  : partition_table,
-    "rrdc"    : rrd_class,
-    "rrdrra"  : rrd_rra,
-    "lvm_vg"  : lvm_vg,
-    "lvm_lv"  : lvm_lv,
+    "devg"         : device_group,
+    "dev"          : device,
+    "nd"           : netdevice,
+    "ip"           : net_ip,
+    "routing"      : peer_information,
+    "conf"         : config,
+    "varstr"       : config_str,
+    "varint"       : config_int,
+    "varbool"      : config_bool,
+    "varblob"      : config_blob,
+    "cscript"      : config_script,
+    "image"        : image,
+    "kernel"       : kernel,
+    "pdisc"        : partition_disc,
+    "part"         : partition,
+    "monper"       : mon_period,
+    "mondt"        : mon_device_templ,
+    "monst"        : mon_service_templ,
+    "mondet"       : mon_device_esc_templ,
+    "monset"       : mon_service_esc_templ,
+    "moncg"        : mon_contactgroup,
+    "monhc"        : mon_host_cluster,
+    "monsc"        : mon_service_cluster,
+    "moncc"        : mon_check_command,
+    "moncon"       : mon_contact,
+    "nwdt"         : network_device_type,
+    "nwt"          : network_type,
+    "dc"           : device_class,
+    "dl"           : device_location,
+    "nw"           : network,
+    "user"         : user,
+    "ps"           : package_search,
+    "group"        : group,
+    "dv"           : device_variable,
+    "ctype"        : config_type,
+    "ptable"       : partition_table,
+    "rrdc"         : rrd_class,
+    "rrdrra"       : rrd_rra,
+    "lvm_vg"       : lvm_vg,
+    "lvm_lv"       : lvm_lv,
+    "package_repo" : package_repo,
 }
