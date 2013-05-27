@@ -10,32 +10,47 @@
 
 <div id="repo_tables"></div>
 
+<input type="button" value="rescan repositories" id="rescan_repos"/>
+
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
 
-master_array = {
-    "repo" : new draw_setup("Package repositories", "package_repo", "package_repo",
-        undefined,
-        undefined,
-        [
-            new draw_info("name", {size : 40}),
-            new draw_info("alias", {size : 40}),
-            new draw_info("enabled", {boolean : true}),
-            new draw_info("autorefresh", {boolean : true}),
-            new draw_info("gpg_check", {boolean : true}),
-            new draw_info("url", {size : 60})
-        ], {
-            lock_div : "repo_tables"
-        }
-    )
-}
 
 add_config_handlers = ->
+    show_repos()
+    $("input#rescan_repos").bind("click", (event) ->
+        $.ajax
+            url     : "{% url 'pack:repo_overview' %}"
+            data    : {
+                "mode" : "rescan"
+            }
+            success : (xml) ->
+                if parse_xml_response(xml)
+                    show_repos()
+    )
+
+show_repos = ->
     $.ajax
         url     : "{% url 'pack:repo_overview' %}"
         success : (xml) ->
             if parse_xml_response(xml)
+                master_array = {
+                    "repo" : new draw_setup("Package repositories", "package_repo", "package_repo",
+                        undefined,
+                        undefined,
+                        [
+                            new draw_info("name", {size : 40}),
+                            new draw_info("alias", {size : 40}),
+                            new draw_info("enabled", {boolean : true}),
+                            new draw_info("autorefresh", {boolean : true}),
+                            new draw_info("gpg_check", {boolean : true}),
+                            new draw_info("url", {size : 60})
+                        ], {
+                            lock_div : "repo_tables"
+                        }
+                    )
+                }
                 draw_ds_tables($("div#repo_tables"), master_array, $(xml).find("value[name='response']"))
 
 $(document).ready(add_config_handlers)

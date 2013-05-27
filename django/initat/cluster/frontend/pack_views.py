@@ -28,6 +28,10 @@ def repo_overview(request):
     if request.method == "GET":
         return render_me(request, "package_repo_overview.html", {})()
     else:
+        cur_mode = request.POST.get("mode", None)
+        if cur_mode == "rescan":
+            srv_com = server_command.srv_command(command="rescan_repos")
+            result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=True)
         xml_resp = E.response(
             E.package_repos(*[cur_r.get_xml() for cur_r in package_repo.objects.all()])
         )
