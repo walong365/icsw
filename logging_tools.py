@@ -29,6 +29,7 @@ import os.path
 import gzip
 import stat
 import traceback
+import inspect
 try:
     import bz2
 except:
@@ -385,6 +386,32 @@ class init_handler(zmq_handler):
             record.request = "request"
         zmq_handler.emit(self, record)
 
+def beautify_record(record):
+    if getattr(record, "exc_info", None):
+        tb_object = record.exc_info[2]
+        frame_info = []
+        for file_name, line_no, name, line in traceback.extract_tb(tb_object):
+            frame_info.append("File '%s', line %d, in %s" % (file_name, line_no, name))
+            if line:
+                frame_info.append(" - %d : %s" % (line_no, line))
+        frame_info.append("%s (%s)" % (unicode(record.exc_info[0]),
+                                       unicode(record.exc_info[1])))
+        record.error_str = record.msg % ("\n".join(frame_info))
+        var_list = []
+        req_var = inspect.trace()[-1][0].f_locals.get("request", None)
+        if req_var:
+            # print get / post variables
+            for key in ["GET", "POST"]:
+                v_dict = getattr(req_var, key, None)
+                if v_dict:
+                    var_list.append("")
+                    var_list.append("%s (%d):" % (key, len(v_dict)))
+                    for s_num, s_key in enumerate(sorted(v_dict.keys())):
+                        var_list.append("  %3d %s: %s" % (s_num + 1, s_key, v_dict[s_key]))
+        record.exc_text = "\n".join(frame_info + var_list)
+    else:
+        record.error_str = record.msg
+    
 class init_email_handler(zmq_handler):
     zmq_context = None
     def __init__(self, filename=None, *args, **kwargs):
@@ -399,16 +426,7 @@ class init_email_handler(zmq_handler):
                        "lineno"     : 1}
     def emit(self, record):
         record.IOS_type = "error"
-        if getattr(record, "exc_info", None):
-            tb_object = record.exc_info[2]
-            frame_info = []
-            for file_name, line_no, name, line in traceback.extract_tb(tb_object):
-                frame_info.append("File '%s', line %d, in %s" % (file_name, line_no, name))
-                if line:
-                    frame_info.append(" - %d : %s" % (line_no, line))
-            record.error_str = record.msg % ("\n".join(frame_info))
-        else:
-            record.error_str = record.msg
+        beautify_record(record)
         record.uid = os.getuid()
         record.gid = os.getgid()
         record.pid = os.getpid()
@@ -432,6 +450,7 @@ class init_handler_unified(zmq_handler):
     def emit(self, record):
         if record.name.startswith("init.at."):
             record.name = record.name[8:]
+        beautify_record(record)
         for key in self.__lens.keys():
             cur_val = getattr(record, key)
             if type(cur_val) in [int, long]:
