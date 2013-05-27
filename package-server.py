@@ -94,20 +94,28 @@ class repo_type_rpm_zypper(repo_type):
         self.log("got repo scan result")
         repo_xml = etree.fromstring(s_struct.read())
         new_repos = []
+        found_repos = []
         for repo in repo_xml.xpath(".//repo-list/repo"):
             try:
                 cur_repo = package_repo.objects.get(Q(name=repo.attrib["name"]))
             except package_repo.DoesNotExist:
                 cur_repo = package_repo(name=repo.attrib["name"])
                 new_repos.append(cur_repo)
+            found_repos.append(cur_repo)
             cur_repo.alias = repo.attrib["alias"]
             cur_repo.repo_type = repo.attrib.get("type", "unknown")
-            cur_repo.enabled = True if int(repo.attrib["enabled"]) else False
+            cur_repo.enabled     = True if int(repo.attrib["enabled"]) else False
             cur_repo.autorefresh = True if int(repo.attrib["autorefresh"]) else False
-            cur_repo.gpg_check = True if int(repo.attrib["gpgcheck"]) else False
+            cur_repo.gpg_check   = True if int(repo.attrib["gpgcheck"]) else False
             cur_repo.url = repo.findtext("url")
             cur_repo.save()
         self.log("found %s" % (logging_tools.get_plural("new repository", len(new_repos))))
+        if s_struct.src_id:
+            self.master_process.send_pool_message(
+                "delayed_result",
+                s_struct.src_id,
+                "rescanned %s" % (logging_tools.get_plural("repository", len(found_repos))),
+                server_command.SRV_REPLY_STATE_OK)
         self.master_process._reload_searches()
     def init_search(self, s_struct):
         cur_search = s_struct.run_info["stuff"]
@@ -240,7 +248,7 @@ class repo_process(threading_tools.process_obj):
             init_logger=True)
         # close database connection
         connection.close()
-        self.register_func("rescan_all", self._rescan_all)
+        self.register_func("rescan_repos", self._rescan_repos)
         self.register_func("reload_searches", self._reload_searches)
         self.register_func("search", self._search)
         self.__background_commands = []
@@ -273,9 +281,19 @@ class repo_process(threading_tools.process_obj):
                     new_list.append(cur_del)
         self.__background_commands = new_list
     # commands
-    def _rescan_all(self, *args, **kwargs):
+    def _rescan_repos(self, *args, **kwargs):
+        if args:
+            srv_com = server_command.srv_command(source=args[0])
+        else:
+            srv_com = None
         self.log("rescan repositories")
-        self.__background_commands.append(subprocess_struct(self, 0, self.repo_type.SCAN_REPOS, start=True, verbose=global_config["DEBUG"], post_cb_func=self.repo_type.repo_scan_result))
+        self.__background_commands.append(subprocess_struct(
+            self,
+            0 if srv_com is None else int(srv_com["return_id"].text),
+            self.repo_type.SCAN_REPOS,
+            start=True,
+            verbose=global_config["DEBUG"],
+            post_cb_func=self.repo_type.repo_scan_result))
     def _search(self, s_string):
         self.log("searching for '%s'" % (s_string))
         self.__background_commands.append(subprocess_struct(self, 0, self.repo_type.search_package(s_string), start=True, verbose=global_config["DEBUG"], post_cb_func=self.repo_type.search_result))
@@ -430,6 +448,8 @@ class server_process(threading_tools.process_pool):
         self.register_exception("hup_error", self._hup_error)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._log_config()
+        # idx for delayed commands
+        self.__delayed_id, self.__delayed_struct = (0, {})
         self._re_insert_config()
         self.__msi_block = self._init_msi_block()
         self._init_clients()
@@ -437,7 +457,8 @@ class server_process(threading_tools.process_pool):
         self.add_process(repo_process("repo"), start=True)
         #self.register_timer(self._send_update, global_config["RENOTIFY_CLIENTS_TIMEOUT"], instant=True)
         self.register_timer(self._send_update, 3600, instant=True)
-        self.send_to_process("repo", "rescan_all")
+        self.register_func("delayed_result", self._delayed_result)
+        self.send_to_process("repo", "rescan_repos")
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -522,11 +543,23 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("wrong number of data chunks (%d != 2)" % (len(data)),
                      logging_tools.LOG_LEVEL_ERROR)
+    def _delayed_result(self, src_name, src_pid, ext_id, ret_str, ret_state, **kwargs):
+        in_uid, srv_com = self.__delayed_struct[ext_id]
+        del self.__delayed_struct[ext_id]
+        self.log("sending delayed return for %s" % (unicode(srv_com)))
+        srv_com["result"].attrib.update({
+            "reply" : ret_str,
+            "state" : "%d" % (ret_state)})
+        zmq_sock = self.socket_dict["router"]
+        zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
+        zmq_sock.send_unicode(unicode(srv_com))
     def _handle_wfe_command(self, zmq_sock, in_uid, srv_com):
         in_com = srv_com["command"].text
-        self.log("got server_command %s from %s" % (in_com,
-                                                    in_uid))
+        self.log("got server_command %s from %s" % (
+            in_com,
+            in_uid))
         srv_com.update_source()
+        immediate_return = True
         srv_com["result"] = None
         srv_com["result"].attrib.update({
             "reply" : "result not set",
@@ -554,13 +587,20 @@ class server_process(threading_tools.process_pool):
             srv_com["result"].attrib.update({
                 "reply" : "ok reloading",
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+        elif in_com == "rescan_repos":
+            self.__delayed_id += 1
+            self.__delayed_struct[self.__delayed_id] = (in_uid, srv_com)
+            srv_com["return_id"] = self.__delayed_id
+            self.send_to_process("repo", "rescan_repos", unicode(srv_com))
+            immediate_return = False
         else:
             srv_com["result"].attrib.update({
                 "reply" : "command %s not known" % (in_com),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         #print srv_com.pretty_print()
-        zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
-        zmq_sock.send_unicode(unicode(srv_com))
+        if immediate_return:
+            zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
+            zmq_sock.send_unicode(unicode(srv_com))
     def _init_network_sockets(self):
         my_0mq_id = uuid_tools.get_uuid().get_urn()
         self.socket_dict = {}
