@@ -186,7 +186,7 @@ class log_receiver(threading_tools.process_obj):
             self.__eg_dict.setdefault(in_dict["pid"], {
                 "last_update" : time.time(),
                 "errors"      : [],
-                "proc_dict"   : in_dict})["errors"].append(in_dict["error_str"].rstrip())
+                "proc_dict"   : in_dict})["errors"].append(in_dict.get("exc_text", in_dict["error_str"]).rstrip())
             # log to err_py
             try:
                 uname = pwd.getpwuid(in_dict.get("uid", -1))[0]
@@ -202,7 +202,7 @@ class log_receiver(threading_tools.process_obj):
                 uname,
                 in_dict.get("gid", 0),
                 gname)
-            for err_line in in_dict["error_str"].rstrip().split("\n"):
+            for err_line in in_dict.get("exc_text", in_dict["error_str"]).rstrip().split("\n"):
                 self.log("from pid %d (%s): %s" % (
                     in_dict.get("pid", 0),
                     pid_str,
@@ -302,6 +302,7 @@ class log_receiver(threading_tools.process_obj):
         except:
             in_dict = {}
         if in_dict:
+            #pprint.pprint(in_dict)
             if in_dict.has_key("IOS_type"):
                 self.log("got error_dict (pid %d)" % (in_dict["pid"]),
                          logging_tools.LOG_LEVEL_ERROR)
