@@ -357,7 +357,7 @@ class client(object):
             client.lut[name] = new_client
             client.srv_process.log("added client %s (%s)" % (name, uid))
             cur_el = client.xml.xpath(".//package_client[@name='%s']" % (name))
-            if not cur_el:
+            if cur_el is None:
                 client.xml.append(E.package_client(uid, name=name))
                 file(CONFIG_NAME, "w").write(etree.tostring(client.xml, pretty_print=True))
     def close(self):
@@ -399,7 +399,14 @@ class client(object):
             *[cur_pdc.get_xml(with_package=True) for cur_pdc in package_device_connection.objects.filter(Q(device=self.device)).select_related("package")]
         )
         srv_com["package_list"] = resp
-    def _get_package_info(self, srv_com):
+    def _get_repo_list(self, srv_com):
+        repo_list = package_repo.objects.filter(Q(publish_to_nodes=True))
+        resp = srv_com.builder(
+            "repos",
+            *[cur_repo.get_xml() for cur_repo in repo_list if cur_repo.distributable]
+        )
+        srv_com["repo_list"] = resp
+    def _package_info(self, srv_com):
         pdc_xml = srv_com.xpath(None, ".//package_device_connection")[0]
         info_xml = srv_com.xpath(None, ".//result")
         if len(info_xml):
@@ -424,8 +431,12 @@ class client(object):
             srv_com["command"] = "package_list"
             self._get_package_list(srv_com)
             send_reply = True
+        elif cur_com == "get_repo_list":
+            srv_com["command"] = "repo_list"
+            self._get_repo_list(srv_com)
+            send_reply = True
         elif cur_com == "package_info":
-            self._get_package_info(srv_com)
+            self._package_info(srv_com)
         else:
             self.log("unknown command '%s'" % (cur_com),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -570,8 +581,9 @@ class server_process(threading_tools.process_pool):
                 valid_devs = list(client.name_set)
             else:
                 valid_devs = [name for name in all_devs if name in client.name_set]
-            self.log("%s requested, %s found" % (logging_tools.get_plural("device", len(all_devs)),
-                                                 logging_tools.get_plural("device" ,len(valid_devs))))
+            self.log("%s requested, %s found" % (
+                logging_tools.get_plural("device", len(all_devs)),
+                logging_tools.get_plural("device" ,len(valid_devs))))
             for cur_dev in all_devs:
                 srv_com.xpath(None, ".//ns:device_command[@name='%s']" % (cur_dev))[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
             if valid_devs:

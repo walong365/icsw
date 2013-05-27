@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2012,2013 Andreas Lang-Nevyjel
 #
 # this file is part of package-client
 #
@@ -46,6 +46,19 @@ P_SERVER_COM_PORT   = 8007
 PACKAGE_CLIENT_PORT = 2003
 
 LF_NAME = "/var/lock/package_client.lock"
+
+def get_repo_str(in_repo):
+    # copy from initat.cluster.backbone.models.package_repo.repo_str
+    return "\n".join([
+        "[%s]" % (in_repo.attrib["alias"]),
+        "name=%s" % (in_repo.attrib["name"]),
+        "enabled=%d" % (int(in_repo.attrib["enabled"])),
+        "autorefresh=%d" % (int(in_repo.attrib["autorefresh"])),
+        "baseurl=%s" % (in_repo.attrib["url"]),
+        "type=%s" % (in_repo.attrib["repo_type"]),
+        "keeppackages=0",
+        "",
+    ])
 
 def get_srv_command(**kwargs):
     return server_command.srv_command(
@@ -277,6 +290,28 @@ class install_process(threading_tools.process_obj):
             new_list = [cur_com for cur_com in self.package_commands if cur_com != cur_pdc]
             self.package_commands = new_list
         self._process_commands()
+    def _handle_repo_list(self, in_com):
+        in_repos = in_com.xpath(None, ".//ns:repos")[0]
+        self.log("handling repo_list (%s)" % (logging_tools.get_plural("entry", len(in_repos))))
+        # manual comparision, better modify them with zypper, FIXME ?
+        repo_dir = "/etc/zypp/repos.d"
+        cur_repo_names = [entry[:-5] for entry in os.listdir(repo_dir) if entry.endswith(".repo")]
+        self.log("%s found in %s" % (
+            logging_tools.get_plural("repository", len(cur_repo_names)),
+            repo_dir))
+        new_repo_names = in_repos.xpath(".//package_repo/@alias")
+        old_repo_dict = dict([(f_name, file(os.path.join(repo_dir, "%s.repo" % (f_name)), "r").read()) for f_name in cur_repo_names])
+        new_repo_dict = dict([(in_repo.attrib["alias"], get_repo_str(in_repo)) for in_repo in in_repos])
+        rewrite_repos = False
+        if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set (new_repo_dict.keys())]):
+            self.log("repository content differs, forcing rewrite")
+            rewrite_repos = True
+        elif set(cur_repo_names) ^ set(new_repo_dict.keys()):
+            self.log("list of old and new repositories differ, forcing rewrite")
+            rewrite_repos = True
+        if rewrite_repos:
+            self.log("rewritting repo files")
+            self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
     def handle_pending_commands(self):
         while self.pending_commands and not self.package_commands:
             # now the fun starts, we have a list of commands and a valid local package list
@@ -285,6 +320,9 @@ class install_process(threading_tools.process_obj):
             self.log("try to handle %s" % (cur_com))
             if cur_com in ["send_info"]:
                 self.log("... ignoring", logging_tools.LOG_LEVEL_WARN)
+            elif cur_com in ["repo_list"]:
+                self._handle_repo_list(first_com)
+                self._process_commands()
             elif cur_com in ["package_list"]:
                 if len(first_com.xpath(None, ".//ns:packages/package_device_connection")):
                     # clever enqueue ? FIXME
@@ -300,6 +338,8 @@ class install_process(threading_tools.process_obj):
                     self._process_commands()
                 else:
                     self.log("empty package_list, removing")
+            else:
+                self.log("unknown command '%s', ignoring..." % (cur_com), logging_tools.LOG_LEVEL_CRITICAL)
     
 class server_process(threading_tools.process_pool):
     def __init__(self):
@@ -309,9 +349,10 @@ class server_process(threading_tools.process_pool):
             zmq_debug=global_config["ZMQ_DEBUG"]
             )
         if not global_config["DEBUG"]:
-            process_tools.set_handles({"out" : (1, "package_client.out"),
-                                       "err" : (0, "/var/lib/logging-server/py_err")},
-                                       zmq_context=self.zmq_context)
+            process_tools.set_handles({
+                "out" : (1, "package_client.out"),
+                "err" : (0, "/var/lib/logging-server/py_err")},
+                                      zmq_context=self.zmq_context)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
         # init environment
@@ -427,8 +468,9 @@ class server_process(threading_tools.process_pool):
         self.log("sending %s (%s) to server %s" % (com_name, send_info, self.conn_str))
         self.srv_port.send_unicode(send_com)
     def _get_new_config(self):
+        self._send_to_server_int(get_srv_command(command="get_repo_list"))
         self._send_to_server_int(get_srv_command(command="get_package_list"))
-        self._send_to_server_int(get_srv_command(command="get_rsync_list"))
+        #self._send_to_server_int(get_srv_command(command="get_rsync_list"))
     def _recv(self, zmq_sock):
         batch_list = []
         while True:
@@ -488,7 +530,7 @@ def main():
         ("POLL_INTERVALL"         , configfile.int_c_var(5, help_string="poll intervall")),
         ("EXIT_ON_FAIL"           , configfile.bool_c_var(False, help_string="exit on fail [%(default)s]")),
         ("COM_PORT"               , configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="node to bind to [%(default)d]")),
-        ("SERVER_COM_PORT"          , configfile.int_c_var(P_SERVER_COM_PORT, help_string="server com port [%(default)d]")),
+        ("SERVER_COM_PORT"        , configfile.int_c_var(P_SERVER_COM_PORT, help_string="server com port [%(default)d]")),
         ("LOG_DESTINATION"        , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"               , configfile.str_c_var(prog_name)),
         ("VAR_DIR"                , configfile.str_c_var("/var/lib/cluster/package-client", help_string="location of var-directory [%(default)s]")),
