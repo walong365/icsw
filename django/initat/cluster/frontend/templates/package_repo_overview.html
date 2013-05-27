@@ -35,23 +35,25 @@ show_repos = ->
         url     : "{% url 'pack:repo_overview' %}"
         success : (xml) ->
             if parse_xml_response(xml)
+                master_xml = $(xml).find("value[name='response']")
                 master_array = {
                     "repo" : new draw_setup("Package repositories", "package_repo", "package_repo",
-                        undefined,
-                        undefined,
+                        "{% url 'base:create_object' 'package_repo' %}",
+                        "{% url 'base:delete_object' 'package_repo' %}",
                         [
-                            new draw_info("name", {size : 40}),
-                            new draw_info("alias", {size : 40}),
-                            new draw_info("enabled", {boolean : true}),
-                            new draw_info("autorefresh", {boolean : true}),
-                            new draw_info("gpg_check", {boolean : true}),
-                            new draw_info("url", {size : 60})
+                            new draw_info("name", {size : 40, ro : true}),
+                            new draw_info("alias", {size : 40, ro : true}),
+                            new draw_info("enabled", {boolean : true, ro : true}),
+                            new draw_info("autorefresh", {boolean : true, ro : true}),
+                            new draw_info("gpg_check", {boolean : true, ro : true}),
+                            new draw_info("publish_to_nodes", {boolean : true}),
+                            new draw_info("url", {size : 60, ro : true})
                         ], {
                             lock_div : "repo_tables"
                         }
                     )
                 }
-                draw_ds_tables($("div#repo_tables"), master_array, $(xml).find("value[name='response']"))
+                draw_ds_tables($("div#repo_tables"), master_array, master_xml)
 
 $(document).ready(add_config_handlers)
 
