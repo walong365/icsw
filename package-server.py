@@ -350,16 +350,29 @@ class client(object):
     @staticmethod
     def register(uid, name):
         if uid not in client.uid_set:
-            client.uid_set.add(uid)
-            client.name_set.add(name)
-            new_client = client(uid, name)
-            client.lut[uid] = new_client
-            client.lut[name] = new_client
-            client.srv_process.log("added client %s (%s)" % (name, uid))
-            cur_el = client.xml.xpath(".//package_client[@name='%s']" % (name))
-            if cur_el is None:
-                client.xml.append(E.package_client(uid, name=name))
-                file(CONFIG_NAME, "w").write(etree.tostring(client.xml, pretty_print=True))
+            try:
+                new_client = client(uid, name)
+            except device.DoesNotExist:
+                client.srv_process.log("no client with name '%s' found" % (name), logging_tools.LOG_LEVEL_ERROR)
+                if name.count("."):
+                    s_name = name.split(".")[0]
+                    client.srv_process.log("trying with short name '%s'" % (s_name), logging_tools.LOG_LEVEL_WARN)
+                    try:
+                        new_client = client(uid, s_name)
+                    except:
+                        new_client = None
+                    else:
+                        client.srv_process.log("successfull with short name", logging_tools.LOG_LEVEL_WARN)
+            if client is not None:
+                client.uid_set.add(uid)
+                client.name_set.add(name)
+                client.lut[uid] = new_client
+                client.lut[name] = new_client
+                client.srv_process.log("added client %s (%s)" % (name, uid))
+                cur_el = client.xml.xpath(".//package_client[@name='%s']" % (name))
+                if not len(cur_el):
+                    client.xml.append(E.package_client(uid, name=name))
+                    file(CONFIG_NAME, "w").write(etree.tostring(client.xml, pretty_print=True))
     def close(self):
         if self.__log_template is not None:
             self.__log_template.close()
@@ -466,6 +479,8 @@ class server_process(threading_tools.process_pool):
         self._init_clients()
         self._init_network_sockets()
         self.add_process(repo_process("repo"), start=True)
+        # close DB connection
+        connection.close()
         #self.register_timer(self._send_update, global_config["RENOTIFY_CLIENTS_TIMEOUT"], instant=True)
         self.register_timer(self._send_update, 3600, instant=True)
         self.register_func("delayed_result", self._delayed_result)
@@ -605,6 +620,15 @@ class server_process(threading_tools.process_pool):
             srv_com["return_id"] = self.__delayed_id
             self.send_to_process("repo", "rescan_repos", unicode(srv_com))
             immediate_return = False
+        elif in_com == "sync_repos":
+            all_devs = list(client.name_set)
+            self.log("sending sync_repos to %s" % (logging_tools.get_plural("device", len(all_devs))))
+            if all_devs:
+                self._send_update(command="sync_repos", dev_list=all_devs)
+            srv_com["result"].attrib.update({
+                "reply" : "send sync_repos to %s" % (
+                    logging_tools.get_plural("device", len(all_devs))),
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
         else:
             srv_com["result"].attrib.update({
                 "reply" : "command %s not known" % (in_com),

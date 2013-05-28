@@ -309,8 +309,25 @@ class install_process(threading_tools.process_obj):
         elif set(cur_repo_names) ^ set(new_repo_dict.keys()):
             self.log("list of old and new repositories differ, forcing rewrite")
             rewrite_repos = True
-        if rewrite_repos:
+        if rewrite_repos and global_config["MODIFY_REPOS"]:
             self.log("rewritting repo files")
+            # remove old ones
+            for old_r_name in old_repo_dict.iterkeys():
+                f_name = os.path.join(repo_dir, "%s.repo" % (old_r_name))
+                try:
+                    os.unlink(f_name)
+                except:
+                    self.log("cannot remove %s: %s" % (f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("removed %s" % (f_name))
+            for new_r_name in new_repo_dict.iterkeys():
+                f_name = os.path.join(repo_dir, "%s.repo" % (new_r_name))
+                try:
+                    file(f_name, "w").write(new_repo_dict[new_r_name])
+                except:
+                    self.log("cannot create %s: %s" % (f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("created %s" % (f_name))
             self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
     def handle_pending_commands(self):
         while self.pending_commands and not self.package_commands:
@@ -460,6 +477,7 @@ class server_process(threading_tools.process_pool):
         self.log("connected to %s" % (self.conn_str))
         self.srv_port = srv_port
         self._send_to_server_int(get_srv_command(command="register"))
+        self._get_repos()
         self._get_new_config()
     def _send_to_server_int(self, xml_com):
         self._send_to_server("self", os.getpid(), xml_com["command"].text, unicode(xml_com), "server command")
@@ -468,9 +486,10 @@ class server_process(threading_tools.process_pool):
         self.log("sending %s (%s) to server %s" % (com_name, send_info, self.conn_str))
         self.srv_port.send_unicode(send_com)
     def _get_new_config(self):
-        self._send_to_server_int(get_srv_command(command="get_repo_list"))
         self._send_to_server_int(get_srv_command(command="get_package_list"))
         #self._send_to_server_int(get_srv_command(command="get_rsync_list"))
+    def _get_repos(self):
+        self._send_to_server_int(get_srv_command(command="get_repo_list"))
     def _recv(self, zmq_sock):
         batch_list = []
         while True:
@@ -486,6 +505,8 @@ class server_process(threading_tools.process_pool):
                     self.log("got command %s" % (rcv_com))
                     if rcv_com == "new_config":
                         self._get_new_config()
+                    if rcv_com == "sync_repos":
+                        self._get_repos()
                     else:
                         data.append(in_com)
                 if not zmq_sock.getsockopt(zmq.RCVMORE):
@@ -534,6 +555,7 @@ def main():
         ("LOG_DESTINATION"        , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"               , configfile.str_c_var(prog_name)),
         ("VAR_DIR"                , configfile.str_c_var("/var/lib/cluster/package-client", help_string="location of var-directory [%(default)s]")),
+        ("MODIFY_REPOS"           , configfile.bool_c_var(False, help_string="modify repository files")),
         ("PACKAGE_SERVER_FILE"    , configfile.str_c_var("/etc/packageserver", help_string="filename where packageserver location is stored [%(default)s]"))
     ])
     global_config.parse_file()
@@ -542,6 +564,7 @@ def main():
                                                add_writeback_option=True,
                                                positional_arguments=False,
                                                partial=False)
+    global_config.write_file()
     ps_file_name = global_config["PACKAGE_SERVER_FILE"]
     if not os.path.isfile(ps_file_name):
         try:
