@@ -12,6 +12,16 @@ Contents:
    :maxdepth: 2
 
    frontend/index
+   frontend/device_tree
+   frontend/networks
+   frontend/config
+   frontend/network_types
+   frontend/device_location
+   frontend/config_types
+   frontend/device_configuration
+   frontend/device_network
+   frontend/monitoring_settings
+   frontend/device_specific
 
 
 Indices and tables
