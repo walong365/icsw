@@ -172,7 +172,7 @@ class topology_object(object):
                     else:
                         break
             elif self.__graph_mode == "prune":
-                p_list = set(sum([[(s_val, d_val), (d_val, s_val)] for s_val, d_val in peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id")], []))
+                p_list = set(sum([[(s_val, d_val), (d_val, s_val)] for s_val, d_val in peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id") if s_val != d_val], []))
                 nd_dict = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
                 # remove all devices which have only a single selection to the currect dev_dict
                 while True:
