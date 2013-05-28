@@ -976,13 +976,6 @@ class devicelog(models.Model):
         db_table = u'devicelog'
         ordering = ("date",)
 
-##class distribution(models.Model):
-##    idx = models.AutoField(db_column="distribution_idx", primary_key=True)
-##    distribution = models.TextField()
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'distribution'
-
 class dmi_entry(models.Model):
     idx = models.AutoField(db_column="dmi_entry_idx", primary_key=True)
     device = models.ForeignKey("device")
@@ -1010,18 +1003,6 @@ class dmi_key(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'dmi_key'
-
-##class extended_log(models.Model):
-##    idx = models.AutoField(db_column="extended_log_idx", primary_key=True)
-##    devicelog = models.ForeignKey("devicelog", null=True)
-##    log_source = models.ForeignKey("log_source", null=True)
-##    user = models.ForeignKey("user", null=True)
-##    users = models.CharField(max_length=765, blank=True)
-##    subject = models.CharField(max_length=765, blank=True)
-##    description = models.TextField(blank=True)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'extended_log'
 
 class genstuff(models.Model):
     idx = models.AutoField(db_column="genstuff_idx", primary_key=True)
@@ -1149,16 +1130,6 @@ def image_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         cur_inst.size_string = logging_tools.get_size_str(cur_inst.size * 1024 * 1024)
-
-##class image_excl(models.Model):
-##    idx = models.AutoField(db_column="image_excl_idx", primary_key=True)
-##    image = models.ForeignKey("image")
-##    exclude_path = models.TextField()
-##    valid_for_install = models.BooleanField()
-##    valid_for_upgrade = models.BooleanField()
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'image_excl'
 
 # package related models
 class package_repo(models.Model):
@@ -1394,35 +1365,6 @@ class package_device_connection(models.Model):
             self.installed = "u"
     class Meta:
         pass
-
-##class inst_package(models.Model):
-##    idx = models.AutoField(db_column="inst_package_idx", primary_key=True)
-##    package = models.ForeignKey("package")
-##    location = models.TextField()
-##    native = models.BooleanField()
-##    last_build = models.IntegerField(null=True, blank=True)
-##    present_on_disk = models.BooleanField()
-##    #package_set = models.ForeignKey("package_set", null=True)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'inst_package'
-
-##class instp_device(models.Model):
-##    idx = models.AutoField(db_column="instp_device_idx", primary_key=True)
-##    inst_package = models.ForeignKey("inst_package")
-##    device = models.ForeignKey("device")
-##    install = models.BooleanField()
-##    upgrade = models.BooleanField()
-##    del_field = models.BooleanField(db_column='del') # Field renamed because it was a Python reserved word. Field name made lowercase.
-##    nodeps = models.BooleanField()
-##    forceflag = models.BooleanField()
-##    status = models.TextField()
-##    install_time = models.DateTimeField(null=True, blank=True)
-##    error_line_num = models.IntegerField(null=True, blank=True)
-##    error_lines = models.TextField()
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'instp_device'
 
 class kernel(models.Model):
     idx = models.AutoField(db_column="kernel_idx", primary_key=True)
@@ -1677,20 +1619,6 @@ class ms_outlet(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'msoutlet'
-
-##class netbotz_picture(models.Model):
-##    idx = models.AutoField(db_column="netbotz_picture_idx", primary_key=True)
-##    device = models.ForeignKey("device")
-##    year = models.IntegerField()
-##    month = models.IntegerField()
-##    day = models.IntegerField()
-##    hour = models.IntegerField()
-##    minute = models.IntegerField()
-##    second = models.IntegerField()
-##    path = models.CharField(max_length=765, blank=True)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'netbotz_picture'
 
 class netdevice(models.Model):
     idx = models.AutoField(db_column="netdevice_idx", primary_key=True)
