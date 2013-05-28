@@ -505,7 +505,7 @@ class server_process(threading_tools.process_pool):
                     self.log("got command %s" % (rcv_com))
                     if rcv_com == "new_config":
                         self._get_new_config()
-                    if rcv_com == "sync_repos":
+                    elif rcv_com == "sync_repos":
                         self._get_repos()
                     else:
                         data.append(in_com)

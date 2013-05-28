@@ -95,6 +95,7 @@ class repo_type_rpm_zypper(repo_type):
         repo_xml = etree.fromstring(s_struct.read())
         new_repos = []
         found_repos = []
+        old_repos = set(package_repo.objects.all().values_list("name", flat=True))
         for repo in repo_xml.xpath(".//repo-list/repo"):
             try:
                 cur_repo = package_repo.objects.get(Q(name=repo.attrib["name"]))
@@ -102,6 +103,7 @@ class repo_type_rpm_zypper(repo_type):
                 cur_repo = package_repo(name=repo.attrib["name"])
                 new_repos.append(cur_repo)
             found_repos.append(cur_repo)
+            old_repos -= set([cur_repo.name])
             cur_repo.alias = repo.attrib["alias"]
             cur_repo.repo_type = repo.attrib.get("type", "unknown")
             cur_repo.enabled     = True if int(repo.attrib["enabled"]) else False
@@ -110,6 +112,12 @@ class repo_type_rpm_zypper(repo_type):
             cur_repo.url = repo.findtext("url")
             cur_repo.save()
         self.log("found %s" % (logging_tools.get_plural("new repository", len(new_repos))))
+        if old_repos:
+            self.log("found %s: %s" % (logging_tools.get_plural("old repository", len(old_repos)),
+                                       ", ".join(sorted(old_repos))), logging_tools.LOG_LEVEL_ERROR)
+            if global_config["DELETE_MISSING_REPOS"]:
+                self.log(" ... removing them from DB", logging_tools.LOG_LEVEL_WARN)
+                package_repo.objects.filter(Q(name__in=old_repos)).delete()
         if s_struct.src_id:
             self.master_process.send_pool_message(
                 "delayed_result",
@@ -425,8 +433,8 @@ class client(object):
         if len(info_xml):
             info_xml = info_xml[0]
             cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=pdc_xml.attrib["pk"]))
-            self.log("got package_info for %s" % (unicode(cur_pdc.package)))
             cur_pdc.response_type = pdc_xml.attrib["response_type"]
+            self.log("got package_info for %s (type is %s)" % (unicode(cur_pdc.package), cur_pdc.response_type))
             cur_pdc.response_str = etree.tostring(info_xml)
             cur_pdc.interpret_response()
             cur_pdc.save(update_fields=["response_type", "response_str", "installed"])
@@ -481,7 +489,6 @@ class server_process(threading_tools.process_pool):
         self.add_process(repo_process("repo"), start=True)
         # close DB connection
         connection.close()
-        #self.register_timer(self._send_update, global_config["RENOTIFY_CLIENTS_TIMEOUT"], instant=True)
         self.register_timer(self._send_update, 3600, instant=True)
         self.register_func("delayed_result", self._delayed_result)
         self.send_to_process("repo", "rescan_repos")
@@ -699,12 +706,7 @@ def main():
         ("SERVER_PUB_PORT"          , configfile.int_c_var(P_SERVER_PUB_PORT, help_string="server publish port [%(default)d]")),
         ("SERVER_PULL_PORT"         , configfile.int_c_var(P_SERVER_PULL_PORT, help_string="server pull port [%(default)d]")),
         ("NODE_PORT"                , configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port where the package-clients are listening [%(default)d]")),
-        ("CACHE_TIMEOUT"            , configfile.int_c_var(15 * 60)),
-        ("RENOTIFY_CLIENTS_TIMEOUT" , configfile.int_c_var(60 * 60 * 24)),
-        ("SHOW_CACHE_LOG"           , configfile.int_c_var(0)),
-        ("MAX_BLOCK_SIZE"           , configfile.int_c_var(50)),
-        ("WATCHER_TIMEOUT"          , configfile.int_c_var(120)),
-        ("REALLY_DELETE_PACKAGES"   , configfile.bool_c_var(False))
+        ("DELETE_MISSING_REPOS"     , configfile.bool_c_var(False, help_string="delete non-existing repos from DB")),
     ])
     global_config.parse_file()
     options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
