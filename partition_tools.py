@@ -173,15 +173,16 @@ class lvm_struct(object):
     def _read_dm_links(self):
         m_dict = {"dmtolv" : {}, "lvtodm" : {}}
         s_dir = "/dev/mapper"
-        for entry in os.listdir(s_dir):
-            f_path = os.path.join(s_dir, entry)
-            if os.path.islink(f_path):
-                target = os.path.normpath(os.path.join(s_dir, os.readlink(f_path)))
-                m_dict["lvtodm"][entry] = target
-                m_dict["lvtodm"][os.path.join("/dev", *entry.split("-"))] = target
-                m_dict["dmtolv"][target] = f_path
-                #m_dict[os.path.basename(target)] = entry
-                #m_dict[target] = entry
+        if os.path.isdir(s_dir):
+            for entry in os.listdir(s_dir):
+                f_path = os.path.join(s_dir, entry)
+                if os.path.islink(f_path):
+                    target = os.path.normpath(os.path.join(s_dir, os.readlink(f_path)))
+                    m_dict["lvtodm"][entry] = target
+                    m_dict["lvtodm"][os.path.join("/dev", *entry.split("-"))] = target
+                    m_dict["dmtolv"][target] = f_path
+                    #m_dict[os.path.basename(target)] = entry
+                    #m_dict[target] = entry
         return m_dict
     def update(self):
         # read all dm-links
