@@ -170,6 +170,7 @@ pack_patterns = patterns(
     url("pack/change_tstate"   , "pack_views.change_target_state", name="change_target_state"),
     url("pack/change_pflag"    , "pack_views.change_package_flag", name="change_package_flag"),
     url("pack/sync"            , "pack_views.synchronize"        , name="synchronize"        ),
+    url("pack/get_status"      , "pack_views.get_pdc_status"     , name="get_pdc_status"     ),
 )
 
 main_patterns = patterns(

@@ -176,7 +176,7 @@ class device_table
             $("<th>").append(
                 $("<input>").attr({
                     "type" : "checkbox",
-                    "id"   : line_prefix + "__sel"
+                    "id"   : "#{line_prefix}__sel"
                 }).bind("click", (event) =>
                     @change_dg_sel(event)
                 )
@@ -194,16 +194,17 @@ class device_table
             dev_pk = dev_tr.attr("id").split("__")[1]
             @recolor_device(dev_tr)
             info_th = dev_tr.find("span[id$='__pinfo']")
-            pdc_list = @xml.find("package_device_connections package_device_connection[device='" + dev_pk + "']")
+            pdc_list = @xml.find("package_device_connections package_device_connection[device='#{dev_pk}']")
             total = pdc_list.length
-            installed = removed = 0
+            installed = 0
+            removed   = 0
             for cur_entry in pdc_list
                 switch $(cur_entry).attr("installed")
                     when "y"
                         installed++
                     when "n"
                         removed++
-            info_th.text(", " + total + " total, " + installed + " installed, " + removed + " removed")
+            info_th.text(", #{total} total, #{installed} installed, #{removed} removed")
     recolor_device: (dev_tr) =>
         pdc_lines = @get_pdc_lines(dev_tr)
         (line.removeClass("even odd") for line in pdc_lines)
@@ -266,7 +267,7 @@ class device_table
             $("<td>").append(
                 $("<input>").attr({
                     "type" : "checkbox"
-                    "id"   : line_prefix + "__sel"
+                    "id"   : "#{line_prefix}__sel"
                 })
                     
             ).bind("change", (event) =>
@@ -280,7 +281,7 @@ class device_table
             }).text("device " + cur_dev.text()
             ).append(
                 $("<span>").attr({
-                    "id" : line_prefix + "__pinfo"
+                    "id" : "#{line_prefix}__pinfo"
                 }).text("---")
             )
         )
@@ -291,9 +292,9 @@ class device_table
         return dummy_div.children()
     expand_device: (line_prefix, state, name) =>
         if state
-            (line.show() for line in @get_pdc_lines(@table.find("tr[id='" + line_prefix + "']")))
+            (line.show() for line in @get_pdc_lines(@table.find("tr[id='#{line_prefix}']")))
         else
-            (line.hide() for line in @get_pdc_lines(@table.find("tr[id='" + line_prefix + "']")))
+            (line.hide() for line in @get_pdc_lines(@table.find("tr[id='#{line_prefix}']")))
         @dev_exp_state[line_prefix] = state
     draw_pdc: (cur_dev, pdc_xml) =>
         line_prefix = pdc_xml.attr("key")
@@ -321,7 +322,7 @@ class device_table
         ).append(
             $("<td>").append(
                 $("<span>").attr("id", pdc_xml.attr("key") + "__installed").text("?")
-            )
+            ).bind("click", @show_pdc_info)
         ).append(
             $("<td>").append(@draw_pflag(pdc_xml, "force_flag"))
         ).append(
@@ -330,6 +331,17 @@ class device_table
         if not @dev_exp_state[cur_dev.attr("key")]
             new_tr.hide()
         return new_tr
+    show_pdc_info: (event) =>
+        pdc_id = $(event.target).attr("id").split("__")[1]
+        $.ajax
+            url   : "{% url 'pack:get_pdc_status' %}"
+            data  : {
+                "pdc_pk" : pdc_id
+            }
+            success : (xml) ->
+                if parse_xml_response(xml)
+                    pdc_stat = $(xml).find("value[name='pdc_status']").text()
+                    alert(pdc_stat)
     draw_remove: (pdc_xml) =>
         return $("<input>").attr({
             "id"    : pdc_xml.attr("key"),
@@ -359,10 +371,11 @@ class device_table
                     parse_xml_response(xml)
         )
         return cur_ts
-    draw_pflag: (pdc_xml, flag_name) =>
+    draw_pflag: (pdc_xml, flag_name) => 
         cur_ts = $("<input>").attr({
-            "type" : "checkbox",
-            "id"   : pdc_xml.attr("key") + "__" + flag_name})
+            "type"  : "checkbox",
+            "title" : flag_name.split("_")[0] + " flag",
+            "id"    : pdc_xml.attr("key") + "__#{flag_name}"})
         if pdc_xml.attr(flag_name) == "1"
             cur_ts.attr("checked", "checked")
         cur_ts.bind("change", (event) =>

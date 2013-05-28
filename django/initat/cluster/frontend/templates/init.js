@@ -164,6 +164,7 @@ class draw_setup
         @required_xml = @kwargs.required_xml or []
         @lock_div = @kwargs.lock_div or ""
         @parent_class = @kwargs.parent_class or ""
+        @add_create_line = if @kwargs.add_create_line? then @kwargs.add_create_line else true
         @childs = []
         for draw_entry in @draw_array
             draw_entry.draw_setup = @
@@ -270,7 +271,7 @@ class draw_setup
                 @timer_callback(@)
             )
         p_table.append(@draw_head_line())
-        if @create_url
+        if @create_url and @add_create_line
             p_table.append(@draw_line())
         @master_xml.find(@search_str()).each (index, element) =>
             p_table.append(@draw_line($(element)))

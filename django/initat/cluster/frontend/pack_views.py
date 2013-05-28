@@ -240,12 +240,27 @@ def change_target_state(request):
 @init_logging
 def change_package_flag(request):
     _post = request.POST
-    cur_pdc = package_device_connection.objects.get(Q(pk=_post["pdc_key"].split("__")[1]))
+    cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=_post["pdc_key"].split("__")[1]))
     flag_name = _post["pdc_key"].split("__")[-1]
+    print flag_name
     value = True if int(_post["value"]) else False
+    sflag_name = flag_name[:-5] if flag_name.endswith("_flag") else flag_name
+    request.log("setting %s flag to %s for %s" % (
+        sflag_name,
+        "True" if value else "False",
+        unicode(cur_pdc.package),
+    ), xml=True)
     setattr(cur_pdc, flag_name, value)
     cur_pdc.save()
     # signal package-server
+    return request.xml_response.create_response()
+
+@login_required
+@init_logging
+def get_pdc_status(request):
+    _post = request.POST
+    cur_pdc = package_device_connection.objects.get(Q(pk=_post["pdc_pk"]))
+    request.xml_response["pdc_status"] = cur_pdc.response_str
     return request.xml_response.create_response()
 
 @login_required
