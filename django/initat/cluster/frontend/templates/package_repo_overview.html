@@ -10,7 +10,8 @@
 
 <div id="repo_tables"></div>
 
-<input type="button" value="rescan repositories" id="rescan_repos"/>
+<input type="button" value="rescan repositories" id="rescan_repos"/>, 
+<input type="button" value="sync repositories to clients" id="sync_repos"/>
 
 <script type="text/javascript">
 
@@ -28,6 +29,15 @@ add_config_handlers = ->
             success : (xml) ->
                 if parse_xml_response(xml)
                     show_repos()
+    )
+    $("input#sync_repos").bind("click", (event) ->
+        $.ajax
+            url     : "{% url 'pack:repo_overview' %}"
+            data    : {
+                "mode" : "sync"
+            }
+            success : (xml) ->
+                parse_xml_response(xml)
     )
 
 show_repos = ->
