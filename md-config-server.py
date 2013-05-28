@@ -1694,59 +1694,97 @@ class check_command(object):
         """
         self.__num_args, self.__default_values = (0, {})
         arg_lut, arg_list = ({}, [])
-        # parse command_line
-        com_parts, new_parts = (self.command_line.split(), [])
-        prev_part = None
-        for com_part in com_parts:
-            try:
-                """
-                handle the various input formats:
+        """
+        handle the various input formats:
+        
+        ${ARG#:var_name:default}
+        ${ARG#:var_name:default}$
+        ${ARG#:default}
+        ${ARG#:default}$
+        $ARG#$
 
-                ${ARG#:var_name:default}
-                ${ARG#:var_name:default}$
-                ${ARG#:default}
-                ${ARG#:default}$
-                """
-                if com_part.startswith("${") and (com_part.endswith("}") or com_part.endswith("}$")):
-                    if com_part.endswith("}$"):
-                        com_part = com_part[2:-2]
-                    else:
-                        com_part = com_part[2:-1]
-                    if com_part.count(":") == 2:
-                        arg_name, var_name, default_value = com_part.split(":")
-                    elif com_part.count(":") == 1:
-                        arg_name, default_value = com_part.split(":")
-                        var_name = None
-                    else:
-                        arg_name = com_part
-                        default_value, var_name = (None, None)
-                    if prev_part:
-                        arg_lut[prev_part] = arg_name
-                    else:
-                        arg_list.append(arg_name)
-                    new_parts.append("$%s$" % (arg_name))
+        """
+        com_re = re.compile("^(?P<pre_text>.*?)((\${ARG(?P<arg_num_1>\d+):(?P<var_name>[^:^}]+?)(\:(?P<default>[^}]+))*}\$*)|(\$ARG(?P<arg_num_2>\d+)\$))+(?P<post_text>.*)$")
+        cur_line = self.command_line
+        # where to start the match to avoid infinite loop
+        s_idx = 0
+        while True:
+            cur_m = com_re.match(cur_line[s_idx:])
+            if cur_m:
+                m_dict = cur_m.groupdict()
+                # check for -X or --Y switch
+                prev_part = m_dict["pre_text"].strip().split()
+                
+                if prev_part and prev_part[-1].startswith("-"):
+                    prev_part = prev_part[-1]
+                else:
+                    prev_part = None
+                if m_dict["arg_num_2"] is not None:
+                    # short form
+                    arg_name = "ARG%s" % (m_dict["arg_num_2"])
+                else:
+                    arg_name = "ARG%s" % (m_dict["arg_num_1"])
+                    var_name, default_value = (m_dict["var_name"], m_dict["default"])
                     if var_name:
                         self.__default_values[arg_name] = (var_name, default_value)
                     elif default_value is not None:
                         self.__default_values[arg_name] = default_value
-                    self.__num_args += 1
-                    prev_part = None
-                elif com_part.startswith("$ARG") and com_part.endswith("$"):
-                    arg_name = com_part[1:-1]
-                    if prev_part:
-                        arg_lut[prev_part] = arg_name
-                    else:
-                        arg_list.append(arg_name)
-                    new_parts.append(com_part)
-                    self.__num_args += 1
-                    prev_part = None
+                pre_text, post_text = (m_dict["pre_text"] or "",
+                                       m_dict["post_text"] or "")
+                cur_line = "%s%s$%s$%s" % (
+                    cur_line[:s_idx],
+                    pre_text,
+                    arg_name,
+                    post_text)
+                s_idx += len(pre_text) + len(arg_name) + 2
+                if prev_part:
+                    arg_lut[prev_part] = arg_name
                 else:
-                    new_parts.append(com_part)
-                    prev_part = com_part
-            except:
-                # need some logging, FIXME
-                new_parts.append(com_part)
-        self.__md_com_line = " ".join(new_parts)
+                    arg_list.append(arg_name)
+                self.__num_args += 1
+            else:
+                break
+        self.__md_com_line = cur_line
+            ## parse command_line
+                    #if com_part.endswith("}$"):
+                        #com_part = com_part[2:-2]
+                    #else:
+                        #com_part = com_part[2:-1]
+                    #if com_part.count(":") == 2:
+                        #arg_name, var_name, default_value = com_part.split(":")
+                    #elif com_part.count(":") == 1:
+                        #arg_name, default_value = com_part.split(":")
+                        #var_name = None
+                    #else:
+                        #arg_name = com_part
+                        #default_value, var_name = (None, None)
+                    #if prev_part:
+                        #arg_lut[prev_part] = arg_name
+                    #else:
+                        #arg_list.append(arg_name)
+                    #new_parts.append("$%s$" % (arg_name))
+                    #if var_name:
+                        #self.__default_values[arg_name] = (var_name, default_value)
+                    #elif default_value is not None:
+                        #self.__default_values[arg_name] = default_value
+                    #self.__num_args += 1
+                    #prev_part = None
+                #elif com_part.startswith("$ARG") and com_part.endswith("$"):
+                    #arg_name = com_part[1:-1]
+                    #if prev_part:
+                        #arg_lut[prev_part] = arg_name
+                    #else:
+                        #arg_list.append(arg_name)
+                    #new_parts.append(com_part)
+                    #self.__num_args += 1
+                    #prev_part = None
+                #else:
+                    #new_parts.append(com_part)
+                    #prev_part = com_part
+            #except:
+                ## need some logging, FIXME
+                #new_parts.append(com_part)
+        #self.__md_com_line = " ".join(new_parts)
         if self.command_line == self.md_command_line:
             self.log("command_line in/out is '%s'" % (self.command_line))
         else:
