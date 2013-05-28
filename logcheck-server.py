@@ -43,6 +43,7 @@ import gzip
 import cluster_location
 import bz2
 import config_tools
+from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 
@@ -395,8 +396,10 @@ class server_process(threading_tools.process_pool):
         self.log("re-insert config")
         cluster_location.write_config("syslog_server", global_config)
     def _sync_machines(self):
+        connection.close()
         machine.db_sync()
     def _rotate_logs(self):
+        connection.close()
         machine.rotate_logs()
     def process_start(self, src_process, src_pid):
         mult = 2
