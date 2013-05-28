@@ -611,8 +611,9 @@ class _general(hm_classes.hm_module):
                         fs_tab_dict[key] = value
                     for mount_idx, (part, mp, fstype, opts, ignore_1, ignore_2) in enumerate(file_dict.get("mounts", [])):
                         # rewrite from /dev/disk to real device
-                        if part.startswith("/dev/disk"):
-                            part = dd_lut["fw_lut"][part]
+                        # ???
+                        #if part.startswith("/dev/disk"):
+                        #    part = dd_lut["fw_lut"][part]
                         if part in parts_found:
                             # already touches
                             continue
