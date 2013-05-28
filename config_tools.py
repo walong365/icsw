@@ -158,16 +158,31 @@ class topology_object(object):
         if self.__graph_mode.startswith("sel"):
             dev_sel = dev_sel.filter(Q(pk__in=self.__dev_pks))
         self.all_devs = dev_sel.values_list("idx", "name")
-        self.dev_dict = dict([(cur_dev[0], cur_dev) for cur_dev in self.all_devs])
-        if self.__graph_mode.startswith("selp"):
-            # add further rings
-            for idx in range(int(self.__graph_mode[-1])):
-                new_dev_pks = set(device.objects.filter(Q(netdevice__peer_s_netdevice__d_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True)) | \
-                    set(device.objects.filter(Q(netdevice__peer_d_netdevice__s_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True))
-                if new_dev_pks:
-                    self.dev_dict.update(dict([(value[0], value[1]) for value in device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=new_dev_pks)).values_list("idx", "name")]))
-                else:
-                    break
+        if self.__graph_mode == "none":
+            self.dev_dict = {}
+        else:
+            self.dev_dict = dict([(cur_dev[0], cur_dev) for cur_dev in self.all_devs])
+            if self.__graph_mode.startswith("selp"):
+                # add further rings
+                for idx in range(int(self.__graph_mode[-1])):
+                    new_dev_pks = set(device.objects.filter(Q(netdevice__peer_s_netdevice__d_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True)) | \
+                        set(device.objects.filter(Q(netdevice__peer_d_netdevice__s_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True))
+                    if new_dev_pks:
+                        self.dev_dict.update(dict([(value[0], value[1]) for value in device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=new_dev_pks)).values_list("idx", "name")]))
+                    else:
+                        break
+            elif self.__graph_mode == "prune":
+                p_list = set(sum([[(s_val, d_val), (d_val, s_val)] for s_val, d_val in peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id")], []))
+                nd_dict = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
+                # remove all devices which have only a single selection to the currect dev_dict
+                while True:
+                    dev_list = [nd_dict[s_val] for s_val, d_val in p_list]
+                    rem_devs = set([key for key in dev_list if dev_list.count(key) == 1])
+                    rem_nds = set([key for key, value in nd_dict.iteritems() if value in rem_devs])
+                    p_list = [(s_val, d_val) for s_val, d_val in p_list if s_val not in rem_nds and d_val not in rem_nds]
+                    self.dev_dict = dict([(key, value) for key, value in self.dev_dict.iteritems() if key not in rem_devs])
+                    if not rem_devs:
+                        break
         nd_dict = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
         ip_dict = dict([(value[0], (value[1], value[2])) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")])
         # reorder ip_dict
