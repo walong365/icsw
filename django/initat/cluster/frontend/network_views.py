@@ -26,6 +26,7 @@ from initat.cluster.backbone.models import device, network, net_ip, \
      network_type, network_device_type, netdevice, peer_information, \
      netdevice_speed, device_variable, device_group, to_system_tz
 import json
+from networkx.readwrite import json_graph
 
 @login_required
 @init_logging
@@ -253,7 +254,6 @@ def get_valid_peers(request):
 @login_required
 @init_logging
 def json_network(request):
-    from networkx.readwrite import json_graph
     _post = request.POST
     graph_mode = _post["graph_mode"]
     request.log("drawing network, mode is %s" % (graph_mode))
