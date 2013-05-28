@@ -1,7 +1,7 @@
 init.at Clustersoftware
 =======================
 
-To start with go to asdasd
+To start with go to
 
 .. raw:: html
 
