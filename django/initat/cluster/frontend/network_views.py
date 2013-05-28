@@ -225,7 +225,7 @@ def get_network_tree(request):
     return request.xml_response.create_response()
 
 def _get_valid_peers():
-    routing_nds = netdevice.objects.filter(Q(routing=True)).order_by(
+    routing_nds = netdevice.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True) & Q(routing=True)).order_by(
         "device__name",
         "devname").prefetch_related("net_ip_set").select_related("device")
     peer_dict = dict([(cur_nd.pk, 0) for cur_nd in routing_nds])
