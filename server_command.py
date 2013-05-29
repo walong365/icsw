@@ -149,7 +149,7 @@ class srv_command(object):
             tag_name = tag_name.replace("__colon__", ":")
         if tag_name.startswith("__int__"):
             tag_name = int(tag_name[7:])
-        if tag_name == "__none__":
+        elif tag_name == "__none__":
             tag_name = None
         else:
             while True:
