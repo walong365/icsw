@@ -352,7 +352,7 @@ class special_base(object):
             return cur_var.get_value()
     def __call__(self):
         s_name = self.__class__.__name__.split("_", 1)[1]
-        self.log("starting %s for %s" % (s_name, self.host.name))
+        self.log("starting %s for %s, cache_mode is %s" % (s_name, self.host.name, self.cache_mode))
         s_time = time.time()
         # flag to force store the cache (in case of migration of cache entries from FS to DB)
         self.__force_store_cache = False
