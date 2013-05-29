@@ -2744,7 +2744,7 @@ class build_process(threading_tools.process_obj):
             #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
-        h_filter &= Q(enabled=True)
+        h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
         # dictionary with all parent / slave relations
         ps_dict = {}
         for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):

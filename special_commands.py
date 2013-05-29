@@ -101,7 +101,6 @@ class special_base(object):
         self.host = host
         self.valid_ip = valid_ip
     def _cache_name(self):
-        print self.ds_name, self.s_check.mon_check_command, self.host
         return "/tmp/.md-config-server/%s_%s" % (
             self.host.name,
             self.valid_ip)
@@ -454,6 +453,7 @@ class special_openvpn(special_base):
         if not exp_dict:
             # no expected_dict found, try to get the actual config from the server
             srv_result = self.collrelay("openvpn_status")
+            #print etree.tostring(srv_result.tree, pretty_print=True)
             if srv_result is not None:
                 if "openvpn_instances" in srv_result:
                     ovpn_dict = srv_result["openvpn_instances"]
@@ -490,7 +490,7 @@ class special_supermicro(special_base):
                 para_dict[para_name] = cur_var.get_value()
         if len(para_list) != len(para_dict):
             self.log("updating info from BMC")
-            srv_result = self.collrelay("smcipmi",  "--ip", self.valid_ip, "counter", connect_to_localhost=True)
+            srv_result = self.collrelay("smcipmi", "--ip", self.valid_ip, "counter", connect_to_localhost=True)
             # xpath string origins in supermiro_mod, server part (scmipmi_struct)
             r_dict = supermicro_mod.generate_dict(srv_result.xpath(None, ".//ns:output/text()")[0].split("\n"))
             for para_name in para_list:
