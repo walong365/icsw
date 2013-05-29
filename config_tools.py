@@ -171,7 +171,7 @@ class topology_object(object):
                         self.dev_dict.update(dict([(value[0], value[1]) for value in device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=new_dev_pks)).values_list("idx", "name")]))
                     else:
                         break
-            elif self.__graph_mode == "prune":
+            elif self.__graph_mode == "core":
                 p_list = set(sum([[(s_val, d_val), (d_val, s_val)] for s_val, d_val in peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id") if s_val != d_val], []))
                 nd_dict = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
                 # remove all devices which have only a single selection to the currect dev_dict
