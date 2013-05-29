@@ -202,7 +202,7 @@ class fetch_partition_info(cs_base_class.server_com):
                                 hex_type = hex_type[2:].lower()
                                 if part == None:
                                     # special multipath without partition
-                                    part = "1"
+                                    part = "0"
                                 elif part.startswith("part"):
                                     # multipath
                                     part = part[4:]
