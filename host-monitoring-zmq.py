@@ -440,6 +440,9 @@ class host_connection(object):
                     res_tuple = cur_mes.interpret(result)
                 except:
                     res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
+                    exc_info = process_tools.exception_info()
+                    for line in exc_info.log_lines:
+                        host_connection.relayer_process.log(line, logging_tools.LOG_LEVEL_CRITICAL)
                 host_connection._send_result(cur_mes, res_tuple)
                 #self.send_result(cur_mes, res_tuple)
         else:
