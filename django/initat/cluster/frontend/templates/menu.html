@@ -131,7 +131,8 @@ root.init_menu = () ->
             success : (xml) =>
                 if parse_xml_response(xml)
                     try
-                        root.sidebar.set_next_gauge(2000)
+                        # iterate for the next 10 seconds (every second)
+                        root.sidebar.set_next_iters(1500, 10)
                     catch err
         
     )

@@ -152,16 +152,16 @@ root.build_device_info_div = (dev_xml) ->
                     $("<textarea>").attr("id", "cm01").text(cur_ds.attr("data"))
                 )
             )
-            #cur_ed = CodeMirror.fromTextArea(mdcds_div.find("textarea")[0], {
-            #    "mode"         : {
-            #        "name"    : "xml",
-            #        "version" : "2"
-            #    },
-            #    "styleActiveLine" : true,
-            #    "lineNumbers"     : true,
-            #    "lineWrapping"    : true,
-            #    "indentUnit"      : 4,
-            #})
+            cur_ed = CodeMirror.fromTextArea(mdcds_div.find("textarea")[0], {
+                "mode"         : {
+                    "name"    : "xml",
+                    "version" : "2"
+                },
+                "styleActiveLine" : true,
+                "lineNumbers"     : true,
+                "lineWrapping"    : true,
+                "indentUnit"      : 4,
+            })
     else
         mdcds_div.append($("<h3>").text("No entries found"))
     tabs_div.append(nw_div)

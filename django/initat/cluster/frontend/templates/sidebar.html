@@ -50,6 +50,7 @@ class sidebar_tree
             $("input#devsel_button").show().bind("click", (event) =>
                 root.sidebar_target_func(@top_div)
             )
+        @init_gauge_info()
         @update_gauge_info()
     init_sidebar: =>
         @top_div.dynatree
@@ -57,7 +58,7 @@ class sidebar_tree
             checkbox   : true
             onDblClick : (dtnode, event) =>
                 if !@ADS_RUNNING
-                    if @DYN_DTS_LOCKCOUNT
+                    if !@DYN_DTS_LOCKCOUNT
                         @DBL_HANDLING = true
                         dtnode.toggleSelect()
                         @DBL_HANDLING = false
@@ -205,9 +206,20 @@ class sidebar_tree
                             onShow: (dialog) -> 
                                 dialog.container.draggable()
                                 $('#simplemodal-container').css('height', 'auto')
-    set_next_gauge: (next_to) =>
+    init_gauge_info: =>
+        @next_iters = []
+        # defaults to 10 seconds
+        @default_gauge_timeout = 10000
+    set_next_iters: (diff_to, num_steps) =>
+        @next_iters = (diff_to for idx in [1..num_steps])
+        @set_next_gauge()
+    set_next_gauge: () =>
         $(document).stopTime("get_gauge_info")
-        $(document).everyTime(next_to, "get_gauge_info", (i) =>
+        if @next_iters.length
+            next_timeout = @next_iters.pop()
+        else
+            next_timeout = @default_gauge_timeout
+        $(document).everyTime(next_timeout, "get_gauge_info", (next_timeout) =>
             @update_gauge_info()
         )
     update_gauge_info: =>
@@ -227,8 +239,8 @@ class sidebar_tree
                                 "value" : parseInt(gauge_el.attr("value")),
                             })
                         )
-                    next_to = if any_defined then 2000 else 30000
-                    @set_next_gauge(next_to)
+                    @default_gauge_timeout = if any_defined then 1500 else 10000
+                    @set_next_gauge()
     
 root.init_sidebar = ->
     root.sidebar = new sidebar_tree($("div#sidebar_tree"))
