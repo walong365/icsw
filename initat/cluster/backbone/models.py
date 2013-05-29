@@ -2788,7 +2788,10 @@ def partition_pre_save(sender, **kwargs):
             p_num = int(p_num)
         except:
             raise ValidationError("partition number '%s' not parseable" % (p_num))
-        if p_num < 1 or p_num > 9:
+        if p_num == 0:
+            if partition.objects.filter(Q(partition_disc=cur_inst.partition_disc)).count() > 1:
+                raise ValidationError("for pnum==0 only one partition is allowed")
+        elif p_num < 1 or p_num > 9:
             raise ValidationError("partition number out of bounds [1, 9]")
         all_part_nums = partition.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_disc=cur_inst.partition_disc)).values_list("pnum", flat=True)
         if p_num in all_part_nums:
