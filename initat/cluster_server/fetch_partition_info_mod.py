@@ -156,6 +156,7 @@ class fetch_partition_info(cs_base_class.server_com):
                     fs_dict = {}
                     for db_rec in partition_fs.objects.all():
                         fs_dict.setdefault(("%02x" % (int(db_rec.hexid, 16))).lower(), {})[db_rec.name] = db_rec
+                        fs_dict[db_rec.name] = db_rec
                     new_part_table = partition_table(
                         name=partition_name,
                         description=partition_info,
@@ -199,7 +200,10 @@ class fetch_partition_info(cs_base_class.server_com):
                                 cur_inst.log("ignoring partition because hex_type = None", logging_tools.LOG_LEVEL_WARN)
                             else:
                                 hex_type = hex_type[2:].lower()
-                                if part.startswith("part"):
+                                if part == None:
+                                    # special multipath without partition
+                                    part = "1"
+                                elif part.startswith("part"):
                                     # multipath
                                     part = part[4:]
                                 elif part.startswith("p"):
@@ -207,6 +211,8 @@ class fetch_partition_info(cs_base_class.server_com):
                                     part = part[1:]
                                 if part_stuff.has_key("mountpoint"):
                                     fs_stuff = fs_dict.get(hex_type, {}).get(part_stuff["fstype"].lower(), None)
+                                    if fs_stuff is None and "fstype" in part_stuff and part_stuff["fstype"] in fs_dict:
+                                        fs_stuff = fs_dict[part_stuff["fstype"]]
                                     if fs_stuff is not None:
                                         new_part = partition(
                                             partition_disc=new_disc,
