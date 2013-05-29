@@ -237,7 +237,8 @@ class ctrl_type_lsi(ctrl_type):
                                 ctrl_dict.setdefault("volumes", {})[line.split()[-1]] = vol_dict
                             if cur_mode == "p":
                                 phys_dict = {}
-                                vol_dict.setdefault("disks", {})[line.split()[-1].replace("#", "")] = phys_dict
+                                if "volumes" in ctrl_dict:
+                                    vol_dict.setdefault("disks", {})[line.split()[-1].replace("#", "")] = phys_dict
         ccs.srv_com["result:ctrls"] = self._dict
         return
         # code mpt-status, not used any more
