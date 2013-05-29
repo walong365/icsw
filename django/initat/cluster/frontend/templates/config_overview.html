@@ -10,6 +10,7 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/codemirror.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/addon/selection/active-line.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/python.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/xml.js"></script>
 {% endcompress %}
 
 {% endblock %}
@@ -554,7 +555,7 @@ class config_table
         cur_ta.trigger("change")
     init_textarea: (cur_ta) =>
         cur_id = cur_ta.attr("id")
-        cur_ed = CodeMirror.fromTextArea(document.getElementById(cur_id), {
+        cur_ed = CodeMirror.fromTextArea(cur_ta[0], {
             "mode"         : {
                 "name"    : "python",
                 "version" : "2"

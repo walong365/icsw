@@ -42,7 +42,7 @@ class config_table
         @top_div.children().remove()
         c_table = $("<table>").attr({"id" : "config"})
         @c_table = c_table
-        ref_width = {% if settings.CLUSTER_LICENSE.monext %}12{% else %}10{% endif %}
+        ref_width = {% if settings.CLUSTER_LICENSE.monext %}13{% else %}11{% endif %}
         @devices.find("device_group").each (devg_index, cur_dg) =>
             cur_dg = $(cur_dg)
             line_prefix = cur_dg.attr("key")
@@ -148,7 +148,24 @@ class config_table
             )
         new_tr.append(
             @get_device_part(d_el, line_prefix)
-        ).append(
+        )
+        if d_el
+            new_tr.append(
+                $("<td>").append(
+                    $("<input>").attr({
+                        "type"   : "image"
+                        "width"  : "16px"
+                        "height" : "16px"
+                        "src"    : "{{ MEDIA_URL }}frontend/images/information.png"
+                        "id"     : "#{line_prefix}__md_info"
+                    }).bind("click", @device_information)
+                )
+            )
+        else
+            new_tr.append(
+                $("<td>")
+            )
+        new_tr.append(
             $("<td>").append(
                 create_input_el(d_el, "mon_ext_host", line_prefix, {
                     select_source  : "mon_ext_hosts mon_ext_host",
@@ -230,6 +247,24 @@ class config_table
         {% endif %}
         dummy_div.append(new_tr)
         return dummy_div.children()
+    device_information: (event) =>
+        dev_id = $(event.target).attr("id").split("__")[1]
+        $.ajax
+            url  : "{% url 'device:device_info' %}"
+            data :
+                "key"    : "dev__#{dev_id}"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    dev_xml = $(xml).find("device")
+                    di_div = build_device_info_div(dev_xml)
+                    di_div.modal
+                        opacity      : 50
+                        position     : [event.pageY, event.pageX]
+                        autoResize   : true
+                        autoPosition : true
+                        onShow: (dialog) -> 
+                            dialog.container.draggable()
+                            $('#simplemodal-container').css('height', 'auto')
     get_md_cache_modes: () =>
         return $("<list>").append(
             $("<entry>").attr("pk", "1").text("automatic (server)")

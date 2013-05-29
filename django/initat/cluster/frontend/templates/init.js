@@ -75,6 +75,10 @@ root.build_device_info_div = (dev_xml) ->
             $("<li>").append(
                 $("<a>").attr("href", "#disk").text("Disk")
             )
+        ).append(
+            $("<li>").append(
+                $("<a>").attr("href", "#mdcds").text("MD data store")
+            )
         )
     )
     # network div
@@ -136,9 +140,34 @@ root.build_device_info_div = (dev_xml) ->
         disk_div.append(pt_ul)
     else
         disk_div.append($("<h3>").text("No partition table defined"))
+    # md check data store div
+    mdcds_div = $("<div>").attr("id", "mdcds")
+    num_mdcds = dev_xml.find("md_check_data_store").length
+    if num_mdcds
+        mdcds_div.append($("<h3>").text("#{num_mdcds} entries found"))
+        dev_xml.find("md_check_data_stores md_check_data_store").each (idx, cur_ds) =>
+            cur_ds = $(cur_ds)
+            mdcds_div.append(
+                $("<div>").text(cur_ds.attr("name")).append(
+                    $("<textarea>").attr("id", "cm01").text(cur_ds.attr("data"))
+                )
+            )
+            #cur_ed = CodeMirror.fromTextArea(mdcds_div.find("textarea")[0], {
+            #    "mode"         : {
+            #        "name"    : "xml",
+            #        "version" : "2"
+            #    },
+            #    "styleActiveLine" : true,
+            #    "lineNumbers"     : true,
+            #    "lineWrapping"    : true,
+            #    "indentUnit"      : 4,
+            #})
+    else
+        mdcds_div.append($("<h3>").text("No entries found"))
     tabs_div.append(nw_div)
     tabs_div.append(edit_div)
     tabs_div.append(disk_div)
+    tabs_div.append(mdcds_div)
     tabs_div.tabs()
     return dev_div
 
