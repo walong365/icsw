@@ -174,14 +174,26 @@ class fetch_partition_info(cs_base_class.server_com):
                             part_stuff = dev_stuff[part]
                             self.log("   handling partition %s" % (part))
                             if "multipath" in part_stuff:
-                                # see machinfo_mod.py
+                                # see machinfo_mod.py, lines 1570 (partinfo_command:interpret)
                                 real_disk = [entry for entry in part_stuff["multipath"]["list"] if entry["status"] == "active"]
                                 if real_disk:
+                                    mp_id = part_stuff["multipath"]["id"]
                                     real_disk = real_disk[0]
-                                    real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part[4:])
-                                    real_part = dev_dict[real_disk][real_part]
-                                    for key in ["hextype", "info", "size"]:
-                                        part_stuff[key] = real_part[key]
+                                    if part is None:
+                                        real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part)
+                                    else:
+                                        real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part[4:])
+                                    if real_disk in dev_dict:
+                                        # LVM between
+                                        real_part = dev_dict[real_disk][real_part]
+                                        for key in ["hextype", "info", "size"]:
+                                            part_stuff[key] = real_part[key]
+                                    else:
+                                        # no LVM between
+                                        real_part = dev_dict["/dev/mapper/%s" % (mp_id)]
+                                        part_stuff["hextype"] = "0x00"
+                                        part_stuff["info"] = "multipath w/o LVM"
+                                        part_stuff["size"] = int(logging_tools.interpret_size_str(part_stuff["multipath"]["size"]) / (1024 * 1024))
                             hex_type = part_stuff["hextype"]
                             if hex_type is None:
                                 cur_inst.log("ignoring partition because hex_type = None", logging_tools.LOG_LEVEL_WARN)
