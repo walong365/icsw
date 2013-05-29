@@ -22,6 +22,9 @@ Contents:
    frontend/device_network
    frontend/monitoring_settings
    frontend/device_specific
+   frontend/device_connections
+   frontend/device_variables
+   frontend/users_groups
 
 
 Indices and tables

@@ -1,7 +1,7 @@
 Device Specific Monitoring Settings
 =======================
 
-Here, you can assign device templats to devices, change the icon symbolizing a device, etc.
+Here, you can assign device templates to devices, change the icon symbolizing a device, etc.
 
 To commit changes, you have to rebuild the monitoring config.
  
