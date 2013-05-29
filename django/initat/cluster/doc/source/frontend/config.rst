@@ -1,3 +1,5 @@
+.. _configurations:
+
 Configurations
 =======================
 
@@ -10,9 +12,5 @@ You can download your current configuration using the **download button**, and i
 Please note the possibility to filter configurations by name in the top row.
 
 If you want to delete a configuration, you have to delete all variables, monitoring configs and config scripts first.
-
-.. raw:: html
-
-  <a href="/cluster/device/device_tree" target="_parent">Device Tree</a>
-  
-   
+ 
+Once you have created a configuration here, you can assign it to a device using :ref:`device_configurations`.

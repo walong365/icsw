@@ -1,10 +1,8 @@
 init.at Clustersoftware
 =======================
 
-To start with go to
+To start with go to :ref:`device_tree`.
 
-.. raw:: html
+To commit monitoring configuration changes, go to **Monitoring, rebuild config**.
 
-  <a href="/cluster/device/device_tree" target="_parent">Device Tree</a>
-  
-   
+To see the current monitoring information, go to **Monitoring, Icinga**.

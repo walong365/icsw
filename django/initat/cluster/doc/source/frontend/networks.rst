@@ -1,3 +1,5 @@
+.. _networks:
+
 Networks
 =======================
 
@@ -7,10 +9,5 @@ Click on **exp** on the left side to expand more detailled information about a n
 
 If you create a network, you need at least a catchy identifier, and the network, netmask, broadcast and gateway address.
 
-Once you have created a network, you can configure devices to be a member of a network.
-
-.. raw:: html
-
-  <a href="/cluster/device/device_tree" target="_parent">Device Tree</a>
-  
-   
+Once you have created a network, you can configure devices to be a member of a network in  :ref:`device_networks`.
+ 
