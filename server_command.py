@@ -117,6 +117,8 @@ class srv_command(object):
     def builder(self, tag_name, *args, **kwargs):
         if type(tag_name) == type(0):
             tag_name = "__int__%d" % (tag_name)
+        elif tag_name == None:
+            tag_name = "__none__"
         if tag_name.count("/"):
             tag_name = tag_name.replace("/", "__slash__")
             kwargs["escape_slash"] = "1"
@@ -147,6 +149,8 @@ class srv_command(object):
             tag_name = tag_name.replace("__colon__", ":")
         if tag_name.startswith("__int__"):
             tag_name = int(tag_name[7:])
+        if tag_name == "__none__":
+            tag_name = None
         else:
             while True:
                 cur_match = iso_re.match(tag_name)
@@ -237,7 +241,12 @@ class srv_command(object):
             cur_element.attrib["type"] = "dict"
             for sub_key, sub_value in value.iteritems():
                 sub_el = self._element(sub_value, self.builder(sub_key))
-                sub_el.attrib["dict_key"] = "__int__%d" % (sub_key) if type(sub_key) in [type(0), type(0L)] else sub_key
+                if type(sub_key) in [int, long]:
+                    sub_el.attrib["dict_key"] = "__int__%d" % (sub_key)
+                elif sub_key == None:
+                    sub_el.attrib["dict_key"] = "__none__"
+                else:
+                    sub_el.attrib["dict_key"] = sub_key
                 cur_element.append(sub_el)
         elif type(value) == list:
             cur_element.attrib["type"] = "list"
