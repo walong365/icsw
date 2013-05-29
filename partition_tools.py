@@ -96,7 +96,8 @@ class multipath_struct(object):
             cur_stat, cur_out = commands.getstatusoutput("%s %s" % self.__mp_bin_dict["multipath"])
             if not cur_stat:
                 re_dict = {
-                    "header"  : re.compile("^(?P<name>\S+)\s+\((?P<id>\S+)\)\s+(?P<devname>\S+)\s+(?P<info>.*)$"),
+                    "header1" : re.compile("^(?P<name>\S+)\s+\((?P<id>\S+)\)\s+(?P<devname>\S+)\s+(?P<info>.*)$"),
+                    "header2" : re.compile("^(?P<id>\S+)\s+(?P<devname>dm-\S+)\s+(?P<info>.*)$"),
                     "feature" : re.compile("^size=(?P<size>\S+)\s+features=\'(?P<features>[^\']+)\' hwhandler=\'(?P<hwhandler>\d+)\'\s+(?P<wp_info>\S+)$"),
                     "policy"  : re.compile("^.*policy=\'(?P<policy>[^\']+)\'\s+prio=(?P<prio>\d+)\s+status=(?P<status>\S+)$"),
                     "device"  : re.compile("^.*(?P<scsiid>\d+:\d+:\d+:\d+)\s+(?P<device>\S+)\s+(?P<major>\d+):(?P<minor>\d+)\s+(?P<active>\S+)\s+(?P<ready>\S+)\s+(?P<running>\S+)$"),
@@ -108,7 +109,13 @@ class multipath_struct(object):
                     if re_line:
                         re_type, re_obj = re_line[0]
                         # check for correct order
-                        if re_type in {None : ["header"], "header" : ["feature"], "feature" : ["policy"], "policy" : ["device"], "device" : ["policy", "header"]}.get(prev_re, []):
+                        if re_type in {
+                            None      : ["header1", "header2"],
+                            "header1" : ["feature"],
+                            "header2" : ["feature"],
+                            "feature" : ["policy"],
+                            "policy"  : ["device"],
+                            "device"  : ["policy", "header1", "header2"]}.get(prev_re, []):
                             result_list.append((re_type, re_obj))
                             prev_re = re_type
                         else:
@@ -124,9 +131,12 @@ class multipath_struct(object):
                             g_dict[key] = value.strip()
                             if key in _int_set:
                                 g_dict[key] = int(g_dict[key])
-                        if re_name == "header":
+                        if re_name in ["header1", "header2"]:
                             new_dev = g_dict
-                            dev_dict[g_dict["name"]] = new_dev
+                            if "name" in g_dict:
+                                dev_dict[g_dict["name"]] = new_dev
+                            else:
+                                dev_dict[g_dict["id"]] = new_dev
                         elif re_name == "feature":
                             new_dev.update(g_dict)
                         elif re_name == "policy":
