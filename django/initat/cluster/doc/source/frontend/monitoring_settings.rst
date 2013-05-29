@@ -11,9 +11,3 @@ You can change how frequent services are checked, the notification intervals etc
 
 To commit changes, you have to rebuild the monitoring config.
  
-
-.. raw:: html
-
-  <a href="/cluster/device/device_tree" target="_parent">Device Tree</a>
-  
-  

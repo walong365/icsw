@@ -5,9 +5,3 @@ Here, you can configure users, including their authentication details, contact i
 
 To commit changes, you have to rebuild the monitoring config.
  
-
-.. raw:: html
-
-  <a href="/cluster/device/device_tree" target="_parent">Device Tree</a>
-  
-  
