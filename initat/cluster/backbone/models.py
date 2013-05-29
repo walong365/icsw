@@ -582,6 +582,12 @@ class device(models.Model):
                 r_xml.append(
                     self.act_partition_table.get_xml()
                 )
+        if kwargs.get("with_md_cache", False):
+            r_xml.append(
+                E.md_check_data_stores(
+                    *[cur_md.get_xml() for cur_md in self.md_check_data_store_set.all()]
+                )
+            )
         return r_xml
     def __unicode__(self):
         return u"%s%s" % (self.name,
@@ -3709,6 +3715,18 @@ class md_check_data_store(models.Model):
     mon_check_command = models.ForeignKey(mon_check_command)
     data = models.TextField(default="")
     created = models.DateTimeField(auto_now_add=True, auto_now=True)
+    def get_xml(self):
+        return E.md_check_data_store(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="mdcds__%d" % (self.pk),
+            device="%d" % (self.device_id),
+            name="%s" % (self.name),
+            mon_check_command="%d" % (self.mon_check_command_id),
+            data="%s" % (etree.tostring(etree.fromstring(self.data), pretty_print=True)),
+        )
+    def __unicode__(self):
+        return self.name
     
 # mapping key prefix -> model class
 
@@ -3754,4 +3772,5 @@ KPMC_MAP = {
     "lvm_vg"       : lvm_vg,
     "lvm_lv"       : lvm_lv,
     "package_repo" : package_repo,
+    "mdcds"        : md_check_data_store,
 }
