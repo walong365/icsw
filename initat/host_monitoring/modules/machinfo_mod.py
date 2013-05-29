@@ -646,7 +646,11 @@ class _general(hm_classes.hm_module):
                                 part = self.local_lvm_info.dm_dict["dmtolv"].get(part, part)
                                 try:
                                     if part.startswith("/dev/mapper"):
-                                        vg_name, lv_name = part.split("/")[3].split("-")
+                                        vg_lv_base = os.path.basename(part)
+                                        if vg_lv_base.count("-"):
+                                            vg_name, lv_name = part.split("/")[3].split("-")
+                                        else:
+                                            vg_name, lv_name = (vg_lv_base, None)
                                     else:
                                         vg_name, lv_name = part.split("/")[2:4]
                                 except:
@@ -658,10 +662,13 @@ class _general(hm_classes.hm_module):
                                         logging_tools.LOG_LEVEL_ERROR
                                     )
                                 else:
-                                    if vg_name in self.local_mp_info.dev_dict and lv_name not in self.local_lvm_info.lv_dict["lv"]:
+                                    if vg_name in self.local_mp_info.dev_dict and lv_name not in self.local_lvm_info.lv_dict.get("lv", {}):
                                         # handled by multipath and not present in lvm-struct
                                         dm_struct = self.local_mp_info.dev_dict[vg_name]
-                                        dm_name = os.path.normpath(os.path.join("/dev/mapper", os.readlink("/dev/mapper/%s-%s" % (vg_name, lv_name))))
+                                        dm_name = os.path.normpath(
+                                            os.path.join(
+                                                "/dev/mapper",
+                                                os.readlink("/dev/mapper/%s%s" % (vg_name, "-%s" % (lv_name) if lv_name is not None else ""))))
                                         dev_dict.setdefault("/dev/mapper/%s" % (vg_name), {})[lv_name] = {
                                             "mountpoint" : mp,
                                             "fstype"     : fstype,
@@ -1571,12 +1578,24 @@ class partinfo_command(hm_classes.hm_command):
                     part_name = "%s-%s" % (disk, part)
                     real_disk = [entry for entry in part_stuff["multipath"]["list"] if entry["status"] == "active"]
                     if real_disk:
+                        mp_id = part_stuff["multipath"]["id"]
                         real_disk = real_disk[0]
-                        real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part[4:])
+                        if part is None:
+                            real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part)
+                        else:
+                            real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part[4:])
                         # copy data from real disk
-                        real_part = dev_dict[real_disk][real_part]
-                        for key in ["hextype", "info", "size"]:
-                            part_stuff[key] = real_part[key]
+                        if real_disk in dev_dict:
+                            # LVM between
+                            real_part = dev_dict[real_disk][real_part]
+                            for key in ["hextype", "info", "size"]:
+                                part_stuff[key] = real_part[key]
+                        else:
+                            # no LVM between
+                            real_part = dev_dict["/dev/mapper/%s" % (mp_id)]
+                            part_stuff["hextype"] = "0x00"
+                            part_stuff["info"] = "multipath w/o LVM"
+                            part_stuff["size"] = int(logging_tools.interpret_size_str(part_stuff["multipath"]["size"]) / (1024 * 1024))
                 else:
                     part_name = "%s%s" % (disk, part)
                 if part_stuff.has_key("mountpoint"):
