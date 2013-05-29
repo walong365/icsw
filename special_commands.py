@@ -564,7 +564,11 @@ class special_disc(special_base):
                     part_pf = "p"
                 else:
                     part_pf = ""
-                act_part = "%s%s%d" % (act_disc, part_pf, act_pnum)
+                if act_pnum:
+                    act_part = "%s%s%d" % (act_disc, part_pf, act_pnum)
+                else:
+                    # handle special case for unpartitioned disc
+                    act_part = act_disc
                 # which partition to check
                 check_part = act_part
                 # check for lut_blob
