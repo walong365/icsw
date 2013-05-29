@@ -89,7 +89,7 @@ class special_base(object):
         error_wait = 5
         # contact server
         server_contact = False
-    def __init__(self, build_proc, s_check, host, valid_ip, global_config, **kwargs):
+    def __init__(self, build_proc, s_check, host, global_config, **kwargs):
         for key in dir(special_base.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(special_base.Meta, key))
@@ -99,11 +99,10 @@ class special_base(object):
         self.build_process = build_proc
         self.s_check = s_check
         self.host = host
-        self.valid_ip = valid_ip
     def _cache_name(self):
         return "/tmp/.md-config-server/%s_%s" % (
             self.host.name,
-            self.valid_ip)
+            self.host.valid_ip)
     def _store_cache(self):
         if self.__force_store_cache:
             cache = E.cache(
@@ -224,8 +223,8 @@ class special_base(object):
             command,
             "snmp_relay",
             *args,
-            snmp_community=kwargs.pop("snmp_community", "public"),
-            snmp_version=kwargs.pop("snmp_version", 1),
+            snmp_community=self.host.dev_variables["SNMP_COMMUNITY"],
+            snmp_version=self.host.dev_variables["SNMP_VERSION"],
             **kwargs
         )
     def _call_server(self, command, server_name, *args, **kwargs):
@@ -235,13 +234,13 @@ class special_base(object):
             return None
         self.log("calling server '%s' for %s, command is '%s', %s, %s" % (
             server_name,
-            self.valid_ip,
+            self.host.valid_ip,
             command,
             "args is '%s'" % (", ".join([str(value) for value in args])) if args else "no arguments",
             ", ".join(["%s='%s'" % (key, value) for key, value in kwargs.iteritems()]) if kwargs else "no kwargs",
         ))
         connect_to_localhost = kwargs.pop("connect_to_localhost", False)
-        conn_ip = "127.0.0.1" if connect_to_localhost else self.valid_ip
+        conn_ip = "127.0.0.1" if connect_to_localhost else self.host.valid_ip
         if not self.__use_cache:
             # contact the server / device
             srv_reply = None
@@ -490,7 +489,7 @@ class special_supermicro(special_base):
                 para_dict[para_name] = cur_var.get_value()
         if len(para_list) != len(para_dict):
             self.log("updating info from BMC")
-            srv_result = self.collrelay("smcipmi", "--ip", self.valid_ip, "counter", connect_to_localhost=True)
+            srv_result = self.collrelay("smcipmi", "--ip", self.host.valid_ip, "counter", connect_to_localhost=True)
             # xpath string origins in supermiro_mod, server part (scmipmi_struct)
             r_dict = supermicro_mod.generate_dict(srv_result.xpath(None, ".//ns:output/text()")[0].split("\n"))
             for para_name in para_list:
@@ -679,8 +678,7 @@ class special_eonstor(special_base):
         sc_array = []
         srv_reply = self.snmprelay(
             "eonstor_get_counter",
-            snmp_community="public",
-            snmp_version="1")
+        )
         if srv_reply and "eonstor_info" in srv_reply:
             info_dict = srv_reply["eonstor_info"]
             # disks
@@ -712,9 +710,8 @@ class special_eonstor(special_base):
                         act_com = "eonstor_%s_info" % (env_dict_name)
                         srv_reply = self.snmprelay(
                             act_com,
-                            "%d" % (idx),
-                            snmp_version="1",
-                            snmp_community="public")
+                            "%d" % (idx)
+                        )
                         if srv_reply and "eonstor_info:state" in srv_reply:
                             act_state = int(srv_reply["eonstor_info:state"].text)
                             self.log("state for %s:%d is %d" % (act_com, idx, act_state))

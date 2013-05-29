@@ -2390,11 +2390,12 @@ class build_process(threading_tools.process_obj):
             act_def_dev = dev_templates[host.mon_device_templ_id or 0]
             if valid_ips and act_def_dev:
                 valid_ip = valid_ips[0]
+                host.valid_ip = valid_ip
                 self.mach_log("Found %s for host %s : %s, using %s" % (
                     logging_tools.get_plural("target ip", len(valid_ips)),
                     host.name,
                     ", ".join(valid_ips),
-                    valid_ip))
+                    host.valid_ip))
                 if not serv_templates.has_key(act_def_dev.mon_service_templ_id):
                     self.log("Default service_template not found in service_templates", logging_tools.LOG_LEVEL_WARN)
                 else:
@@ -2410,8 +2411,9 @@ class build_process(threading_tools.process_obj):
                         var_name = cur_var.name
                         dev_variables[var_name] = unicode(cur_var.value)
                     dev_variables.update(snmp_stack.get_vars(host))
+                    host.dev_variables = dev_variables
                     self.mach_log("device has %s" % (
-                        logging_tools.get_plural("device_variable", len(dev_variables.keys()))))
+                        logging_tools.get_plural("device_variable", len(host.dev_variables.keys()))))
                     # now we have the device- and service template
                     act_host = nag_config(host.name)
                     act_host["host_name"] = host.name
@@ -2428,7 +2430,7 @@ class build_process(threading_tools.process_obj):
                     if c_list:
                         act_host["contacts"] = ",".join(c_list)
                     act_host["alias"] = host.alias or host.name
-                    act_host["address"] = valid_ip
+                    act_host["address"] = host.valid_ip
                     # check for parents
                     parents = []
                     # rule 1: APC Masterswitches have their bootserver set as parent
@@ -2491,8 +2493,8 @@ class build_process(threading_tools.process_obj):
                     self.mach_log("contact groups for host: %s" % (
                         ", ".join(sorted(host_groups)) or "none"))
                     if host.monitor_checks:
-                        if valid_ip == "0.0.0.0":
-                            self.mach_log("IP address is '%s', host is assumed to be always up" % (unicode(valid_ip)))
+                        if host.valid_ip == "0.0.0.0":
+                            self.mach_log("IP address is '%s', host is assumed to be always up" % (unicode(host.valid_ip)))
                             act_host["check_command"] = "check-host-ok"
                         else:
                             act_host["check_command"] = act_def_dev.ccommand
@@ -2596,7 +2598,7 @@ class build_process(threading_tools.process_obj):
                                         cur_special = getattr(special_commands, "special_%s" % (special.lower()))(
                                             self,
                                             s_check,
-                                            host, valid_ip, global_config, cache_mode=cur_gc.cache_mode)
+                                            host, global_config, cache_mode=cur_gc.cache_mode)
                                     except:
                                         self.log("unable to initialize special '%s': %s" % (
                                             special,
@@ -2621,7 +2623,7 @@ class build_process(threading_tools.process_obj):
                                     # contact_group is only written if contact_group is responsible for the host and the service_template
                                 serv_temp = serv_templates[s_check.get_template(act_def_serv.name)]
                                 serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
-                                sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc, dev_variables)
+                                sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc)
                                 service_nc.extend(sc_list)
                                 num_ok += len(sc_list)
                         # add cluster checks
@@ -2650,8 +2652,7 @@ class build_process(threading_tools.process_obj):
                                         serv_cgs,
                                         checks_are_active,
                                         serv_temp,
-                                        cur_gc,
-                                        dev_variables)
+                                        cur_gc)
                                     service_nc.extend(sub_list)
                                     num_ok += len(sub_list)
                                 else:
@@ -2683,8 +2684,7 @@ class build_process(threading_tools.process_obj):
                                         serv_cgs,
                                         checks_are_active,
                                         serv_temp,
-                                        cur_gc,
-                                        dev_variables)
+                                        cur_gc)
                                     service_nc.extend(sub_list)
                                     num_ok += len(sub_list)
                                 else:
@@ -2926,7 +2926,7 @@ class build_process(threading_tools.process_obj):
         self.log("created configs for %s hosts in %s" % (
             host_info_str,
             logging_tools.get_diff_time_str(end_time - start_time)))
-    def get_service(self, host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc, dev_variables):
+    def get_service(self, host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc):
         self.mach_log("  adding check %-30s (%2d p), template %s, %s" % (
             s_check["command_name"],
             len(sc_array),
@@ -2965,7 +2965,7 @@ class build_process(threading_tools.process_obj):
                     act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (global_config["PNP_URL"])
             act_serv["servicegroups"]         = s_check.servicegroup_name
             cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
-            act_serv["check_command"]         = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, dev_variables))
+            act_serv["check_command"]         = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, host.dev_variables))
             if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
                 self.mach_log("   removing command %s because of %s" % (s_check["command_name"],
                                                                         act_host["check_command"]))
