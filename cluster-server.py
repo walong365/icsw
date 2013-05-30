@@ -43,12 +43,13 @@ import cluster_location
 import zmq
 import stat
 import initat.cluster_server
+import bz2
 from django.db.models import Q
 from django.db import connection
 from initat.host_monitoring import hm_classes
 from initat.cluster.backbone.models import device, device_variable, log_source
 from initat.cluster_server.config import global_config
-from initat.core.management.commands import dumpdatafast
+from initat.core.management.commands import dumpdatafast, dumpdataslow
 from optparse import OptionParser
 
 try:
@@ -58,6 +59,9 @@ except ImportError:
 
 SERVER_PORT = 8004
 
+class dummy_file(file):
+    ending = None
+    
 class backup_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
@@ -68,7 +72,6 @@ class backup_process(threading_tools.process_obj):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def _start_backup(self, *args, **kwargs):
-        s_time = time.time()
         self.log("starting backup")
         bu_dir = global_config["DATABASE_DUMP_DIR"]
         if not os.path.isdir(bu_dir):
@@ -76,13 +79,19 @@ class backup_process(threading_tools.process_obj):
             os.mkdir(bu_dir)
         # delete old files
         for entry in os.listdir(bu_dir):
-            if entry.endswith(".zip"):
+            if entry.count(".") and entry.split(".")[-1] in ["zip", "bz2"]:
                 f_name = os.path.join(bu_dir, entry)
                 diff_dt = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.stat(f_name)[stat.ST_CTIME])
                 if diff_dt.days > global_config["DATABASE_KEEP_DAYS"]:
                     self.log("removing backup %s" % (f_name))
                     os.unlink(f_name)
-        bu_name = datetime.datetime.now().strftime("db_bu_%Y%m%d_%H:%M:%S")
+        self._fast_backup(bu_dir)
+        self._normal_backup(bu_dir)
+        self._exit_process()
+    def _fast_backup(self, bu_dir):
+        # start 'fast' django backup
+        s_time = time.time()
+        bu_name = datetime.datetime.now().strftime("db_bu_fast_%Y%m%d_%H:%M:%S")
         self.log("storing backup in %s" % (os.path.join(
             bu_dir,
             bu_name)))
@@ -96,11 +105,39 @@ class backup_process(threading_tools.process_obj):
             "--one-file",
             bu_name])
         buf_com._handle(*args, **vars(opts))
-        e_time = time.time()
-        self.log("backup finished in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
         # clear base object
         dumpdatafast.BASE_OBJECT = None
-        self._exit_process()
+        e_time = time.time()
+        self.log("fast backup finished in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+    def _normal_backup(self, bu_dir):
+        # start 'normal' django backup
+        s_time = time.time()
+        bu_name = datetime.datetime.now().strftime("db_bu_django_%Y%m%d_%H:%M:%S")
+        full_path = os.path.join(
+            bu_dir,
+            bu_name)
+        self.log("storing backup in %s" % (full_path))
+        buf_com = dumpdataslow.Command()
+        buf_com.stdout = dummy_file(full_path, "wb")
+        opts, args = OptionParser(option_list=buf_com.option_list).parse_args([
+            "-a",
+            "--format",
+            "xml",
+            "--traceback",
+            "auth",
+            "contenttypes",
+            "sessions",
+            "sites",
+            "messages",
+            "admin",
+            "backbone",
+        ])
+        buf_com.handle(*args, **vars(opts))
+        buf_com.stdout.close()
+        file("%s.bz2" % (full_path), "wb").write(bz2.compress(file(full_path, "r").read()))
+        os.unlink(full_path)
+        e_time = time.time()
+        self.log("normal backup finished in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
     def loop_post(self):
         self.__log_template.close()
 
@@ -629,6 +666,9 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_actual_pid(src_pid)
             self.__msi_block.remove_actual_pid(configfile.get_manager_pid(), mult=1)
             self.__msi_block.save_block()
+        if src_process == "backup_process" and global_config["BACKUP_DATABASE"]:
+            self.log("backup process finished, exiting")
+            self["exit_requested"] = True
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
@@ -965,7 +1005,7 @@ def main():
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("CONTACT"             , configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
         ("COMMAND"             , configfile.str_c_var("", short_options="c", choices=[""] + initat.cluster_server.command_names, only_commandline=True, help_string="command to execute [%(default)s]")),
-        ("BACKUP_DATABASE"     , configfile.bool_c_var(False, only_commandline=True, help_string="start backup of database immediately [%(default)s]")),
+        ("BACKUP_DATABASE"     , configfile.bool_c_var(False, only_commandline=True, help_string="start backup of database immediately [%(default)s], only works in DEBUG mode")),
         ("OPTION_KEYS"         , configfile.array_c_var([], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)")),
     ])
     global_config.parse_file()
