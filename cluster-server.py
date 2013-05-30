@@ -560,10 +560,11 @@ class server_process(threading_tools.process_pool):
             self.__log_cache.append((lev, what))
     def _set_next_backup_time(self, first=False):
         self.__next_backup_dt = datetime.datetime.now().replace(microsecond=0)
-        if not global_config["DEBUG"] or True:
-            self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(days=0)).replace(hour=2, minute=0, second=0)
+        if global_config["BACKUP_DATABASE"] and first:
+            self.log("initiate immediate backup run")
+            self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(seconds=2))
         else:
-            self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(seconds=2 if first else 600))
+            self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(days=0)).replace(hour=2, minute=0, second=0)
         while self.__next_backup_dt < datetime.datetime.now():
             self.__next_backup_dt += datetime.timedelta(days=1)
         self.log("setting %s backup-time to %s" % (
@@ -964,6 +965,7 @@ def main():
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("CONTACT"             , configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
         ("COMMAND"             , configfile.str_c_var("", short_options="c", choices=[""] + initat.cluster_server.command_names, only_commandline=True, help_string="command to execute [%(default)s]")),
+        ("BACKUP_DATABASE"     , configfile.bool_c_var(False, only_commandline=True, help_string="start backup of database immediately [%(default)s]")),
         ("OPTION_KEYS"         , configfile.array_c_var([], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)")),
     ])
     global_config.parse_file()
