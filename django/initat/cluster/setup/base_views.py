@@ -24,28 +24,30 @@ HIDDEN_FIELDS = set(["password",])
 def change_xml_entry(request):
     _post = request.POST
     #pprint.pprint(_post)
+    # ignore no-operation runs
     ignore_nop = True if int(_post.get("ignore_nop", "0")) else False
     try:
-        if _post["id"].count("__") == 2:
+        first_id = _post["id"]
+        if first_id.count("__") == 2:
             # old version:
             # format object_type, attr_name, object_id, used in device_tree
             # new version:
             # format object_type, object_id, attr_name used in device_configs
-            object_type, object_id, attr_name = _post["id"].split("__", 2)
-        elif _post["id"].count("__") == 3:
+            object_type, object_id, attr_name = first_id.split("__", 2)
+        elif first_id.count("__") == 3:
             # format object_type, mother_id, object_id, attr_name, used in device_network
-            object_type, mother_id, object_id, attr_name = _post["id"].split("__", 3)
-        elif _post["id"].count("__") == 4:
+            object_type, mother_id, object_id, attr_name = first_id.split("__", 3)
+        elif first_id.count("__") == 4:
             # format mother_type, mother_id, object_type, object_id, attr_name, used in config_overview and part_overview
-            mother_type, mother_id, object_type, object_id, attr_name = _post["id"].split("__", 4)
-        elif _post["id"].count("__") == 5:
+            mother_type, mother_id, object_type, object_id, attr_name = first_id.split("__", 4)
+        elif first_id.count("__") == 5:
             # format mother object_type, dev_id, mother_id, object_type, object_id, attr_name, used in device_network for IPs
-            m_object_type, dev_id, mother_id, object_type, object_id, attr_name = _post["id"].split("__", 5)
-        elif _post["id"].count("__") == 6:
+            m_object_type, dev_id, mother_id, object_type, object_id, attr_name = first_id.split("__", 5)
+        elif first_id.count("__") == 6:
             # format mother object_type, dev_id, mother_id, object_type, object_id, attr_name, used in partition setup
-            gm_object_type, m_object_type, dev_id, mother_id, object_type, object_id, attr_name = _post["id"].split("__", 6)
+            gm_object_type, m_object_type, dev_id, mother_id, object_type, object_id, attr_name = first_id.split("__", 6)
         else:
-            request.log("cannot parse '%s'" % (_post["id"]), logging_tools.LOG_LEVEL_ERROR, xml=True)
+            request.log("cannot parse '%s'" % (first_id), logging_tools.LOG_LEVEL_ERROR, xml=True)
     except:
         request.log("cannot parse", logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
@@ -53,33 +55,40 @@ def change_xml_entry(request):
         if not mod_obj:
             request.log("unknown object_type '%s'" % (object_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
         else:
-            try:
-                cur_obj = mod_obj.objects.get(pk=object_id)
-            except mod_obj.DoesNotExist:
-                request.log("object %s with id %s does not exit" % (
-                    object_type,
-                    object_id), logging_tools.LOG_LEVEL_ERROR, xml=True)
+## no longer needed
+##                if (object_type, attr_name) == ("dg", "meta_device"):
+##                    # special call: create new metadevice
+##                    cur_obj.add_meta_device()
+##                    request.log("created metadevice for %s" % (cur_obj.name), xml=True)
+## no longer needed
+##                elif (object_type, attr_name) == ("dev", "device_groupx"):
+##                    # special call: create new metadevice
+##                    target_dg = device_group.objects.get(Q(pk=_post["value"]))
+##                    cur_obj.device_group = target_dg
+##                    cur_obj.save()
+##                    request.log("moved device %s to %s" % (cur_obj.name,
+##                                                           target_dg.name), xml=True)
+##                else:
+            if "other_list" in _post:
+                other_list = _post["other_list"].split("::")
+                request.log("%s found in request: %s" % (
+                    logging_tools.get_plural("other", len(other_list)),
+                    ", ".join(other_list)))
             else:
-                if (object_type, attr_name) == ("dg", "meta_device"):
-                    # special call: create new metadevice
-                    cur_obj.add_meta_device()
-                    request.log("created metadevice for %s" % (cur_obj.name), xml=True)
-                elif (object_type, attr_name) == ("dev", "device_group"):
-                    # special call: create new metadevice
-                    target_dg = device_group.objects.get(Q(pk=_post["value"]))
-                    cur_obj.device_group = target_dg
-                    cur_obj.save()
-                    request.log("moved device %s to %s" % (cur_obj.name,
-                                                           target_dg.name), xml=True)
+                other_list = None
+            if "pks[]" in _post:
+                object_ids = _post.getlist("pks[]")
+            else:
+                object_ids = [object_id]
+            new_value = _post["value"]
+            for object_id in object_ids:
+                try:
+                    cur_obj = mod_obj.objects.get(pk=object_id)
+                except mod_obj.DoesNotExist:
+                    request.log("object %s with id %s does not exit" % (
+                        object_type,
+                        object_id), logging_tools.LOG_LEVEL_ERROR, xml=True)
                 else:
-                    if "other_list" in _post:
-                        other_list = _post["other_list"].split("::")
-                        request.log("%s found in request: %s" % (
-                            logging_tools.get_plural("other", len(other_list)),
-                            ", ".join(other_list)))
-                    else:
-                        other_list = None
-                    new_value = _post["value"]
                     compound_fields = {"device_variable" : ["value"],
                                        "user"            : ["permissions"],
                                        "netdevice"       : ["ethtool_autoneg", "ethtool_duplex", "ethtool_speed"]}.get(cur_obj._meta.object_name, [])
@@ -144,15 +153,18 @@ def change_xml_entry(request):
                                 cur_obj.save()
                             except ValidationError, what:
                                 request.log("error modifying: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
+                                # not safe to use in case of multi-object modification, FIXME
                                 request.xml_response["original_value"] = old_value
                             except IntegrityError, what:
                                 request.log("error modifying: %s" % (unicode(what)), logging_tools.LOG_LEVEL_ERROR, xml=True)
+                                # not safe to use in case of multi-object modification, FIXME
                                 request.xml_response["original_value"] = old_value
                             except:
                                 raise
                             else:
                                 # reread new_value (in case of pre/post-save corrections)
                                 new_value = getattr(cur_obj, attr_name)
+                                # not safe to use in case of multi-object modification, FIXME
                                 request.xml_response["object"] = cur_obj.get_xml()
                                 if attr_name in HIDDEN_FIELDS:
                                     request.log("changed %s" % (attr_name), xml=True)
@@ -165,6 +177,7 @@ def change_xml_entry(request):
                                 for other in other_list:
                                     name = other.split("__")[-1]
                                     other_change.append(E.change(unicode(getattr(cur_obj, name)), id=other, name=name))
+                                # not safe to use in case of multi-object modification, FIXME
                                 request.xml_response["changes"] = other_change
     return request.xml_response.create_response()
 

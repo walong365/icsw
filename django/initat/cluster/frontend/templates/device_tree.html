@@ -17,12 +17,12 @@
 {% inlinecoffeescript %}
 
 class device_tree
-    constructor: (@xml) ->
-        # XML is already jqueryified
+    constructor: (xml) ->
+        @xml = $(xml)
     build_table: (@top_div) ->
         @top_div.children().remove()
         # device_type metadevice
-        @md_dt = @xml.find("device_type[identifier='MD']").attr "pk"
+        @md_dt = @xml.find("device_type[identifier='MD']").attr("pk")
         new_table = $("<table>").attr
             "id" : "device_tree"
         @xml.find("device_group").each (index, cur_dg) =>
@@ -34,7 +34,7 @@ class device_tree
             new_table.append(@build_selected)
         @top_div.append(new_table)
         @update_device_group_info()
-        new_table.find("input#new__device__name").focus()
+        new_table.find("input#dev__new__name").focus()
     update_device_group_info: () =>
         if not @xml.find("device_group[is_cdg='0']").length
             @top_div.find("table tr[id='new_dev']").hide()
@@ -54,13 +54,13 @@ class device_tree
             @recolor_device_group(dg_pk)
         else
             @top_div.find("tr[id^='dev__#{dg_pk}__']").hide()
-    change_device_group_cb: (cur_el) =>
+    change_device_group: (dev_xml, new_dg_id) =>
         # move row
-        dev_id = cur_el.attr("id").split("__")[1]
-        new_dg_id = cur_el.attr("value")
-        cur_el.parents("tr:first").remove()
+        dev_pk = dev_xml.attr("pk")
+        dev_tr = @top_div.find("tr[id^='dev__'][id$='__${dev_pk}']")
+        dev_tr.remove()
         new_dg = @xml.find("device_group[pk='#{new_dg_id}']")
-        dev_xml = @xml.find("device[pk='#{dev_id}']")
+        #dev_xml = @xml.find("device[pk='#{dev_pk}']")
         # important: set device group
         dev_xml.attr("device_group", new_dg_id)
         # call create_device
@@ -172,14 +172,7 @@ class device_tree
             })
         ))
         # device group
-        new_tr.append($("<td>").append(
-            create_input_el(cur_d, "device_group", line_prefix, {
-                select_source           : "response device_group[is_cdg='0']"
-                select_source_attribute : "name"
-                callback                : @change_device_group_cb
-                master_xml              : @xml
-            })
-        ))
+        new_tr.append($("<td>").text(@xml.find("device_group[pk=" + cur_d.attr("device_group") + "]").attr("name")))
         # mother server
         new_tr.append($("<td>").append(
             create_input_el(cur_d, "bootserver", line_prefix, {
@@ -198,22 +191,23 @@ class device_tree
                 "type"  : "button",
                 "value" : "delete",
                 "id"    : "dev__del__" + cur_d.attr("pk")
-            }).bind("click", (event, param) =>
-                if (param == "noask" || confirm("really delete device " + cur_d.attr("name") + " ?")) 
-                    data = {}
-                    data[line_prefix] = "1"
-                    data["force_delete"] = $("input#force_delete").is(":checked")
-                    $.ajax
-                        url     : "{% url 'base:delete_object' 'device' %}"
-                        data    : data
-                        success : (xml) =>
-                            if parse_xml_response(xml)
-                                @delete_device(cur_d.attr("pk"))
-                )
-            )
-        )
+            }).bind("click", @remove_device)
+        ))
         new_tr.hide()
         return new_tr
+    remove_device: (event, param) =>
+        el_id = $(event.target).attr("id").split("__")[2]
+        cur_d = @xml.find("device[pk=#{el_id}]")
+        if (param == "noask" || confirm("really delete device " + cur_d.attr("name") + " ?")) 
+            data = {}
+            data["dev__#{el_id}"] = "1"
+            data["force_delete"] = $("input#force_delete").is(":checked")
+            $.ajax
+                url     : "{% url 'base:delete_object' 'device' %}"
+                data    : data
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @delete_device(cur_d.attr("pk"))
     delete_device: (dev_pk) =>
         @top_div.find("tr[id^='dev__'][id$='__#{dev_pk}']").remove()
         @xml.find("device[pk='#{dev_pk}']").remove()
@@ -436,7 +430,7 @@ class device_tree
         targ_el.val("0")
     change_sel_device_group_cb: (event) =>
         targ_el = $(event.target)
-        @propagate_sel_change(targ_el.val(), "device_group")
+        @propagate_sel_change(targ_el.val(), "device_group", false)
         targ_el.val("0")
     change_sel_device_mother_cb: (event) =>
         targ_el = $(event.target)
@@ -448,18 +442,36 @@ class device_tree
         targ_el = $(event.target)
         @propagate_sel_change(targ_el.val(), "curl")
         targ_el.val("")
-    propagate_sel_change: (new_val, postfix) =>
+    propagate_sel_change: (new_val, postfix, via_trigger=true) =>
+        pk_list = []
         @top_div.find("tr input[id^='dev__'][id$='__sel']:checked").each (index, cur_el) =>
-            dev_pk = $(cur_el).attr("id").split("__")[1]
-            targ_sel = @top_div.find("#dev__#{dev_pk}__#{postfix}")
-            if targ_sel.is(":checkbox")
-                if not new_val and targ_sel.is(":checked")
-                    targ_sel.removeAttr("checked").trigger("change")
-                else if new_val and not targ_sel.is(":checked")
-                    targ_sel.attr("checked", "checked").trigger("change")
-            else
-                if targ_sel.attr("value") != new_val
-                    targ_sel.attr("value", new_val).trigger("change")
+            cur_el = $(cur_el)
+            dev_pk = cur_el.attr("id").split("__")[1]
+            pk_list.push(dev_pk)
+            if via_trigger
+                targ_sel = @top_div.find("#dev__#{dev_pk}__#{postfix}")
+                if targ_sel.is(":checkbox")
+                    if not new_val and targ_sel.is(":checked")
+                        targ_sel.removeAttr("checked").trigger("change")
+                    else if new_val and not targ_sel.is(":checked")
+                        targ_sel.attr("checked", "checked").trigger("change")
+                else
+                    if targ_sel.attr("value") != new_val
+                        targ_sel.attr("value", new_val).trigger("change")
+        if not via_trigger
+            $.ajax
+                url     : "{% url 'base:change_xml_entry' %}"
+                data    : 
+                    "pks"        : pk_list
+                    "id"         : "dev__0__#{postfix}"
+                    "value"      : new_val
+                    "ignore_nop" : 1
+                    "checkbox"   : false
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        for dev_pk in pk_list
+                            cur_dev = @xml.find("device[pk=#{dev_pk}]")
+                            @change_device_group(cur_dev, new_val)
 
 root = exports ? this
 
@@ -468,7 +480,7 @@ root.reload_device_tree = ->
         url     : "{% url 'device:get_xml_tree' %}"
         success : (xml) ->
             if parse_xml_response(xml)
-                new device_tree($(xml).find("response")).build_table($("div#device_table"))
+                new device_tree($(xml).find("response")[0]).build_table($("div#device_table"))
 
 add_dt_handlers = ->
     reload_device_tree()
