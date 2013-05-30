@@ -247,8 +247,8 @@ INSTALLED_APPS = (
     "compressor",
     "coffeescript",
     "crispy_forms",
-    "initat.core",
     # cluster
+    "initat.core",
 )
 
 ZMQ_LOGGING = True
@@ -287,7 +287,7 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
         add_app = os.environ[add_app_key]
         if add_app not in INSTALLED_APPS:
             INSTALLED_APPS.append(add_app)
-    INSTALLED_APPS.append("initat.core")
+    #INSTALLED_APPS.append("initat.core")
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 

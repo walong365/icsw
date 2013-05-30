@@ -253,7 +253,10 @@ def config_bool_pre_save(sender, **kwargs):
             if type(cur_inst.value) == bool:
                 pass
             else:
-                cur_inst.value = True if (cur_inst.value or "").lower() in ["1", "true", "yes"] else False
+                if type(cur_inst.value) in [int, long]:
+                    cur_inst.value = True if cur_inst.value else False
+                else:
+                    cur_inst.value = True if (cur_inst.value or "").lower() in ["1", "true", "yes"] else False
         except ValueError:
             raise ValidationError("value cannot be interpret as bool")
         
@@ -822,14 +825,14 @@ class device_location(models.Model):
     class Meta:
         db_table = u'device_location'
 
-class device_relationship(models.Model):
-    idx = models.AutoField(db_column="device_relationship_idx", primary_key=True)
-    host_device = models.ForeignKey("device", related_name="host_device")
-    domain_device = models.ForeignKey("device", related_name="domain_device")
-    relationship = models.CharField(max_length=9, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'device_relationship'
+##class device_relationship(models.Model):
+##    idx = models.AutoField(db_column="device_relationship_idx", primary_key=True)
+##    host_device = models.ForeignKey("device", related_name="host_device")
+##    domain_device = models.ForeignKey("device", related_name="domain_device")
+##    relationship = models.CharField(max_length=9, blank=True)
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'device_relationship'
 
 class device_rsync_config(models.Model):
     idx = models.AutoField(db_column="device_rsync_config_idx", primary_key=True)
@@ -1885,7 +1888,7 @@ def net_ip_pre_save(sender, **kwargs):
                 raise ValidationError("no maching network found")
         dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
         if cur_inst.ip in dev_ips:
-            raise ValidationError("Adress already used")
+            raise ValidationError("Address already %s used, device %s" % (cur_inst.ip, unicode(cur_inst.netdevice.device)))
         if cur_inst.network.network_type.identifier == "b":
             # set boot netdevice
             cur_inst.netdevice.device.bootnetdevice = cur_inst.netdevice
@@ -2797,8 +2800,8 @@ def partition_pre_save(sender, **kwargs):
         if p_num == 0:
             if partition.objects.filter(Q(partition_disc=cur_inst.partition_disc)).count() > 1:
                 raise ValidationError("for pnum==0 only one partition is allowed")
-        elif p_num < 1 or p_num > 9:
-            raise ValidationError("partition number out of bounds [1, 9]")
+        elif p_num < 1 or p_num > 32:
+            raise ValidationError("partition number %d out of bounds [1, 32]" % (p_num))
         all_part_nums = partition.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_disc=cur_inst.partition_disc)).values_list("pnum", flat=True)
         if p_num in all_part_nums:
             raise ValidationError("partition number already used")
@@ -2876,7 +2879,7 @@ class partition_disc(models.Model):
 @receiver(signals.pre_save, sender=partition_disc)
 def partition_disc_pre_save(sender, **kwargs):
     if "instance" in kwargs:
-        disc_re = re.compile("^/dev/([shv]d[a-z]|dm-(\d+)|mapper/.*)$")
+        disc_re = re.compile("^/dev/([shv]d[a-z]|dm-(\d+)|mapper/.*|ida/(.*)|cciss/(.*))$")
         cur_inst = kwargs["instance"]
         d_name = cur_inst.disc.strip().lower()
         if not d_name:
@@ -3302,7 +3305,7 @@ class snmp_config(models.Model):
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     snmp_mib = models.ForeignKey("snmp_mib")
-    device = models.ForeignKey("device")
+    device = models.ForeignKey("device", null=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'snmp_config'
