@@ -25,7 +25,7 @@ class config_table
         @show_list = ""
         @only_associated = false
         $("input#filter").bind("keyup", => @apply_filter(false))
-        $("input#filter_clear").bind("click", => @clear_filter())
+        $("input#filter_clear").bind("click", @clear_filter)
         $("input#filter_assoc").bind("click", @change_assoc_filter)
     use_devs: (dt_div) =>
         sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
@@ -165,12 +165,12 @@ class config_table
             cur_tr.append(
                 $("<td>").attr({
                    "class" : "center"
-                }).on("hover", $(cur_cb), @hover).append(
-                    $("<span>").text("")
+                }).on("hover", @hover).append(
+                    $("<span>")
                 ).append(
                     cur_cb
                 ).append(
-                    $("<span>").text("")
+                    $("<span>")
                 )
             )
             if @device_configs.find("device_config[device='#{dev_pk}'][config='#{conf_pk}'][meta='1']").length
@@ -181,10 +181,10 @@ class config_table
             else if @device_configs.find("device_config[device='#{dev_pk}'][config='#{conf_pk}']").length
                 cur_cb.attr({"checked" : "checked"})
                 @selected[dev_pk].push(conf_pk)
-            num_vars = cur_conf.find("config_vars *").length
+            num_vars    = cur_conf.find("config_vars *").length
             num_scripts = cur_conf.find("config_scripts *").length
-            num_checks = cur_conf.find("mon_check_commands *").length
-            cur_tr.append($("<td>").on("hover", $(cur_cb), @hover).append(
+            num_checks  = cur_conf.find("mon_check_commands *").length
+            cur_tr.append($("<td>").on("hover", @hover).append(
                 $("<span>").attr("title", "#{num_vars} variables, #{num_scripts} scripts, #{num_checks} check commands").text(cur_conf.attr("name") + " (#{num_vars}, #{num_scripts}, #{num_checks})")
             ))
             cur_entries++
@@ -202,7 +202,12 @@ class config_table
         dummy_div.find("tr:odd").addClass("odd")
         return dummy_div.children()
     hover: (event) ->
-        target = $(event.data).parents("td:first")
+        target = $(event.target)
+        if target.prop("tagName") != "TD"
+            target = target.parents("td:first")
+        # a little hackish but working
+        if not target.hasClass("center")
+            target = target.prev()
         if event.type == "mouseenter"
             target.addClass("highlight")
             target.next().addClass("highlight")
