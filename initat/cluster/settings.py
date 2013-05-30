@@ -45,6 +45,8 @@ DATABASES = {
     }
 }
 
+DATABASE_ROUTERS = ["initat.cluster.backbone.routers.db_router"]
+
 NEW_CONF_FILE = "/etc/sysconfig/cluster/db.cf"
 OLD_CONF_FILE = "/etc/sysconfig/cluster/mysql.cf"
 
@@ -239,6 +241,7 @@ INSTALLED_APPS = (
     "django.contrib.admin",
     # Uncomment the next line to enable admin documentation:
     "django.contrib.admindocs",
+    "django_extensions",
     "reversion",
     "south",
     "compressor",
