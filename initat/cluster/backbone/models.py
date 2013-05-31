@@ -1841,6 +1841,7 @@ class net_ip(models.Model):
     penalty = models.IntegerField(default=0)
     alias = models.CharField(max_length=765, blank=True, default="")
     alias_excl = models.NullBooleanField(null=True, blank=True, default=False)
+    domain_name = models.ForeignKey("domain_name", null=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
     def copy(self):
         return net_ip(
@@ -1910,8 +1911,10 @@ class network(models.Model):
     network_type = models.ForeignKey("network_type")
     master_network = models.ForeignKey("network", null=True, related_name="rel_master_network", blank=True)
     short_names = models.BooleanField()
+    # should no longer be used, now in domain_name
     name = models.CharField(max_length=192, blank=False)
     penalty = models.PositiveIntegerField(default=1)
+    # should no longer be used, now in domain_name
     postfix = models.CharField(max_length=12, blank=True)
     info = models.CharField(max_length=255, blank=True)
     network = models.IPAddressField()
@@ -3730,7 +3733,36 @@ class md_check_data_store(models.Model):
         )
     def __unicode__(self):
         return self.name
+
+class domain_name_tree(object):
+    def __init__(self):
+        print "init dnt"
+        
+# domain name models
+class domain_name(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # the top node has no name
+    name = models.CharField(max_length=64, default="")
+    # full_name, gets computed on structure change
+    full_name = models.CharField(max_length=256, default="")
+    # the top node has no parent
+    parent = models.ForeignKey("self", null=True)
+    # postfix to add to device name
+    node_postfix = models.CharField(max_length=16, default="")
+    # depth information, top_node has idx=0
+    depth = models.IntegerField(default=0)
+    created = models.DateTimeField(auto_now_add=True, auto_now=True)
+    def __unicode__(self):
+        return self.full_name
     
+@receiver(signals.pre_save, sender=domain_name)
+def domain_name_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        cur_inst.name = cur_inst.name.strip()
+        if cur_inst.name and cur_inst.name.count("."):
+            raise ValidationError("dot '.' not allowed in domain_name part")
+
 # mapping key prefix -> model class
 
 KPMC_MAP = {
