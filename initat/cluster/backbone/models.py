@@ -3305,7 +3305,7 @@ class snmp_config(models.Model):
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     snmp_mib = models.ForeignKey("snmp_mib")
-    device = models.ForeignKey("device", null=True)
+    device = models.ForeignKey("device", null=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'snmp_config'
