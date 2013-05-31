@@ -223,7 +223,7 @@ class special_base(object):
             command,
             "snmp_relay",
             *args,
-            snmp_community=self.host.dev_variables["SNMP_COMMUNITY"],
+            snmp_community=self.host.dev_variables["SNMP_READ_COMMUNITY"],
             snmp_version=self.host.dev_variables["SNMP_VERSION"],
             **kwargs
         )
