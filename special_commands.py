@@ -192,19 +192,20 @@ class special_base(object):
                     logging_tools.get_plural("entry", int(c_tree.attrib["num_entries"]))
                 ))
                 self.__cache_created = int(c_tree.get("created", "0"))
-                self.__cache_age = abs(time.time()- self.__cache_created)
+                self.__cache_age = abs(time.time() - self.__cache_created)
                 self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
                 # the copy.deepcopy is important to preserve the root element
                 self.__cache = [server_command.srv_command(source=copy.deepcopy(entry)) for entry in c_tree]
     def _show_cache_info(self):
         if self.__cache:
-            self.log("cache is present (%s, age is %s, timeout %s, %s)" % (
-                logging_tools.get_plural("entry", len(self.__cache)),
-                logging_tools.get_diff_time_str(self.__cache_age),
-                logging_tools.get_diff_time_str(self.Meta.cache_timeout),
-                "valid" if self.__cache_valid else "invalid",
+            self.log(
+                "cache is present (%s, age is %s, timeout %s, %s)" % (
+                    logging_tools.get_plural("entry", len(self.__cache)),
+                    logging_tools.get_diff_time_str(self.__cache_age),
+                    logging_tools.get_diff_time_str(self.Meta.cache_timeout),
+                    "valid" if self.__cache_valid else "invalid",
+                )
             )
-                     )
         else:
             self.log("no cache set")
     def cleanup(self):
