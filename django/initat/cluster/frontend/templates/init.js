@@ -55,122 +55,184 @@ $.ajaxSetup
                 alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
         return false
 
-root.build_device_info_div = (dev_xml) ->
-    dev_div = $("<div>")
-    dev_div.append(
-        $("<h3>").text("#{dev_xml.attr('name')}, UUID: #{dev_xml.attr('uuid')}")
-    )
-    tabs_div = $("<div>").attr("id", "tabs")
-    dev_div.append(tabs_div)
-    tabs_div.append(
-        $("<ul>").append(
-            $("<li>").append(
-                $("<a>").attr("href", "#network").text("Network")
-            )
-        ).append(
-            $("<li>").append(
-                $("<a>").attr("href", "#edit").text("Edit")
-            )
-        ).append(
-            $("<li>").append(
-                $("<a>").attr("href", "#disk").text("Disk")
-            )
-        ).append(
-            $("<li>").append(
-                $("<a>").attr("href", "#mdcds").text("MD data store")
+root.show_device_info = (event, dev_key) ->
+    new device_info(event, dev_key).show()
+
+class device_info
+    constructor: (@event, @dev_key) ->
+    show: () =>
+        $.ajax
+            url  : "{% url 'device:device_info' %}"
+            data :
+                "key"    : @dev_key
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @resp_xml = $(xml).find("response")
+                    @build_div()
+                    @dev_div.modal
+                        opacity      : 50
+                        position     : [@event.pageY, @event.pageX]
+                        autoResize   : true
+                        autoPosition : true
+                        onShow: (dialog) -> 
+                            dialog.container.draggable()
+                            $("#simplemodal-container").css("height", "auto")
+    build_div: () =>
+        dev_xml = @resp_xml.find("device")
+        dev_div = $("<div>")
+        dev_div.append(
+            $("<h3>").text("#{dev_xml.attr('name')}, UUID: #{dev_xml.attr('uuid')}")
+        )
+        tabs_div = $("<div>").attr("id", "tabs")
+        dev_div.append(tabs_div)
+        tabs_div.append(
+            $("<ul>").append(
+                $("<li>").append(
+                    $("<a>").attr("href", "#general").text("General")
+                )
+            ).append(
+                $("<li>").append(
+                    $("<a>").attr("href", "#network").text("Network")
+                )
+            ).append(
+                $("<li>").append(
+                    $("<a>").attr("href", "#disk").text("Disk")
+                )
+            ).append(
+                $("<li>").append(
+                    $("<a>").attr("href", "#mdcds").text("MD data store")
+                )
             )
         )
-    )
-    # network div
-    nw_div = $("<div>").attr("id", "network")
-    if dev_xml.find("netdevice").length
-        nd_ul = $("<ul>")
-        dev_xml.find("netdevice").each (nd_idx, nd_xml) =>
-            nd_xml = $(nd_xml)
-            nd_li = $("<li>").text(nd_xml.attr("devname"))
-            nd_ul.append(nd_li)
-            ip_ul = $("<ul>")
-            nd_xml.find("net_ip").each (ip_idx, ip_xml) =>
-                ip_xml = $(ip_xml)
-                ip_li = $("<li>").text(ip_xml.attr("ip"))
-                ip_ul.append(ip_li)
-            nd_li.append(ip_ul)
-    else
-        nd_ul = $("<span>").text("no netdevices found")
-    nw_div.append(nd_ul)
-    # edit div
-    edit_div = $("<div>").attr("id", "edit")
-    # working :-)
-    edit_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "name", dev_xml.attr("key"), {master_xml : dev_xml, title : "device name", label : "Device name"})))
-    edit_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "comment", dev_xml.attr("key"), {master_xml : dev_xml, title : "comment", label : "Comment", textarea : true})))
-    edit_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "monitor_checks", dev_xml.attr("key"), {master_xml : dev_xml, title : "Enable checks", label : "Monitoring", boolean : true})))
-    # disk div
-    disk_div = $("<div>").attr("id", "disk")
-    if dev_xml.find("partition_table").length
-        disk_div.append($("<h3>").text("partition table"))
-        pt_ul = $("<ul>")
-        dev_xml.find("partition_table partition_discs partition_disc").each (idx, cur_disc) =>
-            cur_disc = $(cur_disc)
-            disk_li = $("<li>").text(cur_disc.attr("disc"))
-            disk_lu = $("<ul>")
-            disk_li.append(disk_lu)
-            cur_disc.find("partitions partition").each (p_idx, cur_part) =>
-                cur_part = $(cur_part)
-                part_li = $("<li>").text("part #{cur_part.attr('pnum')} at #{cur_part.attr('mountpoint')}")
-                part_li.append(
-                    create_input_el(cur_part, "warn_threshold", cur_part.attr("key"), {master_xml : cur_part, number: true, min:0, max: 100, label: ", warning at"})
-                    create_input_el(cur_part, "crit_threshold", cur_part.attr("key"), {master_xml : cur_part, number: true, min:0, max: 100, label: ", critical at"})
+        @dev_div = dev_div
+        tabs_div.append(@general_div())
+        tabs_div.append(@network_div())
+        tabs_div.append(@disk_div())
+        tabs_div.append(@mdcds_div())
+        tabs_div.tabs()
+    general_div: () =>
+        dev_xml = @resp_xml.find("device")
+        # general div
+        general_div = $("<div>").attr("id", "general")
+        # working :-)
+        general_div.append(
+            $("<div>").attr("style", "clear: both").append(
+                create_input_el(
+                    dev_xml,
+                    "name",
+                    dev_xml.attr("key"), {
+                        master_xml : @resp_xml,
+                        title      : "device name",
+                        label      : "Device name"
+                        callback   : @domain_callback
+                    }
                 )
-                disk_lu.append(part_li)
-            pt_ul.append(disk_li)
-        dev_xml.find("partition_table lvm_info lvm_vg").each (idx, cur_vg) =>
-            cur_vg = $(cur_vg)
-            vg_li = $("<li>").text("VG " + cur_vg.attr("name"))
-            vg_lu = $("<ul>")
-            vg_li.append(vg_lu)
-            cur_vg.find("lvm_lvs lvm_lv").each (lvm_idx, cur_lvm) =>
-                cur_lvm = $(cur_lvm)
-                lvm_li = $("<li>").text("#{cur_lvm.attr('name')} at #{cur_lvm.attr('mountpoint')}")
-                lvm_li.append(
-                    create_input_el(cur_lvm, "warn_threshold", cur_lvm.attr("key"), {master_xml : cur_lvm, number: true, min:0, max: 100, label: ", warning at"})
-                    create_input_el(cur_lvm, "crit_threshold", cur_lvm.attr("key"), {master_xml : cur_lvm, number: true, min:0, max: 100, label: ", critical at"})
-                )
-                vg_lu.append(lvm_li)
-            pt_ul.append(vg_li)
-        disk_div.append(pt_ul)
-    else
-        disk_div.append($("<h3>").text("No partition table defined"))
-    # md check data store div
-    mdcds_div = $("<div>").attr("id", "mdcds")
-    num_mdcds = dev_xml.find("md_check_data_store").length
-    if num_mdcds
-        mdcds_div.append($("<h3>").text("#{num_mdcds} entries found"))
-        dev_xml.find("md_check_data_stores md_check_data_store").each (idx, cur_ds) =>
-            cur_ds = $(cur_ds)
-            mdcds_div.append(
-                $("<div>").text(cur_ds.attr("name")).append(
-                    $("<textarea>").attr("id", "cm01").text(cur_ds.attr("data"))
+            ).append(".").append(
+                create_input_el(
+                    dev_xml,
+                    "domain_tree_node",
+                    dev_xml.attr("key"), {
+                        master_xml : @resp_xml,
+                        select_source : @resp_xml.find("domain_tree_node"),
+                        title      : "domain name",
+                    }
                 )
             )
-            cur_ed = CodeMirror.fromTextArea(mdcds_div.find("textarea")[0], {
-                "mode"         : {
-                    "name"    : "xml",
-                    "version" : "2"
-                },
-                "styleActiveLine" : true,
-                "lineNumbers"     : true,
-                "lineWrapping"    : true,
-                "indentUnit"      : 4,
-            })
-    else
-        mdcds_div.append($("<h3>").text("No entries found"))
-    tabs_div.append(nw_div)
-    tabs_div.append(edit_div)
-    tabs_div.append(disk_div)
-    tabs_div.append(mdcds_div)
-    tabs_div.tabs()
-    return dev_div
-
+        )
+        general_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "comment", dev_xml.attr("key"), {master_xml : @resp_xml, title : "comment", label : "Comment", textarea : true})))
+        general_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "monitor_checks", dev_xml.attr("key"), {master_xml : @resp_xml, title : "Enable checks", label : "Monitoring", boolean : true})))
+        return general_div
+    network_div: () =>
+        dev_xml = @resp_xml.find("device")
+        # network div
+        nw_div = $("<div>").attr("id", "network")
+        if dev_xml.find("netdevice").length
+            nd_ul = $("<ul>")
+            dev_xml.find("netdevice").each (nd_idx, nd_xml) =>
+                nd_xml = $(nd_xml)
+                nd_li = $("<li>").text(nd_xml.attr("devname"))
+                nd_ul.append(nd_li)
+                ip_ul = $("<ul>")
+                nd_xml.find("net_ip").each (ip_idx, ip_xml) =>
+                    ip_xml = $(ip_xml)
+                    ip_li = $("<li>").text(ip_xml.attr("ip"))
+                    ip_ul.append(ip_li)
+                nd_li.append(ip_ul)
+        else
+            nd_ul = $("<span>").text("no netdevices found")
+        nw_div.append(nd_ul)
+        return nw_div
+    disk_div: () =>
+        dev_xml = @resp_xml.find("device")
+        # disk div
+        disk_div = $("<div>").attr("id", "disk")
+        if dev_xml.find("partition_table").length
+            disk_div.append($("<h3>").text("partition table"))
+            pt_ul = $("<ul>")
+            dev_xml.find("partition_table partition_discs partition_disc").each (idx, cur_disc) =>
+                cur_disc = $(cur_disc)
+                disk_li = $("<li>").text(cur_disc.attr("disc"))
+                disk_lu = $("<ul>")
+                disk_li.append(disk_lu)
+                cur_disc.find("partitions partition").each (p_idx, cur_part) =>
+                    cur_part = $(cur_part)
+                    part_li = $("<li>").text("part #{cur_part.attr('pnum')} at #{cur_part.attr('mountpoint')}")
+                    part_li.append(
+                        create_input_el(cur_part, "warn_threshold", cur_part.attr("key"), {master_xml : cur_part, number: true, min:0, max: 100, label: ", warning at"})
+                        create_input_el(cur_part, "crit_threshold", cur_part.attr("key"), {master_xml : cur_part, number: true, min:0, max: 100, label: ", critical at"})
+                    )
+                    disk_lu.append(part_li)
+                pt_ul.append(disk_li)
+            dev_xml.find("partition_table lvm_info lvm_vg").each (idx, cur_vg) =>
+                cur_vg = $(cur_vg)
+                vg_li = $("<li>").text("VG " + cur_vg.attr("name"))
+                vg_lu = $("<ul>")
+                vg_li.append(vg_lu)
+                cur_vg.find("lvm_lvs lvm_lv").each (lvm_idx, cur_lvm) =>
+                    cur_lvm = $(cur_lvm)
+                    lvm_li = $("<li>").text("#{cur_lvm.attr('name')} at #{cur_lvm.attr('mountpoint')}")
+                    lvm_li.append(
+                        create_input_el(cur_lvm, "warn_threshold", cur_lvm.attr("key"), {master_xml : cur_lvm, number: true, min:0, max: 100, label: ", warning at"})
+                        create_input_el(cur_lvm, "crit_threshold", cur_lvm.attr("key"), {master_xml : cur_lvm, number: true, min:0, max: 100, label: ", critical at"})
+                    )
+                    vg_lu.append(lvm_li)
+                pt_ul.append(vg_li)
+            disk_div.append(pt_ul)
+        else
+            disk_div.append($("<h3>").text("No partition table defined"))
+        return disk_div
+    mdcds_div: () =>
+        dev_xml = @resp_xml.find("device")
+        # md check data store div
+        mdcds_div = $("<div>").attr("id", "mdcds")
+        num_mdcds = dev_xml.find("md_check_data_store").length
+        if num_mdcds
+            mdcds_div.append($("<h3>").text("#{num_mdcds} entries found"))
+            dev_xml.find("md_check_data_stores md_check_data_store").each (idx, cur_ds) =>
+                cur_ds = $(cur_ds)
+                mdcds_div.append(
+                    $("<div>").text(cur_ds.attr("name")).append(
+                        $("<textarea>").attr("id", "cm01").text(cur_ds.attr("data"))
+                    )
+                )
+                cur_ed = CodeMirror.fromTextArea(mdcds_div.find("textarea")[0], {
+                    "mode"         : {
+                        "name"    : "xml",
+                        "version" : "2"
+                    },
+                    "styleActiveLine" : true,
+                    "lineNumbers"     : true,
+                    "lineWrapping"    : true,
+                    "indentUnit"      : 4,
+                })
+        else
+            mdcds_div.append($("<h3>").text("No entries found"))
+        return mdcds_div
+    domain_callback: (cur_el) =>
+        dev_xml = @resp_xml.find("device")
+        @dev_div.find("input##{dev_xml.attr('key')}__name").val(dev_xml.attr("name"))
+        @dev_div.find("select##{dev_xml.attr('key')}__domain_tree_node").val(dev_xml.attr("domain_tree_node"))
+    
 root.draw_ds_tables = (t_div, master_array, master_xml=undefined) ->
     # remove accordion if already exists
     if t_div.hasClass("ui-accordion")

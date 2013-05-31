@@ -189,23 +189,7 @@ class sidebar_tree
         return ret_list
     show_device_info: (dtnode, event) =>
         if dtnode.data.key.match(/^dev__/)
-            $.ajax
-                url  : "{% url 'device:device_info' %}"
-                data :
-                    "key"    : dtnode.data.key
-                success : (xml) =>
-                    if parse_xml_response(xml)
-                        dev_xml = $(xml).find("device")
-                        #console.log dev_xml[0]
-                        di_div = build_device_info_div(dev_xml)
-                        di_div.modal
-                            opacity      : 50
-                            position     : [event.pageY, event.pageX]
-                            autoResize   : true
-                            autoPosition : true
-                            onShow: (dialog) -> 
-                                dialog.container.draggable()
-                                $('#simplemodal-container').css('height', 'auto')
+            show_device_info(event, dtnode.data.key)
     init_gauge_info: =>
         @next_iters = []
         # defaults to 10 seconds

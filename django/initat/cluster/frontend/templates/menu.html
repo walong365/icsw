@@ -13,7 +13,7 @@
             <li>
                 <a>{% trans "Basic settings" %}</a>
                 <ul>
-                    <li><a href="{% url 'network:show_network_d_types' %}">{% trans "Network types / Network device types" %}</a></li>
+                    <li><a href="{% url 'network:show_network_dev_types' %}">{% trans "Network types / Network device types" %}</a></li>
                     <li><a href="{% url 'setup:show_device_class_location' %}">{% trans "Device locations / class" %}</a></li>
                     <li><a href="{% url 'config:show_config_types' %}">{% trans "Configuration types" %}</a></li>
                 </ul>
@@ -22,7 +22,7 @@
                 <a>{% trans "Device settings" %}</a>
                 <ul>
                     <li><a href="{% url 'device:show_configs' %}">{% trans "Configurations" %}</a></li>
-                    <li><a href="{% url 'network:network' %}">{% trans "Network" %}</a></li>
+                    <li><a href="{% url 'network:device_network' %}">{% trans "Network" %}</a></li>
                     <li><a href="{% url 'device:connections' %}">{% trans "Connections" %}</a></li>
                     <li><a href="{% url 'device:variables' %}">{% trans "Variables" %}</a></li>
                 </ul>

@@ -53,7 +53,7 @@ class network_table
         @reload_network_tree()
     reload_network_tree: (sel_list) =>
         $.ajax
-            url     : "{% url 'network:get_network_tree' %}"
+            url     : "{% url 'network:device_network' %}"
             data    : {
                 "sel_list" : @SELECTED_DEVICES
             }
@@ -442,6 +442,8 @@ class network_table
                 create_input_el(cur_ip, "ip", line_prefix, {label : "IP", callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag})
             ).append(
                 create_input_el(cur_ip, "network", line_prefix, {label : "NW", select_source : @DEVICE_NETWORKS.find("network_list network"), callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag})
+            ).append(
+                create_input_el(cur_ip, "domain_tree_node", line_prefix, {label : "Domain", master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag, select_source : @DEVICE_NETWORKS.find("domain_tree_nodes domain_tree_node")})
             ).append(
                 create_input_el(cur_ip, "alias", line_prefix, {label : "Alias", master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag})
             ).append(

@@ -20,7 +20,7 @@ root.get_master_networks = (cur_el, kwargs) ->
     master_xml = kwargs.master_xml
     prod_id = master_xml.find("network_types network_type[identifier='p']").attr("pk")
     ret_field = $("<networks>")
-    master_xml.find("networks network[network_type='" + prod_id + "']").each (index, element) =>
+    master_xml.find("networks network[network_type='#{prod_id}']").each (index, element) =>
         cur_nw = $(element)
         ret_field.append(
             $("<network>").attr({

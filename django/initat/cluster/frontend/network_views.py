@@ -24,20 +24,62 @@ from django.db.models import Q
 from django.core.exceptions import ValidationError
 from initat.cluster.backbone.models import device, network, net_ip, \
      network_type, network_device_type, netdevice, peer_information, \
-     netdevice_speed, device_variable, device_group, to_system_tz
+     netdevice_speed, device_variable, device_group, to_system_tz, \
+     domain_tree_node, domain_name_tree
 import json
 from networkx.readwrite import json_graph
 
 @login_required
 @init_logging
 def device_network(request):
-    return render_me(
-        request, "device_network.html",
-    )()
+    if request.method == "GET":
+        return render_me(
+            request, "device_network.html",
+        )()
+    else:
+        _post = request.POST
+        sel_list = _post.getlist("sel_list[]", [])
+        dev_pk_list = [int(entry.split("__")[1]) for entry in sel_list if entry.startswith("dev__")]
+        xml_resp = E.response()
+        dev_list = E.devices()
+        for cur_dev in device.objects.filter(Q(pk__in=dev_pk_list)).select_related(
+            "device_group",
+            "device_type").prefetch_related(
+                "netdevice_set",
+                "netdevice_set__net_ip_set").order_by("device_group__name", "name"):
+            dev_list.append(cur_dev.get_xml())
+        dnt_struct = domain_name_tree()
+        # now handled via fixtures
+        xml_resp.extend(
+            [
+                dev_list,
+                E.netdevice_speeds(
+                    *[cur_ns.get_xml() for cur_ns in netdevice_speed.objects.all()]),
+                E.network_device_type_list(
+                    *[E.network_device_type(unicode(cur_ndt), pk="%d" % (cur_ndt.pk)) for cur_ndt in network_device_type.objects.all()]),
+                # networks
+                E.network_list(
+                    *[cur_nw.get_xml() for cur_nw in network.objects.all().select_related("network_type").prefetch_related("network_device_type").order_by("name")]
+                ),
+                # ethtool options
+                E.ethtool_autoneg_list(
+                    *[E.ethtool_autoneg(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]),
+                E.ethtool_duplex_list(
+                    *[E.ethtool_duplex(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]),
+                E.ethtool_speed_list(
+                    *[E.ethtool_speed(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "10 Mbit", "100 MBit", "1 GBit", "10 GBit"])]),
+                # peers,
+                _get_valid_peers(),
+                dnt_struct.get_xml(no_intermediate=True),
+            ]
+        )
+        #print etree.tostring(xml_resp, pretty_print=True)
+        request.xml_response["response"] = xml_resp
+        return request.xml_response.create_response()
 
 @init_logging
 @login_required
-def show_network_d_types(request):
+def show_network_dev_types(request):
     if request.method == "GET":
         return render_me(request, "cluster_network_types.html")()
     else:
@@ -59,7 +101,7 @@ def show_cluster_networks(request):
     else:
         xml_resp = E.response(
             E.networks(
-                *[cur_nw.get_xml(add_ip_info=True) for cur_nw in network.objects.all()]
+                *[cur_nw.get_xml(add_ip_info=True) for cur_nw in network.objects.prefetch_related("net_ip_set", "network_device_type").select_related("network_type").all()]
                 ),
             E.network_types(
                 *[cur_nwt.get_xml() for cur_nwt in network_type.objects.all()]
@@ -182,47 +224,6 @@ def create_new_peer(request):
 def delete_peer(request):
     _post = request.POST
     peer_information.objects.get(Q(pk=_post["id"].split("__")[-1])).delete()
-    return request.xml_response.create_response()
-
-@login_required
-@init_logging
-def get_network_tree(request):
-    _post = request.POST
-    sel_list = _post.getlist("sel_list[]", [])
-    dev_pk_list = [int(entry.split("__")[1]) for entry in sel_list if entry.startswith("dev__")]
-    xml_resp = E.response()
-    dev_list = E.devices()
-    for cur_dev in device.objects.filter(Q(pk__in=dev_pk_list)).select_related(
-        "device_group",
-        "device_type").prefetch_related(
-            "netdevice_set",
-            "netdevice_set__net_ip_set").order_by("device_group__name", "name"):
-        dev_list.append(cur_dev.get_xml())
-    # now handled via fixtures
-    xml_resp.extend(
-        [
-            dev_list,
-            E.netdevice_speeds(
-                *[cur_ns.get_xml() for cur_ns in netdevice_speed.objects.all()]),
-            E.network_device_type_list(
-                *[E.network_device_type(unicode(cur_ndt), pk="%d" % (cur_ndt.pk)) for cur_ndt in network_device_type.objects.all()]),
-            # networks
-            E.network_list(
-                *[cur_nw.get_xml() for cur_nw in network.objects.all().select_related("network_type").prefetch_related("network_device_type").order_by("name")]
-            ),
-            # ethtool options
-            E.ethtool_autoneg_list(
-                *[E.ethtool_autoneg(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]),
-            E.ethtool_duplex_list(
-                *[E.ethtool_duplex(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "on", "off"])]),
-            E.ethtool_speed_list(
-                *[E.ethtool_speed(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "10 Mbit", "100 MBit", "1 GBit", "10 GBit"])]),
-            # peers,
-            _get_valid_peers()
-        ]
-    )
-    #print etree.tostring(xml_resp, pretty_print=True)
-    request.xml_response["response"] = xml_resp
     return request.xml_response.create_response()
 
 def _get_valid_peers():

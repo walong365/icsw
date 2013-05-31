@@ -13,7 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from initat.cluster.backbone.models import device_type, device_group, device, device_class, \
      mon_device_templ, mon_ext_host, cd_connection, package_device_connection, \
-     mon_host_cluster, mon_service_cluster
+     mon_host_cluster, mon_service_cluster, domain_name_tree
 from django.core.exceptions import ValidationError
 from lxml import etree
 import config_tools
@@ -347,4 +347,5 @@ def device_info(request):
         with_variables=True,
         with_md_cache=True,
     )
+    request.xml_response["response"] = domain_name_tree().get_xml(no_intermediate=True)
     return request.xml_response.create_response()

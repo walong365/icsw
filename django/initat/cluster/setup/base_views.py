@@ -89,9 +89,17 @@ def change_xml_entry(request):
                         object_type,
                         object_id), logging_tools.LOG_LEVEL_ERROR, xml=True)
                 else:
-                    compound_fields = {"device_variable" : ["value"],
-                                       "user"            : ["permissions"],
-                                       "netdevice"       : ["ethtool_autoneg", "ethtool_duplex", "ethtool_speed"]}.get(cur_obj._meta.object_name, [])
+                    compound_fields = {
+                        "device_variable" : [
+                            "value"],
+                        "user"            : [
+                            "permissions"],
+                        "netdevice"       : [
+                            "ethtool_autoneg",
+                            "ethtool_duplex",
+                            "ethtool_speed"
+                            ]
+                        }.get(cur_obj._meta.object_name, [])
                     backward_m2m_relations = {
                         "device" : {
                             "devs_mon_host_cluster"    : "mon_host_cluster",

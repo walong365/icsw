@@ -249,22 +249,7 @@ class config_table
         return dummy_div.children()
     device_information: (event) =>
         dev_id = $(event.target).attr("id").split("__")[1]
-        $.ajax
-            url  : "{% url 'device:device_info' %}"
-            data :
-                "key"    : "dev__#{dev_id}"
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    dev_xml = $(xml).find("device")
-                    di_div = build_device_info_div(dev_xml)
-                    di_div.modal
-                        opacity      : 50
-                        position     : [event.pageY, event.pageX]
-                        autoResize   : true
-                        autoPosition : true
-                        onShow: (dialog) -> 
-                            dialog.container.draggable()
-                            $('#simplemodal-container').css('height', 'auto')
+        show_device_info(event, "dev__#{dev_id}")
     get_md_cache_modes: () =>
         return $("<list>").append(
             $("<entry>").attr("pk", "1").text("automatic (server)")
