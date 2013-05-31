@@ -378,7 +378,9 @@ def config_str_pre_save(sender, **kwargs):
 
 class device(models.Model):
     idx = models.AutoField(db_column="device_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
+    # no longer unique as of 20130531 (ALN)
+    # no dots allowed (these parts are now in domain_tree_node)
+    name = models.CharField(max_length=192)
     # FIXME
     device_group = models.ForeignKey("device_group", related_name="device_group")
     device_type = models.ForeignKey("device_type")
@@ -468,6 +470,8 @@ class device(models.Model):
         (2, "never use cache"),
         (3, "once (until successfull)"),
         ], default=1)
+    # system name
+    domain_tree_node = models.ForeignKey("domain_tree_node", null=True, default=None)
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
@@ -525,6 +529,7 @@ class device(models.Model):
             enabled="1" if self.enabled else "0",
             # to correct string entries
             md_cache_mode="%d" % (int(self.md_cache_mode)),
+            domain_tree_node="%d" % (self.domain_tree_node_id or 0),
         )
         if kwargs.get("with_monitoring", False):
             r_xml.attrib.update(
@@ -604,6 +609,16 @@ def device_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "name")
+        if cur_inst.name.count("."):
+            short_name, dom_name = cur_inst.name.split(".", 1)
+            try:
+                cur_dnt = domain_tree_node.objects.get(Q(full_name=dom_name))
+            except domain_tree_node.DoesNotExist:
+                raise ValidationError("domain '%s' not defined" % (dom_name))
+            else:
+                cur_inst.domain_tree_node = cur_dnt
+                cur_inst.name = short_name
+            #raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
         if int(cur_inst.md_cache_mode) == 0:
             cur_inst.md_cache_mode = 1
         _check_integer(cur_inst, "md_cache_mode", min_val=1, max_val=3)
@@ -1841,7 +1856,7 @@ class net_ip(models.Model):
     penalty = models.IntegerField(default=0)
     alias = models.CharField(max_length=765, blank=True, default="")
     alias_excl = models.NullBooleanField(null=True, blank=True, default=False)
-    domain_name = models.ForeignKey("domain_name", null=True, default=None)
+    domain_tree_node = models.ForeignKey("domain_tree_node", null=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
     def copy(self):
         return net_ip(
@@ -1862,7 +1877,8 @@ class net_ip(models.Model):
             netdevice="%d" % (self.netdevice_id),
             penalty="%d" % (self.penalty or 1),
             alias=self.alias or "",
-            alias_excl="1" if self.alias_excl else "0"
+            alias_excl="1" if self.alias_excl else "0",
+            domain_tree_node="%d" % (self.domain_tree_node_id or 0),
         )
     def __unicode__(self):
         return self.ip
@@ -1911,10 +1927,10 @@ class network(models.Model):
     network_type = models.ForeignKey("network_type")
     master_network = models.ForeignKey("network", null=True, related_name="rel_master_network", blank=True)
     short_names = models.BooleanField()
-    # should no longer be used, now in domain_name
+    # should no longer be used, now in domain_tree_node
     name = models.CharField(max_length=192, blank=False)
     penalty = models.PositiveIntegerField(default=1)
-    # should no longer be used, now in domain_name
+    # should no longer be used, now in domain_tree_node
     postfix = models.CharField(max_length=12, blank=True)
     info = models.CharField(max_length=255, blank=True)
     network = models.IPAddressField()
@@ -1946,7 +1962,7 @@ class network(models.Model):
             short_names="1" if self.short_names else "0",
             write_bind_config="1" if self.write_bind_config else "0",
             write_other_network_config="1" if self.write_other_network_config else "0",
-            network_device_type="::".join(["%d" % (cur_pk) for cur_pk in self.network_device_type.all().values_list("pk", flat=True)]),
+            network_device_type="::".join(["%d" % (ndev_type.pk) for ndev_type in self.network_device_type.all()]),
         )
         if add_ip_info:
             r_xml.attrib["ip_count"] = "%d" % (len(self.net_ip_set.all()))
@@ -3735,11 +3751,59 @@ class md_check_data_store(models.Model):
         return self.name
 
 class domain_name_tree(object):
+    # helper structure
     def __init__(self):
-        print "init dnt"
+        self.__node_dict = {}
+        self.__domain_lut = {}
+        for cur_node in domain_tree_node.objects.all().order_by("depth"):
+            self.__node_dict[cur_node.pk] = cur_node
+            self.__domain_lut[cur_node.full_name] = cur_node
+            cur_node._sub_tree = {}
+            if cur_node.parent_id is None:
+                self._root_node = cur_node
+            else:
+                self.__node_dict[cur_node.parent_id]._sub_tree[cur_node.name] = cur_node
+    def add_domain(self, new_domain_name):
+        dom_parts = list(reversed(new_domain_name.split(".")))
+        cur_node = self._root_node
+        for part_num, dom_part in enumerate(dom_parts):
+            last_part = part_num == len(dom_parts) - 1
+            if dom_part not in cur_node._sub_tree:
+                new_node = domain_tree_node(
+                    name=dom_part,
+                    parent=cur_node,
+                    node_postfix="",
+                    full_name="%s.%s" % (dom_part, cur_node.full_name),
+                    intermediate=False,
+                    depth=cur_node.depth+1)
+                new_node.save()
+                self.__node_dict[new_node.pk] = new_node
+                cur_node._sub_tree[dom_part] = new_node
+                new_node._sub_tree = {}
+            cur_node = cur_node._sub_tree[dom_part]
+        return cur_node
+    def get_domain_tree_node(self, dom_name):
+        return self.__domain_lut[dom_name]
+    def get_sorted_pks(self):
+        return self._root_node.get_sorted_pks()
+    def __getitem__(self, key):
+        if type(key) in [int, long]:
+            return self.__node_dict[key]
+    def keys(self):
+        return self.__node_dict.keys()
+    def get_xml(self, no_intermediate=False):
+        pk_list = self.get_sorted_pks()
+        if no_intermediate:
+            return E.domain_tree_nodes(
+                *[self.__node_dict[pk].get_xml() for pk in pk_list if self.__node_dict[pk].intermediate== False]
+            )
+        else:
+            return E.domain_tree_nodes(
+                *[self.__node_dict[pk].get_xml() for pk in pk_list]
+            )
         
 # domain name models
-class domain_name(models.Model):
+class domain_tree_node(models.Model):
     idx = models.AutoField(primary_key=True)
     # the top node has no name
     name = models.CharField(max_length=64, default="")
@@ -3751,12 +3815,29 @@ class domain_name(models.Model):
     node_postfix = models.CharField(max_length=16, default="")
     # depth information, top_node has idx=0
     depth = models.IntegerField(default=0)
+    # intermediate node (no IPs allowed)
+    intermediate = models.BooleanField(default=False)
+    # creation timestamp
     created = models.DateTimeField(auto_now_add=True, auto_now=True)
+    def get_sorted_pks(self):
+        return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, value.get_sorted_pks()) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
-        return self.full_name
+        return u"%s" % (self.full_name)
+    def get_xml(self):
+        return E.domain_tree_node(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="dtn__%d" % (self.pk),
+            name=self.name,
+            full_name=self.full_name,
+            parent="%d" % (self.parent_id or 0),
+            node_postfix="%s" % (self.node_postfix),
+            depth="%d" % (self.depth),
+            intermediate="%d" % (1 if self.intermediate else 0),
+        )
     
-@receiver(signals.pre_save, sender=domain_name)
-def domain_name_pre_save(sender, **kwargs):
+@receiver(signals.pre_save, sender=domain_tree_node)
+def domain_tree_node_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         cur_inst.name = cur_inst.name.strip()
