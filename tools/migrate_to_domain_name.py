@@ -90,8 +90,8 @@ def main():
                 "postfix"  : cur_net.postfix,
             }
         net_tree.create_db_entries()
-        print "Tree structure:"
-        print net_tree.show_tree()
+    if len(sys.argv) > 1:
+        sys.exit(0)
     cur_dnt = domain_name_tree()
     # check for intermediate nodes
     for key in cur_dnt.keys():
@@ -132,14 +132,8 @@ def main():
                 dom_id = new_dom.pk
             cur_dev.domain_tree_node = cur_dnt[dom_id]
             cur_dev.save()
+    print "Tree structure:"
     print etree.tostring(cur_dnt.get_xml(), pretty_print=True)
-    if False:
-        #pprint.pprint(net_dict)
-        # modify net_ip
-        print "migrating %s" % (logging_tools.get_plural("netip", net_ip.objects.all().count()))
-        for cur_ip in net_ip.objects.all():
-            cur_ip.domain_tree_node = net_dict[cur_ip.network_id]["dns_node"].db_obj
-            cur_ip.save()
     
 if __name__ == "__main__":
     main()
