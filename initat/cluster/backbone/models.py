@@ -1654,7 +1654,7 @@ class netdevice(models.Model):
     driver_options = models.CharField(max_length=672, blank=True)
     speed = models.IntegerField(default=0, null=True, blank=True)
     netdevice_speed = models.ForeignKey("netdevice_speed")
-    driver = models.CharField(max_length=384, blank=True)
+    driver = models.CharField(max_length=384, blank=True, default="e1000e")
     routing = models.BooleanField(default=False)
     penalty = models.IntegerField(null=True, blank=True, default=1)
     dhcp_device = models.NullBooleanField(null=True, blank=True, default=False)
@@ -3822,7 +3822,7 @@ class domain_tree_node(models.Model):
     def get_sorted_pks(self):
         return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, value.get_sorted_pks()) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
-        return u"%s" % (self.full_name)
+        return u"%s" % (self.full_name if self.depth else "[TLN]")
     def get_xml(self):
         return E.domain_tree_node(
             unicode(self),
