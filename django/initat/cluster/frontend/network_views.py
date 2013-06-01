@@ -29,6 +29,16 @@ from initat.cluster.backbone.models import device, network, net_ip, \
 import json
 from networkx.readwrite import json_graph
 
+def cleanup_tree(in_xml, attr_dict):
+    # experimental stuff, not needed right now
+    # add standard keys
+    for key, value in attr_dict.iteritems():
+        value |= set(["key", "pk", "name"])
+    for cur_node in in_xml.xpath(".//*"):
+        if cur_node.tag in attr_dict:
+            for del_key in [key for key in cur_node.attrib.iterkeys() if key not in attr_dict[cur_node.tag]]:
+                del cur_node.attrib[del_key]
+        
 @login_required
 @init_logging
 def device_network(request):
@@ -73,6 +83,13 @@ def device_network(request):
                 dnt_struct.get_xml(no_intermediate=True),
             ]
         )
+##        if True:
+##            cleanup_tree(xml_resp, {
+##                "device"    : set(["name", "domain_tree_node"]),
+##                "netdevice" : set(["mac", "devname"]),
+##                "network"   : set([]),
+##                "domain_tree_node" : set([]),
+##            })
         #print etree.tostring(xml_resp, pretty_print=True)
         request.xml_response["response"] = xml_resp
         return request.xml_response.create_response()
@@ -176,10 +193,10 @@ def create_net_ip(request):
     value_dict = dict([(key.split("__", 4)[4], value) for key, value in _post.iteritems()])
     if "new" in value_dict:
         request.log("create new net_ip for '%s'" % (unicode(cur_nd)))
-        copy_dict = dict([(key, value_dict["new__%s" % (key)]) for key in [
-            "ip"] if "new__%s" % (key) in value_dict])
+        copy_dict = dict([(key, value_dict["new__%s" % (key)]) for key in ["ip"] if "new__%s" % (key) in value_dict])
         new_ip = net_ip(netdevice=cur_nd,
                         network=network.objects.get(Q(pk=value_dict["new__network"])),
+                        domain_tree_node=domain_tree_node.objects.get(Q(pk=value_dict["new__domain_tree_node"])),
                         **copy_dict)
         try:
             new_ip.save()

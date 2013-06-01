@@ -1,5 +1,5 @@
 {% load coffeescript %}
-
+o
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
@@ -46,6 +46,8 @@ $.ajaxSetup
             xhr.inituuid = my_ajax_struct.new_connection(settings)
     complete   : (xhr, textstatus) ->
         my_ajax_struct.close_connection(xhr.inituuid)
+    dataFilter : (data, data_type) ->
+        return data
     error      : (xhr, status, except) ->
         if status == "timeout"
             alert("timeout")
@@ -62,8 +64,8 @@ class device_info
     constructor: (@event, @dev_key) ->
     show: () =>
         $.ajax
-            url  : "{% url 'device:device_info' %}"
-            data :
+            url     : "{% url 'device:device_info' %}"
+            data    :
                 "key"    : @dev_key
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -931,8 +933,8 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
                     "multiple" : "multiple"
                     "size"     : 5
             else
-                sel_val = if xml_el == undefined then "0" else xml_el.attr(attr_name)
-                new_el.val(sel_val) # attr("value", sel_val);
+                sel_val = if xml_el == undefined then (if kwargs.new_default == undefined then "0" else kwargs.new_default) else xml_el.attr(attr_name)
+                new_el.val(sel_val)
             if kwargs.add_null_entry
                 new_el.append(
                     $("<option>").attr({"value" : "0"}).text(kwargs.add_null_entry)
@@ -973,7 +975,7 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
             new_el.bind("change", kwargs.change_cb)
         else
             new_el.bind("change", (event) ->
-                submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.modify_data_dict_opts, kwargs.master_xml)
+                submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.    modify_data_dict_opts, kwargs.master_xml)
             )
     else if kwargs.change_cb
         new_el.bind("change", kwargs.change_cb)
@@ -987,7 +989,7 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
     if kwargs.enclose_td
         kwargs.enclose_tag = "<td>"
     if kwargs.enclose_tag
-        # will not work when draw_result_cb
+        # will not work when draw_result_cb is specified
         enc_td = $(kwargs.enclose_tag).append(dummy_div.children())
         dummy_div.append(enc_td)
     return dummy_div.children()
