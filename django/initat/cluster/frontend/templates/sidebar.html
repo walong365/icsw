@@ -89,7 +89,7 @@ class sidebar_tree
                                 cur_node.toggleSelect()
                             false)
                         @DYN_DTS_LOCKCOUNT--
-            debuglevel : {% if DEBUG %}2{% else %}0{% endif %}
+            debuglevel : {% if DEBUG %}0{% else %}0{% endif %}
     load_xml: =>
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"

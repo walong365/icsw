@@ -115,6 +115,7 @@ network_patterns = patterns(
     url("^get_valid_peers$"   , "network_views.get_valid_peers"       , name="get_valid_peers"        ),
     url("^copy_network$"      , "network_views.copy_network"          , name="copy_network"           ),
     url("^json_network$"      , "network_views.json_network"          , name="json_network"           ),
+    url("^cdnt$"              , "network_views.get_domain_name_tree"  , name="domain_name_tree"       ),
 )
 
 monitoring_patterns = patterns(

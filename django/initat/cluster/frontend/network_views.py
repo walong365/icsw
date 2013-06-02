@@ -377,4 +377,15 @@ def copy_network(request):
     else:
         request.log("no target_devices", logging_tools.LOG_LEVEL_WARN, xml=True)
     return request.xml_response.create_response()
-    
+
+@init_logging
+@login_required
+def get_domain_name_tree(request):
+    if request.method == "GET":
+        return render_me(request, "domain_name_tree.html")()
+    else:
+        cur_dnt = domain_name_tree()
+        xml_resp = cur_dnt.get_xml()
+        request.xml_response["response"] = xml_resp
+        return request.xml_response.create_response()
+        

@@ -745,6 +745,55 @@ replace_xml_element = (master_xml, xml) ->
         if master_xml
             master_xml.find("[key='" + new_el.attr("key") + "']").replaceWith(new_el)
 
+class submitter
+    constructor: (kwargs) ->
+        @modify_data_dict = kwargs.modify_data_dict ? undefined
+        @master_xml = kwargs.master_xml ? undefined
+        @success_callback = kwargs.success_callback ? undefined
+        @callback = kwargs.callback ? undefined
+    submit: (event) =>
+        cur_el = $(event.target)
+        is_textarea = false
+        el_value = get_value(cur_el)
+        data_field = {
+            "id"         : cur_el.attr("id")
+            "checkbox"   : cur_el.is(":checkbox")
+            "value"      : el_value,
+            "ignore_nop" : 1
+        }
+        if @modify_data_dict
+            @modify_data_dict(data_field)
+        if data_field.lock_list
+            lock_list = $(data_field.lock_list.join(", ")).attr("disabled", "disabled")
+        else
+            lock_list = undefined
+        $.ajax
+            url     : "{% url 'base:change_xml_entry' %}"
+            data    : data_field
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    replace_xml_element(@master_xml, $(xml))
+                    if @callback
+                        callback(cur_el)
+                    else
+                        # set values
+                        $(xml).find("changes change").each (idx, cur_os) ->
+                            cur_os = $(cur_os)
+                            set_value(cur_os.attr("id"), cur_os.text())
+                        if @success_callback
+                            @success_callback(cur_el)
+                else
+                    # set back to previous value 
+                    if is_textarea
+                        $(cur_el).text(get_xml_value(xml, "original_value"))
+                    else
+                        $(cur_el).attr("value", get_xml_value(xml, "original_value"))
+                    if reset_value
+                        cur_el.val("")
+                if lock_list
+                    unlock_elements(lock_list)
+        
+
 submit_change = (cur_el, callback, modify_data_dict, modify_data_dict_opts, master_xml) ->
     is_textarea = false
     el_value = get_value(cur_el)
@@ -979,9 +1028,12 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
                 new_el.bind("change", kwargs.change_cb)
             new_el.bind("change", kwargs.change_cb)
         else
-            new_el.bind("change", (event) ->
-                submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.    modify_data_dict_opts, kwargs.master_xml)
-            )
+            if kwargs.submitter
+                new_el.bind("change", kwargs.submitter.submit)
+            else
+                new_el.bind("change", (event) ->
+                    submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.    modify_data_dict_opts, kwargs.master_xml)
+                )
     else if kwargs.change_cb
         new_el.bind("change", kwargs.change_cb)
     if kwargs and kwargs.ro and new_el.get(0).tagName != "SPAN" and not kwargs.trigger
@@ -1016,6 +1068,7 @@ root.replace_xml_element   = replace_xml_element
 root.submit_change         = submit_change
 root.force_expansion_state = force_expansion_state
 root.create_input_el       = create_input_el
+root.submitter             = submitter
 
 {% endinlinecoffeescript %}
 

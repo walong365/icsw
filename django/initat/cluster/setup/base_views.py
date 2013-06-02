@@ -48,6 +48,7 @@ def change_xml_entry(request):
             gm_object_type, m_object_type, dev_id, mother_id, object_type, object_id, attr_name = first_id.split("__", 6)
         else:
             request.log("cannot parse '%s'" % (first_id), logging_tools.LOG_LEVEL_ERROR, xml=True)
+            object_type = None
     except:
         request.log("cannot parse", logging_tools.LOG_LEVEL_ERROR, xml=True)
     else:
