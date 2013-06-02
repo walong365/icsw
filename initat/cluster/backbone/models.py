@@ -3765,7 +3765,11 @@ class domain_name_tree(object):
             if cur_node.parent_id is None:
                 self._root_node = cur_node
             else:
-                self.__node_dict[cur_node.parent_id]._sub_tree[cur_node.name] = cur_node
+                if cur_node.depth - 1 != self.__node_dict[cur_node.parent_id].depth:
+                    # fix depth
+                    cur_node.depth = self.__node_dict[cur_node.parent_id].depth + 1
+                    cur_node.save()
+                self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
     def add_domain(self, new_domain_name):
         dom_parts = list(reversed(new_domain_name.split(".")))
         cur_node = self._root_node
@@ -3783,7 +3787,8 @@ class domain_name_tree(object):
                 self.__node_dict[new_node.pk] = new_node
                 cur_node._sub_tree[dom_part] = new_node
                 new_node._sub_tree = {}
-            cur_node = cur_node._sub_tree[dom_part]
+            # add to the first entry in sub_tree
+            cur_node = cur_node._sub_tree[dom_part][0]
         return cur_node
     def get_domain_tree_node(self, dom_name):
         return self.__domain_lut[dom_name]
@@ -3829,7 +3834,7 @@ class domain_tree_node(models.Model):
     # use for nameserver config
     write_nameserver_config = models.BooleanField(default=False)
     def get_sorted_pks(self):
-        return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, value.get_sorted_pks()) for key, value in self._sub_tree.iteritems()])], [])
+        return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
         return u"%s" % (self.full_name if self.depth else "[TLN]")
     def get_xml(self):
@@ -3858,8 +3863,12 @@ def domain_tree_node_pre_save(sender, **kwargs):
         if cur_inst.depth:
             _check_empty_string(cur_inst, "name")
             parent_node = cur_inst.parent
-            new_full_name = "%s%s" % ("%s." % (parent_node.full_name) if parent_node.full_name else "", cur_inst.name)
-            if  new_full_name != cur_inst.full_name:
+            new_full_name = "%s%s" % (
+                cur_inst.name,
+                ".%s" % (parent_node.full_name) if parent_node.full_name else "",
+            )
+            cur_inst.depth = parent_node.depth + 1
+            if new_full_name != cur_inst.full_name:
                 cur_inst.full_name = new_full_name
                 cur_inst.full_name_changed = True
 
