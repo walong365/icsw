@@ -3855,6 +3855,21 @@ def domain_tree_node_pre_save(sender, **kwargs):
         cur_inst.name = cur_inst.name.strip()
         if cur_inst.name and cur_inst.name.count("."):
             raise ValidationError("dot '.' not allowed in domain_name part")
+        if cur_inst.depth:
+            _check_empty_string(cur_inst, "name")
+            parent_node = cur_inst.parent
+            new_full_name = "%s%s" % ("%s." % (parent_node.full_name) if parent_node.full_name else "", cur_inst.name)
+            if  new_full_name != cur_inst.full_name:
+                cur_inst.full_name = new_full_name
+                cur_inst.full_name_changed = True
+
+@receiver(signals.post_save, sender=domain_tree_node)
+def domain_tree_node_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if getattr(cur_inst, "full_name_changed", False):
+            for sub_node in domain_tree_node.objects.filter(Q(parent=cur_inst)):
+                sub_node.save()
 
 # mapping key prefix -> model class
 
@@ -3901,4 +3916,5 @@ KPMC_MAP = {
     "lvm_lv"       : lvm_lv,
     "package_repo" : package_repo,
     "mdcds"        : md_check_data_store,
+    "dtn"          : domain_tree_node,
 }
