@@ -60,7 +60,7 @@ class write_etc_hosts(cs_base_class.server_com):
         for s_ndev in my_idxs:
             all_paths.extend(networkx.shortest_path(route_obj.nx, s_ndev, weight="weight").values())
         #pprint.pprint(all_paths)
-        nd_lut = dict([(cur_nd.pk, cur_nd) for cur_nd in netdevice.objects.all().select_related("device").prefetch_related("net_ip_set", "net_ip_set__network")])
+        nd_lut = dict([(cur_nd.pk, cur_nd) for cur_nd in netdevice.objects.all().select_related("device").prefetch_related("net_ip_set", "net_ip_set__network", "net_ip_set__domain_tree_node")])
         # fetch key-information
         ssh_vars = device_variable.objects.filter(Q(name="ssh_host_rsa_key_pub")).select_related("device")
         rsa_key_dict = {}
@@ -121,16 +121,16 @@ class write_etc_hosts(cs_base_class.server_com):
                 # get names
                 host_names = []
                 if not (cur_ip.alias.strip() and cur_ip.alias_excl):
-                    host_names.append("%s%s" % (target_nd.device.name, cur_ip.network.postfix))
+                    host_names.append("%s%s" % (target_nd.device.name, cur_ip.domain_tree_node.postfix))
                 host_names.extend(cur_ip.alias.strip().split())
                 if "localhost" in [x.split(".")[0] for x in host_names]:
                     host_names = [host_name for host_name in host_names if host_name.split(".")[0] == "localhost"]
-                if cur_ip.network.short_names:
-                    # also print short_names
-                    out_names = (" ".join(["%s.%s %s" % (host_name, cur_ip.network.name, host_name) for host_name in host_names if not host_name.count(".")])).split()
+                if cur_ip.domain_tree_node.create_short_names:
+                    # also create short_names
+                    out_names = (" ".join(["%s.%s %s" % (host_name, cur_ip.domain_tree_node.full_name, host_name) for host_name in host_names if not host_name.count(".")])).split()
                 else:
                     # only print the long names
-                    out_names = ["%s.%s" % (host_name, cur_ip.network.name) for host_name in host_names if not host_name.count(".")]
+                    out_names = ["%s.%s" % (host_name, cur_ip.domain_tree_node.full_name) for host_name in host_names if not host_name.count(".")]
                 # add names with dot
                 out_names.extend([host_name for host_name in host_names if host_name.count(".")])
                 # name_dict without localhost
