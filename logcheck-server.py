@@ -114,7 +114,7 @@ class machine(object):
             for cur_ip in cur_nd.net_ip_set.all():
                 if cur_ip.ip not in self.__ip_dict:
                     any_changes = True
-                    self.__ip_dict[cur_ip.ip] = (cur_ip.network.postfix, cur_ip.network.network_type.identifier)
+                    self.__ip_dict[cur_ip.ip] = (cur_ip.domain_tree_node.postfix, cur_ip.network.network_type.identifier)
         if any_changes:
             self.log_ip_info()
             self.generate_syslog_dirs()
