@@ -27,7 +27,6 @@ import os
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import re
-import shutil
 import tempfile
 import configfile
 import cluster_location
@@ -972,13 +971,14 @@ def do_nets(conf):
         cur_ip = lu_table[net_idx]
         cur_nd = cur_ip.netdevice
         cur_net = cur_ip.network
+        cur_dtn = cur_ip.domain_tree_node
         if cur_nd.pk == conf_dict["device"].bootnetdevice_id:
             if sys_dict["vendor"] == "suse":
                 new_co = conf.add_file_object("/etc/HOSTNAME")
-                new_co += "%s%s.%s" % (conf_dict["host"], cur_net.postfix, cur_net.name)
+                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.postfix, cur_dtn.full_name)
             elif sys_dict["vendor"] == "debian":
                 new_co = conf.add_file_object("/etc/hostname")
-                new_co += "%s%s.%s" % (conf_dict["host"], cur_net.postfix, cur_net.name)
+                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.postfix, cur_dtn.full_name)
             else:
                 new_co = conf.add_file_object("/etc/sysconfig/network")
                 new_co += "HOSTNAME=%s" % (conf_dict["host"])
@@ -993,10 +993,11 @@ def do_nets(conf):
                     if mn:
                         log_str += ", virtual of %s" % (mn.group("devname"))
                         append_dict.setdefault(mn.group("devname"), {})
-                        append_dict[mn.group("devname")][mn.group("virtual")] = {"BROADCAST" : cur_net.broadcast,
-                                                                                 "IPADDR"    : cur_ip.ip,
-                                                                                 "NETMASK"   : cur_net.netmask,
-                                                                                 "NETWORK"   : cur_net.network}
+                        append_dict[mn.group("devname")][mn.group("virtual")] = {
+                            "BROADCAST" : cur_net.broadcast,
+                            "IPADDR"    : cur_ip.ip,
+                            "NETMASK"   : cur_net.netmask,
+                            "NETWORK"   : cur_net.network}
                     else:
                         # FIXME; take netdevice even with zero macaddr
                         if int(cur_nd.macaddr.replace(":", ""), 16) != 0 or True:
@@ -1016,13 +1017,14 @@ def do_nets(conf):
                 else:
                     act_filename = "ifcfg-%s" % (cur_nd.devname)
                 if act_filename:
-                    act_file = {"BOOTPROTO" : "static",
-                                "BROADCAST" : cur_net.broadcast,
-                                "IPADDR"    : cur_ip.ip,
-                                "NETMASK"   : cur_net.netmask,
-                                "NETWORK"   : cur_net.network,
-                                "STARTMODE" : "onboot"
-                                }
+                    act_file = {
+                        "BOOTPROTO" : "static",
+                        "BROADCAST" : cur_net.broadcast,
+                        "IPADDR"    : cur_ip.ip,
+                        "NETMASK"   : cur_net.netmask,
+                        "NETWORK"   : cur_net.network,
+                        "STARTMODE" : "onboot"
+                    }
                     if cur_nd.vlan_id:
                         act_file["ETHERDEVICE"] = cur_nd.devname
                     if not cur_nd.fake_macaddr:
@@ -1035,14 +1037,15 @@ def do_nets(conf):
                     new_co += act_file
             else:
                 act_filename = "ifcfg-%s" % (cur_nd.devname)
-                act_file = {"BOOTPROTO"     : "static",
-                            "BROADCAST"     : cur_net.broadcast,
-                            "IPADDR"        : cur_ip.ip,
-                            "NETMASK"       : cur_net.netmask,
-                            "NETWORK"       : cur_net.network,
-                            "REMOTE_IPADDR" : "",
-                            "STARTMODE"     : "onboot",
-                            "WIRELESS"      : "no"}
+                act_file = {
+                    "BOOTPROTO"     : "static",
+                    "BROADCAST"     : cur_net.broadcast,
+                    "IPADDR"        : cur_ip.ip,
+                    "NETMASK"       : cur_net.netmask,
+                    "NETWORK"       : cur_net.network,
+                    "REMOTE_IPADDR" : "",
+                    "STARTMODE"     : "onboot",
+                    "WIRELESS"      : "no"}
                 new_co = conf.add_file_object("/etc/sysconfig/network/%s" % (act_filename))
                 new_co += act_file
         elif sys_dict["vendor"] == "debian":
@@ -1069,13 +1072,14 @@ def do_nets(conf):
             else:
                 d_file = "/etc/sysconfig/network-scripts/%s" % (act_filename)
             new_co = conf.add_file_object(d_file)
-            new_co += {"BOOTPROTO" : "static",
-                       "BROADCAST" : cur_net.broadcast,
-                       "IPADDR"    : cur_ip.ip,
-                       "NETMASK"   : cur_net.netmask,
-                       "NETWORK"   : cur_net.network,
-                       "DEVICE"    : cur_nd.devname,
-                       "ONBOOT"    : "yes"}
+            new_co += {
+                "BOOTPROTO" : "static",
+                "BROADCAST" : cur_net.broadcast,
+                "IPADDR"    : cur_ip.ip,
+                "NETMASK"   : cur_net.netmask,
+                "NETWORK"   : cur_net.network,
+                "DEVICE"    : cur_nd.devname,
+                "ONBOOT"    : "yes"}
             if global_config["WRITE_REDHAT_HWADDR_ENTRY"]:
                 new_co += {"HWADDR" : cur_nd.macaddr.lower()}
         #print log_str
@@ -1083,11 +1087,12 @@ def do_nets(conf):
     for orig, virtuals in append_dict.iteritems():
         for virt, stuff in virtuals.iteritems():
             co = conf.add_file_object("/etc/sysconfig/network/ifcfg-eth-id-%s" % (dev_dict[orig]))
-            co += {"BROADCAST_%s" % (virt) : stuff["BROADCAST"],
-                   "IPADDR_%s" % (virt)    : stuff["IPADDR"],
-                   "NETMASK_%s" % (virt)   : stuff["NETMASK"],
-                   "NETWORK_%s" % (virt)   : stuff["NETWORK"],
-                   "LABEL_%s" % (virt)     : virt}
+            co += {
+                "BROADCAST_%s" % (virt) : stuff["BROADCAST"],
+                "IPADDR_%s" % (virt)    : stuff["IPADDR"],
+                "NETMASK_%s" % (virt)   : stuff["NETMASK"],
+                "NETWORK_%s" % (virt)   : stuff["NETWORK"],
+                "LABEL_%s" % (virt)     : virt}
 
 def get_default_gw(conf):
     conf_dict = conf.conf_dict
@@ -1107,12 +1112,13 @@ def get_default_gw(conf):
     if gw_list:
         print "Possible gateways:"
         for netdev_idx, net_devname, gw_pri, gw_ip, net_mac in gw_list:
-            print " idx %3d, dev %6s, gw_pri %6d, gw_ip %15s, mac %s%s" % (netdev_idx,
-                                                                           net_devname,
-                                                                           gw_pri,
-                                                                           gw_ip,
-                                                                           net_mac,
-                                                                           gw_pri > GATEWAY_THRESHOLD and "(*)" or "")
+            print " idx %3d, dev %6s, gw_pri %6d, gw_ip %15s, mac %s%s" % (
+                netdev_idx,
+                net_devname,
+                gw_pri,
+                gw_ip,
+                net_mac,
+                gw_pri > GATEWAY_THRESHOLD and "(*)" or "")
     max_gw_pri = max([gw_pri for netdev_idx, net_devname, gw_pri, gw_ip, net_mac in gw_list])
     if  max_gw_pri > GATEWAY_THRESHOLD:
         gw_source = "network setting (gw_pri %d > %d)" % (max_gw_pri, GATEWAY_THRESHOLD)
@@ -1376,7 +1382,7 @@ def do_etc_hosts(conf):
         all_paths.extend(networkx.shortest_path(route_obj.nx, cur_ip.netdevice_id, weight="weight").values())
     all_paths = sorted([route_obj.add_penalty(cur_path) for cur_path in all_paths])
     all_nds = set([cur_path[-1] for penalty, cur_path in all_paths])
-    nd_lut = dict([(cur_nd.pk, cur_nd) for cur_nd in netdevice.objects.filter(Q(pk__in=all_nds)).select_related("device").prefetch_related("net_ip_set", "net_ip_set__network")])
+    nd_lut = dict([(cur_nd.pk, cur_nd) for cur_nd in netdevice.objects.filter(Q(pk__in=all_nds)).select_related("device").prefetch_related("net_ip_set", "net_ip_set__network", "net_ip_set__domain_tree_node")])
     all_ips, ips_used = ([], set())
     for penalty, cur_path in all_paths:
         cur_nd = nd_lut[cur_path[-1]]
@@ -1394,19 +1400,17 @@ def do_etc_hosts(conf):
     for cur_nd, cur_ip in all_ips:
         out_names = []
         # override wrong settings for lo
-        if cur_ip.ip.startswith("127.0.0.") and global_config["CORRECT_WRONG_LO_SETUP"]:
-            cur_ip.alias, cur_ip.alias_excl = ("localhost", True)
         if not (cur_ip.alias.strip() and cur_ip.alias_excl):
-            out_names.append("%s%s" % (cur_nd.device.name, cur_ip.network.postfix))
+            out_names.append("%s%s" % (cur_nd.device.name, cur_ip.domain_tree_node.postfix))
         out_names.extend(cur_ip.alias.strip().split())
         if "localhost" in [entry.split(".")[0] for entry in out_names]:
             out_names = [entry for entry in out_names if entry.split(".")[0] == "localhost"]
-        if cur_ip.network.short_names:
-            # also print short_names
-            out_names = (" ".join(["%s.%s %s" % (entry, cur_ip.network.name, entry) for entry in out_names])).split()
+        if cur_ip.domain_tree_node.create_short_names:
+            # also create short_names
+            out_names = (" ".join(["%s.%s %s" % (entry, cur_ip.domain_tree_node.full_name, entry) for entry in out_names])).split()
         else:
             # only print the long names
-            out_names = ["%s.%s" % (entry, cur_ip.network.name) for entry in out_names]
+            out_names = ["%s.%s" % (entry, cur_ip.domain_tree_node.full_name) for entry in out_names]
         loc_dict.setdefault(cur_ip.value, []).append([cur_ip.ip] + out_names)
         max_len = max(max_len, len(out_names) + 1)
     for pen, stuff in loc_dict.iteritems():
@@ -2697,7 +2701,7 @@ class build_process(threading_tools.process_obj):
             # node interfaces
             conf_dict["node_if"] = []
             taken_list, not_taken_list = ([], [])
-            for cur_net in b_dev.netdevice_set.all().prefetch_related("net_ip_set", "net_ip_set__network", "net_ip_set__network__network_type"):
+            for cur_net in b_dev.netdevice_set.all().prefetch_related("net_ip_set", "net_ip_set__network", "net_ip_set__network__network_type", "net_ip_set__domain_tree_node"):
                 for cur_ip in cur_net.net_ip_set.all():
                     #if cur_ip.network_id 
                     if cur_ip.network_id in act_prod_net.idx_list:
@@ -2705,10 +2709,10 @@ class build_process(threading_tools.process_obj):
                     elif cur_ip.network.network_type.identifier == "l":
                         take_it, cause = (True, "network_type is loopback")
                     else:
-                        if cur_ip.network.write_other_network_config:
-                            take_it, cause = (True, "network_index not in list but write_other_network_config set")
+                        if cur_ip.domain_tree_node.always_create_ip:
+                            take_it, cause = (True, "network_index not in list but always_create_ip set")
                         else:
-                            take_it, cause = (False, "network_index not in list and write_other_network_config not set")
+                            take_it, cause = (False, "network_index not in list and always_create_ip not set")
                     if take_it:
                         conf_dict["node_if"].append(cur_ip)
                         taken_list.append((cur_ip, cause))
@@ -3678,7 +3682,7 @@ def main():
         ("HOST_CACHE_TIME"           , configfile.int_c_var(10 * 60)),
         ("WRITE_REDHAT_HWADDR_ENTRY" , configfile.bool_c_var(True)),
         ("ADD_NETDEVICE_LINKS"       , configfile.bool_c_var(False)),
-        ("CORRECT_WRONG_LO_SETUP"    , configfile.bool_c_var(True))])
+    ])
     global_config.add_config_entries([
         ("CONFIG_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
         ("IMAGE_DIR"  , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "images"))),
