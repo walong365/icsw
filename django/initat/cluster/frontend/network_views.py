@@ -387,5 +387,26 @@ def get_domain_name_tree(request):
         cur_dnt = domain_name_tree()
         xml_resp = cur_dnt.get_xml()
         request.xml_response["response"] = xml_resp
+        #print etree.tostring(xml_resp, pretty_print=True)
         return request.xml_response.create_response()
-        
+
+@init_logging
+@login_required
+def move_domain_tree_node(request):
+    _post = request.POST
+    src_node = domain_tree_node.objects.get(Q(pk=_post["src_id"]))
+    dst_node = domain_tree_node.objects.get(Q(pk=_post["dst_id"]))
+    mode = _post["mode"]
+    request.log("moving node '%s' to '%s' (%s)" % (
+        unicode(src_node),
+        unicode(dst_node),
+        mode), xml=True)
+    if mode in ["over", "child"]:
+        src_node.parent = dst_node
+        src_node.save()
+    else:
+        src_node.parent = dst_node.parent
+        src_node.save()
+    cur_dnt = domain_name_tree()
+    return request.xml_response.create_response()
+   
