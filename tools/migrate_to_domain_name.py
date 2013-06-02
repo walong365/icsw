@@ -35,15 +35,15 @@ class tree_node(object):
     def __init__(self, name="", depth=0):
         self.name = name
         self.depth = depth
-        self.postfix = ""
+        self.cur_net = None
         self.sub_nodes = {}
         if not self.name:
             self.top_node = True
         else:
             self.top_node = False
-    def feed_name(self, name, postfix):
+    def feed_name(self, name, cur_net):
         if not name.strip():
-            self.postfix = postfix
+            self.cur_net = cur_net
             # nothing more to add or top node
             return self
         else:
@@ -52,7 +52,7 @@ class tree_node(object):
             if last_part not in self.sub_nodes:
                 # create new sub_node
                 self.sub_nodes[last_part] = tree_node(last_part, depth=self.depth + 1)
-            return self.sub_nodes[last_part].feed_name(".".join(name_parts[:-1]), postfix)
+            return self.sub_nodes[last_part].feed_name(".".join(name_parts[:-1]), cur_net)
     def show_tree(self):
         return "\n".join(["%s%s" % ("    " * self.depth, unicode(self))] + [value.show_tree() for key, value in self.sub_nodes.iteritems()])
     def create_db_entries(self, top_node=None):
@@ -63,7 +63,10 @@ class tree_node(object):
             name=self.name,
             parent=top_node.db_obj if top_node else None,
             full_name=full_name,
-            node_postfix=self.postfix,
+            node_postfix=self.cur_net.postfix,
+            create_short_names=self.cur_net.short_names,
+            write_nameserver_config=self.cur_net.write_bind_config,
+            always_create_ip=self.cur_net.write_other_network_config,
             depth=self.depth,
         )
         cur_db.save()
@@ -75,20 +78,12 @@ class tree_node(object):
 def main():
     cur_dns = domain_tree_node.objects.all()
     if len(cur_dns):
-        print "domain tree already used, skipping..."
+        print "domain tree already in use, skipping..."
     else:
         print "Migrating to domain_tree_node system"
-        net_dict = {}
         net_tree = tree_node()
         for cur_net in network.objects.all():
-            dns_node = net_tree.feed_name(cur_net.name, cur_net.postfix)
-            net_dict[cur_net.pk] = {
-                "obj"      : cur_net,
-                "dns_node" : dns_node,
-                "name"     : cur_net.name,
-                "parts"    : cur_net.name.strip().split("."),
-                "postfix"  : cur_net.postfix,
-            }
+            dns_node = net_tree.feed_name(cur_net.name, cur_net)
         net_tree.create_db_entries()
     if len(sys.argv) > 1:
         sys.exit(0)
@@ -96,6 +91,15 @@ def main():
     # check for intermediate nodes
     for key in cur_dnt.keys():
         cur_node = cur_dnt[key]
+##        # only used once
+##        if False:
+##            cur_nets = network.objects.filter(Q(name=cur_node.full_name))
+##            if len(cur_nets):
+##                cur_net = cur_nets[0]
+##                cur_node.create_short_names = cur_net.short_names
+##                cur_node.write_nameserver_config = cur_net.write_bind_config
+##                cur_node.always_create_ip = cur_net.write_other_network_config
+##                cur_node.save()
         if cur_node == cur_dnt._root_node:
             im_state = False
         else:

@@ -1926,6 +1926,7 @@ class network(models.Model):
     identifier = models.CharField(unique=True, max_length=255, blank=False)
     network_type = models.ForeignKey("network_type")
     master_network = models.ForeignKey("network", null=True, related_name="rel_master_network", blank=True)
+    # should no longer be used, now in domain_tree_node
     short_names = models.BooleanField()
     # should no longer be used, now in domain_tree_node
     name = models.CharField(max_length=192, blank=False)
@@ -1938,7 +1939,9 @@ class network(models.Model):
     broadcast = models.IPAddressField()
     gateway = models.IPAddressField()
     gw_pri = models.IntegerField(null=True, blank=True, default=1)
+    # should no longer be used, now in domain_tree_node
     write_bind_config = models.BooleanField()
+    # should no longer be used, now in domain_tree_node
     write_other_network_config = models.BooleanField()
     start_range = models.IPAddressField(default="0.0.0.0")
     end_range = models.IPAddressField(default="0.0.0.0")
@@ -1953,15 +1956,15 @@ class network(models.Model):
             identifier=self.identifier,
             network_type="%d" % (self.network_type_id),
             master_network="%d" % (self.master_network_id or 0),
-            name=self.name,
-            postfix=self.postfix or "",
+            #name=self.name,
+            #postfix=self.postfix or "",
             network=self.network,
             netmask=self.netmask,
             broadcast=self.broadcast,
             gateway=self.gateway,
-            short_names="1" if self.short_names else "0",
-            write_bind_config="1" if self.write_bind_config else "0",
-            write_other_network_config="1" if self.write_other_network_config else "0",
+            #short_names="1" if self.short_names else "0",
+            #write_bind_config="1" if self.write_bind_config else "0",
+            #write_other_network_config="1" if self.write_other_network_config else "0",
             network_device_type="::".join(["%d" % (ndev_type.pk) for ndev_type in self.network_device_type.all()]),
         )
         if add_ip_info:
@@ -3819,6 +3822,12 @@ class domain_tree_node(models.Model):
     intermediate = models.BooleanField(default=False)
     # creation timestamp
     created = models.DateTimeField(auto_now_add=True, auto_now=True)
+    # create short_names entry for /etc/hosts
+    create_short_names = models.BooleanField(default=True)
+    # create entry for clusternodes even when network not in list
+    always_create_ip = models.BooleanField(default=False)
+    # use for nameserver config
+    write_nameserver_config = models.BooleanField(default=False)
     def get_sorted_pks(self):
         return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, value.get_sorted_pks()) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
@@ -3834,6 +3843,9 @@ class domain_tree_node(models.Model):
             node_postfix="%s" % (self.node_postfix),
             depth="%d" % (self.depth),
             intermediate="%d" % (1 if self.intermediate else 0),
+            create_short_names="1" if self.create_short_names else "0",
+            write_nameserver_config="1" if self.write_nameserver_config else "0",
+            always_create_ip="1" if self.always_create_ip else "0",
         )
     
 @receiver(signals.pre_save, sender=domain_tree_node)
