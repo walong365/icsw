@@ -912,6 +912,11 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
         for attr_name in ["size", "min", "max"]
             if kwargs.hasOwnProperty(attr_name)
                 new_el.attr(attr_name, kwargs[attr_name])
+        if kwargs["css"]
+            console.log kwargs["css"]
+            $.each(kwargs["css"], (key, value) ->
+                new_el.css(key, value)
+            )
     else
         # select input
         if typeof(kwargs.select_source) == "string"
@@ -928,7 +933,7 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
                     new_el.css(key, value)
                 )
             if kwargs.manytomany
-                sel_val = if xml_el == undefined then [] else xml_el.attr(attr_name).split("::")
+                sel_val = if xml_el == undefined then (if kwargs.new_default == undefined then [] else kwargs.new_default) else xml_el.attr(attr_name).split("::")
                 new_el.attr
                     "multiple" : "multiple"
                     "size"     : 5

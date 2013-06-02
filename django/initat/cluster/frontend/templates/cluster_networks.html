@@ -30,37 +30,35 @@ root.get_master_networks = (cur_el, kwargs) ->
         )
     return ret_field.find("network")
 
-root.master_array = {
-    "nw" : new draw_setup("Network", "nw", "network",
-        "{% url 'base:create_object' 'network' %}",
-        "{% url 'base:delete_object' 'network' %}",
-        [
-            new draw_collapse("exp", {default : false}),
-            new draw_info("identifier"),
-            new draw_info("penalty", {number : 1, min : -100, max : 100, default : 1}),
-            #new draw_info("postfix", {default : "", size : 3}),
-            #new draw_info("name"),
-            new draw_info("network_type", {select_source : "network_types network_type"} ),
-            new draw_info("master_network", {select_source : root.get_master_networks, add_null_entry : "not set"} ),
-            new draw_info("short_names", {boolean : 1, label : "SNames / Named / Other", span : 3}),
-            new draw_info("write_bind_config", {boolean : 1}),
-            new draw_info("write_other_network_config", {boolean : 1}),
-            new draw_info("network_device_type", {select_source : "network_device_types network_device_type", manytomany : 1, newline : 1, cspan : 3, show_label : true, label : "DTs :"}),
-            new draw_info("network", {default : "192.168.1.0", cspan : 5, size : 16, label : "NW", show_label : true, group : "network"}),
-            new draw_info("netmask", {default : "255.255.255.0", size : 16, label : "NM", show_label : true, group : "network", keep_td : 1}),
-            new draw_info("broadcast", {default : "192.168.1.255", size : 16, label : "BC", show_label : true, group : "network", keep_td : 1}),
-            new draw_info("gateway", {default : "192.168.1.1", size : 16, label : "GW", show_label : true, group : "network", keep_td : 1}),
-            new draw_info("ip_count", {number : 1, ro : true})
-        ],
-        {"lock_div" : "nw_tables"})
-}
-
 add_config_handlers = ->
     $.ajax
         url     : "{% url 'network:show_networks' %}"
         success : (xml) =>
             if parse_xml_response(xml)
-                draw_ds_tables($("div#nw_tables"), master_array, $(xml).find("value[name='response']"))
+                xml = $(xml).find("value[name='response']")
+                other_network_id = xml.find("network_type[identifier='o']").attr("pk")
+                ethernet_id = xml.find("network_device_type[identifier='eth']").attr("pk")
+                master_array = {
+                    "nw" : new draw_setup("Network", "nw", "network",
+                        "{% url 'base:create_object' 'network' %}",
+                        "{% url 'base:delete_object' 'network' %}",
+                        [
+                            new draw_collapse("exp", {default : false}),
+                            new draw_info("identifier"),
+                            new draw_info("network", {default : "192.168.1.0", size : 16, label : "Network", show_label : true, group : "network"}),
+                            new draw_info("netmask", {default : "255.255.255.0", size : 16, label : "Netmask", show_label : true, group : "network"}),
+                            new draw_info("broadcast", {default : "192.168.1.255", size : 16, label : "Broadcast", show_label : true, group : "network"}),
+                            new draw_info("gateway", {default : "192.168.1.1", size : 16, label : "Gateway", show_label : true, group : "network"}),
+                            new draw_info("ip_count", {number : 1, ro : true}),
+                            new draw_info("penalty", {number : 1, min : -100, max : 100, default : 1, newline : 1, cspan : 8, label : "penalty:", show_label : true}),
+                            new draw_info("network_type", {select_source : "network_types network_type", keep_td : 1, label : "type:", show_label : true, default : other_network_id} ),
+                            new draw_info("master_network", {select_source : root.get_master_networks, add_null_entry : "not set", keep_td : 1, label : "master:", show_label : true} ),
+                            new draw_info("network_device_type", {select_source : "network_device_types network_device_type", manytomany : 1, show_label : true, label : "DTs :", keep_td : 1, default : [ethernet_id]}),
+                        ],
+                        {"lock_div" : "nw_tables"})
+                }
+                
+                draw_ds_tables($("div#nw_tables"), master_array, xml)
 
 $(document).ready(add_config_handlers)
 
