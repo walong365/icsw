@@ -537,6 +537,8 @@ class device(models.Model):
             md_cache_mode="%d" % (int(self.md_cache_mode)),
             domain_tree_node="%d" % (self.domain_tree_node_id or 0),
         )
+        if kwargs.get("full_name", False):
+            r_xml.attrib["full_name"] = self.full_name
         if kwargs.get("with_monitoring", False):
             r_xml.attrib.update(
                 {
@@ -544,11 +546,6 @@ class device(models.Model):
                     "devs_mon_service_cluster" : "::".join(["%d" % (cur_mhc.pk) for cur_mhc in self.devs_mon_service_cluster.all()]),
                 }
             )
-        if kwargs.get("add_title", False):
-            r_xml.attrib["title"] = "%s (%s%s)" % (
-                self.name,
-                self.device_type.identifier,
-                ", %s" % (self.comment) if self.comment else "")
         if full:
             r_xml.extend([
                 E.netdevices(*[ndev.get_xml() for ndev in self.netdevice_set.all()])
@@ -760,7 +757,13 @@ class device_group(models.Model):
         return new_md
     def get_metadevice_name(self):
         return "METADEV_%s" % (self.name)
-    def get_xml(self, full=True, with_devices=True, with_variables=False, add_title=False, with_monitoring=False, ignore_enabled=False):
+    def get_xml(self,
+                full=True,
+                with_devices=True,
+                with_variables=False,
+                with_monitoring=False,
+                ignore_enabled=False,
+                full_name=False):
         cur_xml = E.device_group(
             unicode(self),
             pk="%d" % (self.pk),
@@ -780,8 +783,8 @@ class device_group(models.Model):
                 E.devices(*[cur_dev.get_xml(
                     full=full,
                     with_variables=with_variables,
-                    add_title=add_title,
-                    with_monitoring=with_monitoring) for cur_dev in sub_list])
+                    with_monitoring=with_monitoring,
+                    full_name=full_name) for cur_dev in sub_list])
             )
         return cur_xml
     class Meta:
