@@ -86,7 +86,7 @@ class tree_node(object):
 def main():
     cur_dns = domain_tree_node.objects.all()
     if len(cur_dns):
-        print "domain tree already in use, skipping..."
+        print "domain tree already in use, skipping init..."
     else:
         print "Migrating to domain_tree_node system"
         net_tree = tree_node()
@@ -115,7 +115,18 @@ def main():
         if cur_node.intermediate != im_state:
             cur_node.intermediate = im_state
             cur_node.save()
-    for cur_dev in device.objects.all().prefetch_related("netdevice_set__net_ip_set"):
+                 #pprint.pprint(net_dict)
+    # read network dict
+    net_dict = {}
+    for nw_obj in network.objects.all():
+        net_dict[nw_obj.pk] = nw_obj
+        nw_obj.dns_node = domain_tree_node.objects.get(Q(full_name=nw_obj.name))
+    # modify net_ip
+    print "migrating %s" % (logging_tools.get_plural("netip", net_ip.objects.filter(Q(domain_tree_node=None)).count()))
+    for cur_ip in net_ip.objects.filter(Q(domain_tree_node=None)):
+        cur_ip.domain_tree_node = net_dict[cur_ip.network_id].dns_node
+        cur_ip.save()
+    for cur_dev in device.objects.all().prefetch_related("netdevice_set__net_ip_set").order_by("name"):
         if not cur_dev.domain_tree_node_id:
             all_ips = sum([list(cur_nd.net_ip_set.all()) for cur_nd in cur_dev.netdevice_set.all()], [])
             valid_ips = [cur_ip for cur_ip in all_ips if cur_ip.ip != "127.0.0.1"]

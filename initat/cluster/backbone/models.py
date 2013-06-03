@@ -598,8 +598,9 @@ class device(models.Model):
             )
         return r_xml
     def __unicode__(self):
-        return u"%s%s" % (self.name,
-                          " (%s)" % (self.comment) if self.comment else "")
+        return u"%s%s" % (
+            self.name,
+            " (%s)" % (self.comment) if self.comment else "")
     class Meta:
         db_table = u'device'
         ordering = ("name",)
@@ -3760,7 +3761,7 @@ class domain_name_tree(object):
         self.__domain_lut = {}
         for cur_node in domain_tree_node.objects.all().order_by("depth"):
             self.__node_dict[cur_node.pk] = cur_node
-            self.__domain_lut[cur_node.full_name] = cur_node
+            self.__domain_lut.setdefault(cur_node.full_name, []).append(cur_node)
             cur_node._sub_tree = {}
             if cur_node.parent_id is None:
                 self._root_node = cur_node
@@ -3785,7 +3786,7 @@ class domain_name_tree(object):
                     depth=cur_node.depth+1)
                 new_node.save()
                 self.__node_dict[new_node.pk] = new_node
-                cur_node._sub_tree[dom_part] = new_node
+                cur_node._sub_tree.setdefault(dom_part, []).append(new_node)
                 new_node._sub_tree = {}
             # add to the first entry in sub_tree
             cur_node = cur_node._sub_tree[dom_part][0]
