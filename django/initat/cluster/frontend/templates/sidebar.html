@@ -96,6 +96,7 @@ class sidebar_tree
             data    :
                 "ignore_cdg"      : "0"
                 "permission_tree" : "1"
+                "full_name"       : "1"
             success : (xml) =>
                 if parse_xml_response(xml)
                     root_node = @top_div.dynatree("getRoot")

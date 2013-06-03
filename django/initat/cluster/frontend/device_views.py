@@ -113,6 +113,8 @@ def _get_group_tree(request, sel_list, **kwargs):
     with_monitoring = kwargs.get("with_monitoring", False)
     # show only nodes where the user has permissions for
     permission_tree = kwargs.get("permission_tree", False)
+    # use FQDNs
+    full_name       = kwargs.get("full_name", False)
     xml_resp = E.response()
     devg_resp = E.device_groups()
     #sel_pks = [int(value.split("__")[1]) for value in sel_list]
@@ -140,11 +142,16 @@ def _get_group_tree(request, sel_list, **kwargs):
     if with_variables:
         all_dgs = all_dgs.prefetch_related(
             "device_group__device_variable_set")
-    meta_dev_type_id = device_type.objects.get(Q(identifier="MD")).pk
+    if full_name:
+        all_dgs = all_dgs.prefetch_related(
+            "device_group__domain_tree_node"
+        )
+    device_type_dict = dict([(cur_dt.pk, cur_dt) for cur_dt in device_type.objects.all()])
+    meta_dev_type_id = [key for key, value in device_type_dict.iteritems() if value.identifier == "MD"][0]
     # selected ........ device or device_group selected
     # tree_selected ... device is selected 
     for cur_dg in all_dgs:
-        cur_xml = cur_dg.get_xml(full=False, with_variables=with_variables, with_monitoring=with_monitoring, add_title=True)
+        cur_xml = cur_dg.get_xml(full=False, with_variables=with_variables, with_monitoring=with_monitoring, full_name=full_name)
         if cur_xml.attrib["key"] in sel_list:
             cur_xml.attrib["selected"] = "selected"
             cur_xml.attrib["tree_selected"] = "selected"
@@ -153,6 +160,11 @@ def _get_group_tree(request, sel_list, **kwargs):
             if ignore_md and int(cur_dev.attrib["device_type"]) == meta_dev_type_id:
                 cur_dev.getparent().remove(cur_dev)
             else:
+                cur_dev.attrib["title"] = "%s (%s%s)" % (
+                    cur_dev.attrib["full_name" if full_name else "name"],
+                    device_type_dict[int(cur_dev.attrib["device_type"])].identifier,
+                    ", %s" % (cur_dev.attrib["comment"]) if cur_dev.attrib["comment"] else ""
+                )
                 if int(cur_dev.attrib["device_type"]) == meta_dev_type_id:
                     cur_dev.attrib["tree_selected"] = "selected"
                     cur_dev.attrib["meta_device"] = "1"
@@ -179,13 +191,15 @@ def get_group_tree(request):
     with_variables  = True if int(_post.get("with_variables", "0"))      else False
     permission_tree = True if int(_post.get("permission_tree", "0"))     else False
     with_monitoring = True if int(_post.get("with_monitoring", "0"))     else False
+    full_name       = True if int(_post.get("full_name", "0"))           else False
     if "sel_list[]" in _post:
         sel_list = _post.getlist("sel_list[]", [])
     else:
         sel_list = request.session.get("sel_list", [])
     xml_resp = _get_group_tree(request, sel_list, ignore_meta_devices=ignore_md,
                                ignore_cdg=ignore_cdg, with_variables=with_variables,
-                               permission_tree=permission_tree, with_monitoring=with_monitoring)
+                               permission_tree=permission_tree, with_monitoring=with_monitoring,
+                               full_name=full_name)
     extra_re = re.compile("^extra_t(\d+)$")
     for extra_key in [key for key in _post.keys() if extra_re.match(key)]:
         extra_name = _post[extra_key]
