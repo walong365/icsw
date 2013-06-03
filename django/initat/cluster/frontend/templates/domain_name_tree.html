@@ -76,6 +76,13 @@ class domain_name_tree
                                     # move src_node to dst_node, according to hit_mode
                                     src_node.move(dst_node, hit_mode)
             }
+            #onCustomRender : (dtnode) =>
+            #    db_node = @DNT.find("domain_tree_node[pk='#{dtnode.data.key}']")
+            #    if db_node.attr("intermediate") == "1"
+            #        render_el = $("<span>").text(dtnode.data.title)
+            #    else
+            #        render_el = $("<span>").text(dtnode.data.title + "...")
+            #    return render_el.html()
         @root_node = @top_div.dynatree("getRoot")
         @build_node(@root_node, @DNT.find("domain_tree_node[parent='0']"))
     build_node: (dt_node, db_node) =>
@@ -89,6 +96,7 @@ class domain_name_tree
             title    : title_str
             expand   : expand_flag
             key      : db_node.attr("pk")
+            addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
         )
         @DNT.find("domain_tree_node[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
             @build_node(new_node, $(sub_db_node))
@@ -102,41 +110,45 @@ class domain_name_tree
                 $("<li>").append(
                     create_input_el(cur_node, "name", line_prefix, {
                         master_xml : @DNT,
-                        label : "Name : "
-                        submitter : @my_submitter,
+                        label      : "Name : "
+                        submitter  : @my_submitter,
                     })
                 )
             )
             new_ul.append(
                 $("<li>").append(
                     create_input_el(cur_node, "intermediate", line_prefix, {
-                        boolean : true,
-                        ro : true,
-                        label : "Intermediate : ",
+                        boolean    : true,
+                        label      : "Intermediate : ",
+                        master_xml : @DNT,
+                        submitter  : @my_submitter,
                     })
                 )
             )
             new_ul.append(
                 $("<li>").append(
                     create_input_el(cur_node, "create_short_names", line_prefix, {
-                        boolean : true,
-                        label : "Create short names : ",
+                        boolean    : true,
+                        label      : "Create short names : ",
+                        master_xml : @DNT,
                     })
                 )
             )
             new_ul.append(
                 $("<li>").append(
                     create_input_el(cur_node, "always_create_ip", line_prefix, {
-                        boolean : true,
-                        label : "Always create IP : ",
+                        boolean    : true,
+                        label      : "Always create IP : ",
+                        master_xml : @DNT,
                     })
                 )
             )
             new_ul.append(
                 $("<li>").append(
                     create_input_el(cur_node, "write_namserver_config", line_prefix, {
-                        boolean : true,
-                        label : "Create nameserver config : ",
+                        boolean    : true,
+                        label      : "Create nameserver config : ",
+                        master_xml : @DNT,
                     })
                 )
             )
@@ -144,7 +156,7 @@ class domain_name_tree
     rename_tree: (cur_node) =>
         cur_db_node    = @DNT.find("domain_tree_node[pk='#{cur_node.data.key}']")
         parent_db_node = @DNT.find("domain_tree_node[pk='" + cur_db_node.attr("parent") + "']")
-        console.log parent_db_node.attr("pk"), cur_db_node.attr("name"), parent_db_node.attr("full_name")
+        #console.log parent_db_node.attr("pk"), cur_db_node.attr("name"), parent_db_node.attr("full_name")
         cur_db_node.attr("full_name", cur_db_node.attr("name") + (if parent_db_node.attr("full_name") then "." + parent_db_node.attr("full_name") else ""))
         cur_node.data.title = cur_db_node.attr("name") + " (*." + cur_db_node.attr("full_name") + ")"
         cur_node.render()
@@ -154,9 +166,16 @@ class domain_name_tree
     change_cb: (cur_el) =>
         c_type = cur_el.attr("id").split("__")[2]
         node_key = cur_el.attr("id").split("__")[1]
+        dt_node = @top_div.dynatree("getTree").getNodeByKey(node_key)
         if c_type == "name"
-            dt_node = @top_div.dynatree("getTree").getNodeByKey(node_key)
             @rename_tree(dt_node, cur_el.val())
+        else if c_type == "intermediate"
+            if cur_el.is(":checked")
+                dt_node.data.addClass = "intermediate"
+            else
+                dt_node.data.addClass = "ip_ok"
+            dt_node.render()
+            #console.log @DNT.find("domain_tree_node[pk='#{dt_node.data.key}']").attr("intermediate")
 
 $(document).ready(
     my_dnt = new domain_name_tree($("div#dnt_div"))

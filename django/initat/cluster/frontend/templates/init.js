@@ -750,6 +750,7 @@ class submitter
         @modify_data_dict = kwargs.modify_data_dict ? undefined
         @master_xml = kwargs.master_xml ? undefined
         @success_callback = kwargs.success_callback ? undefined
+        @error_callback = kwargs.error_callback ? undefined
         @callback = kwargs.callback ? undefined
     submit: (event) =>
         cur_el = $(event.target)
@@ -786,10 +787,13 @@ class submitter
                     # set back to previous value 
                     if is_textarea
                         $(cur_el).text(get_xml_value(xml, "original_value"))
+                    else if $(cur_el).is(":checkbox")
+                        if get_xml_value(xml, "original_value") == "False"
+                            $(cur_el).removeAttr("checked")
+                        else
+                            $(cur_el).attr("checked", "checked")
                     else
                         $(cur_el).attr("value", get_xml_value(xml, "original_value"))
-                    if reset_value
-                        cur_el.val("")
                 if lock_list
                     unlock_elements(lock_list)
         
@@ -829,6 +833,11 @@ submit_change = (cur_el, callback, modify_data_dict, modify_data_dict_opts, mast
                 # set back to previous value 
                 if is_textarea
                     $(cur_el).text(get_xml_value(xml, "original_value"))
+                else if $(cur_el).is(":checkbox")
+                    if get_xml_value(xml, "original_value") == "False"
+                        $(cur_el).removeAttr("checked")
+                    else
+                        $(cur_el).attr("checked", "checked")
                 else
                     $(cur_el).attr("value", get_xml_value(xml, "original_value"))
                 if reset_value

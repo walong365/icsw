@@ -185,3 +185,12 @@ div.leftfloat {
 
 tr.highlight, th.highlight, td.highlight { color: #000000 ; background-color: #ffe060 !important ; }
 
+/* domain tree node styles */
+
+ul.dynatree-container span.intermediate {
+    font-style : italic;
+}
+
+ul.dynatree-container span.ip_ok {
+    font-weight : bold;
+}
