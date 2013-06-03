@@ -117,6 +117,15 @@ class domain_name_tree
             )
             new_ul.append(
                 $("<li>").append(
+                    create_input_el(cur_node, "node_postfix", line_prefix, {
+                        master_xml : @DNT,
+                        label      : "Node postfix : "
+                        submitter  : @my_submitter,
+                    })
+                )
+            )
+            new_ul.append(
+                $("<li>").append(
                     create_input_el(cur_node, "intermediate", line_prefix, {
                         boolean    : true,
                         label      : "Intermediate : ",
