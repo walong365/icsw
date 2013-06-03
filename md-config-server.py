@@ -2387,19 +2387,20 @@ class build_process(threading_tools.process_obj):
             #print mni_str_s, mni_str_d, dev_str_s, dev_str_d
             # get correct netdevice for host
             if host.name == global_config["SERVER_SHORT_NAME"]:
-                valid_ips, traces = (["127.0.0.1"], [(1, 0, [host.pk])])
+                valid_ips, traces = ([("127.0.0.1", "localdomain")], [(1, 0, [host.pk])])
             else:
-                valid_ips, traces = self._get_target_ip_info(my_net_idxs, net_devices, host.pk, all_hosts_dict, check_hosts)
+                valid_ips, traces = self._get_target_ip_info(my_net_idxs, net_devices, all_hosts_dict[host.pk], check_hosts)
                 if not valid_ips:
                     num_error += 1
             act_def_dev = dev_templates[host.mon_device_templ_id or 0]
             if valid_ips and act_def_dev:
-                valid_ip = valid_ips[0]
+                host.domain_names = [cur_ip[1] for cur_ip in valid_ips if cur_ip[1]]
+                valid_ip = valid_ips[0][0]
                 host.valid_ip = valid_ip
                 self.mach_log("Found %s for host %s : %s, using %s" % (
                     logging_tools.get_plural("target ip", len(valid_ips)),
                     host.full_name,
-                    ", ".join(valid_ips),
+                    ", ".join(["%s%s" % (cur_ip, " (.%s)" % (dom_name) if dom_name else "") for cur_ip, dom_name in valid_ips]),
                     host.valid_ip))
                 if not serv_templates.has_key(act_def_dev.mon_service_templ_id):
                     self.log("Default service_template not found in service_templates", logging_tools.LOG_LEVEL_WARN)
@@ -2434,7 +2435,7 @@ class build_process(threading_tools.process_obj):
                         c_list.extend([cur_u.login for cur_u in host.device_group.user_set.all()])
                     if c_list:
                         act_host["contacts"] = ",".join(c_list)
-                    act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] if entry.strip()]))))
+                    act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] + ["%s.%s" % (host.name, dom_name) for dom_name in host.domain_names] if entry.strip()]))))
                     act_host["address"] = host.valid_ip
                     # check for parents
                     parents = []
@@ -2801,10 +2802,10 @@ class build_process(threading_tools.process_obj):
         valid_nwt_list = set(network_type.objects.filter(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
         invalid_nwt_list = set(network_type.objects.exclude(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
         # get all network devices (needed for relaying)
-        for n_i, n_n, n_t, n_d, d_pk in net_ip.objects.all().values_list("ip", "netdevice__device__name", "network__network_type__identifier", "netdevice__pk", "netdevice__device__pk"):
+        for n_i, n_n, n_t, n_d, d_pk, dom_name in net_ip.objects.all().values_list("ip", "netdevice__device__name", "network__network_type__identifier", "netdevice__pk", "netdevice__device__pk", "domain_tree_node__full_name"):
             if d_pk in check_hosts:
                 cur_host = check_hosts[d_pk]
-                getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append(n_i)
+                getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append((n_i, dom_name))
         # get all masterswitch connections, FIXME
         #dc.execute("SELECT d.device_idx, ms.device FROM device d, msoutlet ms WHERE ms.slave_device = d.device_idx")
         all_ms_connections = {}
@@ -2979,8 +2980,7 @@ class build_process(threading_tools.process_obj):
             else:
                 ret_field.append(act_serv)
         return ret_field
-    def _get_target_ip_info(self, my_net_idxs, net_devices, host_pk, all_hosts_dict, check_hosts):
-        host = all_hosts_dict[host_pk]
+    def _get_target_ip_info(self, my_net_idxs, net_devices, host, check_hosts):
         traces = []
         targ_netdev_idxs = None
         pathes = self.router_obj.get_ndl_ndl_pathes(my_net_idxs, net_devices.keys(), add_penalty=True)
