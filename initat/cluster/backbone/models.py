@@ -3860,6 +3860,10 @@ def domain_tree_node_pre_save(sender, **kwargs):
         cur_inst.name = cur_inst.name.strip()
         if cur_inst.name and cur_inst.name.count("."):
             raise ValidationError("dot '.' not allowed in domain_name part")
+        if cur_inst.intermediate:
+            if net_ip.objects.filter(Q(domain_tree_node=cur_inst)).count() + device.objects.filter(Q(domain_tree_node=cur_inst)).count():
+                print "***", unicode(cur_inst)
+                raise ValidationError("cannot set used domain_tree_node as intermediate")
         if cur_inst.depth:
             _check_empty_string(cur_inst, "name")
             parent_node = cur_inst.parent

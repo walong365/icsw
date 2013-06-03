@@ -59,16 +59,24 @@ class tree_node(object):
         full_name = self.name
         if top_node and top_node.name:
             full_name = "%s.%s" % (full_name, top_node.name)
-        cur_db = domain_tree_node(
-            name=self.name,
-            parent=top_node.db_obj if top_node else None,
-            full_name=full_name,
-            node_postfix=self.cur_net.postfix,
-            create_short_names=self.cur_net.short_names,
-            write_nameserver_config=self.cur_net.write_bind_config,
-            always_create_ip=self.cur_net.write_other_network_config,
-            depth=self.depth,
-        )
+        if self.cur_net:
+            cur_db = domain_tree_node(
+                name=self.name,
+                parent=top_node.db_obj if top_node else None,
+                full_name=full_name,
+                node_postfix=self.cur_net.postfix,
+                create_short_names=self.cur_net.short_names,
+                write_nameserver_config=self.cur_net.write_bind_config,
+                always_create_ip=self.cur_net.write_other_network_config,
+                depth=self.depth,
+            )
+        else:
+            cur_db = domain_tree_node(
+                name=self.name,
+                parent=top_node.db_obj if top_node else None,
+                full_name=full_name,
+                depth=self.depth,
+            )
         cur_db.save()
         self.db_obj = cur_db
         [value.create_db_entries(top_node=self) for value in self.sub_nodes.itervalues()]
