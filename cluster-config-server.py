@@ -975,10 +975,10 @@ def do_nets(conf):
         if cur_nd.pk == conf_dict["device"].bootnetdevice_id:
             if sys_dict["vendor"] == "suse":
                 new_co = conf.add_file_object("/etc/HOSTNAME")
-                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.postfix, cur_dtn.full_name)
+                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
             elif sys_dict["vendor"] == "debian":
                 new_co = conf.add_file_object("/etc/hostname")
-                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.postfix, cur_dtn.full_name)
+                new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
             else:
                 new_co = conf.add_file_object("/etc/sysconfig/network")
                 new_co += "HOSTNAME=%s" % (conf_dict["host"])
@@ -1401,7 +1401,7 @@ def do_etc_hosts(conf):
         out_names = []
         # override wrong settings for lo
         if not (cur_ip.alias.strip() and cur_ip.alias_excl):
-            out_names.append("%s%s" % (cur_nd.device.name, cur_ip.domain_tree_node.postfix))
+            out_names.append("%s%s" % (cur_nd.device.name, cur_ip.domain_tree_node.node_postfix))
         out_names.extend(cur_ip.alias.strip().split())
         if "localhost" in [entry.split(".")[0] for entry in out_names]:
             out_names = [entry for entry in out_names if entry.split(".")[0] == "localhost"]
