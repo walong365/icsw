@@ -472,6 +472,12 @@ class device(models.Model):
         ], default=1)
     # system name
     domain_tree_node = models.ForeignKey("domain_tree_node", null=True, default=None)
+    @property
+    def full_name(self):
+        if self.domain_tree_node.full_name:
+            return ".".join([self.name, self.domain_tree_node.full_name])
+        else:
+            return self.name
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
