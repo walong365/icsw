@@ -893,12 +893,12 @@ class main_config(object):
                     role_dict = dict([(cur_role[1].lower().split()[0], cur_role[0]) for cur_role in cur_c.execute("SELECT * FROM roles")])
                     self.log("role dict: %s" % (", ".join(["%s=%d" % (key, value) for key, value in role_dict.iteritems()])))
                     # get nagivs root points
-                    nagvis_rds = device.objects.filter(Q(automap_root_nagvis=True)).select_related("device_group")
+                    nagvis_rds = device.objects.filter(Q(automap_root_nagvis=True)).select_related("domain_tree_node", "device_group")
                     self.log("%s: %s" % (logging_tools.get_plural("NagVIS root device", len(nagvis_rds)),
                                          ", ".join([unicode(cur_dev) for cur_dev in nagvis_rds])))
                     devg_lut = {}
                     for cur_dev in nagvis_rds:
-                        devg_lut.setdefault(cur_dev.device_group.pk, []).append(cur_dev.name)
+                        devg_lut.setdefault(cur_dev.device_group.pk, []).append(cur_dev.full_name)
                     for cur_u in user.objects.filter(Q(active=True)).prefetch_related("allowed_device_groups"):
                         # check for admin
                         if User.objects.get(Q(username=cur_u.login)).has_perm("backbone.all_devices"):
@@ -956,7 +956,7 @@ class main_config(object):
                 else:
                     act_cfg_name = os.path.normpath(os.path.join(
                         self.__w_dir_dict["etc"],
-                       "%s.cfg" % (key)))
+                        "%s.cfg" % (key)))
                 stuff.create_content()
                 if stuff.act_content != stuff.old_content:
                     try:
@@ -1134,7 +1134,7 @@ class host_type_config(object):
             key_hash_list, key_hash_dict = ([], {})
             for act_le in act_list:
                 local_key_hash = []
-                for key, value in [(a, b) for a, b in act_le.entries.iteritems() if a not in ["possible_parents"]]:
+                for key, value in [(key, value) for key, value in act_le.entries.iteritems() if key not in ["possible_parents"]]:
                     if key not in index_key_dict.keys():
                         index_key_dict[key] = ".%d" % (act_key_idx)
                         act_key_idx += 1
@@ -1291,7 +1291,7 @@ class all_commands(host_type_config):
             send_mail_prog = "/usr/local/bin/send_mail.py"
         from_addr = "%s@%s" % (global_config["MD_TYPE"],
                                global_config["FROM_ADDR"])
-        
+
         self._str_repl_dict = {
             "$INIT_MONITOR_INFO$" : "%s %s" % (md_type, md_vers),
             "$INIT_CLUSTER_NAME$" : "%s" % (cluster_name),
@@ -1556,20 +1556,19 @@ class all_host_groups(host_type_config):
         return "hostgroup"
     def _add_host_groups_from_db(self, gen_conf):
         if gen_conf.has_key("host"):
-            all_hosts_written = gen_conf["host"].keys()
-            filter_obj = Q(name__in=all_hosts_written)
-            #sql_add_str = " OR ".join(["d.name='%s'" % (x) for x in all_hosts_written])
+            host_pks = gen_conf["host"].host_pks
             # hostgroups
-            if all_hosts_written:
+            if host_pks:
                 # distinct is important here
-                for h_group in device_group.objects.filter(Q(enabled=True) & Q(device_group__name__in=all_hosts_written)).prefetch_related("device_group").distinct():
-                    nag_conf = nag_config(h_group.name,
-                                          hostgroup_name=h_group.name,
-                                          alias=h_group.description or h_group.name,
-                                          members="-")
+                for h_group in device_group.objects.filter(Q(enabled=True) & Q(device_group__pk__in=host_pks)).prefetch_related("device_group").distinct():
+                    nag_conf = nag_config(
+                        h_group.name,
+                        hostgroup_name=h_group.name,
+                        alias=h_group.description or h_group.name,
+                        members="-")
                     self.__dict[h_group.pk] = nag_conf
                     self.__obj_list.append(nag_conf)
-                    nag_conf["members"] = ",".join(h_group.device_group.filter(Q(name__in=all_hosts_written)).values_list("name", flat=True))
+                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in h_group.device_group.filter(Q(pk__in=host_pks))])
             else:
                 self.log("empty SQL-Str for in _add_host_groups_from_db()",
                          logging_tools.LOG_LEVEL_ERROR)
@@ -1587,6 +1586,9 @@ class all_hosts(host_type_config):
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
         self.refresh(gen_conf)
+        self.host_pks = set()
+    def add_db_host(self, cur_dev):
+        self.host_pks.add(cur_dev.pk)
     def refresh(self, gen_conf):
         self.__obj_list, self.__dict = ([], {})
         #self._add_hosts_from_db(gen_conf)
@@ -1596,6 +1598,8 @@ class all_hosts(host_type_config):
         return self.__obj_list
     def values(self):
         return self.__dict.values()
+    def __getitem__(self, key):
+        return self.__dict[key]
     def __setitem__(self, key, value):
         self.__dict[key] = value
         self.__obj_list.append(value)
@@ -1696,7 +1700,7 @@ class check_command(object):
         arg_lut, arg_list = ({}, [])
         """
         handle the various input formats:
-        
+
         ${ARG#:var_name:default}
         ${ARG#:var_name:default}$
         ${ARG#:default}
@@ -1714,7 +1718,7 @@ class check_command(object):
                 m_dict = cur_m.groupdict()
                 # check for -X or --Y switch
                 prev_part = m_dict["pre_text"].strip().split()
-                
+
                 if prev_part and prev_part[-1].startswith("-"):
                     prev_part = prev_part[-1]
                 else:
@@ -1945,7 +1949,7 @@ class build_process(threading_tools.process_obj):
         self.version = int(time.time())
         self.log("initial config_version is %d" % (self.version))
         # slave configs
-        slave_servers = device.objects.filter(Q(device_config__config__name="monitor_slave"))
+        slave_servers = device.objects.filter(Q(device_config__config__name="monitor_slave")).select_related("domain_tree_node")
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         self.router_obj = config_tools.router_object(self.log)
         self.__gen_config = main_config(self, master_server, distributed=True if len(slave_servers) else False)
@@ -1953,15 +1957,15 @@ class build_process(threading_tools.process_obj):
         self.__slave_configs, self.__slave_lut = ({}, {})
         if len(slave_servers):
             self.log("found %s: %s" % (logging_tools.get_plural("slave_server", len(slave_servers)),
-                                       ", ".join(sorted([cur_dev.name for cur_dev in slave_servers]))))
+                                       ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))))
             for cur_dev in slave_servers:
                 self.__slave_configs[cur_dev.pk] = main_config(
                     self,
                     cur_dev,
-                    slave_name=cur_dev.name, 
+                    slave_name=cur_dev.full_name, 
                     master_server=master_server,
                 )
-                self.__slave_lut[cur_dev.name] = cur_dev.pk
+                self.__slave_lut[cur_dev.full_name] = cur_dev.pk
         else:
             self.log("no slave-servers found")
         self.register_func("rebuild_config", self._rebuild_config)
@@ -2104,7 +2108,7 @@ class build_process(threading_tools.process_obj):
             device=cdg,
             is_public=False,
             name="_SYS_GAUGE_",
-            description="mon config rebuild on %s" % (self.__gen_config.monitor_server.name),
+            description="mon config rebuild on %s" % (self.__gen_config.monitor_server.full_name),
             var_type="i")
         # fetch SNMP-stuff of cluster
         snmp_stack = snmp_settings(cdg)
@@ -2177,13 +2181,14 @@ class build_process(threading_tools.process_obj):
         max_level = 0
         # limit for loop
         for cur_iter in xrange(128):
-            self.log("dm_run %d" % (cur_iter))
             run_again = False
             # iterate until all nodes have a valid dist_level set
             src_nodes = set([key for key, value in dm_dict.iteritems() if value.md_dist_level >= 0])
             dst_nodes = all_pks - src_nodes
-            self.log("%s, %s" % (logging_tools.get_plural("source node", len(src_nodes)),
-                                 logging_tools.get_plural("dest node", len(dst_nodes))))
+            self.log("dm_run %3d, %s, %s" % (
+                cur_iter,
+                logging_tools.get_plural("source node", len(src_nodes)),
+                logging_tools.get_plural("dest node", len(dst_nodes))))
             src_nds = reduce(operator.ior, [nd_dict[key] for key in src_nodes], set())
             dst_nds = reduce(operator.ior, [nd_dict[key] for key in dst_nodes], set())
             # build list of src_nd, dst_nd tuples
@@ -2356,25 +2361,25 @@ class build_process(threading_tools.process_obj):
             if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
                 checks_are_active = False
         #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
-        self.__cached_mach_name = host.name
+        self.__cached_mach_name = host.full_name
         self.mach_log("-------- %s ---------" % ("master" if cur_gc.master else "slave %s" % (cur_gc.slave_name)))
         glob_log_str = "Starting build of config for device %32s%s (%10s), distance level is %3d" % (
-            host.name[:32],
+            host.full_name[:32],
             "*" if len(host.name) > 32 else " ",
             "active" if checks_are_active else "passive",
             d_map.get(host.pk, -1),
         )
-        self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.name)
+        self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.full_name)
         num_ok, num_warning, num_error = (0, 0, 0)
         #print "%s : %s" % (host["name"], host["identifier"])
         if host.valid_ips:
             net_devices = host.valid_ips
         elif host.invalid_ips:
-            self.mach_log("Device %s has no valid netdevices associated, using invalid ones..." % (host.name),
+            self.mach_log("Device %s has no valid netdevices associated, using invalid ones..." % (host.full_name),
                           logging_tools.LOG_LEVEL_WARN)
             net_devices = host.invalid_ips
         else:
-            self.mach_log("Device %s has no netdevices associated, skipping..." % (host.name),
+            self.mach_log("Device %s has no netdevices associated, skipping..." % (host.full_name),
                           logging_tools.LOG_LEVEL_ERROR)
             num_error += 1
             net_devices = {}
@@ -2393,7 +2398,7 @@ class build_process(threading_tools.process_obj):
                 host.valid_ip = valid_ip
                 self.mach_log("Found %s for host %s : %s, using %s" % (
                     logging_tools.get_plural("target ip", len(valid_ips)),
-                    host.name,
+                    host.full_name,
                     ", ".join(valid_ips),
                     host.valid_ip))
                 if not serv_templates.has_key(act_def_dev.mon_service_templ_id):
@@ -2404,7 +2409,7 @@ class build_process(threading_tools.process_obj):
                     self.mach_log("Using default device_template '%s' and service_template '%s' for host %s" % (
                         act_def_dev.name,
                         act_def_serv.name,
-                        host.name))
+                        host.full_name))
                     # get device variables
                     dev_variables = {}
                     for cur_var in device_variable.objects.filter(Q(device=host)):
@@ -2415,8 +2420,8 @@ class build_process(threading_tools.process_obj):
                     self.mach_log("device has %s" % (
                         logging_tools.get_plural("device_variable", len(host.dev_variables.keys()))))
                     # now we have the device- and service template
-                    act_host = nag_config(host.name)
-                    act_host["host_name"] = host.name
+                    act_host = nag_config(host.full_name)
+                    act_host["host_name"] = host.full_name
                     # action url
                     if global_config["ENABLE_PNP"]:
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
@@ -2429,13 +2434,13 @@ class build_process(threading_tools.process_obj):
                         c_list.extend([cur_u.login for cur_u in host.device_group.user_set.all()])
                     if c_list:
                         act_host["contacts"] = ",".join(c_list)
-                    act_host["alias"] = host.alias or host.name
+                    act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] if entry.strip()]))))
                     act_host["address"] = host.valid_ip
                     # check for parents
                     parents = []
                     # rule 1: APC Masterswitches have their bootserver set as parent
                     if host.device_type.identifier in ["AM", "IBC"] and host.bootserver_id:
-                        parents.append(all_hosts_dict[host.bootserver_id].name)
+                        parents.append(all_hosts_dict[host.bootserver_id].full_name)
                     # rule 2: Devices connected to an apc have this apc set as parent
                     #elif all_ms_connections.has_key(host.pk):
                         #for pd in all_ms_connections[host.pk]:
@@ -2487,7 +2492,7 @@ class build_process(threading_tools.process_obj):
                     if checks_are_active and not cur_gc.master:
                         # trace changes
                         act_host["obsess_over_host"] = 1
-                    host_groups = set(contact_group_dict.get(host.name, []))
+                    host_groups = set(contact_group_dict.get(host.full_name, []))
                     act_host["contact_groups"] = ",".join(host_groups) if host_groups else global_config["NONE_CONTACT_GROUP"]
                     act_host["contacts"] = ""
                     self.mach_log("contact groups for host: %s" % (
@@ -2500,15 +2505,15 @@ class build_process(threading_tools.process_obj):
                             act_host["check_command"] = act_def_dev.ccommand
                         # check for nagvis map
                         if host.automap_root_nagvis and cur_gc.master:
-                            map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.name.encode("ascii", errors="ignore")))
+                            map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.full_name.encode("ascii", errors="ignore")))
                             map_dict = {
                                 "sources"      : "automap",
-                                "alias"        : host.comment or host.name,
+                                "alias"        : host.comment or host.full_name,
                                 "parent_map"   : "",
                                 "iconset"      : "std_big",
                                 "child_layers" : 10,
                                 "backend_id"   : "live_1",
-                                "root"         : host.name,
+                                "root"         : host.full_name,
                                 "label_show"   : "1",
                                 "label_border" : "transparent",
                                 "render_mode"  : "directed",
@@ -2552,20 +2557,20 @@ class build_process(threading_tools.process_obj):
                         if host.mon_ext_host_id and ng_ext_hosts.has_key(host.mon_ext_host_id):
                             if (global_config["MD_TYPE"] == "nagios" and global_config["MD_VERSION"] > 1) or (global_config["MD_TYPE"] == "icinga"):
                                 # handle for nagios 2
-                                act_hostext_info = nag_config(host.name)
-                                act_hostext_info["host_name"] = host.name
+                                act_hostext_info = nag_config(host.full_name)
+                                act_hostext_info["host_name"] = host.full_name
                                 for key in ["icon_image", "statusmap_image"]:
                                     act_hostext_info[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
-                                hostext_nc[host.name] = act_hostext_info
+                                hostext_nc[host.full_name] = act_hostext_info
                             else:
                                 self.log("don't know how to handle hostextinfo for %s_version %d" % (
                                     global_config["MD_TYPE"],
                                     global_config["MD_VERSION"]),
                                          logging_tools.LOG_LEVEL_ERROR)
                         # clear host from servicegroups
-                        cur_gc["servicegroup"].clear_host(host.name)
+                        cur_gc["servicegroup"].clear_host(host.full_name)
                         # get check_commands and templates
-                        conf_names = set(all_configs.get(host.name, []))
+                        conf_names = set(all_configs.get(host.full_name, []))
                         # cluster config names
                         cconf_names = set(host.devs_mon_service_cluster.all().values_list("mon_check_command__name", flat=True))
                         # build lut
@@ -2631,7 +2636,7 @@ class build_process(threading_tools.process_obj):
                         if len(mhc_checks):
                             self.mach_log("adding %s" % (logging_tools.get_plural("host_cluster check", len(mhc_checks))))
                             for mhc_check in mhc_checks:
-                                dev_names = ",".join(["$HOSTSTATEID:%s$" % (cur_dev.name) for cur_dev in mhc_check.devices.all()])
+                                dev_names = ",".join(["$HOSTSTATEID:%s$" % (cur_dev.full_name) for cur_dev in mhc_check.devices.all()])
                                 if dev_names.strip():
                                     s_check = cur_gc["command"]["check_host_cluster"]
                                     serv_temp = serv_templates[mhc_check.mon_service_templ_id]
@@ -2663,7 +2668,7 @@ class build_process(threading_tools.process_obj):
                             self.mach_log("adding %s" % (logging_tools.get_plural("service_cluster check", len(msc_checks))))
                             for msc_check in msc_checks:
                                 c_com = cur_gc["command"][msc_check.mon_check_command.name]
-                                dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.name, c_com.get_description()) for cur_dev in msc_check.devices.all()])
+                                dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all()])
                                 if dev_names.strip():
                                     s_check = cur_gc["command"]["check_service_cluster"]
                                     serv_temp = serv_templates[msc_check.mon_service_templ_id]
@@ -2690,8 +2695,9 @@ class build_process(threading_tools.process_obj):
                                 else:
                                     self.mach_log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
                         host_nc[act_host["name"]] = act_host
+                        host_nc.add_db_host(host)
                     else:
-                        self.mach_log("Host %s is disabled" % (host.name))
+                        self.mach_log("Host %s is disabled" % (host.full_name))
             else:
                 self.mach_log("No valid IPs found or no default_device_template found", logging_tools.LOG_LEVEL_ERROR)
         info_str = "finished with %s warnings and %s errors (%3d ok) in %s" % (
@@ -2714,7 +2720,7 @@ class build_process(threading_tools.process_obj):
             #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
-        h_filter &= Q(enabled=True)
+        h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
         return device.objects.filter(h_filter).count()
     def _create_host_config_files(self, build_dv, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map):
         """
@@ -2749,14 +2755,14 @@ class build_process(threading_tools.process_obj):
         ps_dict = {}
         for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):
             ps_dict[ps_config.name] = ps_config.parent_config.name
-        check_hosts = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(h_filter)])
+        check_hosts = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(h_filter).select_related("domain_tree_node")])
         for cur_dev in check_hosts.itervalues():
             # set default values
             cur_dev.valid_ips = {}
             cur_dev.invalid_ips = {}
         meta_devices = dict([(md.device_group.pk, md) for md in device.objects.filter(Q(device_type__identifier='MD')).prefetch_related("device_config_set", "device_config_set__config").select_related("device_group")])
         all_configs = {}
-        for cur_dev in device.objects.filter(h_filter).prefetch_related("device_config_set", "device_config_set__config"):
+        for cur_dev in device.objects.filter(h_filter).select_related("domain_tree_node").prefetch_related("device_config_set", "device_config_set__config"):
             loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
             if cur_dev.device_group_id in meta_devices:
                 loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
@@ -2767,7 +2773,7 @@ class build_process(threading_tools.process_obj):
                     loc_config.extend(list(new_confs))
                 else:
                     break
-            all_configs[cur_dev.name] = loc_config
+            all_configs[cur_dev.full_name] = loc_config
         # get config variables
         first_contactgroup_name = cur_gc["contactgroup"][cur_gc["contactgroup"].keys()[0]]["name"]
         contact_group_dict = {}
@@ -2819,18 +2825,18 @@ class build_process(threading_tools.process_obj):
         host_nc, service_nc, hostext_nc  = (cur_gc["host"], cur_gc["service"], cur_gc["hostextinfo"])
         # delete host if already present in host_table
         for host_pk, host in check_hosts.iteritems():
-            del_list = set([cur_dev for cur_dev in host_nc.values() if cur_dev.name == host.name])
+            del_list = set([cur_dev for cur_dev in host_nc.values() if cur_dev.full_name == host.full_name])
             for del_h in del_list:
-                del_list_2 = [cur_dev for cur_dev in service_nc.values() if cur_dev["host_name"] == del_h.name]
+                del_list_2 = [cur_dev for cur_dev in service_nc.values() if cur_dev["host_name"] == del_h.full_name]
                 for del_h_2 in del_list_2:
                     service_nc.remove_host(del_h_2)
                 # delete hostextinfo for nagios V1.x
-                if hostext_nc.has_key(del_h.name):
-                    del hostext_nc[del_h.name]
-                del host_nc[del_h.name]
+                if hostext_nc.has_key(del_h.full_name):
+                    del hostext_nc[del_h.full_name]
+                del host_nc[del_h.full_name]
         # build lookup-table
         nagvis_maps = set()
-        for host_name, host in sorted([(cur_dev.name, cur_dev) for cur_dev in check_hosts.itervalues()]):
+        for host_name, host in sorted([(cur_dev.full_name, cur_dev) for cur_dev in check_hosts.itervalues()]):
             build_dv.count()
             self._create_single_host_config(
                 cur_gc,
@@ -2852,7 +2858,8 @@ class build_process(threading_tools.process_obj):
                 nagvis_maps,
             )
         host_names = host_nc.keys()
-        for host in host_nc.values():
+        for host_name in sorted(host_names):
+            host = host_nc[host_name]
             if host.has_key("possible_parents"):
                 parent_list = []
                 p_parents = host["possible_parents"]
@@ -2862,7 +2869,7 @@ class build_process(threading_tools.process_obj):
                     host_pk = p_list.pop(0)
                     for parent_idx in p_list:
                         if d_map[host_pk] > d_map[parent_idx]:
-                            parent = all_hosts_dict[parent_idx].name
+                            parent = all_hosts_dict[parent_idx].full_name
                             if parent in host_names and parent != host["name"]:
                                 parent_list.append(parent)
                                 # exit inner loop
@@ -2939,7 +2946,7 @@ class build_process(threading_tools.process_obj):
             act_serv["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
             act_serv["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
             act_serv["service_description"]   = arg_temp.info.replace("(", "[").replace(")", "]")
-            act_serv["host_name"]             = host.name
+            act_serv["host_name"]             = host.full_name
             # volatile
             act_serv["is_volatile"]           = serv_temp.volatile
             act_serv["check_period"]          = cur_gc["timeperiod"][serv_temp.nsc_period_id]["name"]
@@ -3337,8 +3344,9 @@ class server_process(threading_tools.process_pool):
             else:
                 cur_com = srv_com["command"].text
                 if self.__verbose or cur_com not in ["ocsp-event", "ochp-event"]:
-                    self.log("got command '%s' from '%s'" % (cur_com,
-                                                             srv_com["source"].attrib["host"]))
+                    self.log("got command '%s' from '%s'" % (
+                        cur_com,
+                        srv_com["source"].attrib["host"]))
                 srv_com.update_source()
                 send_return = False
                 if cur_com == "rebuild_host_config":
@@ -3520,4 +3528,3 @@ def main():
 
 if __name__  == "__main__":
     main()
-    
