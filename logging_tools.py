@@ -1416,18 +1416,6 @@ def main():
     #print a.get_dict_sort(a.get_multi_object("source"))
     #print "\n".join(a.get_config_lines())
     sys.exit(0)
-##     a = form_list()
-##     a.add_line([2,3,4])
-##     a.add_line([2,34])
-##     a.add_line(["aiopduqwoeuqwie",34])
-##     a.set_format_string(0, "s", "")
-##     print a
-##     a = logfile("/tmp/lf", 10000, 100, 1)
-##     a.write("test")
-##     time.sleep(2)
-##     print a.check_for_temp_close()
-##     a.write("test2")
-##     a.close()
     
 if __name__ == "__main__":
     main()
