@@ -270,7 +270,7 @@ class sr_probe(object):
     def send(self, val):
         cur_time = time.time()
         diff_time = abs(cur_time - self.__time)
-        if  diff_time > 60:
+        if  diff_time > 30 * 60:
             self.log("sent / received in %s: %s / %s" % (
                 logging_tools.get_diff_time_str(diff_time),
                 logging_tools.get_size_str(self.__val["send"]),
