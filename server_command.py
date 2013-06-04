@@ -350,6 +350,8 @@ class srv_command(object):
         return ret_str, ret_state
     def __del__(self):
         srv_command.srvc_open -= 1
+    def __len__(self):
+        return len(etree.tostring(self.tree))
         
 class command_template(object):
     def __init__(self, *rest_vals, **rest_dict):
