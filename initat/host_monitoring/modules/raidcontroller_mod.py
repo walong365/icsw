@@ -181,7 +181,7 @@ class ctrl_check_struct(hm_classes.subprocess_struct):
     def started(self):
         if hasattr(self.__ct_struct, "started"):
             self.__ct_struct.started(self)
-        self.send_return()
+            self.send_return()
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[ccs] %s" % (what), level)
         

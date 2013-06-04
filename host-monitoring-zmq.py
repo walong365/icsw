@@ -1123,14 +1123,23 @@ class relay_process(threading_tools.process_pool):
                 pass
             else:
                 # resolve full name
+                self.log("ip_addr %s resolved to '%s' (%s), %s" % (ip_addr, full_name, ", ".join(aliases) or "N/A", ", ".join(ip_addrs) or "N/A"))
                 try:
-                    ip_addr = socket.gethostbyname(full_name)
+                    new_ip_addr = socket.gethostbyname(full_name)
                 except:
                     self.log("cannot resolve full_name '%s': %s" % (
                         full_name,
                         process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_CRITICAL)
                     raise
+                else:
+                    self.log("full_name %s resolves back to %s (was: %s)" % (
+                        full_name,
+                        new_ip_addr,
+                        ip_addr),
+                             logging_tools.LOG_LEVEL_OK if new_ip_addr == ip_addr else logging_tools.LOG_LEVEL_ERROR)
+                    # should we use the new ip_addr ? dangerous, FIXME
+                    #ip_addr = new_ip_addr
             if ip_addr not in self.__ip_lut:
                 self.log("resolved %s to %s" % (target, ip_addr))
                 self.__ip_lut[ip_addr] = target
