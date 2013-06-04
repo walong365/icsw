@@ -66,16 +66,20 @@ def rewrite_log_destination(log_dest):
     return log_dest
 
 def map_old_to_new_level(in_level):
-    return {0  : LOG_LEVEL_OK,
-            5  : LOG_LEVEL_WARN,
-            10 : LOG_LEVEL_ERROR,
-            20 : LOG_LEVEL_CRITICAL}.get(in_level, in_level)
+    return {
+        0  : LOG_LEVEL_OK,
+        5  : LOG_LEVEL_WARN,
+        10 : LOG_LEVEL_ERROR,
+        20 : LOG_LEVEL_CRITICAL,
+        }.get(in_level, in_level)
 
 def map_log_level_to_log_status(log_lev):
-    return {LOG_LEVEL_OK       : "i",
-            LOG_LEVEL_WARN     : "w",
-            LOG_LEVEL_ERROR    : "e",
-            LOG_LEVEL_CRITICAL : "c"}.get(log_lev, "c")
+    return {
+        LOG_LEVEL_OK       : "i",
+        LOG_LEVEL_WARN     : "w",
+        LOG_LEVEL_ERROR    : "e",
+        LOG_LEVEL_CRITICAL : "c",
+        }.get(log_lev, "c")
 
 def get_relative_dt(dt_struct):
     act_time = datetime.datetime.now()
@@ -167,9 +171,9 @@ def get_diff_time_str(diff_secs):
                     if abs_days > 365:
                         abs_years = int(abs_days / 365)
                         abs_days -= 365 * abs_years
-                        diff_str = "%dy:%03d:%02d:%02d:%02d" % (abs_years, abs_days, abs_hours, abs_mins, abs_secs)
+                        diff_str = "%dy %3dd %02d:%02d:%02d" % (abs_years, abs_days, abs_hours, abs_mins, abs_secs)
                     else:
-                        diff_str = "%d:%02d:%02d:%02d" % (abs_days, abs_hours, abs_mins, abs_secs)
+                        diff_str = "%dd %02d:%02d:%02d" % (abs_days, abs_hours, abs_mins, abs_secs)
                 else:
                     diff_str = "%d:%02d:%02d" % (abs_hours, abs_mins, abs_secs)
             else:
@@ -278,10 +282,11 @@ def get_logger(name, destination, **kwargs):
                         dst_file = os.path.abspath("c:\\var\\log\\%s.log" % (name))
                         if not os.path.isdir(os.path.dirname(dst_file)):
                             os.makedirs(os.path.dirname(dst_file))
-                        new_h = logging.handlers.RotatingFileHandler(dst_file,
-                                                                     maxBytes=kwargs.get("max_bytes", 100000),
-                                                                     backupCount=kwargs.get("backup_count", 500),
-                                                                     encoding="utf-8")
+                        new_h = logging.handlers.RotatingFileHandler(
+                            dst_file,
+                            maxBytes=kwargs.get("max_bytes", 100000),
+                            backupCount=kwargs.get("backup_count", 500),
+                            encoding="utf-8")
                         new_h.setFormatter(act_form)
                         act_logger.addHandler(new_h)
                 elif act_dest.startswith("udp:"):
@@ -587,11 +592,12 @@ class progress_counter(object):
     def overview(self, **kwargs):
         if self.__total_count:
             diff_time = time.time() - self.__act_cs_time
-            log_str = "%s %d (%s announced), %s total, %s per entity" % (self.__action,
-                                                                         self.__sum_lc,
-                                                                         self.__total_count,
-                                                                         get_diff_time_str(diff_time),
-                                                                         get_diff_time_str(diff_time / self.__sum_lc if self.__sum_lc else 0))
+            log_str = "%s %d (%s announced), %s total, %s per entity" % (
+                self.__action,
+                self.__sum_lc,
+                self.__total_count,
+                get_diff_time_str(diff_time),
+                get_diff_time_str(diff_time / self.__sum_lc if self.__sum_lc else 0))
         else:
             log_str = "no entities to work with (%s)" % (self.__action)
         self._log(log_str, **kwargs)
@@ -610,12 +616,13 @@ class progress_counter(object):
                 info_str = ""
             if kwargs.get("info_str", ""):
                 info_str = "%s, %s" % (info_str, kwargs["info_str"])
-            log_str = "%s %d, %5.2f %%, %d (%s) to go%s" % (self.__action,
-                                                            self.__lc,
-                                                            100. * (self.__sum_lc / float(max(1, self.__total_count))),
-                                                            self.__start_count,
-                                                            get_diff_time_str(time_to_go),
-                                                            info_str)
+            log_str = "%s %d, %5.2f %%, %d (%s) to go%s" % (
+                self.__action,
+                self.__lc,
+                100. * (self.__sum_lc / float(max(1, self.__total_count))),
+                self.__start_count,
+                get_diff_time_str(time_to_go),
+                info_str)
             self.__lc = 0
         else:
             log_str = ""
@@ -813,8 +820,9 @@ class new_form_list(object):
             if line_rows < max_rows:
                 if line_rows > 1:
                     # only count the first (line_rows - 1) rows
-                    row_lens = [max(old_len, new_len) for old_len, new_len in zip(row_lens[:line_rows - 1],
-                                                                                  line_lens[:line_rows - 1])] + row_lens[line_rows - 1:]
+                    row_lens = [max(old_len, new_len) for old_len, new_len in zip(
+                        row_lens[:line_rows - 1],
+                        line_lens[:line_rows - 1])] + row_lens[line_rows - 1:]
             else:
                 # count all rows
                 row_lens = [max(old_len, new_len) for old_len, new_len in zip(row_lens, line_lens)]
