@@ -2423,6 +2423,7 @@ class build_process(threading_tools.process_obj):
                     # now we have the device- and service template
                     act_host = nag_config(host.full_name)
                     act_host["host_name"] = host.full_name
+                    act_host["display_name"] = host.full_name
                     # action url
                     if global_config["ENABLE_PNP"]:
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
@@ -2859,6 +2860,7 @@ class build_process(threading_tools.process_obj):
                 nagvis_maps,
             )
         host_names = host_nc.keys()
+        host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
         for host_name in sorted(host_names):
             host = host_nc[host_name]
             if host.has_key("possible_parents"):
