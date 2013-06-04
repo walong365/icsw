@@ -67,6 +67,12 @@ class subprocess_struct(object):
         self._init_time = time.time()
         # if not a popen call
         self.terminated = False
+        # flag for not_finished info
+        self.__nfts = None
+        # return already sent
+        self.__return_sent = False
+        # finished
+        self.__finished = False
     def run(self):
         run_info = {}
         if self.multi_command:
@@ -89,10 +95,13 @@ class subprocess_struct(object):
             if self.Meta.verbose:
                 self.log("popen '%s'" % (run_info["comline"]))
             self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+            self.started()
     def set_send_stuff(self, srv_proc, src_id, zmq_sock):
         self.srv_process = srv_proc
         self.src_id = src_id
         self.zmq_sock = zmq_sock
+    def started(self):
+        pass
     def read(self):
         if self.popen:
             return self.popen.stdout.read()
@@ -107,7 +116,10 @@ class subprocess_struct(object):
             self.run_info["result"] = self.popen.poll()
             if self.Meta.verbose:
                 if self.run_info["result"] is None:
-                    self.log("not finished")
+                    cur_time = time.time()
+                    if not self.__nfts or abs(self.__nfts - cur_time) > 1:
+                        self.__nfts = cur_time
+                        self.log("not finished")
                 else:
                     self.log("finished with %s" % (str(self.run_info["result"])))
             fin = False
@@ -122,6 +134,7 @@ class subprocess_struct(object):
                         self.run()
                 else:
                     fin = True
+        self.__finished =True
         return fin
     def process(self):
         if self.cb_func:
@@ -136,13 +149,16 @@ class subprocess_struct(object):
             "reply" : "runtime (%s) exceeded" % (logging_tools.get_plural("second", self.Meta.max_runtime)),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
     def send_return(self):
-        if self.srv_process:
-            self.srv_process._send_return(self.zmq_sock, self.src_id, self.srv_com)
-            del self.srv_com
-            del self.zmq_sock
-            del self.srv_process
-        if self.popen:
-            del self.popen
+        if not self.__return_sent:
+            self.__return_sent = True
+            if self.srv_process:
+                self.srv_process._send_return(self.zmq_sock, self.src_id, self.srv_com)
+                del self.srv_com
+                del self.zmq_sock
+                del self.srv_process
+        if self.__finished:
+            if self.popen:
+                del self.popen
 
 class hm_module(object):
     class Meta:
