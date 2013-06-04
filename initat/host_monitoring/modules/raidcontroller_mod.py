@@ -1308,7 +1308,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
             ctrl_list = self._dict.keys()
         
         _list = [(
-            "/usr/local/share/home/local/development/git/host-monitoring/initat/host_monitoring/exe/check_ibmbcraid.py --host %s --user %s --passwd %s --target %s" % (
+            "/opt/python-init/lib/python2.7/site-packages/initat/host_monitoring/exe/check_ibmbcraid.py --host %s --user %s --passwd %s --target %s" % (
                 ctrl_id,
                 self.cur_ns.user,
                 self.cur_ns.passwd,
