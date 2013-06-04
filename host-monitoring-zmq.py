@@ -255,13 +255,49 @@ class id_discovery(object):
             id_discovery.last_try[cur_ids.conn_str] = cur_time
             cur_ids.send_return("timeout triggered, closing")
         
+class sr_probe(object):
+    def __init__(self, host_con):
+        self.host_con = host_con
+        self.__val = {"send" : 0,
+                      "recv" : 0}
+        self.__time = time.time()
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.host_con.log("[probe for %s] %s" % (self.host_con.conn_str, what), log_level)
+    @property
+    def send(self):
+        return self.__val["send"]
+    @send.setter
+    def send(self, val):
+        cur_time = time.time()
+        diff_time = abs(cur_time - self.__time)
+        if  diff_time > 60:
+            self.log("sent / received in %s: %s / %s" % (
+                logging_tools.get_diff_time_str(diff_time),
+                logging_tools.get_size_str(self.__val["send"]),
+                logging_tools.get_size_str(self.__val["recv"]),
+            ))
+            self.__time = cur_time
+            self.__val = {"send" : 0,
+                          "recv" : 0}
+        self.__val["send"] += val
+    @property
+    def recv(self):
+        return self.__val["recv"]
+    @recv.setter
+    def recv(self, val):
+        self.__val["recv"] += val
+        
 class host_connection(object):
     def __init__(self, conn_str, **kwargs):
         self.zmq_id = kwargs.get("zmq_id", "ms")
         self.tcp_con = kwargs.get("dummy_connection", False)
         host_connection.hc_dict[(not self.tcp_con, conn_str)] = self
+        self.sr_probe = sr_probe(self)
         self.__open = False
         self.__conn_str = conn_str
+    @property
+    def conn_str(self):
+        return self.__conn_str
     def close(self):
         pass
     def __del__(self):
@@ -376,7 +412,8 @@ class host_connection(object):
                     else:
                         try:
                             host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT|zmq.SNDMORE)
-                            host_connection.zmq_socket.send_unicode(unicode(host_mes.srv_com), zmq.DONTWAIT)
+                            send_str = unicode(host_mes.srv_com)
+                            host_connection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)
                         except:
                             self.return_error(
                                 host_mes,
@@ -384,6 +421,8 @@ class host_connection(object):
                             )
                         else:
                             #self.__backlog_counter += 1
+                            self.sr_probe.send = len(send_str)
+                            host_mes.sr_probe = self.sr_probe
                             host_mes.sent = True
             else:
                 # send to twisted-thread for old clients
@@ -439,7 +478,10 @@ class host_connection(object):
                 try:
                     res_tuple = cur_mes.interpret(result)
                 except:
-                    res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
+                    res_tuple = (
+                        limits.nag_STATE_CRITICAL,
+                        "error interpreting result: %s" % (
+                            process_tools.get_except_info()))
                     exc_info = process_tools.exception_info()
                     for line in exc_info.log_lines:
                         host_connection.relayer_process.log(line, logging_tools.LOG_LEVEL_CRITICAL)
@@ -474,6 +516,7 @@ class host_message(object):
         self.srv_com["relayer_id"] = self.src_id
         self.s_time = time.time()
         self.sent = False
+        self.sr_probe = None
     def set_result(self, state, res_str):
         self.srv_com["result"] = None
         self.srv_com["result"].attrib.update({"reply" : res_str,
@@ -517,6 +560,9 @@ class host_message(object):
                 ret_str = unicode(result)
         return ret_str
     def interpret(self, result):
+        if self.sr_probe:
+            self.sr_probe.recv = len(result)
+            self.sr_probe = None
         server_error = result.xpath(None, ".//ns:result[@state != '0']")
         if server_error:
             return (int(server_error[0].attrib["state"]),
