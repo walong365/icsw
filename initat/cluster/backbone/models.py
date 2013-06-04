@@ -607,6 +607,7 @@ class device(models.Model):
     class Meta:
         db_table = u'device'
         ordering = ("name",)
+        unique_together = [("name", "domain_tree_node"),]
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
