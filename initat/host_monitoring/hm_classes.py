@@ -134,7 +134,7 @@ class subprocess_struct(object):
                         self.run()
                 else:
                     fin = True
-        self.__finished =True
+        self.__finished = fin
         return fin
     def process(self):
         if self.cb_func:
