@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2001,2002,2003,2004,2009,2011,2012 Andreas Lang-Nevyjel, init.at
+    Copyright (C) 2001,2002,2003,2004,2009,2011,2012,2013 Andreas Lang-Nevyjel, init.at
 
     Send feedback to: <lang-nevyjel@init.at>
 
@@ -177,7 +177,12 @@ int main (int argc, char** argv) {
     void *context = zmq_init(1);
     void *requester = zmq_socket(context, ZMQ_DEALER);
     char* identity_str = parse_uuid(src_ip);
+    int64_t tcp_keepalive, tcp_keepalive_idle;
+    tcp_keepalive = 1;
+    tcp_keepalive_idle = 300;
     zmq_setsockopt(requester, ZMQ_IDENTITY, identity_str, strlen(identity_str));
+    zmq_setsockopt(requester, ZMQ_TCP_KEEPALIVE, &tcp_keepalive, sizeof(tcp_keepalive));
+    zmq_setsockopt(requester, ZMQ_TCP_KEEPALIVE_IDLE, &tcp_keepalive_idle, sizeof(tcp_keepalive_idle));
     alrmsigact = (struct sigaction*)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
         free(host_b);

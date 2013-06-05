@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2001,2002,2003,2004,2005,2006,2012 Andreas Lang, init.at
+    Copyright (C) 2001,2002,2003,2004,2005,2006,2012,2013 Andreas Lang, init.at
 
     Send feedback to: <lang@init.at>
 
@@ -147,7 +147,12 @@ int main (int argc, char** argv) {
     void *context = zmq_init(1);
     void *responder = zmq_socket(context, ZMQ_ROUTER);
     char* identity_str = parse_uuid(src_ip);
+    int64_t tcp_keepalive, tcp_keepalive_idle;
+    tcp_keepalive = 1;
+    tcp_keepalive_idle = 300;
     zmq_setsockopt(responder, ZMQ_IDENTITY, identity_str, strlen(identity_str));
+    zmq_setsockopt(responder, ZMQ_TCP_KEEPALIVE, &tcp_keepalive, sizeof(tcp_keepalive));
+    zmq_setsockopt(responder, ZMQ_TCP_KEEPALIVE_IDLE, &tcp_keepalive_idle, sizeof(tcp_keepalive_idle));
     char bind_address[100];
     sprintf(bind_address, "tcp://*:%d", PORT);
     zmq_bind (responder, bind_address);
@@ -187,7 +192,7 @@ int main (int argc, char** argv) {
         if (!strncmp(msg_text, "status", 6) && strlen(msg_text) == 6) {
             //printf ("%d ,  %s %d\n", num, inbuff, sizeof(inbuff));
             // recreate FNAME according to current runlevel, not beautifull but working
-            system("echo 'up to runlevel' $(/sbin/runlevel |cut -d ' ' -f 2) >"FNAME);
+            system("echo 'up to runlevel' $(/sbin/runlevel | cut -d ' ' -f 2) >"FNAME);
             file = open(FNAME, 0);
             if (file < 0) {
                 fprintf(stderr, "File not found");
