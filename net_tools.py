@@ -94,6 +94,8 @@ class zmq_connection(object):
     def add_connection(self, conn_str, command, **kwargs):
         new_sock = self.context.socket(zmq.DEALER)
         new_sock.setsockopt(zmq.LINGER, self.__linger_time)
+        new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         #print new_sock.getsockopt(zmq.NOBLOCK)
         #new_sock.setsockopt(zmq.NOBLOCK, 1)
         #print new_sock.getsockopt(zmq.NOBLOCK)
