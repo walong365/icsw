@@ -3844,6 +3844,8 @@ class domain_tree_node(models.Model):
     always_create_ip = models.BooleanField(default=False)
     # use for nameserver config
     write_nameserver_config = models.BooleanField(default=False)
+    # comment
+    comment = models.CharField(max_length=256, default="")
     def get_sorted_pks(self):
         return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
@@ -3862,6 +3864,7 @@ class domain_tree_node(models.Model):
             create_short_names="1" if self.create_short_names else "0",
             write_nameserver_config="1" if self.write_nameserver_config else "0",
             always_create_ip="1" if self.always_create_ip else "0",
+            comment="%s" % (self.comment or ""),
         )
     
 @receiver(signals.pre_save, sender=domain_tree_node)
