@@ -723,8 +723,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 if line.lower().startswith("adapter #"):
                     line_p = line.split()
                     ctrl_num = int(line_p[-1][1:])
-                    self._dict[ctrl_num] = {"info"          : " ".join(line_p),
-                                            "logical_lines" : {}}
+                    self._dict[ctrl_num] = {
+                        "info"          : " ".join(line_p),
+                        "logical_lines" : {}}
                     self.log("Found Controller '%s' with ID %d" % (self._dict[ctrl_num]["info"],
                                                                    ctrl_num))
     def process(self, ccs):
@@ -742,9 +743,10 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     if mode_sense == True:
                         if (parts[0], cur_mode) == ("adapter", None):
                             cur_mode = "adp"
-                            count_dict = {"adp"  : count_dict.get("adp", -1) + 1,
-                                          "virt" : -1,
-                                          "pd"   : 0}
+                            count_dict = {
+                                "adp"  : count_dict.get("adp", -1) + 1,
+                                "virt" : -1,
+                                "pd"   : 0}
                         elif (parts[0], cur_mode) in [("number", "adp"), ("virtual", "pd")]:
                             cur_mode = "virt"
                             count_dict[cur_mode] += 1

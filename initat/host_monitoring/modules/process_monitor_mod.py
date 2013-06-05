@@ -20,16 +20,15 @@
 
 import sys
 import os
-import os.path
 import re
 import signal
-from initat.host_monitoring import limits
+import commands
+import pprint
 import logging_tools
 import process_tools
-import commands
-from initat.host_monitoring import hm_classes
 import threading_tools
-import pprint
+from initat.host_monitoring import limits
+from initat.host_monitoring import hm_classes
 from lxml import etree
 
 MIN_UPDATE_TIME = 10
@@ -47,13 +46,14 @@ class _general(hm_classes.hm_module):
     def update_machine_vector(self, mv):
         pdict = process_tools.get_proc_list()
         pids = pdict.keys()
-        sl_list = [("R", "run"            ),
-                   ("Z", "zombie"         ),
-                   ("D", "uninterruptible"),
-                   ("T", "traced"         ),
-                   ("S", "sleeping"       ),
-                   ("W", "paging"         ),
-                   ("X", "dead"           )]
+        sl_list = [
+            ("R", "run"            ),
+            ("Z", "zombie"         ),
+            ("D", "uninterruptible"),
+            ("T", "traced"         ),
+            ("S", "sleeping"       ),
+            ("W", "paging"         ),
+            ("X", "dead"           )]
         n_dict = dict([(key[0], 0) for key in sl_list])
         mem_mon_procs = []#self.__short_mon_procs
         mem_found_procs = {}
@@ -116,10 +116,12 @@ class procstat_command(hm_classes.hm_command):
         else:
             ret_state = limits.nag_STATE_OK
         ret_state = max(ret_state, limits.check_floor(res_dict["ok"], cur_ns.warn, cur_ns.crit))
-        ret_str = "%s running (%s%s%s)" % (logging_tools.get_plural("process", len(result)),
-                                           ", ".join(sorted(commands)) if commands else "all",
-                                           ", %d zombie" % (res_dict["fail"]) if res_dict["fail"] else "",
-                                           ", %d accepted zombie" % (res_dict["zombie_ok"]) if res_dict["zombie_ok"] else "")
+        ret_str = "%s running (%s%s%s)" % (
+            logging_tools.get_plural("process", len(result)),
+            ", ".join(sorted(commands)) if commands else "all",
+            ", %s" % (logging_tools.get_plural("zombie", res_dict["fail"])) if res_dict["fail"] else "",
+            ", %s" % (logging_tools.get_plural("accepted zombie", res_dict["zombie_ok"])) if res_dict["zombie_ok"] else "",
+        )
         return ret_state, ret_str
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
@@ -137,14 +139,16 @@ class procstat_command(hm_classes.hm_command):
             zomb_str = ""
             ret_state = limits.check_floor(result["num_ok"], parsed_coms.warn, parsed_coms.crit)
         if result["command"] == "all":
-            rets = "%d processes running%s%s" % (result["num_ok"],
-                                                 zomb_str,
-                                                 shit_str)
+            rets = "%d processes running%s%s" % (
+                result["num_ok"],
+                zomb_str,
+                shit_str)
         else:
-            rets = "proc %s has %s running%s%s" % (result["name"],
-                                                   logging_tools.get_plural("instance", result["num_ok"]),
-                                                   zomb_str,
-                                                   shit_str)
+            rets = "proc %s has %s running%s%s" % (
+                result["name"],
+                logging_tools.get_plural("instance", result["num_ok"]),
+                zomb_str,
+                shit_str)
         return ret_state, rets
     def server_call(self, cm):
         if len(cm) > 1:
@@ -175,12 +179,13 @@ class procstat_command(hm_classes.hm_command):
                         num_fail += 1
                 else:
                     num_ok += 1
-        return "ok %s" % (hm_classes.sys_to_net({"command"  : com,
-                                                 "name"     : pn,
-                                                 "num_ok"   : num_ok,
-                                                 "num_fail" : num_fail,
-                                                 "num_shit" : num_shit,
-                                                 "struct"   : copy_struct}))
+        return "ok %s" % (hm_classes.sys_to_net({
+            "command"  : com,
+            "name"     : pn,
+            "num_ok"   : num_ok,
+            "num_fail" : num_fail,
+            "num_shit" : num_shit,
+            "struct"   : copy_struct}))
     def client_call(self, result, parsed_coms):
         lim = parsed_coms[0]
         result = hm_classes.net_to_sys(result[3:])
@@ -201,16 +206,18 @@ class procstat_command(hm_classes.hm_command):
             zomb_str = ""
             ret_state, ret_str = lim.check_floor(result["num_ok"])
         if result["command"] == "all":
-            rets = "%s: %d processes running%s%s" % (ret_str,
-                                                     result["num_ok"],
-                                                     zomb_str,
-                                                     shit_str)
+            rets = "%s: %d processes running%s%s" % (
+                ret_str,
+                result["num_ok"],
+                zomb_str,
+                shit_str)
         else:
-            rets = "%s: proc %s has %s running%s%s" % (ret_str,
-                                                       result["name"],
-                                                       logging_tools.get_plural("instance", result["num_ok"]),
-                                                       zomb_str,
-                                                       shit_str)
+            rets = "%s: proc %s has %s running%s%s" % (
+                ret_str,
+                result["name"],
+                logging_tools.get_plural("instance", result["num_ok"]),
+                zomb_str,
+                shit_str)
         return ret_state, rets
 
 class proclist_command(hm_classes.hm_command):
@@ -238,14 +245,16 @@ class proclist_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         def draw_tree(m_pid, nest = 0):
             proc_stuff = result[m_pid]
-            r_list = [("%s%s" % (" " * nest, m_pid),
-                       result[m_pid]["ppid"],
-                       result[m_pid]["uid"],
-                       result[m_pid]["gid"],
-                       result[m_pid]["state"],
-                       result[m_pid].get("last_cpu", -1),
-                       result[m_pid].get("affinity", "-"),
-                       result[m_pid]["out_name"])]
+            r_list = [
+                (
+                    "%s%s" % (" " * nest, m_pid),
+                    result[m_pid]["ppid"],
+                    result[m_pid]["uid"],
+                    result[m_pid]["gid"],
+                    result[m_pid]["state"],
+                    result[m_pid].get("last_cpu", -1),
+                    result[m_pid].get("affinity", "-"),
+                    result[m_pid]["out_name"])]
             for dt_entry in [draw_tree(y, nest+2) for y in result[m_pid]["childs"]]:
                 r_list.extend([z for z in dt_entry])
             return r_list
@@ -281,14 +290,15 @@ class proclist_command(hm_classes.hm_command):
         else:
             for act_pid in pids:
                 proc_stuff = result[act_pid]
-                form_list.add_line((act_pid,
-                                    proc_stuff["ppid"],
-                                    proc_stuff["uid"],
-                                    proc_stuff["gid"],
-                                    proc_stuff["state"],
-                                    proc_stuff.get("last_cpu", -1),
-                                    proc_stuff.get("affinity", "-"),
-                                    proc_stuff["out_name"]))
+                form_list.add_line((
+                    act_pid,
+                    proc_stuff["ppid"],
+                    proc_stuff["uid"],
+                    proc_stuff["gid"],
+                    proc_stuff["state"],
+                    proc_stuff.get("last_cpu", -1),
+                    proc_stuff.get("affinity", "-"),
+                    proc_stuff["out_name"]))
         if form_list:
             ret_a.extend(str(form_list).split("\n"))
         return ret_state, "\n".join(ret_a)
@@ -360,9 +370,11 @@ class ipckill_command(hm_classes.hm_command):
         )
         self.log(sig_str)
         srv_com["ipc_result"] = []
-        for ipc_dict in [{"file" : "shm", "key_name" : "shmid", "ipcrm_opt" : "m"},
-                         {"file" : "msg", "key_name" : "msqid", "ipcrm_opt" : "q"},
-                         {"file" : "sem", "key_name" : "semid", "ipcrm_opt" : "s"}]:
+        for ipc_dict in [
+            {"file" : "shm", "key_name" : "shmid", "ipcrm_opt" : "m"},
+            {"file" : "msg", "key_name" : "msqid", "ipcrm_opt" : "q"},
+            {"file" : "sem", "key_name" : "semid", "ipcrm_opt" : "s"},
+            ]:
             ipcv_file = "/proc/sysvipc/%s" % (ipc_dict["file"])
             d_key = ipc_dict["file"]
             cur_typenode = srv_com.builder("ipc_list", ipctype=ipc_dict["file"])
