@@ -36,9 +36,10 @@ def sess_logout(request):
     from_logout = request.user.is_authenticated()
     logout(request)
     login_form = authentication_form()
-    return render_me(request, "login.html", {"login_form"  : login_form,
-                                             "from_logout" : from_logout,
-                                             "app_path"    : reverse("session:login")})()
+    return render_me(request, "login.html", {
+        "login_form"  : login_form,
+        "from_logout" : from_logout,
+        "app_path"    : reverse("session:login")})()
 
 @init_logging
 def sess_login(request):
@@ -59,5 +60,6 @@ def sess_login(request):
             return HttpResponseRedirect(reverse("main:index"))
     else:
         login_form = authentication_form()
-    return render_me(request, "login.html", {"login_form" : login_form,
-                                             "app_path"   : reverse("session:login")})()
+    return render_me(request, "login.html", {
+        "login_form" : login_form,
+        "app_path"   : reverse("session:login")})()

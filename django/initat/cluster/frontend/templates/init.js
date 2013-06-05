@@ -1,5 +1,5 @@
 {% load coffeescript %}
-o
+
 <script type="text/javascript">
 
 {% inlinecoffeescript %}

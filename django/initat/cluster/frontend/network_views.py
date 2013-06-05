@@ -15,7 +15,7 @@ import ipvx_tools
 import config_tools
 
 from initat.cluster.frontend.helper_functions import init_logging
-from initat.core.render import render_me
+from initat.core.render import render_me, render_string
 from django.contrib.auth.decorators import login_required
 from lxml import etree
 from lxml.builder import E
@@ -27,6 +27,7 @@ from initat.cluster.backbone.models import device, network, net_ip, \
      netdevice_speed, device_variable, device_group, to_system_tz, \
      domain_tree_node, domain_name_tree
 import json
+from initat.cluster.frontend.forms import dtn_detail_form
 from networkx.readwrite import json_graph
 
 def cleanup_tree(in_xml, attr_dict):
@@ -409,4 +410,19 @@ def move_domain_tree_node(request):
         src_node.save()
     cur_dnt = domain_name_tree()
     return request.xml_response.create_response()
-   
+
+@init_logging
+@login_required
+def get_dtn_detail_form(request):
+    cur_dtn = domain_tree_node.objects.get(Q(pk=request.POST["key"]))
+    request.xml_response["form"] = render_string(
+        request,
+        "crispy_form.html",
+        {
+            "form" : dtn_detail_form(
+                auto_id="dtn__%d__%%s" % (cur_dtn.pk),
+                instance=cur_dtn,
+            )
+        }
+    )
+    return request.xml_response.create_response()

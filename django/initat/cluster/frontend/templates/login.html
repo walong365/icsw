@@ -15,7 +15,7 @@
 </div>
 
 <div style="margin-top:130px; width:600px; margin-left:auto; margin-right:auto;">
-    {% crispy login_form login_form.helper %}
+    {% crispy login_form %}
 </div>
 
 <script type="text/javascript">
@@ -23,7 +23,7 @@
 {% inlinecoffeescript %}
 
 addHandlers = ->
-    $("form#uniForm").uniform()
+    #$("form#uniForm").uniform()
     $("input#id_username").focus()
 
 $(document).ready(addHandlers)

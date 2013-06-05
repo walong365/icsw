@@ -3,12 +3,13 @@
 """ simple formulars for django / clustersoftware """
 
 from django.forms.widgets import TextInput, PasswordInput
-from django.forms import Form, ValidationError, CharField
+from django.forms import Form, ModelForm, ValidationError, CharField
 from django.contrib.auth import authenticate
 from django.utils.translation import ugettext_lazy as _
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from django.core.urlresolvers import reverse
+from initat.cluster.backbone.models import domain_tree_node
 
 class authentication_form(Form):
     username = CharField(label=_("Username"),
@@ -25,6 +26,7 @@ class authentication_form(Form):
         self.helper = FormHelper()
         self.helper.form_id = "id_login_form"
         self.helper.form_method = "post"
+        self.helper.form_class = "form-horizontal"
         self.helper.form_action = reverse("session:login")
         self.helper.add_input(Submit("submit", "Submit"))
         self.request = request
@@ -48,3 +50,13 @@ class authentication_form(Form):
         return self.cleaned_data
     def get_user(self):
         return self.user_cache
+
+class dtn_detail_form(ModelForm):
+    def __init__(self, request=None, *args, **kwargs):
+        super(dtn_detail_form, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_id = "id_dtn_detail_form"
+        self.helper.form_class = "form-horizontal"
+    class Meta:
+        model = domain_tree_node
+        fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment"]
