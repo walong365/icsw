@@ -54,6 +54,7 @@ class machine(object):
     def __init__(self, dev):
         self.device = dev
         self.name = dev.name
+        self.full_name = dev.full_name
         self.pk = dev.pk
         self.__log_template = logging_tools.get_logger(
             "%s.%s" % (global_config["LOG_NAME"],
@@ -140,18 +141,18 @@ class machine(object):
         else:
             new_mach = machine(new_dev)
         machine.__unique_keys.add(new_dev.pk)
-        machine.__unique_names.add(new_dev.name)
-        machine.__lut[new_dev.name] = new_mach
+        machine.__unique_names.add(new_dev.full_name)
+        machine.__lut[new_dev.full_name] = new_mach
         machine.__lut[new_dev.pk] = new_mach
     @staticmethod
     def delete_device(dev_spec):
         mach = machine.get_device(dev_spec)
         if mach:
             mach.close()
-            del machine.__lut[mach.name]
+            del machine.__lut[mach.full_name]
             del machine.__lut[mach.pk]
             machine.__unique_keys.remove(mach.pk)
-            machine.__unique_names.remove(mach.name)
+            machine.__unique_names.remove(mach.full_name)
     @staticmethod
     def get_device(dev_spec):
         return machine.__lut.get(dev_spec, None)
@@ -992,16 +993,17 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
     def ping(self, seq_str, target, num_pings, timeout, **kwargs):
         self.log("ping to %s (%d, %.2f) [%s]" % (target, num_pings, timeout, seq_str))
         cur_time = time.time()
-        self[seq_str] = {"host"       : target,
-                         "num"        : num_pings,
-                         "timeout"    : timeout,
-                         "start"      : cur_time,
-                         "id"         : kwargs.get("id", ""),
-                         # time between pings
-                         "slide_time" : 0.1,
-                         "sent"       : 0,
-                         "recv_ok"    : 0,
-                         "recv_fail"  : 0,
+        self[seq_str] = {
+            "host"       : target,
+            "num"        : num_pings,
+            "timeout"    : timeout,
+            "start"      : cur_time,
+            "id"         : kwargs.get("id", ""),
+            # time between pings
+            "slide_time" : 0.1,
+            "sent"       : 0,
+            "recv_ok"    : 0,
+            "recv_fail"  : 0,
                          "error_list" : [],
                          "sent_list"  : {},
                          "recv_list"  : {}}

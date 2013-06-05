@@ -3112,41 +3112,41 @@ class server_process(threading_tools.process_pool):
     def _check_status_entries(self):
         map_dict = {
             "memtest" : [
-                ("prod_link", False),
+                ("prod_link" , False),
                 ("memory_test", True),
-                ("boot_local", False),
-                ("do_install", False),
-                ("is_clean", False)],
+                ("boot_local" , False),
+                ("do_install" , False),
+                ("is_clean"   , False)],
             "boot_local" : [
-                ("prod_link", False),
+                ("prod_link"  , False),
                 ("memory_test", False),
-                ("boot_local", True),
-                ("do_install", False),
-                ("is_clean", False)],
+                ("boot_local" , True),
+                ("do_install" , False),
+                ("is_clean"   , False)],
             "boot_clean" : [
-                ("prod_link", True),
+                ("prod_link"  , True),
                 ("memory_test", False),
-                ("boot_local", False),
-                ("do_install", False),
-                ("is_clean", True)],
+                ("boot_local" , False),
+                ("do_install" , False),
+                ("is_clean"   , True)],
             "boot" : [
-                ("prod_link", True),
+                ("prod_link"  , True),
                 ("memory_test", False),
-                ("boot_local", False),
-                ("do_install", False),
-                ("is_clean", False)],
+                ("boot_local" , False),
+                ("do_install" , False),
+                ("is_clean"   , False)],
             "installation_clean" : [
-                ("prod_link", True),
+                ("prod_link"  , True),
                 ("memory_test", False),
-                ("boot_local", False),
-                ("do_install", True),
-                ("is_clean", True)],
+                ("boot_local" , False),
+                ("do_install" , True),
+                ("is_clean"   , True)],
             "installation" : [
-                ("prod_link", True),
+                ("prod_link"  , True),
                 ("memory_test", False),
-                ("boot_local", False),
-                ("do_install", True),
-                ("is_clean", False)]}
+                ("boot_local" , False),
+                ("do_install" , True),
+                ("is_clean"   , False)]}
         for mod_status in status.objects.filter(Q(allow_boolean_modify=True)):
             cur_uc = unicode(mod_status)
             if mod_status.status in map_dict:
