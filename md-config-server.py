@@ -2723,7 +2723,7 @@ class build_process(threading_tools.process_obj):
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
         h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
-        return device.objects.filter(h_filter).count()
+        return device.objects.exclude(Q(device_type__identifier="MD")).filter(h_filter).count()
     def _create_host_config_files(self, build_dv, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map):
         """
         d_map : distance map
@@ -2757,7 +2757,7 @@ class build_process(threading_tools.process_obj):
         ps_dict = {}
         for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):
             ps_dict[ps_config.name] = ps_config.parent_config.name
-        check_hosts = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(h_filter).select_related("domain_tree_node")])
+        check_hosts = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.exclude(Q(device_type__identifier='MD')).filter(h_filter).select_related("domain_tree_node")])
         for cur_dev in check_hosts.itervalues():
             # set default values
             cur_dev.valid_ips = {}
