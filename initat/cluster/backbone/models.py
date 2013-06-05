@@ -3370,20 +3370,23 @@ class status(models.Model):
     allow_boolean_modify = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
-        return u"%s (%s)%s" % (self.status,
-                             ",".join([short for short, attr_name in [
-                                 ("link" , "prod_link"),
-                                 ("mem"  , "memory_test"),
-                                 ("loc"  , "boot_local"),
-                                 ("ins"  , "do_install"),
-                                 ("clean", "is_clean")] if getattr(self, attr_name)]),
-                             "(*)" if self.allow_boolean_modify else "")
+        print ".", self.status
+        return u"%s (%s)%s" % (
+            self.status,
+            ",".join([short for short, attr_name in [
+                ("link"  , "prod_link"    ),
+                ("mem"   , "memory_test"  ),
+                ("loc"   , "boot_local"   ),
+                ("ins"   , "do_install"   ),
+                ("retain", "is_clean"     )] if getattr(self, attr_name)]),
+            "(*)" if self.allow_boolean_modify else "")
     def get_xml(self, prod_net=None):
         return E.status(
             unicode(self) if prod_net is None else "%s into %s" % (unicode(self), unicode(prod_net)),
             pk="%d" % (self.pk),
             prod_net="%d" % (0 if prod_net is None else prod_net.pk),
-            key="status__%d" % (self.pk))
+            key="status__%d" % (self.pk),
+        )
     class Meta:
         db_table = u'status'
 
