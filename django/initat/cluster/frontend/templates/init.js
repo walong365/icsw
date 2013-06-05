@@ -644,13 +644,13 @@ parse_xml_response = (xml, min_level) ->
             cur_mes = $(cur_mes)
             cur_level = parseInt(cur_mes.attr("log_level"))
             if cur_level < 30
-                $.jnotify(cur_mes.text())
+                noty({"text" : cur_mes.text()})
             else if cur_level == 30
-                $.jnotify(cur_mes.text(), "warning")
+                noty({"text" : cur_mes.text(), "type" : "warning"})
             else
-                $.jnotify(cur_mes.text(), "error", true)
+                noty({"text" : cur_mes.text(), "type" : "error", "timeout" : false})
     else
-        $.jnotify("error parsing responsee", "error", true)
+        noty({"text" : "error parsing response", "type" : "error", "timeout" : false})
     return success
 
 # lock all active input elements

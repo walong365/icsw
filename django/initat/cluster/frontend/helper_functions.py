@@ -349,8 +349,8 @@ def send_emergency_mail(**kwargs):
     header_cs = "utf-8"
     mesg = email.mime.text.MIMEText("\n".join(msg_lines), _charset=header_cs)
     mesg["Subject"] = "Python error"
-    mesg["From"] = "python-error@init.at"
-    mesg["To"] = "oekotex@init.at"
+    mesg["From"]    = "python-error@init.at"
+    mesg["To"]      = "oekotex@init.at"
     srv = smtplib.SMTP()
     srv.connect(settings.MAIL_SERVER, 25)
     srv.sendmail(mesg["From"], mesg["To"].split(","), mesg.as_string())
@@ -365,7 +365,10 @@ def contact_server(request, conn_str, send_com, **kwargs):
             request.log(*result.get_log_tuple(), xml=True)
     else:
         if kwargs.get("log_error", True):
-            request.log("error contacting server %s" % (conn_str), logging_tools.LOG_LEVEL_ERROR, xml=True)
+            request.log("error contacting server %s, %s" % (
+                conn_str,
+                send_com["command"].text
+                ), logging_tools.LOG_LEVEL_ERROR, xml=True)
     return result
 
 if __name__ == "__main__":

@@ -185,7 +185,7 @@ def set_kernel(request):
     srv_com["devices"] = srv_com.builder(
         "devices",
         srv_com.builder("device", pk="%d" % (cur_dev.pk)))
-    contact_server(request, "tcp://localhost:8000", srv_com, timeout=10)
+    contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, connection_id="webfrontend_refresh")
     request.log("updated kernel settings of %s" % (unicode(cur_dev)), xml=True)
     return request.xml_response.create_response()
     
@@ -222,7 +222,7 @@ def get_boot_info(request):
     _post = request.POST
     option_dict = dict([(short, True if _post.get("opt_%s" % (short)) in ["true"] else False) for short, long_opt, t_class in OPTION_LIST])
     sel_list = _post.getlist("sel_list[]")
-    dev_result = device.objects.filter(Q(name__in=sel_list))
+    dev_result = device.objects.filter(Q(pk__in=sel_list))
     call_mother = True if int(_post["call_mother"]) else False
     # to speed up things while testing
     result = None

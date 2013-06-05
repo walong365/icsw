@@ -14,13 +14,13 @@
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/tablesorter.css" />
     {# can be removed as soon as jquery-UI is up to par #}
     <link type="text/css" rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/js/libs/dynatree/skin/ui.dynatree.css" />
-    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/jquery.jnotify-alt.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/jquery.dataTables.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/msdropdown/dd.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}uni_form/uni-form.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}uni_form/default.uni-form.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/jqModal.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/codemirror.css" />
+    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/prettyCheckable/prettyCheckable.css" />
 {% endcompress %}
 
 <style type="text/css" media="screen">
@@ -64,7 +64,11 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/jquery.tablesorter.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/jquery.timers-1.2.js"></script>
     <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/dynatree/jquery.dynatree.min.js"></script>
-    <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/jquery.jnotify.min.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/noty/jquery.noty.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/noty/top.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/noty/topRight.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/noty/topLeft.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/noty/default.js"></script>
     <!--<script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/underscore-min.js"></script>-->
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/jquery.dd.min.js"></script>
     <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery.simplemodal-latest.min.js"></script>
@@ -73,6 +77,7 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/codemirror/python.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/codemirror/xml.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}uni_form/uni-form.jquery.js"></script>
+    <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/prettyCheckable/prettyCheckable.js"></script>
 {% endcompress %}
 
 {% include "init.js" %}
@@ -158,10 +163,32 @@ add_handlers_main = ->
         {% endif %}
     catch err
         # in case no menu or sidebar is present
-    # init jnotify
-    $.jnotify.setup
-        "fadeSpeed" : 50
-        "delay"     : 10000
+    # init noty
+    $.noty.defaults = {
+        "layout" : "topRight"
+        "theme"  : "defaultTheme"
+        "type"   : 'success',
+        "text"   : '',
+        "dismissQueue" : true, # If you want to use queue feature set this true
+        "template"     : '<div class="noty_message"><span class="noty_text"></span><div class="noty_close"></div></div>',
+        "animation"    : {
+            open   : {height: 'toggle'},
+            close  : {height: 'toggle'},
+            easing : 'swing',
+            speed  : 200 # opening & closing animation speed
+        },
+        "timeout"   : 5000,  # delay for closing event. Set false for sticky notifications
+        "force"     : false, # adds notification to the beginning of queue when set to true
+        "modal"     : false,
+        "closeWith" : ['hover'], # ['click', 'button', 'hover']
+        "callback" : {
+            onShow     : ->
+            afterShow  : ->
+            onClose    : ->
+            afterClose : ->
+        },
+        buttons: false
+    }
     # show time
     $(document).everyTime(1000, "show_time", (i) ->
         update_time()

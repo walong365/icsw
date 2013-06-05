@@ -480,15 +480,15 @@ class boot_table
                         opt = $(opt)
                         opt_button = $("<input>").attr({
                             "type" : "checkbox",
-                            "id"   : "opt_" + opt.attr("short")})
+                            "id"   : "opt_" + opt.attr("short"),
+                            "data-label" : opt.text()
+                        })
                         if @options_used[opt.attr("short")]
                             opt_button.attr("checked", "checked")
                         opt_h3.append(opt_button)
-                        opt_h3.append($("<label>").attr({"for" : "opt_" + opt.attr("short")}).text(opt.text()))
                         opt_button.bind("change", @change_option)
                         @option_list.push(opt.attr("short"))
-                    opt_h3.find("input").button()
-                    opt_h3.buttonset()
+                    opt_h3.find("input").prettyCheckable()
                     # set number of devices
                     @num_devices = @xml.find("devices device[tree_selected='selected'][meta_device='0']").length
                     for key, value of @options_used
@@ -562,7 +562,7 @@ class boot_table
     draw: (@xml) =>
         @install_options()
     draw_table: =>
-        @cur_pure_devices = ($(cur_dev).attr("name") for cur_dev in @xml.find("device[meta_device='0'][tree_selected='selected']"))
+        @cur_pure_devices = ($(cur_dev).attr("pk") for cur_dev in @xml.find("device[meta_device='0'][tree_selected='selected']"))
         b_table = $("<table>").attr({"id" : "boot"}).addClass("devicelist")
         # overview table for all devices
         ov_table = $("<table>").attr({"id" : "overview"}).addClass("devicelist")
@@ -751,11 +751,17 @@ class boot_table
                             dev_tr = @table.find("tr#" + cur_dev.attr("key"))
                             dev_id = dev_tr.attr("id")
                             if call_mother
-                                dev_tr.find("td#recv_str").text("rcv: " + cur_dev.attr("recvstate"))
-                                dev_tr.find("td#req_str").text("req: " + cur_dev.attr("reqstate"))
+                                if cur_dev.attr("recvstate")
+                                    dev_tr.find("td#recv_str").text("rcv: #{cur_dev.attr('recvstate')}")
+                                else
+                                    dev_tr.find("td#recv_str").text("rcv: ---")
+                                if cur_dev.attr("reqstate")
+                                    dev_tr.find("td#req_str").text("req: #{cur_dev.attr('reqstate')}")
+                                else
+                                    dev_tr.find("td#req_str").text("rcv: ---")
                                 net_state = cur_dev.attr("net_state")
                                 tr_class = {"down" : "error", "unknown" : "error", "ping" : "warn", "up" : "ok"}[net_state]
-                                dev_tr.find("td#network").text(cur_dev.attr("network") + " (#{net_state})")
+                                dev_tr.find("td#network").text("#{cur_dev.attr('network')} (#{net_state})")
                                 dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok error warn").addClass(tr_class)
                             for check_opt in @option_list.reverse()
                                 if check_opt != "l" and @options_used[check_opt]
