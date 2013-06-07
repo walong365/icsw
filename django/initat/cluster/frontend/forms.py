@@ -7,7 +7,8 @@ from django.forms import Form, ModelForm, ValidationError, CharField
 from django.contrib.auth import authenticate
 from django.utils.translation import ugettext_lazy as _
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit
+from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fieldset, Div
+from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node
 
@@ -26,9 +27,19 @@ class authentication_form(Form):
         self.helper = FormHelper()
         self.helper.form_id = "id_login_form"
         self.helper.form_method = "post"
-        self.helper.form_class = "form-horizontal"
+        self.helper.layout = Layout(
+            Fieldset(
+                "Login credentials",
+                Field("username"),
+                Field("password"),
+                css_class="inlineLabels",
+                ),
+            ButtonHolder(
+                Submit("submit", "Submit", css_class="primaryAction"),
+            ),
+        )
+        #self.helper.add_input(Submit("submit", "Submit"))
         self.helper.form_action = reverse("session:login")
-        self.helper.add_input(Submit("submit", "Submit"))
         self.request = request
         self.user_cache = None
         super(authentication_form, self).__init__(*args, **kwargs)
@@ -56,7 +67,19 @@ class dtn_detail_form(ModelForm):
         super(dtn_detail_form, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_id = "id_dtn_detail_form"
-        self.helper.form_class = "form-horizontal"
+        self.helper.layout = Layout(
+            Fieldset(
+                "Domain tree node details",
+                Field("name"),
+                Field("node_postfix"),
+                Field("comment"),
+                Field("create_short_names"),
+                Field("always_create_ip"),
+                Field("write_nameserver_config"),
+                css_class="inlineLabels",
+            )
+        )
     class Meta:
         model = domain_tree_node
         fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment"]
+        
