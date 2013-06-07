@@ -60,10 +60,17 @@ def write_manpage(filename, content, file_creator=open):
 
 
 def main():
+    # Check if help2man is installed
+    try:
+        subprocess.check_output(["help2man", "--help"], stderr=subprocess.STDOUT)
+    except OSError:
+        print "Install 'help2man' to use this script!"
+        sys.exit(1)
+
     symbol_tables = []
     files_to_check = []
 
-    help = \
+    description = \
     """
 Try to create man pages from optparse/argparse output.
 The script checks if argparse/optarse is an imported symbol. If it is
@@ -71,7 +78,7 @@ then the script is executed with --help/-h and the output rendered into
 a man page.
     """
 
-    parser = argparse.ArgumentParser(help)
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument("paths", nargs="+", type=str, help="Directories or files to check")
     parser.add_argument("--quiet", action="store_true", help="Be quiet")
     parser.add_argument("--nogz", action="store_const", default=(GzipFile, ".gz"),
