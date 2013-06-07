@@ -63,7 +63,15 @@ def main():
     symbol_tables = []
     files_to_check = []
 
-    parser = argparse.ArgumentParser("Try to create man pages from optparse/argparse output")
+    help = \
+    """
+Try to create man pages from optparse/argparse output.
+The script checks if argparse/optarse is an imported symbol. If it is
+then the script is executed with --help/-h and the output rendered into
+a man page.
+    """
+
+    parser = argparse.ArgumentParser(help)
     parser.add_argument("paths", nargs="+", type=str, help="Directories or files to check")
     parser.add_argument("--quiet", action="store_true", help="Be quiet")
     parser.add_argument("--nogz", action="store_const", default=(GzipFile, ".gz"),
