@@ -134,8 +134,9 @@ monitoring_patterns = patterns(
 
 user_patterns = patterns(
     "initat.cluster.frontend",
-    url("overview/(?P<mode>.*)$"      , "user_views.overview"   , name="overview"),
-    url("sync$"                       , "user_views.sync_users" , name="sync_users"),
+    url("overview/(?P<mode>.*)$"      , "user_views.overview"         , name="overview"         ),
+    url("passwd/xml$"                 , "user_views.get_password_form", name="get_password_form"),
+    url("sync$"                       , "user_views.sync_users"       , name="sync_users"       ),
 )
 
 if settings.CLUSTER_LICENSE["rest"]:

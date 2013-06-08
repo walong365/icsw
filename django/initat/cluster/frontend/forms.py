@@ -7,10 +7,10 @@ from django.forms import Form, ModelForm, ValidationError, CharField
 from django.contrib.auth import authenticate
 from django.utils.translation import ugettext_lazy as _
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fieldset, Div
+from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fieldset, Div, HTML
 from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
-from initat.cluster.backbone.models import domain_tree_node
+from initat.cluster.backbone.models import domain_tree_node, device
 
 class authentication_form(Form):
     username = CharField(label=_("Username"),
@@ -29,7 +29,8 @@ class authentication_form(Form):
         self.helper.form_method = "post"
         self.helper.layout = Layout(
             Fieldset(
-                "Login credentials",
+                "",
+                HTML("<h2>Login credentials</h2>"),
                 Field("username"),
                 Field("password"),
                 css_class="inlineLabels",
@@ -63,23 +64,54 @@ class authentication_form(Form):
         return self.user_cache
 
 class dtn_detail_form(ModelForm):
-    def __init__(self, request=None, *args, **kwargs):
-        super(dtn_detail_form, self).__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.form_id = "id_dtn_detail_form"
-        self.helper.layout = Layout(
-            Fieldset(
-                "Domain tree node details",
-                Field("name"),
-                Field("node_postfix"),
-                Field("comment"),
+    helper = FormHelper()
+    helper.form_id = "id_dtn_detail_form"
+    helper.layout = Layout(
+        Fieldset(
+            "Domain tree node details",
+            Field("name"),
+            Field("node_postfix"),
+            Field("comment"),
+            ButtonHolder(
                 Field("create_short_names"),
                 Field("always_create_ip"),
                 Field("write_nameserver_config"),
-                css_class="inlineLabels",
-            )
+            ),
+            css_class="inlineLabels",
         )
+    )
     class Meta:
         model = domain_tree_node
         fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment"]
         
+class device_general_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "id_dtn_detail_form"
+    helper.layout = Layout(
+        Fieldset(
+            "Device details",
+            Field("name"),
+            Field("domain_tree_node"),
+            Field("comment"),
+            Field("monitor_checks"),
+            css_class="inlineLabels",
+        )
+    )
+    class Meta:
+        model = device
+        fields = ["name", "comment", "monitor_checks", "domain_tree_node",]
+
+class dummy_password_form(Form):
+    helper = FormHelper()
+    helper.layout = Layout(
+        Fieldset(
+            "please enter the new password",
+            Field("password1"),
+            Field("password2"),
+            css_class="inlineLabels",
+        )
+    )
+    password1 = CharField(label=_("New Password"),
+                         widget=PasswordInput)
+    password2 = CharField(label=_("Confirm Password"),
+                         widget=PasswordInput)

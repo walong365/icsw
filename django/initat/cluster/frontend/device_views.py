@@ -8,7 +8,7 @@ import pprint
 import logging_tools
 import process_tools
 from initat.cluster.frontend.helper_functions import init_logging
-from initat.core.render import render_me
+from initat.core.render import render_me, render_string
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from initat.cluster.backbone.models import device_type, device_group, device, device_class, \
@@ -23,6 +23,7 @@ import re
 import time
 from django.core.urlresolvers import reverse
 from django.contrib.auth.models import User, UserManager, Permission
+from initat.cluster.frontend import forms
 
 @login_required
 @init_logging
@@ -356,10 +357,25 @@ def delete_variable(request):
 @login_required
 def device_info(request):
     dev_key = request.POST["key"].split("__")[1]
-    request.xml_response["response"] = device.objects.get(Q(pk=dev_key)).get_xml(
+    cur_dev = device.objects.get(Q(pk=dev_key))
+    request.xml_response["response"] = cur_dev.get_xml(
         with_partition=True,
         with_variables=True,
         with_md_cache=True,
     )
     request.xml_response["response"] = domain_name_tree().get_xml(no_intermediate=True)
+    request.xml_response["response"] = E.forms(
+        E.general_form(
+            render_string(
+                request,
+                "crispy_form.html",
+                {
+                    "form" : forms.device_general_form(
+                        auto_id="dev__%d__%%s" % (cur_dev.pk),
+                        instance=cur_dev,
+                    )
+                }
+            )
+        )
+    )
     return request.xml_response.create_response()

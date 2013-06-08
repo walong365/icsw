@@ -108,11 +108,11 @@ class domain_name_tree
             }
             success : (xml) =>
                 if parse_xml_response(xml)
-                    form_div = $("div#dnt_detail")
-                    form_div.children().remove()
-                    form_div.html($(xml).find("value[name='form']").text())
-                    form_div.uniform()
-                    form_div.find("input").bind("change", @my_submitter.submit)
+                    detail_div = $("div#dnt_detail")
+                    detail_div.children().remove()
+                    detail_div.append($(xml).find("value[name='form']").text())
+                    detail_div.uniform()
+                    detail_div.find("input").bind("change", @my_submitter.submit)
     rename_tree: (cur_node) =>
         cur_db_node    = @DNT.find("domain_tree_node[pk='#{cur_node.data.key}']")
         parent_db_node = @DNT.find("domain_tree_node[pk='" + cur_db_node.attr("parent") + "']")

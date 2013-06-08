@@ -46,15 +46,14 @@ class config_table
     init_table: =>
         @update_config_info()
         @top_div.children().remove()
+        @config_types = @configs.find("config_types config_type")
+        @config_list = @configs.find("config")
         c_table = $("<table>").attr({"id" : "config"}).addClass("devicelist")
         c_table.append(@draw_config())
-        @configs.find("config").each (idx, cur_conf) =>
+        @config_list.each (idx, cur_conf) =>
             c_table.append(@draw_config($(cur_conf)))
         @table = c_table
         $("div#config").append(@table)
-        # activate codemirrors
-        @top_div.find("textarea").each (idx, cur_ta) =>
-            @init_textarea($(cur_ta))
         @update_expand_info()
         
     # filter function
@@ -124,17 +123,19 @@ class config_table
         c_line = $("<tr>").attr
             "id"    : line_prefix,
             "class" : "ui-widget ui-widget-header"
-        c_line.append($("<th>").append(
-            create_input_el(cur_conf, "name", line_prefix, {label : "Name", master_xml: @configs})
-        ).append(
-            create_input_el(cur_conf, "priority", line_prefix, {label : "Priority", number : true, master_xml: @configs, min: -9999, max : 9999})
-        ).append(
-            create_input_el(cur_conf, "description", line_prefix, {label : "Description", master_xml: @configs})
-        ).append(
-            create_input_el(cur_conf, "config_type", line_prefix, {label : "Type" , select_source : @configs.find("config_types config_type"), master_xml : @configs})
-        ).append(
-            create_input_el(cur_conf, "parent_config", line_prefix, {label : "Parent" , select_source : @configs.find("config"), add_null_entry : "none", select_source_attribute : "name", master_xml : @configs})
-        ))
+        c_line.append(
+            $("<th>").append(
+                create_input_el(cur_conf, "name", line_prefix, {label : "Name", master_xml: @configs})
+            ).append(
+                create_input_el(cur_conf, "priority", line_prefix, {label : "Priority", number : true, master_xml: @configs, min: -9999, max : 9999})
+            ).append(
+                create_input_el(cur_conf, "description", line_prefix, {label : "Description", master_xml: @configs})
+            ).append(
+                create_input_el(cur_conf, "config_type", line_prefix, {label : "Type" , select_source : @config_types, master_xml : @configs})
+            ).append(
+                create_input_el(cur_conf, "parent_config", line_prefix, {label : "Parent" , select_source : @configs_list, add_null_entry : "none", select_source_attribute : "name", master_xml : @configs})
+            )
+        )
         if cur_conf
             c_line.append(get_expand_td(line_prefix, "var", "variables", @toggle_config_line))
             c_line.append(get_expand_td(line_prefix, "moncc", "monitoring config", @toggle_config_line))
@@ -158,48 +159,53 @@ class config_table
             )
         dummy_div.append(c_line)
         if cur_conf
-            var_div = $("<table>")
             # add config vars
-            var_div.append(@add_header(cur_conf, line_prefix, "var"))
-            var_div.append(@add_config_var_line(cur_conf, line_prefix))
-            cur_conf.find("config_vars").children().each (idx, cur_var) =>
-                var_div.append(@add_config_var_line(cur_conf, line_prefix, $(cur_var)))
             dummy_div.append(
                 $("<tr>").attr(
                     "id" : "#{line_prefix}__var"
                 ).append(
-                    $("<td>").attr("colspan", "5").append(var_div)
+                    $("<td>").attr("colspan", "5")
                 ).hide()
             )
             # add monitoring commands
-            mon_div = $("<table>")
-            mon_div.append(@add_header(cur_conf, line_prefix, "moncc"))
-            mon_div.append(@add_monitoring_line(cur_conf, line_prefix))
-            cur_conf.find("mon_check_commands").children().each (idx, cur_mon) =>
-                mon_div.append(@add_monitoring_line(cur_conf, line_prefix, $(cur_mon)))
             dummy_div.append(
                 $("<tr>").attr(
                     "id" : "#{line_prefix}__moncc"
                 ).append(
-                    $("<td>").attr("colspan", "5").append(mon_div)
+                    $("<td>").attr("colspan", "5")
                 ).hide()
             )
             # add config scripts
-            conf_div = $("<table>")
-            conf_div.append(@add_header(cur_conf, line_prefix, "cscript"))
-            conf_div.append(@add_config_script_line(cur_conf, line_prefix))
-            cur_conf.find("config_scripts").children().each (idx, cur_script) =>
-                conf_div.append(@add_config_script_line(cur_conf, line_prefix, $(cur_script)))
             dummy_div.append(
                 $("<tr>").attr(
                     "id" : "#{line_prefix}__cscript"
                 ).append(
-                    $("<td>").attr("colspan", "5").append(conf_div)
+                    $("<td>").attr("colspan", "5")
                 ).hide()
             )
             for cur_t in dummy_div.find("table")
                 @recolor_table(cur_t)
         return dummy_div.children()
+    create_detail_table: (cur_conf, line_prefix, detail_type) =>
+        new_table = $("<table>")
+        new_table.append(@add_header(cur_conf, line_prefix, detail_type))
+        if detail_type == "var"
+            new_table.append(@add_config_var_line(cur_conf, line_prefix))
+            cur_conf.find("config_vars").children().each (idx, cur_var) =>
+                new_table.append(@add_config_var_line(cur_conf, line_prefix, $(cur_var)))
+        else if detail_type == "moncc"
+            new_table.append(@add_monitoring_line(cur_conf, line_prefix))
+            cur_conf.find("mon_check_commands").children().each (idx, cur_mon) =>
+                new_table.append(@add_monitoring_line(cur_conf, line_prefix, $(cur_mon)))
+        else if detail_type == "cscript"
+            new_table.append(@add_config_script_line(cur_conf, line_prefix))
+            cur_conf.find("config_scripts").children().each (idx, cur_script) =>
+                new_table.append(@add_config_script_line(cur_conf, line_prefix, $(cur_script)))
+            # activate codemirrors
+            new_table.find("textarea").each (idx, cur_ta) =>
+                @init_textarea($(cur_ta))
+        @recolor_table(new_table)
+        return new_table
     recolor_table: (cur_t) =>
         act_class = "even"
         for cur_tr in $(cur_t).find("tr")
@@ -246,11 +252,10 @@ class config_table
         header_tr = @table.find("tr[id='conf__new']")
         new_config_lines = @draw_config(new_el)
         header_tr.after(new_config_lines)
-        @init_textarea(new_config_lines.find("textarea"))
-        @recolor_table(header_tr.parents("table:first"))
-        @update_expand_info()
+        @update_expand_info(new_el.attr("pk"))
     remove_config_line: (del_id) =>
         @table.find("tr[id^='#{del_id}']").remove()
+        # not really needed
         @update_expand_info()
     
     # variable functions
@@ -337,14 +342,17 @@ class config_table
     inject_config_var_line: (new_var) =>
         header_tr = @table.find("tr[id$='conf__" + new_var.attr("config") + "__var_new']")
         cur_config = @configs.find("config[pk='" + new_var.attr("config") + "']")
+        cur_config.find("config_vars").append(new_var)
         header_tr.find("input[id$='__name']").attr("value", "")
         header_tr.after(@add_config_var_line(cur_config, "conf__" + new_var.attr("config"), new_var).show())
         @recolor_table(header_tr.parents("table:first"))
-        @update_expand_info()
+        @update_expand_info(new_var.attr("config"))
     remove_config_var_line: (cur_el) =>
+        conf_pk = cur_el.attr("id").split("__")[1]
+        @configs.find("config[pk='#{conf_pk}'] config_vars > *[pk='" + cur_el.attr("id").split("__")[3] + "']").remove()
         var_line = $("table#config tr[id^='" + cur_el.attr("id") + "']")
         var_line.remove()
-        @update_expand_info()
+        @update_expand_info(conf_pk)
     
     # monitoring functions
     
@@ -406,14 +414,17 @@ class config_table
     inject_monitoring_command_line: (new_nc) =>
         header_tr = @table.find("tr[id$='conf__" + new_nc.attr("config") + "__moncc_new']")
         cur_config = @configs.find("config[pk='" + new_nc.attr("config") + "']")
+        cur_config.find("mon_check_commands").append(new_nc)
         header_tr.find("input[id$='__name']").attr("value", "")
         header_tr.after(@add_monitoring_line(cur_config, "conf__" + new_nc.attr("config"), new_nc).show())
         @recolor_table(header_tr.parents("table:first"))
-        @update_expand_info()
+        @update_expand_info(new_nc.attr("config"))
     remove_monitoring_command_line: (cur_el) =>
+        conf_pk = cur_el.attr("id").split("__")[1]
+        @configs.find("config[pk='#{conf_pk}'] mon_check_commands > mon_check_command[pk='" + cur_el.attr("id").split("__")[3] + "']").remove()
         nc_line = $("table#config tr[id^='" + cur_el.attr("id") + "']")
         nc_line.remove()
-        @update_expand_info()
+        @update_expand_info(conf_pk)
     
     # config script functions
     
@@ -498,16 +509,19 @@ class config_table
     inject_config_script_line: (new_cs) =>
         header_tr = @table.find("tr[id$='conf__" + new_cs.attr("config") + "__cscript_new']")
         cur_config = @configs.find("config[pk='" + new_cs.attr("config") + "']")
+        cur_config.find("config_scripts").append(new_cs)
         header_tr.find("input[id$='__name']").attr("value", "")
         new_lines = @add_config_script_line(cur_config, "conf__" + new_cs.attr("config"), new_cs).show()
         header_tr.next().after(new_lines)
         @init_textarea(new_lines.find("textarea"))
         @recolor_table(header_tr.parents("table:first"))
-        @update_expand_info()
+        @update_expand_info(new_cs.attr("config"))
     remove_config_script_line: (cur_el) =>
+        conf_pk = cur_el.attr("id").split("__")[1]
+        @configs.find("config[pk='#{conf_pk}'] config_scripts > config_script[pk='" + cur_el.attr("id").split("__")[3] + "']").remove()
         cs_line = $("table#config tr[id^='" + cur_el.attr("id") + "']")
         cs_line.remove()
-        @update_expand_info()
+        @update_expand_info(conf_pk)
 
     # textarea functions
     
@@ -539,6 +553,8 @@ class config_table
         if !conf_line
             conf_line = @table.find("tr[id='#{line_prefix}']")
         sub_table = @table.find("tr[id^='#{line_prefix}__#{line_spec}']")
+        if not sub_table.find("table").length
+            sub_table.find("td").append(@create_detail_table(@configs.find("config[pk='" + line_prefix.split("__")[1] + "']"), line_prefix, line_spec))
         if state
             sub_table.show()
             sub_table.find("textarea").each (idx, cur_ta) =>
@@ -547,16 +563,22 @@ class config_table
                     @codemirror_dict[cur_id].editor.refresh()
         else
             sub_table.hide()
-    update_expand_info: =>
-        @table.find("tr td div[id*='__expand__']").each (idx, cur_div) =>
+    update_expand_info: (conf_pk) =>
+        if conf_pk
+            s_str = "tr td div[id*='__#{conf_pk}__expand__']"
+        else
+            s_str = "tr td div[id*='__expand__']"
+        @table.find(s_str).each (idx, cur_div) =>
             cur_div = $(cur_div)
             div_id = cur_div.attr("id")
             if !div_id.match(/__info$/)
-                num_tr = @table.find("tr[id^='" + div_id.replace(/^(conf__\d+__)[a-z]+__(.*)$/, "$1$2") + "']").length - 3
-                if div_id.match(/__cscript$/)
-                    num_tr = (num_tr - 1) / 2
-                info_type = $(cur_div).attr("id").split("__")[3][0]
-                cur_div.next().text("#{info_type} [#{num_tr}]")
+                info_type = div_id.split("__")[3]
+                num_entries = @configs.find("config[pk='" + div_id.split("__")[1] + "'] " + {
+                    "var"     : "config_vars > *",
+                    "moncc"   : "mon_check_commands mon_check_command",
+                    "cscript" : "config_scripts config_script"}[info_type]).length
+                info_type = info_type[0]
+                cur_div.next().text("#{info_type} [#{num_entries}]")
     update_config_info: (num_shown) =>
         num_confs = @configs.find("config").length
         info_str = "configs defined: #{num_confs}" 

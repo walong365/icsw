@@ -7,9 +7,8 @@
 {% block tab_js %}
 
     <!--[if gt IE8]><!--><script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/d3js/d3.v3.min.js"></script><!--<![endif]-->
-    <style>
-
-    </style>
+    <style></style>
+    
 {% endblock %}
 
 {% block content %}
@@ -59,10 +58,8 @@ class network_table
             }
             success : (xml) =>
                 if parse_xml_response(xml)
-                    #console.log "s", new Date()
                     @DEVICE_NETWORKS = $(xml)
                     @draw_network_table()
-                    #console.log "e", new Date()
                     @init_copy_widget()
                     @init_create_widget()
                     @redraw_graph()

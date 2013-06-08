@@ -68,7 +68,6 @@ jQuery.fn.uniform = function(settings) {
 
             }
         })
-
         form.delegate(settings.field_selector,'focus',function() {
             form.find('.' + settings.focused_class).removeClass(settings.focused_class);
 

@@ -23,24 +23,25 @@
 """ user views """
 
 import os
+import net_tools
+import pprint
+import logging_tools
+import process_tools
+import server_command
 from django.http import HttpResponse
-from initat.core.render import render_me
+from initat.core.render import render_me, render_string
 from initat.cluster.frontend.helper_functions import init_logging, logging_pool, contact_server
 from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-import logging_tools
 from lxml import etree
-import pprint
 from lxml.builder import E
-import process_tools
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, device_class, device_location, group, user, \
      device_config, device_group
-import server_command
 from django.contrib.auth.models import User, UserManager, Permission
-import net_tools
+from initat.cluster.frontend.forms import dummy_password_form
 
 @login_required
 @init_logging
@@ -111,4 +112,16 @@ def sync_users(request):
     result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
     srv_com = server_command.srv_command(command="sync_http_users")
     result = contact_server(request, "tcp://localhost:8010", srv_com)
+    return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def get_password_form(request):
+    request.xml_response["form"] = render_string(
+        request,
+        "crispy_form.html",
+        {
+            "form" : dummy_password_form()
+        }
+    )
     return request.xml_response.create_response()

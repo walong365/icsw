@@ -81,6 +81,9 @@ class device_info
                             $("#simplemodal-container").css("height", "auto")
     build_div: () =>
         dev_xml = @resp_xml.find("device")
+        @my_submitter = new submitter({
+            master_xml       : dev_xml
+        })
         dev_div = $("<div>")
         dev_div.append(
             $("<h3>").text("#{dev_xml.attr('name')}, UUID: #{dev_xml.attr('uuid')}")
@@ -117,32 +120,8 @@ class device_info
         # general div
         general_div = $("<div>").attr("id", "general")
         # working :-)
-        general_div.append(
-            $("<div>").attr("style", "clear: both").append(
-                create_input_el(
-                    dev_xml,
-                    "name",
-                    dev_xml.attr("key"), {
-                        master_xml : @resp_xml,
-                        title      : "device name",
-                        label      : "Device name"
-                        callback   : @domain_callback
-                    }
-                )
-            ).append(".").append(
-                create_input_el(
-                    dev_xml,
-                    "domain_tree_node",
-                    dev_xml.attr("key"), {
-                        master_xml : @resp_xml,
-                        select_source : @resp_xml.find("domain_tree_node"),
-                        title      : "domain name",
-                    }
-                )
-            )
-        )
-        general_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "comment", dev_xml.attr("key"), {master_xml : @resp_xml, title : "comment", label : "Comment", textarea : true})))
-        general_div.append($("<div>").attr("style", "clear: both").append(create_input_el(dev_xml, "monitor_checks", dev_xml.attr("key"), {master_xml : @resp_xml, title : "Enable checks", label : "Monitoring", boolean : true})))
+        general_div.html(@resp_xml.find("forms general_form").text())
+        general_div.find("input, select").bind("change", @my_submitter.submit)
         return general_div
     network_div: () =>
         dev_xml = @resp_xml.find("device")
@@ -855,72 +834,52 @@ force_expansion_state = (cur_tr, state) ->
 
 enter_password = (event) ->
     top_div = $("<div>")
-    top_div.append(
-        $("<h3>").text("Please enter password")
-    )
-    tabs_div = $("<div>").attr("id", "tabs")
-    top_div.append(tabs_div)
-    tabs_div.append(
-        $("<ul>").append(
-            $("<li>").append(
-                $("<a>").attr("href", "#password").text("password")
-            )
-        )
-    )
-    # password div
-    pw_div = $("<div>").attr("id", "password")
-    pw_div.append(
-        $("<ul>").append(
-            $("<li>").text("Password:").append(
-                $("<input>").attr
-                    id   : "pwd0"
-                    type : "password"
-            )
-        ).append(
-            $("<li>").text("again:").append(
-                $("<input>").attr
-                    id   : "pwd1"
-                    type : "password"
-            )
-        )
-    ).append(
-        $("<h4>").append(
-            $("<span>").attr
-                id : "error"
-        )
-    )
-    tabs_div.append(pw_div)
-    top_div.tabs()
-    $.modal(
-        top_div,
-        {
-            onShow : (dialog) ->
-                stat_h4 = dialog.data.find("span#error")
-                stat_h4.text("password empty")
-                dialog.data.find("input").bind("change", () ->
-                    pwd0 = dialog.data.find("input#pwd0").val()
-                    pwd1 = dialog.data.find("input#pwd1").val()
-                    if pwd0 == pwd1
-                        if not pwd0 or not pwd1
-                            stat_h4.text("password empty")
-                            stat_h4.attr("class", "warn")
-                        else
-                            stat_h4.text("password OK")
-                            stat_h4.attr("class", "ok")
-                    else
-                        stat_h4.text("password mismatch")
-                        stat_h4.attr("class", "error")
+    $.ajax
+        url     : "{% url 'user:get_password_form' %}"
+        success : (xml) =>
+            if parse_xml_response(xml)
+                in_form = $(xml).find("value[name='form']").text()
+                top_div.append(in_form)
+                top_div.uniform()
+                top_div.append(
+                    $("<h4>").append(
+                        $("<span>").attr
+                            id : "error"
+                    )
                 )
-            onClose : (dialog) ->
-                pwd0 = dialog.data.find("input#pwd0").val()
-                pwd1 = dialog.data.find("input#pwd1").val()
-                $.modal.close()
-                if pwd0 == pwd1
-                    $(event.target).val(pwd0).trigger("change")
-                else
-                    $(event.target).val("")
-        }
-    )
+                $.modal(
+                    top_div,
+                    {
+                        onShow : (dialog) ->
+                            stat_h4 = dialog.data.find("span#error")
+                            stat_h4.text("password empty")
+                            dialog.data.find("input").bind("change", () ->
+                                pwd0 = dialog.data.find("input#id_password1").val()
+                                pwd1 = dialog.data.find("input#id_password2").val()
+                                if pwd0 == pwd1
+                                    if not pwd0 or not pwd1
+                                        stat_h4.attr("class", "warn").text("password empty")
+                                    else
+                                        if pwd0.length < 4
+                                            stat_h4.attr("class", "error").text("password too short")
+                                        else
+                                            stat_h4.attr("class", "ok").text("password OK")
+                                else
+                                    stat_h4.attr("class", "error").text("password mismatch")
+                            )
+                        onClose : (dialog) ->
+                            pwd0 = dialog.data.find("input#id_password1").val()
+                            pwd1 = dialog.data.find("input#id_password1").val()
+                            $.modal.close()
+                            if pwd0 == pwd1
+                                if pwd0.length < 4
+                                    $(event.target).val("")
+                                else
+                                    $(event.target).val(pwd0).trigger("change")
+                            else
+                                $(event.target).val("")
+                    }
+                )
     
 create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
     dummy_div = $("<div>")
