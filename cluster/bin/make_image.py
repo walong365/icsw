@@ -132,9 +132,9 @@ class build_process(threading_tools.process_obj):
         if global_config["COMPRESSION_OPTION"]:
             if global_config["COMPRESSION"] == "xz":
                 comp_opt = "export XZ_OPT='%s'" % (global_config["COMPRESSION_OPTION"])
-        self._call("cd %s ; %s; tar -c%sf %s --preserve-permissions --preserve-order %s" % (
+        self._call("cd %s ; %s tar -c%sf %s --preserve-permissions --preserve-order %s" % (
             system_dir,
-            comp_opt,
+            "%s;" % (comp_opt) if comp_opt else "",
             c_flag,
             t_file,
             " ".join(file_list) if file_list else target_dir,
