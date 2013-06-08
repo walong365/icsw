@@ -623,36 +623,40 @@ class main_config(object):
             ndo2db_cfg = base_config(
                 NDO2DB_NAME,
                 belongs_to_ndo=True,
-                values=[("ndo2db_user"            , "idnagios"),
-                        ("ndo2db_group"           , "idg"),
-                        ("socket_type"            , "unix"),
-                        ("socket_name"            , "%s/ido.sock" % (self.__r_dir_dict["var"])),
-                        ("tcp_port"               , 5668),
-                        ("db_servertype"          , db_server),
-                        ("db_host"                , sql_dict["MYSQL_HOST"]),
-                        ("db_port"                , sql_dict["PORT"]),
-                        ("db_name"                , sql_dict["NAGIOS_DATABASE"]),
-                        ("db_prefix"              , "%s_" % (global_config["MD_TYPE"])),
-                        ("db_user"                , sql_dict["MYSQL_USER"]),
-                        ("db_pass"                , sql_dict["MYSQL_PASSWD"]),
-                        # time limits one week
-                        ("max_timedevents_age"    , 1440),
-                        ("max_systemcommands_age" , 1440),
-                        ("max_servicechecks_age"  , 1440),
-                        ("max_hostchecks_age"     , 1440),
-                        ("max_eventhandlers_age"  , 1440),
-                        ("debug_level"            , 0),
-                        ("debug_verbosity"        , 1),
-                        ("debug_file"             , "%s/ndo2db.debug" % (self.__r_dir_dict["var"])),
-                        ("max_debug_file_size"    , 1000000)])
+                values=[
+                    ("ndo2db_user"            , "idnagios"),
+                    ("ndo2db_group"           , "idg"),
+                    ("socket_type"            , "unix"),
+                    ("socket_name"            , "%s/ido.sock" % (self.__r_dir_dict["var"])),
+                    ("tcp_port"               , 5668),
+                    ("db_servertype"          , db_server),
+                    ("db_host"                , sql_dict["MYSQL_HOST"]),
+                    ("db_port"                , sql_dict["PORT"]),
+                    ("db_name"                , sql_dict["NAGIOS_DATABASE"]),
+                    ("db_prefix"              , "%s_" % (global_config["MD_TYPE"])),
+                    ("db_user"                , sql_dict["MYSQL_USER"]),
+                    ("db_pass"                , sql_dict["MYSQL_PASSWD"]),
+                    # time limits one week
+                    ("max_timedevents_age"    , 1440),
+                    ("max_systemcommands_age" , 1440),
+                    ("max_servicechecks_age"  , 1440),
+                    ("max_hostchecks_age"     , 1440),
+                    ("max_eventhandlers_age"  , 1440),
+                    ("debug_level"            , 0),
+                    ("debug_verbosity"        , 1),
+                    ("debug_file"             , "%s/ndo2db.debug" % (self.__r_dir_dict["var"])),
+                    ("max_debug_file_size"    , 1000000)])
         settings_dir = "%s/df_settings" % (self.__w_dir_dict["etc"])
         if not os.path.isdir(settings_dir):
             os.mkdir(settings_dir)
         main_values = [
-            ("log_file"                         , "%s/%s.log" % (self.__r_dir_dict["var"],
-                                                                 global_config["MD_TYPE"])),
+            ("log_file"                         , "%s/%s.log" % (
+                self.__r_dir_dict["var"],
+                global_config["MD_TYPE"])),
             ("cfg_file"                         , []),
-            ("resource_file"                    , "%s/%s.cfg" % (self.__r_dir_dict["etc"], resource_cfg.get_name())),
+            ("resource_file"                    , "%s/%s.cfg" % (
+                self.__r_dir_dict["etc"],
+                resource_cfg.get_name())),
             ("%s_user" % (global_config["MD_TYPE"]) , "idnagios"),
             ("%s_group" % (global_config["MD_TYPE"]) , "idg"),
             ("check_external_commands"          , 1),
@@ -2062,9 +2066,11 @@ class build_process(threading_tools.process_obj):
                         else:
                             self.log("Successfully signaled pid %d with SIGHUP (%d)" % (pid, signal.SIGHUP))
             else:
-                self.log("Nagios LockFile '%s' not found, trying to start %s" % (self.__nagios_lock_file_name,
-                                                                                 global_config["MD_TYPE"]),
-                         logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "Nagios LockFile '%s' not found, trying to start %s" % (
+                        self.__nagios_lock_file_name,
+                        global_config["MD_TYPE"]),
+                    logging_tools.LOG_LEVEL_WARN)
                 start_daemon = True
         if start_daemon:
             self.log("Trying to start %s via at-command" % (global_config["MD_TYPE"]))
