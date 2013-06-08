@@ -506,13 +506,6 @@ class udp_handler(logging.handlers.DatagramHandler):
         if ei:
             record.exc_info = ei  # for next handler
         return "%08d" % (len(out_str)) + out_str
-##    def send(self, out_str):
-##        if self.sock is None:
-##            self.createSocket()
-##        while len(out_str):
-##            print "*", len(out_str)
-##            self.sock.sendto(out_str[0:8192], (self.host, self.port))
-##            out_str = out_str[8192:]
     
 class local_uds_handler(logging.Handler):
     """ local unix domain socket handler """
