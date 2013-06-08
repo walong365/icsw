@@ -124,7 +124,7 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
                        in_str[0 : end_idx],
                        p_str)
 
-def get_size_str(in_s, long_version=False, divider=1024):
+def get_size_str(in_s, long_version=False, divider=1024, strip_spaces=False):
     if type(in_s) in [str, unicode]:
         len_in_s = len(in_s)
     else:
@@ -134,9 +134,13 @@ def get_size_str(in_s, long_version=False, divider=1024):
     while in_s > divider:
         in_s = in_s / float(divider)
         pf_str = pf_f.pop(0)
-    return "%s %s%s" % (pf_str and "%6.2f" % (in_s) or "%4d" % (in_s),
-                        pf_str,
-                        b_str)
+    ret_str = "%s %s%s" % (
+        pf_str and "%6.2f" % (in_s) or "%4d" % (in_s),
+        pf_str,
+        b_str)
+    if strip_spaces:
+        ret_str = " ".join(ret_str.split())
+    return ret_str
 
 def interpret_size_str(in_str, **kwargs):
     size_re = re.compile("^(?P<value>\d+(\.\d+)*)\s*(?P<pfix>.*?)b*(yte)*s*$", re.IGNORECASE)

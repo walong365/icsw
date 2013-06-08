@@ -164,8 +164,11 @@ class srv_command(object):
     @property
     def tree(self):
         return self.__tree
-    def get_int(self, key):
-        return int(self[key].text)
+    def get_int(self, key, default=0):
+        if key in self:
+            return int(self[key].text)
+        else:
+            return default
     def __contains__(self, key):
         xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
         xpath_res = self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS})
