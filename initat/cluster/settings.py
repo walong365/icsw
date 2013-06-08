@@ -256,6 +256,7 @@ IS_WINDOWS = False
 
 # crispy settings
 CRISPY_TEMPLATE_PACK = "uni_form"
+#CRISPY_TEMPLATE_PACK = "bootstrap"
 CRISPY_FAIL_SILENTLY = not DEBUG
 
 # coffee settings
