@@ -96,11 +96,17 @@ class procstat_command(hm_classes.hm_command):
         #pprint.pprint(result)
         commands = cur_ns.arguments
         zombie_ok_list = ["cron"]
-        res_dict = {"ok"        : 0,
-                    "fail"      : 0,
-                    "zombie_ok" : 0}
+        res_dict = {
+            "ok"        : 0,
+            "fail"      : 0,
+            "kernel"    : 0,
+            "userspace" : 0,
+            "zombie_ok" : 0,
+        }
+        zombie_list = []
         for pid, value in result.iteritems():
             if value["state"] == "Z":
+                zombie_list.append(value["name"])
                 if value["name"].lower() in zombie_ok_list:
                     res_dict["zombie_ok"] += 1
                 elif cur_ns.zombie:
@@ -109,6 +115,10 @@ class procstat_command(hm_classes.hm_command):
                     res_dict["fail"] += 1
             else:
                 res_dict["ok"] += 1
+            if value["exe"]:
+                res_dict["userspace"] += 1
+            else:
+                res_dict["kernel"] += 1
         if res_dict["fail"]:
             ret_state = limits.nag_STATE_CRITICAL
         elif res_dict["zombie_ok"]:
@@ -117,9 +127,13 @@ class procstat_command(hm_classes.hm_command):
             ret_state = limits.nag_STATE_OK
         ret_state = max(ret_state, limits.check_floor(res_dict["ok"], cur_ns.warn, cur_ns.crit))
         ret_str = "%s running (%s%s%s)" % (
-            logging_tools.get_plural("process", len(result)),
+            " + ".join(
+                [logging_tools.get_plural("%s process" % (key), res_dict[key]) for key in ["userspace", "kernel"] if res_dict[key]]) or "nothing",
             ", ".join(sorted(commands)) if commands else "all",
-            ", %s" % (logging_tools.get_plural("zombie", res_dict["fail"])) if res_dict["fail"] else "",
+            ", %s [%s]" % (
+                logging_tools.get_plural("zombie", res_dict["fail"]),
+                ", ".join(sorted(zombie_list)),
+                ) if res_dict["fail"] else "",
             ", %s" % (logging_tools.get_plural("accepted zombie", res_dict["zombie_ok"])) if res_dict["zombie_ok"] else "",
         )
         return ret_state, ret_str
