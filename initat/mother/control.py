@@ -143,6 +143,8 @@ class machine(object):
         machine.__unique_keys.add(new_dev.pk)
         machine.__unique_names.add(new_dev.full_name)
         machine.__lut[new_dev.full_name] = new_mach
+        # short name, will not always work
+        machine.__lut[new_dev.name] = new_mach
         machine.__lut[new_dev.pk] = new_mach
     @staticmethod
     def delete_device(dev_spec):
@@ -151,11 +153,21 @@ class machine(object):
             mach.close()
             del machine.__lut[mach.full_name]
             del machine.__lut[mach.pk]
+            try:
+                del machine.__lut[mach.name]
+            except:
+                pass
             machine.__unique_keys.remove(mach.pk)
             machine.__unique_names.remove(mach.full_name)
     @staticmethod
     def get_device(dev_spec):
-        return machine.__lut.get(dev_spec, None)
+        if dev_spec in machine.__lut:
+            return machine.__lut[dev_spec]
+        else:
+            machine.g_log("no device with spec '%s' found" % (
+                str(dev_spec),
+                ), logging_tools.LOG_LEVEL_ERROR)
+            return None
     @staticmethod
     def iterate(com_name, *args, **kwargs):
         iter_keys = machine.__unique_keys & set(kwargs.pop("device_keys", machine.__unique_keys))
