@@ -160,7 +160,7 @@ class _general(hm_classes.hm_module):
     def _load_int(self):
         return [float(x) for x in open("/proc/loadavg", "r").read().strip().split()[0:3]]
     def _mem_int(self):
-        valid_keys = set(["MemTotal", "MemFree", "Buffers", "Cached", "SwapTotal", "SwapFree", "MemShared", "Inactive", "SwapCached", "SReclaimable"])
+        valid_keys = set(["MemTotal", "MemFree", "Buffers", "Cached", "SwapTotal", "SwapFree", "MemShared", "Inactive", "SwapCache", "SReclaimable"])
         p_dict = dict([r_line.strip().split()[:2] for r_line in open("/proc/meminfo", "r").readlines() if r_line.strip().endswith("kB")])
         return dict([(key, int(p_dict.get("%s:" % (key), "0"))) for key in valid_keys])
     def _df_int(self, mvect=None):
