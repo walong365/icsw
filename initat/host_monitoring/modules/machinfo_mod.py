@@ -160,7 +160,7 @@ class _general(hm_classes.hm_module):
     def _load_int(self):
         return [float(x) for x in open("/proc/loadavg", "r").read().strip().split()[0:3]]
     def _mem_int(self):
-        valid_keys = set(["MemTotal", "MemFree", "Buffers", "Cached", "SwapTotal", "SwapFree", "MemShared"])
+        valid_keys = set(["MemTotal", "MemFree", "Buffers", "Cached", "SwapTotal", "SwapFree", "MemShared", "Inactive", "SwapCached", "SReclaimable"])
         p_dict = dict([r_line.strip().split()[:2] for r_line in open("/proc/meminfo", "r").readlines() if r_line.strip().endswith("kB")])
         return dict([(key, int(p_dict.get("%s:" % (key), "0"))) for key in valid_keys])
     def _df_int(self, mvect=None):
@@ -376,21 +376,23 @@ class _general(hm_classes.hm_module):
             mv["mem.used.cached"]   = 0
             mv["mem.used.shared"]   = 0
         else:
+            # buffers + cached + swapcache + reclaimable
+            bc_mem = mem_list["Buffers"] + mem_list["Cached"] + mem_list["SwapCache"] + mem_list["SReclaimable"]
             mv["mem.avail.phys"]    = mem_list["MemTotal"]
             mv["mem.avail.swap"]    = mem_list["SwapTotal"]
             mv["mem.avail.total"]   = mem_list["MemTotal"]  + mem_list["SwapTotal"]
             mv["mem.free.phys"]     = mem_list["MemFree"]
-            mv["mem.free.phys.bc"]  = mem_list["MemFree"]   + mem_list["Buffers"]   + mem_list["Cached"]
+            mv["mem.free.phys.bc"]  = mem_list["MemFree"]   + bc_mem
             mv["mem.free.swap"]     = mem_list["SwapFree"]
             mv["mem.free.total"]    = mem_list["MemFree"]   + mem_list["SwapFree"]
-            mv["mem.free.total.bc"] = mem_list["MemFree"]   + mem_list["Buffers"]   + mem_list["Cached"]   + mem_list["SwapFree"]
-            mv["mem.used.phys"]     = mem_list["MemTotal"]  - (mem_list["MemFree"]  + mem_list["Buffers"]  + mem_list["Cached"])
+            mv["mem.free.total.bc"] = mem_list["MemFree"]   + bc_mem + mem_list["SwapFree"]
+            mv["mem.used.phys"]     = mem_list["MemTotal"]  - (mem_list["MemFree"]  + bc_mem)
             mv["mem.used.phys.bc"]  = mem_list["MemTotal"]  - mem_list["MemFree"]
             mv["mem.used.swap"]     = mem_list["SwapTotal"] - mem_list["SwapFree"]
-            mv["mem.used.total"]    = mem_list["MemTotal"]  + mem_list["SwapTotal"] - (mem_list["MemFree"] + mem_list["SwapFree"] + mem_list["Buffers"] + mem_list["Cached"])
+            mv["mem.used.total"]    = mem_list["MemTotal"]  + mem_list["SwapTotal"] - (mem_list["MemFree"] + mem_list["SwapFree"] + bc_mem)
             mv["mem.used.total.bc"] = mem_list["MemTotal"]  + mem_list["SwapTotal"] - (mem_list["MemFree"] + mem_list["SwapFree"])
             mv["mem.used.buffers"]  = mem_list["Buffers"]
-            mv["mem.used.cached"]   = mem_list["Cached"]
+            mv["mem.used.cached"]   = mem_list["Cached"] + mem_list["SwapCache"] + mem_list["SReclaimable"]
             mv["mem.used.shared"]   = mem_list["MemShared"]
         try:
             self._df_int(mv)
