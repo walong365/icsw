@@ -45,9 +45,10 @@ class option_list
             if not @_set_option
                 console.log "set_option for #{@short} not set"
             else:
-                @_set_option(cur_dev)
+                if @cur_td
+                    @_set_option(cur_dev)
         else
-            if @_set_option_again
+            if @_set_option_again and @cur_td
                 @_set_option_again(cur_dev)
     tr_id: () =>
         return @dev_key + "__opt__" + @short
