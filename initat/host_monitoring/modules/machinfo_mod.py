@@ -1057,9 +1057,9 @@ class mem_command(hm_classes.hm_command):
         ret_state = limits.check_ceiling(max(allp, memp), parsed_coms.warn, parsed_coms.crit)
         return ret_state, "meminfo: %d %% of %s phys, %d %% of %s tot" % (
             memp,
-            logging_tools.get_plural(memtot * 1024),
+            logging_tools.get_size_str(memtot * 1024),
             allp,
-            logging_tools.get_plural(alltot * 1024))
+            logging_tools.get_size_str(alltot * 1024))
 
 class sysinfo_command(hm_classes.hm_command):
     def __init__(self, name):
