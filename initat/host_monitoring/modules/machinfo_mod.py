@@ -1016,23 +1016,29 @@ class mem_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["mem"] = self.module._mem_int()
     def interpret(self, srv_com, cur_ns):
+        buffers = srv_com.get_int("mem:Buffers")
+        cached = srv_com.get_int("mem:Cached") + srv_com.get_int("mem:SwapCache", 0) + srv_com.get_int("mem:SReclaimable", 0)
         mem_total, mem_free = (
             srv_com.get_int("mem:MemTotal"),
-            srv_com.get_int("mem:MemFree") + srv_com.get_int("mem:Buffers") + srv_com.get_int("mem:Cached"))
+            srv_com.get_int("mem:MemFree") + buffers + cached
+        )
         swap_total, swap_free = (
             srv_com.get_int("mem:SwapTotal"),
             srv_com.get_int("mem:SwapFree"))
         all_total = mem_total + swap_total
         all_free = mem_free + swap_free
-        mem_p  = 100 * (1 if mem_total == 0  else float(mem_total - mem_free) / mem_total)
+        mem_p  = 100 * (1 if mem_total  == 0 else float(mem_total  - mem_free ) / mem_total )
         swap_p = 100 * (1 if swap_total == 0 else float(swap_total - swap_free) / swap_total)
-        all_p  = 100 * (1 if all_total == 0  else float(all_total - all_free) / all_total)
+        all_p  = 100 * (1 if all_total  == 0 else float(all_total  - all_free ) / all_total )
         ret_state = limits.check_ceiling(all_p, cur_ns.warn, cur_ns.crit)
-        return ret_state, "meminfo: %d %% of %s phys, %d %% of %s tot" % (
+        return ret_state, "meminfo: %d %% of %s phys, %d %% of %s tot (%s buffers, %s cached)" % (
             mem_p,
-            logging_tools.get_size_str(mem_total * 1024),
+            logging_tools.get_size_str(mem_total * 1024, strip_spaces=True),
             all_p,
-            logging_tools.get_size_str(all_total * 1024))
+            logging_tools.get_size_str(all_total * 1024, strip_spaces=True),
+            logging_tools.get_size_str(buffers * 1024, strip_spaces=True),
+            logging_tools.get_size_str(cached * 1024, strip_spaces=True),
+        )
     def interpret_old(self, result, parsed_coms):
         def k_str(i_val):
             f_val = float(i_val)
