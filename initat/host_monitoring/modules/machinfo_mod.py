@@ -987,17 +987,9 @@ class swap_command(hm_classes.hm_command):
             ret_state = limits.check_ceiling(swap, cur_ns.warn , cur_ns.crit)
             return ret_state, "swapinfo: %d %% of %s swap" % (
                 swap,
-                logging_tools.get_size_str(swap_total * 1024))
+                logging_tools.get_size_str(swap_total * 1024, strip_spaces=True),
+            )
     def interpret_old(self, result, parsed_coms):
-        def k_str(i_val):
-            f_val = float(i_val)
-            if f_val < 1024:
-                return "%0.f kB" % (f_val)
-            f_val /= 1024.
-            if f_val < 1024.:
-                return "%.2f MB" % (f_val)
-            f_val /= 1024.
-            return "%.2f GB" % (f_val)
         result = hm_classes.net_to_sys(result[3:])
         swaptot, swapfree = (int(result["swaptotal"]), 
                              int(result["swapfree"]))
@@ -1006,7 +998,10 @@ class swap_command(hm_classes.hm_command):
         else:
             swap = 100 * (swaptot - swapfree) / swaptot
             ret_state = limits.check_ceiling(swap, parsed_coms.warn, parsed_coms.crit)
-            return ret_state, "swapinfo: %d %% of %s swap" % (swap, k_str(swaptot))
+            return ret_state, "swapinfo: %d %% of %s swap" % (
+                swap,
+                logging_tools.get_size_str(swaptot * 1024, strip_spaces=True),
+                )
 
 class mem_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -1040,15 +1035,6 @@ class mem_command(hm_classes.hm_command):
             logging_tools.get_size_str(cached * 1024, strip_spaces=True),
         )
     def interpret_old(self, result, parsed_coms):
-        def k_str(i_val):
-            f_val = float(i_val)
-            if f_val < 1024:
-                return "%0.f kB" % (f_val)
-            f_val /= 1024.
-            if f_val < 1024.:
-                return "%.2f MB" % (f_val)
-            f_val /= 1024.
-            return "%.2f GB" % (f_val)
         result = hm_classes.net_to_sys(result[3:])
         memtot = int(result["memtotal"])
         memfree = int(result["memfree"]) + int(result["buffers"]) + int(result["cached"])
@@ -1069,7 +1055,11 @@ class mem_command(hm_classes.hm_command):
         else: 
             allp = 100 * (alltot - allfree) / alltot
         ret_state = limits.check_ceiling(max(allp, memp), parsed_coms.warn, parsed_coms.crit)
-        return ret_state, "meminfo: %d %% of %s phys, %d %% of %s tot" % (memp, k_str(memtot), allp, k_str(alltot))
+        return ret_state, "meminfo: %d %% of %s phys, %d %% of %s tot" % (
+            memp,
+            logging_tools.get_plural(memtot * 1024),
+            allp,
+            logging_tools.get_plural(alltot * 1024))
 
 class sysinfo_command(hm_classes.hm_command):
     def __init__(self, name):
