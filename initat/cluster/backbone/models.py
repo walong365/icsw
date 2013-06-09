@@ -429,6 +429,9 @@ class device(models.Model):
     recvstate_timestamp = models.DateTimeField(null=True)
     reqstate = models.TextField(blank=True, default="not set")
     reqstate_timestamp = models.DateTimeField(null=True)
+    # uptime (with timestamp)
+    uptime = models.IntegerField(default=0)
+    uptime_timestamp = models.DateTimeField(null=True, default=None)
     bootnetdevice = models.ForeignKey("netdevice", null=True, related_name="boot_net_device")
     bootserver = models.ForeignKey("device", null=True, related_name="boot_server")
     reachable_via_bootserver = models.BooleanField(default=False)
@@ -536,6 +539,7 @@ class device(models.Model):
             # to correct string entries
             md_cache_mode="%d" % (int(self.md_cache_mode)),
             domain_tree_node="%d" % (self.domain_tree_node_id or 0),
+            uptime="%d" % (self.uptime or 0),
         )
         if kwargs.get("full_name", False):
             r_xml.attrib["full_name"] = self.full_name
@@ -558,10 +562,12 @@ class device(models.Model):
                     "net_state" : "unknown",
                     "network"   : "unknown"})
             else:
-                now, recv_ts, req_ts = (
+                now, recv_ts, req_ts, uptime_ts = (
                     cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
                     self.recvstate_timestamp,
-                    self.reqstate_timestamp)
+                    self.reqstate_timestamp,
+                    self.uptime_timestamp,
+                )
                 # determine if the node is down / pingable / responding to hoststatus requests
                 if not int(mother_xml.get("ok", "0")):
                     # not pingable, down
@@ -588,6 +594,17 @@ class device(models.Model):
                         r_xml.attrib["net_state"] = "ping"
                     else:
                         r_xml.attrib["net_state"] = "up"
+                    # uptime setting
+                    if uptime_ts is not None:
+                        uptime_timeout = (now - uptime_ts).seconds
+                    else:
+                        uptime_timeout = 3600
+                    if uptime_timeout > 30:
+                        # too long ago, outdated
+                        r_xml.attrib["uptime_valid"] = "0"
+                    else:
+                        r_xml.attrib["uptime_valid"] = "1"
+                        r_xml.attrib["uptime"] = "%d" % (self.uptime)
         if kwargs.get("with_variables", False):
             r_xml.append(
                 E.device_variables(
