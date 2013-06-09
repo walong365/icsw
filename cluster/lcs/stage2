@@ -47,6 +47,8 @@ GRUB_MSG="running grub"
 REBOOT_MSG="down to runlevel 6"
 S2_DONE="stage2 finished"
 MOUNT_STRING="mounting config"
+# see hoststatus_zmq.c, stage1, stage2
+HOSTSTAT_FILE=/conf/.hoststat
 
 if [ true ] ; then
     BOLD="\033[1m"
@@ -98,17 +100,12 @@ function reboot() {
     /sbin/reboot -f
 }
 
-function reset_hoststat() {
-    echo "resetting hoststatus to "$@
-    [ -d /conf ] && echo $@ > /conf/.hoststat
-    t_mother $@
-}
-
 function set_hoststat() {
     [ "x$1" != "x-q" ] && \
         echo "setting hoststatus to "$@ || \
         shift
-    [ -d /conf ] && echo $@ >> /conf/.hoststat
+    [ ! -d /conf ] && mkdir /conf
+    echo $@ > ${HOSTSTAT_FILE}
     t_mother $@
 }
 
@@ -788,7 +785,7 @@ generate_devicefiles
 echo -e "127.0.0.1 localhost\n" > /etc/hosts
 
 echo -e "${GREEN}setting status and starting hoststatus${OFF}"
-reset_hoststat ${BM_MESG}
+set_hoststat ${BM_MESG}
 hoststatus_zmq &
 
 hostname bootsystem

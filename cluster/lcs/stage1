@@ -29,6 +29,8 @@ MOUNTOPTS="-o nolock,rw,udp"
 S2_RDISK="/dev/ram1"
 PING_PACKETS="2"
 PING_TIMEOUT="60"
+# see hoststatus_zmq.c, stage1, stage2
+HOSTSTAT_FILE=/conf/.hoststat
 
 if [ true ] ; then
     RED="\033[31m"
@@ -58,7 +60,8 @@ start_shell () {
 
 set_hoststat () {
     echo ${echo_opt} "setting hoststatus to "$@
-    [ -d /conf ] && echo $@ >> /conf/.hoststat
+    [ ! -d /conf ] && mkdir /conf
+    echo $@ >> ${HOSTSTAT_FILE}
     t_mother $@
 }
 t_mother () {
