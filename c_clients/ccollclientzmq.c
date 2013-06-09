@@ -178,10 +178,6 @@ int main(int argc, char **argv)
     //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));
     int linger = 100, n_bytes;
 
-    int64_t more;
-
-    size_t more_size = sizeof(more);
-
     char recv_buffer[1024];
 
     alrmsigact = (struct sigaction *)malloc(sizeof(struct sigaction));
@@ -235,6 +231,9 @@ int main(int argc, char **argv)
         }
         if (!only_send) {
             // receive header
+            int64_t more = 0;
+            size_t more_size = sizeof(more);
+
             zmq_recv(receiver, recv_buffer, 1024, 0);
             zmq_getsockopt(receiver, ZMQ_RCVMORE, &more, &more_size);
             zmq_msg_close(&request);

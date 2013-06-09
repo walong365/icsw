@@ -185,10 +185,6 @@ int main(int argc, char **argv)
 
     int retry_iter = 0;
 
-    int64_t more;
-
-    size_t more_size = sizeof(more);
-
     char recv_buffer[1024];
 
     alrmsigact = (struct sigaction *)malloc(sizeof(struct sigaction));
@@ -248,6 +244,9 @@ int main(int argc, char **argv)
                 printf("RCV_TIMEOUT, retry_iter is %d\n", retry_iter);
             }
         };
+        int64_t more = 0;
+        size_t more_size = sizeof(more);
+    
         zmq_getsockopt(receiver, ZMQ_RCVMORE, &more, &more_size);
         zmq_msg_close(&request);
         if (verbose) {
