@@ -199,10 +199,12 @@ class machine(object):
                                     "ok"     : "0",
                                     "failed" : "0"})
             for ip in cur_dev.ip_dict.iterkeys():
-                cur_id_str = "mp_%d" % (cur_id)
-                cur_id += 1
-                machine.process.send_to_socket(machine.process.twisted_socket, ["ping", cur_id_str, ip, 4, 3.0])
-                ping_list.append(srv_com.builder("ping", cur_id_str, pk="%d" % (cur_dev.pk)))
+                # omit slave networks
+                if cur_dev.ip_dict[ip].network.network_type.identifier != "s":
+                    cur_id_str = "mp_%d" % (cur_id)
+                    cur_id += 1
+                    machine.process.send_to_socket(machine.process.twisted_socket, ["ping", cur_id_str, ip, 4, 3.0])
+                    ping_list.append(srv_com.builder("ping", cur_id_str, pk="%d" % (cur_dev.pk)))
         srv_com["ping_list"] = ping_list
         machine.ping_id = cur_id
         return True if len(ping_list) else False
