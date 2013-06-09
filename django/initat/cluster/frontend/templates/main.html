@@ -148,6 +148,7 @@ init_layout = ->
                 save_layout_state(p_name)
             onclose : (p_name) ->
                 save_layout_state(p_name)
+        my_layout.panes.north.css("background-color", "#cde2ff")
         my_layout.allowOverflow("north")
 
 update_time = ->
