@@ -1081,7 +1081,7 @@ elif [ "$do_mount" = "1" ] ; then
             for p in $xfsp ; do
                 set_hoststat ${FORM_MESG} xfs $p
                 dd if=/dev/zero of=$p bs=1024 count=1000 > /dev/null 2>&1
-                mkfs.xfs $p >>/conf/.output/format_xfs 2>&1 || { set_hoststat "error $FORM_MESG xfs partition '$p'" ; }
+                mkfs.xfs -f $p >>/conf/.output/format_xfs 2>&1 || { set_hoststat "error $FORM_MESG xfs partition '$p'" ; }
             done
         fi
         
