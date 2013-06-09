@@ -30,6 +30,8 @@
 #include <sys/time.h>
 #include <netinet/in.h>
 #include <sys/utsname.h>
+#include <linux/unistd.h>
+#include <linux/kernel.h>
 #include <syslog.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -163,7 +165,10 @@ int main (int argc, char** argv) {
 //        while (*act_source) *act_pos++=*act_source++;
 //        *act_pos = 0;
     }
-    sprintf(sendbuff, "<?xml version='1.0'?><ics_batch><nodeinfo>%s</nodeinfo></ics_batch>", filebuff);
+    struct sysinfo s_info;
+    sysinfo(&s_info);
+    int cur_uptime = s_info.uptime;
+    sprintf(sendbuff, "<?xml version='1.0'?><ics_batch><nodeinfo>%s</nodeinfo><uptime>%d</uptime></ics_batch>", filebuff, cur_uptime);
     sendbuff[SENDBUFF_SIZE] = '\0';/* terminate optarg for secure use of strlen() */
     if (!strlen(sendbuff)) err_exit("Nothing to send!\n");
     //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));

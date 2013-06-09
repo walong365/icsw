@@ -28,6 +28,8 @@
 #include <netinet/in.h>
 #include <sys/resource.h>
 #include <sys/utsname.h>
+#include <linux/unistd.h>
+#include <linux/kernel.h>
 #include <syslog.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -149,6 +151,7 @@ int main (int argc, char** argv) {
     void *responder = zmq_socket(context, ZMQ_ROUTER);
     char* identity_str = parse_uuid(src_ip);
     struct stat my_stat;
+    struct sysinfo s_info;
     int64_t tcp_keepalive, tcp_keepalive_idle;
     tcp_keepalive = 1;
     tcp_keepalive_idle = 300;
@@ -190,6 +193,9 @@ int main (int argc, char** argv) {
                 break;      //  Last message part
             };
         }
+        // get uptime
+        sysinfo(&s_info);
+        int cur_uptime = s_info.uptime;
         syslog(LOG_DAEMON|LOG_INFO, "got '%s' from '%s'", msg_text, client_uuid);
         // handle command
         if (!strncmp(msg_text, "status", 6) && strlen(msg_text) == 6) {
@@ -242,7 +248,7 @@ int main (int argc, char** argv) {
             syslog(LOG_DAEMON|LOG_INFO, "unknown command, answering %s", outbuff);
         }
         syslog(LOG_DAEMON|LOG_INFO, "uuid / buffer : %d / %d", strlen(client_uuid), strlen(outbuff));
-        sprintf(sendbuff, "<?xml version='1.0'?><ics_batch><nodestatus>%s</nodestatus></ics_batch>", outbuff);
+        sprintf(sendbuff, "<?xml version='1.0'?><ics_batch><nodestatus>%s</nodestatus><uptime>%d</uptime></ics_batch>", outbuff, cur_uptime);
         sendbuff[SENDBUFF_SIZE] = '\0';
         zmq_msg_t reply;
         zmq_msg_init_size (&reply, strlen(client_uuid));
