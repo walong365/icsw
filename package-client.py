@@ -85,10 +85,15 @@ class simple_command(object):
         self.start_time, self.popen = (None, None)
         self.info = kwargs.get("info", None)
         self.max_run_time = kwargs.get("max_run_time", 600)
-        self.log("init command %s%s, delay is %s" % (
-            "with %s" % (logging_tools.get_plural("line", len(self.com_str.split("\n")))) if kwargs.get("short_info", True) else "'%s'" % (self.com_str),
-            " (%s)" % (kwargs.get("add_info", "")) if "add_info" in kwargs else "",
-            logging_tools.get_plural("second", self.delay_time)))
+        self.log(
+            "init command %s%s, delay is %s" % (
+                "with %s" % (
+                    logging_tools.get_plural(
+                        "line",
+                        len(self.com_str.split("\n")))) if kwargs.get("short_info", True) else "'%s'" % (self.com_str),
+                " (%s)" % (
+                    kwargs.get("add_info", "")) if "add_info" in kwargs else "",
+                logging_tools.get_plural("second", self.delay_time)))
         if self.delay_time:
             simple_command.process.register_timer(self.call, self.delay_time, oneshot=True)
         else:
@@ -219,6 +224,9 @@ class install_process(threading_tools.process_obj):
                     data=cur_init)
             else:
                 self.pdc_done(cur_init, E.info("nothing to do"))
+        else:
+            # check for pending commands
+            self.handle_pending_commands()
     def build_command(self, cur_pdc):
         #print etree.tostring(cur_pdc, pretty_print=True)
         if cur_pdc.tag == "special_command":
@@ -249,7 +257,8 @@ class install_process(threading_tools.process_obj):
         else:
             # todo: transform output to XML for sending back to server
             xml_out = None
-        self.log("hc_com finished with stat %d (%d bytes)" % (
+        self.log("hc_com '%s' finished with stat %d (%d bytes)" % (
+            hc_sc.com_str,
             hc_sc.result,
             len(cur_out)))
         for line_num, line in enumerate(cur_out.split("\n")):
