@@ -59,7 +59,7 @@ class option_list
     full_line: (cur_td) ->
         @cur_td = cur_td
         if not cur_td.attr("colspan")
-            cur_td.attr("colspan", 5)
+            cur_td.attr("colspan", "3")
         return $("<tr>").attr({
             "id"  : @tr_id()
             }).append(cur_td)
@@ -393,7 +393,7 @@ class image_option extends option_list
         super(dev_xml, "i")
     draw: (boot) =>
         cur_td = $("<td>")
-        cur_td.attr({"colspan" : "5"})
+        cur_td.attr({"colspan" : "3"})
         cur_td.append("Image ")
         img_sel = $("<select>").attr({
             "disabled" : "disabled",
@@ -620,11 +620,7 @@ class boot_table
             }).text(cur_dev.text())
         ).append(
             $("<td>").attr({
-                "id" : "recv_str"
-            }).addClass("warn").text("waiting")
-        ).append(
-            $("<td>").attr({
-                "id" : "req_str"
+                "id" : "recvreq_str"
             }).addClass("warn").text("waiting")
         ).append(
             $("<td>").attr({
@@ -752,18 +748,15 @@ class boot_table
                             dev_tr = @table.find("tr#" + cur_dev.attr("key"))
                             dev_id = dev_tr.attr("id")
                             if call_mother
-                                if cur_dev.attr("recvstate")
-                                    dev_tr.find("td#recv_str").text("rcv: #{cur_dev.attr('recvstate')}")
+                                valid_str = cur_dev.attr("valid_state") + "state"
+                                if cur_dev.attr(valid_str)
+                                    dev_tr.find("td#recvreq_str").text(cur_dev.attr(valid_str) +  "(" + cur_dev.attr("valid_state") + ")")
                                 else
-                                    dev_tr.find("td#recv_str").text("rcv: ---")
-                                if cur_dev.attr("reqstate")
-                                    dev_tr.find("td#req_str").text("req: #{cur_dev.attr('reqstate')}")
-                                else
-                                    dev_tr.find("td#req_str").text("rcv: ---")
+                                    dev_tr.find("td#recvreq_str").text("rcv: ---")
                                 net_state = cur_dev.attr("net_state")
                                 tr_class = {"down" : "error", "unknown" : "error", "ping" : "warn", "up" : "ok"}[net_state]
                                 dev_tr.find("td#network").text("#{cur_dev.attr('network')} (#{net_state})")
-                                dev_tr.find("td#recv_str, td#req_str, td#network").removeClass("ok error warn").addClass(tr_class)
+                                dev_tr.find("td#recvreq_str, td#network").removeClass("ok error warn").addClass(tr_class)
                             for check_opt in @option_list.reverse()
                                 if check_opt != "l" and @options_used[check_opt]
                                     @device_lut[check_opt][dev_id].set_option(cur_dev)
