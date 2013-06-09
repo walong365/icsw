@@ -574,9 +574,15 @@ class device(models.Model):
                     else:
                         recv_timeout = 3600
                     if req_ts is not None:
-                        req_timeout = (now - req_ts ).seconds
+                        req_timeout  = (now - req_ts ).seconds
                     else:
                         req_timeout = 3600
+                    if req_timeout > recv_timeout:
+                        # recv_state is newer
+                        r_xml.attrib["valid_state"] = "recv"
+                    else:
+                        # req_state is newer
+                        r_xml.attrib["valid_state"] = "req"
                     if min(req_timeout, recv_timeout) > 20:
                         # too long ago, deem as outdated (not reachable by mother)
                         r_xml.attrib["net_state"] = "ping"
