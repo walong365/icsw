@@ -51,10 +51,12 @@ def check_license(lic_name):
     lic_xml = etree.fromstring(
         open(LICENSE_FILE, "r").read())
     cur_lic = lic_xml.xpath(".//license[@short='%s']" % (lic_name))
-    if len(cur_lic):
+    if len(cur_lic) == 1:
         return True if cur_lic[0].get("enabled", "no").lower() in ["yes", "true", "1"] else False
-    else:
+    elif not cur_lic:
         return False
+    else:
+        raise BadLicenseXML("license for '%s' found more than once" % (lic_name))
     
 def get_all_licenses():
     lic_xml = etree.fromstring(
