@@ -37,6 +37,7 @@
 
 #define PORT 2002
 #define FNAME "/var/run/.hoststat"
+#define FNAME_BOOT "/conf/.hoststat"
 
 #ifndef O_NOFOLLOW
 #define O_NOFOLLOW	0400000
@@ -147,6 +148,7 @@ int main (int argc, char** argv) {
     void *context = zmq_init(1);
     void *responder = zmq_socket(context, ZMQ_ROUTER);
     char* identity_str = parse_uuid(src_ip);
+    struct stat my_stat;
     int64_t tcp_keepalive, tcp_keepalive_idle;
     tcp_keepalive = 1;
     tcp_keepalive_idle = 300;
@@ -160,6 +162,7 @@ int main (int argc, char** argv) {
     char *msg_text, *client_uuid;
     char *outbuff = malloc(SENDBUFF_SIZE + 1);
     char *sendbuff = malloc(SENDBUFF_SIZE + 1);
+    char *answ_file_name;
     int loop=1;
     while (loop) {
         int msg_part = 0;
@@ -180,7 +183,7 @@ int main (int argc, char** argv) {
             };
             msg_part++;
             zmq_msg_close (&message);
-            int64_t more;
+            int64_t more = 0;
             size_t more_size = sizeof (more);
             zmq_getsockopt (responder, ZMQ_RCVMORE, &more, &more_size);
             if (!more) {
@@ -192,8 +195,14 @@ int main (int argc, char** argv) {
         if (!strncmp(msg_text, "status", 6) && strlen(msg_text) == 6) {
             //printf ("%d ,  %s %d\n", num, inbuff, sizeof(inbuff));
             // recreate FNAME according to current runlevel, not beautifull but working
-            system("echo 'up to runlevel' $(/sbin/runlevel | cut -d ' ' -f 2) >"FNAME);
-            file = open(FNAME, 0);
+            if (!stat(FNAME_BOOT, &my_stat)) {
+                answ_file_name = FNAME_BOOT;
+                file = open(FNAME_BOOT, 0);
+            } else {
+                system("echo 'up to runlevel' $(/sbin/runlevel | cut -d ' ' -f 2) >"FNAME);
+                answ_file_name = FNAME;
+                file = open(FNAME, 0);
+            };
             if (file < 0) {
                 fprintf(stderr, "File not found");
                 sprintf(outbuff, "error: statfile not found");
@@ -208,7 +217,7 @@ int main (int argc, char** argv) {
                 close(file);
                 sprintf(outbuff, "%s", filebuff);
             }
-            syslog(LOG_DAEMON|LOG_INFO, "got status-request, answering %s", outbuff);
+            syslog(LOG_DAEMON|LOG_INFO, "got status-request, answering '%s' from %s", outbuff, answ_file_name);
         } else if (!strncmp(msg_text, "reboot", 6) && strlen(msg_text) == 6) {
             sprintf(outbuff, "rebooting");
             postcom = 1;
