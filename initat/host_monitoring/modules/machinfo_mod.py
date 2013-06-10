@@ -377,7 +377,7 @@ class _general(hm_classes.hm_module):
             mv["mem.used.shared"]   = 0
         else:
             # buffers + cached + swapcache + reclaimable
-            bc_mem = mem_list["Buffers"] + mem_list["Cached"] + mem_list["SwapCache"] + mem_list["SReclaimable"]
+            bc_mem = mem_list["Buffers"] + mem_list["Cached"]# + mem_list["SwapCache"] + mem_list["SReclaimable"]
             mv["mem.avail.phys"]    = mem_list["MemTotal"]
             mv["mem.avail.swap"]    = mem_list["SwapTotal"]
             mv["mem.avail.total"]   = mem_list["MemTotal"]  + mem_list["SwapTotal"]
@@ -392,7 +392,7 @@ class _general(hm_classes.hm_module):
             mv["mem.used.total"]    = mem_list["MemTotal"]  + mem_list["SwapTotal"] - (mem_list["MemFree"] + mem_list["SwapFree"] + bc_mem)
             mv["mem.used.total.bc"] = mem_list["MemTotal"]  + mem_list["SwapTotal"] - (mem_list["MemFree"] + mem_list["SwapFree"])
             mv["mem.used.buffers"]  = mem_list["Buffers"]
-            mv["mem.used.cached"]   = mem_list["Cached"] + mem_list["SwapCache"] + mem_list["SReclaimable"]
+            mv["mem.used.cached"]   = mem_list["Cached"]# + mem_list["SwapCache"] + mem_list["SReclaimable"]
             mv["mem.used.shared"]   = mem_list["MemShared"]
         try:
             self._df_int(mv)
@@ -1012,7 +1012,7 @@ class mem_command(hm_classes.hm_command):
         srv_com["mem"] = self.module._mem_int()
     def interpret(self, srv_com, cur_ns):
         buffers = srv_com.get_int("mem:Buffers")
-        cached = srv_com.get_int("mem:Cached") + srv_com.get_int("mem:SwapCache", 0) + srv_com.get_int("mem:SReclaimable", 0)
+        cached = srv_com.get_int("mem:Cached")# + srv_com.get_int("mem:SwapCache", 0) + srv_com.get_int("mem:SReclaimable", 0)
         mem_total, mem_free = (
             srv_com.get_int("mem:MemTotal"),
             srv_com.get_int("mem:MemFree") + buffers + cached
