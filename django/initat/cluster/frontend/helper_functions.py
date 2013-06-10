@@ -88,6 +88,16 @@ class xml_response(object):
         """
         self.log_buffer = []
         self.val_dict = {}
+    def log(self, log_level, log_str, logger=None):
+        self.log_buffer.append((log_level, log_str))
+        if logger:
+            logger.log(log_level, log_str)
+    def info(self, log_str, logger=None):
+        self.log(logging_tools.LOG_LEVEL_OK, log_str, logger)
+    def warn(self, log_str, logger=None):
+        self.log(logging_tools.LOG_LEVEL_WARN, log_str, logger)
+    def error(self, log_str, logger=None):
+        self.log(logging_tools.LOG_LEVEL_ERROR, log_str, logger)
     def feed_log_line(self, log_level, log_str):
         """
         appends new log line with log data
@@ -206,6 +216,19 @@ def keyword_check(*kwarg_list):
 ##        print args, kwargs
 ##        return self._func.as_view(*args, **kwargs)
 
+class xml_wrapper(object):
+    def __init__(self, func):
+        self.__name__ = func.__name__
+        self.__doc__ = func.__doc__
+        self._func = func
+    def __repr__(self):
+        return self._func
+    def __call__(self, *args, **kwargs):
+        request = args[0]
+        request.xml_response = xml_response()
+        self._func(*args, **kwargs)
+        return request.xml_response.create_response()
+    
 class init_logging(object):
     def __init__(self, func):
         """ decorator for catching exceptions and logging, has to be the first decorator in the decorator queue (above login_required) to catch redirects """

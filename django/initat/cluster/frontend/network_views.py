@@ -7,6 +7,7 @@ import json
 import pprint
 import time
 
+import logging
 import logging_tools
 import process_tools
 import server_command
@@ -14,7 +15,7 @@ import net_tools
 import ipvx_tools
 import config_tools
 
-from initat.cluster.frontend.helper_functions import init_logging
+from initat.cluster.frontend.helper_functions import init_logging, xml_wrapper
 from initat.core.render import render_me, render_string
 from django.contrib.auth.decorators import login_required
 from lxml import etree
@@ -30,6 +31,9 @@ import json
 from initat.cluster.frontend.forms import dtn_detail_form, dtn_new_form
 from networkx.readwrite import json_graph
 from django.core.urlresolvers import reverse
+from django.utils.decorators import method_decorator
+
+logger = logging.getLogger("cluster.network")
 
 def cleanup_tree(in_xml, attr_dict):
     # experimental stuff, not needed right now

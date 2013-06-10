@@ -3,9 +3,8 @@ from django.conf import settings
 import sys
 import os
 import process_tools
-from initat.cluster.frontend import rest_views
+from initat.cluster.frontend import rest_views, device_views, main_views
 from rest_framework.urlpatterns import format_suffix_patterns
-
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
 # admin.autodiscover()
@@ -85,20 +84,18 @@ boot_patterns = patterns(
 
 device_patterns = patterns(
     "initat.cluster.frontend",
-    url("^device_tree$"       , "device_views.device_tree"        , name="tree"               ),
-    url("^get_xml_tree$"      , "device_views.get_xml_tree"       , name="get_xml_tree"       ), 
-    url("^add_selection$"     , "device_views.add_selection"      , name="add_selection"      ),
-    url("^clear_selection$"   , "device_views.clear_selection"    , name="clear_selection"    ),
-    url("^config$"            , "device_views.show_configs"       , name="show_configs"       ),
-    url("^get_group_tree$"    , "device_views.get_group_tree"     , name="get_group_tree"     ),
-    url("^connections"        , "device_views.connections"        , name="connections"        ),
-    url("^xml/create_connect" , "device_views.create_connection"  , name="create_connection"  ),
-    url("^xml/delete_connect" , "device_views.delete_connection"  , name="delete_connection"  ),
-    url("manual_connection"   , "device_views.manual_connection"  , name="manual_connection"  ),
-    url("variables$"          , "device_views.variables"          , name="variables"          ),
-    url("variables/create$"   , "device_views.create_variable"    , name="create_variable"    ),
-    url("variables/delete$"   , "device_views.delete_variable"    , name="delete_variable"    ),
-    url("dev_info$"           , "device_views.device_info"        , name="device_info"        ),
+    url("^device_tree$"       , device_views.device_tree.as_view()      , name="tree"               ),
+    url("^get_xml_tree$"      , device_views.get_xml_tree.as_view()     , name="get_xml_tree"       ), 
+    url("^add_selection$"     , device_views.add_selection.as_view()    , name="add_selection"      ),
+    url("^clear_selection$"   , device_views.clear_selection.as_view()  , name="clear_selection"    ),
+    url("^config$"            , device_views.show_configs.as_view()     , name="show_configs"       ),
+    url("^get_group_tree$"    , device_views.get_group_tree.as_view()   , name="get_group_tree"     ),
+    url("^connections"        , device_views.connections.as_view()      , name="connections"        ),
+    url("^xml/create_connect" , device_views.create_connection.as_view(), name="create_connection"  ),
+    url("^xml/delete_connect" , device_views.delete_connection.as_view(), name="delete_connection"  ),
+    url("manual_connection"   , device_views.manual_connection.as_view(), name="manual_connection"  ),
+    url("variables$"          , device_views.variables.as_view()        , name="variables"          ),
+    url("dev_info$"           , device_views.device_info.as_view()      , name="device_info"        ),
 )
 
 network_patterns = patterns(
@@ -182,7 +179,7 @@ pack_patterns = patterns(
 
 main_patterns = patterns(
     "initat.cluster.frontend",
-    url(r"index$" , "main_views.index", name="index"),
+    url(r"index$" , main_views.index.as_view(), name="index"),
 )
 
 rrd_patterns = patterns(
