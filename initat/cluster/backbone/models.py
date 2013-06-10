@@ -726,10 +726,10 @@ class cd_connection(models.Model):
             connection_info=self.connection_info
             )
     def __unicode__(self):
-        return "%d (%s) %d" % (
-            self.parent_id,
+        return "%s (via %s) %s" % (
+            unicode(self.parent),
             self.connection_info,
-            self.child_id)
+            unicode(self.child))
 
 @receiver(signals.pre_save, sender=cd_connection)
 def cd_connection_pre_save(sender, **kwargs):

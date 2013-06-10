@@ -8,6 +8,9 @@ try:
     from initat.cluster.license_tools import check_license, get_all_licenses, License
 except ImportError:
     raise ImproperlyConfigured("cannot initialise license framework")
+import logging_tools
+# set unified name
+logging_tools.UNIFIED_NAME = "cluster.http"
 
 ugettext = lambda s : s
 
@@ -330,10 +333,15 @@ if CLUSTER_LICENSE["rest"]:
         )
     }
 
+import logging_tools
+
 LOGGING = {
     'version' : 1,
     'disable_existing_loggers' : True,
     'formatters' : {
+        "initat" : {
+            "()" : "logging_tools.initat_formatter",
+        },
         'verbose' : {
             'format' : '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s %(thread)d %(message)s'
         },
@@ -342,17 +350,37 @@ LOGGING = {
         },
     },
     'handlers' : {
-        "init.at" : {
-            "level" : "ERROR",
-            "class" : "logging_tools.init_handler",
-            "formatter" : "verbose",
+        "init_unified" : {
+            "level"     : "WARN",
+            "class"     : "logging_tools.init_handler_unified",
+            "formatter" : "initat",
+        },
+        "init" : {
+            "level"     : "WARN",
+            "class"     : "logging_tools.init_handler",
+            "formatter" : "initat",
+        },
+        "init_mail" : {
+            "level"     : "ERROR",
+            "class"     : "logging_tools.init_email_handler",
+            "formatter" : "initat",
         },
     },
     'loggers' : {
         'django' : {
-            'handlers' : ['init.at'],
+            'handlers'  : ['init_unified', "init_mail"],
             'propagate' : True,
-            'level' : 'ERROR',
+            'level'     : 'WARN',
+        },
+        'initat' : {
+            'handlers'  : ['init_unified', "init_mail"],
+            'propagate' : True,
+            'level'     : 'WARN',
+        },
+        'cluster' : {
+            'handlers'  : ['init', "init_mail"],
+            'propagate' : True,
+            'level'     : 'WARN',
         },
     }
 }
