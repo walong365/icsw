@@ -3807,6 +3807,13 @@ class domain_name_tree(object):
                     cur_node.depth = self.__node_dict[cur_node.parent_id].depth + 1
                     cur_node.save()
                 self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
+    def check_intermediate(self):
+        used_pks = set(device.objects.all().values_list("domain_tree_node", flat=True)) | set(net_ip.objects.all().values_list("domain_tree_node", flat=True))
+        for cur_tn in self.__node_dict.itervalues():
+            is_im = cur_tn.pk not in used_pks
+            if cur_tn.intermediate != is_im:
+                cur_tn.intermediate = is_im
+                cur_tn.save()
     def add_domain(self, new_domain_name):
         dom_parts = list(reversed(new_domain_name.split(".")))
         cur_node = self._root_node
