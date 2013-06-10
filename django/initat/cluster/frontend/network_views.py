@@ -25,7 +25,7 @@ from django.core.exceptions import ValidationError
 from initat.cluster.backbone.models import device, network, net_ip, \
      network_type, network_device_type, netdevice, peer_information, \
      netdevice_speed, device_variable, device_group, to_system_tz, \
-     domain_tree_node, domain_name_tree
+     domain_tree_node, domain_name_tree, get_related_models
 import json
 from initat.cluster.frontend.forms import dtn_detail_form, dtn_new_form
 from networkx.readwrite import json_graph
@@ -387,6 +387,7 @@ def get_domain_name_tree(request):
         return render_me(request, "domain_name_tree.html")()
     else:
         cur_dnt = domain_name_tree()
+        cur_dnt.check_intermediate()
         xml_resp = cur_dnt.get_xml()
         request.xml_response["response"] = xml_resp
         #print etree.tostring(xml_resp, pretty_print=True)
@@ -447,7 +448,6 @@ def create_new_dtn(request):
     elif request.method == "POST":
         request.log("creating new domain_tree_node")
         _post = request.POST
-        pprint.pprint(_post)
         cur_form = dtn_new_form(_post)
         if cur_form.is_valid():
             full_tree = domain_name_tree()
@@ -462,3 +462,21 @@ def create_new_dtn(request):
             request.log(cur_form.errors.as_text(), logging_tools.LOG_LEVEL_ERROR)
             
         return HttpResponseRedirect(reverse("network:domain_name_tree"))
+
+@init_logging
+@login_required
+def delete_dtn(request):
+    _post = request.POST
+    cur_dtn = domain_tree_node.objects.get(Q(pk=_post["key"]))
+    num_ref = get_related_models(cur_dtn)
+    if num_ref:
+        request.log(
+            "domain tree node '%s' still referenced by %s" % (
+                unicode(cur_dtn),
+                logging_tools.get_plural("object", num_ref)), 
+            logging_tools.LOG_LEVEL_ERROR,
+            xml=True)
+    else:
+        request.log("removed domain tree node '%s'" % (unicode(cur_dtn)), xml=True)
+        cur_dtn.delete()
+    return request.xml_response.create_response()

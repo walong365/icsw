@@ -123,11 +123,24 @@ class domain_name_tree
             }
             success : (xml) =>
                 if parse_xml_response(xml)
+                    @active_node = key
                     detail_div = $("div#dnt_detail")
                     detail_div.children().remove()
                     detail_div.append($(xml).find("value[name='form']").text())
-                    detail_div.uniform()
-                    detail_div.find("input").bind("change", @my_submitter.submit)
+                    #detail_div.uniform()
+                    detail_div.find("input").on("change", @my_submitter.submit)
+                    cur_dtn = @DNT.find("domain_tree_node[pk='#{key}']")
+                    detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
+    delete_node: (event) =>
+        $.ajax
+            url     : "{% url 'network:delete_dtn' %}"
+            data     : {
+                "key" : @active_node
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    $("div#dnt_detail").children().remove()
+                    @top_div.dynatree("getTree").getNodeByKey(@active_node).remove()
     rename_tree: (cur_node) =>
         cur_db_node    = @DNT.find("domain_tree_node[pk='#{cur_node.data.key}']")
         parent_db_node = @DNT.find("domain_tree_node[pk='" + cur_db_node.attr("parent") + "']")

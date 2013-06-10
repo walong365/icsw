@@ -77,6 +77,9 @@ class dtn_detail_form(ModelForm):
                 Field("always_create_ip"),
                 Field("write_nameserver_config"),
             ),
+            ButtonHolder(
+                Button("delete", "Delete", css_class="primaryAction"),
+            ),
             css_class="inlineLabels",
         )
     )
