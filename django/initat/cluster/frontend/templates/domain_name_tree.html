@@ -8,7 +8,9 @@
 
 <h1>Domain name tree</h1>
 
-<div id="dnt_div" class="leftfloat"></div>
+<div id="dnt_div" class="leftfloat">
+    <input type="button" value="create new entry" id="create_new_dtn"/>
+</div>
 <div id="dnt_detail" class="leftfloat" style="width:400px; margin-left:auto; margin-right:auto;"></div>
 
 <script type="text/javascript">
@@ -28,7 +30,20 @@ class domain_name_tree
                         master_xml       : @DNT,
                         success_callback : @change_cb
                     })
+                    @bind_new_button()
                     @build_tree()
+    bind_new_button: () =>
+        $("input#create_new_dtn").bind("click", @create_new)
+    create_new: (event) =>
+        $.ajax
+            url     : "{% url 'network:create_new_dtn' %}"
+            type    : "GET"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    detail_div = $("div#dnt_detail")
+                    detail_div.children().remove()
+                    detail_div.append($(xml).find("value[name='form']").text())
+                    detail_div.uniform()
     build_tree: () =>
         @top_div.dynatree
             autoFocus  : false

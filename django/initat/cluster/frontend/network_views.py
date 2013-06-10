@@ -19,7 +19,7 @@ from initat.core.render import render_me, render_string
 from django.contrib.auth.decorators import login_required
 from lxml import etree
 from lxml.builder import E
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 from django.db.models import Q
 from django.core.exceptions import ValidationError
 from initat.cluster.backbone.models import device, network, net_ip, \
@@ -27,8 +27,9 @@ from initat.cluster.backbone.models import device, network, net_ip, \
      netdevice_speed, device_variable, device_group, to_system_tz, \
      domain_tree_node, domain_name_tree
 import json
-from initat.cluster.frontend.forms import dtn_detail_form
+from initat.cluster.frontend.forms import dtn_detail_form, dtn_new_form
 from networkx.readwrite import json_graph
+from django.core.urlresolvers import reverse
 
 def cleanup_tree(in_xml, attr_dict):
     # experimental stuff, not needed right now
@@ -426,3 +427,38 @@ def get_dtn_detail_form(request):
         }
     )
     return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def create_new_dtn(request):
+    if request.method == "GET":
+        new_form = dtn_new_form(
+            auto_id="dtn__new__%s",
+        )
+        new_form.helper.form_action = reverse("network:create_new_dtn")
+        request.xml_response["form"] = render_string(
+            request,
+            "crispy_form.html",
+            {
+                "form" : new_form,
+            }
+        )
+        return request.xml_response.create_response()
+    elif request.method == "POST":
+        request.log("creating new domain_tree_node")
+        _post = request.POST
+        pprint.pprint(_post)
+        cur_form = dtn_new_form(_post)
+        if cur_form.is_valid():
+            full_tree = domain_name_tree()
+            new_dnt = full_tree.add_domain(cur_form.cleaned_data["full_name"])
+            #print "**", cur_form.cleaned_data
+            # copy from cleaned_data
+            for key in ["comment", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config"]:
+                setattr(new_dnt, key, cur_form.cleaned_data[key])
+            new_dnt.save()
+            request.log("created new dnt '%s'" % (unicode(new_dnt)))
+        else:
+            request.log(cur_form.errors.as_text(), logging_tools.LOG_LEVEL_ERROR)
+            
+        return HttpResponseRedirect(reverse("network:domain_name_tree"))

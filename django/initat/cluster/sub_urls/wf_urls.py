@@ -118,6 +118,7 @@ network_patterns = patterns(
     url("^cdnt$"              , "network_views.get_domain_name_tree"  , name="domain_name_tree"       ),
     url("^mdtn$"              , "network_views.move_domain_tree_node" , name="move_domain_tree_node"  ),
     url("^dtn_detail$"        , "network_views.get_dtn_detail_form"   , name="dtn_detail_form"        ),
+    url("^dtn_new$"           , "network_views.create_new_dtn"        , name="create_new_dtn"         ),
 )
 
 monitoring_patterns = patterns(

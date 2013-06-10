@@ -83,7 +83,31 @@ class dtn_detail_form(ModelForm):
     class Meta:
         model = domain_tree_node
         fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment"]
-        
+
+class dtn_new_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "id_dtn_detail_form"
+    helper.layout = Layout(
+        Fieldset(
+            "Create new node",
+            Field("full_name"),
+            Field("node_postfix"),
+            Field("comment"),
+            ButtonHolder(
+                Field("create_short_names"),
+                Field("always_create_ip"),
+                Field("write_nameserver_config"),
+            ),
+            ButtonHolder(
+                Submit("submit", "Submit", css_class="primaryAction"),
+            ),
+            css_class="inlineLabels",
+        )
+    )
+    class Meta:
+        model = domain_tree_node
+        fields = ["full_name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment"]
+    
 class device_general_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
