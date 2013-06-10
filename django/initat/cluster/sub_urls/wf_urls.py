@@ -29,6 +29,7 @@ base_patterns = patterns(
     url("^change_xml_entry$"                  , "base_views.change_xml_entry", name="change_xml_entry"  ),
     url("^xml/create_object/(?P<obj_name>.*)$", "base_views.create_object"   , name="create_object"),
     url("^xml/delete_object/(?P<obj_name>.*)$", "base_views.delete_object"   , name="delete_object"),
+    url("^xml/get_object$"                    , "base_views.get_object"      , name="get_object"),
     url("^get_gauge_info$"                    , "base_views.get_gauge_info"  , name="get_gauge_info"),
 )
 

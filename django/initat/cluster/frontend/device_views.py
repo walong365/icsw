@@ -219,7 +219,6 @@ def get_group_tree(request):
         )
         xml_resp.append(extra_list)
     request.xml_response["response"] = xml_resp
-    #print etree.tostring(xml_resp, pretty_print=True)
     return request.xml_response.create_response()
 
 @init_logging
@@ -343,14 +342,14 @@ def variables(request):
 @login_required
 def create_variable(request):
     _post = request.POST
-    pprint.pprint(_post)
+    #pprint.pprint(_post)
     return request.xml_response.create_response()
 
 @init_logging
 @login_required
 def delete_variable(request):
     _post = request.POST
-    pprint.pprint(_post)
+    #pprint.pprint(_post)
     return request.xml_response.create_response()
 
 @init_logging

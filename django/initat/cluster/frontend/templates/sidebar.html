@@ -190,7 +190,22 @@ class sidebar_tree
         return ret_list
     show_device_info: (dtnode, event) =>
         if dtnode.data.key.match(/^dev__/)
-            show_device_info(event, dtnode.data.key)
+            show_device_info(event, dtnode.data.key, @update_node)
+    update_node: (dev_key) =>
+        $.ajax
+            url     : "{% url 'base:get_object' %}"
+            data    :
+                "key"             : dev_key
+                "true_flag_0"     : "full_name"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    dev_xml = $(xml).find("value[name='result'] device")
+                    cur_node = @top_div.dynatree("getTree").getNodeByKey(dev_xml.attr("key"))
+                    title_str = dev_xml.attr("full_name")
+                    if dev_xml.attr("comment")
+                        title_str = title_str + " (" + dev_xml.attr("comment") + ")"
+                    cur_node.data.title = title_str
+                    cur_node.render()
     init_gauge_info: =>
         @next_iters = []
         # defaults to 10 seconds

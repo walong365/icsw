@@ -335,3 +335,22 @@ def delete_object(request, *args, **kwargs):
             del_obj.delete()
             request.log("deleted %s '%s'" % (del_obj._meta.object_name, del_info), xml=True)
     return request.xml_response.create_response()
+
+@init_logging
+@login_required
+def get_object(request, *args, **kwargs):
+    _post = request.POST
+    key_type, key_pk = _post["key"].split("__")
+    arg_dict = {}
+    for key, value in _post.iteritems():
+        if key.startswith("true_flag"):
+            arg_dict[value] = True
+        elif key.startswith("false_flag"):
+            arg_dict[value] = False
+    mod_obj = KPMC_MAP.get(key_type, None)
+    if not mod_obj:
+        request.log("object with type '%s' not found" % (key_type), logging_tools.LOG_LEVEL_ERROR, xml=True)
+    else:
+        request.xml_response["result"] = mod_obj.objects.get(Q(pk=key_pk)).get_xml(**arg_dict)
+    return request.xml_response.create_response()
+    

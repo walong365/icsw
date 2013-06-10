@@ -57,11 +57,11 @@ $.ajaxSetup
                 alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
         return false
 
-root.show_device_info = (event, dev_key) ->
-    new device_info(event, dev_key).show()
+root.show_device_info = (event, dev_key, callback) ->
+    new device_info(event, dev_key, callback).show()
 
 class device_info
-    constructor: (@event, @dev_key) ->
+    constructor: (@event, @dev_key, @callback) ->
     show: () =>
         $.ajax
             url     : "{% url 'device:device_info' %}"
@@ -79,6 +79,10 @@ class device_info
                         onShow: (dialog) -> 
                             dialog.container.draggable()
                             $("#simplemodal-container").css("height", "auto")
+                        onClose: =>
+                            $.modal.close()
+                            if @callback
+                                @callback(@dev_key)
     build_div: () =>
         dev_xml = @resp_xml.find("device")
         @my_submitter = new submitter({
@@ -209,10 +213,6 @@ class device_info
         else
             mdcds_div.append($("<h3>").text("No entries found"))
         return mdcds_div
-    domain_callback: (cur_el) =>
-        dev_xml = @resp_xml.find("device")
-        @dev_div.find("input##{dev_xml.attr('key')}__name").val(dev_xml.attr("name"))
-        @dev_div.find("select##{dev_xml.attr('key')}__domain_tree_node").val(dev_xml.attr("domain_tree_node"))
     
 root.draw_ds_tables = (t_div, master_array, master_xml=undefined) ->
     # remove accordion if already exists
@@ -930,7 +930,6 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
             if kwargs.hasOwnProperty(attr_name)
                 new_el.attr(attr_name, kwargs[attr_name])
         if kwargs["css"]
-            console.log kwargs["css"]
             $.each(kwargs["css"], (key, value) ->
                 new_el.css(key, value)
             )
