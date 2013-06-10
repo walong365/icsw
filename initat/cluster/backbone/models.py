@@ -647,6 +647,8 @@ def device_pre_save(sender, **kwargs):
                 cur_inst.domain_tree_node = cur_dnt
                 cur_inst.name = short_name
             #raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
+        if not re.match("^[a-zA-Z0-9-_]+$", cur_inst.name):
+            raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
         if int(cur_inst.md_cache_mode) == 0:
             cur_inst.md_cache_mode = 1
         _check_integer(cur_inst, "md_cache_mode", min_val=1, max_val=3)
