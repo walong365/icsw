@@ -3857,7 +3857,7 @@ class domain_tree_node(models.Model):
     # the top node has no parent
     parent = models.ForeignKey("self", null=True)
     # postfix to add to device name
-    node_postfix = models.CharField(max_length=16, default="")
+    node_postfix = models.CharField(max_length=16, default="", blank=True)
     # depth information, top_node has idx=0
     depth = models.IntegerField(default=0)
     # intermediate node (no IPs allowed)
@@ -3871,7 +3871,7 @@ class domain_tree_node(models.Model):
     # use for nameserver config
     write_nameserver_config = models.BooleanField(default=False)
     # comment
-    comment = models.CharField(max_length=256, default="")
+    comment = models.CharField(max_length=256, default="", blank=True)
     def get_sorted_pks(self):
         return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
