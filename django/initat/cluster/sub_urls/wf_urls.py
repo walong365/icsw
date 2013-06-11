@@ -93,18 +93,19 @@ boot_patterns = patterns(
 
 device_patterns = patterns(
     "initat.cluster.frontend",
-    url("^device_tree$"       , device_views.device_tree.as_view()      , name="tree"               ),
-    url("^get_xml_tree$"      , device_views.get_xml_tree.as_view()     , name="get_xml_tree"       ), 
-    url("^add_selection$"     , device_views.add_selection.as_view()    , name="add_selection"      ),
-    url("^clear_selection$"   , device_views.clear_selection.as_view()  , name="clear_selection"    ),
-    url("^config$"            , device_views.show_configs.as_view()     , name="show_configs"       ),
-    url("^get_group_tree$"    , device_views.get_group_tree.as_view()   , name="get_group_tree"     ),
-    url("^connections"        , device_views.connections.as_view()      , name="connections"        ),
-    url("^xml/create_connect" , device_views.create_connection.as_view(), name="create_connection"  ),
-    url("^xml/delete_connect" , device_views.delete_connection.as_view(), name="delete_connection"  ),
-    url("manual_connection"   , device_views.manual_connection.as_view(), name="manual_connection"  ),
-    url("variables$"          , device_views.variables.as_view()        , name="variables"          ),
-    url("dev_info$"           , device_views.device_info.as_view()      , name="device_info"        ),
+    url("^device_tree$"       , device_views.device_tree.as_view()      , name="tree"             ),
+    url("^get_xml_tree$"      , device_views.get_xml_tree.as_view()     , name="get_xml_tree"     ), 
+    url("^add_selection$"     , device_views.add_selection.as_view()    , name="add_selection"    ),
+    url("^clear_selection$"   , device_views.clear_selection.as_view()  , name="clear_selection"  ),
+    url("^config$"            , device_views.show_configs.as_view()     , name="show_configs"     ),
+    url("^get_group_tree$"    , device_views.get_group_tree.as_view()   , name="get_group_tree"   ),
+    url("^connections"        , device_views.connections.as_view()      , name="connections"      ),
+    url("^xml/create_connect" , device_views.create_connection.as_view(), name="create_connection"),
+    url("^xml/delete_connect" , device_views.delete_connection.as_view(), name="delete_connection"),
+    url("manual_connection"   , device_views.manual_connection.as_view(), name="manual_connection"),
+    url("variables$"          , device_views.variables.as_view()        , name="variables"        ),
+    url("dev_info$"           , device_views.device_info.as_view()      , name="device_info"      ),
+    url("^change_category"    , device_views.change_category.as_view()  , name="change_category"  ),
 )
 
 network_patterns = patterns(
@@ -249,5 +250,5 @@ url_patterns = patterns(
             "document_root" : "/opt/python-init/lib/python/site-packages/crispy_forms/static/uni_form"
             }),
     url(r"^%s/" % (settings.REL_SITE_ROOT)                                , include(my_url_patterns)),
-    url(r"^$", "initat.cluster.frontend.session_views.redirect_to_main"),
+    url(r"^$", session_views.redirect_to_main.as_view()),
 )

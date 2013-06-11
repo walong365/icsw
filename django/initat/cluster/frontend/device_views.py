@@ -27,7 +27,7 @@ from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from initat.cluster.backbone.models import device_type, device_group, device, device_class, \
      mon_device_templ, mon_ext_host, cd_connection, package_device_connection, \
-     mon_host_cluster, mon_service_cluster, domain_name_tree, category_tree
+     mon_host_cluster, mon_service_cluster, domain_name_tree, category_tree, category
 from initat.cluster.frontend import forms
 
 logger = logging.getLogger("cluster.device")
@@ -374,3 +374,21 @@ class device_info(View):
                 )
             )
         )
+
+class change_category(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        cur_dev = device.objects.get(Q(pk=_post["dev_pk"]))
+        add = True if int(_post["flag"]) else False
+        new_cat = category.objects.get(Q(pk=_post["cat_pk"]))
+        if add:
+            cur_dev.categories.add(new_cat)
+            request.xml_response.info("add category '%s' to %s" % (unicode(new_cat), unicode(cur_dev)), logger)
+        else:
+            cur_dev.categories.remove(new_cat)
+            request.xml_response.info("removed category '%s' from %s" % (unicode(new_cat), unicode(cur_dev)), logger)
+        print cur_dev, new_cat, add
+        pprint.pprint(_post)
+        

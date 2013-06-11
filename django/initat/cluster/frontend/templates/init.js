@@ -138,8 +138,26 @@ class device_info
         tree_div = $("<div>").attr("id", "cat_tree")
         cat_div.append(tree_div)
         tree_div.dynatree
-            autoFocus  : false
+            autoFocus : false
+            checkbox  : true
+            clickFolderMode : 2
+            #onExpand : (flag, dtnode) =>
+            #    dtnode.toggleSelect()
+            onClick : (dtnode, event) =>
+                #console.log dtnode.data.key, event.type
+                #dtnode.toggleSelect()
+            onSelect : (flag, dtnode) =>
+                $.ajax
+                    url     : "{% url 'device:change_category' %}"
+                    data    :
+                        "dev_pk" : @resp_xml.find("device").attr("pk")
+                        "cat_pk" : dtnode.data.key
+                        "flag"   : if flag then 1 else 0
+                    success : (xml) =>
+                        parse_xml_response(xml)
+                #dtnode.toggleSelect()
         root_node = tree_div.dynatree("getRoot")
+        @select_cats = dev_xml.attr("categories").split("::")
         @build_node(root_node, @resp_xml.find("category[parent='0']"))
         return cat_div
     build_node: (dt_node, db_node) =>
@@ -149,11 +167,16 @@ class device_info
         else
             title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
             expand_flag = false
+        selected = if db_node.attr("pk") in @select_cats then true else false
         new_node = dt_node.addChild(
-            title    : title_str
-            expand   : expand_flag
-            key      : db_node.attr("pk")
+            title        : title_str
+            expand       : expand_flag
+            key          : db_node.attr("pk")
+            hideCheckbox : if parseInt(db_node.attr("depth")) then false else true
+            select       : selected
         )
+        if selected
+            new_node.makeVisible()
         @resp_xml.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
             @build_node(new_node, $(sub_db_node))
     network_div: () =>
