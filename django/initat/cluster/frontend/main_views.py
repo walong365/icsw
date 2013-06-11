@@ -14,5 +14,4 @@ logger = logging.getLogger("cluster.main")
 class index(View):
     @method_decorator(login_required)
     def get(self, request):
-        a = 1 / 0
         return render_me(request, "index.html")()

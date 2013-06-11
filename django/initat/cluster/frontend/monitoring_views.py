@@ -5,68 +5,74 @@
 
 import logging_tools
 import process_tools
+import pprint
+import server_command
+import net_tools
+import logging
+from lxml import etree
+from lxml.builder import E
+
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+from django.db.utils import IntegrityError
+from django.http import HttpResponseRedirect
+from django.utils.decorators import method_decorator
+from django.views.generic import View
+
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.core.render import render_me
 from initat.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, mon_period, mon_contact, user, \
      mon_contactgroup, get_related_models, network_type, network_device_type, mon_device_templ, \
      mon_ext_host, mon_host_cluster, mon_service_cluster, mon_device_esc_templ, mon_service_esc_templ, \
      partition_table
-from django.db.models import Q
-from initat.cluster.frontend.helper_functions import init_logging, contact_server
-from initat.core.render import render_me
-from django.contrib.auth.decorators import login_required
-from lxml import etree
-from django.http import HttpResponseRedirect
-from lxml.builder import E
-from django.core.exceptions import ValidationError
-from django.db.utils import IntegrityError
-import pprint
-import server_command
-import net_tools
 
-@init_logging
-@login_required
-def create_command(request):
-    _post = request.POST
-    pprint.pprint(_post)
-    keys = _post.keys()
-    conf_pk = int(keys[0].split("__")[1])
-    value_dict = dict([(key.split("__", 3)[3], value) for key, value in _post.iteritems() if key.count("__") > 2])
-    copy_dict = dict([(key, value) for key, value in value_dict.iteritems() if key in ["name", "command_line", "description"]])
-    request.log("create new monitoring_command %s for config %d" % (value_dict["name"], conf_pk))
-    new_nc = mon_check_command(
-        config=config.objects.get(Q(pk=conf_pk)),
-        mon_check_command_type=mon_check_command_type.objects.get(Q(pk=value_dict["mon_check_command_type"])),
-        mon_service_templ=mon_service_templ.objects.get(Q(pk=value_dict["mon_service_templ"])),
-        **copy_dict)
-    #pprint.pprint(copy_dict)
-    try:
-        new_nc.save()
-    except ValidationError, what:
-        request.log("error creating new monitoring_config: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, xml=True)
-    else:
-        request.xml_response["new_monitoring_command"] = new_nc.get_xml()
-    return request.xml_response.create_response()
+logger = logging.getLogger("cluster.monitoring")
+
+class create_command(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        keys = _post.keys()
+        conf_pk = int(keys[0].split("__")[1])
+        value_dict = dict([(key.split("__", 3)[3], value) for key, value in _post.iteritems() if key.count("__") > 2])
+        copy_dict = dict([(key, value) for key, value in value_dict.iteritems() if key in ["name", "command_line", "description"]])
+        logger.info("create new monitoring_command %s for config %d" % (value_dict["name"], conf_pk))
+        new_nc = mon_check_command(
+            config=config.objects.get(Q(pk=conf_pk)),
+            mon_check_command_type=mon_check_command_type.objects.get(Q(pk=value_dict["mon_check_command_type"])),
+            mon_service_templ=mon_service_templ.objects.get(Q(pk=value_dict["mon_service_templ"])),
+            **copy_dict)
+        #pprint.pprint(copy_dict)
+        try:
+            new_nc.save()
+        except ValidationError, what:
+            request.xml_response.error("error creating new monitoring_config: %s" % (unicode(what.messages[0])), logger)
+        else:
+            request.xml_response["new_monitoring_command"] = new_nc.get_xml()
     
-@init_logging
-@login_required
-def delete_command(request):
-    _post = request.POST
-    main_key = [key for key in _post.keys() if key.endswith("__name")][0]
-    try:
-        mon_check_command.objects.get(Q(pk=main_key.split("__")[3])).delete()
-    except mon_check_command.DoesNotExist:
-        request.log("mon_check_command does not exist", logging_tools.LOG_LEVEL_ERROR, xml=True)
-    return request.xml_response.create_response()
+class delete_command(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        main_key = [key for key in _post.keys() if key.endswith("__name")][0]
+        try:
+            mon_check_command.objects.get(Q(pk=main_key.split("__")[3])).delete()
+        except mon_check_command.DoesNotExist:
+            request.xml_response.error("mon_check_command does not exist", logger)
 
-@init_logging
-@login_required
-def setup(request):
-    if request.method == "GET":
+class setup(View):
+    @method_decorator(login_required)
+    def get(self, request):
         return render_me(
             request, "monitoring_setup.html",
         )()
-    else:
+    @method_decorator(xml_wrapper)
+    def post(self, request):
         xml_resp = E.response()
         request.xml_response["response"] = xml_resp
         device_group_dict = {}
@@ -85,16 +91,15 @@ def setup(request):
                 E.mon_check_Command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.all()]),
             ]
         )
-        return request.xml_response.create_response()
 
-@init_logging
-@login_required
-def extended_setup(request):
-    if request.method == "GET":
+class extended_setup(View):
+    @method_decorator(login_required)
+    def get(self, request):
         return render_me(
             request, "monitoring_extended_setup.html",
         )()
-    else:
+    @method_decorator(xml_wrapper)
+    def post(self, request):
         xml_resp = E.response()
         request.xml_response["response"] = xml_resp
         xml_resp.extend(
@@ -114,16 +119,15 @@ def extended_setup(request):
                 E.mon_check_Command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.all()]),
             ]
         )
-        return request.xml_response.create_response()
 
-@init_logging
-@login_required
-def device_config(request):
-    if request.method == "GET":
+class device_config(View):
+    @method_decorator(login_required)
+    def get(self, request):
         return render_me(
             request, "monitoring_device.html",
         )()
-    else:
+    @method_decorator(xml_wrapper)
+    def post(self, request):
         mon_hosts = device.objects.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"])).prefetch_related("device_config_set__config")
         srv_list = E.devices()
         for cur_dev in mon_hosts:
@@ -136,41 +140,40 @@ def device_config(request):
             srv_list.append(dev_xml)
         part_list = E.partition_tables(*[cur_pt.get_xml() for cur_pt in partition_table.objects.all()])
         request.xml_response["response"] = E.response(srv_list, part_list)
-        return request.xml_response.create_response()
 
-@init_logging
-@login_required
-def create_config(request):
-    srv_com = server_command.srv_command(command="rebuild_host_config", cache_mode="ALWAYS")
-    #srv_com["devices"] = srv_com.builder(
-    #    "devices",
-    #    *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
-    result = contact_server(request, "tcp://localhost:8010", srv_com)
-    #result = net_tools.zmq_connection("config_webfrontend", timeout=5).add_connection("tcp://localhost:8010", srv_com)
-    if result:
-        request.xml_response["result"] = E.devices()
-    return request.xml_response.create_response()
+class create_config(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        srv_com = server_command.srv_command(command="rebuild_host_config", cache_mode="ALWAYS")
+        #srv_com["devices"] = srv_com.builder(
+        #    "devices",
+        #    *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
+        result = contact_server(request, "tcp://localhost:8010", srv_com)
+        #result = net_tools.zmq_connection("config_webfrontend", timeout=5).add_connection("tcp://localhost:8010", srv_com)
+        if result:
+            request.xml_response["result"] = E.devices()
 
-@login_required
-@init_logging
-def rebuild_config(request):
-    srv_com = server_command.srv_command(command="rebuild_config")
-    result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
-    return request.xml_response.create_response()
+class rebuild_config(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        srv_com = server_command.srv_command(command="rebuild_config")
+        result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
 
-@login_required
-@init_logging
-def call_icinga(request):
-    return HttpResponseRedirect("http://%s/icinga" % (request.META["HTTP_HOST"]))
+class call_icinga(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        return HttpResponseRedirect("http://%s/icinga" % (request.META["HTTP_HOST"]))
 
-@login_required
-@init_logging
-def fetch_partition(request):
-    _post = request.POST
-    part_dev = device.objects.get(Q(pk=_post["pk"]))
-    request.log("reading partition info from %s" % (unicode(part_dev)))
-    srv_com = server_command.srv_command(command="fetch_partition_info")
-    srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
-    srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
-    result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
-    return request.xml_response.create_response()
+class fetch_partition(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        part_dev = device.objects.get(Q(pk=_post["pk"]))
+        logger.info("reading partition info from %s" % (unicode(part_dev)))
+        srv_com = server_command.srv_command(command="fetch_partition_info")
+        srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
+        srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
+        result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)

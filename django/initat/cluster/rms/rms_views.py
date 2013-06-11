@@ -1,28 +1,36 @@
 # rms views
 
-from django.http import HttpResponse
-from initat.core.render import render_me
-from initat.cluster.frontend.helper_functions import init_logging, logging_pool
-from django.conf import settings
 import json
 import sge_tools
 import threading
+import logging
+import logging_tools
 from lxml import etree
+
+from django.conf import settings
+from django.http import HttpResponse
+from django.views.generic import View
+from django.utils.decorators import method_decorator
+
+from initat.core.render import render_me
+from initat.cluster.frontend.helper_functions import xml_wrapper
+
+logger = logging.getLogger("cluster.rms")
 
 class tl_sge_info(sge_tools.sge_info):
     # sge_info object with thread lock layer
     def __init__(self):
         self.lock = threading.Lock()
-        self.__logger = logging_pool.get_logger("sge_info")
         sge_tools.sge_info.__init__(
             self,
             server="127.0.0.1",
             default_pref=["server"],
             never_direct=True,
             run_initial_update=False,
-            log_command=self.__logger.log,
             verbose=settings.DEBUG
         )
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        logger.log(log_level, "[sge] %s" % (what))
     def update(self):
         self.lock.acquire()
         try:
@@ -39,13 +47,13 @@ def get_job_options(request):
 def get_node_options(request):
     return sge_tools.get_empty_node_options(merge_node_queue=True)
 
-@init_logging
-def overview(request):
-    return render_me(request, "rms_overview.html", {
-        "run_job_headers"  : sge_tools.get_running_headers(get_job_options(request)),
-        "wait_job_headers" : sge_tools.get_waiting_headers(get_job_options(request)),
-        "node_headers"     : sge_tools.get_node_headers(get_node_options(request))
-    })()
+class overview(View):
+    def get(self, request):
+        return render_me(request, "rms_overview.html", {
+            "run_job_headers"  : sge_tools.get_running_headers(get_job_options(request)),
+            "wait_job_headers" : sge_tools.get_waiting_headers(get_job_options(request)),
+            "node_headers"     : sge_tools.get_node_headers(get_node_options(request))
+        })()
 
 def _node_to_value(in_node):
     if in_node.get("type", "string") == "float":
@@ -85,26 +93,26 @@ def _sort_list(in_list, _post):
             "iTotalDisplayRecords" : filter_data_len,
             "aaData"               : show_list}
 
-@init_logging
-def get_run_jobs_xml(request):
-    _post = request.POST
-    my_sge_info.update()
-    run_job_list  = sge_tools.build_running_list(my_sge_info, get_job_options(request))
-    json_resp = _sort_list(run_job_list, _post)
-    return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+class get_run_jobs_xml(View):
+    def post(self, request):
+        _post = request.POST
+        my_sge_info.update()
+        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request))
+        json_resp    = _sort_list(run_job_list, _post)
+        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
-@init_logging
-def get_wait_jobs_xml(request):
-    _post = request.POST
-    my_sge_info.update()
-    wait_job_list  = sge_tools.build_waiting_list(my_sge_info, get_job_options(request))
-    json_resp = _sort_list(wait_job_list, _post)
-    return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+class get_wait_jobs_xml(View):
+    def post(self, request):
+        _post = request.POST
+        my_sge_info.update()
+        wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request))
+        json_resp     = _sort_list(wait_job_list, _post)
+        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
-@init_logging
-def get_node_xml(request):
-    _post = request.POST
-    my_sge_info.update()
-    node_list     = sge_tools.build_node_list(my_sge_info, get_node_options(request))
-    json_resp = _sort_list(node_list, _post)
-    return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+class get_node_xml(View):
+    def post(self, request):
+        _post = request.POST
+        my_sge_info.update()
+        node_list = sge_tools.build_node_list(my_sge_info, get_node_options(request))
+        json_resp = _sort_list(node_list, _post)
+        return HttpResponse(json.dumps(json_resp), mimetype="application/json")

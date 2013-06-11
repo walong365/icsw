@@ -3,30 +3,27 @@
 
 """ RRD views """
 
-import json
-import pprint
-import logging_tools
-import process_tools
-from initat.cluster.frontend.helper_functions import init_logging
-from initat.core.render import render_me
-from django.contrib.auth.decorators import login_required
-from lxml import etree
+import logging
 from lxml.builder import E
-from django.db.models import Q
-from django.core.exceptions import ValidationError
-from initat.cluster.backbone.models import rrd_rra, rrd_class, ALLOWED_CFS
-import server_command
-import net_tools
-import time
 
-@login_required
-@init_logging
-def class_overview(request):
-    if request.method == "GET":
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
+from django.views.generic import View
+
+from initat.core.render import render_me
+from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.cluster.backbone.models import rrd_rra, rrd_class, ALLOWED_CFS
+
+logger = logging.getLogger("cluster.rrd")
+
+class class_overview(View):
+    @method_decorator(login_required)
+    def get(self, request):
         return render_me(
             request, "rrd_class_overview.html",
         )()
-    else:
+    @method_decorator(xml_wrapper)
+    def post(self, request):
         xml_resp = E.response(
             E.rrd_classes(*[
                 cur_rc.get_xml() for cur_rc in rrd_class.objects.all()
@@ -39,4 +36,3 @@ def class_overview(request):
             ])
         )
         request.xml_response["response"] = xml_resp
-        return request.xml_response.create_response()

@@ -3,28 +3,31 @@
 import os
 import time
 import process_tools
-from django.http import HttpResponse
-from initat.core.render import render_me
-from django.http import Http404
+import logging
+import logging_tools
+import types
+
 from django.conf import settings
-from django.db.models import Q
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-import logging_tools
-from initat.cluster.backbone.models import user, user_serializer, group, group_serializer, \
-     user_serializer_h, group_serializer_h, device_group_serializer
-from rest_framework.renderers import XMLRenderer
-from rest_framework.parsers import XMLParser
-from rest_framework.decorators import api_view, APIView
-from rest_framework import mixins
-from rest_framework import generics
+from django.db.models import Q
+from django.http import Http404, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+
+from rest_framework import mixins, generics
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
+from rest_framework.decorators import api_view, APIView
+from rest_framework.parsers import XMLParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
-import types
-from initat.cluster.frontend.helper_functions import logging_pool
+from rest_framework.renderers import XMLRenderer
+
+from initat.core.render import render_me
+from initat.cluster.backbone.models import user, user_serializer, group, group_serializer, \
+     user_serializer_h, group_serializer_h, device_group_serializer
+
+logger = logging.getLogger("cluster.rest")
 
 @api_view(('GET',))
 def api_root(request, format=None):
@@ -37,13 +40,12 @@ class rest_logging(object):
     def __init__(self, func):
         self._func = func
         self.__name__ = self._func.__name__
-        self.__logger = logging_pool.get_logger("http")
         self.__obj_name = None
     def __get__(self, obj, owner_class=None):
         # magic ...
         return types.MethodType(self, obj)
     def log(self, what="", log_level=logging_tools.LOG_LEVEL_OK):
-        self.__logger.log(log_level, "[%s%s] %s" % (
+        logger.log(log_level, "[%s%s] %s" % (
             self.__name__,
             " %s" % (self.__obj_name) if self.__obj_name else "",
             what))
@@ -60,7 +62,6 @@ class rest_logging(object):
         e_time = time.time()
         self.log("call took %s" % (
             logging_tools.get_diff_time_str(e_time - s_time)))
-        logging_pool.free_logger(self.__logger)
         return result
         
 class detail_view(mixins.RetrieveModelMixin,

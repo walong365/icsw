@@ -8,25 +8,27 @@ import pprint
 import logging
 import logging_tools
 import process_tools
-from initat.cluster.frontend.helper_functions import init_logging, xml_wrapper
-from initat.core.render import render_me, render_string
+import re
+import time
+from lxml import etree
+from lxml.builder import E
+import config_tools
+
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User, UserManager, Permission
 from django.http import HttpResponse
+from django.db.models import Q
+from django.core.urlresolvers import reverse
+from django.core.exceptions import ValidationError
+from django.views.generic import View
+from django.utils.decorators import method_decorator
+
+from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.core.render import render_me, render_string
 from initat.cluster.backbone.models import device_type, device_group, device, device_class, \
      mon_device_templ, mon_ext_host, cd_connection, package_device_connection, \
      mon_host_cluster, mon_service_cluster, domain_name_tree
-from django.core.exceptions import ValidationError
-from lxml import etree
-import config_tools
-from lxml.builder import E
-from django.db.models import Q
-import re
-import time
-from django.core.urlresolvers import reverse
-from django.contrib.auth.models import User, UserManager, Permission
 from initat.cluster.frontend import forms
-from django.views.generic import View
-from django.utils.decorators import method_decorator
 
 logger = logging.getLogger("cluster.device")
 

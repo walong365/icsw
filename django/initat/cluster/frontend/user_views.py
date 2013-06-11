@@ -25,31 +25,40 @@
 import os
 import net_tools
 import pprint
+import logging
 import logging_tools
 import process_tools
 import server_command
-from django.http import HttpResponse
-from initat.core.render import render_me, render_string
-from initat.cluster.frontend.helper_functions import init_logging, logging_pool, contact_server
-from django.conf import settings
-from django.db.models import Q
-from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
 from lxml import etree
 from lxml.builder import E
+
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User, UserManager, Permission
+from django.core.exceptions import ValidationError
+from django.http import HttpResponse
+from django.db.models import Q
+from django.views.generic import View
+from django.utils.decorators import method_decorator
+
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, device_class, device_location, group, user, \
      device_config, device_group
-from django.contrib.auth.models import User, UserManager, Permission
+from initat.core.render import render_me, render_string
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.forms import dummy_password_form
 
-@login_required
-@init_logging
-def overview(request, *args, **kwargs):
-    if request.method == "GET":
+logger = logging.getLogger("cluster.user")
+
+class overview(View):
+    @method_decorator(login_required)
+    def get(self, request, *args, **kwargs):
         if kwargs["mode"] == "table":
             return render_me(request, "user_overview.html", {})()
-    else:
+    
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request, *args, **kwargs):
         shell_names = [line.strip() for line in file("/etc/shells", "r").read().split("\n") if line.strip()]
         shell_names = [line for line in shell_names if os.path.exists(line)] + ["/bin/false"]
         # get homedir export
@@ -95,33 +104,32 @@ def overview(request, *args, **kwargs):
             E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))])
         )
         request.xml_response["response"] = xml_resp
-        return request.xml_response.create_response()
 
-@login_required
-@init_logging
-def sync_users(request):
-    # create homedirs
-    create_user_list = user.objects.filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True))
-    request.log("user homes to create: %d" % (len(create_user_list)))
-    for create_user in create_user_list:
-        request.log("trying to create user_home for '%s'" % (unicode(create_user)))
-        srv_com = server_command.srv_command(command="create_user_home")
-        srv_com["server_key:username"] = create_user.login
+class sync_users(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        # create homedirs
+        create_user_list = user.objects.filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True))
+        logger.info("user homes to create: %d" % (len(create_user_list)))
+        for create_user in create_user_list:
+            logger.info("trying to create user_home for '%s'" % (unicode(create_user)))
+            srv_com = server_command.srv_command(command="create_user_home")
+            srv_com["server_key:username"] = create_user.login
+            result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+        srv_com = server_command.srv_command(command="sync_ldap_config")
         result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
-    srv_com = server_command.srv_command(command="sync_ldap_config")
-    result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
-    srv_com = server_command.srv_command(command="sync_http_users")
-    result = contact_server(request, "tcp://localhost:8010", srv_com)
-    return request.xml_response.create_response()
+        srv_com = server_command.srv_command(command="sync_http_users")
+        result = contact_server(request, "tcp://localhost:8010", srv_com)
 
-@init_logging
-@login_required
-def get_password_form(request):
-    request.xml_response["form"] = render_string(
-        request,
-        "crispy_form.html",
-        {
-            "form" : dummy_password_form()
-        }
-    )
-    return request.xml_response.create_response()
+class get_password_form(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        request.xml_response["form"] = render_string(
+            request,
+            "crispy_form.html",
+            {
+                "form" : dummy_password_form()
+            }
+        )
