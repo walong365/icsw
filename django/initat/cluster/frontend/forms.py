@@ -10,7 +10,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fieldset, Div, HTML
 from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
-from initat.cluster.backbone.models import domain_tree_node, device
+from initat.cluster.backbone.models import domain_tree_node, device, category
 
 class authentication_form(Form):
     username = CharField(label=_("Username"),
@@ -142,3 +142,39 @@ class dummy_password_form(Form):
                          widget=PasswordInput)
     password2 = CharField(label=_("Confirm Password"),
                          widget=PasswordInput)
+
+class category_detail_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "id_cat_detail_form"
+    helper.layout = Layout(
+        Fieldset(
+            "Category details",
+            Field("name"),
+            Field("comment"),
+            ButtonHolder(
+                Button("delete", "Delete", css_class="primaryAction"),
+            ),
+            css_class="inlineLabels",
+        )
+    )
+    class Meta:
+        model = category
+        fields = ["name", "comment"]
+
+class category_new_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "id_dtn_detail_form"
+    helper.layout = Layout(
+        Fieldset(
+            "Create new category",
+            Field("full_name"),
+            Field("comment"),
+            ButtonHolder(
+                Submit("submit", "Submit", css_class="primaryAction"),
+            ),
+            css_class="inlineLabels",
+        )
+    )
+    class Meta:
+        model = category
+        fields = ["full_name", "comment"]

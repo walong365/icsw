@@ -404,16 +404,19 @@ class move_domain_tree_node(View):
         src_node = domain_tree_node.objects.get(Q(pk=_post["src_id"]))
         dst_node = domain_tree_node.objects.get(Q(pk=_post["dst_id"]))
         mode = _post["mode"]
-        request.xml_response.info("moving node '%s' to '%s' (%s)" % (
-            unicode(src_node),
-            unicode(dst_node),
-            mode), logger)
         if mode in ["over", "child"]:
             src_node.parent = dst_node
-            src_node.save()
         else:
             src_node.parent = dst_node.parent
+        try:
             src_node.save()
+        except:
+            request.xml_response.error("error moving domain tree node: %s" % (process_tools.get_except_info()), logger)
+        else:
+            request.xml_response.info("moved node '%s' to '%s' (%s)" % (
+                unicode(src_node),
+                unicode(dst_node),
+                mode), logger)
         # cleanup domain_name_tree
         cur_dnt = domain_name_tree()
 
@@ -435,6 +438,7 @@ class get_dtn_detail_form(View):
 
 class create_new_dtn(View):
     @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
     def get(self, request):
         new_form = dtn_new_form(
             auto_id="dtn__new__%s",
@@ -448,7 +452,7 @@ class create_new_dtn(View):
             }
         )
         return request.xml_response.create_response()
-    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
     def post(self, request):
         logger.info("creating new domain_tree_node")
         _post = request.POST
@@ -463,7 +467,7 @@ class create_new_dtn(View):
             new_dnt.save()
             logger.info("created new dnt '%s'" % (unicode(new_dnt)))
         else:
-            logger.errorr(cur_form.errors.as_text())
+            logger.error(cur_form.errors.as_text())
         return HttpResponseRedirect(reverse("network:domain_name_tree"))
 
 class delete_dtn(View):
