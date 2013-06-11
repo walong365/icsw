@@ -27,7 +27,7 @@ from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from initat.cluster.backbone.models import device_type, device_group, device, device_class, \
      mon_device_templ, mon_ext_host, cd_connection, package_device_connection, \
-     mon_host_cluster, mon_service_cluster, domain_name_tree
+     mon_host_cluster, mon_service_cluster, domain_name_tree, category_tree
 from initat.cluster.frontend import forms
 
 logger = logging.getLogger("cluster.device")
@@ -142,6 +142,7 @@ def _get_group_tree(request, sel_list, **kwargs):
         "device_group__device_type",
         "device_group__netdevice_set",
         "device_group__bootnetdevice",
+        "device_group__categories",
         #"device_group__mon_host_cluster_set"
     )
     if with_monitoring:
@@ -358,6 +359,7 @@ class device_info(View):
             with_md_cache=True,
         )
         request.xml_response["response"] = domain_name_tree().get_xml(no_intermediate=True)
+        request.xml_response["response"] = category_tree().get_xml()
         request.xml_response["response"] = E.forms(
             E.general_form(
                 render_string(

@@ -101,6 +101,10 @@ class device_info
                 )
             ).append(
                 $("<li>").append(
+                    $("<a>").attr("href", "#category").text("Category")
+                )
+            ).append(
+                $("<li>").append(
                     $("<a>").attr("href", "#network").text("Network")
                 )
             ).append(
@@ -115,6 +119,7 @@ class device_info
         )
         @dev_div = dev_div
         tabs_div.append(@general_div())
+        tabs_div.append(@category_div())
         tabs_div.append(@network_div())
         tabs_div.append(@disk_div())
         tabs_div.append(@mdcds_div())
@@ -127,6 +132,30 @@ class device_info
         general_div.html(@resp_xml.find("forms general_form").text())
         general_div.find("input, select").bind("change", @my_submitter.submit)
         return general_div
+    category_div: () =>
+        dev_xml = @resp_xml.find("device")
+        cat_div = $("<div>").attr("id", "category")
+        tree_div = $("<div>").attr("id", "cat_tree")
+        cat_div.append(tree_div)
+        tree_div.dynatree
+            autoFocus  : false
+        root_node = tree_div.dynatree("getRoot")
+        @build_node(root_node, @resp_xml.find("category[parent='0']"))
+        return cat_div
+    build_node: (dt_node, db_node) =>
+        if parseInt(db_node.attr("parent")) == 0
+            title_str = "TOP"
+            expand_flag = true
+        else
+            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
+            expand_flag = false
+        new_node = dt_node.addChild(
+            title    : title_str
+            expand   : expand_flag
+            key      : db_node.attr("pk")
+        )
+        @resp_xml.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
+            @build_node(new_node, $(sub_db_node))
     network_div: () =>
         dev_xml = @resp_xml.find("device")
         # network div
