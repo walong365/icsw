@@ -26,7 +26,9 @@ from django.utils.functional import memoize
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
-valid_domain_re = re.compile("^[a-zA-Z0-9-_]+$")
+# validation REs
+valid_domain_re   = re.compile("^[a-zA-Z0-9-_]+$")
+valid_category_re = re.compile("^[a-zA-Z0-9-_\.]+$")
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +95,11 @@ def _check_empty_string(inst, attr_name):
     cur_val = getattr(inst, attr_name)
     if not cur_val.strip():
         raise ValidationError("%s can not be empty" % (attr_name))
+    
+def _check_non_empty_string(inst, attr_name):
+    cur_val = getattr(inst, attr_name)
+    if cur_val.strip():
+        raise ValidationError("%s must be empty" % (attr_name))
     
 class apc_device(models.Model):
     idx = models.AutoField(db_column="idx", primary_key=True)
@@ -3911,12 +3918,12 @@ def domain_tree_node_pre_save(sender, **kwargs):
         cur_inst.name = cur_inst.name.strip()
         if cur_inst.name and cur_inst.name.count("."):
             raise ValidationError("dot '.' not allowed in domain_name part")
+        if cur_inst.depth and not valid_domain_re.match(cur_inst.name):
+            raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
         if cur_inst.intermediate:
             if net_ip.objects.filter(Q(domain_tree_node=cur_inst)).count() + device.objects.filter(Q(domain_tree_node=cur_inst)).count():
                 #print "***", unicode(cur_inst)
                 raise ValidationError("cannot set used domain_tree_node as intermediate")
-        if not valid_domain_re.match(cur_inst.name):
-            raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
         cur_inst.node_postfix = cur_inst.node_postfix.strip()
         if not cur_inst.node_postfix and valid_domain_re.match(cur_inst.node_postfix):
             raise ValidationError("illegal characters in node postfix '%s'" % (cur_inst.node_postfix))
@@ -3931,6 +3938,14 @@ def domain_tree_node_pre_save(sender, **kwargs):
             if new_full_name != cur_inst.full_name:
                 cur_inst.full_name = new_full_name
                 cur_inst.full_name_changed = True
+            used_names = domain_tree_node.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(depth=cur_inst.depth) & Q(parent=cur_inst.parent)).values_list("name", flat=True)
+            print cur_inst.name, used_names
+            if cur_inst.name in used_names:
+                raise ValidationError("name '%s' already used here" % (cur_inst.name))
+        else:
+            _check_non_empty_string(cur_inst, "name")
+            _check_non_empty_string(cur_inst, "node_postfix")
+            
 
 @receiver(signals.post_save, sender=domain_tree_node)
 def domain_tree_node_post_save(sender, **kwargs):
@@ -3938,6 +3953,125 @@ def domain_tree_node_post_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if getattr(cur_inst, "full_name_changed", False):
             for sub_node in domain_tree_node.objects.filter(Q(parent=cur_inst)):
+                sub_node.save()
+
+class category_tree(object):
+    # helper structure
+    def __init__(self):
+        self.__node_dict = {}
+        self.__category_lut = {}
+        if not category.objects.all().count():
+            category(name="", full_name="", comment="top node").save()
+        for cur_node in category.objects.all().order_by("depth"):
+            self.__node_dict[cur_node.pk] = cur_node
+            self.__category_lut.setdefault(cur_node.full_name, []).append(cur_node)
+            cur_node._sub_tree = {}
+            if cur_node.parent_id is None:
+                self._root_node = cur_node
+            else:
+                if cur_node.depth - 1 != self.__node_dict[cur_node.parent_id].depth:
+                    # fix depth
+                    cur_node.depth = self.__node_dict[cur_node.parent_id].depth + 1
+                    cur_node.save()
+                self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
+    def add_category(self, new_category_name):
+        cat_parts = list(new_category_name.split("/"))
+        cur_node = self._root_node
+        for part_num, cat_part in enumerate(cat_parts):
+            last_part = part_num == len(cat_parts) - 1
+            if cat_part not in cur_node._sub_tree:
+                new_node = category(
+                    name=cat_part,
+                    parent=cur_node,
+                    full_name="%s/%s" % (cur_node.full_name, cat_part),
+                    depth=cur_node.depth+1)
+                new_node.save()
+                self.__node_dict[new_node.pk] = new_node
+                cur_node._sub_tree.setdefault(cat_part, []).append(new_node)
+                new_node._sub_tree = {}
+            # add to the first entry in sub_tree
+            cur_node = cur_node._sub_tree[cat_part][0]
+        return cur_node
+    def get_category(self, cat_name):
+        return self.__category_lut[cat_name]
+    def get_sorted_pks(self):
+        return self._root_node.get_sorted_pks()
+    def __getitem__(self, key):
+        if type(key) in [int, long]:
+            return self.__node_dict[key]
+    def keys(self):
+        return self.__node_dict.keys()
+    def get_xml(self):
+        pk_list = self.get_sorted_pks()
+        return E.domain_tree_nodes(
+            *[self.__node_dict[pk].get_xml() for pk in pk_list]
+        )
+
+# category 
+class category(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # the top node has no name
+    name = models.CharField(max_length=64, default="")
+    # full_name, gets computed on structure change
+    full_name = models.CharField(max_length=1024, default="")
+    # the top node has no parent
+    parent = models.ForeignKey("self", null=True)
+    # depth information, top_node has idx=0
+    depth = models.IntegerField(default=0)
+    # creation timestamp
+    created = models.DateTimeField(auto_now_add=True, auto_now=True)
+    # comment
+    comment = models.CharField(max_length=256, default="", blank=True)
+    def get_sorted_pks(self):
+        return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
+    def __unicode__(self):
+        return u"%s" % (self.full_name if self.depth else "[TLN]")
+    def get_xml(self):
+        return E.domain_tree_node(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="dtn__%d" % (self.pk),
+            name=self.name,
+            full_name=self.full_name,
+            parent="%d" % (self.parent_id or 0),
+            depth="%d" % (self.depth),
+            comment="%s" % (self.comment or ""),
+        )
+
+@receiver(signals.pre_save, sender=category)
+def category_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        cur_inst.name = cur_inst.name.strip()
+        if cur_inst.name:
+            if  cur_inst.name.count("/"):
+                raise ValidationError("slash '/' not allowed in name part")
+        if cur_inst.depth and not valid_category_re.match(cur_inst.name):
+            raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
+        if cur_inst.depth:
+            _check_empty_string(cur_inst, "name")
+            parent_node = cur_inst.parent
+            new_full_name = "%s/%s" % (
+                parent_node.full_name,
+                cur_inst.name,
+            )
+            cur_inst.depth = parent_node.depth + 1
+            if new_full_name != cur_inst.full_name:
+                cur_inst.full_name = new_full_name
+                cur_inst.full_name_changed = True
+            # check for used named
+            used_names = category.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(depth=cur_inst.depth) & Q(parent=cur_inst.parent)).values_list("name", flat=True)
+            if cur_inst.name in used_names:
+                raise ValidationError("name '%s' already used here" % (cur_inst.name))
+        else:
+            _check_non_empty_string(cur_inst, "name")
+
+@receiver(signals.post_save, sender=category)
+def category_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if getattr(cur_inst, "full_name_changed", False):
+            for sub_node in category.objects.filter(Q(parent=cur_inst)):
                 sub_node.save()
 
 # mapping key prefix -> model class
@@ -3986,4 +4120,5 @@ KPMC_MAP = {
     "package_repo" : package_repo,
     "mdcds"        : md_check_data_store,
     "dtn"          : domain_tree_node,
+    "cat"          : category,
 }
