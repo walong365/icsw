@@ -26,6 +26,8 @@ from django.utils.functional import memoize
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
+valid_domain_re = re.compile("^[a-zA-Z0-9-_]+$")
+
 logger = logging.getLogger(__name__)
 
 class cs_timer(object):
@@ -647,7 +649,7 @@ def device_pre_save(sender, **kwargs):
                 cur_inst.domain_tree_node = cur_dnt
                 cur_inst.name = short_name
             #raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
-        if not re.match("^[a-zA-Z0-9-_]+$", cur_inst.name):
+        if not valid_domain_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
         if int(cur_inst.md_cache_mode) == 0:
             cur_inst.md_cache_mode = 1
@@ -3913,6 +3915,11 @@ def domain_tree_node_pre_save(sender, **kwargs):
             if net_ip.objects.filter(Q(domain_tree_node=cur_inst)).count() + device.objects.filter(Q(domain_tree_node=cur_inst)).count():
                 #print "***", unicode(cur_inst)
                 raise ValidationError("cannot set used domain_tree_node as intermediate")
+        if not valid_domain_re.match(cur_inst.name):
+            raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
+        cur_inst.node_postfix = cur_inst.node_postfix.strip()
+        if not cur_inst.node_postfix and valid_domain_re.match(cur_inst.node_postfix):
+            raise ValidationError("illegal characters in node postfix '%s'" % (cur_inst.node_postfix))
         if cur_inst.depth:
             _check_empty_string(cur_inst, "name")
             parent_node = cur_inst.parent
