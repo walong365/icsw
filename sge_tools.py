@@ -296,14 +296,15 @@ class sge_info(object):
             if not self.__persistent_socket:
                 client.close()
                 zmq_context.term()
-            try:
-                srv_reply = server_command.srv_command(source=recv)
-            except:
-                pass
-            else:
-                if "sge" in srv_reply:
-                    self.__tree = srv_reply["sge"][0]
-                    # valid return
+            if recv is not None:
+                try:
+                    srv_reply = server_command.srv_command(source=recv)
+                except:
+                    pass
+                else:
+                    if "sge" in srv_reply:
+                        self.__tree = srv_reply["sge"][0]
+                        # valid return
                     dicts_to_update -= server_update
             e_time = time.time()
             if self.__verbose > 0:
