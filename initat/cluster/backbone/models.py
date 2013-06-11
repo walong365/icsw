@@ -484,6 +484,8 @@ class device(models.Model):
         ], default=1)
     # system name
     domain_tree_node = models.ForeignKey("domain_tree_node", null=True, default=None)
+    # categories for this device
+    categories = models.ManyToManyField("category")
     @property
     def full_name(self):
         if self.domain_tree_node.full_name:
@@ -549,6 +551,7 @@ class device(models.Model):
             md_cache_mode="%d" % (int(self.md_cache_mode)),
             domain_tree_node="%d" % (self.domain_tree_node_id or 0),
             uptime="%d" % (self.uptime or 0),
+            categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
         )
         if kwargs.get("full_name", False):
             r_xml.attrib["full_name"] = self.full_name
@@ -4003,7 +4006,7 @@ class category_tree(object):
         return self.__node_dict.keys()
     def get_xml(self):
         pk_list = self.get_sorted_pks()
-        return E.domain_tree_nodes(
+        return E.categories(
             *[self.__node_dict[pk].get_xml() for pk in pk_list]
         )
 
@@ -4027,7 +4030,7 @@ class category(models.Model):
     def __unicode__(self):
         return u"%s" % (self.full_name if self.depth else "[TLN]")
     def get_xml(self):
-        return E.domain_tree_node(
+        return E.category(
             unicode(self),
             pk="%d" % (self.pk),
             key="dtn__%d" % (self.pk),
