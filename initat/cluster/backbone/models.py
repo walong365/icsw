@@ -2383,7 +2383,8 @@ class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
-    mon_check_command_type = models.ForeignKey("mon_check_command_type")
+    # deprecated, now references category tree
+    mon_check_command_type = models.ForeignKey("mon_check_command_type", null=True, default=None)
     mon_service_templ = models.ForeignKey("mon_service_templ", null=True)
     # only unique per config
     name = models.CharField(max_length=192)#, unique=True)
@@ -2393,19 +2394,22 @@ class mon_check_command(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     enable_perfdata = models.BooleanField(default=False)
     volatile = models.BooleanField(default=False)
+    # categories for this device
+    categories = models.ManyToManyField("category")
     def get_xml(self):
         return E.mon_check_command(
             self.name,
             pk="%d" % (self.pk),
             key="moncc__%d" % (self.pk),
             config="%d" % (self.config_id),
-            mon_check_command_type="%d" % (self.mon_check_command_type_id),
+            #mon_check_command_type="%d" % (self.mon_check_command_type_id),
             mon_service_templ="%d" % (self.mon_service_templ_id or 0),
             name=self.name or "",
             command_line=self.command_line or "",
             description=self.description or "",
             enable_perfdata="1" if self.enable_perfdata else "0",
             volatile="1" if self.volatile else "0",
+            categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
         )
     class Meta:
         db_table = u'ng_check_command'
@@ -3965,6 +3969,18 @@ def domain_tree_node_post_save(sender, **kwargs):
             for sub_node in domain_tree_node.objects.filter(Q(parent=cur_inst)):
                 sub_node.save()
 
+def _migrate_mon_type(cat_tree):
+    # read all monitoring_config_types
+    cur_cats = set(mon_check_command.objects.all().values_list("categories", flat=True))
+    if cur_cats == set([None]):
+        all_mon_ct = dict([(pk, "/mon/%s" % (cur_name)) for pk, cur_name in mon_check_command_type.objects.all().values_list("pk", "name")])
+        mig_dict = dict([(key, cat_tree.add_category(value)) for key, value in all_mon_ct.iteritems()])
+        for cur_mon_cc in mon_check_command.objects.all().prefetch_related("categories"):
+            if cur_mon_cc.mon_check_command_type_id:
+                cur_mon_cc.categories.add(mig_dict[cur_mon_cc.mon_check_command_type_id])
+                cur_mon_cc.mon_check_command_type = None
+                cur_mon_cc.save()
+    
 class category_tree(object):
     # helper structure
     def __init__(self):
@@ -3984,6 +4000,8 @@ class category_tree(object):
                     cur_node.depth = self.__node_dict[cur_node.parent_id].depth + 1
                     cur_node.save()
                 self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
+        if not "/mon" in self.__category_lut:
+            _migrate_mon_type(self)
     def add_category(self, new_category_name):
         while new_category_name.startswith("/"):
             new_category_name = new_category_name[1:]
@@ -4019,7 +4037,7 @@ class category_tree(object):
             *[self.__node_dict[pk].get_xml() for pk in pk_list]
         )
 
-# category 
+# category
 class category(models.Model):
     idx = models.AutoField(primary_key=True)
     # the top node has no name
