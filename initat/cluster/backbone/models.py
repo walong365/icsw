@@ -3777,11 +3777,15 @@ class wc_files(models.Model):
     class Meta:
         db_table = u'wc_files'
             
-def get_related_models(in_obj):
+def get_related_models(in_obj, m2m=False):
     used_objs = 0
     for rel_obj in in_obj._meta.get_all_related_objects():
         rel_field_name = rel_obj.field.name
         used_objs += rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})).count()
+    if m2m:
+        for m2m_obj in in_obj._meta.get_all_related_many_to_many_objects():
+            m2m_field_name = m2m_obj.field.name
+            used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj})).count()
     return used_objs
 
 class md_check_data_store(models.Model):
@@ -3978,6 +3982,8 @@ class category_tree(object):
                     cur_node.save()
                 self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
     def add_category(self, new_category_name):
+        while new_category_name.startswith("/"):
+            new_category_name = new_category_name[1:]
         cat_parts = list(new_category_name.split("/"))
         cur_node = self._root_node
         for part_num, cat_part in enumerate(cat_parts):
