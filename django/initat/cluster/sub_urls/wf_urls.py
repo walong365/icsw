@@ -39,6 +39,7 @@ base_patterns = patterns(
     url("^cat_delete$"                        , base_views.delete_category.as_view()  , name="delete_category"),
     url("^cat_create$"                        , base_views.create_category.as_view()  , name="create_category"),
     url("^cat_move$"                          , base_views.move_category.as_view()    , name="move_category"),
+    url("^change_category"                    , base_views.change_category.as_view()  , name="change_category"),
 )
 
 setup_patterns = patterns(
@@ -59,7 +60,6 @@ setup_patterns = patterns(
 
 config_patterns = patterns(
     "initat.cluster.frontend",
-    url("^config_types$"        , config_views.show_config_types.as_view()       , name="show_config_types" ),
     url("^show_config$"         , config_views.show_configs.as_view()            , name="show_configs"      ),
     url("^get_dev_confs_xml$"   , config_views.get_device_configs.as_view()      , name="get_device_configs"),
     url("^create_config$"       , config_views.create_config.as_view()           , name="create_config"     ),
@@ -105,7 +105,6 @@ device_patterns = patterns(
     url("manual_connection"   , device_views.manual_connection.as_view(), name="manual_connection"),
     url("variables$"          , device_views.variables.as_view()        , name="variables"        ),
     url("dev_info$"           , device_views.device_info.as_view()      , name="device_info"      ),
-    url("^change_category"    , device_views.change_category.as_view()  , name="change_category"  ),
 )
 
 network_patterns = patterns(

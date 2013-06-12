@@ -22,7 +22,7 @@ from django.views.generic import View
 
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
-from initat.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
+from initat.cluster.backbone.models import config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, mon_period, mon_contact, user, \
      mon_contactgroup, get_related_models, network_type, network_device_type, mon_device_templ, \

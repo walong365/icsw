@@ -23,37 +23,16 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import View
 from django.utils.decorators import method_decorator
 
-from initat.cluster.backbone.models import config_type, config, device_group, device, netdevice, \
+from initat.cluster.backbone.models import config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
      tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
      mon_contactgroup, get_related_models, network_device_type, network_type, get_related_models, \
-     mon_check_command_type, mon_service_templ
+     mon_check_command_type, mon_service_templ, category_tree
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 
 logger = logging.getLogger("cluster.config")
-
-class show_config_types(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "cluster_config_type.html",
-        )()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        xml_resp = E.response()
-        request.xml_response["response"] = xml_resp
-        xml_resp.extend(
-            [
-                E.config_types(
-                    *[cur_ct.get_xml() for cur_ct in config_type.objects.all()]
-                    ),
-                E.mon_check_command_types(
-                    *[cur_mt.get_xml() for cur_mt in mon_check_command_type.objects.all()]
-                )
-            ]
-        )
 
 class show_configs(View):
     @method_decorator(login_required)
@@ -68,7 +47,7 @@ class show_configs(View):
         full_mode = mode == "full"
         logger.info("get configs, mode is %s" % (mode))
         if full_mode:
-            all_configs = config.objects.all().select_related("config_type").prefetch_related(
+            all_configs = config.objects.all().prefetch_related(
                 "config_int_set",
                 "config_str_set",
                 "config_bool_set",
@@ -79,22 +58,24 @@ class show_configs(View):
                 "device_config_set__device",
                 ).order_by("name")
         else:
-            all_configs = config.objects.all().select_related("config_type").order_by("name")
+            all_configs = config.objects.all().order_by("name")
         xml_resp = E.response(
             E.config_list(
                 *[cur_c.get_xml(full=full_mode) for cur_c in all_configs]
             )
         )
         if full_mode:
-            xml_resp.append(E.config_types(
-                *[cur_ct.get_xml() for cur_ct in config_type.objects.all().order_by("name")]
-            ))
-            xml_resp.append(E.mon_check_command_types(
-                *[cur_ct.get_xml() for cur_ct in mon_check_command_type.objects.all().order_by("name")]
-            ))
-            xml_resp.append(E.mon_service_templates(
-                *[cur_st.get_xml() for cur_st in mon_service_templ.objects.all().order_by("name")]
-            ))
+            xml_resp.extend(
+                [
+                    E.mon_check_command_types(
+                        *[cur_ct.get_xml() for cur_ct in mon_check_command_type.objects.all().order_by("name")]
+                    ),
+                    E.mon_service_templates(
+                        *[cur_st.get_xml() for cur_st in mon_service_templ.objects.all().order_by("name")]
+                    ),
+                    category_tree().get_xml()
+                ]
+            )
         #print etree.tostring(xml_resp, pretty_print=True)
         request.xml_response["response"] = xml_resp
 
@@ -105,8 +86,7 @@ class create_config(View):
         _post = request.POST
         val_dict = dict([(key.split("__", 2)[2], value) for key, value in _post.iteritems() if key.count("__") > 1])
         copy_dict = dict([(key, value) for key, value in val_dict.iteritems() if key in ["name", "description", "priority"]])
-        new_conf = config(config_type=config_type.objects.get(Q(pk=val_dict["config_type"])),
-                          **copy_dict)
+        new_conf = config(**copy_dict)
         try:
             new_conf.save()
         except ValidationError, what:
@@ -456,7 +436,6 @@ class download_configs(View):
         configs = E.configs()
         res_xml.append(configs)
         conf_list = config.objects.filter(Q(pk__in=conf_ids)).prefetch_related(
-            "config_type",
             "config_str_set",
             "config_int_set",
             "config_bool_set",
@@ -465,7 +444,7 @@ class download_configs(View):
             "config_script_set")
         for cur_conf in conf_list:
             cur_xml = cur_conf.get_xml()
-            cur_xml.append(cur_conf.config_type.get_xml())
+            #cur_xml.append(cur_conf.config_type.get_xml())
             configs.append(cur_xml)
         # remove all pks and keys
         for pk_el in res_xml.xpath(".//*[@pk]"):
@@ -473,7 +452,7 @@ class download_configs(View):
             del pk_el.attrib["key"]
         # remove attributes from config
         for pk_el in res_xml.xpath(".//config"):
-            for del_attr in ["parent_config", "num_device_configs", "device_list", "config_type"]:
+            for del_attr in ["parent_config", "num_device_configs", "device_list"]:
                 if del_attr in pk_el.attrib:
                     del pk_el.attrib[del_attr]
         act_resp = HttpResponse(etree.tostring(res_xml, pretty_print=True),
@@ -498,18 +477,18 @@ class upload_config(View):
             logger.error("cannot interpret upload file: %s" % (process_tools.get_except_info()))
         else:
             for cur_conf in conf_xml.xpath(".//config"):
-                # check config_type
-                conf_type = cur_conf.find("config_type")
-                try:
-                    cur_ct = config_type.objects.get(Q(name=conf_type.attrib["name"]))
-                except config_type.DoesNotExist:
-                    cur_ct = config_type(**conf_type.attrib)
-                    logger.info("creating new config_type '%s'" % (unicode(cur_ct)))
-                    cur_ct.save()
+                ## check config_type
+                #conf_type = cur_conf.find("config_type")
+                #try:
+                    #cur_ct = config_type.objects.get(Q(name=conf_type.attrib["name"]))
+                #except config_type.DoesNotExist:
+                    #cur_ct = config_type(**conf_type.attrib)
+                    #logger.info("creating new config_type '%s'" % (unicode(cur_ct)))
+                    #cur_ct.save()
                 try:
                     new_conf = config.objects.get(Q(name=cur_conf.attrib["name"]))
                 except config.DoesNotExist:
-                    new_conf = config(config_type=cur_ct, **cur_conf.attrib)
+                    new_conf = config(**cur_conf.attrib)
                     new_conf.create_default_entries = False
                     new_conf.save()
                     logger.info("creating new config '%s'" % (unicode(new_conf)))

@@ -375,20 +375,4 @@ class device_info(View):
             )
         )
 
-class change_category(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        cur_dev = device.objects.get(Q(pk=_post["dev_pk"]))
-        add = True if int(_post["flag"]) else False
-        new_cat = category.objects.get(Q(pk=_post["cat_pk"]))
-        if add:
-            cur_dev.categories.add(new_cat)
-            request.xml_response.info("add category '%s' to %s" % (unicode(new_cat), unicode(cur_dev)), logger)
-        else:
-            cur_dev.categories.remove(new_cat)
-            request.xml_response.info("removed category '%s' from %s" % (unicode(new_cat), unicode(cur_dev)), logger)
-        print cur_dev, new_cat, add
-        pprint.pprint(_post)
         

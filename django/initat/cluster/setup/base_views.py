@@ -28,7 +28,7 @@ from initat.cluster.backbone.models import device_group, device, \
      get_related_models, device_class, KPMC_MAP, device_variable, category, \
      category_tree
 
-logger = logging.getLogger("cluster.setup")
+logger = logging.getLogger("cluster.base")
 
 HIDDEN_FIELDS = set(["password",])
 
@@ -464,3 +464,21 @@ class move_category(View):
                 mode), logger)
         # cleanup category tree
         cur_ct = category_tree()
+
+class change_category(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        obj_type, obj_pk = _post["obj_key"].split("__")
+        mod_obj = KPMC_MAP.get(obj_type, None)
+        cur_obj = mod_obj.objects.get(Q(pk=obj_pk))
+        add = True if int(_post["flag"]) else False
+        new_cat = category.objects.get(Q(pk=_post["cat_pk"]))
+        if add:
+            cur_obj.categories.add(new_cat)
+            request.xml_response.info("add category '%s' to %s" % (unicode(new_cat), unicode(cur_obj)), logger)
+        else:
+            cur_obj.categories.remove(new_cat)
+            request.xml_response.info("removed category '%s' from %s" % (unicode(new_cat), unicode(cur_obj)), logger)
+        request.xml_response["object"] = cur_obj.get_xml()

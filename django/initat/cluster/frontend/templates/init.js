@@ -57,6 +57,104 @@ $.ajaxSetup
                 alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
         return false
 
+root.show_config_detail = (event, config_xml, config_key) ->
+    new config_detail(event, config_xml, config_key).show()
+    
+class config_detail
+    constructor: (@event, @configs_xml, @key) ->
+        @cat_xml = @configs_xml.find("categories")
+    show: () =>
+        @build_div()
+        @config_div.modal
+            opacity      : 50
+            position     : [@event.pageY, @event.pageX]
+            autoResize   : true
+            autoPosition : true
+            onShow: (dialog) -> 
+                dialog.container.draggable()
+                $("#simplemodal-container").css("height", "auto")
+    build_div: () =>
+        conf_xml = @configs_xml.find("config[key='#{@key}']")
+        @my_submitter = new submitter({
+            master_xml : conf_xml
+        })
+        conf_div = $("<div>")
+        conf_div.append(
+            $("<h3>").text("config #{conf_xml.attr('name')}")
+        )
+        tabs_div = $("<div>").attr("id", "tabs")
+        conf_div.append(tabs_div)
+        tabs_div.append(
+            $("<ul>").append(
+                $("<li>").append(
+                    $("<a>").attr("href", "#parent").text("Parent")
+                )
+            ).append(
+                $("<li>").append(
+                    $("<a>").attr("href", "#category").text("Category")
+                )
+            )
+        )
+        @config_div = conf_div
+        tabs_div.append(@parent_div(conf_xml))
+        tabs_div.append(@category_div(conf_xml))
+        tabs_div.tabs()
+    parent_div: (conf_xml) =>
+        # parent div
+        parent_div = $("<div>").attr("id", "parent")
+        parent_div.append(
+            create_input_el(conf_xml, "parent_config", conf_xml.attr("key"), {label : "Parent" , select_source : @configs_xml.find("config"), add_null_entry : "none", select_source_attribute : "name", master_xml : @configs_xml})
+        )
+        return parent_div
+    category_div: (conf_xml) =>
+        cat_div = $("<div>").attr("id", "category")
+        tree_div = $("<div>").attr("id", "cat_tree")
+        cat_div.append(tree_div)
+        tree_div.dynatree
+            autoFocus : false
+            checkbox  : true
+            clickFolderMode : 2
+            #onExpand : (flag, dtnode) =>
+            #    dtnode.toggleSelect()
+            onClick : (dtnode, event) =>
+                #console.log dtnode.data.key, event.type
+                #dtnode.toggleSelect()
+            onSelect : (flag, dtnode) =>
+                $.ajax
+                    url     : "{% url 'base:change_category' %}"
+                    data    :
+                        "obj_key" : conf_xml.attr("key")
+                        "cat_pk"  : dtnode.data.key
+                        "flag"    : if flag then 1 else 0
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            replace_xml_element(@configs_xml, $(xml))
+                #dtnode.toggleSelect()
+        root_node = tree_div.dynatree("getRoot")
+        @select_cats = conf_xml.attr("categories").split("::")
+        @build_node(root_node, @cat_xml.find("category[parent='0']"))
+        return cat_div
+    build_node: (dt_node, db_node) =>
+        if parseInt(db_node.attr("parent")) == 0
+            title_str = "TOP"
+            expand_flag = true
+        else
+            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
+            expand_flag = false
+        selected = if db_node.attr("pk") in @select_cats then true else false
+        new_node = dt_node.addChild(
+            title        : title_str
+            expand       : expand_flag
+            key          : db_node.attr("pk")
+            hideCheckbox : if parseInt(db_node.attr("depth")) then false else true
+            select       : selected
+        )
+        if selected
+            new_node.makeVisible()
+        @cat_xml.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
+            @build_node(new_node, $(sub_db_node))
+        
+        
 root.show_device_info = (event, dev_key, callback) ->
     new device_info(event, dev_key, callback).show()
 
@@ -118,22 +216,20 @@ class device_info
             )
         )
         @dev_div = dev_div
-        tabs_div.append(@general_div())
-        tabs_div.append(@category_div())
-        tabs_div.append(@network_div())
-        tabs_div.append(@disk_div())
-        tabs_div.append(@mdcds_div())
+        tabs_div.append(@general_div(dev_xml))
+        tabs_div.append(@category_div(dev_xml))
+        tabs_div.append(@network_div(dev_xml))
+        tabs_div.append(@disk_div(dev_xml))
+        tabs_div.append(@mdcds_div(dev_xml))
         tabs_div.tabs()
-    general_div: () =>
-        dev_xml = @resp_xml.find("device")
+    general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")
         # working :-)
         general_div.html(@resp_xml.find("forms general_form").text())
         general_div.find("input, select").bind("change", @my_submitter.submit)
         return general_div
-    category_div: () =>
-        dev_xml = @resp_xml.find("device")
+    category_div: (dev_xml) =>
         cat_div = $("<div>").attr("id", "category")
         tree_div = $("<div>").attr("id", "cat_tree")
         cat_div.append(tree_div)
@@ -148,11 +244,11 @@ class device_info
                 #dtnode.toggleSelect()
             onSelect : (flag, dtnode) =>
                 $.ajax
-                    url     : "{% url 'device:change_category' %}"
+                    url     : "{% url 'base:change_category' %}"
                     data    :
-                        "dev_pk" : @resp_xml.find("device").attr("pk")
-                        "cat_pk" : dtnode.data.key
-                        "flag"   : if flag then 1 else 0
+                        "obj_key" : @dev_xml.find("device").attr("key")
+                        "cat_pk"  : dtnode.data.key
+                        "flag"    : if flag then 1 else 0
                     success : (xml) =>
                         parse_xml_response(xml)
                 #dtnode.toggleSelect()
@@ -179,8 +275,7 @@ class device_info
             new_node.makeVisible()
         @resp_xml.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
             @build_node(new_node, $(sub_db_node))
-    network_div: () =>
-        dev_xml = @resp_xml.find("device")
+    network_div: (dev_xml) =>
         # network div
         nw_div = $("<div>").attr("id", "network")
         if dev_xml.find("netdevice").length
@@ -199,8 +294,7 @@ class device_info
             nd_ul = $("<span>").text("no netdevices found")
         nw_div.append(nd_ul)
         return nw_div
-    disk_div: () =>
-        dev_xml = @resp_xml.find("device")
+    disk_div: (dev_xml) =>
         # disk div
         disk_div = $("<div>").attr("id", "disk")
         if dev_xml.find("partition_table").length
@@ -238,8 +332,7 @@ class device_info
         else
             disk_div.append($("<h3>").text("No partition table defined"))
         return disk_div
-    mdcds_div: () =>
-        dev_xml = @resp_xml.find("device")
+    mdcds_div: (dev_xml) =>
         # md check data store div
         mdcds_div = $("<div>").attr("id", "mdcds")
         num_mdcds = dev_xml.find("md_check_data_store").length

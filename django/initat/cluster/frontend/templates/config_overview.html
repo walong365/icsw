@@ -123,18 +123,25 @@ class config_table
         c_line = $("<tr>").attr
             "id"    : line_prefix,
             "class" : "ui-widget ui-widget-header"
-        c_line.append(
-            $("<th>").append(
-                create_input_el(cur_conf, "name", line_prefix, {label : "Name", master_xml: @configs})
-            ).append(
-                create_input_el(cur_conf, "priority", line_prefix, {label : "Priority", number : true, master_xml: @configs, min: -9999, max : 9999})
-            ).append(
-                create_input_el(cur_conf, "description", line_prefix, {label : "Description", master_xml: @configs})
-            ).append(
-                create_input_el(cur_conf, "config_type", line_prefix, {label : "Type" , select_source : @config_types, master_xml : @configs})
-            ).append(
-                create_input_el(cur_conf, "parent_config", line_prefix, {label : "Parent" , select_source : @configs_list, add_null_entry : "none", select_source_attribute : "name", master_xml : @configs})
-            )
+        c_header = $("<th>")
+        c_line.append(c_header)
+        c_header.append(
+            create_input_el(cur_conf, "name", line_prefix, {label : "Name", master_xml: @configs})
+        ).append(
+            create_input_el(cur_conf, "priority", line_prefix, {label : "Priority", number : true, master_xml: @configs, min: -9999, max : 9999})
+        ).append(
+            create_input_el(cur_conf, "description", line_prefix, {label : "Description", master_xml: @configs})
+        ).append(
+            $("<span>").text("Details")
+        ).append(
+            $("<input>").attr({
+                "type"   : "image"
+                "width"  : "16px"
+                "height" : "16px"
+                "title"  : "Category"
+                "src"    : "{{ MEDIA_URL }}frontend/images/information.png"
+                "id"     : "#{line_prefix}__md_info"
+            }).bind("click", @config_details)
         )
         if cur_conf
             c_line.append(get_expand_td(line_prefix, "var", "variables", @toggle_config_line))
@@ -186,6 +193,11 @@ class config_table
             for cur_t in dummy_div.find("table")
                 @recolor_table(cur_t)
         return dummy_div.children()
+    config_details: (event) =>
+        parent_tr = $(event.target).parents("tr:first")
+        conf_id = parent_tr.attr("id")
+        if conf_id != "conf__new"
+            show_config_detail(event, @configs, conf_id)
     create_detail_table: (cur_conf, line_prefix, detail_type) =>
         new_table = $("<table>")
         new_table.append(@add_header(cur_conf, line_prefix, detail_type))
@@ -577,7 +589,7 @@ class config_table
                     "var"     : "config_vars > *",
                     "moncc"   : "mon_check_commands mon_check_command",
                     "cscript" : "config_scripts config_script"}[info_type]).length
-                info_type = info_type[0]
+                #info_type = info_type[0]
                 cur_div.next().text("#{info_type} [#{num_entries}]")
     update_config_info: (num_shown) =>
         num_confs = @configs.find("config").length
