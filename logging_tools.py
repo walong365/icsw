@@ -60,6 +60,9 @@ logging.addLevelName(LOG_LEVEL_WARN    , "warn")
 logging.addLevelName(LOG_LEVEL_ERROR   , "err" )
 logging.addLevelName(LOG_LEVEL_CRITICAL, "crit")
 
+# default unified name
+UNIFIED_NAME = "unified"
+
 def rewrite_log_destination(log_dest):
     if log_dest.startswith("uds:"):
         log_dest = log_dest.replace("uds:", "ipc://")
@@ -379,9 +382,10 @@ class zmq_handler(logging.Handler):
                 # remove from handler
                 self.__logger.removeHandler(self)
 
-    def beautify_record(self, record):
-        # format message, so that record.message gets the properly formatted message
-        self.format(record)
+class initat_formatter(object):
+    # in fact a dummy formatter
+    def format(self, record):
+        record.message = record.getMessage()
         if getattr(record, "exc_info", None):
             tb_object = record.exc_info[2]
             frame_info = []
@@ -392,21 +396,29 @@ class zmq_handler(logging.Handler):
             frame_info.append("%s (%s)" % (unicode(record.exc_info[0]),
                                            unicode(record.exc_info[1])))
             record.error_str = record.message + "\n" + "\n".join(frame_info)
-            var_list = []
-            req_var = inspect.trace()[-1][0].f_locals.get("request", None)
-            if req_var:
+            var_list, info_lines = ([], [])
+            request = inspect.trace()[-1][0].f_locals.get("request", None)
+            if request:
+                info_lines.extend([
+                    "",
+                    "method is %s" % (request.method),
+                    "",
+                ])
                 # print get / post variables
-                for key in ["GET", "POST"]:
-                    v_dict = getattr(req_var, key, None)
-                    if v_dict:
-                        var_list.append("")
-                        var_list.append("%s (%d):" % (key, len(v_dict)))
-                        for s_num, s_key in enumerate(sorted(v_dict.keys())):
-                            var_list.append("  %3d %s: %s" % (s_num + 1, s_key, v_dict[s_key]))
-            record.exc_text = "\n".join(frame_info + var_list)
-        else:
-            record.error_str = record.message
-
+                v_dict = getattr(request, request.method, None)
+                if v_dict:
+                    var_list.extend([
+                        "",
+                        "%s:" % (get_plural("variable", len(v_dict))),
+                        "",
+                    ])
+                    for s_num, s_key in enumerate(sorted(v_dict.keys())):
+                        var_list.append("  %3d %s: %s" % (s_num + 1, s_key, v_dict[s_key]))
+            #print frame_info, var_list
+            record.exc_text = "\n".join(frame_info + var_list + info_lines)
+        if hasattr(record, "request"):
+            delattr(record, "request")
+    
 class init_handler(zmq_handler):
     zmq_context = None
     def __init__(self, filename=None):
@@ -419,8 +431,7 @@ class init_handler(zmq_handler):
     def emit(self, record):
         if not record.name.startswith("init.at."):
             record.name = "init.at.%s" % (record.name)
-        if hasattr(record, "request"):
-            record.request = "request"
+        self.format(record)
         zmq_handler.emit(self, record)
 
 class init_email_handler(zmq_handler):
@@ -437,13 +448,11 @@ class init_email_handler(zmq_handler):
                        "lineno"     : 1}
     def emit(self, record):
         record.IOS_type = "error"
-        self.beautify_record(record)
+        self.format(record)
         record.uid = os.getuid()
         record.gid = os.getgid()
         record.pid = os.getpid()
         record.ppid = os.getppid()
-        if hasattr(record, "request"):
-            record.request = "request"
         zmq_handler.emit(self, record)
 
 class init_handler_unified(zmq_handler):
@@ -455,23 +464,13 @@ class init_handler_unified(zmq_handler):
         pub = cur_context.socket(zmq.PUSH)
         pub.connect(rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq"))
         zmq_handler.__init__(self, pub, None)
-        self.__lens = {"name"       : 1,
-                       "threadName" : 1,
-                       "lineno"     : 1}
     def emit(self, record):
         if record.name.startswith("init.at."):
             record.name = record.name[8:]
-        self.beautify_record(record)
-        for key in self.__lens.keys():
-            cur_val = getattr(record, key)
-            if type(cur_val) in [int, long]:
-                cur_val = "%d" % (cur_val)
-            self.__lens[key] = max(self.__lens[key], len(cur_val))
-        form_str = "%%-%(name)ds/%%%(threadName)ds[%%%(lineno)dd]" % self.__lens
+        self.format(record)
+        form_str = "%-s/%s[%d]"
         record.threadName = form_str % (record.name, record.threadName, record.lineno)
-        record.name = "init.at.unified"
-        if hasattr(record, "request"):
-            record.request = "request"
+        record.name = "init.at.%s" % (UNIFIED_NAME)
         zmq_handler.emit(self, record)
 
 class queue_handler(logging.Handler):
