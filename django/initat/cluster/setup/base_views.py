@@ -388,7 +388,7 @@ class delete_category(View):
     def post(self, request):
         _post = request.POST
         cur_cat = category.objects.get(Q(pk=_post["key"]))
-        num_ref = get_related_models(cur_cat)
+        num_ref = get_related_models(cur_cat, m2m=True)
         if num_ref:
             request.xml_response.error(
                 "category '%s' still referenced by %s" % (
