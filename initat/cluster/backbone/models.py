@@ -2149,9 +2149,11 @@ class config(models.Model):
     name = models.CharField(unique=True, max_length=192, blank=False)
     description = models.CharField(max_length=765)
     priority = models.IntegerField(null=True, default=0)
-    config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
+    #config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
     parent_config = models.ForeignKey("config", null=True)
     date = models.DateTimeField(auto_now_add=True)
+    # categories for this config
+    categories = models.ManyToManyField("category")
     def get_xml(self, full=True):
         r_xml = E.config(
             pk="%d" % (self.pk),
@@ -2159,8 +2161,9 @@ class config(models.Model):
             name=unicode(self.name),
             description=unicode(self.description or ""),
             priority="%d" % (self.priority or 0),
-            config_type="%d" % (self.config_type_id),
+            #config_type="%d" % (self.config_type_id),
             parent_config="%d" % (self.parent_config_id or 0),
+            categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
         )
         if full:
             # explicit but exposes chached queries
@@ -2266,23 +2269,23 @@ def config_post_save(sender, **kwargs):
         if cur_inst.parent_config_id == cur_inst.pk and cur_inst.pk:
             raise ValidationError("cannot be my own parent")
 
-class config_type(models.Model):
-    idx = models.AutoField(db_column="new_config_type_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    description = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.config_type(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="ctype__%d" % (self.pk),
-            name=unicode(self.name),
-            description=unicode(self.description or "")
-        )
-    def __unicode__(self):
-        return self.name
-    class Meta:
-        db_table = u'new_config_type'
+#class config_type(models.Model):
+    #idx = models.AutoField(db_column="new_config_type_idx", primary_key=True)
+    #name = models.CharField(unique=True, max_length=192)
+    #description = models.CharField(max_length=765, blank=True)
+    #date = models.DateTimeField(auto_now_add=True)
+    #def get_xml(self):
+        #return E.config_type(
+            #unicode(self),
+            #pk="%d" % (self.pk),
+            #key="ctype__%d" % (self.pk),
+            #name=unicode(self.name),
+            #description=unicode(self.description or "")
+        #)
+    #def __unicode__(self):
+        #return self.name
+    #class Meta:
+        #db_table = u'new_config_type'
 
 class new_rrd_data(models.Model):
     idx = models.AutoField(db_column="new_rrd_data_idx", primary_key=True)
@@ -4120,7 +4123,6 @@ KPMC_MAP = {
     "ps"           : package_search,
     "group"        : group,
     "dv"           : device_variable,
-    "ctype"        : config_type,
     "ptable"       : partition_table,
     "rrdc"         : rrd_class,
     "rrdrra"       : rrd_rra,
