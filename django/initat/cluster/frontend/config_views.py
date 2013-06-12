@@ -25,10 +25,10 @@ from django.utils.decorators import method_decorator
 
 from initat.cluster.backbone.models import config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
-     mon_check_command, mon_check_command_type, mon_service_templ, config_script, device_config, \
+     mon_check_command, mon_service_templ, config_script, device_config, \
      tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
      mon_contactgroup, get_related_models, network_device_type, network_type, get_related_models, \
-     mon_check_command_type, mon_service_templ, category_tree
+     mon_service_templ, category_tree
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 
@@ -48,12 +48,14 @@ class show_configs(View):
         logger.info("get configs, mode is %s" % (mode))
         if full_mode:
             all_configs = config.objects.all().prefetch_related(
+                "categories",
                 "config_int_set",
                 "config_str_set",
                 "config_bool_set",
                 "config_blob_set",
                 "config_script_set",
                 "mon_check_command_set",
+                "mon_check_command_set__categories",
                 "device_config_set",
                 "device_config_set__device",
                 ).order_by("name")
@@ -67,13 +69,10 @@ class show_configs(View):
         if full_mode:
             xml_resp.extend(
                 [
-                    E.mon_check_command_types(
-                        *[cur_ct.get_xml() for cur_ct in mon_check_command_type.objects.all().order_by("name")]
-                    ),
                     E.mon_service_templates(
                         *[cur_st.get_xml() for cur_st in mon_service_templ.objects.all().order_by("name")]
                     ),
-                    category_tree().get_xml()
+                    category_tree().get_xml(),
                 ]
             )
         #print etree.tostring(xml_resp, pretty_print=True)
@@ -464,10 +463,6 @@ class upload_config(View):
     @method_decorator(login_required)
     def post(self, request):
         try:
-            default_mct = mon_check_command_type.objects.all()[0]
-        except:
-            default_mct = None
-        try:
             default_mst = mon_service_templ.objects.all()[0]
         except:
             default_mst = None
@@ -497,7 +492,7 @@ class upload_config(View):
                             new_sub_obj = globals()["config_%s" % (new_obj.attrib["type"])]
                         else:
                             new_sub_obj = globals()[new_obj.tag]
-                        for del_attr in ["config", "type", "mon_check_command_type", "mon_service_templ"]:
+                        for del_attr in ["config", "type", "mon_service_templ"]:
                             if del_attr in new_obj.attrib:
                                 del new_obj.attrib[del_attr]
                         new_sub_obj = new_sub_obj(config=new_conf, **new_obj.attrib)
@@ -509,7 +504,6 @@ class upload_config(View):
                             )
                         )
                         if new_obj.tag == "mon_check_command":
-                            new_sub_obj.mon_check_command_type = default_mct
                             new_sub_obj.mon_service_templ = default_mst
                         new_sub_obj.save()
         return HttpResponseRedirect(reverse("config:show_configs"))

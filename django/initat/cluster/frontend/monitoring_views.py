@@ -20,8 +20,9 @@ from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 
+from initat.cluster.frontend import forms
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.core.render import render_me
+from initat.core.render import render_me, render_string
 from initat.cluster.backbone.models import config, device_group, device, netdevice, \
      net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
      mon_check_command, mon_check_command_type, mon_service_templ, mon_period, mon_contact, user, \
@@ -38,13 +39,12 @@ class create_command(View):
         _post = request.POST
         keys = _post.keys()
         conf_pk = int(keys[0].split("__")[1])
-        value_dict = dict([(key.split("__", 3)[3], value) for key, value in _post.iteritems() if key.count("__") > 2])
+        value_dict = dict([(key.split("__", 4)[4], value) for key, value in _post.iteritems() if key.count("__") > 3])
         copy_dict = dict([(key, value) for key, value in value_dict.iteritems() if key in ["name", "command_line", "description"]])
         logger.info("create new monitoring_command %s for config %d" % (value_dict["name"], conf_pk))
         new_nc = mon_check_command(
             config=config.objects.get(Q(pk=conf_pk)),
-            mon_check_command_type=mon_check_command_type.objects.get(Q(pk=value_dict["mon_check_command_type"])),
-            mon_service_templ=mon_service_templ.objects.get(Q(pk=value_dict["mon_service_templ"])),
+            mon_service_templ=mon_service_templ.objects.all()[0],
             **copy_dict)
         #pprint.pprint(copy_dict)
         try:
@@ -177,3 +177,25 @@ class fetch_partition(View):
         srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
         srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
         result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+
+class moncc_info(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        dev_key = request.POST["key"].split("__")[1]
+        cur_moncc = mon_check_command.objects.get(Q(pk=dev_key))
+        request.xml_response["response"] = cur_moncc.get_xml()
+        request.xml_response["response"] = E.forms(
+            E.template_form(
+                render_string(
+                    request,
+                    "crispy_form.html",
+                    {
+                        "form" : forms.moncc_template_flags_form(
+                            auto_id="moncc__%d__%%s" % (cur_moncc.pk),
+                            instance=cur_moncc,
+                        )
+                    }
+                )
+            )
+        )

@@ -139,6 +139,7 @@ monitoring_patterns = patterns(
     url("^create_config$"      , monitoring_views.create_config.as_view()    , name="create_config"    ),
     url("^to_icinga$"          , monitoring_views.call_icinga.as_view()      , name="call_icinga"      ),
     url("^xml/read_part$"      , monitoring_views.fetch_partition.as_view()  , name="fetch_partition"  ),
+    url("moncc_info$"          , monitoring_views.moncc_info.as_view()       , name="moncc_info"       ),
 )
 
 user_patterns = patterns(

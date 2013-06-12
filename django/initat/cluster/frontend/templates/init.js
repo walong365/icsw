@@ -57,6 +57,114 @@ $.ajaxSetup
                 alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
         return false
 
+root.show_moncc_detail = (event, config_xml, moncc_key) ->
+    new moncc_detail(event, config_xml, moncc_key).show()
+    
+class moncc_detail
+    constructor: (@event, @configs_xml, @key) ->
+        @cat_xml = @configs_xml.find("categories")
+    show: () =>
+        $.ajax
+            url     : "{% url 'mon:moncc_info' %}"
+            data    :
+                "key"    : @key
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @ajax_xml = $(xml).find("response")
+                    @build_div()
+                    @moncc_div.modal
+                        opacity      : 50
+                        position     : [@event.pageY, @event.pageX]
+                        autoResize   : true
+                        autoPosition : true
+                        onShow: (dialog) -> 
+                            dialog.container.draggable()
+                            $("#simplemodal-container").css("height", "auto")
+    build_div: () =>
+        moncc_xml = @configs_xml.find("mon_check_command[key='#{@key}']")
+        @my_submitter = new submitter({
+            master_xml : moncc_xml
+        })
+        moncc_div = $("<div>")
+        moncc_div.append(
+            $("<h3>").text("config #{moncc_xml.attr('name')}")
+        )
+        tabs_div = $("<div>").attr("id", "tabs")
+        moncc_div.append(tabs_div)
+        tabs_div.append(
+            $("<ul>").append(
+                $("<li>").append(
+                    $("<a>").attr("href", "#template").text("Template / flags")
+                )
+            ).append(
+                $("<li>").append(
+                    $("<a>").attr("href", "#category").text("Category")
+                )
+            )
+        )
+        @moncc_div = moncc_div
+        tabs_div.append(@template_div(moncc_xml))
+        tabs_div.append(@category_div(moncc_xml))
+        tabs_div.tabs()
+    template_div: (moncc_xml) =>
+        # parent div
+        template_div = $("<div>").attr("id", "template")
+        template_div.html(@ajax_xml.find("forms template_form").text())
+        template_div.find("input, select").bind("change", @my_submitter.submit)
+        #template_div.append(
+        #    create_input_el(moncc_xml, "mon_service_templ", moncc_xml.attr("key"), {label : "Template" , select_source : @configs_xml.find("mon_service_templates mon_service_templ"), select_source_attribute : "name", master_xml : @configs_xml}),
+        #    create_input_el(moncc_xml, "enable_perfdata", moncc_xml.attr("key"), {boolean : true, master_xml : @configs_xml}),
+        #    create_input_el(moncc_xml, "volatile", moncc_xml.attr("key"), {boolean : true, master_xml : @configs_xml})
+        #)
+        return template_div
+    category_div: (moncc_xml) =>
+        cat_div = $("<div>").attr("id", "category")
+        tree_div = $("<div>").attr("id", "cat_tree")
+        cat_div.append(tree_div)
+        tree_div.dynatree
+            autoFocus : false
+            checkbox  : true
+            clickFolderMode : 2
+            #onExpand : (flag, dtnode) =>
+            #    dtnode.toggleSelect()
+            onClick : (dtnode, event) =>
+                #console.log dtnode.data.key, event.type
+                #dtnode.toggleSelect()
+            onSelect : (flag, dtnode) =>
+                $.ajax
+                    url     : "{% url 'base:change_category' %}"
+                    data    :
+                        "obj_key" : moncc_xml.attr("key")
+                        "cat_pk"  : dtnode.data.key
+                        "flag"    : if flag then 1 else 0
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            replace_xml_element(@configs_xml, $(xml))
+                #dtnode.toggleSelect()
+        root_node = tree_div.dynatree("getRoot")
+        @select_cats = moncc_xml.attr("categories").split("::")
+        @build_node(root_node, @cat_xml.find("category[parent='0']"))
+        return cat_div
+    build_node: (dt_node, db_node) =>
+        if parseInt(db_node.attr("parent")) == 0
+            title_str = "TOP"
+            expand_flag = true
+        else
+            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
+            expand_flag = false
+        selected = if db_node.attr("pk") in @select_cats then true else false
+        new_node = dt_node.addChild(
+            title        : title_str
+            expand       : expand_flag
+            key          : db_node.attr("pk")
+            hideCheckbox : if parseInt(db_node.attr("depth")) then false else true
+            select       : selected
+        )
+        if selected
+            new_node.makeVisible()
+        @cat_xml.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
+            @build_node(new_node, $(sub_db_node))
+
 root.show_config_detail = (event, config_xml, config_key) ->
     new config_detail(event, config_xml, config_key).show()
     

@@ -3,14 +3,14 @@
 """ simple formulars for django / clustersoftware """
 
 from django.forms.widgets import TextInput, PasswordInput
-from django.forms import Form, ModelForm, ValidationError, CharField
+from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField
 from django.contrib.auth import authenticate
 from django.utils.translation import ugettext_lazy as _
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fieldset, Div, HTML
 from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
-from initat.cluster.backbone.models import domain_tree_node, device, category
+from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ
 
 class authentication_form(Form):
     username = CharField(label=_("Username"),
@@ -171,10 +171,29 @@ class category_new_form(ModelForm):
             Field("comment"),
             ButtonHolder(
                 Submit("submit", "Submit", css_class="primaryAction"),
-            ),
+                ),
             css_class="inlineLabels",
         )
     )
     class Meta:
         model = category
         fields = ["full_name", "comment"]
+
+class moncc_template_flags_form(ModelForm):
+    mon_service_templ = ModelChoiceField(queryset=mon_service_templ.objects.all(), empty_label=None)
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.layout = Layout(
+        Fieldset(
+            "Templates and flags",
+            Field("mon_service_templ"),
+            ButtonHolder(
+                Field("enable_perfdata"),
+                Field("volatile"),
+                ),
+            css_class="inlineLabels",
+        )
+    )
+    class Meta:
+        model = mon_check_command
+        fields = ["mon_service_templ", "enable_perfdata", "volatile",]
