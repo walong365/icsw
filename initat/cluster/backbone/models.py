@@ -28,7 +28,9 @@ ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
 # top monitoring category
 TOP_MONITORING_CATEGORY = "/mon"
-TOP_LOCATION_CATEGORY = "/location"
+TOP_LOCATION_CATEGORY   = "/location"
+TOP_CONFIG_CATEGORY     = "/config"
+TOP_DEVICE_CATEGORY     = "/device"
 
 # validation REs
 valid_domain_re   = re.compile("^[a-zA-Z0-9-_]+$")
@@ -4028,6 +4030,9 @@ class category_tree(object):
             _migrate_mon_type(self)
         if not TOP_LOCATION_CATEGORY in self.__category_lut:
             _migrate_location_type(self)
+        for check_name in [TOP_CONFIG_CATEGORY, TOP_DEVICE_CATEGORY]:
+            if not check_name in self.__category_lut:
+                self.add_category(check_name)
     def add_category(self, new_category_name):
         while new_category_name.startswith("/"):
             new_category_name = new_category_name[1:]
