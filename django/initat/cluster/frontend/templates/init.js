@@ -152,7 +152,7 @@ class moncc_detail
             title        : title_str
             expand       : expand_flag
             key          : db_node.attr("pk")
-            hideCheckbox : if parseInt(db_node.attr("depth")) then false else true
+            hideCheckbox : if (db_node.attr("full_name") == "/mon") then true else false
             select       : selected
         )
         if selected
@@ -234,7 +234,7 @@ class config_detail
                 #dtnode.toggleSelect()
         root_node = tree_div.dynatree("getRoot")
         @select_cats = conf_xml.attr("categories").split("::")
-        @build_node(root_node, @cat_xml.find("category[parent='0']"))
+        @build_node(root_node, @cat_xml.find("category[full_name='/config']"))
         return cat_div
     build_node: (dt_node, db_node) =>
         if parseInt(db_node.attr("parent")) == 0
@@ -248,7 +248,7 @@ class config_detail
             title        : title_str
             expand       : expand_flag
             key          : db_node.attr("pk")
-            hideCheckbox : if parseInt(db_node.attr("depth")) then false else true
+            hideCheckbox : if (db_node.attr("full_name") == "/config") then true else false
             select       : selected
         )
         if selected
@@ -344,15 +344,16 @@ class device_info
                 $.ajax
                     url     : "{% url 'base:change_category' %}"
                     data    :
-                        "obj_key" : @dev_xml.find("device").attr("key")
+                        "obj_key" : dev_xml.attr("key")
                         "cat_pk"  : dtnode.data.key
                         "flag"    : if flag then 1 else 0
                     success : (xml) =>
-                        parse_xml_response(xml)
+                        if parse_xml_response(xml)
+                            replace_xml_element(@configs_xml, $(xml))
                 #dtnode.toggleSelect()
         root_node = tree_div.dynatree("getRoot")
         @select_cats = dev_xml.attr("categories").split("::")
-        @build_node(root_node, @resp_xml.find("category[parent='0']"))
+        @build_node(root_node, @resp_xml.find("category[full_name='/device']"))
         return cat_div
     build_node: (dt_node, db_node) =>
         if parseInt(db_node.attr("parent")) == 0
@@ -366,7 +367,7 @@ class device_info
             title        : title_str
             expand       : expand_flag
             key          : db_node.attr("pk")
-            hideCheckbox : if parseInt(db_node.attr("depth")) then false else true
+            hideCheckbox : if (db_node.attr("full_name") == "/device") then true else false
             select       : selected
         )
         if selected
