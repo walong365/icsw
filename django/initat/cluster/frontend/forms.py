@@ -112,6 +112,7 @@ class dtn_new_form(ModelForm):
         fields = ["full_name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment"]
     
 class device_general_form(ModelForm):
+    domain_tree_node = ModelChoiceField(queryset=domain_tree_node.objects.all(), empty_label=None)
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
     helper.layout = Layout(

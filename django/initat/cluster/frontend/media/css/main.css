@@ -194,3 +194,12 @@ ul.dynatree-container span.intermediate {
 ul.dynatree-container span.ip_ok {
     font-weight : bold;
 }
+
+/* for sidebar */
+.noborder {
+    border : none;
+    padding : 0mm;
+}
+.noborder.ui-tabs .ui-tabs-panel {
+    padding: 0 0 0 0 ;
+}

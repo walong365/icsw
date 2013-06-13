@@ -1,25 +1,25 @@
 {% load i18n coffeescript %}
 
-<table border="0" width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-        <td id="device_selection" style="vertical-align:middle;">
-            <input type="text" id="device_selection" size="32"/>
-            <input type="image" id="devsel_button" src="{{ MEDIA_URL }}frontend/images/right-arrow.png" width="22px" height="22px" style="vertical-align:middle; display:none;" title="take selection"/>
-            <input type="image" id="devsel_clear" src="{{ MEDIA_URL }}frontend/images/delete.png" width="22px" height="22px" style="vertical-align:middle;" title="clear selection"/>
-        </td>
-    </tr>
-    <tr id="gauge_info">
-        <td id="gauge_info">
-        </td>
-    </tr>
-    <tr>
-        <td valign="top">
-            <div id="sidebar_tree">
-            </div>
-        </td>
-    </tr>
-</table>
-
+<div style="vertical-align:middle;">
+    <input type="text" id="device_selection" size="32"/>
+    <input type="image" id="devsel_button" src="{{ MEDIA_URL }}frontend/images/right-arrow.png" width="22px" height="22px" style="vertical-align:middle; display:none;" title="take selection"/>
+    <input type="image" id="devsel_clear" src="{{ MEDIA_URL }}frontend/images/delete.png" width="22px" height="22px" style="vertical-align:middle;" title="clear selection"/>
+</div>
+<div id="gauge_info">
+</div>
+<div id="sidebar_tabs" class="noborder">
+    <ul>
+        <li><a href="#sidebar_tree">Groups</a></li>
+        <li><a href="#fqdn_tree">FQDN</a></li>
+        <li><a href="#category_tree">Category</a></li>
+    </ul>
+    <div id="sidebar_tree">
+    </div>
+    <div id="fqdn_tree">
+    </div>
+    <div id="category_tree">
+    </div>
+</div>
 <div id="ajax_info">
 </div>
 
@@ -53,6 +53,7 @@ class sidebar_tree
         @init_gauge_info()
         @update_gauge_info()
     init_sidebar: =>
+        $("div#sidebar_tabs").tabs()
         @top_div.dynatree
             autoFocus  : false
             checkbox   : true
@@ -228,7 +229,7 @@ class sidebar_tree
             hidden  : true,
             success : (xml) =>
                 if parse_xml_response(xml)
-                    gauge_td = $("td#gauge_info")
+                    gauge_td = $("div#gauge_info")
                     gauge_td.children().remove()
                     any_defined = false
                     $(xml).find("gauge_info gauge_element").each (idx, gauge_el) ->
