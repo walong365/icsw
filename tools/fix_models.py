@@ -28,7 +28,7 @@ import datetime
 import pprint
 from django.conf import settings
 from django.db.models import Q
-from initat.cluster.backbone.models import device, device_class, device_group, \
+from initat.cluster.backbone.models import device, device_group, \
      mon_contact, mon_contactgroup, mon_check_command_type, mon_check_command, \
      config, mon_service_templ, user, mon_period, mon_ext_host, mon_service_templ, \
      mon_device_templ, device_group, group, user
@@ -188,13 +188,13 @@ def main():
     fix_dict = {
         "device" : {
             "zero_to_null" : [
-                "bootserver", "mon_device_templ", "device_location", "mon_ext_host",
+                "bootserver", "mon_device_templ", "mon_ext_host",
                 "act_kernel", "new_kernel", "new_image", "act_image",
                 "bootnetdevice", "prod_link", "rrd_class", "partition_table",
                 "act_partition_table", "new_state", "monitor_server", "nagvis_parent",
             ],
             "zero_to_value" : [
-                ("device_class", device_class.objects.all()[0]),
+                #("device_class", device_class.objects.all()[0]),
             ]
         },
         "device_group" : {

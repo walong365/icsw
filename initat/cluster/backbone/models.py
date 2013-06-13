@@ -28,6 +28,7 @@ ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
 # top monitoring category
 TOP_MONITORING_CATEGORY = "/mon"
+TOP_LOCATION_CATEGORY = "/location"
 
 # validation REs
 valid_domain_re   = re.compile("^[a-zA-Z0-9-_]+$")
@@ -132,63 +133,63 @@ class architecture(models.Model):
     def __unicode__(self):
         return self.architecture
 
-class ccl_dgroup_con(models.Model):
-    idx = models.AutoField(db_column="ccl_dgroup_con_idx", primary_key=True)
-    ccl_event = models.ForeignKey("ccl_event")
-    device_group = models.ForeignKey("device_group")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ccl_dgroup_con'
+#class ccl_dgroup_con(models.Model):
+    #idx = models.AutoField(db_column="ccl_dgroup_con_idx", primary_key=True)
+    #ccl_event = models.ForeignKey("ccl_event")
+    #device_group = models.ForeignKey("device_group")
+    #date = models.DateTimeField(auto_now_add=True)
+    #class Meta:
+        #db_table = u'ccl_dgroup_con'
 
-class ccl_dloc_con(models.Model):
-    idx = models.AutoField(db_column="ccl_dloc_con_idx", primary_key=True)
-    ccl_event = models.ForeignKey("ccl_event")
-    device_location = models.ForeignKey("device_location")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ccl_dloc_con'
+#class ccl_dloc_con(models.Model):
+    #idx = models.AutoField(db_column="ccl_dloc_con_idx", primary_key=True)
+    #ccl_event = models.ForeignKey("ccl_event")
+    #device_location = models.ForeignKey("device_location")
+    #date = models.DateTimeField(auto_now_add=True)
+    #class Meta:
+        #db_table = u'ccl_dloc_con'
 
-class ccl_event(models.Model):
-    idx = models.AutoField(db_column="ccl_event_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    rrd_data = models.ForeignKey("rrd_data")
-    device_class = models.ForeignKey("device_class")
-    threshold = models.FloatField(null=True, blank=True)
-    threshold_class = models.IntegerField()
-    cluster_event = models.ForeignKey("cluster_event")
-    hysteresis = models.FloatField(null=True, blank=True)
-    disabled = models.BooleanField()
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ccl_event'
+#class ccl_event(models.Model):
+    #idx = models.AutoField(db_column="ccl_event_idx", primary_key=True)
+    #device = models.ForeignKey("device")
+    #rrd_data = models.ForeignKey("rrd_data")
+    #device_class = models.ForeignKey("device_class")
+    #threshold = models.FloatField(null=True, blank=True)
+    #threshold_class = models.IntegerField()
+    #cluster_event = models.ForeignKey("cluster_event")
+    #hysteresis = models.FloatField(null=True, blank=True)
+    #disabled = models.BooleanField()
+    #date = models.DateTimeField(auto_now_add=True)
+    #class Meta:
+        #db_table = u'ccl_event'
 
-class ccl_event_log(models.Model):
-    idx = models.AutoField(db_column="ccl_event_log_idx", primary_key=True)
-    device = models.ForeignKey("device", null=True, blank=True)
-    ccl_event = models.ForeignKey("ccl_event")
-    cluster_event = models.ForeignKey("cluster_event")
-    passive = models.BooleanField()
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ccl_event_log'
+#class ccl_event_log(models.Model):
+    #idx = models.AutoField(db_column="ccl_event_log_idx", primary_key=True)
+    #device = models.ForeignKey("device", null=True, blank=True)
+    #ccl_event = models.ForeignKey("ccl_event")
+    #cluster_event = models.ForeignKey("cluster_event")
+    #passive = models.BooleanField()
+    #date = models.DateTimeField(auto_now_add=True)
+    #class Meta:
+        #db_table = u'ccl_event_log'
 
-class ccl_user_con(models.Model):
-    idx = models.AutoField(db_column="ccl_user_con_idx", primary_key=True)
-    ccl_event = models.ForeignKey("ccl_event")
-    user = models.ForeignKey("user")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ccl_user_con'
+#class ccl_user_con(models.Model):
+    #idx = models.AutoField(db_column="ccl_user_con_idx", primary_key=True)
+    #ccl_event = models.ForeignKey("ccl_event")
+    #user = models.ForeignKey("user")
+    #date = models.DateTimeField(auto_now_add=True)
+    #class Meta:
+        #db_table = u'ccl_user_con'
 
-class cluster_event(models.Model):
-    idx = models.AutoField(db_column="cluster_event_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=96)
-    description = models.CharField(max_length=384, blank=True)
-    color = models.CharField(max_length=18, blank=True)
-    command = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'cluster_event'
+#class cluster_event(models.Model):
+    #idx = models.AutoField(db_column="cluster_event_idx", primary_key=True)
+    #name = models.CharField(unique=True, max_length=96)
+    #description = models.CharField(max_length=384, blank=True)
+    #color = models.CharField(max_length=18, blank=True)
+    #command = models.CharField(max_length=192, blank=True)
+    #date = models.DateTimeField(auto_now_add=True)
+    #class Meta:
+        #db_table = u'cluster_event'
 
 class config_blob(models.Model):
     idx = models.AutoField(db_column="config_blob_idx", primary_key=True)
@@ -406,8 +407,9 @@ class device(models.Model):
     mon_device_templ = models.ForeignKey("mon_device_templ", null=True)
     mon_device_esc_templ = models.ForeignKey("mon_device_esc_templ", null=True)
     mon_ext_host = models.ForeignKey("mon_ext_host", null=True, blank=True)
+    # deprecated
     device_location = models.ForeignKey("device_location", null=True)
-    device_class = models.ForeignKey("device_class")
+    #device_class = models.ForeignKey("device_class")
     rrd_class = models.ForeignKey("rrd_class", null=True)
     save_rrd_vectors = models.BooleanField()
     etherboot_valid = models.BooleanField(default=False)
@@ -665,7 +667,8 @@ def device_pre_save(sender, **kwargs):
                 cur_inst.domain_tree_node = cur_dnt
                 cur_inst.name = short_name
         else:
-            cur_inst.domain_tree_node = domain_tree_node.objects.get(Q(depth=0))
+            if not cur_inst.domain_tree_node_id:
+                cur_inst.domain_tree_node = domain_tree_node.objects.get(Q(depth=0))
             #raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
         if not valid_domain_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
@@ -686,29 +689,29 @@ def device_pre_save(sender, **kwargs):
             logger.warning("Device limit %d reached", dev_count)
             raise ValidationError("Device limit reached!")
 
-class device_class(models.Model):
-    idx = models.AutoField(db_column="device_class_idx", primary_key=True)
-    classname = models.CharField(max_length=192, blank=False, unique=True)
-    priority = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.device_class(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="dc__%d" % (self.pk),
-            classname=unicode(self.classname),
-            priority="%d" % (self.priority)
-        )
-    def __unicode__(self):
-        return u"%s (%d)" % (self.classname, self.priority)
-    class Meta:
-        db_table = u'device_class'
+#class device_class(models.Model):
+    #idx = models.AutoField(db_column="device_class_idx", primary_key=True)
+    #classname = models.CharField(max_length=192, blank=False, unique=True)
+    #priority = models.IntegerField(null=True, blank=True)
+    #date = models.DateTimeField(auto_now_add=True)
+    #def get_xml(self):
+        #return E.device_class(
+            #unicode(self),
+            #pk="%d" % (self.pk),
+            #key="dc__%d" % (self.pk),
+            #classname=unicode(self.classname),
+            #priority="%d" % (self.priority)
+        #)
+    #def __unicode__(self):
+        #return u"%s (%d)" % (self.classname, self.priority)
+    #class Meta:
+        #db_table = u'device_class'
 
-@receiver(signals.pre_save, sender=device_class)
-def device_class_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        _check_integer(cur_inst, "priority")
+#@receiver(signals.pre_save, sender=device_class)
+#def device_class_pre_save(sender, **kwargs):
+    #if "instance" in kwargs:
+        #cur_inst = kwargs["instance"]
+        #_check_integer(cur_inst, "priority")
         
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)
@@ -795,7 +798,7 @@ class device_group(models.Model):
     def _add_meta_device(self):
         new_md = device(name=self.get_metadevice_name(),
                         device_group=self,
-                        device_class=device_class.objects.get(Q(pk=1)),
+                        #device_class=device_class.objects.get(Q(pk=1)),
                         device_type=device_type.objects.get(Q(identifier="MD")))
         new_md.save()
         self.device = new_md
@@ -3990,6 +3993,17 @@ def _migrate_mon_type(cat_tree):
                 cur_mon_cc.categories.add(mig_dict[cur_mon_cc.mon_check_command_type_id])
                 cur_mon_cc.mon_check_command_type = None
                 cur_mon_cc.save()
+
+def _migrate_location_type(cat_tree):
+    # read all monitoring_config_types
+    all_loc_ct = dict([(pk, "%s/%s" % (TOP_LOCATION_CATEGORY,
+                                       cur_name)) for pk, cur_name in device_location.objects.all().values_list("pk", "location")])
+    mig_dict = dict([(key, cat_tree.add_category(value)) for key, value in all_loc_ct.iteritems()])
+    for cur_dev in device.objects.all():
+        if cur_dev.device_location_id:
+            cur_dev.categories.add(mig_dict[cur_dev.device_location_id])
+            cur_dev.device_location = None
+            cur_dev.save()
     
 class category_tree(object):
     # helper structure
@@ -4012,6 +4026,8 @@ class category_tree(object):
                 self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
         if not TOP_MONITORING_CATEGORY in self.__category_lut:
             _migrate_mon_type(self)
+        if not TOP_LOCATION_CATEGORY in self.__category_lut:
+            _migrate_location_type(self)
     def add_category(self, new_category_name):
         while new_category_name.startswith("/"):
             new_category_name = new_category_name[1:]
@@ -4144,8 +4160,8 @@ KPMC_MAP = {
     "moncon"       : mon_contact,
     "nwdt"         : network_device_type,
     "nwt"          : network_type,
-    "dc"           : device_class,
-    "dl"           : device_location,
+    #"dc"           : device_class,
+    #"dl"           : device_location,
     "nw"           : network,
     "user"         : user,
     "ps"           : package_search,
