@@ -52,9 +52,10 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
-     mon_service, mon_ext_host, mon_check_command, mon_check_command_type, mon_period, mon_contact, \
+     mon_service, mon_ext_host, mon_check_command, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
-     user, mon_host_cluster, mon_service_cluster, config, md_check_data_store
+     user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
+     category_tree, TOP_MONITORING_CATEGORY
 from django.conf import settings
 import base64
 import uuid_tools
@@ -1235,29 +1236,32 @@ class time_periods(host_type_config):
     def values(self):
         return self.__dict.values()
 
-class all_servicegroups(host_type_config):
+class all_service_groups(host_type_config):
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
         self.__obj_list, self.__dict = ([], {})
         # dict : which host has which service_group defined
         self.__host_srv_lut = {}
+        self.cat_tree = category_tree()
         self._add_servicegroups_from_db()
     def get_name(self):
         return "servicegroup"
     def _add_servicegroups_from_db(self):
-        for cur_cct in mon_check_command_type.objects.all():
-            nag_conf = nag_config(cur_cct.name,
-                                  servicegroup_name=cur_cct.name,
-                                  alias="%s group" % (cur_cct.name))
-            self.__host_srv_lut[cur_cct.name] = set()
-            self.__dict[cur_cct.pk] = nag_conf
+        for cat_pk in self.cat_tree.get_sorted_pks():
+            cur_cat = self.cat_tree[cat_pk]
+            nag_conf = nag_config(cur_cat.full_name,
+                                  servicegroup_name=cur_cat.full_name,
+                                  alias="%s group" % (cur_cat.full_name))
+            self.__host_srv_lut[cur_cat.full_name] = set()
+            self.__dict[cur_cat.pk] = nag_conf
             self.__obj_list.append(nag_conf)
     def clear_host(self, host_name):
         for key, value in self.__host_srv_lut.iteritems():
             if host_name in value:
                 value.remove(host_name)
-    def add_host(self, host_name, srv_group):
-        self.__host_srv_lut[srv_group].add(host_name)
+    def add_host(self, host_name, srv_groups):
+        for srv_group in srv_groups.split(","):
+            self.__host_srv_lut[srv_group].add(host_name)
     def get_object_list(self):
         return [obj for obj in self.__obj_list if self.__host_srv_lut[obj["name"]]]
     def values(self):
@@ -1343,8 +1347,9 @@ class all_commands(host_type_config):
         self.__obj_list.append(nag_conf)
     def _add_commands_from_db(self, gen_conf):
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
-        check_coms = list(mon_check_command.objects.all().select_related("mon_check_command_type",
-                                                                         "mon_service_templ"))
+        check_coms = list(mon_check_command.objects.all()
+                          .prefetch_related("categories")
+                          .select_related("mon_service_templ"))
         if global_config["ENABLE_PNP"] and gen_conf.master:
             check_coms += [
                 mon_check_command(
@@ -1430,18 +1435,23 @@ class all_commands(host_type_config):
             if name_postfix:
                 ngc_name = "%s_%d" % (ngc_name, name_postfix)
             command_names.add(ngc_name)
-            cc_s = check_command(ngc_name,
-                                 ngc.command_line,
-                                 ngc.config.name if ngc.config_id else None,
-                                 ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
-                                 ngc.description,
-                                 ngc.device_id,
-                                 special,
-                                 servicegroup_name=ngc.mon_check_command_type.name if ngc.mon_check_command_type_id else "other",
-                                 enable_perfdata=ngc.enable_perfdata,
-                                 db_entry=ngc,
-                                 volatile=ngc.volatile,
-                                 )
+            if ngc.pk:
+                cats = ngc.categories.all().values_list("full_name", flat=True)
+            else:
+                cats = [TOP_MONITORING_CATEGORY]
+            cc_s = check_command(
+                ngc_name,
+                ngc.command_line,
+                ngc.config.name if ngc.config_id else None,
+                ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
+                ngc.description,
+                ngc.device_id,
+                special,
+                servicegroup_names=cats,
+                enable_perfdata=ngc.enable_perfdata,
+                db_entry=ngc,
+                volatile=ngc.volatile,
+            )
             nag_conf = cc_s.get_nag_config()
             self.__obj_list.append(nag_conf)
             self.__dict[nag_conf["command_name"]] = cc_s
@@ -1555,14 +1565,15 @@ class all_host_groups(host_type_config):
         self.refresh(gen_conf)
     def refresh(self, gen_conf):
         self.__obj_list, self.__dict = ([], {})
+        self.cat_tree = category_tree()
         self._add_host_groups_from_db(gen_conf)
     def get_name(self):
         return "hostgroup"
     def _add_host_groups_from_db(self, gen_conf):
         if gen_conf.has_key("host"):
             host_pks = gen_conf["host"].host_pks
-            # hostgroups
             if host_pks:
+                # hostgroups by devicegroups
                 # distinct is important here
                 for h_group in device_group.objects.filter(Q(enabled=True) & Q(device_group__pk__in=host_pks)).prefetch_related("device_group").distinct():
                     nag_conf = nag_config(
@@ -1573,6 +1584,17 @@ class all_host_groups(host_type_config):
                     self.__dict[h_group.pk] = nag_conf
                     self.__obj_list.append(nag_conf)
                     nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in h_group.device_group.filter(Q(pk__in=host_pks))])
+                # hostgroups by categories
+                for cat_pk in self.cat_tree.get_sorted_pks():
+                    cur_cat = self.cat_tree[cat_pk]
+                    nag_conf = nag_config(
+                        cur_cat.full_name,
+                        hostgroup_name=cur_cat.full_name,
+                        alias=cur_cat.comment or cur_cat.full_name,
+                        members="-")
+                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in cur_cat.device_set.all()])
+                    if nag_conf["members"]:
+                        self.__obj_list.append(nag_conf)
             else:
                 self.log("empty SQL-Str for in _add_host_groups_from_db()",
                          logging_tools.LOG_LEVEL_ERROR)
@@ -1672,7 +1694,7 @@ class check_command(object):
         self.config = config
         self.template = template
         self.device = device
-        self.servicegroup_name = kwargs.get("servicegroup_name", "other")
+        self.servicegroup_names = kwargs.get("servicegroup_names", [TOP_MONITORING_CATEGORY])
         self.__descr = descr.replace(",", ".")
         self.enable_perfdata = kwargs.get("enable_perfdata", False)
         self.volatile = kwargs.get("volatile", False)
@@ -2251,7 +2273,7 @@ class build_process(threading_tools.process_obj):
             # misc commands (sending of mails)
             cur_gc.add_config(all_commands(cur_gc, self))
             # servicegroups
-            cur_gc.add_config(all_servicegroups(cur_gc, self))
+            cur_gc.add_config(all_service_groups(cur_gc, self))
             # timeperiods
             cur_gc.add_config(time_periods(cur_gc, self))
             # contacts
@@ -2979,7 +3001,7 @@ class build_process(threading_tools.process_obj):
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
                 if host.enable_perfdata and s_check.enable_perfdata:
                     act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (global_config["PNP_URL"])
-            act_serv["servicegroups"]         = s_check.servicegroup_name
+            act_serv["servicegroups"]         = ",".join(s_check.servicegroup_names)
             cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             act_serv["check_command"]         = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, host.dev_variables))
             if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
