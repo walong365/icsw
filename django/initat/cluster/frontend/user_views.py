@@ -42,7 +42,8 @@ from django.views.generic import View
 from django.utils.decorators import method_decorator
 
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
-     partition_fs, image, architecture, group, user, device_config, device_group
+     partition_fs, image, architecture, group, user, device_config, device_group, \
+     user_variable
 from initat.core.render import render_me, render_string
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.forms import dummy_password_form
@@ -132,3 +133,25 @@ class get_password_form(View):
                 "form" : dummy_password_form()
             }
         )
+
+class save_layout_state(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        if "user_vars" not in request.session:
+            request.session["user_vars"] = {}
+        user_vars = request.session["user_vars"]
+        for key, value in _post.iteritems():
+            if key.count("isClosed"):
+                value = True if value.lower() in ["true"] else False
+                if key in user_vars:
+                    if user_vars[key].value != value:
+                        user_vars[key].value = value
+                        user_vars[key].save()
+                else:
+                    user_vars[key] = user_variable.objects.create(
+                        user=request.session["db_user"],
+                        name=key,
+                        value=value)
+        request.session.save()        

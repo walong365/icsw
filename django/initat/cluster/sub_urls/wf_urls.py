@@ -143,9 +143,10 @@ monitoring_patterns = patterns(
 
 user_patterns = patterns(
     "initat.cluster.frontend",
-    url("overview/(?P<mode>.*)$"      , user_views.overview.as_view()         , name="overview"         ),
-    url("passwd/xml$"                 , user_views.get_password_form.as_view(), name="get_password_form"),
-    url("sync$"                       , user_views.sync_users.as_view()       , name="sync_users"       ),
+    url("overview/(?P<mode>.*)$"    , user_views.overview.as_view()         , name="overview"         ),
+    url("passwd/xml$"               , user_views.get_password_form.as_view(), name="get_password_form"),
+    url("sync$"                     , user_views.sync_users.as_view()       , name="sync_users"       ),
+    url("^save_layout_state$"       , user_views.save_layout_state.as_view(), name="save_layout_state"),
 )
 
 pack_patterns = patterns(
