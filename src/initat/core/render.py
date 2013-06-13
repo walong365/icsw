@@ -12,14 +12,6 @@ class render_me(object):
     def __init__(self, request, template, *args, **kwargs):
         self.request = request
         self.template = template
-        if request.session:
-            # copy layout vars from user_vars
-            for var_name, attr_name in [
-                ("east[isClosed]", "east_closed"),
-                ("west[isClosed]", "west_closed"),
-            ]:
-                if var_name in request.session.get("user_vars", {}):
-                    setattr(request.session, attr_name, request.session["user_vars"][var_name].value)
         self.my_dict = {}
         for add_dict in args:
             self.my_dict.update(add_dict)
