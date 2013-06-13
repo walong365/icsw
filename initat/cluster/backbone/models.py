@@ -26,6 +26,9 @@ from django.utils.functional import memoize
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
+# top monitoring category
+TOP_MONITORING_CATEGORY = "/mon"
+
 # validation REs
 valid_domain_re   = re.compile("^[a-zA-Z0-9-_]+$")
 valid_category_re = re.compile("^[a-zA-Z0-9-_\.]+$")
@@ -488,6 +491,9 @@ class device(models.Model):
     categories = models.ManyToManyField("category")
     @property
     def full_name(self):
+        if not self.domain_tree_node_id:
+            self.domain_tree_node = domain_tree_node.objects.get(Q(depth=0))
+            self.save()
         if self.domain_tree_node.full_name:
             return ".".join([self.name, self.domain_tree_node.full_name])
         else:
@@ -658,6 +664,8 @@ def device_pre_save(sender, **kwargs):
             else:
                 cur_inst.domain_tree_node = cur_dnt
                 cur_inst.name = short_name
+        else:
+            cur_inst.domain_tree_node = domain_tree_node.objects.get(Q(depth=0))
             #raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
         if not valid_domain_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
@@ -3973,7 +3981,9 @@ def _migrate_mon_type(cat_tree):
     # read all monitoring_config_types
     cur_cats = set(mon_check_command.objects.all().values_list("categories", flat=True))
     if cur_cats == set([None]):
-        all_mon_ct = dict([(pk, "/mon/%s" % (cur_name)) for pk, cur_name in mon_check_command_type.objects.all().values_list("pk", "name")])
+        all_mon_ct = dict([(pk, "%s/%s" % (
+            TOP_MONITORING_CATEGORY,
+            cur_name)) for pk, cur_name in mon_check_command_type.objects.all().values_list("pk", "name")])
         mig_dict = dict([(key, cat_tree.add_category(value)) for key, value in all_mon_ct.iteritems()])
         for cur_mon_cc in mon_check_command.objects.all().prefetch_related("categories"):
             if cur_mon_cc.mon_check_command_type_id:
@@ -4000,7 +4010,7 @@ class category_tree(object):
                     cur_node.depth = self.__node_dict[cur_node.parent_id].depth + 1
                     cur_node.save()
                 self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
-        if not "/mon" in self.__category_lut:
+        if not TOP_MONITORING_CATEGORY in self.__category_lut:
             _migrate_mon_type(self)
     def add_category(self, new_category_name):
         while new_category_name.startswith("/"):
