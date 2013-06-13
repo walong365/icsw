@@ -45,7 +45,7 @@ from initat.cluster.backbone.models import partition_table, partition_disc, part
      partition_fs, image, architecture, group, user, device_config, device_group, \
      user_variable
 from initat.core.render import render_me, render_string
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from initat.cluster.frontend.forms import dummy_password_form
 
 logger = logging.getLogger("cluster.user")
@@ -154,4 +154,6 @@ class save_layout_state(View):
                         user=request.session["db_user"],
                         name=key,
                         value=value)
-        request.session.save()        
+        update_session_object(request)
+        request.session.save()
+        

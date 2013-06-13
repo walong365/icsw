@@ -15,6 +15,7 @@ from django.views.decorators.cache import never_cache
 from django.views.generic import View
 
 from initat.core.render import render_me
+from initat.cluster.frontend.helper_functions import update_session_object
 from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.backbone.models import user, user_variable
 
@@ -67,6 +68,7 @@ class sess_login(View):
             login(request, django_user)
             request.session["db_user"] = db_user
             request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in db_user.user_variable_set.all()])
+            update_session_object(request)
             return HttpResponseRedirect(reverse("main:index"))
         return render_me(request, "login.html", {
             "login_form" : login_form,

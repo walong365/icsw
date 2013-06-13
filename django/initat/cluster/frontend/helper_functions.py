@@ -190,6 +190,17 @@ def send_emergency_mail(**kwargs):
     srv.sendmail(mesg["From"], mesg["To"].split(","), mesg.as_string())
     srv.close()
 
+def update_session_object(request):
+    # update request.session_object with user_vars
+    if request.session:
+        # copy layout vars from user_vars
+        for var_name, attr_name in [
+            ("east[isClosed]", "east_closed"),
+            ("west[isClosed]", "west_closed"),
+        ]:
+            if var_name in request.session.get("user_vars", {}):
+                request.session[attr_name] = request.session["user_vars"][var_name].value
+    
 def contact_server(request, conn_str, send_com, **kwargs):
     result = net_tools.zmq_connection(
         kwargs.get("connection_id", "webfrontend"),
