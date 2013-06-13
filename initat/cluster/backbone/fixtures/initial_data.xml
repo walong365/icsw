@@ -233,11 +233,11 @@
         <field type="CharField" name="sarg1_descr"></field>
         <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
     </object>
-    <object pk="1" model="backbone.device_class">
+    <!--object pk="1" model="backbone.device_class">
         <field type="CharField" name="classname">normal</field>
         <field type="IntegerField" name="priority">0</field>
         <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
-    </object>
+    </object-->
     <object pk="1" model="backbone.device_location">
         <field type="CharField" name="location">room00</field>
         <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
