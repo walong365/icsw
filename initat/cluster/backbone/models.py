@@ -3710,19 +3710,59 @@ class user_group(models.Model):
     class Meta:
         db_table = u'user_ggroup'
 
-class user_var(models.Model):
-    idx = models.AutoField(db_column="user_var_idx", primary_key=True)
+class user_variable(models.Model):
+    idx = models.AutoField(primary_key=True)
     user = models.ForeignKey("user")
+    var_type = models.CharField(max_length=2, choices=[
+        ("s", "string"),
+        ("i", "integer"),
+        ("b", "boolean"),
+        ("n", "none")])
     name = models.CharField(max_length=189)
-    hidden = models.BooleanField()
-    var_type = models.CharField(max_length=3, blank=True, db_column="type")
-    editable = models.BooleanField()
-    value = models.TextField(blank=True)
-    description = models.TextField(blank=True)
+    value = models.CharField(max_length=64, default="")
     date = models.DateTimeField(auto_now_add=True)
+    def to_db_format(self):
+        cur_val = self.value
+        if type(cur_val) in [str, unicode]:
+            self.var_type = "s"
+        elif type(cur_val) in [int, long]:
+            self.var_type ="i"
+            self.value = "%d" % (self.value)
+        elif type(cur_val) in [bool]:
+            self.var_type = "b"
+            self.value = "1" if cur_val else "0"
+        elif cur_val is None:
+            self.var_type = "n"
+            self.value = "None"
+    def from_db_format(self):
+        if self.var_type == "b":
+            self.value = True if int(self.value) else False
+        elif self.var_type == "i":
+            self.value = int(self.value)
+        elif self.var_type == "n":
+            self.value = None
     class Meta:
-        db_table = u'user_var'
+        unique_together = [("name", "user"),]
 
+@receiver(signals.pre_save, sender=user_variable)
+def user_variable_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "name")
+        cur_inst.to_db_format()
+
+@receiver(signals.post_init, sender=user_variable)
+def user_variable_post_init(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        cur_inst.from_db_format()
+
+@receiver(signals.post_save, sender=user_variable)
+def user_variable_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        cur_inst.from_db_format()
+        
 class tree_node(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("device", default=None)
