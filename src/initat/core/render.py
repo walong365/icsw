@@ -12,6 +12,14 @@ class render_me(object):
     def __init__(self, request, template, *args, **kwargs):
         self.request = request
         self.template = template
+        if request.session:
+            # copy layout vars from user_vars
+            for var_name, attr_name in [
+                ("east[isClosed]", "east_closed"),
+                ("west[isClosed]", "west_closed"),
+            ]:
+                if var_name in request.session.get("user_vars", {}):
+                    setattr(request.session, attr_name, request.session["user_vars"][var_name].value)
         self.my_dict = {}
         for add_dict in args:
             self.my_dict.update(add_dict)
@@ -30,12 +38,14 @@ class render_me(object):
         for add_dict in args:
             in_dict.update(add_dict)
         self.my_dict.update(in_dict)
-        return render_to_response(self.template,
-                                  self.my_dict,
-                                  context_instance=django.template.RequestContext(self.request))
+        return render_to_response(
+            self.template,
+            self.my_dict,
+            context_instance=django.template.RequestContext(self.request))
 
 
 def render_string(request, template_name, in_dict=None):
-    return unicode(render_to_string(template_name,
-                                    in_dict if in_dict is not None else {},
-                                    django.template.RequestContext(request)))
+    return unicode(render_to_string(
+        template_name,
+        in_dict if in_dict is not None else {},
+        django.template.RequestContext(request)))
