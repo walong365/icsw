@@ -111,11 +111,6 @@ class moncc_detail
         template_div = $("<div>").attr("id", "template")
         template_div.html(@ajax_xml.find("forms template_form").text())
         template_div.find("input, select").bind("change", @my_submitter.submit)
-        #template_div.append(
-        #    create_input_el(moncc_xml, "mon_service_templ", moncc_xml.attr("key"), {label : "Template" , select_source : @configs_xml.find("mon_service_templates mon_service_templ"), select_source_attribute : "name", master_xml : @configs_xml}),
-        #    create_input_el(moncc_xml, "enable_perfdata", moncc_xml.attr("key"), {boolean : true, master_xml : @configs_xml}),
-        #    create_input_el(moncc_xml, "volatile", moncc_xml.attr("key"), {boolean : true, master_xml : @configs_xml})
-        #)
         return template_div
     category_div: (moncc_xml) =>
         cat_div = $("<div>").attr("id", "category")
@@ -196,8 +191,7 @@ class config_detail
             $("<ul>").append(
                 $("<li>").append(
                     $("<a>").attr("href", "#parent").text("Parent")
-                )
-            ).append(
+                ),
                 $("<li>").append(
                     $("<a>").attr("href", "#category").text("Category")
                 )
@@ -304,20 +298,16 @@ class device_info
             $("<ul>").append(
                 $("<li>").append(
                     $("<a>").attr("href", "#general").text("General")
-                )
-            ).append(
+                ),
                 $("<li>").append(
                     $("<a>").attr("href", "#category").text("Category")
-                )
-            ).append(
+                ),
                 $("<li>").append(
                     $("<a>").attr("href", "#network").text("Network")
-                )
-            ).append(
+                ),
                 $("<li>").append(
                     $("<a>").attr("href", "#disk").text("Disk")
-                )
-            ).append(
+                ),
                 $("<li>").append(
                     $("<a>").attr("href", "#mdcds").text("MD data store")
                 )

@@ -126,14 +126,10 @@ class config_table
         c_header = $("<th>")
         c_line.append(c_header)
         c_header.append(
-            create_input_el(cur_conf, "name", line_prefix, {label : "Name", master_xml: @configs})
-        ).append(
-            create_input_el(cur_conf, "priority", line_prefix, {label : "Priority", number : true, master_xml: @configs, min: -9999, max : 9999})
-        ).append(
-            create_input_el(cur_conf, "description", line_prefix, {label : "Description", master_xml: @configs})
-        ).append(
-            $("<span>").text("Details")
-        ).append(
+            create_input_el(cur_conf, "name", line_prefix, {label : "Name", master_xml: @configs}),
+            create_input_el(cur_conf, "priority", line_prefix, {label : "Priority", number : true, master_xml: @configs, min: -9999, max : 9999}),
+            create_input_el(cur_conf, "description", line_prefix, {label : "Description", master_xml: @configs}),
+            $("<span>").text("Details"),
             $("<input>").attr({
                 "type"   : "image"
                 "width"  : "16px"
@@ -302,10 +298,8 @@ class config_table
             else if c_var.attr("type") == "int"
                 var_dict.number = true
         cv_tr.append(
-            create_input_el(c_var, "name", line_prefix, {master_xml : @configs, enclose_td : true, size : 40})
-        ).append(
-            create_input_el(c_var, "value", line_prefix, var_dict)
-        ).append(
+            create_input_el(c_var, "name", line_prefix, {master_xml : @configs, enclose_td : true, size : 40}),
+            create_input_el(c_var, "value", line_prefix, var_dict),
             create_input_el(c_var, "description", line_prefix, {master_xml : @configs, enclose_td : true, size : 40})
         )
         if c_var
@@ -377,12 +371,9 @@ class config_table
             "id"  : line_prefix
         })
         nc_tr.append(
-            create_input_el(n_com, "name", line_prefix, {master_xml : @configs, enclose_td : true, size: 32})
-        ).append(
-            create_input_el(n_com, "command_line", line_prefix, {master_xml : @configs, enclose_td : true, size : 80})
-        ).append(
-            create_input_el(n_com, "description", line_prefix, {master_xml : @configs, enclose_td : true, size : 40})
-        ).append(
+            create_input_el(n_com, "name", line_prefix, {master_xml : @configs, enclose_td : true, size: 32}),
+            create_input_el(n_com, "command_line", line_prefix, {master_xml : @configs, enclose_td : true, size : 80}),
+            create_input_el(n_com, "description", line_prefix, {master_xml : @configs, enclose_td : true, size : 40}),
             $("<input>").attr({
                 "type"   : "image"
                 "width"  : "16px"
@@ -456,12 +447,9 @@ class config_table
             "id"  : line_prefix
         })
         cs_tr.append(
-            create_input_el(cs_com, "name", line_prefix, {master_xml : @configs, enclose_td : true})
-        ).append(
-            create_input_el(cs_com, "description", line_prefix, {master_xml : @configs, enclose_td : true})
-        ).append(
-            create_input_el(cs_com, "priority", line_prefix, {number : true, master_xml : @configs, enclose_td : true})
-        ).append(
+            create_input_el(cs_com, "name", line_prefix, {master_xml : @configs, enclose_td : true}),
+            create_input_el(cs_com, "description", line_prefix, {master_xml : @configs, enclose_td : true}),
+            create_input_el(cs_com, "priority", line_prefix, {number : true, master_xml : @configs, enclose_td : true}),
             create_input_el(cs_com, "enabled", line_prefix, {boolean : true, master_xml : @configs, enclose_td : true})
         )
         if cs_com
