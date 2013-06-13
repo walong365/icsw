@@ -138,7 +138,7 @@ class moncc_detail
                 #dtnode.toggleSelect()
         root_node = tree_div.dynatree("getRoot")
         @select_cats = moncc_xml.attr("categories").split("::")
-        @build_node(root_node, @cat_xml.find("category[parent='0']"))
+        @build_node(root_node, @cat_xml.find("category[full_name='/mon']"))
         return cat_div
     build_node: (dt_node, db_node) =>
         if parseInt(db_node.attr("parent")) == 0

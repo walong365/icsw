@@ -43,7 +43,7 @@ from django.utils.decorators import method_decorator
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 from initat.cluster.backbone.models import device_type, device_group, device, \
-     device_class, kernel, image, partition_table, status, network, devicelog, \
+     kernel, image, partition_table, status, network, devicelog, \
      cd_connection
 
 logger = logging.getLogger("cluster.boot")

@@ -25,7 +25,7 @@ from django.utils.decorators import method_decorator
 
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
-from initat.cluster.backbone.models import device_type, device_group, device, device_class, \
+from initat.cluster.backbone.models import device_type, device_group, device, \
      mon_device_templ, mon_ext_host, cd_connection, package_device_connection, \
      mon_host_cluster, mon_service_cluster, domain_name_tree, category_tree, category
 from initat.cluster.frontend import forms

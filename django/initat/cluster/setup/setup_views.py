@@ -20,8 +20,7 @@ from django.views.generic import View
 from initat.core.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
-     partition_fs, image, architecture, device_class, device_location, get_related_models, \
-     kernel
+     partition_fs, image, architecture, get_related_models, kernel
 
 logger = logging.getLogger("cluster.setup")
 
@@ -239,17 +238,4 @@ class use_image(View):
                 request.xml_response.error("image has vanished ?", logger)
         else:
             request.xml_response.error("image already exists", logger)
-    
-class show_device_class_location(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "cluster_device_class_location.html")()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        xml_resp = E.response()
-        request.xml_response["response"] = xml_resp
-        xml_resp.append(E.device_classes(
-            *[cur_dcl.get_xml() for cur_dcl in device_class.objects.all()]))
-        xml_resp.append(E.device_locations(
-            *[cur_dcl.get_xml() for cur_dcl in device_location.objects.all()]))
     

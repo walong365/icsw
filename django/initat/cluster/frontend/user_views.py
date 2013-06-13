@@ -42,8 +42,7 @@ from django.views.generic import View
 from django.utils.decorators import method_decorator
 
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
-     partition_fs, image, architecture, device_class, device_location, group, user, \
-     device_config, device_group
+     partition_fs, image, architecture, group, user, device_config, device_group
 from initat.core.render import render_me, render_string
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.forms import dummy_password_form

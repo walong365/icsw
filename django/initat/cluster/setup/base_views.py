@@ -25,7 +25,7 @@ from initat.core.render import render_me, render_string
 from initat.cluster.frontend.forms import category_detail_form, category_new_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.models import device_group, device, \
-     get_related_models, device_class, KPMC_MAP, device_variable, category, \
+     get_related_models, KPMC_MAP, device_variable, category, \
      category_tree
 
 logger = logging.getLogger("cluster.base")
@@ -263,8 +263,6 @@ class create_object(View):
             if change_key:
                 setattr(new_obj, change_key, change_value)
             # add defaults
-            for add_field, value in {"device" : [("device_class", device_class.objects.get(Q(pk=1)))]}.get(obj_name, []):
-                setattr(new_obj, add_field, value)
             if obj_name == "device_variable":
                 new_obj.device = device.objects.get(Q(pk=key_pf.split("__")[1]))
             try:

@@ -55,7 +55,6 @@ setup_patterns = patterns(
     url(r"xml/scan_for_images", setup_views.scan_for_images.as_view()           , name="scan_for_images"   ),
     url(r"xml/use_image"      , setup_views.use_image.as_view()                 , name="use_image"         ),
     url(r"xml/delete_image"   , setup_views.delete_image.as_view()              , name="delete_image"      ),
-    url(r"xml/show_devloccl"  , setup_views.show_device_class_location.as_view(), name="show_device_class_location"),
 )
 
 config_patterns = patterns(
