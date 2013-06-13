@@ -63,6 +63,19 @@ class category_tree
                     else
                         return true
                 onDrop: (dst_node, src_node, hit_mode, ui, draggable) =>
+                    # node needs at least depth >= 2
+                    src_db_node = @DNT.find("category[pk='#{src_node.data.key}']")
+                    if parseInt(src_db_node.attr("immutable")) == 1
+                        return false
+                    src_root_node = src_db_node
+                    while parseInt(src_root_node.attr("depth")) > 1
+                        src_root_node = @DNT.find("category[pk='" + src_root_node.attr("parent") + "']")
+                    dst_root_node = @DNT.find("category[pk='#{dst_node.data.key}']")
+                    while parseInt(dst_root_node.attr("depth")) > 1
+                        dst_root_node = @DNT.find("category[pk='" + dst_root_node.attr("parent") + "']")
+                    # not allowed to move between main branches
+                    if parseInt(src_root_node.attr("immutable")) and parseInt(dst_root_node.attr("immutable")) and src_root_node.attr("name") != dst_root_node.attr("name")
+                        return false
                     # check if src_node is not a parent of dst_node
                     move = true
                     c_node = dst_node
@@ -111,30 +124,35 @@ class category_tree
             title    : title_str
             expand   : expand_flag
             key      : db_node.attr("pk")
+            select   : if parseInt(db_node.attr("immutable")) then true else false
             addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
         )
         @DNT.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
             @build_node(new_node, $(sub_db_node))
     show_details: (key) =>
-        $.ajax
-            url     : "{% url 'base:category_detail' %}"
-            data     : {
-                "key" : key
-            }
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    @active_node = key
-                    detail_div = $("div#ct_detail")
-                    detail_div.children().remove()
-                    detail_div.append($(xml).find("value[name='form']").text())
-                    #detail_div.uniform()
-                    detail_div.find("input").on("change", @my_submitter.submit)
-                    cur_dtn = @DNT.find("category[pk='#{key}']")
-                    detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
+        db_node = @DNT.find("category[pk='#{key}']")
+        if parseInt(db_node.attr("immutable")) == 0
+            $.ajax
+                url     : "{% url 'base:category_detail' %}"
+                data     : {
+                    "key" : key
+                }
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @active_node = key
+                        detail_div = $("div#ct_detail")
+                        detail_div.children().remove()
+                        detail_div.append($(xml).find("value[name='form']").text())
+                        detail_div.find("input").on("change", @my_submitter.submit)
+                        cur_dtn = @DNT.find("category[pk='#{key}']")
+                        detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
+        else
+            detail_div = $("div#ct_detail")
+            detail_div.children().remove()
     delete_node: (event) =>
         $.ajax
             url     : "{% url 'base:delete_category' %}"
-            data     : {
+            data    : {
                 "key" : @active_node
             }
             success : (xml) =>

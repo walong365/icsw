@@ -361,7 +361,6 @@ class get_category_tree(View):
         return render_me(request, "category_tree.html")()
     @method_decorator(xml_wrapper)
     def post(self, request):
-        print etree.tostring(category_tree().get_xml(), pretty_print=True)
         request.xml_response["response"] = category_tree().get_xml()
 
 class category_detail(View):
