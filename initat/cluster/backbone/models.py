@@ -4033,6 +4033,12 @@ class category_tree(object):
         for check_name in [TOP_CONFIG_CATEGORY, TOP_DEVICE_CATEGORY]:
             if not check_name in self.__category_lut:
                 self.add_category(check_name)
+        for cur_node in self.__node_dict.itervalues():
+            print cur_node.full_name
+            is_immutable = cur_node.full_name in ["", TOP_CONFIG_CATEGORY, TOP_MONITORING_CATEGORY, TOP_DEVICE_CATEGORY, TOP_LOCATION_CATEGORY]
+            if cur_node.immutable != is_immutable:
+                cur_node.immutable = is_immutable
+                cur_node.save()
     def add_category(self, new_category_name):
         while new_category_name.startswith("/"):
             new_category_name = new_category_name[1:]
@@ -4081,6 +4087,8 @@ class category(models.Model):
     depth = models.IntegerField(default=0)
     # creation timestamp
     created = models.DateTimeField(auto_now_add=True, auto_now=True)
+    # immutable
+    immutable = models.BooleanField(default=False)
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
     def get_sorted_pks(self):
@@ -4097,6 +4105,7 @@ class category(models.Model):
             parent="%d" % (self.parent_id or 0),
             depth="%d" % (self.depth),
             comment="%s" % (self.comment or ""),
+            immutable="1" if self.immutable else "0",
         )
 
 @receiver(signals.pre_save, sender=category)
