@@ -4101,7 +4101,6 @@ class category_tree(object):
             if not check_name in self.__category_lut:
                 self.add_category(check_name)
         for cur_node in self.__node_dict.itervalues():
-            print cur_node.full_name
             is_immutable = cur_node.full_name in ["", TOP_CONFIG_CATEGORY, TOP_MONITORING_CATEGORY, TOP_DEVICE_CATEGORY, TOP_LOCATION_CATEGORY]
             if cur_node.immutable != is_immutable:
                 cur_node.immutable = is_immutable
@@ -4130,6 +4129,11 @@ class category_tree(object):
         return self.__category_lut[cat_name]
     def get_sorted_pks(self):
         return self._root_node.get_sorted_pks()
+    def __contains__(self, key):
+        if type(key) in [int, long]:
+            return key in self.__node_dict
+        else:
+            return key in self.__category_lut
     def __getitem__(self, key):
         if type(key) in [int, long]:
             return self.__node_dict[key]
