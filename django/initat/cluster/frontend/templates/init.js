@@ -57,6 +57,52 @@ $.ajaxSetup
                 alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
         return false
 
+class category_tree
+    constructor: (@tree_div, @top_xml, @xml, @cat_tree, @top_node) ->
+        tree_div.dynatree
+            autoFocus : false
+            checkbox  : true
+            clickFolderMode : 2
+            #onExpand : (flag, dtnode) =>
+            #    dtnode.toggleSelect()
+            onClick : (dtnode, event) =>
+                #console.log dtnode.data.key, event.type
+                #dtnode.toggleSelect()
+            onSelect : (flag, dtnode) =>
+                $.ajax
+                    url     : "{% url 'base:change_category' %}"
+                    data    :
+                        "obj_key" : @xml.attr("key")
+                        "cat_pk"  : dtnode.data.key
+                        "flag"    : if flag then 1 else 0
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            replace_xml_element(@top_xml, $(xml))
+                #dtnode.toggleSelect()
+        root_node = tree_div.dynatree("getRoot")
+        @select_cats = @xml.attr("categories").split("::")
+        @build_node(root_node, @cat_tree.find("category[full_name='#{@top_node}']"))
+    build_node: (dt_node, db_node) =>
+        if parseInt(db_node.attr("parent")) == 0
+            title_str = "TOP"
+            expand_flag = true
+        else
+            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
+            expand_flag = false
+        selected = if db_node.attr("pk") in @select_cats then true else false
+        new_node = dt_node.addChild(
+            title        : title_str
+            expand       : expand_flag
+            key          : db_node.attr("pk")
+            hideCheckbox : if (db_node.attr("full_name") == "#{@top_node}") then true else false
+            select       : selected
+        )
+        if selected
+            new_node.makeVisible()
+        @cat_tree.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
+            @build_node(new_node, $(sub_db_node))
+    
+    
 root.show_moncc_detail = (event, config_xml, moncc_key) ->
     new moncc_detail(event, config_xml, moncc_key).show()
     
@@ -116,49 +162,8 @@ class moncc_detail
         cat_div = $("<div>").attr("id", "category")
         tree_div = $("<div>").attr("id", "cat_tree")
         cat_div.append(tree_div)
-        tree_div.dynatree
-            autoFocus : false
-            checkbox  : true
-            clickFolderMode : 2
-            #onExpand : (flag, dtnode) =>
-            #    dtnode.toggleSelect()
-            onClick : (dtnode, event) =>
-                #console.log dtnode.data.key, event.type
-                #dtnode.toggleSelect()
-            onSelect : (flag, dtnode) =>
-                $.ajax
-                    url     : "{% url 'base:change_category' %}"
-                    data    :
-                        "obj_key" : moncc_xml.attr("key")
-                        "cat_pk"  : dtnode.data.key
-                        "flag"    : if flag then 1 else 0
-                    success : (xml) =>
-                        if parse_xml_response(xml)
-                            replace_xml_element(@configs_xml, $(xml))
-                #dtnode.toggleSelect()
-        root_node = tree_div.dynatree("getRoot")
-        @select_cats = moncc_xml.attr("categories").split("::")
-        @build_node(root_node, @cat_xml.find("category[full_name='/mon']"))
+        new category_tree(tree_div, @configs_xml, moncc_xml, @cat_xml, "/mon")
         return cat_div
-    build_node: (dt_node, db_node) =>
-        if parseInt(db_node.attr("parent")) == 0
-            title_str = "TOP"
-            expand_flag = true
-        else
-            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
-            expand_flag = false
-        selected = if db_node.attr("pk") in @select_cats then true else false
-        new_node = dt_node.addChild(
-            title        : title_str
-            expand       : expand_flag
-            key          : db_node.attr("pk")
-            hideCheckbox : if (db_node.attr("full_name") == "/mon") then true else false
-            select       : selected
-        )
-        if selected
-            new_node.makeVisible()
-        @cat_xml.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
-            @build_node(new_node, $(sub_db_node))
 
 root.show_config_detail = (event, config_xml, config_key) ->
     new config_detail(event, config_xml, config_key).show()
@@ -212,51 +217,9 @@ class config_detail
         cat_div = $("<div>").attr("id", "category")
         tree_div = $("<div>").attr("id", "cat_tree")
         cat_div.append(tree_div)
-        tree_div.dynatree
-            autoFocus : false
-            checkbox  : true
-            clickFolderMode : 2
-            #onExpand : (flag, dtnode) =>
-            #    dtnode.toggleSelect()
-            onClick : (dtnode, event) =>
-                #console.log dtnode.data.key, event.type
-                #dtnode.toggleSelect()
-            onSelect : (flag, dtnode) =>
-                $.ajax
-                    url     : "{% url 'base:change_category' %}"
-                    data    :
-                        "obj_key" : conf_xml.attr("key")
-                        "cat_pk"  : dtnode.data.key
-                        "flag"    : if flag then 1 else 0
-                    success : (xml) =>
-                        if parse_xml_response(xml)
-                            replace_xml_element(@configs_xml, $(xml))
-                #dtnode.toggleSelect()
-        root_node = tree_div.dynatree("getRoot")
-        @select_cats = conf_xml.attr("categories").split("::")
-        @build_node(root_node, @cat_xml.find("category[full_name='/config']"))
+        new category_tree(tree_div, @configs_xml, conf_xml, @cat_xml, "/config")
         return cat_div
-    build_node: (dt_node, db_node) =>
-        if parseInt(db_node.attr("parent")) == 0
-            title_str = "TOP"
-            expand_flag = true
-        else
-            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
-            expand_flag = false
-        selected = if db_node.attr("pk") in @select_cats then true else false
-        new_node = dt_node.addChild(
-            title        : title_str
-            expand       : expand_flag
-            key          : db_node.attr("pk")
-            hideCheckbox : if (db_node.attr("full_name") == "/config") then true else false
-            select       : selected
-        )
-        if selected
-            new_node.makeVisible()
-        @cat_xml.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
-            @build_node(new_node, $(sub_db_node))
-        
-        
+
 root.show_device_info = (event, dev_key, callback) ->
     new device_info(event, dev_key, callback).show()
 
@@ -331,49 +294,8 @@ class device_info
         cat_div = $("<div>").attr("id", "category")
         tree_div = $("<div>").attr("id", "cat_tree")
         cat_div.append(tree_div)
-        tree_div.dynatree
-            autoFocus : false
-            checkbox  : true
-            clickFolderMode : 2
-            #onExpand : (flag, dtnode) =>
-            #    dtnode.toggleSelect()
-            onClick : (dtnode, event) =>
-                #console.log dtnode.data.key, event.type
-                #dtnode.toggleSelect()
-            onSelect : (flag, dtnode) =>
-                $.ajax
-                    url     : "{% url 'base:change_category' %}"
-                    data    :
-                        "obj_key" : dev_xml.attr("key")
-                        "cat_pk"  : dtnode.data.key
-                        "flag"    : if flag then 1 else 0
-                    success : (xml) =>
-                        if parse_xml_response(xml)
-                            replace_xml_element(@configs_xml, $(xml))
-                #dtnode.toggleSelect()
-        root_node = tree_div.dynatree("getRoot")
-        @select_cats = dev_xml.attr("categories").split("::")
-        @build_node(root_node, @resp_xml.find("category[full_name='/device']"))
+        new category_tree(tree_div, @configs_xml, dev_xml, @resp_xml, "/device")
         return cat_div
-    build_node: (dt_node, db_node) =>
-        if parseInt(db_node.attr("parent")) == 0
-            title_str = "TOP"
-            expand_flag = true
-        else
-            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
-            expand_flag = false
-        selected = if db_node.attr("pk") in @select_cats then true else false
-        new_node = dt_node.addChild(
-            title        : title_str
-            expand       : expand_flag
-            key          : db_node.attr("pk")
-            hideCheckbox : if (db_node.attr("full_name") == "/device") then true else false
-            select       : selected
-        )
-        if selected
-            new_node.makeVisible()
-        @resp_xml.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
-            @build_node(new_node, $(sub_db_node))
     network_div: (dev_xml) =>
         # network div
         nw_div = $("<div>").attr("id", "network")
