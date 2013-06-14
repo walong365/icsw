@@ -4006,7 +4006,6 @@ def domain_tree_node_pre_save(sender, **kwargs):
                 cur_inst.full_name = new_full_name
                 cur_inst.full_name_changed = True
             used_names = domain_tree_node.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(depth=cur_inst.depth) & Q(parent=cur_inst.parent)).values_list("name", flat=True)
-            print cur_inst.name, used_names
             if cur_inst.name in used_names:
                 raise ValidationError("name '%s' already used here" % (cur_inst.name))
         else:
