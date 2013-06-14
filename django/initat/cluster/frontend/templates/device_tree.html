@@ -177,6 +177,19 @@ class device_tree
             cur_dg.find("device[device_type!='#{@md_dt}']").each (index, cur_d) =>
                 dummy_div.append(@build_device(cur_dg, $(cur_d)))
             @top_div.find("tr##{dg_key}").after(dummy_div.children().hide())
+    fqdn_callback: (in_dict) =>
+        dev_key = in_dict["id"].split("__")[0..1].join("__")
+        el_name = in_dict["id"].split("__")[2]
+        dev_xml = @xml.find("device[key='#{dev_key}']")
+        other_list = []
+        if el_name == "name"
+            other_name = "domain_tree_node"
+        else
+            other_name = "name"
+        other_id = "#{dev_key}__#{other_name}"
+        in_dict[other_id] = dev_xml.attr(other_name)
+        other_list.push(other_id)
+        in_dict.other_list = other_list.join("::")
     build_device: (cur_dg, cur_d) ->
         line_prefix = cur_d.attr("key")
         new_tr = $("<tr>").attr
@@ -185,13 +198,13 @@ class device_tree
             "class" : "ui-widget"
         # name
         new_tr.append($("<td>").attr("colspan", 2).append(create_input_el(cur_d, "sel", line_prefix, {boolean : true, bind : false, master_xml : @xml, change_cb : @update_num_of_selected_devices })))
-        new_tr.append($("<td>").append(create_input_el(cur_d, "name", line_prefix, {master_xml : @xml})))
+        new_tr.append($("<td>").append(create_input_el(cur_d, "name", line_prefix, {master_xml : @xml, modify_data_dict : @fqdn_callback})))
         # description / comment
         new_tr.append($("<td>").append(create_input_el(cur_d, "comment", line_prefix, {master_xml : @xml})))
         new_tr.append(
             # domain
             $("<td>").append(
-                create_input_el(cur_d, "domain_tree_node", line_prefix, {master_xml : @xml, select_source : @xml.find("domain_tree_nodes domain_tree_node")})
+                create_input_el(cur_d, "domain_tree_node", line_prefix, {master_xml : @xml, select_source : @xml.find("domain_tree_nodes domain_tree_node"), modify_data_dict : @fqdn_callback})
             ),
             # enabled
             $("<td>").append(

@@ -181,11 +181,20 @@ class change_xml_entry(View):
                                         request.xml_response.info("changed %s from %s to %s" % (attr_name, unicode(old_value), unicode(new_value)), logger)
                                 # handle others
                                 if other_list:
-                                    other_change = E.changes(
-                                        E.change(unicode(getattr(cur_obj, attr_name)), id=_post["id"], name=attr_name))
+                                    if cur_obj._meta.get_field(attr_name).get_internal_type() == "ForeignKey":
+                                        other_change = E.changes(
+                                            E.change("%d" % (getattr(cur_obj, "%s_id" % (attr_name))), id=_post["id"], name=attr_name)
+                                        )
+                                    else:
+                                        other_change = E.changes(
+                                            E.change(unicode(getattr(cur_obj, attr_name)), id=_post["id"], name=attr_name)
+                                        )
                                     for other in other_list:
                                         name = other.split("__")[-1]
-                                        other_change.append(E.change(unicode(getattr(cur_obj, name)), id=other, name=name))
+                                        if cur_obj._meta.get_field(name).get_internal_type() == "ForeignKey":
+                                            other_change.append(E.change("%d" % (getattr(cur_obj, "%s_id" % (name))), id=other, name=name))
+                                        else:
+                                            other_change.append(E.change(unicode(getattr(cur_obj, name)), id=other, name=name))
                                     # not safe to use in case of multi-object modification, FIXME
                                     request.xml_response["changes"] = other_change
 
