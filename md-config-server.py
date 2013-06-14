@@ -1574,10 +1574,11 @@ class all_host_groups(host_type_config):
     def _add_host_groups_from_db(self, gen_conf):
         if gen_conf.has_key("host"):
             host_pks = gen_conf["host"].host_pks
+            host_filter = Q(enabled=True) & Q(device_group__enabled=True) & Q(device_group__pk__in=host_pks)
             if host_pks:
                 # hostgroups by devicegroups
                 # distinct is important here
-                for h_group in device_group.objects.filter(Q(enabled=True) & Q(device_group__pk__in=host_pks)).prefetch_related("device_group").distinct():
+                for h_group in device_group.objects.filter(host_filter).prefetch_related("device_group").distinct():
                     nag_conf = nag_config(
                         h_group.name,
                         hostgroup_name=h_group.name,
@@ -1594,7 +1595,7 @@ class all_host_groups(host_type_config):
                         hostgroup_name=cur_cat.full_name,
                         alias=cur_cat.comment or cur_cat.full_name,
                         members="-")
-                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in cur_cat.device_set.all()])
+                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in cur_cat.device_set.filter(host_filter)])
                     if nag_conf["members"]:
                         self.__obj_list.append(nag_conf)
             else:
