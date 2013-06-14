@@ -1159,7 +1159,6 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
                 new_el.bind("click", kwargs.change_cb)
             else
                 new_el.bind("change", kwargs.change_cb)
-            new_el.bind("change", kwargs.change_cb)
         else
             if kwargs.submitter
                 new_el.bind("change", kwargs.submitter.submit)

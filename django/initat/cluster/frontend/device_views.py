@@ -44,6 +44,7 @@ class get_xml_tree(View):
         _post = request.POST
         full_tree = device_group.objects.all().prefetch_related(
             "device",
+            "device_group__categories",
             "device_group",
             "device_group__device_type").distinct().order_by("-cluster_device_group", "name")
         xml_resp = E.response()
@@ -57,10 +58,11 @@ class get_xml_tree(View):
         )
         # add mother server(s)
         all_mothers = config_tools.device_with_config("mother_server").get("mother_server", [])
-        xml_resp.append(
+        xml_resp.extend([
             E.mother_servers(
-                *[E.mother_server(unicode(mother_server.effective_device), pk="%d" % (mother_server.effective_device.pk)) for mother_server in all_mothers])
-        )
+                *[E.mother_server(unicode(mother_server.effective_device), pk="%d" % (mother_server.effective_device.pk)) for mother_server in all_mothers]),
+            domain_name_tree().get_xml(),
+        ])
         request.xml_response["response"] = xml_resp
 
 class clear_selection(View):
@@ -336,7 +338,7 @@ class manual_connection(View):
             if created_cons:
                 request.xml_response.info("created %s" % (logging_tools.get_plural("connection", len(m_keys))), logger)
         else:
-            request.xml_reponse.warn("found no matching devices", logger)
+            request.xml_response.warn("found no matching devices", logger)
 
 class variables(View):
     @method_decorator(login_required)

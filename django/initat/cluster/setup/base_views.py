@@ -86,8 +86,8 @@ class change_xml_entry(View):
                     try:
                         cur_obj = mod_obj.objects.get(pk=object_id)
                     except mod_obj.DoesNotExist:
-                        request.xml_response.error("object %s with id %s does not exit" % (
-                            object_type,
+                        request.xml_response.error("%s with id %s does not exit" % (
+                            mod_obj._meta.object_name,
                             object_id), logger)
                     else:
                         compound_fields = {
@@ -270,7 +270,7 @@ class create_object(View):
             except ValidationError, what:
                 request.xml_response.error("error creating: %s" % (unicode(what.messages[0])), logger)
             except:
-                request.xml_repsonse.error("error creating: %s" % (process_tools.get_except_info()), logger)
+                request.xml_response.error("error creating: %s" % (process_tools.get_except_info()), logger)
             else:
                 created_ok.append(new_obj)
                 # add m2m entries
@@ -327,6 +327,7 @@ class delete_object(View):
                     min_ref = 1
             num_ref = get_related_models(del_obj)
             if num_ref > min_ref and not force_delete:
+                #pprint.pprint(get_related_models(del_obj, detail=True))
                 request.xml_response.error(
                     "cannot delete %s '%s': %s" % (
                         del_obj._meta.object_name,

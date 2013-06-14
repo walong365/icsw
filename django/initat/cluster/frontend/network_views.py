@@ -88,7 +88,7 @@ class device_network(View):
                     *[E.ethtool_speed(cur_value, pk="%d" % (cur_idx)) for cur_idx, cur_value in enumerate(["default", "10 Mbit", "100 MBit", "1 GBit", "10 GBit"])]),
                 # peers,
                 _get_valid_peers(),
-                dnt_struct.get_xml(no_intermediate=True),
+                dnt_struct.get_xml(),
             ]
         )
 ##        if True:

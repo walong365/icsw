@@ -23,6 +23,7 @@ class device_tree
         @top_div.children().remove()
         # device_type metadevice
         @md_dt = @xml.find("device_type[identifier='MD']").attr("pk")
+        @devg_expand_dict = {}
         new_table = $("<table>").attr
             "id" : "device_tree"
         @xml.find("device_group").each (index, cur_dg) =>
@@ -34,6 +35,7 @@ class device_tree
             new_table.append(@build_selected)
         @top_div.append(new_table)
         @update_device_group_info()
+        @update_num_of_selected_devices()
         new_table.find("input#dev__new__name").focus()
     update_device_group_info: () =>
         if not @xml.find("device_group[is_cdg='0']").length
@@ -48,16 +50,32 @@ class device_tree
             num_devs = @xml.find("device_group[pk='#{dg_pk}'] device[device_type!='#{@md_dt}']").length
             info_th.text(num_devs)
     toggle_device_group: (line_prefix, state, name) =>
+        @expand_device_group(@xml.find("device_group[key='#{line_prefix}']"))
         dg_pk = line_prefix.split("__")[1]
         if state
             @top_div.find("tr[id^='dev__#{dg_pk}__']").show()
             @recolor_device_group(dg_pk)
         else
             @top_div.find("tr[id^='dev__#{dg_pk}__']").hide()
+    move_device: (event) =>
+        cur_el = $(event.target)
+        cur_tr = cur_el.parents("tr:first")
+        new_val = cur_el.val()
+        dev_pk = cur_tr.attr("id").split("__")[2]
+        $.ajax
+            url     : "{% url 'base:change_xml_entry' %}"
+            data    : 
+                "id"         : "dev__#{dev_pk}__device_group"
+                "value"      : new_val
+                "checkbox"   : false
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @change_device_group(@xml.find("device[pk='#{dev_pk}']"), new_val)
     change_device_group: (dev_xml, new_dg_id) =>
         # move row
         dev_pk = dev_xml.attr("pk")
-        dev_tr = @top_div.find("tr[id^='dev__'][id$='__${dev_pk}']")
+        dev_tr = @top_div.find("tr[id^='dev__'][id$='__#{dev_pk}']")
+        was_sel = dev_tr.find("input[id$='__sel']").is(":checked")
         dev_tr.remove()
         new_dg = @xml.find("device_group[pk='#{new_dg_id}']")
         #dev_xml = @xml.find("device[pk='#{dev_pk}']")
@@ -65,6 +83,9 @@ class device_tree
         dev_xml.attr("device_group", new_dg_id)
         # call create_device
         @create_device(dev_xml)
+        if was_sel
+            @top_div.find("tr[id^='dev__'][id$='__#{dev_pk}'] input[id$='__sel']").attr("checked", "checked")
+        @update_num_of_selected_devices()
     recolor_device_group: (dg_pk) =>
         @top_div.find("tr[id^='dev__#{dg_pk}__']").removeClass("even odd")
         @top_div.find("tr[id^='dev__#{dg_pk}__']:even").addClass("even")
@@ -72,6 +93,8 @@ class device_tree
     toggle_device_group_selection: (event) =>
         cur_el = $(event.target)
         cur_tr = cur_el.parents("tr:first")
+        cur_dg = @xml.find("device_group[key='" + cur_tr.attr("id") + "']")
+        @expand_device_group(cur_dg)
         cur_tr.parents("table:first").find("tr[id^='dev__" + cur_tr.attr("id").split("__")[1] + "__']").each (index, dev_tr) ->
             dev_tr = $(dev_tr)
             dev_sel = dev_tr.find("input[id$='__sel']")
@@ -79,12 +102,12 @@ class device_tree
                 dev_sel.removeAttr("checked")
             else
                 dev_sel.attr("checked", "checked")
-            dev_tr.show()
+        @update_num_of_selected_devices()
     build_group: (cur_dg) =>
         new_tr = $("<tr>").attr
             "id"    : cur_dg.attr("key")
             "class" : "ui-widget ui-widget-header"
-        line_prefix = "devg__" + cur_dg.attr("pk")
+        line_prefix = cur_dg.attr("key")
         if cur_dg.attr("is_cdg") == "1"
             new_tr.append $("<th>").attr("colspan" : 2)
         else
@@ -92,37 +115,37 @@ class device_tree
                 $("<td>").append(
                     $("<input>").attr({
                         "type" : "checkbox"
-                    }).bind("click", (event) =>
-                        @toggle_device_group_selection(event)
-                    )
+                    }).bind("click", @toggle_device_group_selection)
+                ),
+                get_expand_td(line_prefix, "devicegroup", undefined, @toggle_device_group),
+                $("<th>").append(
+                    create_input_el(cur_dg, "name", line_prefix, {callback : @update_dg_changes, master_xml : @xml})
+                ),
+                $("<th>").append(
+                    create_input_el(cur_dg, "description", line_prefix, {master_xml : @xml})
                 )
-            ).append(
-                get_expand_td(line_prefix, "devicegroup", undefined, @toggle_device_group)
             )
-        new_tr.append(
-            $("<th>").append(
-                create_input_el(cur_dg, "name", line_prefix, {callback : @update_dg_changes, master_xml : @xml})
-            )
-        )
-        new_tr.append(
-            $("<th>").append(
-                create_input_el(cur_dg, "description", line_prefix, {master_xml : @xml})
-            )
-        )
         if cur_dg.attr("is_cdg") == "1"
             new_tr.append(
+                $("<th>").text("Domain"),
                 $("<th>").text("enabled")
             )
         else
+            meta_dev = @xml.find("device[device_type='#{@md_dt}'][device_group='" + cur_dg.attr("pk") + "']")
             new_tr.append(
+                $("<th>").append(
+                    create_input_el(meta_dev, "domain_tree_node", meta_dev.attr("key"), {master_xml : @xml, select_source : @xml.find("domain_tree_nodes domain_tree_node")})
+                ),
                 $("<th>").append(
                     create_input_el(cur_dg, "enabled", line_prefix, {master_xml : @xml, boolean: true})
                 )
             )
-        new_tr.append($("<th>").text("device type"))
-        new_tr.append($("<th>").text(if cur_dg.attr("is_cdg") == 1 then "Cluster device group" else  "device group"))
-        new_tr.append($("<th>").text("motherserver"))
-        new_tr.append($("<th>").text("cURL"))
+        new_tr.append(
+            $("<th>").text("device type"),
+            $("<th>").text(if cur_dg.attr("is_cdg") == 1 then "Cluster device group" else  "device group"),
+            $("<th>").text("motherserver"),
+            $("<th>").text("cURL"),
+        )
         if cur_dg.attr("is_cdg") == "1"
             new_tr.append($("<th>"))
         else
@@ -144,35 +167,54 @@ class device_tree
                 )
             ))
         dummy_div = $("<div>").append(new_tr)
-        cur_dg.find("device[device_type!='#{@md_dt}']").each (index, cur_d) =>
-            dummy_div.append(@build_device(cur_dg, $(cur_d)))
+        @devg_expand_dict[cur_dg.attr("key")] = false
         return dummy_div.children()
+    expand_device_group: (cur_dg) ->
+        dg_key = cur_dg.attr("key")
+        if not @devg_expand_dict[dg_key]
+            @devg_expand_dict[dg_key] = true
+            dummy_div = $("<div>")
+            cur_dg.find("device[device_type!='#{@md_dt}']").each (index, cur_d) =>
+                dummy_div.append(@build_device(cur_dg, $(cur_d)))
+            @top_div.find("tr##{dg_key}").after(dummy_div.children().hide())
     build_device: (cur_dg, cur_d) ->
-        line_prefix = "dev__" + cur_d.attr("pk")
+        line_prefix = cur_d.attr("key")
         new_tr = $("<tr>").attr
             # not standard, FIXME
             "id"    : "dev__" + cur_dg.attr("pk") + "__" + cur_d.attr("pk")
             "class" : "ui-widget"
         # name
-        new_tr.append($("<td>").attr("colspan", 2).append(create_input_el(cur_d, "sel", line_prefix, {boolean : true, bind : false, master_xml : @xml})))
+        new_tr.append($("<td>").attr("colspan", 2).append(create_input_el(cur_d, "sel", line_prefix, {boolean : true, bind : false, master_xml : @xml, change_cb : @update_num_of_selected_devices })))
         new_tr.append($("<td>").append(create_input_el(cur_d, "name", line_prefix, {master_xml : @xml})))
         # description / comment
         new_tr.append($("<td>").append(create_input_el(cur_d, "comment", line_prefix, {master_xml : @xml})))
-        # device_type
         new_tr.append(
+            # domain
+            $("<td>").append(
+                create_input_el(cur_d, "domain_tree_node", line_prefix, {master_xml : @xml, select_source : @xml.find("domain_tree_nodes domain_tree_node")})
+            ),
+            # enabled
             $("<td>").append(
                 create_input_el(cur_d, "enabled", line_prefix, {master_xml : @xml, boolean: true})
             )
-        )
-        new_tr.append($("<th>").append(
-            create_input_el(cur_d, "device_type", line_prefix, {
-                select_source           : "device_types device_type[identifier!='MD']"
-                select_source_attribute : "name"
-                master_xml              : @xml
-            })
-        ))
+        # device_type
+            $("<td>").append(
+                create_input_el(cur_d, "device_type", line_prefix, {
+                    select_source           : "device_types device_type[identifier!='MD']"
+                    select_source_attribute : "name"
+                    master_xml              : @xml
+                })
+            ),
         # device group
-        new_tr.append($("<td>").text(@xml.find("device_group[pk=" + cur_d.attr("device_group") + "]").attr("name")))
+            $("<td>").append(
+                create_input_el(cur_d, "device_group", line_prefix, {
+                    select_source           : "device_group"
+                    select_source_attribute : "name"
+                    master_xml              : @xml
+                    change_cb               : @move_device
+                })
+            )
+        )
         # mother server
         new_tr.append($("<td>").append(
             create_input_el(cur_d, "bootserver", line_prefix, {
@@ -214,10 +256,10 @@ class device_tree
         @update_device_group_info()
     create_device: (dev_xml) =>
         cur_dg = @xml.find("device_group[pk='" + dev_xml.attr("device_group") + "']")
+        @toggle_device_group("devg__" + cur_dg.attr("pk"), true)
         cur_dg.append(dev_xml)
         dg_tr = @top_div.find("table tr[id='devg__" + cur_dg.attr("pk") + "']")
-        dg_tr.after(@build_device(cur_dg, dev_xml))
-        @toggle_device_group("devg__" + cur_dg.attr("pk"), true)
+        dg_tr.after(@build_device(cur_dg, dev_xml).show())
         force_expansion_state(dg_tr, true)
         @update_device_group_info()
     delete_device_group: (devg_pk) =>
@@ -263,7 +305,7 @@ class device_tree
         new_tr.append($("<th>").append(
             create_input_el(undefined, "description", line_prefix, {master_xml : @xml})
         ))
-        new_tr.append($("<th>").attr({"colspan" : "5"}))
+        new_tr.append($("<th>").attr({"colspan" : "6"}))
         new_tr.append($("<th>").append(
             $("<input>").attr({
                 "id"    : line_prefix
@@ -288,49 +330,53 @@ class device_tree
             "class" : "ui-widget ui-widget-header"
             }
         ).append(
-            $("<th>").attr("colspan", 2).append("new Device")
-        ).append(
+            $("<th>").attr("colspan", 2).append("new Device"),
             $("<th>").append(
                 create_input_el(undefined, "name", line_prefix, {master_xml : @xml})
-            )
-        )
-        new_tr.append($("<th>").append(
-            create_input_el(undefined, "comment", line_prefix, {master_xml : @xml})
-        ))
-        new_tr.append($("<th>").append(
-            create_input_el(undefined, "enabled", line_prefix, {master_xml : @xml, boolean: true, new_default: true})
-        ))
-        new_tr.append($("<th>").append(
-            create_input_el(undefined, "device_type", line_prefix, {
-                select_source           : "device_types device_type[identifier!='MD']"
-                select_source_attribute : "name"
-                master_xml              : @xml
-            })
-        ))
-        new_tr.append($("<th>").append(
-            create_input_el(undefined, "device_group", line_prefix, {
-                select_source           : "response device_group[is_cdg='0']"
-                select_source_attribute : "name"
-                master_xml              : @xml
-            })
-        ))
-        # mother server
-        new_tr.append(
+            ),
+            $("<th>").append(
+                create_input_el(undefined, "comment", line_prefix, {master_xml : @xml})
+            ),
+            # domain
+            $("<th>").append(
+                create_input_el(undefined, "domain_tree_node", line_prefix, {master_xml : @xml, select_source : @xml.find("domain_tree_nodes domain_tree_node")})
+            ),
+            # enabled
+            $("<th>").append(
+                create_input_el(undefined, "enabled", line_prefix, {master_xml : @xml, boolean: true, new_default: true})
+            ),
+            # device_type
+            $("<th>").append(
+                create_input_el(undefined, "device_type", line_prefix, {
+                    select_source           : "device_types device_type[identifier!='MD']"
+                    select_source_attribute : "name"
+                    master_xml              : @xml
+                })
+            ),
+            # device_group
+            $("<th>").append(
+                create_input_el(undefined, "device_group", line_prefix, {
+                    select_source           : "response device_group[is_cdg='0']"
+                    select_source_attribute : "name"
+                    master_xml              : @xml
+                })
+            ),
+            # mother server
             $("<th>").append(
                 create_input_el(undefined, "bootserver", line_prefix, {
                     select_source  : "mother_servers mother_server"
                     add_null_entry : "not set"
                     master_xml     : @xml
                 })
+            ),
+            # cURL
+            $("<th>").append(
+                create_input_el(undefined, "curl", line_prefix, {
+                    new_default : "ssh://"
+                    master_xml  : @xml
+                })
             )
         )
-        # cURL
-        new_tr.append($("<th>").append(
-            create_input_el(undefined, "curl", line_prefix, {
-                new_default : "ssh://"
-                master_xml  : @xml
-            })
-        ))
         new_tr.append($("<th>").append(
             $("<input>").attr({
                 "id"    : line_prefix,
@@ -358,6 +404,9 @@ class device_tree
         ).append(
             $("<entry>").attr("pk", "1").text("disable")
         ).children()
+    update_num_of_selected_devices: =>
+        num_dev = @top_div.find("input[id$='__sel']:checked").length
+        @top_div.find("span#num_selected_devices").text("(#{num_dev})")
     build_selected: =>
         # selected devices
         line_prefix = "device__sel"
@@ -366,47 +415,63 @@ class device_tree
             "class" : "ui-widget ui-widget-header"}
         ).append(
             $("<th>").attr({"colspan" : "4"}
-            ).append("action on selected devices")
+            ).append("action on selected devices ").append($("<span>").attr("id", "num_selected_devices"))
         )
-        new_tr.append($("<th>").append(
-            create_input_el(undefined, "enabled", line_prefix, {
-                select_source : @get_enable_list,
-                change_cb     : @change_sel_device_enabled,
-            })
-        ))
-        new_tr.append($("<th>").append(
-            create_input_el(undefined, "type", line_prefix, {
-                select_source           : "device_types device_type[identifier!='MD']"
-                select_source_attribute : "name"
-                add_null_entry          : "-- keep --"
-                change_cb               : @change_sel_device_type_cb
-                master_xml              : @xml
-            })
-        ))
-        new_tr.append($("<th>").append(
-            create_input_el(undefined, "device_group", line_prefix, {
-                select_source           : "response device_group[is_cdg='0']"
-                select_source_attribute : "name"
-                add_null_entry          : "-- keep --"
-                change_cb               : @change_sel_device_group_cb
-                master_xml              : @xml
-            })
-        ))
-        new_tr.append($("<th>").append(
-            create_input_el(undefined, "mother", line_prefix, {
-                select_source           : "mother_servers mother_server"
-                add_extra_entry         : "-- clear --"
-                add_null_entry          : "-- keep --"
-                change_cb               : @change_sel_device_mother_cb
-                master_xml              : @xml
-            })
-        ))
-        new_tr.append($("<th>").append(
-            create_input_el(undefined, "curl", line_prefix, {
-                change_cb  : @change_sel_device_curl_cb
-                master_xml : @xml
-            })
-        ))
+        new_tr.append(
+            # domain
+            $("<th>").append(
+                create_input_el(undefined, "domain_tree_node", line_prefix, {
+                    master_xml     : @xml,
+                    add_null_entry : "-- keep --"
+                    select_source  : @xml.find("domain_tree_nodes domain_tree_node"),
+                    change_cb      : @change_sel_device_domain,
+                })
+            ),
+            # enabled
+            $("<th>").append(
+                create_input_el(undefined, "enabled", line_prefix, {
+                    select_source : @get_enable_list,
+                    change_cb     : @change_sel_device_enabled,
+                })
+            ),
+            # device_type
+            $("<th>").append(
+                create_input_el(undefined, "type", line_prefix, {
+                    select_source           : "device_types device_type[identifier!='MD']"
+                    select_source_attribute : "name"
+                    add_null_entry          : "-- keep --"
+                    change_cb               : @change_sel_device_type_cb
+                    master_xml              : @xml
+                })
+            ),
+            # device_group
+            $("<th>").append(
+                create_input_el(undefined, "device_group", line_prefix, {
+                    select_source           : "response device_group[is_cdg='0']"
+                    select_source_attribute : "name"
+                    add_null_entry          : "-- keep --"
+                    change_cb               : @change_sel_device_group_cb
+                    master_xml              : @xml
+                })
+            ),
+            # mother
+            $("<th>").append(
+                create_input_el(undefined, "mother", line_prefix, {
+                    select_source           : "mother_servers mother_server"
+                    add_extra_entry         : "-- clear --"
+                    add_null_entry          : "-- keep --"
+                    change_cb               : @change_sel_device_mother_cb
+                    master_xml              : @xml
+                })
+            ),
+            # curl
+            $("<th>").append(
+                create_input_el(undefined, "curl", line_prefix, {
+                    change_cb  : @change_sel_device_curl_cb
+                    master_xml : @xml
+                })
+            )
+        )
         new_tr.append($("<td>").append(
             $("<input>").attr({
                 "type"  : "button",
@@ -423,6 +488,10 @@ class device_tree
     change_sel_device_enabled: (event) =>
         targ_el = $(event.target)
         @propagate_sel_change(parseInt(targ_el.val()) - 1, "enabled")
+        targ_el.val("0")
+    change_sel_device_domain: (event) =>
+        targ_el = $(event.target)
+        @propagate_sel_change(targ_el.val(), "domain_tree_node")
         targ_el.val("0")
     change_sel_device_type_cb: (event) =>
         targ_el = $(event.target)
@@ -459,19 +528,20 @@ class device_tree
                     if targ_sel.attr("value") != new_val
                         targ_sel.attr("value", new_val).trigger("change")
         if not via_trigger
-            $.ajax
-                url     : "{% url 'base:change_xml_entry' %}"
-                data    : 
-                    "pks"        : pk_list
-                    "id"         : "dev__0__#{postfix}"
-                    "value"      : new_val
-                    "ignore_nop" : 1
-                    "checkbox"   : false
-                success : (xml) =>
-                    if parse_xml_response(xml)
-                        for dev_pk in pk_list
-                            cur_dev = @xml.find("device[pk=#{dev_pk}]")
-                            @change_device_group(cur_dev, new_val)
+            if pk_list.length
+                $.ajax
+                    url     : "{% url 'base:change_xml_entry' %}"
+                    data    : 
+                        "pks"        : pk_list
+                        "id"         : "dev__0__#{postfix}"
+                        "value"      : new_val
+                        "ignore_nop" : 1
+                        "checkbox"   : false
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            for dev_pk in pk_list
+                                cur_dev = @xml.find("device[pk=#{dev_pk}]")
+                                @change_device_group(cur_dev, new_val)
 
 root = exports ? this
 

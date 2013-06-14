@@ -10,7 +10,8 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fieldset, Div, HTML
 from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
-from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ
+from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
+     domain_name_tree
 
 class authentication_form(Form):
     username = CharField(label=_("Username"),
@@ -112,7 +113,7 @@ class dtn_new_form(ModelForm):
         fields = ["full_name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment"]
     
 class device_general_form(ModelForm):
-    domain_tree_node = ModelChoiceField(queryset=domain_tree_node.objects.all(), empty_label=None)
+    domain_tree_node = ModelChoiceField(domain_tree_node.objects.all(), empty_label=None)
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
     helper.layout = Layout(
@@ -125,6 +126,9 @@ class device_general_form(ModelForm):
             css_class="inlineLabels",
         )
     )
+    def __init__(self, *args, **kwargs):
+        super(device_general_form, self).__init__(*args, **kwargs)
+        self.fields["domain_tree_node"].queryset = domain_name_tree()
     class Meta:
         model = device
         fields = ["name", "comment", "monitor_checks", "domain_tree_node",]
