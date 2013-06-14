@@ -323,9 +323,10 @@ class main_config(object):
             "bin",
             "sbin",
             "lib",
-            "lib64",
             "var/spool",
             "var/spool/checkresults"]
+        if process_tools.get_sys_bits() == 64:
+            dir_names.append("lib64")
         # dir dict for writing on disk
         self.__w_dir_dict = dict([(dir_name, os.path.normpath(os.path.join(self.__main_dir, self.__dir_offset, dir_name))) for dir_name in dir_names])
         # dir dict for referencing
@@ -704,6 +705,7 @@ class main_config(object):
             #("debug_verbosity" , 2),
             # NDO stuff
         ]
+        lib_dir_name = "lib64" if process_tools.get_sys_bits() == 64 else "lib"
         if self.master:
             manual_dir = "%s/manual" % (self.__w_dir_dict["etc"])
             if not os.path.isdir(manual_dir):
@@ -714,7 +716,7 @@ class main_config(object):
             if global_config["ENABLE_LIVESTATUS"]:
                 main_values.extend([
                     ("*broker_module", "%s/mk-livestatus/livestatus.o %s/live" % (
-                        self.__r_dir_dict["lib64"],
+                        self.__r_dir_dict[lib_dir_name],
                         self.__r_dir_dict["var"]))
                 ])
             if global_config["ENABLE_PNP"]:
@@ -741,10 +743,10 @@ class main_config(object):
                         self.__r_dir_dict["etc"],
                         NDOMOD_NAME)))
                 else:
-                    if os.path.exists(os.path.join(self.__r_dir_dict["lib64"], "idomod.so")):
+                    if os.path.exists(os.path.join(self.__r_dir_dict[lib_dir_name], "idomod.so")):
                         main_values.append(
                             ("*broker_module", "%s/idomod.so config_file=%s/%s.cfg" % (
-                                self.__r_dir_dict["lib64"],
+                                self.__r_dir_dict[lib_dir_name],
                                 self.__r_dir_dict["etc"],
                                 NDOMOD_NAME)))
                     else:
@@ -835,7 +837,7 @@ class main_config(object):
                 headers=["[uwsgi]"],
                 values=[
                     ("chdir"           , self.__r_dir_dict[""]),
-                    ("plugin-dir"      , "/opt/cluster/lib64"),
+                    ("plugin-dir"      , "/opt/cluster/%s" % (lib_dir_name)),
                     ("cgi-mode"        , "true"),
                     ("master"          , "true"),
                     # set vacuum to false because of problems with uwsgi 1.9
