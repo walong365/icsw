@@ -246,10 +246,24 @@ class device_info
                             $.modal.close()
                             if @callback
                                 @callback(@dev_key)
+    fqdn_compound: (in_dict) =>
+        dev_key = in_dict["id"].split("__")[0..1].join("__")
+        el_name = in_dict["id"].split("__")[2]
+        dev_xml = @resp_xml.find("device[key='#{dev_key}']")
+        other_list = []
+        if el_name == "name"
+            other_name = "domain_tree_node"
+        else
+            other_name = "name"
+        other_id = "#{dev_key}__#{other_name}"
+        in_dict[other_id] = dev_xml.attr(other_name)
+        other_list.push(other_id)
+        in_dict.other_list = other_list.join("::")
     build_div: () =>
         dev_xml = @resp_xml.find("device")
         @my_submitter = new submitter({
             master_xml       : dev_xml
+            modify_data_dict : @fqdn_compound
         })
         dev_div = $("<div>")
         dev_div.append(
