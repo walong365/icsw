@@ -62,7 +62,7 @@ class sess_login(View):
                 db_user = user.objects.get(Q(login=django_user.username))
             except user.DoesNotExist:
                 db_user = None
-                logger.warnr("no db_user defined")
+                logger.warning("no db_user defined")
             else:
                 pass
             login(request, django_user)
