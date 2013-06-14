@@ -358,7 +358,7 @@ LOGGING = {
             "formatter" : "initat",
         },
         "init" : {
-            "level"     : "WARN",
+            "level"     : 'INFO' if DEBUG else "WARN",
             "class"     : "logging_tools.init_handler",
             "formatter" : "initat",
         },
@@ -382,7 +382,7 @@ LOGGING = {
         'cluster' : {
             'handlers'  : ['init', "init_mail"],
             'propagate' : True,
-            'level'     : 'WARN',
+            'level'     : 'INFO' if DEBUG else "WARN",
         },
     }
 }

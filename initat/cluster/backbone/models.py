@@ -873,6 +873,8 @@ def device_group_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if not cur_inst.name:
             raise ValidationError("name can not be zero")
+        if not valid_domain_re.match(cur_inst.name):
+            raise ValidationError("invalid characters in '%s'" % (cur_inst.name))
 
 @receiver(signals.post_save, sender=device_group)
 def device_group_post_save(sender, **kwargs):
