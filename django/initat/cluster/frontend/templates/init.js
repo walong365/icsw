@@ -58,8 +58,8 @@ $.ajaxSetup
         return false
 
 class category_tree
-    constructor: (@tree_div, @top_xml, @xml, @cat_tree, @top_node) ->
-        tree_div.dynatree
+    constructor: (@tree_div, @top_xml, @xml, @cat_tree, @top_node, @multi_sel=true) ->
+        @tree_div.dynatree
             autoFocus : false
             checkbox  : true
             clickFolderMode : 2
@@ -69,6 +69,13 @@ class category_tree
                 #console.log dtnode.data.key, event.type
                 #dtnode.toggleSelect()
             onSelect : (flag, dtnode) =>
+                if flag
+                    # deactivate other locations
+                    @tree_div.dynatree("getTree").visit(
+                        (cur_node) ->
+                            if cur_node.isSelected() and cur_node.data.key != dtnode.data.key
+                                cur_node.toggleSelect()
+                    )
                 $.ajax
                     url     : "{% url 'base:change_category' %}"
                     data    :
@@ -79,7 +86,7 @@ class category_tree
                         if parse_xml_response(xml)
                             replace_xml_element(@top_xml, $(xml))
                 #dtnode.toggleSelect()
-        root_node = tree_div.dynatree("getRoot")
+        root_node = @tree_div.dynatree("getRoot")
         @select_cats = @xml.attr("categories").split("::")
         @build_node(root_node, @cat_tree.find("category[full_name='#{@top_node}']"))
     build_node: (dt_node, db_node) =>
@@ -280,6 +287,9 @@ class device_info
                     $("<a>").attr("href", "#category").text("Category")
                 ),
                 $("<li>").append(
+                    $("<a>").attr("href", "#location").text("Location")
+                ),
+                $("<li>").append(
                     $("<a>").attr("href", "#network").text("Network")
                 ),
                 $("<li>").append(
@@ -293,6 +303,7 @@ class device_info
         @dev_div = dev_div
         tabs_div.append(@general_div(dev_xml))
         tabs_div.append(@category_div(dev_xml))
+        tabs_div.append(@location_div(dev_xml))
         tabs_div.append(@network_div(dev_xml))
         tabs_div.append(@disk_div(dev_xml))
         tabs_div.append(@mdcds_div(dev_xml))
@@ -310,6 +321,12 @@ class device_info
         cat_div.append(tree_div)
         new category_tree(tree_div, @configs_xml, dev_xml, @resp_xml, "/device")
         return cat_div
+    location_div: (dev_xml) =>
+        loc_div = $("<div>").attr("id", "location")
+        tree_div = $("<div>").attr("id", "loc_tree")
+        loc_div.append(tree_div)
+        new category_tree(tree_div, @configs_xml, dev_xml, @resp_xml, "/location", false)
+        return loc_div
     network_div: (dev_xml) =>
         # network div
         nw_div = $("<div>").attr("id", "network")
@@ -879,22 +896,26 @@ get_xml_value = (xml, key) ->
     return ret_value
 
 # create a dictionary from a list of elements
-create_dict = (top_el, id_prefix) ->
+create_dict = (top_el, id_prefix, use_name=false) ->
     in_list = top_el.find("input[id^='#{id_prefix}'], select[id^='#{id_prefix}'], textarea[id^='#{id_prefix}']")
     out_dict = {}
     in_list.each (idx, cur_el) ->
         cur_el = $(cur_el)
+        if use_name
+            key = cur_el.attr("name")
+        else
+            key = cur_el.attr("id")
         if cur_el.prop("tagName") == "TEXTAREA"
-            out_dict[cur_el.attr("id")] = cur_el.text()
+            out_dict[key] = cur_el.text()
         else if cur_el.is(":checkbox")
-            out_dict[cur_el.attr("id")] = if cur_el.is(":checked") then "1" else "0"
+            out_dict[key] = if cur_el.is(":checked") then "1" else "0"
         else if cur_el.prop("tagName") == "SELECT" and cur_el.attr("multiple")
             sel_field = []
             cur_el.find("option:selected").each (idx, opt_field) ->
                 sel_field.push($(opt_field).attr("value"))
-            out_dict[cur_el.attr("id")] = sel_field.join("::")
+            out_dict[key] = sel_field.join("::")
         else
-            out_dict[cur_el.attr("id")] = cur_el.attr("value")
+            out_dict[key] = cur_el.attr("value")
     return out_dict
 
 replace_xml_element = (master_xml, xml) ->

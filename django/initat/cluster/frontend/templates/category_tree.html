@@ -33,7 +33,7 @@ class category_tree
                     @bind_new_button()
                     @build_tree()
     bind_new_button: () =>
-        $("input#create_new_dtn").bind("click", @create_new)
+        $("input#create_new_dtn").off("click").on("click", @create_new)
     create_new: (event) =>
         $.ajax
             url     : "{% url 'base:create_category' %}"
@@ -44,6 +44,17 @@ class category_tree
                     detail_div.children().remove()
                     detail_div.append($(xml).find("value[name='form']").text())
                     detail_div.uniform()
+                    $("div#ct_detail form").bind("submit", @submit_form)
+    submit_form: (event) =>
+        $.ajax
+            url     : "{% url 'base:create_category' %}"
+            data    : create_dict($("div#ct_detail"), "cat__new", true)
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @top_div.dynatree("disable").dynatree("destroy")
+                    @top_div.find("ul").remove()
+                    @load_ct()
+        return false
     build_tree: () =>
         @top_div.dynatree
             autoFocus  : false

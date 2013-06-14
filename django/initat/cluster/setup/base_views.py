@@ -433,20 +433,23 @@ class create_category(View):
         cur_form = category_new_form(_post)
         if cur_form.is_valid():
             full_tree = category_tree()
-            try:
-                new_cat = full_tree.add_category(cur_form.cleaned_data["full_name"])
-                #print "**", cur_form.cleaned_data
-                # copy from cleaned_data
-                for key in ["comment",]:
-                    setattr(new_cat, key, cur_form.cleaned_data[key])
-                new_cat.save()
-            except:
-                request.xml_response.error("error creating new category: %s" % (process_tools.get_except_info()), logger)
+            if cur_form.cleaned_data["full_name"] in full_tree:
+                request.xml_response.warn("category already exists", logger)
             else:
-                logger.info("created new category '%s'" % (unicode(new_cat)))
+                try:
+                    new_cat = full_tree.add_category(cur_form.cleaned_data["full_name"])
+                    #print "**", cur_form.cleaned_data
+                    # copy from cleaned_data
+                    for key in ["comment",]:
+                        setattr(new_cat, key, cur_form.cleaned_data[key])
+                    new_cat.save()
+                except:
+                    request.xml_response.error("error creating new category: %s" % (process_tools.get_except_info()), logger)
+                else:
+                    request.xml_response.info("created new category '%s'" % (unicode(new_cat)), logger)
         else:
-            logger.error(cur_form.errors.as_text())
-        return HttpResponseRedirect(reverse("base:category_tree"))
+            line = ", ".join(cur_form.errors.as_text().split("\n"))
+            request.xml_response.error(line, logger)
     
 class move_category(View):
     @method_decorator(login_required)
