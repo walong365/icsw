@@ -295,6 +295,8 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
+AUTO_CREATE_NEW_DOMAINS = True
+
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
 if os.path.isfile(LOCAL_CONFIG):

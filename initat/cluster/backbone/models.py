@@ -664,13 +664,23 @@ def device_pre_save(sender, **kwargs):
             try:
                 cur_dnt = domain_tree_node.objects.get(Q(full_name=dom_name))
             except domain_tree_node.DoesNotExist:
-                raise ValidationError("domain '%s' not defined" % (dom_name))
+                # create new domain
+                if settings.AUTO_CREATE_NEW_DOMAINS:
+                    cur_inst.domain_tree_node = domain_name_tree().add_domain(dom_name)
+                    cur_inst.name = short_name
+                else:
+                    raise ValidationError("domain '%s' not defined" % (dom_name))
             else:
                 cur_inst.domain_tree_node = cur_dnt
                 cur_inst.name = short_name
         else:
+            top_level_dn = domain_tree_node.objects.get(Q(depth=0))
             if not cur_inst.domain_tree_node_id:
-                cur_inst.domain_tree_node = domain_tree_node.objects.get(Q(depth=0))
+                cur_inst.domain_tree_node = top_level_dn
+            if not cur_inst.pk:
+                if cur_inst.domain_tree_node_id == top_level_dn.pk:
+                    # set domain_node to domain_node of meta_device
+                    cur_inst.domain_tree_node = cur_inst.device_group.device.domain_tree_node
             #raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
         if not valid_domain_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
@@ -3837,15 +3847,21 @@ class wc_files(models.Model):
     class Meta:
         db_table = u'wc_files'
             
-def get_related_models(in_obj, m2m=False):
-    used_objs = 0
+def get_related_models(in_obj, m2m=False, detail=False):
+    used_objs = [] if detail else 0
     for rel_obj in in_obj._meta.get_all_related_objects():
         rel_field_name = rel_obj.field.name
-        used_objs += rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})).count()
+        if detail:
+            used_objs.extend(list(rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj}))))
+        else:
+            used_objs += rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})).count()
     if m2m:
         for m2m_obj in in_obj._meta.get_all_related_many_to_many_objects():
             m2m_field_name = m2m_obj.field.name
-            used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj})).count()
+            if detail:
+                used_objs.extend(list(m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj}))))
+            else:
+                used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj})).count()
     return used_objs
 
 class md_check_data_store(models.Model):
@@ -3931,6 +3947,10 @@ class domain_name_tree(object):
             return E.domain_tree_nodes(
                 *[self.__node_dict[pk].get_xml() for pk in pk_list]
             )
+    def all(self):
+        # emulate queryset
+        for pk in self.get_sorted_pks():
+            yield self[pk]
         
 # domain name models
 class domain_tree_node(models.Model):
@@ -3960,7 +3980,13 @@ class domain_tree_node(models.Model):
     def get_sorted_pks(self):
         return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
-        return u"%s" % (self.full_name if self.depth else "[TLN]")
+        if self.depth:
+            if self.depth > 2:
+                return u"%s%s%s (%s)" % (r"| " * (self.depth - 1), r"+-", self.name, self.full_name)
+            else:
+                return u"%s%s (%s)" % (r"+-" * (self.depth), self.name, self.full_name)
+        else:
+            return u"[TLN]"
     def get_xml(self):
         return E.domain_tree_node(
             unicode(self),
