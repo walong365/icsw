@@ -53,6 +53,7 @@ import random
 import inspect
 import atexit
 import codecs
+import platform
 
 try:
     ENCODING = locale.getpreferredencoding()
@@ -1704,6 +1705,9 @@ def create_password(**kwargs):
         chars = "%s!§$%%&/()[]#+*~" % (chars)
     length = kwargs.get("lenght", 8)
     return "".join([chars[random.randrange(len(chars))] for idx in xrange(length)])
+
+def get_sys_bits():
+    return int(platform.architecture()[0][0:2])
 
 if __name__ == "__main__":
     print "Loadable module, exiting..."
