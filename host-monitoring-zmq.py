@@ -1204,7 +1204,7 @@ class relay_process(threading_tools.process_pool):
                         self.log("resolve error for '%s'" % (t_host),
                                  logging_tools.LOG_LEVEL_ERROR)
                         self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
-                        self.sender_socket.send_unicode("resolve error")
+                        self.sender_socket.send_unicode("%d\0resolve error" % (limits.nag_STATE_CRITICAL))
                     else:
                         srv_com["host_unresolved"] = t_host
                         srv_com["host"] = ip_addr
