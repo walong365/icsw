@@ -10,6 +10,7 @@
 
 <div id="ct_div" class="leftfloat">
     <input type="button" value="create new entry" id="create_new_dtn"/>
+    <input type="button" value="prune tree" id="prune_tree"/>
 </div>
 <div id="ct_detail" class="leftfloat" style="width:400px; margin-left:auto; margin-right:auto;"></div>
 
@@ -30,10 +31,14 @@ class category_tree
                         master_xml       : @DNT,
                         success_callback : @change_cb
                     })
-                    @bind_new_button()
+                    @bind_buttons()
                     @build_tree()
-    bind_new_button: () =>
+    bind_buttons: () =>
         $("input#create_new_dtn").off("click").on("click", @create_new)
+        $("input#prune_tree").off("click").on("click", @prune_tree)
+    prune_tree: (event) =>
+        if confirm("Really prune the tree ?")
+            window.location = "{% url 'base:prune_categories' %}"
     create_new: (event) =>
         $.ajax
             url     : "{% url 'base:create_category' %}"
@@ -51,9 +56,12 @@ class category_tree
             data    : create_dict($("div#ct_detail"), "cat__new", true)
             success : (xml) =>
                 if parse_xml_response(xml)
-                    @top_div.dynatree("disable").dynatree("destroy")
-                    @top_div.find("ul").remove()
-                    @load_ct()
+                    # add new nodes (also the ones created as intermediate nodes)
+                    $(xml).find("value[name='new_nodes'] category").each (idx, new_node) =>
+                        new_node = $(new_node)
+                        if not @DNT.find("category[pk='" + new_node.attr("pk") + "']").length
+                            @DNT.find("category[parent='0']").after(new_node)
+                            @build_node(@top_div.dynatree("getTree").getNodeByKey(new_node.attr("parent")), new_node)
         return false
     build_tree: () =>
         @top_div.dynatree

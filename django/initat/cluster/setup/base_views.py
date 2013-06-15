@@ -373,6 +373,12 @@ class get_category_tree(View):
     def post(self, request):
         request.xml_response["response"] = category_tree().get_xml()
 
+class prune_category_tree(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        category_tree().prune()
+        return render_me(request, "category_tree.html")()
+
 class category_detail(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -447,6 +453,11 @@ class create_category(View):
                     request.xml_response.error("error creating new category: %s" % (process_tools.get_except_info()), logger)
                 else:
                     request.xml_response.info("created new category '%s'" % (unicode(new_cat)), logger)
+                    node_list = [new_cat.get_xml()]
+                    while new_cat.parent_id:
+                        new_cat = new_cat.parent
+                        node_list.append(new_cat.get_xml())
+                    request.xml_response["new_nodes"] = list(reversed(node_list))
         else:
             line = ", ".join(cur_form.errors.as_text().split("\n"))
             request.xml_response.error(line, logger)

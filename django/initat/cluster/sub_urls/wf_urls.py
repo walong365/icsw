@@ -29,17 +29,18 @@ rms_patterns = patterns(
 
 base_patterns = patterns(
     "initat.cluster.setup",
-    url("^change_xml_entry$"                  , base_views.change_xml_entry.as_view() , name="change_xml_entry"  ),
-    url("^xml/create_object/(?P<obj_name>.*)$", base_views.create_object.as_view()    , name="create_object"),
-    url("^xml/delete_object/(?P<obj_name>.*)$", base_views.delete_object.as_view()    , name="delete_object"),
-    url("^xml/get_object$"                    , base_views.get_object.as_view()       , name="get_object"),
-    url("^get_gauge_info$"                    , base_views.get_gauge_info.as_view()   , name="get_gauge_info"),
-    url("^get_cat_tree$"                      , base_views.get_category_tree.as_view(), name="category_tree"),
-    url("^cat_detail$"                        , base_views.category_detail.as_view()  , name="category_detail"),
-    url("^cat_delete$"                        , base_views.delete_category.as_view()  , name="delete_category"),
-    url("^cat_create$"                        , base_views.create_category.as_view()  , name="create_category"),
-    url("^cat_move$"                          , base_views.move_category.as_view()    , name="move_category"),
-    url("^change_category"                    , base_views.change_category.as_view()  , name="change_category"),
+    url("^change_xml_entry$"                  , base_views.change_xml_entry.as_view()   , name="change_xml_entry"  ),
+    url("^xml/create_object/(?P<obj_name>.*)$", base_views.create_object.as_view()      , name="create_object"),
+    url("^xml/delete_object/(?P<obj_name>.*)$", base_views.delete_object.as_view()      , name="delete_object"),
+    url("^xml/get_object$"                    , base_views.get_object.as_view()         , name="get_object"),
+    url("^get_gauge_info$"                    , base_views.get_gauge_info.as_view()     , name="get_gauge_info"),
+    url("^get_cat_tree$"                      , base_views.get_category_tree.as_view()  , name="category_tree"),
+    url("^cat_detail$"                        , base_views.category_detail.as_view()    , name="category_detail"),
+    url("^cat_delete$"                        , base_views.delete_category.as_view()    , name="delete_category"),
+    url("^cat_create$"                        , base_views.create_category.as_view()    , name="create_category"),
+    url("^cat_move$"                          , base_views.move_category.as_view()      , name="move_category"),
+    url("^change_category"                    , base_views.change_category.as_view()    , name="change_category"),
+    url("^prune_cat_tree"                     , base_views.prune_category_tree.as_view(), name="prune_categories"),
 )
 
 setup_patterns = patterns(
