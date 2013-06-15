@@ -565,6 +565,9 @@ class device(models.Model):
         )
         if kwargs.get("full_name", False):
             r_xml.attrib["full_name"] = self.full_name
+            r_xml.text = u"%s%s" % (
+                self.full_name,
+                " (%s)" % (self.comment) if self.comment else "")
         if kwargs.get("with_monitoring", False):
             r_xml.attrib.update(
                 {
