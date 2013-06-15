@@ -74,6 +74,7 @@ class network_table
             @new_table = $("<table>").attr({"id" : "network_tree"}).addClass("devicelist")
             @DEVICE_NETWORKS.find("device").each (idx, cur_dev) =>
                 @new_table.append(@draw_device_networks($(cur_dev)).children())
+            @new_table.find("tr:not([id$='__header'])").hide()
         else
             @new_table = ""
         @top_div.children().remove()
@@ -90,6 +91,36 @@ class network_table
     
     # netdevice related calls
     
+    expand_device: (line_prefix, flag, name) =>
+        cur_dev = @DEVICE_NETWORKS.find("device[pk='" + line_prefix.split("__")[1] + "']")
+        @new_table.find("tr[id^='nd__" + cur_dev.attr("pk") + "__']").each (idx, exp_line) =>
+            exp_line = $(exp_line)
+            line_id = exp_line.attr("id")
+            if line_id.match(/__header$/)
+                # init local expansion dict
+                @exp_dict = {}
+            else
+                if line_id.split("__").length == 3
+                    # netdevice line, create location expansion dict
+                    exp_line.find("div[id*='__expand__']").each (exp_id, cur_exp) =>
+                        cur_exp = $(cur_exp)
+                        exp_name = cur_exp.attr("id").split("__")[4]
+                        if cur_exp.attr("class").match(/-1-e/)
+                            @exp_dict[exp_name] = false
+                        else
+                            @exp_dict[exp_name] = true
+                        # coffeescript hack, sigh...
+                        return true
+                    if flag
+                        exp_line.show()
+                    else
+                        exp_line.hide()
+                else
+                    exp_name = line_id.split("__")[3]
+                    if flag and @exp_dict[exp_name]
+                        exp_line.show()
+                    else
+                        exp_line.hide()
     add_netdevice_line: (cur_dev, cur_nd) =>
         dummy_div = $("<div>")
         nd_pk = if cur_nd then cur_nd.attr("pk") else "new"
@@ -97,18 +128,29 @@ class network_table
         if @FIRST_NETDEVICE_LINE
             @FIRST_NETDEVICE_LINE = false
             cur_tr = $("<tr>").attr({
-                "id"    : line_prefix,
+                "id"    : "#{line_prefix}__header",
                 "class" : "ui-widget ui-widget-header"
             })
             num_nds = cur_dev.find("netdevices netdevice").length
-            cur_tr.append($("<th>").attr({
-                "id"      : "#{line_prefix}__devname",
-                "rowspan" : num_nds + 1}).text(cur_dev.attr("name")))
-        else
-            cur_tr = $("<tr>").attr({
-                "id"    : line_prefix,
-                "class" : "ui-widget ui-widget-header"
-            })
+            cur_tr.append(
+                $("<th>").attr({
+                    "id"      : "#{line_prefix}__devname",
+                    "colspan" : 8}).append(
+                        $("<span>").text(cur_dev.attr("full_name"))
+                ),
+                get_expand_td(
+                    line_prefix,
+                    "exp",
+                    "show netdevices",
+                    @expand_device,
+                    false,
+                )
+            )
+            dummy_div.append(cur_tr)
+        cur_tr = $("<tr>").attr({
+            "id"    : line_prefix,
+            "class" : "ui-widget ui-widget-header"
+        })
         cur_tr.append(
             $("<td>").append(
                 create_input_el(cur_nd, "devname", line_prefix, {master_xml: @DEVICE_NETWORKS, callback: @update_network_device_type_string})
@@ -157,9 +199,11 @@ class network_table
                 }).bind("click", @create_delete_new_netdevice)
             )
         )
-        dummy_div.append(cur_tr)
-        dummy_div.append(@create_hw_line(line_prefix, cur_nd))
-        dummy_div.append(@create_mac_line(line_prefix, cur_nd))
+        dummy_div.append(
+            cur_tr,
+            @create_hw_line(line_prefix, cur_nd),
+            @create_mac_line(line_prefix, cur_nd),
+        )
         if cur_nd
             ip_tr = $("<tr>").attr("id", "#{line_prefix}__ip").hide()
             ip_tr.append($("<td>").attr("colspan", "9"))
@@ -537,21 +581,11 @@ class network_table
                     targ_el.append(@create_ip_line(line_prefix, cur_dev, cur_nd))
                 else
                     targ_el.append(@create_routing_table(line_prefix, cur_dev, cur_nd))
-        dev_line = @new_table.find("tr[id^='nd__" + line_prefix.split("__")[1] + "__']")
-        nd_line = @new_table.find("tr[id='#{line_prefix}']")
         exp_line = @new_table.find("tr[id^='#{line_prefix}__#{line_spec}']")
         if state
             exp_line.show()
-            if line_spec in ["routing", "ip"]
-                @modify_rowspan(dev_line.find("th[id$='__devname']"), 1)
-            else
-                @modify_rowspan(dev_line.find("th[id$='__devname']"), exp_line.length)
         else
             exp_line.hide()
-            if line_spec in ["routing", "ip"]
-                @modify_rowspan(dev_line.find("th[id$='__devname']"), -1)
-            else
-                @modify_rowspan(dev_line.find("th[id$='__devname']"), -exp_line.length)
     
     # copy widget related calls
     

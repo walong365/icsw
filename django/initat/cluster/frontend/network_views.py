@@ -62,10 +62,12 @@ class device_network(View):
         dev_list = E.devices()
         for cur_dev in device.objects.filter(Q(pk__in=dev_pk_list)).select_related(
             "device_group",
+            "domain_tree_node",
             "device_type").prefetch_related(
                 "netdevice_set",
+                "categories",
                 "netdevice_set__net_ip_set").order_by("device_group__name", "name"):
-            dev_list.append(cur_dev.get_xml())
+            dev_list.append(cur_dev.get_xml(full_name=True))
         dnt_struct = domain_name_tree()
         # now handled via fixtures
         xml_resp.extend(
@@ -251,7 +253,7 @@ class delete_peer(View):
 def _get_valid_peers():
     routing_nds = netdevice.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True) & Q(routing=True)).order_by(
         "device__name",
-        "devname").prefetch_related("net_ip_set").select_related("device")
+        "devname").prefetch_related("net_ip_set", "device__categories").select_related("device", "device__domain_tree_node")
     peer_dict = dict([(cur_nd.pk, 0) for cur_nd in routing_nds])
     for s_nd, d_nd in peer_information.objects.all().values_list("s_netdevice", "d_netdevice"):
         if s_nd in peer_dict:
@@ -263,7 +265,7 @@ def _get_valid_peers():
             cur_p.devname,
             logging_tools.get_plural("peer", peer_dict.get(cur_p.pk, 0)),
             cur_p.penalty or 1,
-            cur_p.device.name,
+            cur_p.device.full_name,
             ", ".join([cur_ip.ip for cur_ip in cur_p.net_ip_set.all()]) or "no IPs"), pk="%d" % (cur_p.pk))
           for cur_p in routing_nds]
     )
