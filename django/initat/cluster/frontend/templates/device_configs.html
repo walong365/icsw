@@ -33,7 +33,8 @@ class config_table
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"
             data    : {
-                "sel_list" : sel_list
+                "sel_list"  : sel_list
+                "full_name" : 1
             }
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -231,7 +232,9 @@ class config_table
         meta_selected = @meta_selected[dev_pk].length
         cur_dev = @devices.find("device[pk='#{dev_pk}']")
         is_meta = cur_dev.attr("meta_device") == "1"
-        dev_str = (if is_meta then "Meta device" else "device") + " " + cur_dev.text()
+        dev_str = (if is_meta then "Meta device" else "device") + " " + cur_dev.attr("full_name")
+        if cur_dev.attr("comment")
+            dev_str = "#{dev_str} (" + cur_dev.attr("comment") + ")"
         if selected
             dev_str = "#{dev_str}, #{selected} selected"
         if meta_selected

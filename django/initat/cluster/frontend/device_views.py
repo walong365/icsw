@@ -193,18 +193,28 @@ def _get_group_tree(request, sel_list, **kwargs):
         if any_sel:
             devg_resp.append(cur_xml)
     return E.repsonse(devg_resp)
+
+def get_post_boolean(_post, name, default):
+    if name in _post:
+        p_val = _post[name]
+        if p_val.lower() in ["1", "true"]:
+            return True
+        else:
+            return False
+    else:
+        return default
     
 class get_group_tree(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        ignore_md       = True if int(_post.get("ignore_meta_devices", "0")) else False
-        ignore_cdg      = True if int(_post.get("ignore_cdg", "1"))          else False
-        with_variables  = True if int(_post.get("with_variables", "0"))      else False
-        permission_tree = True if int(_post.get("permission_tree", "0"))     else False
-        with_monitoring = True if int(_post.get("with_monitoring", "0"))     else False
-        full_name       = True if int(_post.get("full_name", "0"))           else False
+        ignore_md       = get_post_boolean(_post, "ignore_meta_devices", False)
+        ignore_cdg      = get_post_boolean(_post, "ignore_cdg"         , True )
+        with_variables  = get_post_boolean(_post, "with_variables"     , False)
+        permission_tree = get_post_boolean(_post, "permission_tree"    , False)
+        with_monitoring = get_post_boolean(_post, "with_monitoring"    , False)
+        full_name       = get_post_boolean(_post, "full_name"          , False)
         if "sel_list[]" in _post:
             sel_list = _post.getlist("sel_list[]", [])
         else:

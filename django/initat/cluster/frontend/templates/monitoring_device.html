@@ -32,7 +32,8 @@ class config_table
                         "extra_t2"            : "mon_host_cluster",
                         "extra_t3"            : "mon_service_cluster",
                         "ignore_meta_devices" : 1,
-                        "with_monitoring"     : 1
+                        "with_monitoring"     : 1,
+                        "full_name"           : 1,
                     },
                     success : (xml) =>
                         if parse_xml_response(xml)
