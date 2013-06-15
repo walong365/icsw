@@ -4139,6 +4139,22 @@ class category_tree(object):
             return self.__node_dict[key]
     def keys(self):
         return self.__node_dict.keys()
+    def prune(self):
+        # removes all unreferenced nodes
+        removed = True
+        while removed:
+            removed = False
+            del_nodes = []
+            for cur_leaf in self.__node_dict.itervalues():
+                if not cur_leaf._sub_tree and not cur_leaf.immutable:
+                    # count related models (with m2m)
+                    if not get_related_models(cur_leaf, m2m=True):
+                        del_nodes.append(cur_leaf)
+            for del_node in del_nodes:
+                del self[del_node.parent_id]._sub_tree[del_node.name]
+                del self.__node_dict[del_node.pk]
+                del_node.delete()
+            removed = len(del_nodes) > 0            
     def get_xml(self):
         pk_list = self.get_sorted_pks()
         return E.categories(
