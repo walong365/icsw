@@ -70,13 +70,14 @@ class display_config
         @title = "#{@num_vars} variables, #{@num_scripts} scripts, #{@num_checks} check commands"
         
 class config_table
-    constructor: (@top_div, @device=undefined) ->
+    constructor: (@top_div, @filter_div=undefined, @device=undefined) ->
         @cur_filter = ""
         @show_list = ""
         @only_associated = false
-        $("input#filter").bind("keyup", => @apply_filter(false))
-        $("input#filter_clear").bind("click", @clear_filter)
-        $("input#filter_assoc").bind("click", @change_assoc_filter)
+        if @filter_div
+            @filter_div.find("input#filter").on("keyup", @apply_filter)
+            @filter_div.find("input#filter_clear").on("click", @clear_filter)
+            @filter_div.find("input#filter_assoc").on("click", @change_assoc_filter)
         if @device
             @load_device_configs([@device.attr("key")])
     use_devs: (dt_div) =>
@@ -117,7 +118,10 @@ class config_table
         @only_associated = cur_el.is(":checked")
         @apply_filter(true)
     apply_filter : (force_reload) =>
-        cur_text = $("input#filter").attr("value")
+        if @filter_div
+            cur_text = @filter_div.find("input#filter").attr("value")
+        else
+            cur_text = ""
         if (cur_text != @cur_filter) or force_reload
             @cur_filter = cur_text
             cur_re = new RegExp("^.*#{@cur_filter}.*$")
@@ -261,9 +265,10 @@ class config_table
             # add dummy entries for colorization
             cur_tr.append($("<td>").attr("colspan", (4 - cur_entries)))
             dummy_div.append(cur_tr)
-        # beautify it
+        # hide if in multi-device mode
         if not @device
             dummy_div.find("tr[id*='__config__']").hide()
+        # beautify it
         dummy_div.find("tr[id*='__config__'] td").addClass("selectable")
         dummy_div.find("tr:even").addClass("even")
         dummy_div.find("tr:odd").addClass("odd")
@@ -608,7 +613,7 @@ class device_info
         if ui.newTab.text() == "Config"
             if not ui.newPanel.html()
                 # lazy load config
-                new config_table(ui.newPanel, @resp_xml.find("device"))
+                new config_table(ui.newPanel, undefined, @resp_xml.find("device"))
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")

@@ -7,9 +7,12 @@
 {% block content %}
 
 <h1 class="center">Device configuration, <span id="config_info">none defined</span>, filter:
-<input type="text" id="filter" value=""/>, only selected:
-<input type="checkbox" id="filter_assoc"/>,
-<input type="button" id="filter_clear" value="clear"/></h1>
+<div id="filter_widgets" style="display:inline;">
+    <input type="text" id="filter" value=""/>, only selected:
+    <input type="checkbox" id="filter_assoc"/>,
+    <input type="button" id="filter_clear" value="clear"/>
+</div>
+</h1>
 
 <div id="config"></div>
 
@@ -20,7 +23,7 @@
 {% inlinecoffeescript %}
 
 add_dcon_handlers = ->
-    conf_t = new config_table($("div#config"))
+    conf_t = new config_table($("div#config"), $("div#filter_widgets"))
     install_devsel_link(conf_t.use_devs, true)
 
 $(document).ready(add_dcon_handlers)
