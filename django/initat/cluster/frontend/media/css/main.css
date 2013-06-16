@@ -203,3 +203,15 @@ ul.dynatree-container span.ip_ok {
 .noborder.ui-tabs .ui-tabs-panel {
     padding: 0 0 0 0 ;
 }
+
+td.meta_selected {
+    font-weight : bold;
+    color : #aa2222;
+    background-color : #ffffff;
+}
+
+td.selected {
+    font-weight : bold;
+    color : #229622;
+    background-color : #ffffff;
+}

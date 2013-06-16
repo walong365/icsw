@@ -19,6 +19,15 @@
 
 {% inlinecoffeescript %}
 
+class display_config
+    constructor: (cur_conf) ->
+        @pk = cur_conf.attr("pk")
+        @name = cur_conf.attr("name")
+        @num_vars    = cur_conf.find("config_vars *").length
+        @num_scripts = cur_conf.find("config_scripts *").length
+        @num_checks  = cur_conf.find("mon_check_commands *").length
+        @title = "#{@num_vars} variables, #{@num_scripts} scripts, #{@num_checks} check commands"
+        
 class config_table
     constructor: (@top_div) ->
         @cur_filter = ""
@@ -83,7 +92,8 @@ class config_table
                         disp_list.push(c_config.attr("key"))
             # not working, FIXME
             if (@show_list != disp_list) or force_reload
-                @display_list = (@configs.find("config[key='#{name}']")[0] for name in disp_list)
+                # build fast display list
+                @display_list = (new display_config(@configs.find("config[key='#{name}']")) for name in disp_list)
                 @update_config_info(disp_list.length)
                 cur_exp_list = @get_expand_list()
                 @draw_tables()
@@ -110,6 +120,17 @@ class config_table
     draw_tables : =>
         @selected = {}
         @meta_selected = {}
+        # fill selected / meta selected
+        @devices.find("device[selected='selected']").each (dev_idx, cur_dev) =>
+            dev_pk = $(cur_dev).attr("pk")
+            @selected[dev_pk] = []
+            @meta_selected[dev_pk] = []
+        @device_configs.find("device_config").each (idx, cur_dc) =>
+            cur_dc = $(cur_dc)
+            if cur_dc.attr("meta") == "1"
+                @meta_selected[cur_dc.attr("device")].push(cur_dc.attr("config"))
+            else
+                @selected[cur_dc.attr("device")].push(cur_dc.attr("config"))
         @top_div.children().remove()
         c_table = $("<table>").attr({"id" : "config"}).addClass("devicelist")
         @devices.find("device_group").each (idx, cur_dg) =>
@@ -121,7 +142,7 @@ class config_table
                 "padding" : "5px",
                 "border"  : "1px solid black"
             }).attr({
-                "colspan" : "9"
+                "colspan" : "5"
             }).text("device group " + cur_dg.attr("name")))
             c_table.append(new_tr)
             # at first append metadevice
@@ -142,52 +163,40 @@ class config_table
         new_tr.append(get_expand_td(line_prefix, "config", "config", @toggle_config_line))
         new_tr.append($("<th>").attr({
             "class"   : "left",
-            "colspan" : "8",
+            "colspan" : "4",
             "id"      : dev_pk,
         }))
         dummy_div.append(new_tr)
         cur_entries = 0
         run_idx = 1
-        @selected[dev_pk] = []
-        @meta_selected[dev_pk] = []
         for cur_conf in @display_list
-            cur_conf = $(cur_conf)
-            conf_pk = cur_conf.attr("pk")
+            conf_pk = cur_conf.pk
             if !cur_entries
                 cur_tr = $("<tr>").attr({
                     "id" : "#{line_prefix}__config__#{run_idx}"
-                }).hide()
-                cur_tr.append($("<td>"))
-            cur_cb = $("<input>").attr({
-                "type" : "checkbox",
-                "id"   : "#{line_prefix}__config__#{conf_pk}"
-            }).bind("click", @change_config)
-
-            cur_tr.append(
-                $("<td>").attr({
-                   "class" : "center"
-                }).on("hover", @hover).append(
-                    $("<span>")
-                ).append(
-                    cur_cb
-                ).append(
-                    $("<span>")
+                })
+                cur_tr.append(
+                    $("<td>")
                 )
+            num_vars    = cur_conf.num_vars
+            num_scripts = cur_conf.num_scripts
+            num_checks  = cur_conf.num_checks
+            text_td = $("<td>").attr(
+                "id" : "#{line_prefix}__config__#{conf_pk}"
+            ).on(
+                "hover", @hover
+            ).on(
+                "click", @change_config
+            ).attr(
+                "title", cur_conf.title
+            ).text(
+                cur_conf.name + " (#{num_vars}, #{num_scripts}, #{num_checks})"
             )
-            if @device_configs.find("device_config[device='#{dev_pk}'][config='#{conf_pk}'][meta='1']").length
-                cur_cb.attr({"checked" : "checked"})
-                cur_cb.prev().text("(")
-                cur_cb.next().text(")")
-                @meta_selected[dev_pk].push(conf_pk)
-            else if @device_configs.find("device_config[device='#{dev_pk}'][config='#{conf_pk}']").length
-                cur_cb.attr({"checked" : "checked"})
-                @selected[dev_pk].push(conf_pk)
-            num_vars    = cur_conf.find("config_vars *").length
-            num_scripts = cur_conf.find("config_scripts *").length
-            num_checks  = cur_conf.find("mon_check_commands *").length
-            cur_tr.append($("<td>").on("hover", @hover).append(
-                $("<span>").attr("title", "#{num_vars} variables, #{num_scripts} scripts, #{num_checks} check commands").text(cur_conf.attr("name") + " (#{num_vars}, #{num_scripts}, #{num_checks})")
-            ))
+            if conf_pk in @meta_selected[dev_pk]
+                text_td.addClass("meta_selected")
+            else if conf_pk in @selected[dev_pk]
+                text_td.addClass("selected")
+            cur_tr.append(text_td)
             cur_entries++
             if cur_entries == 4
                 dummy_div.append(cur_tr)
@@ -196,25 +205,19 @@ class config_table
         @update_device_info(dev_pk, new_tr.find("th"))
         if cur_entries
             # add dummy entries for colorization
-            cur_tr.append($("<td>").attr("colspan", 2 * (4 - cur_entries)))
+            cur_tr.append($("<td>").attr("colspan", (4 - cur_entries)))
             dummy_div.append(cur_tr)
         # beautify it
+        dummy_div.find("tr[id*='__config__']").hide()
         dummy_div.find("tr:even").addClass("even")
         dummy_div.find("tr:odd").addClass("odd")
         return dummy_div.children()
     hover: (event) ->
         target = $(event.target)
-        if target.prop("tagName") != "TD"
-            target = target.parents("td:first")
-        # a little hackish but working
-        if not target.hasClass("center")
-            target = target.prev()
         if event.type == "mouseenter"
             target.addClass("highlight")
-            target.next().addClass("highlight")
         else
             target.removeClass("highlight")
-            target.next().removeClass("highlight")
     restore_expansion : (exp_list) =>
         for cur_val in exp_list
             @toggle_config_line(cur_val.split("__")[0] + "__" + cur_val.split("__")[1], true, "config")
@@ -232,9 +235,7 @@ class config_table
         meta_selected = @meta_selected[dev_pk].length
         cur_dev = @devices.find("device[pk='#{dev_pk}']")
         is_meta = cur_dev.attr("meta_device") == "1"
-        dev_str = (if is_meta then "Meta device" else "device") + " " + cur_dev.attr("full_name")
-        if cur_dev.attr("comment")
-            dev_str = "#{dev_str} (" + cur_dev.attr("comment") + ")"
+        dev_str = (if is_meta then "Meta device" else "device") + " " + cur_dev.text()
         if selected
             dev_str = "#{dev_str}, #{selected} selected"
         if meta_selected
@@ -244,13 +245,13 @@ class config_table
         else
             @c_table.find("tr th[id='#{dev_pk}']").text(dev_str)
     change_config : (event) =>
-        cur_cb = $(event.target)
+        cur_td = $(event.target)
         lock_list = lock_elements(@c_table)
         $.ajax
             url  : "{% url 'config:alter_config_cb' %}"
             data : {
-                "id"    : cur_cb.attr("id")
-                "value" : if cur_cb.is(":checked") then "1" else "0"
+                "id"    : cur_td.attr("id")
+                "value" : if (cur_td.hasClass("meta_selected") or cur_td.hasClass("selected")) then "0" else "1"
             },
             success : (xml) =>
                 parse_xml_response(xml)
@@ -264,21 +265,18 @@ class config_table
                     # deselect all checkboxes
                     cur_dev = $(cur_dev)
                     dev_pk = cur_dev.attr("pk")
-                    cur_cb = @c_table.find("input[id='dev__#{dev_pk}__config__#{conf_pk}']")
-                    cur_cb.removeAttr("checked")
-                    cur_cb.prev().text("")
-                    cur_cb.next().text("")
+                    cur_td = @c_table.find("td[id='dev__#{dev_pk}__config__#{conf_pk}']")
+                    cur_td.removeClass("meta_selected").removeClass("selected")
                 res_xml.find("device_configs device_config").each (xml_idx, cur_dc) =>
                     cur_dc = $(cur_dc)
                     dev_pk = cur_dc.attr("device")
                     if dev_pk of @selected
-                        cur_cb = @c_table.find("input[id='dev__#{dev_pk}__config__#{conf_pk}']")
-                        cur_cb.attr("checked", "checked")
+                        cur_td = @c_table.find("td[id='dev__#{dev_pk}__config__#{conf_pk}']")
                         if cur_dc.attr("meta") == "1"
-                            cur_cb.prev().text("(")
-                            cur_cb.next().text(")")
+                            cur_td.addClass("meta_selected")
                             @meta_selected[dev_pk].push(conf_pk)
                         else
+                            cur_td.addClass("selected")
                             @selected[dev_pk].push(conf_pk)
                 for dev_pk, sel_list of @selected
                     @update_device_info(dev_pk)
