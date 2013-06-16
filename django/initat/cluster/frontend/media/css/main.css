@@ -37,6 +37,10 @@ table.devicelist * th {
     font-weight: normal;
 }
 
+table.devicelist * td.meta_device, th.meta_device {
+    font-weight : bold !important ;
+}
+
 table.devicelist * tr.devicegroup > th {
     font-size: 16px;
     padding: 4px;
@@ -204,14 +208,20 @@ ul.dynatree-container span.ip_ok {
     padding: 0 0 0 0 ;
 }
 
+td.selectable {
+    padding : 1px;
+}
+
 td.meta_selected {
     font-weight : bold;
     color : #aa2222;
     background-color : #ffffff;
+    border: 1px solid black;
 }
 
 td.selected {
     font-weight : bold;
     color : #229622;
     background-color : #ffffff;
+    border: 1px solid black;
 }

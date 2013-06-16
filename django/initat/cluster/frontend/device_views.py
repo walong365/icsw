@@ -369,6 +369,7 @@ class device_info(View):
             with_partition=True,
             with_variables=True,
             with_md_cache=True,
+            full_name=True,
         )
         request.xml_response["response"] = domain_name_tree().get_xml(no_intermediate=True)
         request.xml_response["response"] = category_tree().get_xml()
