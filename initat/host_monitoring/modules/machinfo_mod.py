@@ -848,8 +848,8 @@ class df_command(hm_classes.hm_command):
                 result["fs"] = "%s*" % (result["fs"])
             return ret_state, u"%.0f %% (%s of %s%s%s) used on %s | total=%d used=%d free=%d" % (
                 result["perc"],
-                logging_tools.get_size_str(result["used"] * 1024),
-                logging_tools.get_size_str(result["total"] * 1024),
+                logging_tools.get_size_str(result["used"] * 1024, strip_spaces=True),
+                logging_tools.get_size_str(result["total"] * 1024, strip_spaces=True),
                 ", mp %s" % (result["mountpoint"]) if "mountpoint" in result else "",
                 ", %s" % (result["fs"]) if "fs" in result else "",
                 part_str,
@@ -883,8 +883,8 @@ class df_command(hm_classes.hm_command):
                 part_str = result["part"]
             return ret_state, "%.0f %% (%s of %s%s) used on %s" % (
                 result["perc"],
-                logging_tools.get_size_str(result["used"] * 1024),
-                logging_tools.get_size_str(result["total"] * 1024),
+                logging_tools.get_size_str(result["used"] * 1024, strip_spaces=True),
+                logging_tools.get_size_str(result["total"] * 1024, strip_spaces=True),
                 ", mp %s" % (result["mountpoint"]) if result.has_key("mountpoint") else "",
                 part_str)
         else:
@@ -1305,10 +1305,10 @@ class ksminfo_command(hm_classes.hm_command):
             ksm_info = dict([(key, int(value) * page_size if value.isdigit() else value) for key, value in ksm_info.iteritems()])
             if ksm_info["run"]:
                 info_field = [
-                    "%s shared" % (logging_tools.get_size_str(ksm_info["pages_shared"]).strip()),
-                    "%s saved" % (logging_tools.get_size_str(ksm_info["pages_sharing"]).strip()),
-                    "%s volatile" % (logging_tools.get_size_str(ksm_info["pages_volatile"]).strip()),
-                    "%s unshared" % (logging_tools.get_size_str(ksm_info["pages_unshared"]).strip())
+                    "%s shared" % (logging_tools.get_size_str(ksm_info["pages_shared"], strip_spaces=True)),
+                    "%s saved" % (logging_tools.get_size_str(ksm_info["pages_sharing"], strip_spaces=True)),
+                    "%s volatile" % (logging_tools.get_size_str(ksm_info["pages_volatile"], strip_spaces=True)),
+                    "%s unshared" % (logging_tools.get_size_str(ksm_info["pages_unshared"], strip_spaces=True))
                 ]
                 return limits.nag_STATE_OK, "KSM info: %s" % (", ".join(info_field))
             else:
@@ -1343,9 +1343,9 @@ class hugepageinfo_command(hm_classes.hm_command):
                 if local_size is not None:
                     hpage_info = dict([(key, int(value) * local_size if value.isdigit() else value) for key, value in page_dict.iteritems()])
                     info_field.append("%s: %s reserved, %s used" % (
-                        (logging_tools.get_size_str(local_size)).strip(),
-                        (logging_tools.get_size_str(hpage_info["nr_hugepages"])).strip(),
-                        (logging_tools.get_size_str(hpage_info["nr_hugepages"] - hpage_info["free_hugepages"])).strip()))
+                        logging_tools.get_size_str(local_size, strip_spaces=True),
+                        logging_tools.get_size_str(hpage_info["nr_hugepages"], strip_spaces=True),
+                        logging_tools.get_size_str(hpage_info["nr_hugepages"] - hpage_info["free_hugepages"], strip_spaces=True)))
             return ret_state, "hugepage info: %s" % (", ".join(info_field))
         else:
             return limits.nag_STATE_CRITICAL, "hugepage problem: %s" % (hpage_info.text)
@@ -1374,7 +1374,7 @@ class thugepageinfo_command(hm_classes.hm_command):
                     int(thpage_d_info["full_scans"]),
                     int(thpage_d_info["pages_to_scan"]),
                     int(thpage_d_info["pages_collapsed"]),
-                    logging_tools.get_size_str(int(thpage_d_info["pages_collapsed"]) * 2 * 1024 * 1024),
+                    logging_tools.get_size_str(int(thpage_d_info["pages_collapsed"]) * 2 * 1024 * 1024, strip_spaces=True),
                     float(thpage_d_info["alloc_sleep_millisecs"]) / 1000.,
                     float(thpage_d_info["scan_sleep_millisecs"]) / 1000.,
                 )
