@@ -270,7 +270,7 @@ class main_config(object):
                     master_ip=self.master_ip,
                     master_port="%d" % (SERVER_COM_PORT))
                 time.sleep(0.2)
-                self.__build_process.send_pool_message("send_command", self.monitor_server.uuid, unicode(srv_com))
+                self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
                 # send content of /etc
                 for cur_file in os.listdir(self.__w_dir_dict["etc"]):
                     full_r_path = os.path.join(self.__w_dir_dict["etc"], cur_file)
@@ -288,14 +288,14 @@ class main_config(object):
                             file_name="%s" % (full_w_path),
                             content=base64.b64encode(file(full_r_path, "r").read())
                         )
-                        self.__build_process.send_pool_message("send_command", self.monitor_server.uuid, unicode(srv_com))
+                        self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
                 srv_com = server_command.srv_command(
                     command="call_command",
                     host="DIRECT",
                     port="0",
                     version="%d" % (send_version),
                     cmdline="/etc/init.d/icinga reload")
-                self.__build_process.send_pool_message("send_command", self.monitor_server.uuid, unicode(srv_com))
+                self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
                 self._show_pending_info()
             else:
                 self.log("no send version set", logging_tools.LOG_LEVEL_ERROR)
@@ -1968,6 +1968,72 @@ class service_templates(dict):
             act_key = self.__default.pk
         return super(service_templates, self).__getitem__(act_key)
 
+class status_process(threading_tools.process_obj):
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+        self.register_func("get_node_status", self._get_node_status)
+        self.__socket = None
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def loop_post(self):
+        self._close()
+        self.__log_template.close()
+    def _close(self):
+        if self.__socket:
+            del self.__socket
+            self.__socket = None
+    def _open(self):
+        if self.__socket is None:
+            sock_name = "/opt/%s/var/live" % (global_config["MD_TYPE"])
+            try:
+                self.__socket = mk_livestatus.Socket(sock_name)
+            except:
+                self.log("cannot open livestatus socket %s : %s" % (sock_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.__socket = None
+            else:
+                self.log("reopened livestatus socket %s" % (sock_name))
+        return self.__socket
+    def _get_node_status(self, *args, **kwargs):
+        src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
+        if mk_livestatus:
+            dev_names = srv_com.xpath(None, ".//device_list/device/text()")
+            res_builder = srv_com.builder()
+            try:
+                cur_sock = self._open()
+                if cur_sock:
+                    srv_com.set_result("status for %s" % (logging_tools.get_plural("device", len(dev_names))))
+                    query_str = "\n".join(
+                        [
+                            "GET services",
+                            "Columns: host_name description state plugin_output",
+                            "Filter: host_name = %s" % (dev_names[0]),
+                            ""
+                        ]
+                    )
+                    cur_query = cur_sock.query(query_str)
+                    result = cur_query.get_list()
+                    node_results = {}
+                    for entry in result:
+                        host_name = entry.pop("host_name")
+                        output = entry["plugin_output"]
+                        if type(output) == list:
+                            entry["plugin_output"] = ",".join(output)
+                        if host_name not in node_results:
+                            node_results[host_name] = res_builder.node_result(name=host_name)
+                        node_results[host_name].append(res_builder.result(**entry))
+                    srv_com["result"] = res_builder.node_results(
+                        *node_results.values()
+                    )
+                    #print srv_com.pretty_print()
+                else:
+                    srv_com.set_result("cannot connect", server_command.SRV_REPLY_STATE_CRITICAL)
+            except:
+                self._close()
+                srv_com.set_result("exception during fetch", server_command.SRV_REPLY_STATE_CRITICAL)
+        else:
+            srv_com.set_result("no mk_livestatus found", server_command.SRV_REPLY_STATE_CRITICAL)
+        self.send_pool_message("send_command", src_id, unicode(srv_com))
+
 class build_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
@@ -2007,6 +2073,8 @@ class build_process(threading_tools.process_obj):
         for mach_logger in self.__mach_loggers.itervalues():
             mach_logger.close()
         self.__log_template.close()
+    def send_command(self, src_id, srv_com):
+        self.send_pool_message("send_command", "urn:uuid:%s:relayer" % (src_id), srv_com)
     def mach_log(self, what, lev=logging_tools.LOG_LEVEL_OK, mach_name=None, **kwargs):
         if mach_name is None:
             mach_name = self.__cached_mach_name
@@ -3041,8 +3109,9 @@ class server_process(threading_tools.process_pool):
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         if not global_config["DEBUG"]:
-            process_tools.set_handles({"out" : (1, "md-config-server.out"),
-                                       "err" : (0, "/var/lib/logging-server/py_err_zmq")},
+            process_tools.set_handles({
+                "out" : (1, "md-config-server.out"),
+                "err" : (0, "/var/lib/logging-server/py_err_zmq")},
                                       zmq_context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
         connection.close()
@@ -3065,6 +3134,7 @@ class server_process(threading_tools.process_pool):
         self.register_func("external_cmd_file", self._set_external_cmd_file)
         #self.add_process(db_verify_process("db_verify"), start=True)
         self.add_process(build_process("build"), start=True)
+        self.add_process(status_process("status"), start=True)
         self._init_em()
         self.register_timer(self._check_db, 3600, instant=True)
         self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
@@ -3331,8 +3401,7 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
     def _send_command(self, *args, **kwargs):
-        src_proc, src_id, slave_uuid, srv_com = args
-        full_uuid = "urn:uuid:%s:relayer" % (slave_uuid)
+        src_proc, src_id, full_uuid, srv_com = args
         self.log("init send of %s bytes to %s" % (len(srv_com), full_uuid))
         self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)
         self.com_socket.send_unicode(srv_com)
@@ -3385,6 +3454,8 @@ class server_process(threading_tools.process_pool):
                 if cur_com == "rebuild_host_config":
                     send_return = True
                     self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"], cache_mode=srv_com.get("cache_mode", "DYNAMIC"))
+                elif cur_com == "get_node_status":
+                    self.send_to_process("status", "get_node_status", src_id, unicode(srv_com))
                 elif cur_com == "sync_http_users":
                     send_return = True
                     self.send_to_process("build", "sync_http_users")
