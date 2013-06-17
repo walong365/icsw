@@ -682,8 +682,12 @@ def device_pre_save(sender, **kwargs):
                 cur_inst.domain_tree_node = top_level_dn
             if not cur_inst.pk:
                 if cur_inst.domain_tree_node_id == top_level_dn.pk:
-                    # set domain_node to domain_node of meta_device
-                    cur_inst.domain_tree_node = cur_inst.device_group.device.domain_tree_node
+                    if cur_inst.device_group.device_id:
+                        # set domain_node to domain_node of meta_device
+                        cur_inst.domain_tree_node = cur_inst.device_group.device.domain_tree_node
+                    else:
+                        # no meta device (i am the new meta device, ignore)
+                        pass
             #raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
         if not valid_domain_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
