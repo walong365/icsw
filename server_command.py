@@ -114,7 +114,9 @@ class srv_command(object):
         self["result"].attrib.update({
             "reply" : ret_str,
             "state" : "%d" % (level)})
-    def builder(self, tag_name, *args, **kwargs):
+    def builder(self, tag_name=None, *args, **kwargs):
+        if tag_name is None:
+            return self.__builder
         if type(tag_name) == type(0):
             tag_name = "__int__%d" % (tag_name)
         elif tag_name == None:

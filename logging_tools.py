@@ -392,9 +392,9 @@ class initat_formatter(object):
             for file_name, line_no, name, line in traceback.extract_tb(tb_object):
                 frame_info.append("File '%s', line %d, in %s" % (file_name, line_no, name))
                 if line:
-                    frame_info.append(" - %d : %s" % (line_no, line))
-            frame_info.append("%s (%s)" % (unicode(record.exc_info[0]),
-                                           unicode(record.exc_info[1])))
+                    frame_info.append(u" - %d : %s" % (line_no, line))
+            frame_info.append(u"%s (%s)" % (unicode(record.exc_info[0]),
+                                            unicode(record.exc_info[1])))
             record.error_str = record.message + "\n" + "\n".join(frame_info)
             var_list, info_lines = ([], [])
             request = inspect.trace()[-1][0].f_locals.get("request", None)
