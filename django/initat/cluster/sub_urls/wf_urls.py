@@ -140,6 +140,7 @@ monitoring_patterns = patterns(
     url("^to_icinga$"          , monitoring_views.call_icinga.as_view()      , name="call_icinga"      ),
     url("^xml/read_part$"      , monitoring_views.fetch_partition.as_view()  , name="fetch_partition"  ),
     url("moncc_info$"          , monitoring_views.moncc_info.as_view()       , name="moncc_info"       ),
+    url("^get_node_status"     , monitoring_views.get_node_status.as_view()  , name="get_node_status"  ),
 )
 
 user_patterns = patterns(

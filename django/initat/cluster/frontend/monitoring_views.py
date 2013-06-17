@@ -199,3 +199,17 @@ class moncc_info(View):
                 )
             )
         )
+
+class get_node_status(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        srv_com = server_command.srv_command(command="get_node_status")
+        dev_name = request.POST["name"]
+        srv_com["device_list"] = E.device_list(
+            E.device(dev_name),
+        )
+        print "*", unicode(srv_com), dev_name
+        result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
+        print unicode(result)
+        

@@ -596,6 +596,9 @@ class device_info
                 $("<li>").append(
                     $("<a>").attr("href", "#mdcds").text("MD data store")
                 ),
+                $("<li>").append(
+                    $("<a>").attr("href", "#livestatus").text("Livestatus")
+                ),
             )
         )
         @dev_div = dev_div
@@ -606,6 +609,7 @@ class device_info
         tabs_div.append(@config_div(dev_xml))
         tabs_div.append(@disk_div(dev_xml))
         tabs_div.append(@mdcds_div(dev_xml))
+        tabs_div.append(@livestatus_div(dev_xml))
         tabs_div.tabs(
             activate : @activate_tab
         )
@@ -614,6 +618,17 @@ class device_info
             if not ui.newPanel.html()
                 # lazy load config
                 new config_table(ui.newPanel, undefined, @resp_xml.find("device"))
+        else if ui.newTab.text() == "Livestatus"
+            if not ui.newPanel.html()
+                # lazy load status
+                $.ajax
+                    url  : "{% url 'mon:get_node_status' %}"
+                    data : {
+                        "name" : @resp_xml.find("device").attr("full_name")
+                    }
+                    success : (xml) =>
+                        parse_xml_response(xml)
+                    
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")
@@ -656,6 +671,10 @@ class device_info
         # configuration div
         conf_div = $("<div>").attr("id", "config")
         return conf_div
+    livestatus_div: (dev_xml) =>
+        # configuration div
+        livestat_div = $("<div>").attr("id", "livestatus")
+        return livestat_div
     disk_div: (dev_xml) =>
         # disk div
         disk_div = $("<div>").attr("id", "disk")
