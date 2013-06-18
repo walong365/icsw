@@ -2005,7 +2005,7 @@ class status_process(threading_tools.process_obj):
                     query_str = "\n".join(
                         [
                             "GET services",
-                            "Columns: host_name description state plugin_output",
+                            "Columns: host_name description state plugin_output last_check",
                             "Filter: host_name = %s" % (dev_names[0]),
                             ""
                         ]
@@ -2018,11 +2018,12 @@ class status_process(threading_tools.process_obj):
                         output = entry["plugin_output"]
                         if type(output) == list:
                             entry["plugin_output"] = ",".join(output)
-                        if host_name not in node_results:
-                            node_results[host_name] = res_builder.node_result(name=host_name)
-                        node_results[host_name].append(res_builder.result(**entry))
+                        node_results.setdefault(host_name, []).append((entry["description"], entry))
+                    # rewrite to xml
                     srv_com["result"] = res_builder.node_results(
-                        *node_results.values()
+                        *[res_builder.node_result(
+                            *[res_builder.result(**entry) for sort_val, entry in sorted(value)],
+                            name=key) for key, value in node_results.iteritems()]
                     )
                     #print srv_com.pretty_print()
                 else:
@@ -3345,7 +3346,7 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("md-config-server")
@@ -3537,7 +3538,7 @@ def main():
         sys.exit(0)
     if global_config["KILL_RUNNING"]:
         log_lines = process_tools.kill_running_processes(
-            prog_name + ".py",
+            "%s.py" % (prog_name),
             ignore_names=["nagios", "icinga"],
             exclude=configfile.get_manager_pid())
 
