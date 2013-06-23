@@ -96,6 +96,8 @@ device_patterns = patterns(
     url("^device_tree$"       , device_views.device_tree.as_view()      , name="tree"             ),
     url("^get_xml_tree$"      , device_views.get_xml_tree.as_view()     , name="get_xml_tree"     ), 
     url("^add_selection$"     , device_views.add_selection.as_view()    , name="add_selection"    ),
+    url("^set_selection$"     , device_views.set_selection.as_view()    , name="set_selection"    ),
+    url("^get_selection$"     , device_views.get_selection.as_view()    , name="get_selection"    ),
     url("^clear_selection$"   , device_views.clear_selection.as_view()  , name="clear_selection"  ),
     url("^config$"            , device_views.show_configs.as_view()     , name="show_configs"     ),
     url("^get_group_tree$"    , device_views.get_group_tree.as_view()   , name="get_group_tree"   ),
@@ -149,6 +151,7 @@ user_patterns = patterns(
     url("passwd/xml$"               , user_views.get_password_form.as_view(), name="get_password_form"),
     url("sync$"                     , user_views.sync_users.as_view()       , name="sync_users"       ),
     url("^save_layout_state$"       , user_views.save_layout_state.as_view(), name="save_layout_state"),
+    url("^set_user_var$"            , user_views.set_user_var.as_view()     , name="set_user_var"     ),
 )
 
 pack_patterns = patterns(

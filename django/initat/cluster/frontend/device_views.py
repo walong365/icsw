@@ -72,6 +72,23 @@ class clear_selection(View):
         request.session["sel_list"] = []
         request.session.save()
 
+class set_selection(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        cur_list = [key for key in _post.getlist("key_list[]", []) if key.startswith("dev")]
+        request.session["sel_list"] = cur_list
+        request.session.save()
+        
+class get_selection(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        request.xml_response["sel_list"] = E.selection(
+            *[E.sel(cur_key) for cur_key in request.session["sel_list"]]
+        )
+        
 class add_selection(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -105,6 +122,7 @@ class add_selection(View):
                         cur_list.remove(toggle_dev)
                     else:
                         cur_list.append(toggle_dev)
+        pprint.pprint(cur_list)
         request.session["sel_list"] = cur_list
         request.session.save()
         logger.info("%s in list" % (logging_tools.get_plural("selection", len(cur_list))))

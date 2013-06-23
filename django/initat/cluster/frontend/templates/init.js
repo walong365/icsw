@@ -60,6 +60,12 @@ $.ajaxSetup
                 alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
         return false
 
+beautify_seconds = (in_sec) ->
+    if in_sec > 60
+        mins = parseInt(in_sec / 60)
+        return  "#{mins}:#{in_sec - 60 * mins}" 
+    else
+        return "#{in_sec} s"
 class display_config
     constructor: (cur_conf) ->
         @pk = cur_conf.attr("pk")
@@ -621,14 +627,46 @@ class device_info
         else if ui.newTab.text() == "Livestatus"
             if not ui.newPanel.html()
                 # lazy load status
-                $.ajax
-                    url  : "{% url 'mon:get_node_status' %}"
-                    data : {
-                        "name" : @resp_xml.find("device").attr("full_name")
-                    }
-                    success : (xml) =>
-                        parse_xml_response(xml)
-                    
+                @init_livestatus(ui.newPanel)
+    init_livestatus: (top_div) =>
+        table_div = $("<div>").attr("id", "livestatus")
+        @livestatus_div = table_div
+        top_div.append(@livestatus_div)
+        top_div.append(
+            $("<input>").attr(
+                "type" : "button",
+                "value" : "reload",).on("click", @update_livestatus)
+        )
+        @update_livestatus()
+    update_livestatus: () =>
+        $.ajax
+            url  : "{% url 'mon:get_node_status' %}"
+            data : {
+                "name" : @resp_xml.find("device").attr("full_name")
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    node_result = $(xml).find("node_results node_result")
+                    new_tab = $("<table>").addClass("style2")
+                    new_tab.append(
+                        $("<tr>").addClass("ui-widget ui-widget-header").append(
+                            $("<th>").text("Check"),
+                            $("<th>").text("when"),
+                            $("<th>").text("Result"),
+                        )
+                    )
+                    cur_date = new Date()
+                    node_result.find("result").each (idx, cur_res) =>
+                        cur_res = $(cur_res)
+                        diff_date = parseInt(cur_date.getTime() / 1000 - parseInt(cur_res.attr("last_check")))
+                        new_tab.append(
+                            $("<tr>").append(
+                                $("<td>").addClass({"0" : "ok", "1" : "warn", "2" : "error"}[cur_res.attr("state")]).text(cur_res.attr("description")),
+                                $("<td>").addClass("right").text(beautify_seconds(diff_date)),
+                                $("<td>").text(cur_res.text()),
+                            )
+                        )
+                    @livestatus_div.empty().html(new_tab)
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")

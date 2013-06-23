@@ -156,4 +156,22 @@ class save_layout_state(View):
                         value=value)
         update_session_object(request)
         request.session.save()
-        
+
+class set_user_var(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        user_vars = request.session["user_vars"]
+        key, value = (_post["key"], _post["value"])
+        if key in user_vars:
+            if user_vars[key].value != value:
+                user_vars[key].value = value
+                user_vars[key].save()
+        else:
+            user_vars[key] = user_variable.objects.create(
+                user=request.session["db_user"],
+                name=key,
+                value=value)
+        update_session_object(request)
+        request.session.save()

@@ -194,12 +194,15 @@ def update_session_object(request):
     # update request.session_object with user_vars
     if request.session:
         # copy layout vars from user_vars
-        for var_name, attr_name in [
-            ("east[isClosed]", "east_closed"),
-            ("west[isClosed]", "west_closed"),
+        for var_name, attr_name, default in [
+            ("east[isClosed]", "east_closed" , True   ),
+            ("west[isClosed]", "west_closed" , True   ),
+            ("sidebar_mode"  , "sidebar_mode", "group"),
         ]:
             if var_name in request.session.get("user_vars", {}):
                 request.session[attr_name] = request.session["user_vars"][var_name].value
+            else:
+                request.session[attr_name] = default
     
 def contact_server(request, conn_str, send_com, **kwargs):
     result = net_tools.zmq_connection(

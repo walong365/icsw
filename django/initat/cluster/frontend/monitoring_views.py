@@ -9,7 +9,7 @@ import pprint
 import server_command
 import net_tools
 import logging
-from lxml import etree
+from lxml import etree, objectify
 from lxml.builder import E
 
 from django.contrib.auth.decorators import login_required
@@ -209,7 +209,19 @@ class get_node_status(View):
         srv_com["device_list"] = E.device_list(
             E.device(dev_name),
         )
-        print "*", unicode(srv_com), dev_name
         result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
-        print unicode(result)
+        if result:
+            node_results = result.xpath(None, ".//ns:node_results")
+            if len(node_results):
+                node_results = node_results[0]
+                # first device
+                node_result = node_results[0]
+                request.xml_response["result"] = E.node_results(
+                    E.node_result(
+                        *[E.result(cur_res.attrib.pop("plugin_output"), **cur_res.attrib) for cur_res in node_result],
+                        **node_result.attrib
+                    )
+                )
+            else:
+                request.xml_response.error("no node_results", logger=logger)
         
