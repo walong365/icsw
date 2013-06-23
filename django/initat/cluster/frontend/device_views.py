@@ -78,7 +78,6 @@ class set_selection(View):
     def post(self, request):
         _post = request.POST
         cur_list = [key for key in _post.getlist("key_list[]", []) if key.startswith("dev")]
-        print cur_list
         request.session["sel_list"] = cur_list
         request.session.save()
         

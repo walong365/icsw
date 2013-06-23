@@ -167,8 +167,8 @@ class sidebar_tree
                 @build_fqdn_node(new_node, $(sub_db_node))
     add_device_node: (dt_node, cur_dev, add_meta) =>
         is_meta = cur_dev.attr("meta_device") == "1"
-        sel_flag = if cur_dev.attr("tree_selected") == "selected" then true else false
         if is_meta
+            sel_flag = if cur_dev.attr("selected") == "selected" then true else false
             if add_meta
                 new_node = dt_node.addChild
                     title   : cur_dev.attr("title")
@@ -178,6 +178,7 @@ class sidebar_tree
                 if sel_flag
                     new_node.makeVisible(true)
         else
+            sel_flag = if cur_dev.attr("tree_selected") == "selected" then true else false
             new_node = dt_node.addChild
                 title   : cur_dev.attr("title")
                 select  : sel_flag
