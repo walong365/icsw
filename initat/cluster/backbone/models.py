@@ -3917,6 +3917,15 @@ class domain_name_tree(object):
             if cur_tn.intermediate != is_im:
                 cur_tn.intermediate = is_im
                 cur_tn.save()
+    def add_device_references(self):
+        used_dtn_pks = list(device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)).values_list("domain_tree_node_id", flat=True))
+        used_dict = dict([(key, used_dtn_pks.count(key)) for key in set(used_dtn_pks)])
+        for value in self.__node_dict.itervalues():
+            value.local_refcount = used_dict.get(value.pk, 0)
+        for value in self.__node_dict.itervalues():
+            value.total_refcount = self._get_sub_refcounts(value)
+    def _get_sub_refcounts(self, s_node):
+        return self.__node_dict[s_node.pk].local_refcount + sum([self._get_sub_refcounts(sub_node) for sub_node in sum(s_node._sub_tree.itervalues(), [])])
     def add_domain(self, new_domain_name):
         dom_parts = list(reversed(new_domain_name.split(".")))
         cur_node = self._root_node
@@ -3997,7 +4006,7 @@ class domain_tree_node(models.Model):
         else:
             return u"[TLN]"
     def get_xml(self):
-        return E.domain_tree_node(
+        r_xml = E.domain_tree_node(
             unicode(self),
             pk="%d" % (self.pk),
             key="dtn__%d" % (self.pk),
@@ -4012,6 +4021,10 @@ class domain_tree_node(models.Model):
             always_create_ip="1" if self.always_create_ip else "0",
             comment="%s" % (self.comment or ""),
         )
+        if hasattr(self, "local_refcount"):
+            r_xml.attrib["local_refcount"] = "%d" % (self.local_refcount)
+            r_xml.attrib["total_refcount"] = "%d" % (self.total_refcount)
+        return r_xml
     
 @receiver(signals.pre_save, sender=domain_tree_node)
 def domain_tree_node_pre_save(sender, **kwargs):
