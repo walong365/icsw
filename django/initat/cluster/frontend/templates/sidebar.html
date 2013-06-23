@@ -102,6 +102,8 @@ class sidebar_tree
     activate_fqdn: (tree_div) =>
         $.ajax
             url     : "{% url 'network:domain_name_tree' %}"
+            data    :
+                add_device_references : true
             success : (xml) =>
                 if parse_xml_response(xml)
                     @DNT = $(xml).find("domain_tree_nodes")
@@ -143,49 +145,46 @@ class sidebar_tree
                                 if @CALL_DEVSEL_LINK_WHEN_LOADED
                                     $("input#devsel_button").trigger("click")
     build_fqdn_node: (dt_node, db_node) =>
-        if parseInt(db_node.attr("parent")) == 0
-            title_str = "TOP"
-            expand_flag = true
+        if parseInt(db_node.attr("total_refcount")) > 0 or parseInt(db_node.attr("parent")) == 0
+            if parseInt(db_node.attr("parent")) == 0
+                title_str = "TOP"
+                expand_flag = true
+            else
+                title_str = db_node.attr("name") + " (*." + db_node.attr("full_name") + ")"
+                expand_flag = false
+            new_node = dt_node.addChild(
+                title    : title_str
+                expand   : expand_flag
+                key      : db_node.attr("pk")
+                isFolder : true
+                addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
+            )
+            # add all devices
+            @device_groups.find("device[domain_tree_node='" + db_node.attr("pk") + "']").each (dev_id, cur_dev) =>
+                @add_device_node(new_node, $(cur_dev), true)
+            # add all sub fqdns
+            @DNT.find("domain_tree_node[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
+                @build_fqdn_node(new_node, $(sub_db_node))
+    add_device_node: (dt_node, cur_dev, add_meta) =>
+        is_meta = cur_dev.attr("meta_device") == "1"
+        sel_flag = if cur_dev.attr("tree_selected") == "selected" then true else false
+        if is_meta
+            if add_meta
+                new_node = dt_node.addChild
+                    title   : cur_dev.attr("title")
+                    select  : sel_flag
+                    key     : "devg__" + cur_dev.attr("device_group")
+                    tooltip : "UUID: " + cur_dev.attr("uuid")
+                if sel_flag
+                    new_node.makeVisible(true)
         else
-            title_str = db_node.attr("name") + " (*." + db_node.attr("full_name") + ")"
-            expand_flag = false
-        new_node = dt_node.addChild(
-            title    : title_str
-            expand   : expand_flag
-            key      : db_node.attr("pk")
-            isFolder : true
-            addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
-        )
-        # add all devices
-        @device_groups.find("device[domain_tree_node='" + db_node.attr("pk") + "']").each (dev_id, cur_dev) =>
-            @add_device_node(dt_node, $(cur_dev))
-        # add all sub fqdns
-        @DNT.find("domain_tree_node[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
-            @build_fqdn_node(new_node, $(sub_db_node))
-    add_device_node: (dt_node, cur_dev) =>
-        if cur_dev.attr("meta_device") != "1"
             new_node = dt_node.addChild
                 title   : cur_dev.attr("title")
-                select  : if cur_dev.attr("tree_selected") == "selected" then true else false
+                select  : sel_flag
                 key     : cur_dev.attr("key")
                 tooltip : "UUID: " + cur_dev.attr("uuid")
-            new_node.makeVisible(true)
-    build_node: (dt_node, db_node) =>
-        if parseInt(db_node.attr("parent")) == 0
-            title_str = "TOP"
-            expand_flag = true
-        else
-            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
-            expand_flag = false
-        new_node = dt_node.addChild(
-            title    : title_str
-            expand   : expand_flag
-            key      : db_node.attr("pk")
-            select   : if parseInt(db_node.attr("immutable")) then true else false
-            addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
-        )
-        @DNT.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
-            @build_node(new_node, $(sub_db_node))
+            if sel_flag
+                new_node.makeVisible(true)
     activate_group: (tree_div) =>
         tree_div.dynatree
             autoFocus  : false
@@ -249,7 +248,7 @@ class sidebar_tree
                             key      : cur_dg.attr("key")
                         )
                         cur_dg.find("device").each (d_idx, cur_dev) =>
-                            @add_device_node(dg_node, $(cur_dev))
+                            @add_device_node(dg_node, $(cur_dev), false)
                     $.each(tree_div.dynatree("getSelectedNodes"),  (index, value) =>
                         value.expand(true)
                         value.makeVisible(true)

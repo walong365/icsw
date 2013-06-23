@@ -93,13 +93,6 @@ class device_network(View):
                 dnt_struct.get_xml(),
             ]
         )
-##        if True:
-##            cleanup_tree(xml_resp, {
-##                "device"    : set(["name", "domain_tree_node"]),
-##                "netdevice" : set(["mac", "devname"]),
-##                "network"   : set([]),
-##                "domain_tree_node" : set([]),
-##            })
         #print etree.tostring(xml_resp, pretty_print=True)
         request.xml_response["response"] = xml_resp
 
@@ -394,6 +387,8 @@ class get_domain_name_tree(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         cur_dnt = domain_name_tree()
+        if "add_device_references" in request.POST:
+            cur_dnt.add_device_references()
         cur_dnt.check_intermediate()
         xml_resp = cur_dnt.get_xml()
         request.xml_response["response"] = xml_resp
