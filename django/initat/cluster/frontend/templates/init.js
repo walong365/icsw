@@ -86,8 +86,7 @@ class config_table
             @filter_div.find("input#filter_assoc").on("click", @change_assoc_filter)
         if @device
             @load_device_configs([@device.attr("key")])
-    use_devs: (dt_div) =>
-        sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
+    use_devs: (sel_list) =>
         notify_generate_link(sel_list)
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"

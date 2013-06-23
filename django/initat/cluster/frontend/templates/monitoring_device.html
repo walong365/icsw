@@ -17,8 +17,7 @@
 
 class config_table
     constructor: (@top_div) ->
-    use_devs: (dt_div) =>
-        sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
+    use_devs: (sel_list) =>
         $.ajax
             url     : "{% url 'mon:device_config' %}",
             success : (xml) =>

@@ -47,8 +47,7 @@ Show network topology: <input type="button" id="redraw_graph" value="Redraw"/>
 class network_table
     constructor: (@top_div) ->
         @DUMMY_MAC ="00:00:00:00:00:00"
-    use_devs: (dt_div) =>
-        @SELECTED_DEVICES = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
+    use_devs: (@SELECTED_DEVICES) =>
         @reload_network_tree()
     reload_network_tree: (sel_list) =>
         $.ajax

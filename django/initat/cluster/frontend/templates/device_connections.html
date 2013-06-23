@@ -26,8 +26,7 @@ Example: 'node##' as Slave for 'ipmi##' (2 digits).
 class conn_table
     constructor: (@top_div) ->
         $("input#manual_submit").bind("click", @manual_submit)
-    use_devs: (dt_div) =>
-        @sel_list = (value.data.key for value in dt_div.dynatree("getSelectedNodes"))
+    use_devs: (@sel_list) =>
         @load_devices()
     load_devices: () =>
         $.ajax

@@ -52,12 +52,18 @@ class sidebar_tree
         $("input#devsel_clear").on("click", @clear_selection)
         # check for installed sidebar_target_func
         if root.sidebar_target_func
-            $("input#devsel_button").show().bind("click", (event) =>
-                root.sidebar_target_func(@active_div)
-            )
+            $("input#devsel_button").show().on("click", @devsel_func)
         # indepent of sidebar mode
         @init_gauge_info()
         @update_gauge_info()
+    devsel_func: (event) =>
+        # all nodes
+        sel_keys = (value.data.key for value in @active_div.dynatree("getSelectedNodes"))
+        # device nodes
+        dev_keys  = (key for key in sel_keys when key.match(/^dev_/))
+        # devgroup nodes
+        devg_keys = (key for key in sel_keys when key.match(/^devg_/))
+        root.sidebar_target_func(dev_keys, devg_keys)
     init_sidebar: =>
         @tabs_div.tabs(
             active   : {"group" : 0, "fqdn" : 1, "category" : 2}[@initial_mode],
@@ -134,6 +140,8 @@ class sidebar_tree
                                     debuglevel : {% if DEBUG %}0{% else %}0{% endif %}
                                 @root_fqdn_node = tree_div.dynatree("getRoot")
                                 @build_fqdn_node(@root_fqdn_node, @DNT.find("domain_tree_node[parent='0']"))
+                                if @CALL_DEVSEL_LINK_WHEN_LOADED
+                                    $("input#devsel_button").trigger("click")
     build_fqdn_node: (dt_node, db_node) =>
         if parseInt(db_node.attr("parent")) == 0
             title_str = "TOP"

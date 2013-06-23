@@ -391,8 +391,7 @@ class device_table
         )
         return cur_ts
 
-use_devs = ->
-    sel_list = (entry.data.key for idx, entry of $("div#sidebar_tree").dynatree("getSelectedNodes"))
+use_devs = (sel_list) ->
     $.ajax
         url     : "{% url 'device:get_group_tree' %}"
         data    : {
