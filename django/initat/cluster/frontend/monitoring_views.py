@@ -214,14 +214,17 @@ class get_node_status(View):
             node_results = result.xpath(None, ".//ns:node_results")
             if len(node_results):
                 node_results = node_results[0]
-                # first device
-                node_result = node_results[0]
-                request.xml_response["result"] = E.node_results(
-                    E.node_result(
-                        *[E.result(cur_res.attrib.pop("plugin_output"), **cur_res.attrib) for cur_res in node_result],
-                        **node_result.attrib
+                if len(node_results):
+                    # first device
+                    node_result = node_results[0]
+                    request.xml_response["result"] = E.node_results(
+                        E.node_result(
+                            *[E.result(cur_res.attrib.pop("plugin_output"), **cur_res.attrib) for cur_res in node_result],
+                            **node_result.attrib
+                        )
                     )
-                )
+                else:
+                    request.xml_response.error("no node_results", logger=logger)
             else:
                 request.xml_response.error("no node_results", logger=logger)
         

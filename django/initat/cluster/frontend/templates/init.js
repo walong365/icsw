@@ -157,11 +157,11 @@ class config_table
             ret_list = []
         return ret_list
     update_config_info : (num_shown) =>
-        info_str = "configs defined: " + @configs.find("config").length
-        if num_shown == @configs.find("config").length
-            info_str += ", all shown"
+        num_defs = @configs.find("config").length
+        if num_shown == num_defs
+            info_str = "configs defined: #{num_defs}, all shown"
         else
-            info_str += ", #{num_shown} shown"
+            info_str = "configs defined: #{num_defs}, #{num_shown} shown"
         $("span#config_info").text(info_str)
     clear_filter : =>
         $("input#filter").val("")

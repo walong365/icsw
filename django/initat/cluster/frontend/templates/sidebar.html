@@ -328,12 +328,12 @@ class sidebar_tree
         $.ajax
             url     : "{% url 'base:get_object' %}"
             data    :
-                "key"             : dev_key
-                "true_flag_0"     : "full_name"
+                "key"         : dev_key
+                "true_flag_0" : "full_name"
             success : (xml) =>
                 if parse_xml_response(xml)
                     dev_xml = $(xml).find("value[name='result'] device")
-                    cur_node = @group_div.dynatree("getTree").getNodeByKey(dev_xml.attr("key"))
+                    cur_node = @active_div.dynatree("getTree").getNodeByKey(dev_xml.attr("key"))
                     title_str = dev_xml.attr("full_name")
                     if dev_xml.attr("comment")
                         title_str = title_str + " (" + dev_xml.attr("comment") + ")"
