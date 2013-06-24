@@ -157,7 +157,7 @@ class sidebar_tree
                 expand   : expand_flag
                 key      : db_node.attr("pk")
                 isFolder : true
-                addClass : if d b_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
+                addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
             )
             # add all sub fqdns
             @DNT.find("domain_tree_node[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
