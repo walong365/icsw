@@ -17,8 +17,8 @@
     </div>
     <div id="fqdn_tree">
     </div>
-    <div id="category_tree">
-    </div>
+    {#<div id="category_tree">#}
+    {#</div>#}
 </div>
 <div id="ajax_info">
 </div>
@@ -159,15 +159,20 @@ class sidebar_tree
                 isFolder : true
                 addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
             )
+            #if parseInt(db_node.attr("parent")) == 0
+            #    add_node = dt_node
+            #else
+            add_node = new_node
             # add all sub fqdns
             @DNT.find("domain_tree_node[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
-                @build_fqdn_node(new_node, $(sub_db_node))
+                @build_fqdn_node(add_node, $(sub_db_node))
             # add all devices
             @device_groups.find("device[domain_tree_node='" + db_node.attr("pk") + "']").each (dev_id, cur_dev) =>
-                @add_device_node(new_node, $(cur_dev), true)
+                @add_device_node(add_node, $(cur_dev), true)
     add_device_node: (dt_node, cur_dev, add_meta) =>
         is_meta = cur_dev.attr("meta_device") == "1"
         if is_meta
+            # for meta_devices we use the selected and not the tree_selected attribute
             sel_flag = if cur_dev.attr("selected") == "selected" then true else false
             if add_meta
                 new_node = dt_node.addChild
@@ -313,13 +318,8 @@ class sidebar_tree
         list_len = key_list.length
         ret_list = list_len + (if list_len == 1 then " device" else " devices")
         if list_len
-            ret_list = "#{ret_list}: "
             d_tree = @active_div.dynatree("getTree")
-            $.each(key_list, (idx, val) =>
-                if idx > 0
-                    ret_list = "#{ret_list},"
-                ret_list = ret_list + " " + d_tree.getNodeByKey(val).data.title
-            )
+            ret_list = "#{ret_list}: " + (d_tree.getNodeByKey(val).data.title for val in key_list).join(", ")
         return ret_list
     show_device_info: (dtnode, event) =>
         if dtnode.data.key.match(/^dev__/)
@@ -336,7 +336,7 @@ class sidebar_tree
                     cur_node = @active_div.dynatree("getTree").getNodeByKey(dev_xml.attr("key"))
                     title_str = dev_xml.attr("full_name")
                     if dev_xml.attr("comment")
-                        title_str = title_str + " (" + dev_xml.attr("comment") + ")"
+                        title_str = "#{title_str} (" + dev_xml.attr("comment") + ")"
                     cur_node.data.title = title_str
                     cur_node.render()
     init_gauge_info: =>

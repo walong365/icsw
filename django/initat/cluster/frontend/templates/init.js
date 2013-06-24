@@ -648,24 +648,33 @@ class device_info
                     node_result = $(xml).find("node_results node_result")
                     new_tab = $("<table>").addClass("style2")
                     new_tab.append(
-                        $("<tr>").addClass("ui-widget ui-widget-header").append(
-                            $("<th>").text("Check"),
-                            $("<th>").text("when"),
-                            $("<th>").text("Result"),
+                        $("<thead>").append(
+                            $("<tr>").addClass("ui-widget ui-widget-header").append(
+                                $("<th>").text("Check"),
+                                $("<th>").text("when"),
+                                $("<th>").text("Result"),
+                            )
                         )
                     )
                     cur_date = new Date()
+                    tab_body = $("<tbody>")
                     node_result.find("result").each (idx, cur_res) =>
+                        console.log cur_res
                         cur_res = $(cur_res)
                         diff_date = parseInt(cur_date.getTime() / 1000 - parseInt(cur_res.attr("last_check")))
-                        new_tab.append(
-                            $("<tr>").append(
-                                $("<td>").addClass({"0" : "ok", "1" : "warn", "2" : "error"}[cur_res.attr("state")]).text(cur_res.attr("description")),
+                        tab_body.append(
+                            $("<tr>").addClass({"0" : "ok", "1" : "warn", "2" : "error"}[cur_res.attr("state")]).append(
+                                $("<td>").text(cur_res.attr("description")),
                                 $("<td>").addClass("right").text(beautify_seconds(diff_date)),
                                 $("<td>").text(cur_res.text()),
                             )
                         )
+                    new_tab.append(tab_body)
                     @livestatus_div.empty().html(new_tab)
+                    new_tab.dataTable(
+                        "sPaginationType" : "full_numbers"
+                        "iDisplayLength"  : 50
+                    )
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")

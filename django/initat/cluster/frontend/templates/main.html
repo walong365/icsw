@@ -10,8 +10,8 @@
 
 {% block stylesheets %}
 {% compress css %}
-    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/main.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/tablesorter.css" />
+    <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/main.css" />
     {# can be removed as soon as jquery-UI is up to par #}
     <link type="text/css" rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/js/libs/dynatree/skin/ui.dynatree.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/jquery.dataTables.css" />
@@ -139,8 +139,8 @@ init_layout = ->
         my_layout = $("body").layout
             applyDefaultStyles  : true
             spacing_open        : 6
-            west__size          : 300
-            west__maxSize       : 400
+            west__size          : 340
+            west__maxSize       : 480
             west__minSize       : 100
             east__size          : 300
             east__maxSize       : 600
