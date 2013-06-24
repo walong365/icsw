@@ -583,6 +583,7 @@ class server_process(threading_tools.process_pool):
         self._init_capabilities()
         self.__options = options
         self._set_next_backup_time(True)
+        connection.close()
         if self.__run_command:
             self.register_timer(self._run_command, 3600, instant=True)
         else:
