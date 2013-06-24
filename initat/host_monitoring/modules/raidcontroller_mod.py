@@ -1372,8 +1372,12 @@ class ctrl_type_ibmbcraid(ctrl_type):
                     ctrl_f = []
                     ctrl_f.append("C%d: %s" % (int(ctrl_key.split("_")[1]),
                                                cur_dict["Current Status"]))
-                    if cur_dict["BBU Charging"]:
-                        ctrl_f.append("BBU Charging")
+                    if "BBU Charging" in cur_dict:
+                        if cur_dict["BBU Charging"]:
+                            ctrl_f.append("BBU Charging")
+                            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                    else:
+                        ctrl_f.append("no BBU Charge info")
                         ret_state = max(ret_state, limits.nag_STATE_WARNING)
                     if cur_dict["BBU State"].split()[0] != "1" or cur_dict["BBU Fault Code"].split()[0] != "0":
                         ctrl_f.append("BBU State/Fault Code: '%s/%s'" % (cur_dict["BBU State"],
