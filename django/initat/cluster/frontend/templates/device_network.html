@@ -438,19 +438,16 @@ class network_table
             dn = "from"
         new_tr.append(
             $("<td>").append(
-                $("<span>").text("from " + cur_peer.attr("#{sn}_devname") + " [" + cur_peer.attr("#{sn}_penalty") + "] on " + cur_peer.attr("#{sn}_device"))
-            )
-        ).append(
+                $("<span>").text("from " + cur_peer.attr("#{sn}_devname") + " [" + cur_peer.attr("#{sn}_penalty") + "] on " + cur_peer.attr("#{sn}_device_full"))
+            ),
             $("<td>").append(
                 $("<span>").text("with penalty")
             ).append(
                 create_input_el(cur_peer, "penalty", line_prefix, {number: true, master_xml : @DEVICE_NETWORKS, min: 1, max: 4096})
-            )
-        ).append(
+            ),
             $("<td>").append(
-                $("<span>").text("to " + cur_peer.attr("#{dn}_devname") + " [" + cur_peer.attr("#{dn}_penalty") + "] on " + cur_peer.attr("#{dn}_device"))
-            )
-        ).append(
+                $("<span>").text("to " + cur_peer.attr("#{dn}_devname") + " [" + cur_peer.attr("#{dn}_penalty") + "] on " + cur_peer.attr("#{dn}_device_full"))
+            ),
             $("<td>").append(
                 $("<input>").attr({
                     "id"    : line_prefix,
@@ -598,7 +595,7 @@ class network_table
             if @DEVICE_NETWORKS.find("device").length > 1
                 @DEVICE_NETWORKS.find("device").each (dev_idx, cur_dev) =>
                     cur_dev = $(cur_dev)
-                    c_w.append($("<option>").attr({"value" : cur_dev.attr("pk")}).text(cur_dev.attr("name")))
+                    c_w.append($("<option>").attr({"value" : cur_dev.attr("pk")}).text(cur_dev.attr("full_name")))
             c_w.off("change").on("change", @copy_network)
         else
             $("div#network_copy").hide()
