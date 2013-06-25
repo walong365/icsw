@@ -218,6 +218,8 @@ class main_config(object):
         self["hostgroup"].refresh(self)
     def has_key(self, key):
         return self.__dict.has_key(key)
+    def keys(self):
+        return self.__dict.keys()
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__build_process.log("[mc%s] %s" % (
             " %s" % (self.__slave_name) if self.__slave_name else "",
@@ -1068,11 +1070,11 @@ class nag_config(object):
     def __init__(self, name, **kwargs):
         self.__name = name
         self.entries = {}
-        self.keys = []
+        self._keys = []
         for key, value in kwargs.iteritems():
             self[key] = value
     def __setitem__(self, key, value):
-        if key in self.keys:
+        if key in self._keys:
             val_p = self.entries[key].split(",")
             if "-" in val_p:
                 val_p.remove("-")
@@ -1080,12 +1082,12 @@ class nag_config(object):
                 val_p.append(value)
             self.entries[key] = ",".join(val_p)
         else:
-            self.keys.append(key)
+            self._keys.append(key)
             self.entries[key] = value
     def pop_entry(self, key):
         val = self.entries[key]
         del self.entries[key]
-        self.keys.remove(key)
+        self._keys.remove(key)
         return val
     def __getitem__(self, key):
         if key == "name":
@@ -1094,26 +1096,29 @@ class nag_config(object):
             return self.entries[key]
     def has_key(self, key):
         return self.entries.has_key(key)
+    def keys(self):
+        return self._keys
     def __delitem__(self, key):
         del self.entries[key]
-        del self.keys[self.keys.index(key)]
+        del self._keys[self._keys.index(key)]
 
 class host_type_config(object):
     def __init__(self, build_process):
         self.__build_proc = build_process
         self.act_content, self.prev_content = ([], [])
+    def clear(self):
+        self.__obj_list, self.__dict = ([], {})
     def is_valid(self):
         return True
     def create_content(self):
         #if self.act_content:
         self.old_content = self.act_content
-        #bla_idx, self.act_content = self.get_content()
-        self.act_content = self.get_simple_content()
+        self.act_content = self.get_content()
     def set_previous_config(self, prev_conf):
         self.act_content = prev_conf.act_content
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__build_proc.log(what, level)
-    def get_simple_content(self):
+    def get_content(self):
         cn = self.get_name()
         act_list = self.get_object_list()
         dest_type = self.get_name()
@@ -1126,92 +1131,6 @@ class host_type_config(object):
             self.log("created %s for %s" % (logging_tools.get_plural("entry", len(act_list)),
                                             dest_type))
         return content
-    def get_content(self, upper_idx=0):
-        cn = self.get_name()
-        act_list = self.get_object_list()
-        content = []
-        log_lines = []
-        if act_list:
-            dest_type = self.get_name()
-            last_key = "%s_name" % (dest_type)
-            start_time = time.time()
-            log_lines.append("Generating config for '%s', type '%s' ... " % (cn, dest_type or "<not set>"))
-            index_key_dict = {}
-            act_key_idx = 0
-            key_hash_list, key_hash_dict = ([], {})
-            for act_le in act_list:
-                local_key_hash = []
-                for key, value in [(key, value) for key, value in act_le.entries.iteritems() if key not in ["possible_parents"]]:
-                    if key not in index_key_dict.keys():
-                        index_key_dict[key] = ".%d" % (act_key_idx)
-                        act_key_idx += 1
-                    local_key_hash.append(index_key_dict[key])
-                local_key_hash.sort()
-                local_key_hash = "".join(local_key_hash)
-                if local_key_hash not in key_hash_list:
-                    key_hash_list.append(local_key_hash)
-                key_hash_idx = key_hash_list.index(local_key_hash)
-                key_hash_dict.setdefault(key_hash_idx, []).append(act_le)
-            for hash_idx, obj_list in key_hash_dict.iteritems():
-                loc_list = [x for x in obj_list]
-                all_keys_dict = {}
-                for act_obj in obj_list:
-                    for key, value in act_obj.entries.iteritems():
-                        all_keys_dict.setdefault(key, {}).setdefault(value, 0)
-                        all_keys_dict[key][value] += 1
-                key_div_dict = {}
-                for key, value in all_keys_dict.iteritems():
-                    key_div_dict.setdefault(max(value.values()), []).append(key)
-                # all diversities, reverse sorted (highest to lowest)
-                all_divs = sorted(key_div_dict.keys(), reverse=True)
-                sorted_keys = sum([key_div_dict[x] for x in all_divs], [])
-                if last_key in sorted_keys:
-                    sorted_keys.remove(last_key)
-                    sorted_keys.append(last_key)
-                log_lines.append("Key list is %s, last key is %s" % (", ".join(sorted_keys), last_key))
-                # config tree
-                upper_idx = self._add_leafs(content, dest_type, sorted_keys, all_keys_dict, upper_idx, upper_idx, 1, loc_list, [])
-            end_time = time.time()
-            diff_time = end_time - start_time
-            log_lines.append(" - took %s" % (logging_tools.get_diff_time_str(diff_time)))
-        # log_lines
-        #for log_line in log_lines:
-        #    self.log(log_line)
-        return upper_idx, content
-    def _add_leafs(self, content, c_type, in_list, ak_dict, mother_service, start_idx, first_entry, loc_list, add_lines):
-        my_idx = start_idx
-        act_key = in_list[0]
-        iter_list = []
-        for val in ak_dict[act_key].keys():
-            act_list = sorted([x for x in loc_list if x.entries[act_key] == val])
-            if act_list:
-                iter_list.append((val, act_list))
-        if len(in_list) > 1:
-            meta_def = len(iter_list) == 1
-            for val, act_list in iter_list:
-                if len(act_list) == 1 or meta_def:
-                    my_idx = self._add_leafs(content, c_type, in_list[1:], ak_dict, mother_service, my_idx, first_entry, act_list, add_lines + ["  %s %s" % (act_key, val)])
-                else:
-                    my_idx += 1
-                    content.extend(["define %s {" % (c_type),
-                                    "  register 0",
-                                    "  name %s_%d" % (TEMPLATE_NAME, my_idx),
-                                    "  %s %s" % (act_key, val)] + \
-                                   (not first_entry and ["  use %s_%d" % (TEMPLATE_NAME, mother_service)] or []) + \
-                                   add_lines + ["}", ""])
-                    my_idx = self._add_leafs(content, c_type, in_list[1:], ak_dict, my_idx, my_idx, 0, act_list, [])
-        else:
-            val_list = sorted([x for x, y in iter_list])
-            if act_key == "host_name":
-                content.extend(["define %s {" % (c_type)] + \
-                               (not first_entry and ["  use %s_%d" % (TEMPLATE_NAME, mother_service)] or []) + \
-                               add_lines + ["  %s %s" % (act_key, ",".join(val_list)), "}", ""])
-            else:
-                for val in val_list:
-                    content.extend(["define %s {" % (c_type)] + \
-                                   (not first_entry and ["  use %s_%d" % (TEMPLATE_NAME, mother_service)] or []) + \
-                                   add_lines + ["  %s %s" % (act_key, val), "}", ""])
-        return my_idx
 
 class time_periods(host_type_config):
     def __init__(self, gen_conf, build_proc):
@@ -1639,8 +1558,6 @@ class all_hosts(host_type_config):
         return self.__dict.has_key(key)
     def keys(self):
         return self.__dict.keys()
-    #def _add_hosts_from_db(self, gen_conf):
-    #    pass
 
 class all_hosts_extinfo(host_type_config):
     def __init__(self, gen_conf, build_proc):
@@ -1899,18 +1816,22 @@ class device_templates(dict):
             self[dev_templ.pk] = dev_templ
             if dev_templ.is_default:
                 self.__default = dev_templ
-        self.log("Found %s (%s)" % (logging_tools.get_plural("device_template", len(self.keys())),
-                                    ", ".join([cur_dt.name for cur_dt in self.itervalues()])))
+        self.log(
+            "Found %s (%s)" % (logging_tools.get_plural("device_template", len(self.keys())),
+                               ", ".join([cur_dt.name for cur_dt in self.itervalues()])))
         if self.__default:
-            self.log("Found default device_template named '%s'" % (self.__default.name))
+            self.log(
+                "Found default device_template named '%s'" % (self.__default.name))
         else:
             if self.keys():
                 self.__default = self.values()[0]
-                self.log("No default device_template found, using '%s'" % (self.__default.name),
-                         logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "No default device_template found, using '%s'" % (self.__default.name),
+                    logging_tools.LOG_LEVEL_WARN)
             else:
-                self.log("No device_template founds, skipping configuration....",
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "No device_template founds, skipping configuration....",
+                    logging_tools.LOG_LEVEL_ERROR)
     def is_valid(self):
         return self.__default and True or False
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
@@ -1947,12 +1868,11 @@ class service_templates(dict):
             self[srv_templ.pk]   = srv_templ
             self[srv_templ.name] = srv_templ
             srv_templ.contact_groups = set(srv_templ.mon_contactgroup_set.all().values_list("name", flat=True))
-##            if db_rec["ncname"]:
-##                self[db_rec["ng_service_templ_idx"]]["contact_groups"].add(db_rec["ncname"])
         if self.keys():
             self.__default = self.keys()[0]
-        self.log("Found %s (%s)" % (logging_tools.get_plural("device_template", len(self.keys())),
-                                    ", ".join([cur_v.name for cur_v in self.values()])))
+        self.log("Found %s (%s)" % (
+            logging_tools.get_plural("device_template", len(self.keys())),
+            ", ".join([cur_v.name for cur_v in self.values()])))
     def is_valid(self):
         return True
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
@@ -2068,6 +1988,7 @@ class build_process(threading_tools.process_obj):
         self.register_func("sync_http_users", self._sync_http_users)
         self.register_func("file_content_info", self._file_content_info)
         self.register_func("check_for_redistribute", self._check_for_redistribute)
+        self.register_func("build_host_config", self._build_host_config)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
@@ -2190,43 +2111,66 @@ class build_process(threading_tools.process_obj):
     def _sync_http_users(self, *args, **kwargs):
         self.log("syncing http-users")
         self.__gen_config._create_access_entries()
+    def _build_host_config(self, *args, **kwargs):
+        src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
+        dev_names = srv_com.xpath(None, ".//device_list/device/text()")
+        self.log("starting single build with %s: %s" % (
+            logging_tools.get_plural("device", len(dev_names)),
+            ", ".join(sorted(dev_names))))
+        self._rebuild_config(dev_names[0])
+        srv_com.set_result("rebuilt config", server_command.SRV_REPLY_STATE_CRITICAL)
+        self.send_pool_message("send_command", src_id, unicode(srv_com))
     def _rebuild_config(self, *args, **kwargs):
-        self.version += 1
+        h_list = list(args)
+        single_build = True if len(args) > 0 else False
         cache_mode = kwargs.get("cache_mode", "???")
         if cache_mode not in special_commands.CACHE_MODES:
             # take first cache mode
             cache_mode = special_commands.DEFAULT_CACHE_MODE
-        self.log("config_version is %d, cache_mode is %s" % (self.version, cache_mode))
+        self.log("rebuild_config called, single_build is %s, cache_mode is %s" % (
+            str(single_build),
+            cache_mode))
+        if not single_build:
+            self.version += 1
+            self.log("config_version for full build is %d" % (self.version))
         if global_config["DEBUG"]:
             cur_query_count = len(connection.queries)
-        h_list = args[0] if len(args) else []
         cdg = device.objects.get(Q(device_group__cluster_device_group=True))
-        # delete old gauge variables
-        device_variable.objects.filter(Q(name="_SYS_GAUGE_") & Q(is_public=False) & Q(device=cdg)).delete()
-        # init build variable
-        build_dv = device_variable(
-            device=cdg,
-            is_public=False,
-            name="_SYS_GAUGE_",
-            description="mon config rebuild on %s" % (self.__gen_config.monitor_server.full_name),
-            var_type="i")
+        if single_build:
+            build_dv = None
+        else:
+            # delete old gauge variables
+            device_variable.objects.filter(Q(name="_SYS_GAUGE_") & Q(is_public=False) & Q(device=cdg)).delete()
+            # init build variable
+            build_dv = device_variable(
+                device=cdg,
+                is_public=False,
+                name="_SYS_GAUGE_",
+                description="mon config rebuild on %s" % (self.__gen_config.monitor_server.full_name),
+                var_type="i")
         # fetch SNMP-stuff of cluster
         snmp_stack = snmp_settings(cdg)
         rebuild_gen_config = False
-        if global_config["ALL_HOSTS_NAME"] in h_list:
-            self.log("rebuilding complete config (for master and %s)" % (
-                logging_tools.get_plural("slave", len(self.__slave_configs))
-            ))
+        if not h_list:
+            self.log(
+                "rebuilding complete config (for master and %s)" % (
+                    logging_tools.get_plural("slave", len(self.__slave_configs))
+                )
+            )
             rebuild_gen_config = True
         else:
             # FIXME, handle host-related config for only specified slaves
-            self.log("rebuilding config for %s: %s" % (logging_tools.get_plural("host", len(h_list)),
-                                                       logging_tools.compress_list(h_list)))
+            self.log(
+                "rebuilding config for %s: %s" % (
+                    logging_tools.get_plural("host", len(h_list)),
+                    logging_tools.compress_list(h_list)
+                )
+            )
         if not self.__gen_config:
             rebuild_gen_config = True
         if rebuild_gen_config:
             self._create_general_config()
-            h_list = []
+            #h_list = []
         bc_valid = self.__gen_config.is_valid()
         if bc_valid:
             # get device templates
@@ -2236,37 +2180,54 @@ class build_process(threading_tools.process_obj):
             if dev_templates.is_valid() and serv_templates.is_valid():
                 pass
             else:
+                if not dev_templates.is_valid():
+                    self.log("device templates are not valid", logging_tools.LOG_LEVEL_ERROR)
+                if not serv_templates.is_valid():
+                    self.log("service templates are not valid", logging_tools.LOG_LEVEL_ERROR)
                 bc_valid = False
         if bc_valid:
+            if single_build:
+                # clean device and service entries
+                for key in ["service", "host"]:
+                    self.__gen_config[key].refresh(self.__gen_config)
             self.router_obj.check_for_update()
             # build distance map
             cur_dmap = self._build_distance_map(self.__gen_config.monitor_server)
             total_hosts = sum([self._get_number_of_hosts(cur_gc, h_list) for cur_gc in [self.__gen_config] + self.__slave_configs.values()])
-            self.log("init gauge with max=%d" % (total_hosts))
-            build_dv.init_as_gauge(total_hosts)
-            for cur_gc in [self.__gen_config] + self.__slave_configs.values():
+            if build_dv:
+                self.log("init gauge with max=%d" % (total_hosts))
+                build_dv.init_as_gauge(total_hosts)
+            gc_list = [self.__gen_config]
+            if not single_build:
+                gc_list.extend(self.__slave_configs.values())
+            for cur_gc in gc_list:
                 cur_gc.cache_mode = cache_mode
-                if cur_gc.master:
+                if cur_gc.master and not single_build:
                     # recreate access files
                     cur_gc._create_access_entries()
-                self._create_host_config_files(build_dv, cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap)
-                # refresh implies _write_entries
-                cur_gc.refresh()
-                if not cur_gc.master:
-                    cur_gc._write_entries()
-                    cur_gc.distribute(self.version)
-            build_dv.delete()
-        cfgs_written = self.__gen_config._write_entries()
-        if bc_valid and (cfgs_written or rebuild_gen_config):
-            # send reload to remote instance ?
-            self._reload_nagios()
-        # FIXME
-        #self.__queue_dict["command_queue"].put(("config_rebuilt", h_list or [global_config["ALL_HOSTS_NAME"]]))
+                self._create_host_config_files(build_dv, cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap, single_build)
+                if not single_build:
+                    # refresh implies _write_entries
+                    cur_gc.refresh()
+                    if not cur_gc.master:
+                        cur_gc._write_entries()
+                        cur_gc.distribute(self.version)
+            if build_dv:
+                build_dv.delete()
+        if not single_build:
+            cfgs_written = self.__gen_config._write_entries()
+            if bc_valid and (cfgs_written or rebuild_gen_config):
+                # send reload to remote instance ?
+                self._reload_nagios()
+        else:
+            cur_gc = self.__gen_config
+            for key in cur_gc.keys():
+                if key in ["host", "service"]:
+                    obj_list = cur_gc[key].get_object_list()
+                    print len(obj_list), obj_list, [cur_obj["name"] for cur_obj in obj_list]
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
             self.log("queries issued: %d" % (tot_query_count))
-            #for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
-            #    self.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
     def _build_distance_map(self, root_node):
         self.log("building distance map, root node is '%s'" % (root_node))
         # exclude all without attached netdevices
@@ -2448,6 +2409,7 @@ class build_process(threading_tools.process_obj):
                                    ng_ext_hosts,
                                    all_configs,
                                    nagvis_maps,
+                                   single_build,
                                    ):
         start_time = time.time()
         # set some vars
@@ -2493,6 +2455,9 @@ class build_process(threading_tools.process_obj):
                 if not valid_ips:
                     num_error += 1
             act_def_dev = dev_templates[host.mon_device_templ_id or 0]
+            if not valid_ips and single_build:
+                valid_ips = [("0.0.0.0", host.full_name),]
+                self.mach_log("no ips found using %s as dummy IP" % (str(valid_ips)))
             if valid_ips and act_def_dev:
                 host.domain_names = [cur_ip[1] for cur_ip in valid_ips if cur_ip[1]]
                 valid_ip = valid_ips[0][0]
@@ -2824,7 +2789,7 @@ class build_process(threading_tools.process_obj):
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
         h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
         return device.objects.exclude(Q(device_type__identifier="MD")).filter(h_filter).count()
-    def _create_host_config_files(self, build_dv, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map):
+    def _create_host_config_files(self, build_dv, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map, single_build):
         """
         d_map : distance map
         """
@@ -2843,7 +2808,19 @@ class build_process(threading_tools.process_obj):
         all_hosts_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(enabled=True)).select_related("device_type")])
         # check_hosts
         if hosts:
-            h_filter = Q(name__in=hosts)
+            # not beautiful but ok
+            pk_list = []
+            for full_h_name in hosts:
+                try:
+                    if full_h_name.count("."):
+                        found_dev = device.objects.get(Q(name=full_h_name.split(".")[0]) & Q(domain_tree_node__full_name=full_h_name.split(".", 1)[1]))
+                    else:
+                        found_dev = device.objects.get(Q(name=full_h_name))
+                except device.DoesNotExist:
+                    pass
+                else:
+                    pk_list.append(found_dev.pk)
+            h_filter = Q(pk__in=pk_list)
         else:
             h_filter = Q()
         # add master/slave related filters
@@ -2927,19 +2904,20 @@ class build_process(threading_tools.process_obj):
         host_nc, service_nc, hostext_nc  = (cur_gc["host"], cur_gc["service"], cur_gc["hostextinfo"])
         # delete host if already present in host_table
         for host_pk, host in check_hosts.iteritems():
-            del_list = set([cur_dev for cur_dev in host_nc.values() if cur_dev.full_name == host.full_name])
+            del_list = set([cur_dev for cur_dev in host_nc.values() if cur_dev["host_name"] == host.full_name])
             for del_h in del_list:
-                del_list_2 = [cur_dev for cur_dev in service_nc.values() if cur_dev["host_name"] == del_h.full_name]
+                del_list_2 = [cur_dev for cur_dev in service_nc.values() if cur_dev["host_name"] == del_h["host_name"]]
                 for del_h_2 in del_list_2:
                     service_nc.remove_host(del_h_2)
                 # delete hostextinfo for nagios V1.x
-                if hostext_nc.has_key(del_h.full_name):
-                    del hostext_nc[del_h.full_name]
-                del host_nc[del_h.full_name]
+                if hostext_nc.has_key(del_h["host_name"]):
+                    del hostext_nc[del_h["host_name"]]
+                del host_nc[del_h["host_name"]]
         # build lookup-table
         nagvis_maps = set()
         for host_name, host in sorted([(cur_dev.full_name, cur_dev) for cur_dev in check_hosts.itervalues()]):
-            build_dv.count()
+            if build_dv:
+                build_dv.count()
             self._create_single_host_config(
                 cur_gc,
                 host,
@@ -2958,6 +2936,7 @@ class build_process(threading_tools.process_obj):
                 ng_ext_hosts,
                 all_configs,
                 nagvis_maps,
+                single_build,
             )
         host_names = host_nc.keys()
         host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
@@ -3141,7 +3120,7 @@ class server_process(threading_tools.process_pool):
         self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
         self.register_timer(self._update, 30, instant=True)
         #self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
-        self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"], cache_mode="DYNAMIC")
+        self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
     def _check_db(self):
         self.send_to_process("db_verify", "validate")
     def _check_for_redistribute(self):
@@ -3337,7 +3316,7 @@ class server_process(threading_tools.process_pool):
             self["exit_requested"] = True
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
-        self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"], cache_mode="DYNAMIC")
+        self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
@@ -3454,9 +3433,11 @@ class server_process(threading_tools.process_pool):
                 send_return = False
                 if cur_com == "rebuild_host_config":
                     send_return = True
-                    self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"], cache_mode=srv_com.get("cache_mode", "DYNAMIC"))
+                    self.send_to_process("build", "rebuild_config", cache_mode=srv_com.get("cache_mode", "DYNAMIC"))
                 elif cur_com == "get_node_status":
                     self.send_to_process("status", "get_node_status", src_id, unicode(srv_com))
+                elif cur_com == "get_host_config":
+                    self.send_to_process("build", "build_host_config", src_id, unicode(srv_com))
                 elif cur_com == "sync_http_users":
                     send_return = True
                     self.send_to_process("build", "sync_http_users")
@@ -3571,7 +3552,6 @@ def main():
         ("MAX_SERVICE_CHECK_SPREAD"    , configfile.int_c_var(5)),
         ("MAX_HOST_CHECK_SPREAD"       , configfile.int_c_var(5)),
         ("MAX_CONCURRENT_CHECKS"       , configfile.int_c_var(500)),
-        ("ALL_HOSTS_NAME"              , configfile.str_c_var("***ALL***")),
         ("SERVER_SHORT_NAME"           , configfile.str_c_var(mach_name)),
         ("NOTIFY_BY_EMAIL_SUBJECT"     , configfile.str_c_var("$NOTIFICATIONTYPE$ alert - $HOSTNAME$@$INIT_CLUSTER_NAME$ ($HOSTALIAS$)/$SERVICEDESC$ is $SERVICESTATE$")),
         ("NOTIFY_BY_EMAIL_LINE01"      , configfile.str_c_var("***** $INIT_MONITOR_INFO$ *****")),
