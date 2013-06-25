@@ -143,6 +143,7 @@ monitoring_patterns = patterns(
     url("^xml/read_part$"      , monitoring_views.fetch_partition.as_view()  , name="fetch_partition"  ),
     url("moncc_info$"          , monitoring_views.moncc_info.as_view()       , name="moncc_info"       ),
     url("^get_node_status"     , monitoring_views.get_node_status.as_view()  , name="get_node_status"  ),
+    url("^get_node_config"     , monitoring_views.get_node_config.as_view()  , name="get_node_config"  ),
 )
 
 user_patterns = patterns(

@@ -88,7 +88,7 @@ class setup(View):
                 E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
                 E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
                 E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
-                E.mon_check_Command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.all()]),
+                E.mon_check_Command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").all()]),
             ]
         )
 
@@ -199,6 +199,18 @@ class moncc_info(View):
                 )
             )
         )
+
+class get_node_config(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        srv_com = server_command.srv_command(command="get_host_config")
+        dev_name = request.POST["name"]
+        srv_com["device_list"] = E.device_list(
+            E.device(dev_name),
+        )
+        result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
+        print result.pretty_print()
 
 class get_node_status(View):
     @method_decorator(login_required)

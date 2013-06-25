@@ -604,6 +604,9 @@ class device_info
                 $("<li>").append(
                     $("<a>").attr("href", "#livestatus").text("Livestatus")
                 ),
+                $("<li>").append(
+                    $("<a>").attr("href", "#monconfig").text("MonConfig")
+                ),
             )
         )
         @dev_div = dev_div
@@ -615,6 +618,7 @@ class device_info
         tabs_div.append(@disk_div(dev_xml))
         tabs_div.append(@mdcds_div(dev_xml))
         tabs_div.append(@livestatus_div(dev_xml))
+        tabs_div.append(@monconfig_div(dev_xml))
         tabs_div.tabs(
             activate : @activate_tab
         )
@@ -627,6 +631,10 @@ class device_info
             if not ui.newPanel.html()
                 # lazy load status
                 @init_livestatus(ui.newPanel)
+        else if ui.newTab.text() == "MonConfig"
+            if not ui.newPanel.html()
+                # lazy load config
+                @init_monconfig(ui.newPanel)
     init_livestatus: (top_div) =>
         table_div = $("<div>").attr("id", "livestatus")
         @livestatus_div = table_div
@@ -634,7 +642,8 @@ class device_info
         top_div.append(
             $("<input>").attr(
                 "type" : "button",
-                "value" : "reload",).on("click", @update_livestatus)
+                "value" : "reload",
+            ).on("click", @update_livestatus)
         )
         @update_livestatus()
     update_livestatus: () =>
@@ -675,6 +684,26 @@ class device_info
                         "sPaginationType" : "full_numbers"
                         "iDisplayLength"  : 50
                     )
+    init_monconfig: (top_div) =>
+        table_div = $("<div>").attr("id", "monconfig")
+        @livestatus_div = table_div
+        top_div.append(@livestatus_div)
+        top_div.append(
+            $("<input>").attr(
+                "type" : "button",
+                "value" : "reload",
+            ).on("click", @update_monconfig)
+        )
+        @update_monconfig()
+    update_monconfig: () =>
+        $.ajax
+            url  : "{% url 'mon:get_node_config' %}"
+            data : {
+                "name" : @resp_xml.find("device").attr("full_name")
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    console.log xml
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")
@@ -720,6 +749,10 @@ class device_info
     livestatus_div: (dev_xml) =>
         # configuration div
         livestat_div = $("<div>").attr("id", "livestatus")
+        return livestat_div
+    monconfig_div: (dev_xml) =>
+        # monitoring config div
+        livestat_div = $("<div>").attr("id", "monconfig")
         return livestat_div
     disk_div: (dev_xml) =>
         # disk div
