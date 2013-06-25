@@ -1020,7 +1020,7 @@ class device_variable(models.Model):
         self.__cur += num
         self._update_gauge()
     def _update_gauge(self):
-        self.val_int = min(100, int(float(100 * self.__cur) / float(self.__max)))
+        self.val_int = min(100, int(float(100 * self.__cur) / float(max(1, self.__max))))
         self.save()
     class Meta:
         db_table = u'device_variable'
