@@ -1814,7 +1814,7 @@ class netdevice(models.Model):
         return E.netdevice(
             self.devname,
             E.net_ips(*[cur_ip.get_xml() for cur_ip in self.net_ip_set.all()]),
-            E.peers(*[cur_peer.get_xml() for cur_peer in peer_information.objects.filter(Q(s_netdevice=self) | Q(d_netdevice=self)).distinct().select_related("s_netdevice", "s_netdevice__device", "d_netdevice", "d_netdevice__device")]),
+            E.peers(*[cur_peer.get_xml() for cur_peer in peer_information.objects.filter(Q(s_netdevice=self) | Q(d_netdevice=self)).distinct().select_related("s_netdevice", "s_netdevice__device", "d_netdevice", "d_netdevice__device", "s_netdevice__device__domain_tree_node", "d_netdevice__device__domain_tree_node")]),
             devname=self.devname,
             description=self.description or "",
             driver=self.driver or "",
@@ -3122,6 +3122,8 @@ class peer_information(models.Model):
             to_devname=self.d_netdevice.devname,
             from_device=self.s_netdevice.device.name,
             to_device=self.d_netdevice.device.name,
+            from_device_full=self.s_netdevice.device.full_name,
+            to_device_full=self.d_netdevice.device.full_name,
             s_netdevice="%d" % (self.s_netdevice_id),
             d_netdevice="%d" % (self.d_netdevice_id),
             from_penalty="%d" % (self.s_netdevice.penalty),
