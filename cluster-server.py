@@ -848,6 +848,7 @@ class server_process(threading_tools.process_pool):
                 "backup_process",
                 "start_backup",
             )
+            connection.close()
         drop_com = server_command.srv_command(command="set_vector")
         for cap_name in self.__cap_list:
             self.__server_cap_dict[cap_name](cur_time, drop_com)
