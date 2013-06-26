@@ -223,7 +223,7 @@ class get_node_status(View):
         )
         result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
         if result:
-            node_results = result.xpath(None, ".//ns:node_results")
+            node_results = result.xpath(None, ".//node_results")
             if len(node_results):
                 node_results = node_results[0]
                 if len(node_results):
