@@ -65,6 +65,8 @@ import hashlib
 import binascii
 import operator
 import networkx
+from lxml import etree
+from lxml.builder import E
 try:
     import mk_livestatus
 except ImportError:
@@ -1066,41 +1068,26 @@ class base_config(object):
                 c_lines.append("%s=%s" % (key, act_v))
         self.act_content = self.headers + c_lines
 
-class nag_config(object):
+class nag_config(dict):
     def __init__(self, name, **kwargs):
-        self.__name = name
-        self.entries = {}
-        self._keys = []
-        for key, value in kwargs.iteritems():
-            self[key] = value
+        self._name = name
+        super(nag_config, self).__init__()
+        self.update(kwargs)
     def __setitem__(self, key, value):
-        if key in self._keys:
-            val_p = self.entries[key].split(",")
+        if key in self:
+            val_p = super(nag_config, self).__getitem__(key).split(",")
             if "-" in val_p:
                 val_p.remove("-")
             if value not in val_p:
                 val_p.append(value)
-            self.entries[key] = ",".join(val_p)
+            super(nag_config, self).__setitem__(key, ",".join(val_p))
         else:
-            self._keys.append(key)
-            self.entries[key] = value
-    def pop_entry(self, key):
-        val = self.entries[key]
-        del self.entries[key]
-        self._keys.remove(key)
-        return val
+            super(nag_config, self).__setitem__(key, value)
     def __getitem__(self, key):
         if key == "name":
-            return self.__name
+            return self._name
         else:
-            return self.entries[key]
-    def has_key(self, key):
-        return self.entries.has_key(key)
-    def keys(self):
-        return self._keys
-    def __delitem__(self, key):
-        del self.entries[key]
-        del self._keys[self._keys.index(key)]
+            return super(nag_config, self).__getitem__(key)
 
 class host_type_config(object):
     def __init__(self, build_process):
@@ -1126,11 +1113,16 @@ class host_type_config(object):
         if act_list:
             for act_le in act_list:
                 content.extend(["define %s {" % (dest_type)] + \
-                               ["  %s %s" % (act_key, val) for act_key, val in act_le.entries.iteritems()] + \
+                               ["  %s %s" % (act_key, unicode(val)) for act_key, val in act_le.iteritems()] + \
                                ["}", ""])
             self.log("created %s for %s" % (logging_tools.get_plural("entry", len(act_list)),
                                             dest_type))
         return content
+    def get_xml(self):
+        res_xml = getattr(E, "%s_list" % (self.get_name()))()
+        for act_le in self.get_object_list():
+            res_xml.append(getattr(E, self.get_name())(**dict([(key, unicode(value)) for key, value in act_le.iteritems()])))
+        return res_xml
 
 class time_periods(host_type_config):
     def __init__(self, gen_conf, build_proc):
@@ -1270,7 +1262,7 @@ class all_commands(host_type_config):
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
         check_coms = list(mon_check_command.objects.all()
                           .prefetch_related("categories")
-                          .select_related("mon_service_templ"))
+                          .select_related("mon_service_templ", "config"))
         if global_config["ENABLE_PNP"] and gen_conf.master:
             check_coms += [
                 mon_check_command(
@@ -1917,7 +1909,6 @@ class status_process(threading_tools.process_obj):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         if mk_livestatus:
             dev_names = srv_com.xpath(None, ".//device_list/device/text()")
-            res_builder = srv_com.builder()
             try:
                 cur_sock = self._open()
                 if cur_sock:
@@ -1940,9 +1931,9 @@ class status_process(threading_tools.process_obj):
                             entry["plugin_output"] = ",".join(output)
                         node_results.setdefault(host_name, []).append((entry["description"], entry))
                     # rewrite to xml
-                    srv_com["result"] = res_builder.node_results(
-                        *[res_builder.node_result(
-                            *[res_builder.result(**entry) for sort_val, entry in sorted(value)],
+                    srv_com["result"] = E.node_results(
+                        *[E.node_result(
+                            *[E.result(**entry) for sort_val, entry in sorted(value)],
                             name=key) for key, value in node_results.iteritems()]
                     )
                     #print srv_com.pretty_print()
@@ -2117,8 +2108,8 @@ class build_process(threading_tools.process_obj):
         self.log("starting single build with %s: %s" % (
             logging_tools.get_plural("device", len(dev_names)),
             ", ".join(sorted(dev_names))))
-        self._rebuild_config(dev_names[0])
-        srv_com.set_result("rebuilt config", server_command.SRV_REPLY_STATE_CRITICAL)
+        srv_com["result"] = self._rebuild_config(dev_names[0])
+        srv_com.set_result("rebuilt config", server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
     def _rebuild_config(self, *args, **kwargs):
         h_list = list(args)
@@ -2192,7 +2183,7 @@ class build_process(threading_tools.process_obj):
                     self.__gen_config[key].refresh(self.__gen_config)
             self.router_obj.check_for_update()
             # build distance map
-            cur_dmap = self._build_distance_map(self.__gen_config.monitor_server)
+            cur_dmap = self._build_distance_map(self.__gen_config.monitor_server, show_unroutable=not single_build)
             total_hosts = sum([self._get_number_of_hosts(cur_gc, h_list) for cur_gc in [self.__gen_config] + self.__slave_configs.values()])
             if build_dv:
                 self.log("init gauge with max=%d" % (total_hosts))
@@ -2221,18 +2212,23 @@ class build_process(threading_tools.process_obj):
                 self._reload_nagios()
         else:
             cur_gc = self.__gen_config
-            for key in cur_gc.keys():
-                if key in ["host", "service"]:
-                    obj_list = cur_gc[key].get_object_list()
-                    print len(obj_list), obj_list, [cur_obj["name"] for cur_obj in obj_list]
+            res_node = E.config(
+                *[cur_gc[key].get_xml() for key in ["host", "service"]]
+            )
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
             self.log("queries issued: %d" % (tot_query_count))
-    def _build_distance_map(self, root_node):
+            #for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
+            #    self.log("%5d %s" % (q_idx, act_sql["sql"][:180]))
+        if single_build:
+            return res_node
+    def _build_distance_map(self, root_node, show_unroutable=True):
         self.log("building distance map, root node is '%s'" % (root_node))
         # exclude all without attached netdevices
         dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(enabled=True)).exclude(netdevice=None).prefetch_related("netdevice_set")])
-        nd_dict = dict([(pk, set(cur_dev.netdevice_set.all().values_list("pk", flat=True))) for pk, cur_dev in dm_dict.iteritems()])
+        nd_dict = {}
+        for dev_pk, nd_pk in netdevice.objects.all().values_list("device", "pk"):
+            nd_dict.setdefault(dev_pk, set()).add(nd_pk)
         nd_lut = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device") if value[1] in dm_dict.keys()])
         for cur_dev in dm_dict.itervalues():
             # set 0 for root_node, -1 for all other devices
@@ -2281,7 +2277,7 @@ class build_process(threading_tools.process_obj):
                 break
         self.log("max distance level: %d" % (max_level))
         nodes_ur = [unicode(value) for value in dm_dict.itervalues() if value.md_dist_level < 0]
-        if nodes_ur:
+        if nodes_ur and show_unroutable:
             self.log("%s: %s" % (
                 logging_tools.get_plural("unroutable node", len(nodes_ur)),
                 ", ".join(sorted(nodes_ur))
@@ -2564,7 +2560,7 @@ class build_process(threading_tools.process_obj):
                     act_host["contacts"] = ""
                     self.mach_log("contact groups for host: %s" % (
                         ", ".join(sorted(host_groups)) or "none"))
-                    if host.monitor_checks:
+                    if host.monitor_checks or single_build:
                         if host.valid_ip == "0.0.0.0":
                             self.mach_log("IP address is '%s', host is assumed to be always up" % (unicode(host.valid_ip)))
                             act_host["check_command"] = "check-host-ok"
@@ -2805,7 +2801,7 @@ class build_process(threading_tools.process_obj):
         # get ext_hosts stuff
         ng_ext_hosts = self._get_mon_ext_hosts()
         # all hosts
-        all_hosts_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(enabled=True)).select_related("device_type")])
+        all_hosts_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(enabled=True)).select_related("device_type", "domain_tree_node")])
         # check_hosts
         if hosts:
             # not beautiful but ok
@@ -2829,7 +2825,8 @@ class build_process(threading_tools.process_obj):
             #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
-        h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
+        if not single_build:
+            h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
         # dictionary with all parent / slave relations
         ps_dict = {}
         for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):
