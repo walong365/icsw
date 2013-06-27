@@ -580,33 +580,15 @@ class device_info
         dev_div.append(tabs_div)
         tabs_div.append(
             $("<ul>").append(
-                $("<li>").append(
-                    $("<a>").attr("href", "#general").text("General")
-                ),
-                $("<li>").append(
-                    $("<a>").attr("href", "#category").text("Category")
-                ),
-                $("<li>").append(
-                    $("<a>").attr("href", "#location").text("Location")
-                ),
-                $("<li>").append(
-                    $("<a>").attr("href", "#network").text("Network")
-                ),
-                $("<li>").append(
-                    $("<a>").attr("href", "#config").text("Config")
-                ),
-                $("<li>").append(
-                    $("<a>").attr("href", "#disk").text("Disk")
-                ),
-                $("<li>").append(
-                    $("<a>").attr("href", "#mdcds").text("MD data store")
-                ),
-                $("<li>").append(
-                    $("<a>").attr("href", "#livestatus").text("Livestatus")
-                ),
-                $("<li>").append(
-                    $("<a>").attr("href", "#monconfig").text("MonConfig")
-                ),
+                $("<li>").append($("<a>").attr("href", "#general").text("General")),
+                $("<li>").append($("<a>").attr("href", "#category").text("Category")),
+                $("<li>").append($("<a>").attr("href", "#location").text("Location")),
+                $("<li>").append($("<a>").attr("href", "#network").text("Network")),
+                $("<li>").append($("<a>").attr("href", "#config").text("Config")),
+                $("<li>").append($("<a>").attr("href", "#disk").text("Disk")),
+                $("<li>").append($("<a>").attr("href", "#mdcds").text("MD data store")),
+                $("<li>").append($("<a>").attr("href", "#livestatus").text("Livestatus")),
+                $("<li>").append($("<a>").attr("href", "#monconfig").text("MonConfig")),
             )
         )
         @dev_div = dev_div
@@ -668,7 +650,6 @@ class device_info
                     cur_date = new Date()
                     tab_body = $("<tbody>")
                     node_result.find("result").each (idx, cur_res) =>
-                        console.log cur_res
                         cur_res = $(cur_res)
                         diff_date = parseInt(cur_date.getTime() / 1000 - parseInt(cur_res.attr("last_check")))
                         tab_body.append(
@@ -686,8 +667,8 @@ class device_info
                     )
     init_monconfig: (top_div) =>
         table_div = $("<div>").attr("id", "monconfig")
-        @livestatus_div = table_div
-        top_div.append(@livestatus_div)
+        @monconfig_div = table_div
+        top_div.append(@monconfig_div)
         top_div.append(
             $("<input>").attr(
                 "type" : "button",
@@ -702,8 +683,48 @@ class device_info
                 "name" : @resp_xml.find("device").attr("full_name")
             }
             success : (xml) =>
+                @monconfig_div.empty()
                 if parse_xml_response(xml)
-                    console.log xml
+                    conf_top = $(xml).find("config")
+                    tab_ul = $("<ul>")
+                    if @monconfig_div.hasClass("ui-tabs")
+                        @monconfig_div.tabs("destroy")
+                    @monconfig_div.append(tab_ul)
+                    conf_top.children().each (idx, child_xml) =>
+                        child_xml = $(child_xml)
+                        tag_name = child_xml.prop("tagName")
+                        # tab selector
+                        tab_ul.append($("<li>").append($("<a>").attr("href", "##{tag_name}").text(tag_name.split("_")[0])))
+                        # tab content
+                        sub_div = $("<div>").attr("id", tag_name)
+                        # table
+                        sub_table = $("<table>").addClass("style2")
+                        # get all attribute
+                        attr_list = []
+                        child_xml.children().each (idx, sub_el) =>
+                            for cur_attr in sub_el.attributes
+                                if cur_attr.name not in attr_list
+                                    attr_list.push(cur_attr.name)
+                        header_row = $("<tr>").addClass("ui-widget ui-widget-header")
+                        for attr_name in attr_list
+                            header_row.append($("<th>").text(attr_name))
+                        sub_table.append($("<thead>").append(header_row))
+                        table_body = $("<tbody>")
+                        sub_table.append(table_body)
+                        child_xml.children().each (idx, sub_el) =>
+                            sub_el = $(sub_el)
+                            cur_line = $("<tr>")
+                            for attr_name in attr_list
+                                cur_line.append($("<td>").text(sub_el.attr(attr_name)))
+                            table_body.append(cur_line)
+                        sub_div.append(sub_table)
+                        sub_table.dataTable(
+                            "sPaginationType" : "full_numbers"
+                            "iDisplayLength"  : 50
+                        )
+                        @monconfig_div.append(sub_div)
+                    @monconfig_div.tabs()
+                        
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")

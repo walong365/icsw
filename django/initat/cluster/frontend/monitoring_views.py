@@ -210,7 +210,14 @@ class get_node_config(View):
             E.device(dev_name),
         )
         result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
-        print result.pretty_print()
+        if result:
+            node_results = result.xpath(None, ".//config")
+            if len(node_results):
+                request.xml_response["result"] = node_results[0]
+            else:
+                request.xml_response.error("no config", logger=logger)
+        else:
+            request.xml_response.error("no config", logger=logger)
 
 class get_node_status(View):
     @method_decorator(login_required)
