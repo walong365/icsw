@@ -2108,8 +2108,8 @@ class build_process(threading_tools.process_obj):
         self.log("starting single build with %s: %s" % (
             logging_tools.get_plural("device", len(dev_names)),
             ", ".join(sorted(dev_names))))
-        srv_com["result"] = self._rebuild_config(dev_names[0])
-        srv_com.set_result("rebuilt config", server_command.SRV_REPLY_STATE_OK)
+        srv_com["result"] = self._rebuild_config(*dev_names)
+        srv_com.set_result("rebuilt config for %s" % (", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
     def _rebuild_config(self, *args, **kwargs):
         h_list = list(args)
@@ -2961,7 +2961,7 @@ class build_process(threading_tools.process_obj):
                     self.mach_log("Setting parent to %s" % (", ".join(parent_list)), logging_tools.LOG_LEVEL_OK, host["name"])
                     self.close_mach_log()
         # remove old nagvis maps
-        if cur_gc.master:
+        if cur_gc.master and not single_build:
             self.log("created %s" % (logging_tools.get_plural("nagvis map", len(nagvis_maps))))
             nagvis_map_dir = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps")
             if os.path.isdir(nagvis_map_dir):
