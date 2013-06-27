@@ -664,6 +664,11 @@ class device_info
                     new_tab.dataTable(
                         "sPaginationType" : "full_numbers"
                         "iDisplayLength"  : 50
+                        "bScrollCollapse" : true
+                        "bScrollAutoCss"  : true
+                        "bAutoWidth"      : false
+                        "bJQueryUI"       : true
+                        "bPaginate"       : true
                     )
     init_monconfig: (top_div) =>
         table_div = $("<div>").attr("id", "monconfig")
@@ -676,6 +681,8 @@ class device_info
             ).on("click", @update_monconfig)
         )
         @update_monconfig()
+    shorten_attribute: (in_name) =>
+        return (sub_str.charAt(0).toUpperCase() for sub_str in in_name.split("_")).join("")
     update_monconfig: () =>
         $.ajax
             url  : "{% url 'mon:get_node_config' %}"
@@ -707,7 +714,7 @@ class device_info
                                     attr_list.push(cur_attr.name)
                         header_row = $("<tr>").addClass("ui-widget ui-widget-header")
                         for attr_name in attr_list
-                            header_row.append($("<th>").text(attr_name))
+                            header_row.append($("<th>").attr("title", attr_name).text(@shorten_attribute(attr_name)))
                         sub_table.append($("<thead>").append(header_row))
                         table_body = $("<tbody>")
                         sub_table.append(table_body)
@@ -715,12 +722,17 @@ class device_info
                             sub_el = $(sub_el)
                             cur_line = $("<tr>")
                             for attr_name in attr_list
-                                cur_line.append($("<td>").text(sub_el.attr(attr_name)))
+                                cur_line.append($("<td>").attr("title", attr_name).text(sub_el.attr(attr_name)))
                             table_body.append(cur_line)
                         sub_div.append(sub_table)
                         sub_table.dataTable(
                             "sPaginationType" : "full_numbers"
                             "iDisplayLength"  : 50
+                            "bScrollCollapse" : true
+                            "bScrollAutoCss"  : true
+                            "bAutoWidth"      : false
+                            "bJQueryUI"       : true
+                            "bPaginate"       : true
                         )
                         @monconfig_div.append(sub_div)
                     @monconfig_div.tabs()

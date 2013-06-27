@@ -20,6 +20,17 @@ table.style2 {
     padding:2px ;
 }
 
+table.style3 {
+    border-color:#000000 ;
+    /* table-layout: fixed; */
+    color:#000000 ;
+    background-color:#ffffe2 ;
+    border-width:1px 1px 1px 1px;
+    border-spacing:0px 1px;
+    border-style:solid ;
+    padding:2px ;
+}
+
 table.devicelist {
     border-color:#000000 ;
     color:#000000 ;
@@ -90,6 +101,14 @@ span.ok {
     font-size       : 12px;
     font-weight     : bold;
     text-decoration : none;
+}
+
+/* just a test */
+th.rotate {
+    -moz-transform:rotate(-90deg);
+    -webkit-transform:rotate(-90deg);
+    -o-transform:rotate(-90deg);
+    -ms-transform:rotate(-90deg);   
 }
 
 tr.warn.even  { background-color: #ff8 !important; }
