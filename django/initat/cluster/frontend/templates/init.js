@@ -1133,13 +1133,14 @@ class draw_info
         for attr_name in ["size", "default", "select_source", "boolean", "min", "max", "ro",
         "button", "change_cb", "trigger", "draw_result_cb", "draw_conditional", "text_source",
         "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group",
-        "css", "select_source_attribute", "password", "keep_td", "clear_after_create", "callback"]
+        "css", "select_source_attribute", "password", "keep_td", "clear_after_create", "callback",
+        "textarea"]
             @[attr_name] = @kwargs[attr_name] ? undefined
         @size = @kwargs.size or undefined
     get_kwargs: () ->
         kwargs = {new_default : @default}
         for attr_name in ["size", "select_source", "boolean", "min", "max", "ro", "button",
-            "change_cb", "draw_result_cb", "trigger", "callback", "text_source",
+            "change_cb", "draw_result_cb", "trigger", "callback", "text_source", "textarea",
             "number", "manytomany", "add_null_entry", "css", "select_source_attribute", "password",]
             kwargs[attr_name] = @[attr_name]
         kwargs.master_xml = @draw_setup.master_xml
@@ -1347,7 +1348,10 @@ create_dict = (top_el, id_prefix, use_name=false) ->
         else
             key = cur_el.attr("id")
         if cur_el.prop("tagName") == "TEXTAREA"
-            out_dict[key] = cur_el.text()
+            if cur_el.is(":visible")
+                out_dict[key] = cur_el.val()
+            else
+                out_dict[key] = cur_el.text()
         else if cur_el.is(":checkbox")
             out_dict[key] = if cur_el.is(":checked") then "1" else "0"
         else if cur_el.prop("tagName") == "SELECT" and cur_el.attr("multiple")

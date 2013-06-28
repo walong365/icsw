@@ -122,7 +122,10 @@ class device_general_form(ModelForm):
             Field("name"),
             Field("domain_tree_node"),
             Field("comment"),
-            Field("monitor_checks"),
+            Fieldset("Monitor settings",
+                     Field("mon_device_templ"),
+                     Field("monitor_checks"),
+                     ),
             css_class="inlineLabels",
         )
     )
@@ -131,7 +134,7 @@ class device_general_form(ModelForm):
         self.fields["domain_tree_node"].queryset = domain_name_tree()
     class Meta:
         model = device
-        fields = ["name", "comment", "monitor_checks", "domain_tree_node",]
+        fields = ["name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ"]
 
 class dummy_password_form(Form):
     helper = FormHelper()

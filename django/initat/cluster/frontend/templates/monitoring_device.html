@@ -252,11 +252,9 @@ class config_table
         show_device_info(event, "dev__#{dev_id}")
     get_md_cache_modes: () =>
         return $("<list>").append(
-            $("<entry>").attr("pk", "1").text("automatic (server)")
-        ).append(
-            $("<entry>").attr("pk", "2").text("never use cache")
-        ).append(
-            $("<entry>").attr("pk", "3").text("once (until successfull)")
+            $("<entry>").attr("pk", "1").text("automatic (server)"),
+            $("<entry>").attr("pk", "2").text("never use cache"),
+            $("<entry>").attr("pk", "3").text("once (until successfull)"),
         ).children()
     get_device_part : (d_el, line_prefix) =>
         dev_td = $("<td>").addClass("right")

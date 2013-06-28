@@ -16,6 +16,18 @@
 
 root = exports ? this
 
+get_channel_list = () ->
+    return $("<list>").append(
+        $("<entry>").attr("pk", "mail").text("E-Mail"),
+        $("<entry>").attr("pk", "sms").text("SMS"),
+    ).children()
+    
+get_not_type_list = () ->
+    return $("<list>").append(
+        $("<entry>").attr("pk", "host").text("Host"),
+        $("<entry>").attr("pk", "service").text("Service"),
+    ).children()
+    
 master_array = {
     "monper" : new draw_setup("MonPeriod", "monper", "mon_period",
         "{% url 'base:create_object' 'mon_period' %}",
@@ -34,6 +46,20 @@ master_array = {
             lock_div : "mon_tables"
         }
     ),
+    "monn" : new draw_setup("Notification", "monn", "mon_notification",
+        "{% url 'base:create_object' 'mon_notification' %}",
+        "{% url 'base:delete_object' 'mon_notification' %}",
+        [
+            new draw_info("name"),
+            new draw_info("subject"),
+            new draw_info("enabled", {boolean : 1}),
+            new draw_info("channel", {select_source : get_channel_list}),
+            new draw_info("not_type", {select_source : get_not_type_list}),
+            new draw_info("content", {textarea : true}),
+        ], {
+            "lock_div" : "mon_tables"
+        }
+    ),
     "moncon" : new draw_setup("Contact", "moncon", "mon_contact",
         "{% url 'base:create_object' 'mon_contact' %}",
         "{% url 'base:delete_object' 'mon_contact' %}",
@@ -48,8 +74,9 @@ master_array = {
             new draw_info("hnrecovery", {boolean : 1, label : "Recov / Down / Unreach", span : 3}),
             new draw_info("hndown", {boolean : 1}),
             new draw_info("hnunreachable", {boolean : 1})
+            new draw_info("notifications", {select_source : "mon_notifications mon_notification", label : "Notifications",   manytomany : 1}),
         ], {
-            "required_xml" : ["monper", "user"],
+            "required_xml" : ["monper", "user", "monn"],
             "lock_div"     : "mon_tables"
         }
     ),

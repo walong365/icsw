@@ -28,7 +28,7 @@ from initat.cluster.backbone.models import config, device_group, device, netdevi
      mon_check_command, mon_service_templ, mon_period, mon_contact, user, \
      mon_contactgroup, get_related_models, network_type, network_device_type, mon_device_templ, \
      mon_ext_host, mon_host_cluster, mon_service_cluster, mon_device_esc_templ, mon_service_esc_templ, \
-     partition_table
+     partition_table, mon_notification
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -88,7 +88,8 @@ class setup(View):
                 E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
                 E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
                 E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
-                E.mon_check_Command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").all()]),
+                E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").all()]),
+                E.mon_notifications(*[cur_mn.get_xml() for cur_mn in mon_notification.objects.all()]),
             ]
         )
 
