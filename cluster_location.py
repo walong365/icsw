@@ -70,14 +70,15 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                     else:
                         var_global = True
                         local_host_name, var_name = (host_name, db_rec.name)
+                    source = "%s_table::%s" % (short, db_rec.pk)
                     if type(db_rec.value) == type(array.array("b")):
-                        new_val = configfile.str_c_var(db_rec.value.tostring(), source="%s_table" % (short))
+                        new_val = configfile.str_c_var(db_rec.value.tostring(), source=source)
                     elif short == "int":
-                        new_val = configfile.int_c_var(int(db_rec.value), source="%s_table" % (short))
+                        new_val = configfile.int_c_var(int(db_rec.value), source=source)
                     elif short == "bool":
-                        new_val = configfile.bool_c_var(bool(db_rec.value), source="%s_table" % (short))
+                        new_val = configfile.bool_c_var(bool(db_rec.value), source=source)
                     else:
-                        new_val = configfile.str_c_var(db_rec.value, source="%s_table" % (short))
+                        new_val = configfile.str_c_var(db_rec.value, source=source)
                     new_val.is_global = var_global
                     present_in_config = var_name in g_config
                     if present_in_config:

@@ -2434,7 +2434,6 @@ class mon_check_command(models.Model):
             pk="%d" % (self.pk),
             key="moncc__%d" % (self.pk),
             config="%d" % (self.config_id),
-            #mon_check_command_type="%d" % (self.mon_check_command_type_id),
             mon_service_templ="%d" % (self.mon_service_templ_id or 0),
             name=self.name or "",
             command_line=self.command_line or "",
@@ -2482,14 +2481,13 @@ class mon_contact(models.Model):
     hnperiod = models.ForeignKey("mon_period", related_name="host_n_period")
     snrecovery = models.BooleanField()
     sncritical = models.BooleanField()
-    snwarning = models.BooleanField()
-    snunknown = models.BooleanField()
+    snwarning  = models.BooleanField()
+    snunknown  = models.BooleanField()
     hnrecovery = models.BooleanField()
-    hndown = models.BooleanField()
+    hndown        = models.BooleanField()
     hnunreachable = models.BooleanField()
-    sncommand = models.CharField(max_length=192, blank=True, default="notify-by-email")
-    hncommand = models.CharField(max_length=192, blank=True, default="host-notify-by-email")
     date = models.DateTimeField(auto_now_add=True)
+    notifications = models.ManyToManyField("mon_notification")
     def get_xml(self):
         ret_xml = E.mon_contact(
             unicode(self),
@@ -2498,8 +2496,7 @@ class mon_contact(models.Model):
             user="%d" % (self.user_id or 0),
             snperiod="%d" % (self.snperiod_id or 0),
             hnperiod="%d" % (self.hnperiod_id or 0),
-            sncommand = self.sncommand,
-            hncommand = self.hncommand,
+            notifications="::".join(["%d" % (cur_not.pk) for cur_not in self.notifications.all()]),
         )
         for bf in ["snrecovery", "sncritical", "snunknown", "snwarning",
                    "hnrecovery", "hndown", "hnunreachable"]:
@@ -2518,6 +2515,39 @@ def mon_contact_pre_save(sender, **kwargs):
         if cur_inst.user_id in used_user_ids:
             raise ValidationError("user already in used by mon_contact")
 
+class mon_notification(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=128, blank=False, unique=True)
+    channel = models.CharField(max_length=8, choices=[
+        ("mail", "E-Mail"),
+        ("sms" , "SMS"   )])
+    not_type = models.CharField(max_length=8, choices=[
+        ("host"   , "Host"   ),
+        ("service", "Service")])
+    subject = models.CharField(max_length=140, blank=False)
+    content = models.CharField(max_length=512, blank=False)
+    enabled = models.BooleanField(default=True)
+    created = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.mon_notification(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="monn__%d" % (self.pk),
+            name=self.name,
+            channel=self.channel,
+            not_type=self.not_type,
+            subject=self.subject,
+            content=self.content,
+            enabled="1" if self.enabled else "0",
+        )
+    def __unicode__(self):
+        return "%s (%s via %s)" % (
+            self.name,
+            self.not_type,
+            self.channel,
+        )
+    
+            
 """
 connection between the various nagios / icinage notification objects:
 
@@ -4278,6 +4308,7 @@ KPMC_MAP = {
     "monset"       : mon_service_esc_templ,
     "moncg"        : mon_contactgroup,
     "monhc"        : mon_host_cluster,
+    "monn"         : mon_notification,
     "monsc"        : mon_service_cluster,
     "moncc"        : mon_check_command,
     "moncon"       : mon_contact,
