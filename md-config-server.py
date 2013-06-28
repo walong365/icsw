@@ -910,7 +910,7 @@ class main_config(object):
                     devg_lut = {}
                     for cur_dev in nagvis_rds:
                         devg_lut.setdefault(cur_dev.device_group.pk, []).append(cur_dev.full_name)
-                    for cur_u in user.objects.filter(Q(active=True)).prefetch_related("allowed_device_groups"):
+                    for cur_u in user.objects.filter(Q(active=True) & Q(mon_contact__pk__gt=0)).prefetch_related("allowed_device_groups"):
                         # check for admin
                         if User.objects.get(Q(username=cur_u.login)).has_perm("backbone.all_devices"):
                             target_role = "admins"
@@ -1451,21 +1451,22 @@ class all_contacts(host_type_config):
             self.__obj_list.append(nag_conf)
             self.__dict[contact.pk] = nag_conf
         # add all contacts not used in mon_contacts but somehow related to a device (and active)
-        for std_user in user.objects.filter(Q(mon_contact=None) & (Q(active=True))):
-            devg_ok = len(std_user.allowed_device_groups.all()) > 0 or User.objects.get(Q(username=std_user.login)).has_perm("backbone.all_devices")
-            if devg_ok:
-                full_name = ("%s %s" % (std_user.first_name, std_user.last_name)).strip().replace(" ", "_") or std_user.login
-                nag_conf = nag_config(
-                    full_name,
-                    contact_name=std_user.login,
-                    alias=std_user.comment or full_name,
-                    host_notifications_enabled=0,
-                    service_notifications_enabled=0,
-                    host_notification_commands="host-notify-by-email",
-                    service_notification_commands="notify-by-email",
-                )
-                self.__obj_list.append(nag_conf)
-                #self.__dict[contact.pk] = nag_conf
+##        if False:
+##            for std_user in user.objects.filter(Q(mon_contact=None) & (Q(active=True))):
+##                devg_ok = len(std_user.allowed_device_groups.all()) > 0 or User.objects.get(Q(username=std_user.login)).has_perm("backbone.all_devices")
+##                if devg_ok:
+##                    full_name = ("%s %s" % (std_user.first_name, std_user.last_name)).strip().replace(" ", "_") or std_user.login
+##                    nag_conf = nag_config(
+##                        full_name,
+##                        contact_name=std_user.login,
+##                        alias=std_user.comment or full_name,
+##                        host_notifications_enabled=0,
+##                        service_notifications_enabled=0,
+##                        host_notification_commands="host-notify-by-email",
+##                        service_notification_commands="notify-by-email",
+##                    )
+##                    self.__obj_list.append(nag_conf)
+##                    #self.__dict[contact.pk] = nag_conf
     def __getitem__(self, key):
         return self.__dict[key]
     def get_object_list(self):
@@ -2528,7 +2529,7 @@ class build_process(threading_tools.process_obj):
                     c_list = [entry for entry in all_access]
                     # set alias
                     if host.device_group.user_set.all():
-                        c_list.extend([cur_u.login for cur_u in host.device_group.user_set.all()])
+                        c_list.extend([cur_u.login for cur_u in host.device_group.user_set.filter(Q(mon_contact__pk__gt=0))])
                     if c_list:
                         act_host["contacts"] = ",".join(c_list)
                     act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] + ["%s.%s" % (host.name, dom_name) for dom_name in host.domain_names] if entry.strip()]))))
@@ -3337,7 +3338,6 @@ class server_process(threading_tools.process_pool):
         end_time = time.time()
         self.log("host-relay version discovery took %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
     def _check_notification(self):
-        mon_notification.objects.all().delete()
         cur_not = mon_notification.objects.all().count()
         if cur_not:
             self.log("%s defined, skipping check" % (logging_tools.get_plural("notification", cur_not)))
