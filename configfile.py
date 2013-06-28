@@ -61,6 +61,8 @@ class config_proxy(BaseProxy):
         return self._callmethod("keys")
     def __getitem__(self, key):
         return self._callmethod("__getitem__", (key,))
+    def __delitem__(self, key):
+        return self._callmethod("__delitem__", (key,))
     def get_source(self, key):
         return self._callmethod("get_source", (key,))
     def get(self, key, default):
@@ -348,6 +350,11 @@ class configuration(object):
             return self.__c_dict[key].value
         else:
             raise KeyError, "Key %s not found in c_dict" % (key)
+    def __delitem__(self, key):
+        if key in self.__c_dict:
+            del self.__c_dict[key]
+        else:
+            raise KeyError, "Key %s not found in c_dict" % (key)
     def get(self, key, default):
         return self.__c_dict.get(key, default)
     def __setitem__(self, key, value):
@@ -592,7 +599,7 @@ config_manager.register("config", configuration, config_proxy, exposed=[
     "parse_file", "add_config_entries", "set_uid_gid",
     "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
     "is_global", "database",
-    "__getitem__", "__setitem__", "__contains__",
+    "__getitem__", "__setitem__", "__contains__", "__delitem__",
     "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])
 
 cur_manager = config_manager()
