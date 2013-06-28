@@ -140,6 +140,10 @@ load_config = ->
         success : (xml) ->
             if parse_xml_response(xml)
                 draw_ds_tables($("div#mon_tables"), master_array, $(xml).find("value[name='response']"))
+                $("div#mon_tables textarea").attr({
+                    "cols" : 60,
+                    "rows" : 6,
+                })
 
 $(document).ready(load_config)
 
