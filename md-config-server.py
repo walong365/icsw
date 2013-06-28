@@ -55,7 +55,7 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      mon_service, mon_ext_host, mon_check_command, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
      user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
-     category_tree, TOP_MONITORING_CATEGORY
+     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int
 from django.conf import settings
 import base64
 import uuid_tools
@@ -1210,6 +1210,7 @@ class all_commands(host_type_config):
             send_mail_prog = "/usr/local/sbin/send_mail.py"
         else:
             send_mail_prog = "/usr/local/bin/send_mail.py"
+        send_sms_prog = "/opt/icinga/bin/sendsms"
         from_addr = "%s@%s" % (global_config["MD_TYPE"],
                                global_config["FROM_ADDR"])
 
@@ -1217,47 +1218,73 @@ class all_commands(host_type_config):
             "$INIT_MONITOR_INFO$" : "%s %s" % (md_type, md_vers),
             "$INIT_CLUSTER_NAME$" : "%s" % (cluster_name),
         }
-        service_str_field = [self._expand_str(global_config["NOTIFY_BY_EMAIL_LINE%02d" % (idx)]) for idx in xrange(1, 16)]
-        host_str_field = [self._expand_str(global_config["HOST_NOTIFY_BY_EMAIL_LINE%02d" % (idx)]) for idx in xrange(1, 16)]
-        # Nagios V2.x
-        nag_conf = nag_config(
-            "notify-by-email",
-            command_name="notify-by-email",
-            command_line=r"%s -f '%s' -s '%s' -t $CONTACTEMAIL$ -- '%s'" % (
-                send_mail_prog,
-                from_addr,
-                self._expand_str(global_config["NOTIFY_BY_EMAIL_SUBJECT"]),
-                r"\n".join(service_str_field)
+        
+        self.__obj_list.append(
+            nag_config(
+                "dummy-notify",
+                command_name="dummy-notify",
+                command_line="/usr/bin/true",
             )
         )
-        self.__obj_list.append(nag_conf)
-        nag_conf = nag_config(
-            "notify-by-sms",
-            command_name="notify-by-sms",
-            command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '%s'" % (
-                self._expand_str(global_config["NOTIFY_BY_SMS_LINE01"])
+        for cur_not in mon_notification.objects.filter(Q(enabled=True)):
+            if cur_not.channel == "mail":
+                command_line = r"%s -f '%s' -s '%s' -t $CONTACTEMAIL$ -- '%s'" % (
+                    send_mail_prog,
+                    from_addr,
+                    self._expand_str(cur_not.subject),
+                    self._expand_str(cur_not.content),
+                )
+            else:
+                command_line = r"%s $CONTACTPAGER$ '%s'" % (
+                    send_sms_prog,
+                    self._expand_str(cur_not.content),
+                )
+            nag_conf = nag_config(
+                cur_not.name,
+                command_name=cur_not.name,
+                command_line=command_line.replace("\n", "\\n"),
             )
-        )
-        self.__obj_list.append(nag_conf)
-        nag_conf = nag_config(
-            "host-notify-by-email",
-            command_name="host-notify-by-email",
-            command_line=r"%s -f '%s'  -s '%s' -t $CONTACTEMAIL$ -- '%s'" % (
-                send_mail_prog,
-                from_addr,
-                self._expand_str(global_config["HOST_NOTIFY_BY_EMAIL_SUBJECT"]),
-                r"\n".join(host_str_field)
-            )
-        )
-        self.__obj_list.append(nag_conf)
-        nag_conf = nag_config(
-            "host-notify-by-sms",
-            command_name="host-notify-by-sms",
-            command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '%s'" % (
-                self._expand_str(global_config["HOST_NOTIFY_BY_SMS_LINE01"])
-            )
-        )
-        self.__obj_list.append(nag_conf)
+            self.__obj_list.append(nag_conf)
+##        service_str_field = [self._expand_str(global_config["NOTIFY_BY_EMAIL_LINE%02d" % (idx)]) for idx in xrange(1, 16)]
+##        host_str_field = [self._expand_str(global_config["HOST_NOTIFY_BY_EMAIL_LINE%02d" % (idx)]) for idx in xrange(1, 16)]
+##        nag_conf = nag_config(
+##            "notify-by-email",
+##            command_name="notify-by-email",
+##            command_line=r"%s -f '%s' -s '%s' -t $CONTACTEMAIL$ -- '%s'" % (
+##                send_mail_prog,
+##                from_addr,
+##                self._expand_str(global_config["NOTIFY_BY_EMAIL_SUBJECT"]),
+##                r"\n".join(service_str_field)
+##            )
+##        )
+##        self.__obj_list.append(nag_conf)
+##        nag_conf = nag_config(
+##            "notify-by-sms",
+##            command_name="notify-by-sms",
+##            command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '%s'" % (
+##                self._expand_str(global_config["NOTIFY_BY_SMS_LINE01"])
+##            )
+##        )
+##        self.__obj_list.append(nag_conf)
+##        nag_conf = nag_config(
+##            "host-notify-by-email",
+##            command_name="host-notify-by-email",
+##            command_line=r"%s -f '%s'  -s '%s' -t $CONTACTEMAIL$ -- '%s'" % (
+##                send_mail_prog,
+##                from_addr,
+##                self._expand_str(global_config["HOST_NOTIFY_BY_EMAIL_SUBJECT"]),
+##                r"\n".join(host_str_field)
+##            )
+##        )
+##        self.__obj_list.append(nag_conf)
+##        nag_conf = nag_config(
+##            "host-notify-by-sms",
+##            command_name="host-notify-by-sms",
+##            command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '%s'" % (
+##                self._expand_str(global_config["HOST_NOTIFY_BY_SMS_LINE01"])
+##            )
+##        )
+##        self.__obj_list.append(nag_conf)
     def _add_commands_from_db(self, gen_conf):
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
         check_coms = list(mon_check_command.objects.all()
@@ -1387,20 +1414,27 @@ class all_contacts(host_type_config):
             full_name = ("%s %s" % (contact.user.first_name, contact.user.last_name)).strip().replace(" ", "_")
             if not full_name:
                 full_name = contact.user.login
-            hn_command = contact.hncommand
-            sn_command = contact.sncommand
+            not_h_list = list(contact.notifications.filter(Q(channel="mail") & Q(not_type="host") & Q(enabled=True)))
+            not_s_list = list(contact.notifications.filter(Q(channel="mail") & Q(not_type="service") & Q(enabled=True)))
             if len(contact.user.pager) > 5:
                 # check for pager number
-                hn_command = "%s,host-notify-by-sms" % (hn_command)
-                sn_command = "%s,notify-by-sms" % (sn_command)
+                not_h_list.extend(list(contact.notifications.filter(Q(channel="sms") & Q(not_type="host") & Q(enabled=True))))
+                not_s_list.extend(list(contact.notifications.filter(Q(channel="sms") & Q(not_type="service") & Q(enabled=True))))
             nag_conf = nag_config(
                 full_name,
                 contact_name=contact.user.login,
                 host_notification_period=gen_conf["timeperiod"][contact.hnperiod_id]["name"],
                 service_notification_period=gen_conf["timeperiod"][contact.snperiod_id]["name"],
-                host_notification_commands=hn_command,
-                service_notification_commands=sn_command,
-                alias=contact.user.comment or full_name)
+                alias=contact.user.comment or full_name,
+            )
+            if not_h_list:
+                nag_conf["host_notification_commands"] = ",".join([entry.name for entry in not_h_list])
+            else:
+                nag_conf["host_notification_commands"] = "dummy-notify"
+            if not_s_list:
+                nag_conf["service_notification_commands"] = ",".join([entry.name for entry in not_s_list])
+            else:
+                nag_conf["service_notification_commands"] = "dummy-notify"
             for targ_opt, pairs in [
                 ("host_notification_options"   , [("hnrecovery", "r"), ("hndown"    , "d"), ("hnunreachable", "u")]),
                 ("service_notification_options", [("snrecovery", "r"), ("sncritical", "c"), ("snwarning"    , "w"), ("snunknown", "u")])]:
@@ -3053,8 +3087,10 @@ class build_process(threading_tools.process_obj):
             cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             act_serv["check_command"]         = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, host.dev_variables))
             if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
-                self.mach_log("   removing command %s because of %s" % (s_check["command_name"],
-                                                                        act_host["check_command"]))
+                self.mach_log(
+                    "   removing command %s because of %s" % (
+                        s_check["command_name"],
+                        act_host["check_command"]))
             else:
                 ret_field.append(act_serv)
         return ret_field
@@ -3101,6 +3137,7 @@ class server_process(threading_tools.process_pool):
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
+        self._check_notification()
         self._check_nagios_version()
         self._check_relay_version()
         self._log_config()
@@ -3299,6 +3336,95 @@ class server_process(threading_tools.process_pool):
             self.log("Discovered installed host-relay version %s" % (relay_version))
         end_time = time.time()
         self.log("host-relay version discovery took %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
+    def _check_notification(self):
+        mon_notification.objects.all().delete()
+        cur_not = mon_notification.objects.all().count()
+        if cur_not:
+            self.log("%s defined, skipping check" % (logging_tools.get_plural("notification", cur_not)))
+        else:
+            if "NOTIFY_BY_EMAIL_LINE01" in global_config:
+                self.log("rewriting notifications from global_config")
+                str_dict = {
+                    "sms" : {
+                        "host"    : ("", [global_config["HOST_NOTIFY_BY_SMS_LINE01"]]),
+                        "service" : ("", [global_config["NOTIFY_BY_SMS_LINE01"]]),
+                        },
+                    "mail" : {
+                        "host"    : (
+                            global_config["HOST_NOTIFY_BY_EMAIL_SUBJECT"],
+                            [global_config["HOST_NOTIFY_BY_EMAIL_LINE%02d" % (idx)] for idx in xrange(1, 16)],
+                            ),
+                        "service" : (
+                            global_config["NOTIFY_BY_EMAIL_SUBJECT"],
+                            [global_config["NOTIFY_BY_EMAIL_LINE%02d" % (idx)] for idx in xrange(1, 16)],
+                            ),
+                    }
+                }
+                for key in global_config.keys():
+                    if key.count("NOTIFY_BY") and (key.count("LINE") or key.count("SUBJECT")):
+                        src = global_config.get_source(key)
+                        if src.count("::"):
+                            t_type, pk = src.split("::")
+                            var_obj = {"str_table" : config_str,
+                                       "int_table" : config_int}.get(t_type, None)
+                            if var_obj:
+                                try:
+                                    var_obj.objects.get(Q(pk=pk)).delete()
+                                except:
+                                    self.log("cannot delete var %s: %s" % (key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                                else:
+                                    self.log("deleted variable %s" % (key))
+                                    del global_config[key]
+                            else:
+                                self.log("unknown source_table %s for %s" % (t_type, key), logging_tools.LOG_LEVEL_ERROR)
+                        else:
+                            self.log("cannot parse source %s of %s" % (src, key), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                # default dict
+                str_dict = {'mail': {'host': (u'Host $HOSTSTATE$ alert for $HOSTNAME$@$INIT_CLUSTER_NAME$',
+                                              [u'***** $INIT_MONITOR_INFO$ *****',
+                                               u'',
+                                               u'Notification Type: $NOTIFICATIONTYPE$',
+                                               u'',
+                                               u'Cluster: $INIT_CLUSTER_NAME$',
+                                               u'Host   : $HOSTNAME$',
+                                               u'State  : $HOSTSTATE$',
+                                               u'Address: $HOSTADDRESS$',
+                                               u'Info   : $HOSTOUTPUT$',
+                                               u'',
+                                               u'Date/Time: $LONGDATETIME$',
+                                               u'',
+                                               u'',
+                                               u'',
+                                               u'']),
+                                     'service': (u'$NOTIFICATIONTYPE$ alert - $HOSTNAME$@$INIT_CLUSTER_NAME$ ($HOSTALIAS$)/$SERVICEDESC$ is $SERVICESTATE$',
+                                                 [u'***** $INIT_MONITOR_INFO$ *****',
+                                                  u'',
+                                                  u'Notification Type: $NOTIFICATIONTYPE$',
+                                                  u'',
+                                                  u'Cluster: $INIT_CLUSTER_NAME$',
+                                                  u'Service: $SERVICEDESC$',
+                                                  u'Host   : $HOSTALIAS$',
+                                                  u'Address: $HOSTADDRESS$',
+                                                  u'State  : $SERVICESTATE$',
+                                                  u'',
+                                                  u'Date/Time: $LONGDATETIME',
+                                                  u'',
+                                                  u'Additional Info:',
+                                                  u'',
+                                                  u'$SERVICEOUTPUT$'])},
+                            'sms': {'host': ('', [u'$HOSTSTATE$ alert for $HOSTNAME$ ($HOSTADDRESS$)']),
+                                    'service': ('',
+                                                [u'$NOTIFICATIONTYPE$ alert - $SERVICEDESC$ is $SERVICESTATE$ on $HOSTNAME$'])}}
+            for channel, s_dict in str_dict.iteritems():
+                for not_type, (subject, content) in s_dict.iteritems():
+                    mon_notification.objects.create(
+                        name="%s-notify-by-%s" % (not_type, channel),
+                        channel=channel,
+                        not_type=not_type,
+                        subject=subject,
+                        content="\n".join(content)
+                    )
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
