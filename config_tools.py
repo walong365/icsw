@@ -451,18 +451,6 @@ class server_check(object):
             # skip if any of both netdevice_idx_lists are empty
             # get peer_information
             all_pathes = router_obj.get_ndl_ndl_pathes(self.netdevice_idx_list, other.netdevice_idx_list, add_penalty=True, only_endpoints=True)
-            #if self.__hc_cache:
-                #all_hcs = self.__hc_cache
-            #else:
-                #latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")
-                #if len(latest_gen):
-                    #latest_gen = latest_gen[0]
-                    #all_hcs = hopcount.objects.filter(
-                        #Q(route_generation=latest_gen) & 
-                        #Q(s_netdevice__in=self.netdevice_idx_list) &
-                        #Q(d_netdevice__in=other.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice", "d_netdevice", "value")
-                #else:
-                    #all_hcs = []
             for penalty, s_nd_pk, d_nd_pk in all_pathes:
                 # dicts identifier -> ips
                 source_ip_lut, dest_ip_lut = ({}, {})
@@ -484,16 +472,17 @@ class server_check(object):
                                              (d_nd_pk, dest_ip_lut[act_id])))
                 else:
                     if kwargs.get("allow_route_to_other_networks", False):
-                        if "p" in dest_ip_lut and "o" in source_ip_lut:
-                            add_actual = True
-                            if filter_ip:
-                                if filter_ip not in source_ip_lut["o"] and filter_ip not in dest_ip_lut["p"]:
-                                    add_actual = False
-                            if add_actual:
-                                ret_list.append((penalty,
-                                                 "o",
-                                                 (s_nd_pk, source_ip_lut["o"]),
-                                                 (d_nd_pk, dest_ip_lut["p"])))
+                        for src_id in set(source_ip_lut.iterkeys()) & set(["p", "o"]):
+                            for dst_id in set(dest_ip_lut.iterkeys()) & set(["p", "o"]):
+                                add_actual = True
+                                if filter_ip:
+                                    if filter_ip not in source_ip_lut[src_id] and filter_ip not in dest_ip_lut[dst_id]:
+                                        add_actual = False
+                                if add_actual:
+                                    ret_list.append((penalty,
+                                                     dst_id,
+                                                     (s_nd_pk, source_ip_lut[src_id]),
+                                                     (d_nd_pk, dest_ip_lut[dst_id])))
         return ret_list
     def report(self):
         #print self.effective_device
