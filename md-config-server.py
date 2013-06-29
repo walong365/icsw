@@ -175,7 +175,7 @@ class main_config(object):
             self.slave_uuid = monitor_server.uuid
             route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__build_process.router_obj, slave_cfg, allow_route_to_other_networks=True)
             if not route:
-                self.slave_ip = None
+                self.slave_ip  = None
                 self.master_ip = None
                 self.log("no route to slave %s found" % (unicode(monitor_server)), logging_tools.LOG_LEVEL_ERROR)
             else:
