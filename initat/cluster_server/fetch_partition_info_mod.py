@@ -117,8 +117,8 @@ class fetch_partition_info(cs_base_class.server_com):
                     else:
                         raise ValueError, "it seems the client is using pickled transfers"
                     partition_name, partition_info = (
-                        "%s_part" % (target_dev),
-                        "generated partition_setup from device '%s'" % (target_dev))
+                        "%s_part" % (target_dev.full_name),
+                        "generated partition_setup from device '%s'" % (target_dev.full_name))
                     prev_th_dict = {}
                     try:
                         cur_pt = partition_table.objects.get(Q(name=partition_name))
