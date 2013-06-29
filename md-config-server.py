@@ -82,6 +82,9 @@ NAG_HOST_UNREACHABLE = 2
 SERVER_COM_PORT = 8010
 TEMPLATE_NAME = "t"
 
+# maps to transfer for single_build
+SINGLE_BUILD_MAPS = set(["service", "host", "command"])
+
 IDOMOD_PROCESS_PROCESS_DATA           = 2 ** 0
 IDOMOD_PROCESS_TIMED_EVENT_DATA       = 2 ** 1
 IDOMOD_PROCESS_LOG_DATA               = 2 ** 2
@@ -1184,6 +1187,8 @@ class all_commands(host_type_config):
     def __init__(self, gen_conf, build_proc):
         check_command.gen_conf = gen_conf
         host_type_config.__init__(self, build_proc)
+        self.refresh(gen_conf)
+    def refresh(self, gen_conf):
         self.__obj_list, self.__dict = ([], {})
         self._add_notify_commands()
         self._add_commands_from_db(gen_conf)
@@ -2214,7 +2219,7 @@ class build_process(threading_tools.process_obj):
         if bc_valid:
             if single_build:
                 # clean device and service entries
-                for key in ["service", "host", "command"]:
+                for key in SINGLE_BUILD_MAPS:
                     self.__gen_config[key].refresh(self.__gen_config)
             self.router_obj.check_for_update()
             # build distance map
@@ -2248,7 +2253,7 @@ class build_process(threading_tools.process_obj):
         else:
             cur_gc = self.__gen_config
             res_node = E.config(
-                *[cur_gc[key].get_xml() for key in ["host", "service"]]
+                *[cur_gc[key].get_xml() for key in SINGLE_BUILD_MAPS]
             )
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
@@ -2672,7 +2677,8 @@ class build_process(threading_tools.process_obj):
                         # cluster config names
                         cconf_names = set(host.devs_mon_service_cluster.all().values_list("mon_check_command__name", flat=True))
                         # build lut
-                        conf_dict = dict([(cur_c["command_name"], cur_c) for cur_c in cur_gc["command"].values() if 
+                        conf_dict = dict([(
+                            cur_c["command_name"], cur_c) for cur_c in cur_gc["command"].values() if 
                                           (cur_c.get_config() in conf_names and (not(cur_c.get_device()) or cur_c.get_device() == host.pk)) or
                                           cur_c["command_name"] in cconf_names])
                         # old code, use only_ping config
