@@ -869,25 +869,23 @@ def compress_list(ql, **kwargs):
             return "%s%s%s/%s%s" % (np, s_str, ap, e_str, ap)
         else:
             return "%s%s%s-%s%s" % (np, s_str, ap, e_str, ap)
-    pf_re = re.compile("^(?P<pef>.*?)(?P<num>\d+)(?P<pof>\D*)$")
-    nc_dict = {}
+    pf_re = re.compile("^(?P<pef>.*?)(?P<num>\d+)(?P<pof>.*)$")
+    nc_dict, unmatch_list = ({}, [])
     for q_e in ql:
         pf_m = pf_re.match(q_e)
         if pf_m:
-            pef = pf_m.group("pef")
-            idx = pf_m.group("num")
-            pof = pf_m.group("pof")
+            # prefix, postfix and index
+            pef, pof = (
+                pf_m.group("pef"), 
+                pf_m.group("pof"),
+            )
+            nc_dict.setdefault(pef, {}).setdefault(pof, {})[int(pf_m.group("num"))] = pf_m.group("num")
         else:
             # no match found
-            pef, idx, i_idx, pof = (q_e, "", 0, "")
-        if idx:
-            i_idx = int(idx)
-        else:
-            i_idx = 0
-        nc_dict.setdefault(pef, {}).setdefault(pof, {})[i_idx] = idx
+            unmatch_list.append(q_e)
     nc_a = []
-    for pef in sorted(nc_dict.keys()):
-        for pof in sorted(nc_dict[pef].keys()):
+    for pef in nc_dict.keys():
+        for pof in nc_dict[pef].keys():
             act_l = nc_dict[pef][pof]
             s_idx = None
             for e_idx in sorted(act_l.keys()):
@@ -904,7 +902,7 @@ def compress_list(ql, **kwargs):
                     l_num, l_idx = (e_num, e_idx)
             if pef:
                 nc_a += [add_p(pef, pof, s_num, l_num)]
-    return kwargs.get("separator", ", ").join(nc_a)
+    return kwargs.get("separator", ", ").join(sorted(nc_a) + sorted(unmatch_list))
 
 def compress_num_list(ql, excl_list=[]):
     def add_p(s_idx, e_idx):
