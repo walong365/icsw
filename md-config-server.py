@@ -2214,7 +2214,7 @@ class build_process(threading_tools.process_obj):
         if bc_valid:
             if single_build:
                 # clean device and service entries
-                for key in ["service", "host"]:
+                for key in ["service", "host", "command"]:
                     self.__gen_config[key].refresh(self.__gen_config)
             self.router_obj.check_for_update()
             # build distance map
