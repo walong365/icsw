@@ -66,6 +66,7 @@ beautify_seconds = (in_sec) ->
         return  "#{mins}:#{in_sec - 60 * mins}" 
     else
         return "#{in_sec} s"
+        
 class display_config
     constructor: (cur_conf) ->
         @pk = cur_conf.attr("pk")
@@ -661,15 +662,16 @@ class device_info
                         )
                     new_tab.append(tab_body)
                     @livestatus_div.empty().html(new_tab)
-                    new_tab.dataTable(
-                        "sPaginationType" : "full_numbers"
-                        "iDisplayLength"  : 50
-                        "bScrollCollapse" : true
-                        "bScrollAutoCss"  : true
-                        "bAutoWidth"      : false
-                        "bJQueryUI"       : true
-                        "bPaginate"       : true
-                    )
+                    if tab_body.children().length
+                        new_tab.dataTable(
+                            "sPaginationType" : "full_numbers"
+                            "iDisplayLength"  : 50
+                            "bScrollCollapse" : true
+                            "bScrollAutoCss"  : true
+                            "bAutoWidth"      : false
+                            "bJQueryUI"       : true
+                            "bPaginate"       : true
+                        )
     init_monconfig: (top_div) =>
         table_div = $("<div>").attr("id", "monconfig")
         @monconfig_div = table_div
@@ -725,15 +727,16 @@ class device_info
                                 cur_line.append($("<td>").attr("title", attr_name).text(sub_el.attr(attr_name)))
                             table_body.append(cur_line)
                         sub_div.append(sub_table)
-                        sub_table.dataTable(
-                            "sPaginationType" : "full_numbers"
-                            "iDisplayLength"  : 50
-                            "bScrollCollapse" : true
-                            "bScrollAutoCss"  : true
-                            "bAutoWidth"      : false
-                            "bJQueryUI"       : true
-                            "bPaginate"       : true
-                        )
+                        if table_body.children().length
+                            sub_table.dataTable(
+                                "sPaginationType" : "full_numbers"
+                                "iDisplayLength"  : 50
+                                "bScrollCollapse" : true
+                                "bScrollAutoCss"  : true
+                                "bAutoWidth"      : false
+                                "bJQueryUI"       : true
+                                "bPaginate"       : true
+                            )
                         @monconfig_div.append(sub_div)
                     @monconfig_div.tabs()
                         
