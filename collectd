@@ -1,0 +1,109 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          collectd
+# Required-Start:    $syslog $remote_fs
+# Should-Start: $time 
+# Required-Stop:     $syslog $remote_fs
+# Should-Stop: $time 
+# Default-Start:     3 5
+# Default-Stop:      0 1 2 6
+# Short-Description: collectd
+# Description:       starts and stops collectd
+### END INIT INFO
+
+export SYSTEMD_NO_WRAP="1"
+
+COLLECTD_BIN=/opt/cluster/sbin/collectd
+COLLECTD_OPTS=""
+
+test -x $COLLECTD_BIN || {
+    echo "$COLLECTD_BIN not installed"; 
+    if [ "$1" = "stop" ]; then
+        exit 0;
+    else
+        exit 5;
+    fi;
+}
+
+if [ -f /etc/rc.status ] ; then
+    . /etc/rc.status
+else
+    . /etc/rc.status_suse
+fi
+
+if [ -f /etc/redhat-release ] ; then
+    export RH=1
+    . /etc/init.d/functions
+else
+    export RH=0
+fi
+
+# check for debian
+if [ -f /etc/debian_version ] ; then
+    export DB=1
+else
+    export DB=0
+fi
+
+PID_FILE=/var/run/nginx.pid
+
+rc_reset
+
+case "$1" in
+    start)
+        echo -n "Starting collectd "
+        if [ "${RH}" = "1" ] ; then
+            daemon $COLLECTD_BIN ${COLLECTD_OPTS}
+        elif [ "${DB}" = "1" ] ; then
+            $COLLECTD_BIN ${COLLECTD_OPTS}
+        else
+            /sbin/startproc $COLLECTD_BIN ${COLLECTD_OPTS}
+        fi
+
+        rc_status -v
+        ;;
+    stop)
+        echo -n "Shutting down collectd "
+        if [ "${DB}" = "1" ] ; then
+            if [ -f ${PID_FILE} ] ; then
+                kill $(cat ${PID_FILE})
+            else
+                echo "not running"
+                rc_failed
+            fi
+        else
+            killproc $COLLECTD_BIN
+        fi
+    
+        rc_status -v
+        ;;
+    restart)
+        $0 stop
+        $0 start
+    
+        # Remember status and be quiet
+        rc_status
+        ;;
+    status)
+        echo -n "Checking for service collectd "
+        if [ "${RH}" = "1" ] ; then
+            status $COLLECTD_BIN
+        elif [ "${DB}" = "1" ] ; then
+            if [ -f ${PID_FILE} ] ; then
+                true
+            else
+                rc_failed
+            fi  
+        else
+            /sbin/checkproc $COLLECTD_BIN
+        fi
+        rc_status -v
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status|restart}"
+        exit 1
+        ;;
+esac
+
+rc_exit
+
