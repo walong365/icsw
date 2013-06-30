@@ -216,8 +216,9 @@ class id_discovery(object):
         if os.path.isfile(MAPPING_FILE_IDS):
             id_discovery.mapping = dict([line.strip().split("=", 1) for line in file(MAPPING_FILE_IDS, "r").read().split("\n") if line.strip() and line.count("=")])
             id_discovery.relayer_process.log(
-                "read %s from %s" % (logging_tools.get_plural("mapping", len(id_discovery.mapping)),
-                                     MAPPING_FILE_IDS))
+                "read %s from %s" % (
+                    logging_tools.get_plural("mapping", len(id_discovery.mapping)),
+                    MAPPING_FILE_IDS))
             for key, value in id_discovery.mapping.iteritems():
                 # only use ip-address / hostname from key
                 id_discovery.reverse_mapping.setdefault(value, []).append(key[6:].split(":")[0])
@@ -649,13 +650,17 @@ class tcp_factory(ClientFactory):
         if str(reason).lower().count("closed cleanly"):
             pass
         else:
-            self.log("%s: %s" % (str(connector).strip(),
-                                 str(reason).strip()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "%s: %s" % (
+                    str(connector).strip(),
+                    str(reason).strip()),
+                logging_tools.LOG_LEVEL_ERROR)
     def clientConnectionFailed(self, connector, reason):
-        self.log("%s: %s" % (str(connector).strip(),
-                             str(reason).strip()),
-                 logging_tools.LOG_LEVEL_ERROR)
+        self.log(
+            "%s: %s" % (
+                str(connector).strip(),
+                str(reason).strip()),
+            logging_tools.LOG_LEVEL_ERROR)
         self._remove_tuple(connector)
     def _remove_tuple(self, connector):
         cur_id = "%s:%d" % (connector.host, connector.port)
@@ -722,9 +727,11 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                         self.send_echo(value["host"])
                     except:
                         value["error_list"].append(process_tools.get_except_info())
-                        self.log("error sending to %s: %s" % (value["host"],
-                                                              ", ".join(value["error_list"])),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "error sending to %s: %s" % (
+                                value["host"],
+                                ", ".join(value["error_list"])),
+                            logging_tools.LOG_LEVEL_ERROR)
                     else:
                         value["sent_list"][self.echo_seqno] = cur_time
                         self.__seqno_dict[self.echo_seqno] = key
@@ -759,10 +766,11 @@ class twisted_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__relayer_socket = self.connect_to_socket("internal")
-        my_observer = logging_tools.twisted_log_observer(global_config["LOG_NAME"],
-                                                         global_config["LOG_DESTINATION"],
-                                                         zmq=True,
-                                                         context=self.zmq_context)
+        my_observer = logging_tools.twisted_log_observer(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context)
         log.startLoggingWithObserver(my_observer, setStdout=False)
         self.twisted_observer = my_observer
         self.tcp_factory = tcp_factory(self)
@@ -1746,7 +1754,8 @@ class server_process(threading_tools.process_pool):
                 for target_ip in ipv4_addresses:
                     if target_ip not in zmq_id_dict:
                         zmq_id_dict[target_ip] = (wc_urn, wc_virtual)
-        self.log("0MQ bind info")
+        self.zeromq_id = zmq_id_dict["*"][0].split(":")[-1]
+        self.log("0MQ bind info (global 0MQ id is %s)" % (self.zeromq_id))
         for key in sorted(zmq_id_dict.iterkeys()):
             self.log("bind address %-15s: %s%s" % (
                 key,
