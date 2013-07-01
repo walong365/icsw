@@ -2595,7 +2595,12 @@ class mon_device_templ(models.Model):
     idx = models.AutoField(db_column="ng_device_templ_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     mon_service_templ = models.ForeignKey("mon_service_templ")
-    ccommand = models.CharField(max_length=192, blank=True, default="check-host-alive")
+    ccommand = models.CharField(
+        max_length=192, blank=True, default="check-host-alive",
+        choices=[
+            ("check-host-alive"  , "check-host-alive"),
+            ("check-host-alive-2", "check-host-alive-2"),
+        ])
     max_attempts = models.IntegerField(null=True, blank=True, default=1)
     ninterval = models.IntegerField(null=True, blank=True, default=1)
     mon_period = models.ForeignKey("mon_period", null=True, blank=True)
@@ -2610,6 +2615,7 @@ class mon_device_templ(models.Model):
             pk="%d" % (self.pk),
             key="mondt__%d" % (self.pk),
             name=self.name,
+            ccommand=self.ccommand,
             mon_service_templ="%d" % (self.mon_service_templ_id or 0),
             max_attempts="%d" % (self.max_attempts or 0),
             ninterval="%d" % (self.ninterval or 0),
