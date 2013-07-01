@@ -6,12 +6,15 @@ import zmq
 import threading
 import multiprocessing
 import collectd
+import uuid_tools
 import logging_tools
 import process_tools
+import server_command
 from lxml import etree
 
 IPC_SOCK = "ipc:///var/log/cluster/sockets/collect"
 RECV_PORT = 8002
+GRAPHER_PORT = 8003
 
 class value(object):
     def __init__(self, name):
@@ -43,6 +46,9 @@ class host_info(object):
         c_keys = old_keys ^ new_keys
         if c_keys:
             collectd.warning("%s changed for %s" % (logging_tools.get_plural("key", len(c_keys)), self.name))
+            return True
+        else:
+            return False
     def transform(self, key, value):
         try:
             return (
@@ -62,6 +68,8 @@ class host_info(object):
 class net_receiver(multiprocessing.Process):
     def __init__(self):
         multiprocessing.Process.__init__(self, target=self._code, name="0MQ_net_receiver")
+        self.zmq_id = "%s:collserver_plugin" % (process_tools.get_machine_name())
+        self.grapher_id = "%s:rrd_grapher" % (uuid_tools.get_uuid().get_urn())
     def _init(self):
         self._init_vars()
         self._init_hosts()
@@ -70,8 +78,18 @@ class net_receiver(multiprocessing.Process):
         self.context = zmq.Context()
         self.receiver = self.context.socket(zmq.PULL)
         self.sender   = self.context.socket(zmq.PUSH)
+        self.grapher  = self.context.socket(zmq.ROUTER)
+        # set grapher flags
+        for flag, value in [
+            (zmq.IDENTITY, self.zmq_id),
+            (zmq.SNDHWM, 256),
+            (zmq.RCVHWM, 256),
+            (zmq.TCP_KEEPALIVE, 1),
+            (zmq.TCP_KEEPALIVE_IDLE, 300)]:
+            self.grapher.setsockopt(flag, value)
         self.sender.connect(IPC_SOCK)
         self.receiver.bind("tcp://*:%d" % (RECV_PORT))
+        self.grapher.connect("tcp://localhost:%d" % (GRAPHER_PORT))
         collectd.notice("listening on port %d" % (RECV_PORT))
     def _init_hosts(self):
         self.__hosts = {}
@@ -86,6 +104,7 @@ class net_receiver(multiprocessing.Process):
     def _close_sockets(self):
         self.sender.close()
         self.receiver.close()
+        self.grapher.close()
         self.context.term()
         collectd.notice("0MQ process finished")
     def _code(self):
@@ -112,6 +131,9 @@ class net_receiver(multiprocessing.Process):
             logging_tools.get_size_str(s_rate),
         ))
         self._init_vars()
+    def _send(self, send_xml):
+        self.grapher.send_unicode(self.grapher_id, zmq.SNDMORE)
+        self.grapher.send_unicode(unicode(send_xml))
     def _loop(self):
         while True:
             in_data = self.receiver.recv()
@@ -126,7 +148,11 @@ class net_receiver(multiprocessing.Process):
     def _feed_host_info(self, host_uuid, host_name, _xml):
         if host_uuid not in self.__hosts:
             self.__hosts[host_uuid] = host_info(host_uuid, host_name)
-        self.__hosts[host_uuid].update(_xml)
+        if self.__hosts[host_uuid].update(_xml):
+            # something changed
+            new_com = server_command.srv_command(command="mv_info")
+            new_com["vector"] = _xml
+            self._send(new_com)
     def _process_tree(self, in_tree):
         r_data = None
         # adopt tree format for faster handling in collectd loop
