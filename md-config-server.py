@@ -3135,10 +3135,6 @@ class server_process(threading_tools.process_pool):
                                       zmq_context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
         connection.close()
-        #self.register_func("new_pid", self._new_pid)
-        #self.register_func("remove_pid", self._remove_pid)
-        # prepare directories
-        #self._prepare_directories()
         # re-insert config
         self._re_insert_config()
         self.register_exception("int_error", self._int_error)
