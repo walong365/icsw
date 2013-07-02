@@ -4,7 +4,7 @@ import sys
 import os
 import process_tools
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, monitoring_views, \
-     user_views, pack_views, config_views, boot_views, session_views
+     user_views, pack_views, config_views, boot_views, session_views, rrd_views
 from initat.cluster.setup import base_views, setup_views
 from initat.cluster.rms import rms_views
 from rest_framework.urlpatterns import format_suffix_patterns
@@ -180,6 +180,11 @@ main_patterns = patterns(
     url(r"index$" , main_views.index.as_view(), name="index"),
 )
 
+rrd_patterns = patterns(
+    "initat.cluster.frontend",
+    url(r"class$", rrd_views.device_rrds.as_view(), name="device_rrds"),
+)
+
 if settings.CLUSTER_LICENSE["rest"]:
     rpl = []
     for obj_name in ["user", "group", "device_group"]:
@@ -222,6 +227,7 @@ my_url_patterns = patterns(
     url(r"^setup/"    , include(setup_patterns     , namespace="setup"   )),
     url(r"^user/"     , include(user_patterns      , namespace="user"    )),
     url(r"^pack/"     , include(pack_patterns      , namespace="pack"    )),
+    url(r"^rrd/"      , include(rrd_patterns       , namespace="rrd"     )),
     url(r"^doc/"      , include(doc_patterns       , namespace="doc"     )),
 )
 

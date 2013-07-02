@@ -590,6 +590,7 @@ class device_info
                 $("<li>").append($("<a>").attr("href", "#mdcds").text("MD data store")),
                 $("<li>").append($("<a>").attr("href", "#livestatus").text("Livestatus")),
                 $("<li>").append($("<a>").attr("href", "#monconfig").text("MonConfig")),
+                $("<li>").append($("<a>").attr("href", "#rrd").text("Graphs")),
             )
         )
         @dev_div = dev_div
@@ -602,6 +603,7 @@ class device_info
         tabs_div.append(@mdcds_div(dev_xml))
         tabs_div.append(@livestatus_div(dev_xml))
         tabs_div.append(@monconfig_div(dev_xml))
+        tabs_div.append(@rrd_div(dev_xml))
         tabs_div.tabs(
             activate : @activate_tab
         )
@@ -618,6 +620,10 @@ class device_info
             if not ui.newPanel.html()
                 # lazy load config
                 @init_monconfig(ui.newPanel)
+        else if ui.newTab.text() == "Graphs"
+            if not ui.newPanel.html()
+                # lazy load config
+                @init_rrd(ui.newPanel)
     init_livestatus: (top_div) =>
         table_div = $("<div>").attr("id", "livestatus")
         @livestatus_div = table_div
@@ -740,6 +746,57 @@ class device_info
                         @monconfig_div.append(sub_div)
                     @monconfig_div.tabs()
                         
+    init_rrd: (top_div) =>
+        rrd_div = $("<div>").attr("id", "rrd")
+        @rrd_div = rrd_div
+        top_div.append(@rrd_div)
+        @update_rrd()
+    update_rrd: () =>
+        $.ajax
+            url  : "{% url 'rrd:device_rrds' %}"
+            data : {
+                "pk" : @resp_xml.find("device").attr("pk")
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @vector = $(xml).find("machine_vector")
+                    if @vector.length
+                        @rrd_div.dynatree
+                            autoFocus : false
+                            checkbox  : true
+                            clickFolderMode : 2
+                            #onExpand : (flag, dtnode) =>
+                            #    dtnode.toggleSelect()
+                            onClick : (dtnode, event) =>
+                                #console.log dtnode.data.key, event.type
+                                #dtnode.toggleSelect()
+                        root_node = @rrd_div.dynatree("getRoot")
+                        @build_rrd_node(root_node, @vector)
+                    else
+                        @rrd_div.append($("<h2>").text("No graphs found"))
+    build_rrd_node: (dt_node, db_node) =>
+        if db_node.prop("tagName") == "machine_vector"
+            title_str = "vector"
+            expand_flag = true
+            hide_cb     = true
+        else if db_node.prop("tagName") == "entry"
+            title_str = db_node.attr("part")
+            expand_flag = false
+            hide_cb     = true
+        else
+            title_str = db_node.attr("info")
+            expand_flag = false
+            hide_cb     = false
+        new_node = dt_node.addChild(
+            title        : title_str
+            expand       : expand_flag
+            #key          : db_node.attr("pk")
+            hideCheckbox : hide_cb
+            isFolder     : hide_cb
+            #select       : selected
+        )
+        db_node.find("> *").each (idx, sub_node) =>
+            @build_rrd_node(new_node, $(sub_node))
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")
@@ -784,12 +841,13 @@ class device_info
         return conf_div
     livestatus_div: (dev_xml) =>
         # configuration div
-        livestat_div = $("<div>").attr("id", "livestatus")
-        return livestat_div
+        return $("<div>").attr("id", "livestatus")
     monconfig_div: (dev_xml) =>
         # monitoring config div
-        livestat_div = $("<div>").attr("id", "monconfig")
-        return livestat_div
+        return $("<div>").attr("id", "monconfig")
+    rrd_div: (dev_xml) =>
+        # rrd div
+        return $("<div>").attr("id", "rrd")
     disk_div: (dev_xml) =>
         # disk div
         disk_div = $("<div>").attr("id", "disk")
