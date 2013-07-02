@@ -15,6 +15,7 @@ export SYSTEMD_NO_WRAP="1"
 
 COLLECTD_BIN=/opt/cluster/sbin/collectd
 COLLECTD_OPTS=""
+SOCK_NAME=/var/run/collectd-unixsock
 
 test -x $COLLECTD_BIN || {
     echo "$COLLECTD_BIN not installed"; 
@@ -51,6 +52,7 @@ rc_reset
 
 case "$1" in
     start)
+	rm -f ${SOCK_NAME}
         echo -n "Starting collectd "
         if [ "${RH}" = "1" ] ; then
             daemon $COLLECTD_BIN ${COLLECTD_OPTS}
@@ -75,6 +77,7 @@ case "$1" in
             killproc $COLLECTD_BIN ; killproc $COLLECTD_BIN
         fi
     
+	rm -f ${SOCK_NAME}
         rc_status -v
         ;;
     restart)
