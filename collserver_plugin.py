@@ -45,18 +45,26 @@ class host_info(object):
         new_keys = set(self.__dict.keys())
         c_keys = old_keys ^ new_keys
         if c_keys:
+            del_keys = old_keys - new_keys
+            for del_key in del_keys:
+                del self.__dict[del_key]
             collectd.warning("%s changed for %s" % (logging_tools.get_plural("key", len(c_keys)), self.name))
             return True
         else:
             return False
     def transform(self, key, value):
-        try:
-            return (
-                self.__dict[key].sane_name,
-                self.__dict[key].transform(value),
-            )
-        except:
-            return ("none", 0.)
+        if key in self.__dict:
+            try:
+                return (
+                    self.__dict[key].sane_name,
+                    self.__dict[key].transform(value),
+                )
+            except:
+                collectd.error("error transforming %s: %s" % (key, process_tools.get_except_info()))
+                return (None, None)
+        else:
+            # key not known, skip
+            return (None, None)
     def get_values(self, _xml, simple):
         if simple:
             tag_name, name_name, value_name = ("m", "n", "v")
@@ -220,8 +228,10 @@ class receiver(object):
         #vl.time = time_recv
         #vl.type = "icval"
         for name, value in values:
-            vl.type_instance = name
-            vl.dispatch(values=[value])
+            # name can be none for values with transform problems
+            if name:
+                vl.type_instance = name
+                vl.dispatch(values=[value])
         
 #== Our Own Functions go here: ==#
 def configer(ObjConfiguration):

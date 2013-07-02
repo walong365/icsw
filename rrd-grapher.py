@@ -28,6 +28,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.conf import settings
 
+import re
 import time
 import getopt
 import socket
@@ -35,6 +36,7 @@ import colorsys
 import pprint
 import zmq
 from lxml import etree
+from lxml.builder import E
 
 #import rrdtool
 #import configfile
@@ -47,131 +49,15 @@ import cluster_location
 import uuid_tools
 import configfile
 from django.db import connection, connections
+from django.db.models import Q
 try:
     from rrd_grapher.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
+from initat.cluster.backbone.models import device
 
 SERVER_COM_PORT = 8003
-
-class logging_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config):
-        self.__sep_str = "-" * 50
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        self.__machlogs, self.__glob_log, self.__glob_cache = ({}, None, [])
-        threading_tools.thread_obj.__init__(self, "logging", queue_size=500, priority=10)
-        self.register_func("log", self._log)
-        self.register_func("mach_log", self._mach_log)
-        self.register_func("set_queue_dict", self._set_queue_dict)
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-        root = self.__glob_config["LOG_DIR"]
-        if not os.path.exists(root):
-            os.makedirs(root)
-        glog_name = "%s/log" % (root)
-        self.__glob_log = logging_tools.logfile(glog_name)
-        self.__glob_log.write(self.__sep_str)
-        self.__glob_log.write("Opening log")
-    def _set_queue_dict(self, q_dict):
-        self.__queue_dict = q_dict
-    def loop_end(self):
-        for mach in self.__machlogs.keys():
-            self.__machlogs[mach].write("Closing log")
-            self.__machlogs[mach].close()
-        self.__glob_log.write("Closed %s" % (logging_tools.get_plural("machine log", len(self.__machlogs.keys()))))
-        self.__glob_log.write("Closing log")
-        self.__glob_log.write("logging thread exiting (pid %d)" % (self.pid))
-        self.send_pool_message(("remove_pid", (self.name, self.pid)))
-        self.__glob_log.close()
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self._mach_log((self.name, what, lev, ""))
-    def _log(self, (s_thread, what, lev)):
-        self._mach_log((s_thread, what, lev, ""))
-    def _mach_log(self, (s_thread, what, lev, mach)):
-        if mach == "":
-            handle, pre_str = (self.__glob_log, "")
-        else:
-            handle, pre_str = self._get_handle(mach)
-        if handle is None:
-            self.__glob_cache.append((s_thread, what, lev, mach))
-        else:
-            log_act = []
-            if self.__glob_cache:
-                for c_s_thread, c_what, c_lev, c_mach in self.__glob_cache:
-                    c_handle, c_pre_str = self._get_handle(c_mach)
-                    self._handle_log(c_handle, c_s_thread, c_pre_str, c_what, c_lev, c_mach)
-                self.__glob_cache = []
-            self._handle_log(handle, s_thread, pre_str, what, lev, mach)
-    def _handle_log(self, handle, s_thread, pre_str, what, lev, mach):
-        handle.write("%-5s(%s) : %s%s" % (logging_tools.get_log_level_str(lev),
-                                          s_thread,
-                                          pre_str,
-                                          what))
-    def _get_handle(self, name):
-        devname_dict = {}
-        if self.__machlogs.has_key(name):
-            handle, pre_str = (self.__machlogs[name], "")
-        else:
-            handle, pre_str = (self.__glob_log, "device %s: " % (name))
-        return (handle, pre_str)
         
-class command_thread(threading_tools.thread_obj):
-    def __init__(self, glob_config, loc_config, db_con, log_queue):
-        self.__db_con = db_con
-        self.__log_queue = log_queue
-        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-        threading_tools.thread_obj.__init__(self, "command", queue_size=100)
-        self.register_func("set_queue_dict", self._set_queue_dict)
-        self.register_func("com_con", self._com_con)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__log_queue.put(("log", (self.name, what, lev)))
-    def thread_running(self):
-        self.send_pool_message(("new_pid", (self.name, self.pid)))
-    def loop_end(self):
-        self.send_pool_message(("remove_pid", (self.name, self.pid)))
-    def _set_queue_dict(self, q_dict):
-        self.__queue_dict = q_dict
-    def _com_con(self, tcp_obj):
-        in_data = tcp_obj.get_decoded_in_str()
-        try:
-            server_com = server_command.server_command(in_data)
-        except:
-            tcp_obj.add_to_out_buffer("error no valid server_command")
-            self.log("Got invalid data from host %s (port %d): %s" % (tcp_obj.get_src_host(),
-                                                                      tcp_obj.get_src_port(),
-                                                                      in_data[0:20]),
-                     logging_tools.LOG_LEVEL_WARN)
-        else:
-            srv_com_name = server_com.get_command()
-            call_func = {"status"                : self._status,
-                         "report_lmma"           : self._report_latest_max_min_average,
-                         "draw_graphs"           : self._draw_graphs}.get(srv_com_name, None)
-            if call_func:
-                call_func(tcp_obj, server_com)
-            else:
-                self.log("Got unknown server_command '%s' from host %s (port %d)" % (srv_com_name,
-                                                                                     tcp_obj.get_src_host(),
-                                                                                     tcp_obj.get_src_port()),
-                         logging_tools.LOG_LEVEL_WARN)
-                res_str = "unknown command %s" % (srv_com_name)
-                tcp_obj.add_to_out_buffer(server_command.server_reply(state=server_command.SRV_REPLY_STATE_ERROR, result=res_str),
-                                          res_str)
-    def _status(self, tcp_obj, s_com):
-        tp = self.get_thread_pool()
-        num_threads, num_ok = (tp.num_threads(False),
-                               tp.num_threads_running(False))
-        if num_ok == num_threads:
-            ret_str = "OK: all %d threads running, version %s" % (num_ok, self.__loc_config["VERSION_STRING"])
-        else:
-            ret_str = "ERROR: only %d of %d threads running, version %s" % (num_ok, num_threads, self.__loc_config["VERSION_STRING"])
-        server_reply = server_command.server_reply()
-        server_reply.set_ok_result(ret_str)
-        tcp_obj.add_to_out_buffer(server_reply, "status")
-    def _report_latest_max_min_average(self, tcp_obj, s_com):
-        self.__queue_dict["report_queue"].put(("report_latest_max_min_average", (s_com, tcp_obj)))
-    def _draw_graphs(self, tcp_obj, s_com):
-        self.__queue_dict["report_queue"].put(("draw_graphs", (s_com, tcp_obj)))
-
 class report_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, loc_config, db_con, log_queue):
         self.__db_con = db_con
@@ -556,129 +442,141 @@ class report_thread(threading_tools.thread_obj):
                       "GPRINT:%s:total %%6.1lf%%s\l" % (report_names["total"])])
         return ret_f
 
-class server_thread_pool(threading_tools.thread_pool):
-    def __init__(self, db_con, g_config, loc_config):
-        self.__log_cache, self.__log_queue = ([], None)
-        self.__db_con = db_con
-        self.__glob_config, self.__loc_config = (g_config, loc_config)
-        threading_tools.thread_pool.__init__(self, "main", blocking_loop=False)
-        self.__msi_block = self._init_msi_block()
-        self.register_func("new_pid", self._new_pid)
-        self.register_func("remove_pid", self._remove_pid)
-        self.register_exception("int_error", self._int_error)
-        self.register_exception("term_error", self._int_error)
-        self.__log_queue = self.add_thread(logging_thread(self.__glob_config, self.__loc_config), start_thread=True).get_thread_queue()
-        #self.register_exception("hup_error", self._hup_error)
-        # log config
-        self._log_config()
-        # prepare directories
-        #self._prepare_directories()
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        # re-insert config
-        self._re_insert_config(dc)
-        self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=self.__loc_config["VERBOSE"] > 1)
-        self.__com_queue    = self.add_thread(command_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__report_queue = self.add_thread(report_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__queue_dict = {"log_queue"         : self.__log_queue,
-                             "command_queue"     : self.__com_queue,
-                             "report_queue"      : self.__report_queue}
-        self.__log_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__com_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__report_queue.put(("set_queue_dict", self.__queue_dict))
-        dc.release()
-        # uuid log
-        my_uuid = uuid_tools.get_uuid()
-        self.log("cluster_device_uuid is '%s'" % (my_uuid.get_urn()))
-        self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_command_con, port=self.__glob_config["COMMAND_PORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=60))
-    def _int_error(self, err_cause):
-        if self["exit_requested"]:
-            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
-        else:
-            self.log("exit requested", logging_tools.LOG_LEVEL_WARN)
-            self["exit_requested"] = True
-            try:
-                file(self.__loc_config["LOCK_FILE_NAME"], "w").write("init shutdown")
-            except:
-                self.log("error writing to %s: %s" % (self.__loc_config["LOCK_FILE_NAME"],
-                                                      process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            self.__ns.set_timeout(1)
-    def _new_pid(self, (thread_name, new_pid)):
-        self.log("received new_pid message from thread %s" % (thread_name))
-        process_tools.append_pids(self.__loc_config["PID_NAME"], new_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(new_pid)
-            self.__msi_block.save_block()
-    def _remove_pid(self, (thread_name, rem_pid)):
-        self.log("received remove_pid message from thread %s" % (thread_name))
-        process_tools.remove_pids(self.__loc_config["PID_NAME"], rem_pid)
-        if self.__msi_block:
-            self.__msi_block.remove_actual_pid(rem_pid)
-            self.__msi_block.save_block()
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in self.__glob_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = self.__glob_config.get_config_info()
-        self.log("Found %d valid global config-lines:" % (len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : %s" % (conf))
-        conf_info = self.__loc_config.get_config_info()
-        self.log("Found %d valid local config-lines:" % (len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : %s" % (conf))
-    def _re_insert_config(self, dc):
-        self.log("re-insert config")
-        configfile.write_config(dc, CAP_NAME, self.__glob_config)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_queue:
-            if self.__log_cache:
-                for c_what, c_lev in self.__log_cache:
-                    self.__log_queue.put(("log", (self.name, "(delayed) %s" % (c_what), c_lev)))
-                self.__log_cache = []
-            self.__log_queue.put(("log", (self.name, what, lev)))
-        else:
-            self.__log_cache.append((what, lev))
-    def _init_msi_block(self):
-        process_tools.save_pid(self.__loc_config["PID_NAME"])
-        if self.__loc_config["DAEMON"]:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info(PROG_NAME)
-            msi_block.add_actual_pid()
-            msi_block.start_command = "/etc/init.d/%s start" % (PROG_NAME)
-            msi_block.stop_command = "/etc/init.d/%s force-stop" % (PROG_NAME)
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
-        return msi_block
-    def _new_tcp_command_con(self, sock, src):
-        self.log("got command from host %s, port %d" % (src[0], src[1]))
-        return new_tcp_con("com", "tcp", None, src, self.__com_queue, self.__log_queue)
-    def _bind_state_call(self, **args):
-        if args["state"].count("ok"):
-            self.log("Bind to %s (type %s) sucessfull" % (args["port"], args["type"]))
-        else:
-            self.log("Bind to %s (type %s) NOT sucessfull" % (args["port"], args["type"]), logging_tools.LOG_LEVEL_CRITICAL)
-            self.log("unable to bind to all ports, exiting", logging_tools.LOG_LEVEL_ERROR)
-            self._int_error("bind problem")
-    def loop_function(self):
-        self.__ns.step()
-        if self.__loc_config["VERBOSE"] or self["exit_requested"]:
-            tqi_dict = self.get_thread_queue_info()
-            tq_names = sorted(tqi_dict.keys())
-            self.log("tqi: %s" % (", ".join(["%s: %3d of %3d" % (t_name, t_used, t_total) for (t_name, t_used, t_total) in [(t_name,
-                                                                                                                             tqi_dict[t_name][1],
-                                                                                                                             tqi_dict[t_name][0]) for t_name in tq_names] if t_used]) or "clean"))
-    def thread_loop_post(self):
-        process_tools.delete_pid(self.__loc_config["PID_NAME"])
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
+class data_store(object):
+    def __init__(self, cur_dev):
+        self.pk = cur_dev.pk
+        self.name = unicode(cur_dev.full_name)
+        # name of rrd-files on disk
+        self.store_name = ""
+        self.xml_vector = E.machine_vector()
+    def restore(self):
         try:
-            os.unlink(self.__loc_config["LOCK_FILE_NAME"])
-        except (IOError, OSError):
-            pass
-
+            self.xml_vector = etree.fromstring(file(self.data_file_name(), "r").read())
+        except:
+            self.log("cannot interpret XML: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.xml_vector = E.machine_vector()
+        else:
+            self.store_name = self.xml_vector.attrib["store_name"]
+    def feed(self, in_vector):
+        #self.xml_vector = in_vector
+        if self.store_name != in_vector.attrib["name"]:
+            self.log("changing store_name from '%s' to '%s'" % (
+                self.store_name,
+                in_vector.attrib["name"]))
+            self.store_name = in_vector.attrib["name"]
+            self.xml_vector.attrib["store_name"] = self.store_name
+        old_keys = set(self.xml_vector.xpath(".//mve/@name"))
+        rrd_dir = global_config["RRD_DIR"]
+        for entry in in_vector.findall("mve"):
+            cur_name = entry.attrib["name"]
+            cur_entry = self.xml_vector.find("mve[@name='%s']" % (cur_name))
+            if not cur_entry:
+                cur_entry = E.mve(name=cur_name, sane_name=cur_name.replace("/", "_sl_"))
+                self.xml_vector.append(cur_entry)
+            self._update_entry(cur_entry, entry, rrd_dir)
+        new_keys = set(self.xml_vector.xpath(".//mve/@name"))
+        c_keys = old_keys ^ new_keys
+        if c_keys:
+            self.log("%d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
+        else:
+            self.log("%d keys total" % (len(new_keys)))
+        self.store_info()
+    def _update_entry(self, entry, src_entry, rrd_dir):
+        for key, def_value in [
+            ("info", None),
+            ("v_type", None),
+            ("unit", "1"),
+            ("base", "1"),
+            ("factor", "1")]:
+            entry.attrib[key] = src_entry.get(key, def_value)
+        # last update time
+        entry.attrib["last_update"] = "%d" % (time.time())
+        entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "ical-%s.rrd" % (entry.attrib["sane_name"]))
+    def store_info(self):
+        file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector, pretty_print=True))
+    def data_file_name(self):
+        return os.path.join(data_store.store_dir, "%s_%d.info.xml" % (self.name, self.pk))
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        data_store.process.log("[ds %s] %s" % (
+            self.name,
+            what), log_level)
+    @staticmethod
+    def setup(srv_proc):
+        data_store.process = srv_proc
+        data_store.g_log("init")
+        # pk -> data_store
+        data_store.__devices = {}
+        data_store.store_dir = os.path.join(global_config["RRD_DIR"], "data_store")
+        if not os.path.isdir(data_store.store_dir):
+            os.mkdir(data_store.store_dir)
+        entry_re = re.compile("^(?P<full_name>.*)_(?P<pk>\d+).info.xml$")
+        for entry in os.listdir(data_store.store_dir):
+            entry_m = entry_re.match(entry)
+            if entry_m:
+                full_name, pk = (entry_m.group("full_name"), int(entry_m.group("pk")))
+                try:
+                    new_ds = data_store(device.objects.get(Q(pk=pk)))
+                    new_ds.restore()
+                except:
+                    data_store.g_log("cannot initialize data_store for %s: %s" % (
+                        full_name,
+                        process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    data_store.__devices[pk] = new_ds
+                    data_store.g_log("recovered info for %s from disk" % (full_name))
+    @staticmethod
+    def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+        data_store.process.log("[ds] %s" % (what), log_level)
+    @staticmethod
+    def feed_vector(in_vector):
+        #print in_vector, type(in_vector), etree.tostring(in_vector, pretty_print=True)
+        # at first check for uuid
+        match_dev = None
+        if "uuid" in in_vector.attrib:
+            uuid = in_vector.attrib["uuid"]
+            try:
+                match_dev = device.objects.get(Q(uuid=uuid))
+            except device.DoesNotExist:
+                pass
+            else:
+                match_mode = "uuid"
+        if match_dev is None and "name" in in_vector.attrib:
+            name = in_vector.attrib["name"]
+            if name.count("."):
+                full_name, short_name, dom_name = (name, name.split(".")[0], name.split(".", 1)[1])
+            else:
+                full_name, short_name, dom_name = (None, name, None)
+            if full_name:
+                # try according to full_name
+                try:
+                    match_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node__full_name=dom_name))
+                except device.DoesNotExist:
+                    pass
+                else:
+                    match_mode = "fqdn"
+            if match_dev is None:
+                try:
+                    match_dev = device.objects.get(Q(name=short_name))
+                except device.DoesNotExist:
+                    pass
+                except device.MultipleObjectsReturned:
+                    pass
+                else:
+                    match_mode = "name"
+        if match_dev:
+            data_store.g_log("found device %s (%s)" % (unicode(match_dev), match_mode))
+            if "name" in in_vector.attrib:
+                if match_dev.pk not in data_store.__devices:
+                    data_store.__devices[match_dev.pk] = data_store(match_dev)
+                data_store.__devices[match_dev.pk].feed(in_vector)
+            else:
+                data_store.g_log("no name in vector for %s, discarding" % (unicode(match_dev)), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            data_store.g_log("no device found (%s: %s)" % (
+                logging_tools.get_plural("key", len(in_vector.attrib)),
+                ", ".join(["%s=%s" % (key, str(value)) for key, value in in_vector.attrib.iteritems()])
+            ), logging_tools.LOG_LEVEL_ERROR)
+        
 class server_process(threading_tools.process_pool):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
@@ -700,6 +598,7 @@ class server_process(threading_tools.process_pool):
         self.register_exception("hup_error", self._hup_error)
         self._log_config()
         self._init_network_sockets()
+        data_store.setup(self)
     def _log_config(self):
         self.log("Config info:")	
         for line, log_level in global_config.get_log(clear=True):
@@ -770,9 +669,8 @@ class server_process(threading_tools.process_pool):
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.com_socket = client
     def _interpret_mv_info(self, in_vector):
-        print in_vector, type(in_vector), etree.tostring(in_vector, pretty_print=True)
+        data_store.feed_vector(in_vector[0])
     def _recv_command(self, zmq_sock):
-        print "Recv"
         in_data = []
         while True:
             in_data.append(zmq_sock.recv())
@@ -803,8 +701,12 @@ class server_process(threading_tools.process_pool):
                 if send_return:
                     srv_com["result"] = None
                     # blabla
-                    srv_com["result"].attrib.update({"reply" : "ok processed command %s" % (cur_com),
-                                                     "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                    srv_com["result"].attrib.update(
+                        {
+                            "reply" : "ok processed command %s" % (cur_com),
+                            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)
+                        }
+                    )
                     self.com_socket.send_unicode(src_id, zmq.SNDMORE)
                     self.com_socket.send_unicode(unicode(srv_com))
                 else:
@@ -846,6 +748,7 @@ def main():
                                                                    prog_name))),
         ("COM_PORT"            , configfile.int_c_var(SERVER_COM_PORT)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("RRD_DIR"             , configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc")),
     ])
     global_config.parse_file()
     options = global_config.handle_commandline(

@@ -72,7 +72,7 @@ case "$1" in
                 rc_failed
             fi
         else
-            killproc $COLLECTD_BIN
+            killproc $COLLECTD_BIN ; killproc $COLLECTD_BIN
         fi
     
         rc_status -v
