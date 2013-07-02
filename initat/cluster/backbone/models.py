@@ -412,8 +412,8 @@ class device(models.Model):
     # deprecated
     device_location = models.ForeignKey("device_location", null=True)
     #device_class = models.ForeignKey("device_class")
-    rrd_class = models.ForeignKey("rrd_class", null=True)
-    save_rrd_vectors = models.BooleanField()
+    #rrd_class = models.ForeignKey("rrd_class", null=True)
+    #save_rrd_vectors = models.BooleanField()
     etherboot_valid = models.BooleanField(default=False)
     kernel_append = models.CharField(max_length=384, blank=True)
     newkernel = models.CharField(max_length=192, blank=True)
@@ -2319,23 +2319,23 @@ def config_post_save(sender, **kwargs):
     #class Meta:
         #db_table = u'new_config_type'
 
-class new_rrd_data(models.Model):
-    idx = models.AutoField(db_column="new_rrd_data_idx", primary_key=True)
-    device = models.ForeignKey("device", null=True, blank=True)
-    descr = models.CharField(max_length=765, blank=True)
-    descr1 = models.CharField(max_length=192, blank=True)
-    descr2 = models.CharField(max_length=192, blank=True)
-    descr3 = models.CharField(max_length=192, blank=True)
-    descr4 = models.CharField(max_length=192, blank=True)
-    unit = models.CharField(max_length=96, blank=True)
-    info = models.CharField(max_length=255, blank=True)
-    from_snmp = models.IntegerField(null=True, blank=True)
-    base = models.IntegerField(null=True, blank=True)
-    factor = models.FloatField(null=True, blank=True)
-    var_type = models.CharField(max_length=3, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'new_rrd_data'
+##class new_rrd_data(models.Model):
+##    idx = models.AutoField(db_column="new_rrd_data_idx", primary_key=True)
+##    device = models.ForeignKey("device", null=True, blank=True)
+##    descr = models.CharField(max_length=765, blank=True)
+##    descr1 = models.CharField(max_length=192, blank=True)
+##    descr2 = models.CharField(max_length=192, blank=True)
+##    descr3 = models.CharField(max_length=192, blank=True)
+##    descr4 = models.CharField(max_length=192, blank=True)
+##    unit = models.CharField(max_length=96, blank=True)
+##    info = models.CharField(max_length=255, blank=True)
+##    from_snmp = models.IntegerField(null=True, blank=True)
+##    base = models.IntegerField(null=True, blank=True)
+##    factor = models.FloatField(null=True, blank=True)
+##    var_type = models.CharField(max_length=3, blank=True)
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'new_rrd_data'
 
 class mon_host_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -3185,109 +3185,109 @@ def peer_information_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         mark_routing_dirty()
 
-class pi_connection(models.Model):
-    idx = models.AutoField(db_column="pi_connection_idx", primary_key=True)
-    package = models.ForeignKey("package")
-    image = models.ForeignKey("image")
-    install_time = models.IntegerField()
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'pi_connection'
+##class pi_connection(models.Model):
+##    idx = models.AutoField(db_column="pi_connection_idx", primary_key=True)
+##    package = models.ForeignKey("package")
+##    image = models.ForeignKey("image")
+##    install_time = models.IntegerField()
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'pi_connection'
 
-class rrd_class(models.Model):
-    idx = models.AutoField(db_column="rrd_class_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=255)
-    step = models.IntegerField(default=30)
-    heartbeat = models.IntegerField(default=60)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'rrd_class'
-    def get_xml(self):
-        return E.rrd_class(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="rrdc__%d" % (self.pk),
-            name=self.name,
-            step="%d" % (self.step),
-            heartbeat="%d" % (self.heartbeat),
-        )
-    def __unicode__(self):
-        return self.name
-
-@receiver(signals.pre_save, sender=rrd_class)
-def rrd_class_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
-        _check_integer(cur_inst, "step")
-        _check_integer(cur_inst, "heartbeat")
-
-class rrd_data(models.Model):
-    idx = models.AutoField(db_column="rrd_data_idx", primary_key=True)
-    rrd_set = models.ForeignKey("rrd_set")
-    descr = models.CharField(max_length=765)
-    descr1 = models.CharField(max_length=189)
-    descr2 = models.CharField(max_length=189, blank=True)
-    descr3 = models.CharField(max_length=189, blank=True)
-    descr4 = models.CharField(max_length=189, blank=True)
-    unit = models.CharField(max_length=96, blank=True)
-    info = models.CharField(max_length=255, blank=True)
-    from_snmp = models.BooleanField()
-    base = models.IntegerField(null=True, blank=True)
-    factor = models.FloatField(null=True, blank=True)
-    var_type = models.CharField(max_length=3, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'rrd_data'
-
-class rrd_data_store(models.Model):
-    idx = models.AutoField(db_column="rrd_data_store_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    recv_time = models.IntegerField()
-    data = models.TextField()
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'rrd_data_store'
-
-class rrd_rra(models.Model):
-    idx = models.AutoField(db_column="rrd_rra_idx", primary_key=True)
-    rrd_class = models.ForeignKey("rrd_class")
-    cf = models.CharField(max_length=192, choices=[(val, val) for val in ALLOWED_CFS])
-    steps = models.IntegerField(default=30)
-    rows = models.IntegerField(default=2000)
-    xff = models.FloatField(default=0.1)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'rrd_rra'
-    def get_xml(self):
-        return E.rrd_rra(
-            unicode(self),
-            pk="%d" % (self.idx),
-            key="rrdrra_%d" % (self.idx),
-            rrd_class="%d" % (self.rrd_class_id),
-            cf=self.cf,
-            steps="%d" % (self.steps),
-            rows="%d" % (self.rows),
-            xff="%.2f" % (self.xff),
-        )
-    def __unicode__(self):
-        return "%s:%d:%d:%.2f" % (self.cf, self.steps, self.rows, self.xff)
-
-@receiver(signals.pre_save, sender=rrd_rra)
-def rrd_rra_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "cf")
-        _check_integer(cur_inst, "steps", min_val=1, max_val=3600)
-        _check_integer(cur_inst, "rows", min_val=30, max_val=12000)
-
-class rrd_set(models.Model):
-    idx = models.AutoField(db_column="rrd_set_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    filename = models.CharField(max_length=765, blank=True, null=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'rrd_set'
+##class rrd_class(models.Model):
+##    idx = models.AutoField(db_column="rrd_class_idx", primary_key=True)
+##    name = models.CharField(unique=True, max_length=255)
+##    step = models.IntegerField(default=30)
+##    heartbeat = models.IntegerField(default=60)
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'rrd_class'
+##    def get_xml(self):
+##        return E.rrd_class(
+##            unicode(self),
+##            pk="%d" % (self.pk),
+##            key="rrdc__%d" % (self.pk),
+##            name=self.name,
+##            step="%d" % (self.step),
+##            heartbeat="%d" % (self.heartbeat),
+##        )
+##    def __unicode__(self):
+##        return self.name
+##
+##@receiver(signals.pre_save, sender=rrd_class)
+##def rrd_class_pre_save(sender, **kwargs):
+##    if "instance" in kwargs:
+##        cur_inst = kwargs["instance"]
+##        _check_empty_string(cur_inst, "name")
+##        _check_integer(cur_inst, "step")
+##        _check_integer(cur_inst, "heartbeat")
+##
+##class rrd_data(models.Model):
+##    idx = models.AutoField(db_column="rrd_data_idx", primary_key=True)
+##    rrd_set = models.ForeignKey("rrd_set")
+##    descr = models.CharField(max_length=765)
+##    descr1 = models.CharField(max_length=189)
+##    descr2 = models.CharField(max_length=189, blank=True)
+##    descr3 = models.CharField(max_length=189, blank=True)
+##    descr4 = models.CharField(max_length=189, blank=True)
+##    unit = models.CharField(max_length=96, blank=True)
+##    info = models.CharField(max_length=255, blank=True)
+##    from_snmp = models.BooleanField()
+##    base = models.IntegerField(null=True, blank=True)
+##    factor = models.FloatField(null=True, blank=True)
+##    var_type = models.CharField(max_length=3, blank=True)
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'rrd_data'
+##
+##class rrd_data_store(models.Model):
+##    idx = models.AutoField(db_column="rrd_data_store_idx", primary_key=True)
+##    device = models.ForeignKey("device")
+##    recv_time = models.IntegerField()
+##    data = models.TextField()
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'rrd_data_store'
+##
+##class rrd_rra(models.Model):
+##    idx = models.AutoField(db_column="rrd_rra_idx", primary_key=True)
+##    rrd_class = models.ForeignKey("rrd_class")
+##    cf = models.CharField(max_length=192, choices=[(val, val) for val in ALLOWED_CFS])
+##    steps = models.IntegerField(default=30)
+##    rows = models.IntegerField(default=2000)
+##    xff = models.FloatField(default=0.1)
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'rrd_rra'
+##    def get_xml(self):
+##        return E.rrd_rra(
+##            unicode(self),
+##            pk="%d" % (self.idx),
+##            key="rrdrra_%d" % (self.idx),
+##            rrd_class="%d" % (self.rrd_class_id),
+##            cf=self.cf,
+##            steps="%d" % (self.steps),
+##            rows="%d" % (self.rows),
+##            xff="%.2f" % (self.xff),
+##        )
+##    def __unicode__(self):
+##        return "%s:%d:%d:%.2f" % (self.cf, self.steps, self.rows, self.xff)
+##
+##@receiver(signals.pre_save, sender=rrd_rra)
+##def rrd_rra_pre_save(sender, **kwargs):
+##    if "instance" in kwargs:
+##        cur_inst = kwargs["instance"]
+##        _check_empty_string(cur_inst, "cf")
+##        _check_integer(cur_inst, "steps", min_val=1, max_val=3600)
+##        _check_integer(cur_inst, "rows", min_val=30, max_val=12000)
+##
+##class rrd_set(models.Model):
+##    idx = models.AutoField(db_column="rrd_set_idx", primary_key=True)
+##    device = models.ForeignKey("device")
+##    filename = models.CharField(max_length=765, blank=True, null=True)
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'rrd_set'
 
 class session_data(models.Model):
     idx = models.AutoField(db_column="session_data_idx", primary_key=True)
@@ -4328,8 +4328,8 @@ KPMC_MAP = {
     "group"        : group,
     "dv"           : device_variable,
     "ptable"       : partition_table,
-    "rrdc"         : rrd_class,
-    "rrdrra"       : rrd_rra,
+    #"rrdc"         : rrd_class,
+    #"rrdrra"       : rrd_rra,
     "lvm_vg"       : lvm_vg,
     "lvm_lv"       : lvm_lv,
     "package_repo" : package_repo,
