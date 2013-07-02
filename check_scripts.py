@@ -83,9 +83,7 @@ def check_system(opt_ns):
             "logcheck-server",
             "package-server",
             "mother",
-            #"rrd-server-collector",
-            #"rrd-server-writer",
-            #"rrd-server-grapher",
+            "rrd-grapher",
             "sge-server",
             "cluster-server",
             "cluster-config-server",
@@ -131,9 +129,7 @@ def check_system(opt_ns):
             "host-monitoring"      : "collserver/collserver.pid",
             "logging-server"       : "logserver/logserver.pid",
             "meta-server"          : "meta-server.pid",
-            "rrd-server-collector" : "rrd-server/rrd-server-collector.pid",
-            "rrd-server-writer"    : "rrd-server/rrd-server-writer.pid",
-            "rrd-server-grapher"   : "rrd-server/rrd-server-grapher.pid",
+            "rrd-grapher"          : "rrd-grapher/rrd-grapher.pid",
             "host-relay"           : "collrelay/collrelay.pid",
             #"xen-server"           : "xen-server.pid",
             "cluster-server"       : "cluster-server.pid",
@@ -150,6 +146,7 @@ def check_system(opt_ns):
             "monitoring"            : "monitor_server",
             "md-config-server"      : "monitor_server",
             "cransys"               : "cransys_server",
+            "rrd-grapher"           : "rrd_server",
             "ansys"                 : "ansys_server"}
         # server-type to runlevel-name mapping
         runlevel_map = {
