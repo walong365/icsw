@@ -172,7 +172,8 @@ class net_receiver(multiprocessing.Process):
             simple, host_name, host_uuid, recv_time = (
                 _xml.attrib["simple"] == "1",
                 _xml.attrib["name"],
-                _xml.attrib["uuid"],
+                # if uuid is not set use name as uuid (will not be sent to the grapher)
+                _xml.attrib.get("uuid", _xml.attrib.get("name")),
                 float(_xml.attrib["time"]),
             )
             self.__distinct_hosts.add(host_uuid)
