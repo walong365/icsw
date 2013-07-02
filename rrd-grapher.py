@@ -35,6 +35,7 @@ import socket
 import colorsys
 import pprint
 import zmq
+import copy
 from lxml import etree
 from lxml.builder import E
 
@@ -471,7 +472,11 @@ class data_store(object):
             cur_name = entry.attrib["name"]
             cur_entry = self.xml_vector.find("mve[@name='%s']" % (cur_name))
             if not cur_entry:
-                cur_entry = E.mve(name=cur_name, sane_name=cur_name.replace("/", "_sl_"))
+                cur_entry = E.mve(
+                    name=cur_name,
+                    sane_name=cur_name.replace("/", "_sl_"),
+                    init_time="%d" % (time.time()),
+                )
                 self.xml_vector.append(cur_entry)
             self._update_entry(cur_entry, entry, rrd_dir)
         new_keys = set(self.xml_vector.xpath(".//mve/@name"))
@@ -500,6 +505,46 @@ class data_store(object):
         data_store.process.log("[ds %s] %s" % (
             self.name,
             what), log_level)
+    @staticmethod
+    def has_rrd_xml(dev_pk):
+        return dev_pk in data_store.__devices
+    def struct_xml_vector(self):
+        cur_xml = self.xml_vector
+        all_keys = set(cur_xml.xpath(".//mve/@name"))
+        xml_vect, lu_dict = (E.machine_vector(), {})
+        for key in sorted(all_keys):
+            parts = key.split(".")
+            s_dict, s_xml = (lu_dict, xml_vect)
+            for part in parts:
+                if part not in s_dict:
+                    new_el = E.entry(part=part)
+                    s_xml.append(new_el)
+                    s_dict[part] = (new_el, {})
+                s_xml, s_dict = s_dict[part]
+            add_entry = copy.deepcopy(cur_xml.find(".//mve[@name='%s']" % (key)))
+            if "info" in add_entry.attrib:
+                add_entry.attrib["info"] = self._expand_info(add_entry)
+            s_xml.append(add_entry)
+        # remove structural entries with only one mve-child
+        for struct_ent in xml_vect.xpath(".//entry[not(entry)]"):
+            parent = struct_ent.getparent()
+            parent.append(struct_ent[0])
+            parent.remove(struct_ent)
+        #print etree.tostring(xml_vect, pretty_print=True)
+        return xml_vect
+    def _expand_info(self, entry):
+        info = entry.attrib["info"]
+        parts = entry.attrib["name"].split(".")
+        for idx in xrange(len(parts)):
+            info = info.replace("$%d" % (idx + 1), parts[idx])
+        return info
+    @staticmethod
+    def get_rrd_xml(dev_pk, sort=False):
+        if sort:
+            return data_store.__devices[dev_pk].struct_xml_vector()
+        else:
+            # do a deepcopy (just to be sure)
+            return copy.deepcopy(data_store.__devices[dev_pk].xml_vector)
     @staticmethod
     def setup(srv_proc):
         data_store.process = srv_proc
@@ -670,6 +715,17 @@ class server_process(threading_tools.process_pool):
             self.com_socket = client
     def _interpret_mv_info(self, in_vector):
         data_store.feed_vector(in_vector[0])
+    def _get_node_rrd(self, srv_com):
+        node_results = E.node_results()
+        for cur_dev in srv_com["device_list"][0]:
+            dev_pk = int(cur_dev.attrib["pk"])
+            cur_res = E.node_result(pk="%d" % (dev_pk))
+            if data_store.has_rrd_xml(dev_pk):
+                cur_res.append(data_store.get_rrd_xml(dev_pk, sort=True))
+            else:
+                self.log("no rrd_xml found for device %d" % (dev_pk), logging_tools.LOG_LEVEL_WARN)
+            node_results.append(cur_res)
+        srv_com["result"] = node_results
     def _recv_command(self, zmq_sock):
         in_data = []
         while True:
@@ -693,9 +749,12 @@ class server_process(threading_tools.process_pool):
                         cur_com,
                         srv_com["source"].attrib["host"]))
                 srv_com.update_source()
-                send_return = False
+                send_return = True
                 if cur_com in ["mv_info"]:
                     self._interpret_mv_info(srv_com["vector"])
+                    send_return = False
+                elif cur_com == "get_node_rrd":
+                    self._get_node_rrd(srv_com)
                 else:
                     self.log("got unknown command '%s'" % (cur_com), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:
