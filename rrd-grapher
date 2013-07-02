@@ -50,7 +50,7 @@ case "$1" in
         if [ -f ${SERVER_PID} ] ; then
             echo -n " ... already running"
         else
-            ${SERVER_BIN} ${SERVER_ARGS} -f -u ${SERVER_USER} -g ${SERVER_GROUP}
+            ${SERVER_BIN} ${SERVER_ARGS}
         fi
         rc_status -v
         ;;

@@ -631,12 +631,12 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("rrd-grapher")
             msi_block.add_actual_pid(mult=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
             msi_block.start_command = "/etc/init.d/rrd-grapher start"
             msi_block.stop_command  = "/etc/init.d/rrd-grapher force-stop"
             msi_block.kill_pids = True
