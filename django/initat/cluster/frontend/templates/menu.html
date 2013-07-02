@@ -84,14 +84,6 @@
         </ul>
     </li>
     {% endif %}
-    {% if settings.CLUSTER_LICENSE.rrd %}
-    <li>
-        <a>{% trans "RRD" %}</a>
-        <ul>
-            <li><a href="{% url 'rrd:class_overview' %}">{% trans "RRD Classes" %}</a></li>
-        </ul>
-    </li>
-    {% endif %}
     {% if settings.CLUSTER_LICENSE.rest %}
     <li>
         <a>{% trans "REST" %}</a>
