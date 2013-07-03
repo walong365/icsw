@@ -223,7 +223,6 @@ class receiver(object):
         self.lock.release()
     def _handle_tree(self, data):
         host_name, time_recv, values = data
-        vl = collectd.Values(plugin="collserver", host=host_name, time=time_recv, type="icval")
         #vl.plugin = "collserver"
         #vl.host = host_name
         #vl.time = time_recv
@@ -231,7 +230,7 @@ class receiver(object):
         for name, value in values:
             # name can be none for values with transform problems
             if name:
-                vl.type_instance = name
+                vl = collectd.Values(plugin="collserver", host=host_name, time=time_recv, type="icval", type_instance=name)
                 vl.dispatch(values=[value])
         
 #== Our Own Functions go here: ==#
@@ -250,4 +249,5 @@ my_recv = receiver()
 
 collectd.register_config(configer)
 collectd.register_init(initer, my_recv)
-collectd.register_read(my_recv.recv, 5.0)
+# call every 15 seconds
+collectd.register_read(my_recv.recv, 15.0)

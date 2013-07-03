@@ -443,6 +443,36 @@ class report_thread(threading_tools.thread_obj):
                       "GPRINT:%s:total %%6.1lf%%s\l" % (report_names["total"])])
         return ret_f
 
+class graph_process(threading_tools.process_obj):
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+        self.register_func("graph_rrd", self._graph_rrd)
+        self.register_func("xml_info", self._xml_info)
+        self.vector_dict = {}
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def loop_post(self):
+        self._close()
+        self.__log_template.close()
+    def _close(self):
+        pass
+    def _xml_info(self, *args, **kwargs):
+        dev_id, xml_str = (args[0], etree.fromstring(args[1]))
+        self.vector_dict[dev_id] = xml_str
+    def _graph_rrd(self, *args, **kwargs):
+        src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
+        dev_pks    = [entry for entry in map(lambda x: int(x), srv_com.xpath(None, ".//device_list/device/@pk")) if entry in self.vector_dict]
+        graph_keys = srv_com.xpath(None, ".//graph_key_list/graph_key/text()")
+        self.log("found device pks: %s" % (", ".join(["%d" % (pk) for pk in dev_pks])))
+        self.log("graph keys: %s" % (", ".join(graph_keys)))
+        # test, just take first graph_key
+        graph_key = graph_keys[0]
+        dev_vector = self.vector_dict[dev_pks[0]]
+        graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
+        #if graph_mve:
+            
+        self.send_pool_message("send_command", src_id, unicode(srv_com))        
+
 class data_store(object):
     def __init__(self, cur_dev):
         self.pk = cur_dev.pk
@@ -458,6 +488,8 @@ class data_store(object):
             self.xml_vector = E.machine_vector()
         else:
             self.store_name = self.xml_vector.attrib["store_name"]
+        # send a copy to the grapher
+        self.sync_to_grapher()
     def feed(self, in_vector):
         #self.xml_vector = in_vector
         if self.store_name != in_vector.attrib["name"]:
@@ -499,6 +531,9 @@ class data_store(object):
         entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "ical-%s.rrd" % (entry.attrib["sane_name"]))
     def store_info(self):
         file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector, pretty_print=True))
+        self.sync_to_grapher()
+    def sync_to_grapher(self):
+        data_store.process.send_to_process("graph", "xml_info", self.pk, etree.tostring(self.xml_vector))
     def data_file_name(self):
         return os.path.join(data_store.store_dir, "%s_%d.info.xml" % (self.name, self.pk))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -643,6 +678,8 @@ class server_process(threading_tools.process_pool):
         self.register_exception("hup_error", self._hup_error)
         self._log_config()
         self._init_network_sockets()
+        self.add_process(graph_process("graph"), start=True)
+        self.register_func("send_command", self._send_command)
         data_store.setup(self)
     def _log_config(self):
         self.log("Config info:")	
@@ -676,12 +713,12 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("rrd-grapher")
             msi_block.add_actual_pid(mult=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/rrd-grapher start"
             msi_block.stop_command  = "/etc/init.d/rrd-grapher force-stop"
             msi_block.kill_pids = True
@@ -755,6 +792,9 @@ class server_process(threading_tools.process_pool):
                     send_return = False
                 elif cur_com == "get_node_rrd":
                     self._get_node_rrd(srv_com)
+                elif cur_com == "graph_rrd":
+                    send_return = False
+                    self.send_to_process("graph", "graph_rrd", src_id, unicode(srv_com))
                 else:
                     self.log("got unknown command '%s'" % (cur_com), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:
