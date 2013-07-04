@@ -452,7 +452,7 @@ class graph_process(threading_tools.process_obj):
         self.register_func("xml_info", self._xml_info)
         self.vector_dict = {}
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        self.rrd_root = os.path.join(settings.FILE_ROOT if not global_config["DEBUG"] else os.path.join(cur_dir, "../webfrontend/django/initat/cluster"), "graphs")
+        self.rrd_root = os.path.abspath(os.path.join(settings.FILE_ROOT if not global_config["DEBUG"] else os.path.join(cur_dir, "../webfrontend/django/initat/cluster"), "graphs"))
         self.log("rrds go into %s" % (self.rrd_root))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -470,18 +470,14 @@ class graph_process(threading_tools.process_obj):
         graph_keys = srv_com.xpath(None, ".//graph_key_list/graph_key/text()")
         self.log("found device pks: %s" % (", ".join(["%d" % (pk) for pk in dev_pks])))
         self.log("graph keys: %s" % (", ".join(graph_keys)))
-        # test, just take first graph_key
-        graph_key = graph_keys[0]
         dev_vector = self.vector_dict[dev_pks[0]]
-        graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
         graph_width, graph_height = (600, 200)
         graph_list = E.graph_list()
-        if graph_mve is not None:
-            abs_file_loc, rel_file_loc = (
-                os.path.join(self.rrd_root, "x.png"),
-                os.path.join("/%s/graphs/x.png" % (settings.REL_SITE_ROOT)),
-            )
-            args = [
+        abs_file_loc, rel_file_loc = (
+            os.path.join(self.rrd_root, "x.png"),
+            os.path.join("/%s/graphs/x.png" % (settings.REL_SITE_ROOT)),
+        )
+        rrd_args = [
                 abs_file_loc,
                 "-E",
                 "-w %d" % (graph_width),
@@ -493,10 +489,21 @@ class graph_process(threading_tools.process_obj):
                 "now",
                 "--start",
                 "end-7200",
-                "DEF:v0=%s:v:AVERAGE" % (graph_mve.attrib["file_name"]),
-                "LINE1:v0#000000"]
-            print args
-            print rrdtool.graph(*args)
+        ]
+        val_idx = 0
+        for graph_key in graph_keys:
+            graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
+            if graph_mve is not None:
+                val_idx += 1
+                val_name = "v%d" % (val_idx)
+                rrd_args.extend(
+                    [
+                        "DEF:%s=%s:v:AVERAGE" % (val_name, graph_mve.attrib["file_name"]),
+                        "LINE1:%s#000000" % (val_name),
+                    ]
+                )
+            print rrd_args
+            print rrdtool.graph(*rrd_args)
             graph_list.append(
                 E.graph(href=rel_file_loc)
             )
