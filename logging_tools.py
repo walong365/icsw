@@ -159,6 +159,8 @@ def interpret_size_str(in_str, **kwargs):
         return 0
     
 def get_diff_time_str(diff_secs):
+    if type(diff_secs) == datetime.timedelta:
+        diff_secs = diff_secs.total_seconds()
     abs_diffs = abs(diff_secs)
     is_int = type(abs_diffs) in [int, long]
     if abs_diffs < 0.1:
