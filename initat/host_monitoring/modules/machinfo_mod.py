@@ -329,7 +329,7 @@ class _general(hm_classes.hm_module):
                     mvect.register_entry("io.%s.blks.written" % (act_disk), 0 , "number of blocks written per second %s" % (info_str), "1/s")
                     mvect.register_entry("io.%s.time.read" % (act_disk)   , 0., "milliseconds spent reading %s" % (info_str)         , "s"  )
                     mvect.register_entry("io.%s.time.written" % (act_disk), 0., "milliseconds spent writing %s" % (info_str)         , "s"  )
-                    mvect.register_entry("io.%s.time.io" % (act_disk)     , 0., "milliseconds spent doing IO %s" % (info_str)        , "s"  )
+                    mvect.register_entry("io.%s.time.io" % (act_disk)     , 0., "milliseconds spent doing I/O %s" % (info_str)        , "s"  )
             for old_disk in self.disk_stat.keys():
                 if not disk_stat.has_key(old_disk):
                     mvect.unregister_entry("io.%s.blks.read" % (old_disk))
