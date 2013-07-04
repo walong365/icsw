@@ -748,8 +748,11 @@ class device_info
                         
     init_rrd: (top_div) =>
         rrd_div = $("<div>").attr("id", "rrd")
+        graph_div = $("<div>").attr("id", "graph")
         @rrd_div = rrd_div
+        @graph_div = graph_div
         top_div.append(@rrd_div)
+        top_div.append(@graph_div)
         @update_rrd()
     update_rrd: () =>
         $.ajax
@@ -810,7 +813,9 @@ class device_info
             }
             success : (xml) =>
                 if parse_xml_response(xml)
-                    console.log xml
+                    graph_result = $(xml).find("graph")
+                    @graph_div.children().remove()
+                    @graph_div.append($("<image>").attr("src", graph_result.attr("href")))
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")

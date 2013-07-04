@@ -58,13 +58,13 @@ class graph_rrds(View):
         )
         result = contact_server(request, "tcp://localhost:8003", srv_com, timeout=30)
         if result:
-            node_results = result.xpath(None, ".//node_results")
-            if len(node_results):
-                node_results = node_results[0]
-                if len(node_results):
+            graph_list = result.xpath(None, ".//graph_list")
+            if len(graph_list):
+                graph_list = graph_list[0]
+                if len(graph_list):
                     # first device
-                    node_result = node_results[0]
-                    request.xml_response["result"] = node_result
+                    res_graph = graph_list[0]
+                    request.xml_response["result"] = res_graph
                 else:
                     request.xml_response.error("no node_results", logger=logger)
             else:
