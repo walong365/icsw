@@ -618,11 +618,11 @@ class device_info
                 @init_livestatus(ui.newPanel)
         else if ui.newTab.text() == "MonConfig"
             if not ui.newPanel.html()
-                # lazy load config
+                # lazy load monconfig
                 @init_monconfig(ui.newPanel)
         else if ui.newTab.text() == "Graphs"
             if not ui.newPanel.html()
-                # lazy load config
+                # lazy load rrd
                 @init_rrd(ui.newPanel)
     init_livestatus: (top_div) =>
         table_div = $("<div>").attr("id", "livestatus")
@@ -660,7 +660,7 @@ class device_info
                         cur_res = $(cur_res)
                         diff_date = parseInt(cur_date.getTime() / 1000 - parseInt(cur_res.attr("last_check")))
                         tab_body.append(
-                            $("<tr>").addClass({"0" : "ok", "1" : "warn", "2" : "error"}[cur_res.attr("state")]).append(
+                            $("<tr>").addClass({"0" : "ok", "1" : "warn", "2" : "error", "3" : "unknown"}[cur_res.attr("state")]).append(
                                 $("<td>").text(cur_res.attr("description")),
                                 $("<td>").addClass("right").text(beautify_seconds(diff_date)),
                                 $("<td>").text(cur_res.text()),
@@ -768,7 +768,8 @@ class device_info
                             #onExpand : (flag, dtnode) =>
                             #    dtnode.toggleSelect()
                             onClick : (dtnode, event) =>
-                                #console.log dtnode.data.key, event.type
+                                if dtnode.data.key[0] != "_"
+                                    @graph_rrd(dtnode.data.key)
                                 #dtnode.toggleSelect()
                         root_node = @rrd_div.dynatree("getRoot")
                         @build_rrd_node(root_node, @vector)
@@ -777,26 +778,39 @@ class device_info
     build_rrd_node: (dt_node, db_node) =>
         if db_node.prop("tagName") == "machine_vector"
             title_str = "vector"
+            key         = ""
             expand_flag = true
             hide_cb     = true
         else if db_node.prop("tagName") == "entry"
-            title_str = db_node.attr("part")
+            title_str   = db_node.attr("part")
             expand_flag = false
+            key         = ""
             hide_cb     = true
         else
-            title_str = db_node.attr("info")
+            title_str   = db_node.attr("info")
             expand_flag = false
+            key         = db_node.attr("name")
             hide_cb     = false
         new_node = dt_node.addChild(
             title        : title_str
             expand       : expand_flag
-            #key          : db_node.attr("pk")
+            key          : key
             hideCheckbox : hide_cb
             isFolder     : hide_cb
             #select       : selected
         )
         db_node.find("> *").each (idx, sub_node) =>
             @build_rrd_node(new_node, $(sub_node))
+    graph_rrd: (rrd_key) =>
+        $.ajax
+            url  : "{% url 'rrd:graph_rrds' %}"
+            data : {
+                "key" : rrd_key
+                "pk"  : @resp_xml.find("device").attr("pk")
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    console.log xml
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")

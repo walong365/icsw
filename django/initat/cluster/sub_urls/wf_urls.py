@@ -182,7 +182,8 @@ main_patterns = patterns(
 
 rrd_patterns = patterns(
     "initat.cluster.frontend",
-    url(r"class$", rrd_views.device_rrds.as_view(), name="device_rrds"),
+    url(r"^dev_rrds$" , rrd_views.device_rrds.as_view(), name="device_rrds"),
+    url(r"^graph_rrd$", rrd_views.graph_rrds.as_view() , name="graph_rrds"),
 )
 
 if settings.CLUSTER_LICENSE["rest"]:
@@ -239,7 +240,7 @@ if settings.CLUSTER_LICENSE["rest"]:
 
 url_patterns = patterns(
     "",
-    url(r"^%s/media/frontend/(?P<path>.*)$" % (settings.REL_SITE_ROOT)    ,
+    url(r"^%s/media/frontend/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
         "django.views.static.serve", {
             "document_root" : os.path.join(settings.FILE_ROOT, "frontend", "media")
             }),
@@ -254,6 +255,10 @@ url_patterns = patterns(
     url(r"^%s/media/uni_form/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
         "django.views.static.serve", {
             "document_root" : "/opt/python-init/lib/python/site-packages/crispy_forms/static/uni_form"
+            }),
+    url(r"^%s/graphs/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
+        "django.views.static.serve", {
+            "document_root" : os.path.join(settings.FILE_ROOT, "graphs")
             }),
     url(r"^%s/" % (settings.REL_SITE_ROOT)                                , include(my_url_patterns)),
     url(r"^$", session_views.redirect_to_main.as_view()),

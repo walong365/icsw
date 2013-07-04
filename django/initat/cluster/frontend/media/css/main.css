@@ -114,13 +114,13 @@ th.rotate {
 tr.warn.even  { background-color: #ff8 !important; }
 tr.warn.odd   { background-color: #ee9 !important; }
 
-tr.warn.even > td.sorting_1 { background-color: #ffb !important; }
+tr.warn.even > td.sorting_1 { background-color: #ffa !important; }
 tr.warn.odd  > td.sorting_1 { background-color: #eea !important; }
 
 tr.error.even { background-color: #f88 !important; }
 tr.error.odd  { background-color: #e99 !important; }
 
-tr.error.even > td.sorting_1 { background-color: #fbb !important; }
+tr.error.even > td.sorting_1 { background-color: #f99 !important; }
 tr.error.odd  > td.sorting_1 { background-color: #eaa !important; }
 
 tr.ok.even    { background-color: #8f8 !important; }
@@ -128,6 +128,12 @@ tr.ok.odd     { background-color: #9e9 !important; }
 
 tr.ok.even > td.sorting_1 { background-color: #bfb !important; }
 tr.ok.odd  > td.sorting_1 { background-color: #aea !important; }
+
+tr.unknown.even { background-color: #f8f !important; }
+tr.unknown.odd  { background-color: #e9e !important; }
+
+tr.unknown.even > td.sorting_1 { background-color: #fbf !important; }
+tr.unknown.odd  > td.sorting_1 { background-color: #eae !important; }
 
 td.warn {
     background-color: #ffff88;
