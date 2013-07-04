@@ -747,8 +747,8 @@ class device_info
                     @monconfig_div.tabs()
                         
     init_rrd: (top_div) =>
-        rrd_div = $("<div>").attr("id", "rrd")
-        graph_div = $("<div>").attr("id", "graph")
+        rrd_div = $("<div>").attr("id", "rrd").addClass("leftfloat")
+        graph_div = $("<div>").attr("id", "graph").addClass("leftfloat")
         @rrd_div = rrd_div
         @graph_div = graph_div
         top_div.append(@rrd_div)
@@ -772,7 +772,9 @@ class device_info
                             #    dtnode.toggleSelect()
                             onClick : (dtnode, event) =>
                                 if dtnode.data.key[0] != "_"
-                                    @graph_rrd(dtnode.data.key)
+                                    sel_list = (entry.data.key for entry in @rrd_div.dynatree("getSelectedNodes"))
+                                    sel_list.push(dtnode.data.key)
+                                    @graph_rrd(sel_list)
                                 #dtnode.toggleSelect()
                         root_node = @rrd_div.dynatree("getRoot")
                         @build_rrd_node(root_node, @vector)
@@ -804,12 +806,12 @@ class device_info
         )
         db_node.find("> *").each (idx, sub_node) =>
             @build_rrd_node(new_node, $(sub_node))
-    graph_rrd: (rrd_key) =>
+    graph_rrd: (rrd_key_list) =>
         $.ajax
             url  : "{% url 'rrd:graph_rrds' %}"
             data : {
-                "key" : rrd_key
-                "pk"  : @resp_xml.find("device").attr("pk")
+                "keys" : rrd_key_list
+                "pk"   : @resp_xml.find("device").attr("pk")
             }
             success : (xml) =>
                 if parse_xml_response(xml)

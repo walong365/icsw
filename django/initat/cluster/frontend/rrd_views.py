@@ -49,12 +49,12 @@ class graph_rrds(View):
     def post(self, request):
         _post = request.POST
         srv_com = server_command.srv_command(command="graph_rrd")
-        dev_pk, graph_key = (_post["pk"], _post["key"])
+        dev_pk, graph_keys = (_post["pk"], set(_post.getlist("keys[]")))
         srv_com["device_list"] = E.device_list(
             E.device(pk="%d" % (int(dev_pk)))
         )
         srv_com["graph_key_list"] = E.graph_key_list(
-            E.graph_key(graph_key)
+            *[E.graph_key(graph_key) for graph_key in graph_keys]
         )
         result = contact_server(request, "tcp://localhost:8003", srv_com, timeout=30)
         if result:
