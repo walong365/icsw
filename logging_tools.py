@@ -151,9 +151,10 @@ def interpret_size_str(in_str, **kwargs):
     if size_m:
         value = float(size_m.group("value"))
         pfix = size_m.group("pfix").lower()
-        value = int(value * {"m" : 1024 * 1024,
-                             "g" : 1024 * 1024 * 1024,
-                             "t" : 1024 * 1024 * 1024 * 1024}.get(pfix, 1))
+        value = int(value * {
+            "m" : 1024 * 1024,
+            "g" : 1024 * 1024 * 1024,
+            "t" : 1024 * 1024 * 1024 * 1024}.get(pfix, 1))
         return value
     else:
         return 0
