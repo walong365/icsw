@@ -223,10 +223,6 @@ class receiver(object):
         self.lock.release()
     def _handle_tree(self, data):
         host_name, time_recv, values = data
-        #vl.plugin = "collserver"
-        #vl.host = host_name
-        #vl.time = time_recv
-        #vl.type = "icval"
         for name, value in values:
             # name can be none for values with transform problems
             if name:

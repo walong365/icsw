@@ -36,6 +36,7 @@ import colorsys
 import pprint
 import zmq
 import copy
+import commands
 from lxml import etree
 from lxml.builder import E
 
@@ -49,6 +50,7 @@ import threading_tools
 import cluster_location
 import uuid_tools
 import configfile
+import rrdtool
 from django.db import connection, connections
 from django.db.models import Q
 try:
@@ -449,6 +451,9 @@ class graph_process(threading_tools.process_obj):
         self.register_func("graph_rrd", self._graph_rrd)
         self.register_func("xml_info", self._xml_info)
         self.vector_dict = {}
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        self.rrd_root = os.path.join(settings.FILE_ROOT if not global_config["DEBUG"] else os.path.join(cur_dir, "../webfrontend/django/initat/cluster"), "graphs")
+        self.log("rrds go into %s" % (self.rrd_root))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
@@ -469,9 +474,36 @@ class graph_process(threading_tools.process_obj):
         graph_key = graph_keys[0]
         dev_vector = self.vector_dict[dev_pks[0]]
         graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
-        #if graph_mve:
-            
-        self.send_pool_message("send_command", src_id, unicode(srv_com))        
+        graph_width, graph_height = (600, 200)
+        graph_list = E.graph_list()
+        if graph_mve is not None:
+            abs_file_loc, rel_file_loc = (
+                os.path.join(self.rrd_root, "x.png"),
+                os.path.join("/%s/graphs/x.png" % (settings.REL_SITE_ROOT)),
+            )
+            args = [
+                abs_file_loc,
+                "-E",
+                "-w %d" % (graph_width),
+                "-h %d" % (graph_height),
+                "-W init.at Clustersoftware",
+                "-c",
+                "BACK#ffffff",
+                "--end",
+                "now",
+                "--start",
+                "end-7200",
+                "DEF:v0=%s:v:AVERAGE" % (graph_mve.attrib["file_name"]),
+                "LINE1:v0#000000"]
+            print args
+            print rrdtool.graph(*args)
+            graph_list.append(
+                E.graph(href=rel_file_loc)
+            )
+        srv_com["graphs"] = graph_list
+        print srv_com.pretty_print()
+        srv_com.set_result("generated one graph", server_command.SRV_REPLY_STATE_OK)
+        self.send_pool_message("send_command", src_id, unicode(srv_com))
 
 class data_store(object):
     def __init__(self, cur_dev):
@@ -528,7 +560,7 @@ class data_store(object):
             entry.attrib[key] = src_entry.get(key, def_value)
         # last update time
         entry.attrib["last_update"] = "%d" % (time.time())
-        entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "ical-%s.rrd" % (entry.attrib["sane_name"]))
+        entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-%s.rrd" % (entry.attrib["sane_name"]))
     def store_info(self):
         file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector, pretty_print=True))
         self.sync_to_grapher()
