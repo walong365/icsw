@@ -54,7 +54,7 @@ class graph_rrds(View):
             E.device(pk="%d" % (int(dev_pk)))
         )
         srv_com["graph_key_list"] = E.graph_key_list(
-            *[E.graph_key(graph_key) for graph_key in graph_keys]
+            *[E.graph_key(graph_key) for graph_key in graph_keys if not graph_key.startswith("_")]
         )
         result = contact_server(request, "tcp://localhost:8003", srv_com, timeout=30)
         if result:

@@ -526,6 +526,44 @@ class config_detail
         new category_tree(tree_div, @configs_xml, conf_xml, @cat_xml, "/config")
         return cat_div
 
+class rrd_config
+    constructor: (@top_div, @key_tree) ->
+        @top_div.css("vertical-align", "middle")
+        @init()
+    init: () =>
+        @filter_el = $("<input>").attr("title", "filter").focus().on("keyup", @change_rrd_sel)
+        @clear_el = $("<input>").attr(
+            "title"  : "clear filter"
+            "type"   : "image"
+            "src"    : "{{ MEDIA_URL }}frontend/images/delete.png"
+            "width"  : "22px"
+            "height" : "22px"
+        ).on("click", @clear_rrd_sel)
+        @CUR_FILTER = ""
+        @top_div.append(@filter_el, @clear_el)
+    change_rrd_sel: (event) =>
+        new_filter = $(event.target).val()
+        if new_filter != @CUR_FILTER
+            @CUR_FILTER = new_filter
+            cur_re = new RegExp(@CUR_FILTER)
+            @key_tree.dynatree("getRoot").visit(
+                (node) ->
+                    if node.data.title.match(cur_re) or node.data.key.match(cur_re)
+                        node.makeVisible(true)
+                        node.select(true)
+                    else
+                        node.select(false)
+                        node.expand(false)
+            )
+    clear_rrd_sel: (event) =>
+        @filter_el.val("")
+        @CUR_FILTER = ""
+        @key_tree.dynatree("getRoot").visit(
+            (node) ->
+                node.select(false)
+                node.expand(false)
+        )        
+        
 root.show_device_info = (event, dev_key, callback) ->
     new device_info(event, dev_key, callback).show()
 
@@ -749,8 +787,12 @@ class device_info
     init_rrd: (top_div) =>
         rrd_div = $("<div>").attr("id", "rrd").addClass("leftfloat")
         graph_div = $("<div>").attr("id", "graph").addClass("leftfloat")
+        config_div = $("<div>").attr("id", "rrd_config")
         @rrd_div = rrd_div
         @graph_div = graph_div
+        @config_div = config_div
+        @rrd_config = new rrd_config(@config_div, @rrd_div)
+        top_div.append(@config_div)
         top_div.append(@rrd_div)
         top_div.append(@graph_div)
         @update_rrd()
@@ -786,22 +828,26 @@ class device_info
             key         = ""
             expand_flag = true
             hide_cb     = true
+            tooltip     = "Device vector"
         else if db_node.prop("tagName") == "entry"
             title_str   = db_node.attr("part")
             expand_flag = false
             key         = ""
             hide_cb     = true
+            tooltip     = ""
         else
             title_str   = db_node.attr("info")
             expand_flag = false
             key         = db_node.attr("name")
             hide_cb     = false
+            tooltip     = "key: " + db_node.attr("name")
         new_node = dt_node.addChild(
             title        : title_str
             expand       : expand_flag
             key          : key
             hideCheckbox : hide_cb
             isFolder     : hide_cb
+            tooltip      : tooltip
             #select       : selected
         )
         db_node.find("> *").each (idx, sub_node) =>

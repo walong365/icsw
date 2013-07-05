@@ -159,9 +159,6 @@ class sidebar_tree
                 isFolder : true
                 addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
             )
-            #if parseInt(db_node.attr("parent")) == 0
-            #    add_node = dt_node
-            #else
             add_node = new_node
             # add all sub fqdns
             @DNT.find("domain_tree_node[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>

@@ -67,7 +67,10 @@ class sess_login(View):
                 pass
             login(request, django_user)
             request.session["db_user"] = db_user
-            request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in db_user.user_variable_set.all()])
+            if db_user:
+                request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in db_user.user_variable_set.all()])
+            else:
+                request.session["user_vars"] = {}
             update_session_object(request)
             return HttpResponseRedirect(reverse("main:index"))
         return render_me(request, "login.html", {
