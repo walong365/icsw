@@ -60,7 +60,8 @@ except ImportError:
 from initat.cluster.backbone.models import device
 
 SERVER_COM_PORT = 8003
-        
+MAX_INFO_WIDTH = 40
+
 class report_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, loc_config, db_con, log_queue):
         self.__db_con = db_con
@@ -445,6 +446,50 @@ class report_thread(threading_tools.thread_obj):
                       "GPRINT:%s:total %%6.1lf%%s\l" % (report_names["total"])])
         return ret_f
 
+class graph_var(object):
+    var_idx = 0
+    def __init__(self, mve):
+        self.mve = mve
+        graph_var.var_idx += 1
+        self.name = "v%d" % (graph_var.var_idx)
+    def __getitem__(self, key):
+        return self.mve.attrib[key]
+    @property
+    def info(self):
+        info = self["info"]
+        parts = self["name"].split(".")
+        for idx in xrange(len(parts)):
+            info = info.replace("$%d" % (idx + 1), parts[idx])
+        return info
+    @property
+    def config(self):
+        c_lines = [
+            "DEF:%s=%s:v:AVERAGE" % (self.name, self["file_name"]),
+            "LINE1:%s#000000:<tt>%s</tt>" % (self.name, ("%%-%ds" % (MAX_INFO_WIDTH)) % (self.info)),
+        ]
+        for rep_name, cf in [
+            ("min", "MINIMUM"),
+            ("ave", "AVERAGE"),
+            ("max", "MAXIMUM"),
+            ("last", "LAST"),
+            ("total", "TOTAL")]:
+            c_lines.extend(
+                [ 
+                    "VDEF:%s%s=%s,%s" % (self.name, rep_name, self.name, cf),
+                    "GPRINT:%s%s:<tt>%%6.1lf%%s</tt>%s" % (
+                        self.name, rep_name,
+                        r"\l" if rep_name == "total" else r""
+                        ),
+                ]
+            )
+        return c_lines
+    @property
+    def header_line(self):
+        return "COMMENT:<tt>%s%s</tt>" % (
+            ("%%-%ds" % (MAX_INFO_WIDTH + 2)) % ("value"),
+            "".join(["%9s" % (rep_name) for rep_name in ["min", "ave", "max", "latest", "total"]])
+        )
+        
 class graph_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
@@ -473,37 +518,47 @@ class graph_process(threading_tools.process_obj):
         dev_vector = self.vector_dict[dev_pks[0]]
         graph_width, graph_height = (600, 200)
         graph_list = E.graph_list()
+        graph_name = "gfx_%d.png" % (int(time.time()))
         abs_file_loc, rel_file_loc = (
-            os.path.join(self.rrd_root, "x.png"),
-            os.path.join("/%s/graphs/x.png" % (settings.REL_SITE_ROOT)),
+            os.path.join(self.rrd_root, graph_name),
+            os.path.join("/%s/graphs/%s" % (settings.REL_SITE_ROOT, graph_name)),
         )
         rrd_args = [
                 abs_file_loc,
                 "-E",
+                "-Rlight",
+                "--title",
+                "RRD",
+                "-G",
+                "normal",
+                "-P",
+                #"-nDEFAULT:8:",
                 "-w %d" % (graph_width),
                 "-h %d" % (graph_height),
+                "-a"
+                "PNG",
+                "--daemon",
+                "unix:/var/run/rrdcached.sock",
                 "-W init.at Clustersoftware",
-                "-c",
-                "BACK#ffffff",
+                "--slope-mode",
+                "-cBACK#ffffff",
                 "--end",
                 "now",
                 "--start",
-                "end-7200",
+                "end-10200",
+                graph_var(None).header_line,
         ]
-        val_idx = 0
+        graph_var.var_idx = 0
         for graph_key in graph_keys:
             graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
             if graph_mve is not None:
-                val_idx += 1
-                val_name = "v%d" % (val_idx)
-                rrd_args.extend(
-                    [
-                        "DEF:%s=%s:v:AVERAGE" % (val_name, graph_mve.attrib["file_name"]),
-                        "LINE1:%s#000000" % (val_name),
-                    ]
-                )
-            print rrd_args
+                rrd_args.extend(graph_var(graph_mve).config)
+        pprint.pprint(rrd_args)
+        try:
             print rrdtool.graph(*rrd_args)
+        except:
+            self.log("error creating graph: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+        else:
             graph_list.append(
                 E.graph(href=rel_file_loc)
             )
