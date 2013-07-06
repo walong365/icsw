@@ -60,7 +60,7 @@ except ImportError:
 from initat.cluster.backbone.models import device
 
 SERVER_COM_PORT = 8003
-MAX_INFO_WIDTH = 40
+MAX_INFO_WIDTH  = 42
 
 class report_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, loc_config, db_con, log_queue):
@@ -465,7 +465,7 @@ class graph_var(object):
     def config(self):
         c_lines = [
             "DEF:%s=%s:v:AVERAGE" % (self.name, self["file_name"]),
-            "LINE1:%s#000000:<tt>%s</tt>" % (self.name, ("%%-%ds" % (MAX_INFO_WIDTH)) % (self.info)),
+            "LINE1:%s#000000:<tt>%s</tt>" % (self.name, ("%%-%ds" % (MAX_INFO_WIDTH)) % (self.info)[:MAX_INFO_WIDTH]),
         ]
         for rep_name, cf in [
             ("min", "MINIMUM"),
@@ -515,8 +515,16 @@ class graph_process(threading_tools.process_obj):
         graph_keys = srv_com.xpath(None, ".//graph_key_list/graph_key/text()")
         self.log("found device pks: %s" % (", ".join(["%d" % (pk) for pk in dev_pks])))
         self.log("graph keys: %s" % (", ".join(graph_keys)))
+        parameters = srv_com.xpath(None, ".//parameters")
+        para_dict = {
+            "timeframe" : 3600,
+            "size"      : "400x200",
+        }
+        for para in srv_com.xpath(None, ".//parameters")[0]:
+            para_dict[para.tag] = para.text
+        # cast to integer
+        para_dict = dict([(key, int(value) if key in ["timeframe"] else value) for key, value in para_dict.iteritems()])
         dev_vector = self.vector_dict[dev_pks[0]]
-        graph_width, graph_height = (600, 200)
         graph_list = E.graph_list()
         graph_name = "gfx_%d.png" % (int(time.time()))
         abs_file_loc, rel_file_loc = (
@@ -527,25 +535,23 @@ class graph_process(threading_tools.process_obj):
                 abs_file_loc,
                 "-E",
                 "-Rlight",
-                "--title",
-                "RRD",
                 "-G",
                 "normal",
                 "-P",
                 #"-nDEFAULT:8:",
-                "-w %d" % (graph_width),
-                "-h %d" % (graph_height),
+                "-w %d" % (int(para_dict["size"].split("x")[0])),
+                "-h %d" % (int(para_dict["size"].split("x")[1])),
                 "-a"
                 "PNG",
                 "--daemon",
                 "unix:/var/run/rrdcached.sock",
-                "-W init.at Clustersoftware",
+                "-W init.at clustersoftware",
                 "--slope-mode",
                 "-cBACK#ffffff",
                 "--end",
                 "now",
                 "--start",
-                "end-10200",
+                "end-%d" % (para_dict["timeframe"]),
                 graph_var(None).header_line,
         ]
         graph_var.var_idx = 0
@@ -553,18 +559,28 @@ class graph_process(threading_tools.process_obj):
             graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
             if graph_mve is not None:
                 rrd_args.extend(graph_var(graph_mve).config)
-        pprint.pprint(rrd_args)
-        try:
-            print rrdtool.graph(*rrd_args)
-        except:
-            self.log("error creating graph: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+        if graph_var.var_idx:
+            rrd_args.extend([
+                "--title",
+                "RRD (%s, %s)" % (logging_tools.get_plural("DEF", graph_var.var_idx),
+                                  logging_tools.get_diff_time_str(para_dict["timeframe"])),
+            ])
+            try:
+                draw_result = rrdtool.graph(*rrd_args)
+            except:
+                self.log("error creating graph: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                pprint.pprint(rrd_args)
+            else:
+                size_x, size_y, rest = draw_result
+                graph_list.append(
+                    E.graph(href=rel_file_loc, w="%d" % (size_x), h="%d" % (size_y))
+                )
         else:
-            graph_list.append(
-                E.graph(href=rel_file_loc)
-            )
+            self.log("no DEFs", logging_tools.LOG_LEVEL_ERROR)
         srv_com["graphs"] = graph_list
-        print srv_com.pretty_print()
-        srv_com.set_result("generated one graph", server_command.SRV_REPLY_STATE_OK)
+        #print srv_com.pretty_print()
+        srv_com.set_result("generated %s" % (logging_tools.get_plural("graph", len(graph_list))),
+                           server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
 
 class data_store(object):
