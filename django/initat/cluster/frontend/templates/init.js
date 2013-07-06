@@ -527,20 +527,53 @@ class config_detail
         return cat_div
 
 class rrd_config
-    constructor: (@top_div, @key_tree) ->
+    constructor: (@top_div, @key_tree, @graph_div, @pk_list) ->
         @top_div.css("vertical-align", "middle")
         @init()
     init: () =>
-        @filter_el = $("<input>").attr("title", "filter").focus().on("keyup", @change_rrd_sel)
-        @clear_el = $("<input>").attr(
+        @filter_el = $("<input>").attr(
+            "id"    : "rrd_filter"
+            "title" : "filter"
+        ).focus().on("keyup", @change_rrd_sel)
+        clear_el = $("<input>").attr(
             "title"  : "clear filter"
             "type"   : "image"
             "src"    : "{{ MEDIA_URL }}frontend/images/delete.png"
             "width"  : "22px"
             "height" : "22px"
         ).on("click", @clear_rrd_sel)
+        draw_el =  $("<input>").attr(
+            "title"  : "draw graph(s)"
+            "type"   : "image"
+            "src"    : "{{ MEDIA_URL }}frontend/images/ok.png"
+            "width"  : "22px"
+            "height" : "22px"
+        ).on("click", @draw_rrd_el)
+        tf_select = $("<select>").attr(
+            "id"   : "rrd_timeframe"
+        ).on("change", @draw_rrd_el)
+        for cur_tf in [4 * 3600, 24 * 3600, 7 * 24 * 3600, 31 * 24 * 3600]
+            hours = cur_tf / 3600
+            days = parseInt(hours / 24)
+            hours = hours - 24 * days
+            tf_str = "#{hours}:00"
+            if days
+                if hours
+                    tf_str = "#{days}d #{tf_str}"
+                else
+                    tf_str = "#{days}d"
+            tf_select.append(
+                $("<option>").attr("value", cur_tf).text(tf_str)
+            )
+        size_select =$("<select>").attr(
+            "id"  : "rrd_size"
+        ).on("change", @draw_rrd_el)
+        for cur_size in ["400x200", "640x300", "800x400"]
+            size_select.append(
+                $("<option>").attr("value", cur_size).text(cur_size)
+            )
         @CUR_FILTER = ""
-        @top_div.append(@filter_el, @clear_el)
+        @top_div.append(@filter_el, clear_el, draw_el, tf_select, size_select)
     change_rrd_sel: (event) =>
         new_filter = $(event.target).val()
         if new_filter != @CUR_FILTER
@@ -562,7 +595,24 @@ class rrd_config
             (node) ->
                 node.select(false)
                 node.expand(false)
-        )        
+        )
+    draw_rrd_el: (event) =>
+        sel_list = (entry.data.key for entry in @key_tree.dynatree("getSelectedNodes"))
+        @draw_rrd(sel_list)
+    draw_rrd: (rrd_key_list) =>
+        $.ajax
+            url  : "{% url 'rrd:graph_rrds' %}"
+            data : {
+                "keys"      : rrd_key_list
+                "pks"       : @pk_list
+                "timeframe" : @top_div.find("select#rrd_timeframe").val()
+                "size"      : @top_div.find("select#rrd_size").val()
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    graph_result = $(xml).find("graph")
+                    @graph_div.children().remove()
+                    @graph_div.append($("<image>").attr("src", graph_result.attr("href")))
         
 root.show_device_info = (event, dev_key, callback) ->
     new device_info(event, dev_key, callback).show()
@@ -791,12 +841,12 @@ class device_info
         @rrd_div = rrd_div
         @graph_div = graph_div
         @config_div = config_div
-        @rrd_config = new rrd_config(@config_div, @rrd_div)
+        @rrd_config = new rrd_config(@config_div, @rrd_div, @graph_div, [@resp_xml.find("device").attr("pk")])
         top_div.append(@config_div)
         top_div.append(@rrd_div)
         top_div.append(@graph_div)
-        @update_rrd()
-    update_rrd: () =>
+        @load_rrd_tree()
+    load_rrd_tree: () =>
         $.ajax
             url  : "{% url 'rrd:device_rrds' %}"
             data : {
@@ -816,7 +866,8 @@ class device_info
                                 if dtnode.data.key[0] != "_"
                                     sel_list = (entry.data.key for entry in @rrd_div.dynatree("getSelectedNodes"))
                                     sel_list.push(dtnode.data.key)
-                                    @graph_rrd(sel_list)
+                                    @rrd_config.draw_rrd(sel_list)
+                                    #@graph_rrd(sel_list)
                                 #dtnode.toggleSelect()
                         root_node = @rrd_div.dynatree("getRoot")
                         @build_rrd_node(root_node, @vector)
@@ -852,18 +903,6 @@ class device_info
         )
         db_node.find("> *").each (idx, sub_node) =>
             @build_rrd_node(new_node, $(sub_node))
-    graph_rrd: (rrd_key_list) =>
-        $.ajax
-            url  : "{% url 'rrd:graph_rrds' %}"
-            data : {
-                "keys" : rrd_key_list
-                "pk"   : @resp_xml.find("device").attr("pk")
-            }
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    graph_result = $(xml).find("graph")
-                    @graph_div.children().remove()
-                    @graph_div.append($("<image>").attr("src", graph_result.attr("href")))
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")
