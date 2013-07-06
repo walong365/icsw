@@ -457,6 +457,8 @@ class graph_var(object):
         return self.mve.attrib[key]
     def __contains__(self, key):
         return key in self.mve.attrib
+    def get(self, key, default):
+        return self.mve.attrib.get(key, default)
     @property
     def info(self):
         info = self["info"]
@@ -474,11 +476,21 @@ class graph_var(object):
     def config(self):
         c_lines = [
             "DEF:%s=%s:v:AVERAGE" % (self.name, self["file_name"]),
-            "LINE1:%s%s:<tt>%s</tt>" % (
-                self.name,
+        ]
+        if int(self.get("invert", "0")):
+            c_lines.append(
+                "CDEF:%sinv=%s,-1,*" % (self.name, self.name),
+            )
+            draw_name = "%sinv" % (self.name)
+        else:
+            draw_name = self.name
+        c_lines.append(
+            "%s:%s%s:<tt>%s</tt>" % (
+                self.get("draw_type", "LINE1"),
+                draw_name,
                 self.color,
                 ("%%-%ds" % (MAX_INFO_WIDTH)) % (self.info)[:MAX_INFO_WIDTH]),
-        ]
+        )
         for rep_name, cf in [
             ("min"  , "MINIMUM"),
             ("ave"  , "AVERAGE"),
@@ -553,31 +565,60 @@ class graph_process(threading_tools.process_obj):
     def _set_colours(self, xml_vect):
         color_xml = etree.fromstring("""
         <colourizing>
-        <entry key="load" iterate="1" integer_subkeys="1">
-        <range start_color='green' end_color='DarkGreen'>
-        </range>
-        </entry>
-        <entry key="net" iterate="1">
-        <range start_color='red' end_color='yellow'>
-        </range>
-        </entry>
-        </colourizing>
+            <entry key="load" iterate="1" integer_subkeys="1">
+                <range start_color='green' end_color='DarkGreen'/>
+            </entry>
+            <entry key="net" iterate="1" ignore_next_level="1">
+                <range start_color='red' end_color='yellow' second_scale="luminance" second_start="0.2" second_end="0.6"/>
+                <modify key_match=".*tx.*" attribute="invert" value="1"/>
+                <modify key_match=".*err.*" attribute="draw_type" value="LINE2"/>
+            </entry>
+            <entry key="vms" iterate="1" ignore_next_level="1">
+                <range start_color='black' end_color='#888888' second_scale="green"/>
+                <!--<modify key_match=".*" attribute="draw_type" value="STACK"/>
+                <modify key_match=".*idle.*" attribute="draw_type" value="LINE"/>-->
+            </entry>
+            <entry key="df" iterate="1" ignore_next_level="1">
+                <range start_color='blue' end_color='#aaaaaa' second_scale="red"/>
+            </entry>
+            <entry key="io" iterate="1" ignore_next_level="1">
+                <range start_color='#aa0066' end_color='#0000aa' second_scale="green"/>
+            </entry>
+            <entry key="mem" iterate="1" ignore_next_level="1">
+                <range start_color='#66ff00' end_color='#ff0000' second_scale="blue"/>
+                <modify key_match=".*bc$" attribute="draw_type" value="LINE2"/>
+            </entry>
+            <entry key="num" iterate="1">
+                <range start_color='blue' end_color='#ff8800'/>
+            </entry>
+            <entry key="ovpn" iterate="1">
+                <range start_color='red' end_color='yellow'/>
+            </entry>
+            <entry key="proc" iterate="1">
+                <range start_color='red' end_color='#008888'/>
+                <modify key_match=".*" attribute="draw_type" value="LINE2"/>
+            </entry>
+         </colourizing>
         """)
         #match_keys = color_xml.xpath(".//entry[@key]")
         match_re_keys = [
             (re.compile("^%s" % (entry.attrib["key"].replace(".", r"\."))),
              entry) for entry in color_xml.xpath(".//entry[@key]")]
-        print match_re_keys
-        print etree.tostring(color_xml, pretty_print=True)
+        #print etree.tostring(color_xml, pretty_print=True)
+        keys_touched = set()
         for xml_ent in xml_vect.findall(".//entry[@full]"):
             if "colour" in xml_ent.attrib:
                 # colour already set
                 pass
             else:
-                for c_re, entry in match_re_keys:
-                    if c_re.match(xml_ent.attrib["full"]):
-                        self._colourize(xml_ent, entry)
-                        break
+                full_key = xml_ent.attrib["full"]
+                if full_key not in keys_touched:
+                    #print full_key
+                    for c_re, entry in match_re_keys:
+                        if c_re.match(full_key):
+                            keys_touched.add(full_key)
+                            self._colourize(xml_ent, entry)
+                            break
         #print etree.tostring(xml_vect, pretty_print=True)
     def _colourize(self, xml_ent, xml_col):
         # colourize the subtree of xml_ent according to xml_col
@@ -591,22 +632,62 @@ class graph_process(threading_tools.process_obj):
             except:
                 pass
         range_xml = xml_col.find("range")
+        if int(xml_col.get("ignore_next_level", "0")):
+            next_level_keys = {}
+            for key in sub_keys:
+                next_key, sub_key = key.split(".", 1) if key.count(".") else (key, "")
+                next_level_keys.setdefault(next_key, []).append(sub_key)
+            #pprint.pprint(next_level_keys)
+        else:
+            # build dummy dict
+            next_level_keys = {"" : sub_keys}
+        modify_list = xml_col.findall("modify")
         if range_xml != None:
             start_color, end_color = (
                 Color(range_xml.attrib["start_color"]),
                 Color(range_xml.attrib["end_color"]),
             )
-            color_list = list(start_color.range_to(end_color, len(sub_keys)))
-            for sub_key, sub_color in zip(sub_keys, color_list):
-                #print sub_key, sub_color
-                xml_ent.find(".//mve[@name='%s.%s']" % (main_key, sub_key)).attrib["colour"] = sub_color.hex
+            #print start_color, start_color.hue, start_color.luminance
+            second_scale = "second_scale" in range_xml.attrib
+            if "second_start" in range_xml.attrib:
+                second_start, second_end = (
+                    float(range_xml.attrib["second_start"]),
+                    float(range_xml.attrib["second_end"]),
+                )
+            else:
+                second_start, second_end = (0, 1.0)
+            second_len = len(next_level_keys)
+            for next_idx, next_key in enumerate(sorted(next_level_keys.keys())):
+                if second_scale:
+                    second_attr = range_xml.attrib["second_scale"]
+                    cur_value = second_start + (second_end - second_start) / max(1, (second_len - 1)) * next_idx
+                    #print "*", next_idx, second_len, next_key, second_attr, cur_value
+                    setattr(start_color, second_attr, cur_value)
+                    setattr(end_color, second_attr, cur_value)
+                next_keys = next_level_keys[next_key]
+                if len(next_keys) > 1:
+                    color_list = list(start_color.range_to(end_color, len(next_keys)))
+                else:
+                    color_list = [start_color]
+                for sub_key, sub_color in zip(next_keys, color_list):
+                    ref_key = main_key
+                    if next_key:
+                        ref_key = "%s.%s" % (ref_key, next_key)
+                    if sub_key:
+                        ref_key = "%s.%s" % (ref_key, sub_key)
+                    #print sub_key, sub_color
+                    sub_xml = xml_ent.find(".//mve[@name='%s']" % (ref_key))
+                    if "colour" not in sub_xml.attrib:
+                        sub_xml.attrib["colour"] = sub_color.hex
+                    for modify_xml in modify_list:
+                        if re.match(modify_xml.attrib["key_match"], ref_key):
+                            sub_xml.attrib[modify_xml.attrib["attribute"]] = modify_xml.attrib["value"]
     def _graph_rrd(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         dev_pks    = [entry for entry in map(lambda x: int(x), srv_com.xpath(None, ".//device_list/device/@pk")) if entry in self.vector_dict]
         graph_keys = srv_com.xpath(None, ".//graph_key_list/graph_key/text()")
         self.log("found device pks: %s" % (", ".join(["%d" % (pk) for pk in dev_pks])))
         self.log("graph keys: %s" % (", ".join(graph_keys)))
-        parameters = srv_com.xpath(None, ".//parameters")
         para_dict = {
             "timeframe" : 3600,
             "size"      : "400x200",
@@ -646,7 +727,7 @@ class graph_process(threading_tools.process_obj):
                 graph_var(None).header_line,
         ]
         graph_var.var_idx = 0
-        for graph_key in graph_keys:
+        for graph_key in sorted(graph_keys):
             graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
             if graph_mve is not None:
                 rrd_args.extend(graph_var(graph_mve).config)
