@@ -39,6 +39,7 @@ import copy
 import commands
 from lxml import etree
 from lxml.builder import E
+from colour import Color
 
 #import rrdtool
 #import configfile
@@ -454,6 +455,8 @@ class graph_var(object):
         self.name = "v%d" % (graph_var.var_idx)
     def __getitem__(self, key):
         return self.mve.attrib[key]
+    def __contains__(self, key):
+        return key in self.mve.attrib
     @property
     def info(self):
         info = self["info"]
@@ -462,16 +465,25 @@ class graph_var(object):
             info = info.replace("$%d" % (idx + 1), parts[idx])
         return info
     @property
+    def color(self):
+        if "colour" in self:
+            return Color(self["colour"]).hex
+        else:
+            return Color("blue").hex
+    @property
     def config(self):
         c_lines = [
             "DEF:%s=%s:v:AVERAGE" % (self.name, self["file_name"]),
-            "LINE1:%s#000000:<tt>%s</tt>" % (self.name, ("%%-%ds" % (MAX_INFO_WIDTH)) % (self.info)[:MAX_INFO_WIDTH]),
+            "LINE1:%s%s:<tt>%s</tt>" % (
+                self.name,
+                self.color,
+                ("%%-%ds" % (MAX_INFO_WIDTH)) % (self.info)[:MAX_INFO_WIDTH]),
         ]
         for rep_name, cf in [
-            ("min", "MINIMUM"),
-            ("ave", "AVERAGE"),
-            ("max", "MAXIMUM"),
-            ("last", "LAST"),
+            ("min"  , "MINIMUM"),
+            ("ave"  , "AVERAGE"),
+            ("max"  , "MAXIMUM"),
+            ("last" , "LAST"),
             ("total", "TOTAL")]:
             c_lines.extend(
                 [ 
@@ -495,7 +507,7 @@ class graph_process(threading_tools.process_obj):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
         self.register_func("graph_rrd", self._graph_rrd)
         self.register_func("xml_info", self._xml_info)
-        self.vector_dict = {}
+        self.raw_vector_dict, self.vector_dict = ({}, {})
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         self.rrd_root = os.path.abspath(os.path.join(settings.FILE_ROOT if not global_config["DEBUG"] else os.path.join(cur_dir, "../webfrontend/django/initat/cluster"), "graphs"))
         self.log("rrds go into %s" % (self.rrd_root))
@@ -508,7 +520,86 @@ class graph_process(threading_tools.process_obj):
         pass
     def _xml_info(self, *args, **kwargs):
         dev_id, xml_str = (args[0], etree.fromstring(args[1]))
-        self.vector_dict[dev_id] = xml_str
+        # needed ?
+        self.raw_vector_dict[dev_id] = xml_str
+        self.vector_dict[dev_id] = self._struct_vector(xml_str)
+        self._set_colours(self.vector_dict[dev_id])
+    def _struct_vector(self, cur_xml):
+        # somehow related to struct_xml_vector
+        all_keys = set(cur_xml.xpath(".//mve/@name"))
+        xml_vect, lu_dict = (E.machine_vector(), {})
+        for key in sorted(all_keys):
+            parts = key.split(".")
+            s_dict, s_xml = (lu_dict, xml_vect)
+            for part in parts:
+                if part not in s_dict:
+                    new_el = E.entry(part=part, full=part)
+                    s_xml.append(new_el)
+                    s_dict[part] = (new_el, {})
+                s_xml, s_dict = s_dict[part]
+            add_entry = copy.deepcopy(cur_xml.find(".//mve[@name='%s']" % (key)))
+            s_xml.append(add_entry)
+        # remove structural entries with only one mve-child
+        for struct_ent in xml_vect.xpath(".//entry[not(entry)]"):
+            parent = struct_ent.getparent()
+            parent.append(struct_ent[0])
+            parent.remove(struct_ent)
+        # set full names
+        for ent in xml_vect.xpath(".//entry"):
+            cur_p = ent.getparent()
+            if cur_p.tag == "entry":
+                ent.attrib["full"] = "%s.%s" % (cur_p.attrib["full"], ent.attrib["full"])
+        return xml_vect
+    def _set_colours(self, xml_vect):
+        color_xml = etree.fromstring("""
+        <colourizing>
+        <entry key="load" iterate="1" integer_subkeys="1">
+        <range start_color='green' end_color='DarkGreen'>
+        </range>
+        </entry>
+        <entry key="net" iterate="1">
+        <range start_color='red' end_color='yellow'>
+        </range>
+        </entry>
+        </colourizing>
+        """)
+        #match_keys = color_xml.xpath(".//entry[@key]")
+        match_re_keys = [
+            (re.compile("^%s" % (entry.attrib["key"].replace(".", r"\."))),
+             entry) for entry in color_xml.xpath(".//entry[@key]")]
+        print match_re_keys
+        print etree.tostring(color_xml, pretty_print=True)
+        for xml_ent in xml_vect.findall(".//entry[@full]"):
+            if "colour" in xml_ent.attrib:
+                # colour already set
+                pass
+            else:
+                for c_re, entry in match_re_keys:
+                    if c_re.match(xml_ent.attrib["full"]):
+                        self._colourize(xml_ent, entry)
+                        break
+        #print etree.tostring(xml_vect, pretty_print=True)
+    def _colourize(self, xml_ent, xml_col):
+        # colourize the subtree of xml_ent according to xml_col
+        main_key = xml_ent.attrib["full"]
+        #print "***", main_key
+        sub_keys = sorted([name[len(main_key) + 1:] for name in xml_ent.xpath(".//mve/@name")])
+        if int(xml_col.get("integer_subkeys", "0")):
+            try:
+                # sort after casting to int
+                sub_keys = ["%d" % (int_key) for int_key in sorted([int(key) for key in sub_keys])]
+            except:
+                pass
+        range_xml = xml_col.find("range")
+        if range_xml != None:
+            start_color, end_color = (
+                Color(range_xml.attrib["start_color"]),
+                Color(range_xml.attrib["end_color"]),
+            )
+            color_list = list(start_color.range_to(end_color, len(sub_keys)))
+            for sub_key, sub_color in zip(sub_keys, color_list):
+                #print sub_key, sub_color
+                xml_ent.find(".//mve[@name='%s.%s']" % (main_key, sub_key)).attrib["colour"] = sub_color.hex
     def _graph_rrd(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         dev_pks    = [entry for entry in map(lambda x: int(x), srv_com.xpath(None, ".//device_list/device/@pk")) if entry in self.vector_dict]
@@ -579,8 +670,9 @@ class graph_process(threading_tools.process_obj):
             self.log("no DEFs", logging_tools.LOG_LEVEL_ERROR)
         srv_com["graphs"] = graph_list
         #print srv_com.pretty_print()
-        srv_com.set_result("generated %s" % (logging_tools.get_plural("graph", len(graph_list))),
-                           server_command.SRV_REPLY_STATE_OK)
+        srv_com.set_result(
+            "generated %s" % (logging_tools.get_plural("graph", len(graph_list))),
+            server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
 
 class data_store(object):
