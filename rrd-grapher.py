@@ -36,6 +36,7 @@ import colorsys
 import pprint
 import zmq
 import copy
+import stat
 import commands
 from lxml import etree
 from lxml.builder import E
@@ -520,9 +521,8 @@ class graph_process(threading_tools.process_obj):
         self.register_func("graph_rrd", self._graph_rrd)
         self.register_func("xml_info", self._xml_info)
         self.raw_vector_dict, self.vector_dict = ({}, {})
-        cur_dir = os.path.dirname(os.path.abspath(__file__))
-        self.rrd_root = os.path.abspath(os.path.join(settings.FILE_ROOT if not global_config["DEBUG"] else os.path.join(cur_dir, "../webfrontend/django/initat/cluster"), "graphs"))
-        self.log("rrds go into %s" % (self.rrd_root))
+        self.graph_root = global_config["GRAPH_ROOT"]
+        self.log("graphs go into %s" % (self.graph_root))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
@@ -700,7 +700,7 @@ class graph_process(threading_tools.process_obj):
         graph_list = E.graph_list()
         graph_name = "gfx_%d.png" % (int(time.time()))
         abs_file_loc, rel_file_loc = (
-            os.path.join(self.rrd_root, graph_name),
+            os.path.join(self.graph_root, graph_name),
             os.path.join("/%s/graphs/%s" % (settings.REL_SITE_ROOT, graph_name)),
         )
         rrd_args = [
@@ -963,6 +963,7 @@ class server_process(threading_tools.process_pool):
         self._init_network_sockets()
         self.add_process(graph_process("graph"), start=True)
         self.register_func("send_command", self._send_command)
+        self.register_timer(self._clear_old_graphs, 60, instant=True)
         data_store.setup(self)
     def _log_config(self):
         self.log("Config info:")	
@@ -994,6 +995,26 @@ class server_process(threading_tools.process_pool):
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult)
             self.__msi_block.save_block()
+    def _clear_old_graphs(self):
+        cur_time = time.time()
+        graph_root = global_config["GRAPH_ROOT"]
+        del_list = []
+        for entry in os.listdir(graph_root):
+            if entry.endswith(".png"):
+                full_name = os.path.join(graph_root, entry)
+                c_time = os.stat(full_name)[stat.ST_CTIME]
+                diff_time = abs(c_time - cur_time)
+                if diff_time > 5 * 60:
+                    del_list.append(full_name)
+        if del_list:
+            self.log("clearing %s is %s" % (
+                logging_tools.get_plural("old graph", len(del_list)),
+                graph_root))
+            for del_entry in del_list:
+                try:
+                    os.unlink(del_entry)
+                except:
+                    pass
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
@@ -1153,7 +1174,13 @@ def main():
             ignore_names=[],
             exclude=configfile.get_manager_pid())
 
-    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("rrd-server", "Cluster RRDServer", device=sql_info.effective_device).pk))])
+    cur_dir = os.path.dirname(os.path.abspath(__file__))
+    global_config.add_config_entries(
+        [
+            ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("rrd-server", "Cluster RRDServer", device=sql_info.effective_device).pk)),
+            ("GRAPH_ROOT"    , configfile.str_c_var(os.path.abspath(os.path.join(settings.FILE_ROOT if not global_config["DEBUG"] else os.path.join(cur_dir, "../webfrontend/django/initat/cluster"), "graphs"))))
+        ]
+    )
 
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/rrd-server"])
