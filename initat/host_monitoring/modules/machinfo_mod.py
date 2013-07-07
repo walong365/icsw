@@ -64,17 +64,25 @@ class _general(hm_classes.hm_module):
     def _proc_stat_info(self, first_line=None):
         if first_line is None:
             first_line = open("/proc/stat").readline().strip().split()
-        if len(first_line) >= 9:
+        if len(first_line) >= 11:
+            # since 2.6.33 guest_nice
+            stat_list = ["user", "nice", "sys", "idle", "iowait", "irq", "softirq", "steal", "guest", "guest_nice"]
+            kernel = 26
+        elif len(first_line) >= 10:
+            # since 2.6.24 guest
+            stat_list = ["user", "nice", "sys", "idle", "iowait", "irq", "softirq", "steal", "guest"]
+            kernel = 26
+        elif len(first_line) >= 9:
             # kernel 2.5 and above with additional steal-value
-            stat_list = frozenset(["user", "nice", "sys", "idle", "iowait", "irq", "softirq", "steal"])
+            stat_list = ["user", "nice", "sys", "idle", "iowait", "irq", "softirq", "steal"]
             kernel = 26
         elif len(first_line) == 8:
             # kernel 2.5 and above
-            stat_list = frozenset(["user", "nice", "sys", "idle", "iowait", "irq", "softirq"])
+            stat_list = ["user", "nice", "sys", "idle", "iowait", "irq", "softirq"]
             kernel = 25
         else:
             # up to kernel 2.4
-            stat_list = frozenset(["user", "nice", "sys", "idle"])
+            stat_list = ["user", "nice", "sys", "idle"]
             kernel = 24
         self.stat_list, self.kernel = (stat_list, kernel)
         return stat_list
