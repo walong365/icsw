@@ -513,8 +513,15 @@ class machine_vector(object):
         return self.__act_dict[key]
     def has_key(self, key):
         return self.__act_dict.has_key(key)
+    def keys(self):
+        return self.__act_dict.keys()
     def __contains__(self, key):
         return key in self.__act_dict
+    def unregister_tree(self, key_prefix):
+        self.__changed = True
+        del_keys = [key for key in self.keys() if key.startswith(key_prefix)]
+        for del_key in del_keys:
+            del self.__act_dict[del_key]
     def unregister_entry(self, name):
         self.__changed = True
         if self.__act_dict.has_key(name):

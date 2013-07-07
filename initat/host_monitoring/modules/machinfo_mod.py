@@ -55,12 +55,14 @@ class _general(hm_classes.hm_module):
     def init_module(self):
         self.local_lvm_info = partition_tools.lvm_struct("bin")
         self.local_mp_info = partition_tools.multipath_struct("bin")
-        self.disk_dict, self.vmstat_dict, self.disk_stat = ({}, {}, {})
+        self.disk_dict, self.vmstat_dict, self.disk_stat, self.nfsstat_dict = ({}, {}, {}, {})
         # locate binaries
         self.parted_path = process_tools.find_file("parted")
         self.btrfs_path = process_tools.find_file("btrfs")
         self.disk_dict_last_update = 0
         self.last_vmstat_time = None
+        self.last_nfsstat_time = None
+        self.nfsstat_used = False
     def _proc_stat_info(self, first_line=None):
         if first_line is None:
             first_line = open("/proc/stat").readline().strip().split()
@@ -166,7 +168,7 @@ class _general(hm_classes.hm_module):
     def _cpuinfo_int(self, srv_com):
         return cpu_database.global_cpu_info().get_send_dict(srv_com)
     def _load_int(self):
-        return [float(x) for x in open("/proc/loadavg", "r").read().strip().split()[0:3]]
+        return [float(value) for value in open("/proc/loadavg", "r").read().strip().split()[0:3]]
     def _mem_int(self):
         valid_keys = set(["MemTotal", "MemFree", "Buffers", "Cached", "SwapTotal", "SwapFree", "MemShared", "Inactive", "SwapCache", "SReclaimable"])
         p_dict = dict([r_line.strip().split()[:2] for r_line in open("/proc/meminfo", "r").readlines() if r_line.strip().endswith("kB")])
@@ -337,7 +339,7 @@ class _general(hm_classes.hm_module):
                     mvect.register_entry("io.%s.blks.written" % (act_disk), 0 , "number of blocks written per second %s" % (info_str), "1/s")
                     mvect.register_entry("io.%s.time.read" % (act_disk)   , 0., "milliseconds spent reading %s" % (info_str)         , "s"  )
                     mvect.register_entry("io.%s.time.written" % (act_disk), 0., "milliseconds spent writing %s" % (info_str)         , "s"  )
-                    mvect.register_entry("io.%s.time.io" % (act_disk)     , 0., "milliseconds spent doing I/O %s" % (info_str)        , "s"  )
+                    mvect.register_entry("io.%s.time.io" % (act_disk)     , 0., "milliseconds spent doing I/O %s" % (info_str)       , "s"  )
             for old_disk in self.disk_stat.keys():
                 if not disk_stat.has_key(old_disk):
                     mvect.unregister_entry("io.%s.blks.read" % (old_disk))
@@ -356,6 +358,57 @@ class _general(hm_classes.hm_module):
         else:
             tdiff = None
         self.last_vmstat_time = act_time
+    def _interpret_nfsstat_line(self, header, *parts):
+        if header in ["th"]:
+            return [int(parts[0]), int(parts[1])] + [float(val) for val in parts[2:]]
+        else:
+            return [int(val) for val in parts]
+    def _nfsstat_int(self, mvect):
+        act_time = time.time()
+        nfs_file = "/proc/net/rpc/nfsd"
+        if os.path.isfile(nfs_file):
+            if not self.nfsstat_used:
+                self.nfsstat_used = True
+                # register
+                mvect.register_entry("nfs.rc.hits"   , 0., "NFS read cache hits"   , "1/s")
+                mvect.register_entry("nfs.rc.misses" , 0., "NFS read cache misses" , "1/s")
+                mvect.register_entry("nfs.rc.nocache", 0., "NFS cache not required", "1/s")
+                mvect.register_entry("nfs.io.read"   , 0., "bytes read from disk", "B/s" , 1024)
+                mvect.register_entry("nfs.io.write"  , 0., "bytes written to disk", "B/s", 1024)
+                mvect.register_entry("nfs.net.count"   , 0., "total reads"    , "1/s")
+                mvect.register_entry("nfs.net.udpcount", 0., "UDP packets"    , "1/s")
+                mvect.register_entry("nfs.net.tcpcount", 0., "TCP packets"    , "1/s")
+                mvect.register_entry("nfs.net.tcpcons" , 0., "TCP connections", "1/s")
+                mvect.register_entry("nfs.rpc.count"   , 0., "total RPC operations", "1/s")
+                mvect.register_entry("nfs.rpc.badtotal", 0., "bad RPC errors"      , "1/s")
+                mvect.register_entry("nfs.rpc.badfmt"  , 0., "RPC bad format"      , "1/s")
+                mvect.register_entry("nfs.rpc.badauth" , 0., "RPC bad auth"        , "1/s")
+                mvect.register_entry("nfs.rpc.badclnt" , 0., "RPC bad clnt"        , "1/s")
+            nfs_dict = dict([(parts[0], self._interpret_nfsstat_line(*parts)) for parts in [line.split() for line in file(nfs_file, "r").read().split("\n")] if len(parts)])
+            if self.last_nfsstat_time:
+                tdiff = act_time - self.last_nfsstat_time
+                # read cache
+                for index, name in enumerate(["hits", "misses", "nocache"]):
+                    mvect["nfs.rc.%s" % (name)] = float(sub_wrap(nfs_dict["rc"][index], self.nfsstat_dict["rc"][index]) / tdiff)
+                # io
+                for index, name in enumerate(["read", "write"]):
+                    mvect["nfs.io.%s" % (name)] = float(sub_wrap(nfs_dict["io"][index], self.nfsstat_dict["io"][index]) / tdiff)
+                # net
+                for index, name in enumerate(["count", "udpcount", "tcpcount", "tcpcons"]):
+                    mvect["nfs.net.%s" % (name)] = float(sub_wrap(nfs_dict["net"][index], self.nfsstat_dict["net"][index]) / tdiff)
+                # rpc
+                for index, name in enumerate(["count", "badtotal", "badfmt", "badauth", "badclnt"]):
+                    mvect["nfs.rpc.%s" % (name)] = float(sub_wrap(nfs_dict["rpc"][index], self.nfsstat_dict["rpc"][index]) / tdiff)
+            self.nfsstat_dict = nfs_dict
+            self.last_nfsstat_time = act_time
+            #pprint.pprint(nfs_dict)
+        else:
+            if self.nfsstat_used:
+                self.nfsstat_used = False
+                # unregister and clear stats
+                self.last_nfsstat_time = None
+                self.nfsstat_dict = {}
+                mvect.unregister_tree("nfs.")
     def update_machine_vector(self, mv):
         try:
             load_list = self._load_int()
@@ -402,16 +455,15 @@ class _general(hm_classes.hm_module):
             mv["mem.used.buffers"]  = mem_list["Buffers"]
             mv["mem.used.cached"]   = mem_list["Cached"]# + mem_list["SwapCache"] + mem_list["SReclaimable"]
             mv["mem.used.shared"]   = mem_list["MemShared"]
-        try:
-            self._df_int(mv)
-        except:
-            self.log("error calling _df_int(): %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
-        try:
-            self._vmstat_int(mv)
-        except:
-            self.log("error calling _vmstat_int(): %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
-        #if self.__check_nameserver:
-        #    self._check_nameserver_stats(logger, mv)
+        for call_name in ["_df_int", "_vmstat_int", "_nfsstat_int"]:
+            try:
+                getattr(self, call_name)(mv)
+            except:
+                self.log(
+                    "error calling self.%s(): %s" % (
+                        call_name,
+                        process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_CRITICAL)
     def _partinfo_int(self):
         # lookup tables for /dev/disk-by
         my_disk_lut = partition_tools.disk_lut()
