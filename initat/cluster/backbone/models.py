@@ -3688,7 +3688,22 @@ class group(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     # not implemented right now in md-config-server
     allowed_device_groups = models.ManyToManyField(device_group)
-    def get_xml(self):
+    def get_permissions(self):
+        return ", ".join([cur_perm.name for cur_perm in Permission.objects.filter(Q(group__name=self.groupname))]) or "nothing"
+    def set_permissions(self, new_perms):
+        try:
+            dj_group = Group.objects.get(Q(name=self.groupname))
+        except Group.DoesNotExist:
+            pass
+        else:
+            cur_perms = set([cur_entry.pk for cur_entry in dj_group.permissions.all()])
+            new_perms = set([entry for entry in new_perms.split("::") if entry.strip()])
+            for del_perm in cur_perms - new_perms:
+                dj_group.permissions.remove(Permission.objects.get(Q(pk=del_perm)))
+            for add_perm in new_perms - cur_perms:
+                dj_group.permissions.add(Permission.objects.get(Q(pk=add_perm)))
+    permissions = property(get_permissions, set_permissions)
+    def get_xml(self, with_permissions=False, group_perm_dict=None):
         group_xml = E.group(
             unicode(self),
             pk="%d" % (self.pk),
@@ -3699,9 +3714,15 @@ class group(models.Model):
             active="1" if self.active else "0",
             allowed_device_groups="::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)]),
         )
-        for attr_name in ["first_name", "last_name", "group_comment",
-                     "title", "email", "pager", "tel", "comment"]:
+        for attr_name in [
+            "first_name", "last_name", "group_comment",
+            "title", "email", "pager", "tel", "comment"]:
             group_xml.attrib[attr_name] = getattr(self, attr_name)
+        if with_permissions:
+            if group_perm_dict is not None:
+                group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in group_perm_dict.get(self.groupname, [])])
+            else:
+                group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(group__name=self.groupname))])
         return group_xml
     class Meta:
         db_table = u'ggroup'
