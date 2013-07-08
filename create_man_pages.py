@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Inspect python files passed to this script for sings of taking commandline
+Inspect python files passed to this script for signs of taking commandline
 arguments. Uses help2man to create a manpage from the --help/-h output.
 """
 
