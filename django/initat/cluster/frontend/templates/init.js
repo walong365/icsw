@@ -572,6 +572,8 @@ class rrd_config
             size_select.append(
                 $("<option>").attr("value", cur_size).text(cur_size)
             )
+        # default size
+        size_select.val("640x300")
         @CUR_FILTER = ""
         @top_div.append(@filter_el, clear_el, draw_el, tf_select, size_select)
     change_rrd_sel: (event) =>

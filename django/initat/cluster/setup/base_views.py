@@ -95,6 +95,8 @@ class change_xml_entry(View):
                                 "value"],
                             "user"            : [
                                 "permissions"],
+                            "group"            : [
+                                "permissions"],
                             "netdevice"       : [
                                 "ethtool_autoneg",
                                 "ethtool_duplex",
@@ -211,7 +213,8 @@ class create_object(View):
         m2m_dict = {}
         logger.info("key_prefix is '%s'" % (key_pf))
         no_check_fields = {"device_variable" : ["value"],
-                           "user"            : ["permissions"]}.get(obj_name, [])
+                           "user"            : ["permissions"],
+                           "group"           : ["permissions"]}.get(obj_name, [])
         if no_check_fields:
             logger.info("%s: %s" % (
                 logging_tools.get_plural("no_check_field", len(no_check_fields)),

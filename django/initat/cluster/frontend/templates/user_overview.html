@@ -32,9 +32,10 @@ master_array = {
             new draw_info("first_name", {newline : true, default : "first_name", cspan : 6, show_label : true, label : "First / Last / Title"}),
             new draw_info("last_name", {default : "last_name", keep_td : true}),
             new draw_info("title", {default : "title", keep_td : true}),
-            new draw_info("email", {default : "email", newline : true, cspan : 5, show_label : true, label : "Email / Pager"}),
+            new draw_info("email", {default : "email", newline : true, cspan : 4, show_label : true, label : "Email / Pager"}),
             new draw_info("pager", {default : "pager", keep_td : true}),
             new draw_info("allowed_device_groups", {select_source : "device_groups device_group", manytomany : true})
+            new draw_info("permissions", {select_source : "permissions permission", manytomany : true}),
         ], {
             lock_div : "ug_tables"
         }

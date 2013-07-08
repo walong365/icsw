@@ -88,17 +88,21 @@ class overview(View):
             elif entry.content_type.app_label in ["backbone"]:
                 perm_list.append(E.permission(entry.name, pk="%d" % (entry.pk)))
         # chaching for faster m2m lookup
-        user_perm_dict = {}
+        group_perm_dict, user_perm_dict = ({}, {})
+        for group_perm in Permission.objects.all().prefetch_related("group_set"):
+            for cur_group in group_perm.group_set.all():
+                group_perm_dict.setdefault(cur_group.name, []).append(group_perm)
         for user_perm in Permission.objects.all().prefetch_related("user_set"):
             for cur_user in user_perm.user_set.all():
                 user_perm_dict.setdefault(cur_user.username, []).append(user_perm)
+        pprint.pprint(group_perm_dict)
         device_group_dict = {}
         for cur_user in user.objects.all().prefetch_related("allowed_device_groups"):
             device_group_dict[cur_user.login] = list([dg.pk for dg in cur_user.allowed_device_groups.all()])
         xml_resp = E.response(
             exp_list,
             perm_list,
-            E.groups(*[cur_g.get_xml() for cur_g in group.objects.all()]),
+            E.groups(*[cur_g.get_xml(with_permissions=True, group_perm_dict=group_perm_dict) for cur_g in group.objects.all()]),
             E.users(*[cur_u.get_xml(with_permissions=True, user_perm_dict=user_perm_dict, allowed_device_group_dict=device_group_dict) for cur_u in user.objects.all()]),
             E.shells(*[E.shell(cur_shell, pk=cur_shell) for cur_shell in sorted(shell_names)]),
             E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))])
