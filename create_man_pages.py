@@ -3,7 +3,7 @@
 
 """
 Inspect python files passed to this script for sings of taking commandline
-arguments. Use help2man to create a manpage from the --help/-h output.
+arguments. Uses help2man to create a manpage from the --help/-h output.
 """
 
 import argparse
