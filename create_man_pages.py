@@ -27,6 +27,7 @@ def read_symboltable(path):
 
 
 def valid_file(path):
+    """ Check if path is a python file"""
     return os.access(path, os.X_OK) and path.endswith(".py")
 
 
