@@ -949,7 +949,7 @@ class server_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         if not global_config["DEBUG"]:
             process_tools.set_handles({
-                "out" : (1, "rrd-server.out"),
+                "out" : (1, "rrd-grapher.out"),
                 "err" : (0, "/var/lib/logging-server/py_err_zmq")},
                                       zmq_context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
@@ -1189,7 +1189,7 @@ def main():
     if not global_config["DEBUG"]:
         process_tools.become_daemon()
     else:
-        print "Debugging rrd-server on %s" % (long_host_name)
+        print "Debugging rrd-grapher on %s" % (long_host_name)
     ret_state = server_process().loop()
     sys.exit(ret_state)
 
