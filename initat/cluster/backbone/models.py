@@ -3542,6 +3542,7 @@ class user(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     allowed_device_groups = models.ManyToManyField(device_group)
     home_dir_created = models.BooleanField(default=False)
+    secondary_groups = models.ManyToManyField("group", related_name="secondary")
     def get_permissions(self):
         return ", ".join([cur_perm.name for cur_perm in Permission.objects.filter(Q(user__username=self.login))]) or "nothing"
     def set_permissions(self, new_perms):
@@ -3577,6 +3578,7 @@ class user(models.Model):
             pager=self.pager or "",
             tel=self.tel or "",
             comment=self.comment or "",
+            secondary_groups="::".join(["%d" % (sec_group.pk) for sec_group in self.secondary_groups.all()]),
         )
         if with_allowed_device_groups:
             if allowed_device_group_dict:
@@ -3597,7 +3599,10 @@ class user(models.Model):
         ordering = ("login", )
         permissions = {
             ("all_devices", "access all devices"),
-            ("test_right", "Test right"),
+            #("test_right" , "Test right"),
+            ("group_admin", "Group administrator"),
+            ("admin"      , "Administrator"),
+            #(""),
             #("wf_apc" , "APC control"),
         }
     def __unicode__(self):
@@ -3688,6 +3693,8 @@ class group(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     # not implemented right now in md-config-server
     allowed_device_groups = models.ManyToManyField(device_group)
+    # parent group
+    parent_group = models.ForeignKey("self", null=True)
     def get_permissions(self):
         return ", ".join([cur_perm.name for cur_perm in Permission.objects.filter(Q(group__name=self.groupname))]) or "nothing"
     def set_permissions(self, new_perms):
@@ -3703,7 +3710,8 @@ class group(models.Model):
             for add_perm in new_perms - cur_perms:
                 dj_group.permissions.add(Permission.objects.get(Q(pk=add_perm)))
     permissions = property(get_permissions, set_permissions)
-    def get_xml(self, with_permissions=False, group_perm_dict=None):
+    def get_xml(self, with_permissions=False, group_perm_dict=None, with_allowed_device_groups=False,
+                allowed_device_group_dict=None):
         group_xml = E.group(
             unicode(self),
             pk="%d" % (self.pk),
@@ -3712,17 +3720,25 @@ class group(models.Model):
             gid="%d" % (self.gid),
             homestart=self.homestart or "",
             active="1" if self.active else "0",
-            allowed_device_groups="::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)]),
+            parent_group="%d" % (self.parent_group_id or 0),
         )
         for attr_name in [
             "first_name", "last_name", "group_comment",
             "title", "email", "pager", "tel", "comment"]:
             group_xml.attrib[attr_name] = getattr(self, attr_name)
+        if with_allowed_device_groups:
+            if allowed_device_group_dict:
+                group_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in allowed_device_group_dict.get(self.groupname, [])])
+            else:
+                group_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
         if with_permissions:
             if group_perm_dict is not None:
                 group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in group_perm_dict.get(self.groupname, [])])
             else:
                 group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(group__name=self.groupname))])
+        else:
+            # empty field
+            group_xml.attrib["permissions"] = ""
         return group_xml
     class Meta:
         db_table = u'ggroup'
@@ -3751,6 +3767,17 @@ def group_pre_save(sender, **kwargs):
         _check_integer(cur_inst, "gid", min_val=100, max_val=65535)
         if cur_inst.homestart and not cur_inst.homestart.startswith("/"):
             raise ValidationError("homestart has to start with '/'")
+        my_pk = cur_inst.pk
+        if cur_inst.parent_group_id:
+            # while true
+            if cur_inst.parent_group_id == my_pk:
+                raise ValidationError("cannot be own parentgroup")
+            # check for ring dependency
+            cur_parent = cur_inst.parent_group
+            while cur_parent is not None:
+                if cur_parent.pk == my_pk:
+                    raise ValidationError("ring dependency detected in groups")
+                cur_parent = cur_parent.parent_group
 
 @receiver(signals.post_save, sender=group)
 def group_post_save(sender, **kwargs):
@@ -3779,14 +3806,14 @@ class user_device_login(models.Model):
     class Meta:
         db_table = u'user_device_login'
 
-# for secondary groups
-class user_group(models.Model):
-    idx = models.AutoField(db_column="user_ggroup_idx", primary_key=True)
-    group = models.ForeignKey("group")
-    user = models.ForeignKey("user")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'user_ggroup'
+### for secondary groups
+##class user_group(models.Model):
+##    idx = models.AutoField(db_column="user_ggroup_idx", primary_key=True)
+##    group = models.ForeignKey("group")
+##    user = models.ForeignKey("user")
+##    date = models.DateTimeField(auto_now_add=True)
+##    class Meta:
+##        db_table = u'user_ggroup'
 
 class user_variable(models.Model):
     idx = models.AutoField(primary_key=True)
