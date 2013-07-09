@@ -21,17 +21,17 @@ from initat.cluster.backbone.models import user, user_variable
 
 logger = logging.getLogger("cluster.setup")
 
-# correct path to import session_handler
-if "cluster-backbone-sql" in __file__:
-    # local run
-    OLD_DIR = os.path.dirname(__file__).replace(
-        "/cluster-backbone-sql/initat/cluster/frontend",
-        "/webfrontend/htdocs/python")
-else:
-    OLD_DIR = "/srv/www/htdocs/python"
-
-if not OLD_DIR in sys.path:
-    sys.path.append(OLD_DIR)
+### correct path to import session_handler
+##if "cluster-backbone-sql" in __file__:
+##    # local run
+##    OLD_DIR = os.path.dirname(__file__).replace(
+##        "/cluster-backbone-sql/initat/cluster/frontend",
+##        "/webfrontend/htdocs/python")
+##else:
+##    OLD_DIR = "/srv/www/htdocs/python"
+##
+##if not OLD_DIR in sys.path:
+##    sys.path.append(OLD_DIR)
 
 class redirect_to_main(View):
     @method_decorator(never_cache)

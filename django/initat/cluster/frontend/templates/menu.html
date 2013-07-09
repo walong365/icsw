@@ -54,6 +54,7 @@
         <a>{% trans "Users" %}</a>
         <ul>
             <li><a href="{% url 'user:overview' 'table' %}">{% trans "Overview / Table" %}</a></li>
+            <li><a href="{% url 'user:overview' 'tree' %}">{% trans "Overview / Tree" %}</a></li>
         </ul>
     </li>
     {% if settings.CLUSTER_LICENSE.monitor %}

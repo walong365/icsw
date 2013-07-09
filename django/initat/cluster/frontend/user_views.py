@@ -46,7 +46,7 @@ from initat.cluster.backbone.models import partition_table, partition_disc, part
      user_variable
 from initat.core.render import render_me, render_string
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
-from initat.cluster.frontend.forms import dummy_password_form
+from initat.cluster.frontend.forms import dummy_password_form, group_detail_form, user_detail_form
 
 logger = logging.getLogger("cluster.user")
 
@@ -54,8 +54,9 @@ class overview(View):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         if kwargs["mode"] == "table":
-            return render_me(request, "user_overview.html", {})()
-    
+            return render_me(request, "user_overview_table.html", {})()
+        elif kwargs["mode"] == "tree":
+            return render_me(request, "user_overview_tree.html", {})()
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request, *args, **kwargs):
@@ -95,15 +96,33 @@ class overview(View):
         for user_perm in Permission.objects.all().prefetch_related("user_set"):
             for cur_user in user_perm.user_set.all():
                 user_perm_dict.setdefault(cur_user.username, []).append(user_perm)
-        pprint.pprint(group_perm_dict)
-        device_group_dict = {}
+        group_device_group_dict, user_device_group_dict = ({}, {})
         for cur_user in user.objects.all().prefetch_related("allowed_device_groups"):
-            device_group_dict[cur_user.login] = list([dg.pk for dg in cur_user.allowed_device_groups.all()])
+            user_device_group_dict[cur_user.login] = list([dg.pk for dg in cur_user.allowed_device_groups.all()])
+        for cur_group in group.objects.all().prefetch_related("allowed_device_groups"):
+            group_device_group_dict[cur_group.groupname] = list([dg.pk for dg in cur_group.allowed_device_groups.all()])
         xml_resp = E.response(
             exp_list,
             perm_list,
-            E.groups(*[cur_g.get_xml(with_permissions=True, group_perm_dict=group_perm_dict) for cur_g in group.objects.all()]),
-            E.users(*[cur_u.get_xml(with_permissions=True, user_perm_dict=user_perm_dict, allowed_device_group_dict=device_group_dict) for cur_u in user.objects.all()]),
+            E.groups(
+                *[
+                    cur_g.get_xml(
+                        with_permissions=True,
+                        group_perm_dict=group_perm_dict,
+                        with_allowed_device_groups=True,
+                        allowed_device_group_dict=group_device_group_dict,
+                        ) for cur_g in group.objects.all().prefetch_related("allowed_device_groups")
+                    ]
+                ),
+            E.users(
+                *[
+                    cur_u.get_xml(
+                        with_permissions=True,
+                        user_perm_dict=user_perm_dict,
+                        with_allowed_device_groups=True,
+                        allowed_device_group_dict=user_device_group_dict) for cur_u in user.objects.all().prefetch_related("secondary_groups", "allowed_device_groups")
+                    ]
+                ),
             E.shells(*[E.shell(cur_shell, pk=cur_shell) for cur_shell in sorted(shell_names)]),
             E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))])
         )
@@ -179,3 +198,49 @@ class set_user_var(View):
                 value=value)
         update_session_object(request)
         request.session.save()
+
+class move_user(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        cur_user = user.objects.get(Q(pk=_post["src_id"].split("__")[1]))
+        cur_group = group.objects.get(Q(pk=_post["dst_id"].split("__")[1]))
+        cur_user.group = cur_group
+        cur_user.save()
+        request.xml_response.info("user %s moved to group %s" % (
+            unicode(cur_user),
+            unicode(cur_group)), logger)
+        
+class ug_detail_form(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        key = _post["key"]
+        if key.startswith("group__"):
+            cur_group = group.objects.get(Q(pk=key.split("__")[1]))
+            request.xml_response["form"] = render_string(
+                request,
+                "crispy_form.html",
+                {
+                    "form" : group_detail_form(
+                        auto_id="group__%d__%%s" % (cur_group.pk),
+                        instance=cur_group,
+                    )
+                }
+            )
+        else:
+            cur_user = user.objects.get(Q(pk=key.split("__")[1]))
+            request.xml_response["form"] = render_string(
+                request,
+                "crispy_form.html",
+                {
+                    "form" : user_detail_form(
+                        auto_id="user__%d__%%s" % (cur_user.pk),
+                        instance=cur_user,
+                    )
+                }
+            )
+            
+        

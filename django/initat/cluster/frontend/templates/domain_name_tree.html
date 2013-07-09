@@ -11,7 +11,8 @@
 <div id="dnt_div" class="leftfloat">
     <input type="button" value="create new entry" id="create_new_dtn"/>
 </div>
-<div id="dnt_detail" class="leftfloat" style="width:400px; margin-left:auto; margin-right:auto;"></div>
+<div id="dnt_detail" class="leftfloat" style="width:400px; margin-left:auto; margin-right:auto;">
+</div>
 
 <script type="text/javascript">
 
@@ -57,7 +58,7 @@ class domain_name_tree
                 onDragStart : (dtnode) =>
                     #console.log dtnode.data.title
                     return true
-                onDragEnter : (dest_node, src_node) =>
+                onDragEnter : (dst_node, src_node) =>
                     if parseInt(@DNT.find("domain_tree_node[pk='#{src_node.data.key}']").attr("parent")) == 0
                         return false
                     else

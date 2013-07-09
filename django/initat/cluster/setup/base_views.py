@@ -14,6 +14,7 @@ from lxml import etree
 from django.db.models import Q
 from django.db.utils import IntegrityError
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse, HttpResponseRedirect
@@ -92,11 +93,14 @@ class change_xml_entry(View):
                     else:
                         compound_fields = {
                             "device_variable" : [
-                                "value"],
+                                "value"
+                                ],
                             "user"            : [
-                                "permissions"],
+                                "permissions"
+                                ],
                             "group"            : [
-                                "permissions"],
+                                "permissions"
+                                ],
                             "netdevice"       : [
                                 "ethtool_autoneg",
                                 "ethtool_duplex",
@@ -212,9 +216,15 @@ class create_object(View):
         set_dict, extra_dict = ({}, {})
         m2m_dict = {}
         logger.info("key_prefix is '%s'" % (key_pf))
-        no_check_fields = {"device_variable" : ["value"],
-                           "user"            : ["permissions"],
-                           "group"           : ["permissions"]}.get(obj_name, [])
+        no_check_fields = {
+            "device_variable" : ["value"]}.get(obj_name, [])
+        proxy_fields = {
+            "user"  : ["permissions"],
+            "group" : ["permissions"]}.get(obj_name, [])
+        xml_create_args = {
+            "user"  : {"with_permissions" : True},
+            "group" : {"with_permissions" : True},
+        }
         if no_check_fields:
             logger.info("%s: %s" % (
                 logging_tools.get_plural("no_check_field", len(no_check_fields)),
@@ -226,8 +236,18 @@ class create_object(View):
                     extra_dict[s_key] = value
                 else:
                     skip = False
-                    int_type = new_obj_class._meta.get_field(s_key).get_internal_type()
-                    if int_type.lower() in ["booleanfield", "nullbooleanfield"]:
+                    if s_key not in proxy_fields:
+                        int_type = new_obj_class._meta.get_field(s_key).get_internal_type()
+                    else:
+                        int_type = "???"
+                    if s_key in proxy_fields:
+                        # proxy field, for instance permissions (related to django group/user not csw group/user)
+                        if s_key == "permissions":
+                            d_value = value
+                        else:
+                            # FIXME
+                            pass
+                    elif int_type.lower() in ["booleanfield", "nullbooleanfield"]:
                         d_value = True if int(value) else False
                     elif int_type.lower() in ["foreignkey"]:
                         if int(value) == 0:
@@ -251,12 +271,15 @@ class create_object(View):
             if range_m:
                 num_dig = max(len(range_m.group("start")),
                               len(range_m.group("end")))
-                start_idx, end_idx = (int(range_m.group("start")),
-                                      int(range_m.group("end")))
-                start_idx, end_idx = (min(start_idx, end_idx),
-                                      max(start_idx, end_idx))
-                start_idx, end_idx = (min(max(start_idx, 1), 1000),
-                                      min(max(end_idx, 1), 1000))
+                start_idx, end_idx = (
+                    int(range_m.group("start")),
+                    int(range_m.group("end")))
+                start_idx, end_idx = (
+                    min(start_idx, end_idx),
+                    max(start_idx, end_idx))
+                start_idx, end_idx = (
+                    min(max(start_idx, 1), 1000),
+                    min(max(end_idx, 1), 1000))
                 logger.info(
                     "range has %s (%d -> %d)" % (
                         logging_tools.get_plural("digit", num_dig),
@@ -285,12 +308,15 @@ class create_object(View):
                 request.xml_response.error("error creating: %s" % (process_tools.get_except_info()), logger)
             else:
                 created_ok.append(new_obj)
+                if obj_name in ["user", "group"]:
+                    if "permissions" in set_dict:
+                        new_obj.permissions = set_dict["permissions"]
                 # add m2m entries
                 for key, value in m2m_dict.iteritems():
                     logger.info("added %s for %s" % (logging_tools.get_plural("m2m entry", len(value)), key))
                     for sub_value in value:
                         getattr(new_obj, key).add(new_obj_class._meta.get_field(key).rel.to.objects.get(Q(pk=sub_value)))
-                request.xml_response["new_entry"] = new_obj.get_xml()
+                request.xml_response["new_entry"] = new_obj.get_xml(**xml_create_args.get(new_obj._meta.object_name, {}))
         if created_ok:
             request.xml_response.info("created %s new %s" % (
                 " %d" % (len(create_list)) if len(create_list) > 1 else "",

@@ -11,7 +11,8 @@ from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fie
 from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
-     domain_name_tree
+     domain_name_tree, user, group
+#import PAM
 
 class authentication_form(Form):
     username = CharField(label=_("Username"),
@@ -45,9 +46,30 @@ class authentication_form(Form):
         self.request = request
         self.user_cache = None
         super(authentication_form, self).__init__(*args, **kwargs)
+    def pam_conv(self, auth, query_list):
+        print auth, query_list
+        response = []
+        for idx, (cur_query, cur_type) in enumerate(query_list):
+            if cur_type in [PAM.PAM_PROMPT_ECHO_OFF, PAM.PAM_PROMPT_ECHO_ON]:
+                response.append(("hlMS975", 0))
+            elif cur_type in [PAM.PAM_ERROR_MSG]:
+                print "PAM_ERROR_MSG %s" % (cur_query)
+                response.append(("", 0))
+            else:
+                print "+", idx, cur_query, cur_type, PAM.PAM_PROMPT_ECHO_OFF, PAM.PAM_PROMPT_ECHO_ON
+                return None
+        return response
     def clean(self):
         username = self.cleaned_data.get("username")
         password = self.cleaned_data.get("password")
+        #auth = PAM.pam()
+        #auth.start("passwd")
+        #auth.set_item(PAM.PAM_USER, username)
+        #auth.set_item(PAM.PAM_CONV, self.pam_conv)
+        #print username, password
+        #print auth.authenticate()
+        #print "-" * 20
+        #print pam.authenticate(username, password)
         if username and password:
             self.user_cache = authenticate(username=username, password=password)
             if self.user_cache is None:
@@ -205,3 +227,43 @@ class moncc_template_flags_form(ModelForm):
     class Meta:
         model = mon_check_command
         fields = ["mon_service_templ", "enable_perfdata", "volatile",]
+
+class group_detail_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.layout = Layout(
+        Fieldset(
+            "Basic data",
+            Field("groupname"),
+            Field("gid"),
+            ButtonHolder(
+                Field("active"),
+                ),
+            css_class="inlineLabels",
+        )
+    )
+    class Meta:
+        model = group
+        fields = ["groupname", "gid", "active",]
+    
+class user_detail_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.layout = Layout(
+        Fieldset(
+            "Basic data",
+            Field("login"),
+            Field("uid"),
+            Field("first_name"),
+            Field("last_name"),
+            Field("shell"),
+            ButtonHolder(
+                Field("active"),
+                ),
+            css_class="inlineLabels",
+        )
+    )
+    class Meta:
+        model = user
+        fields = ["login", "uid", "shell", "first_name", "last_name", "active",]
+    

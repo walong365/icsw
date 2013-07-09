@@ -1,0 +1,148 @@
+{% extends "main.html" %}
+
+{% load i18n compress coffeescript %}
+
+{% block title %}{% trans "User Overview" %}{% endblock %}
+
+
+{% block content %}
+
+<h1 class="center">Users and Groups / Treeview</h1>
+
+<div id="ug_tables" class="leftfloat">
+</div>
+<div id="ug_detail" class="leftfloat" style="width:400px; margin-left:auto; margin-right:auto;">
+</div>
+
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+class user_tree
+    constructor: (@top_div, @detail_div) ->
+        @add_sync_button()
+        @load_users()
+    add_sync_button: () =>
+        @sync_button = $("<input>").attr(
+            "type"  : "button"
+            "id"    : "sync_users"
+            "value" : "Sync Users"
+        ).on("click", @sync_users)
+        @top_div.append(@sync_button)
+    sync_users: (event) =>
+        @sync_button.attr("disabled", "disabled")
+        $.ajax
+            url     : "{% url 'user:sync_users' %}"
+            title   : "syncing users"
+            success : (xml) ->
+                @sync_button.removeAttr("disabled")
+                parse_xml_response(xml)
+    load_users: () =>
+        $.ajax
+            url     : "{% url 'user:overview' 'table' %}"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @UGX = $(xml).find("value[name='response']")
+                    @my_submitter = new submitter({
+                        master_xml       : @UGX,
+                        success_callback : @change_cb
+                    })
+                    @build_tree()
+    change_cb: (cur_el) =>
+        c_type = cur_el.attr("id").split("__")[2]
+        node_key = cur_el.attr("id").split("__")[1]
+        console.log c_type, node_key
+    build_tree: () =>
+        @top_div.dynatree
+            autoFocus  : false
+            debuglevel : {% if DEBUG %}0{% else %}0{% endif %}
+            onExpand : (flag, dtnode) =>
+            onSelect : (flag, dtnode) =>
+            onFocus  : (dtnode) =>
+                @show_details(dtnode.data.key)
+                return false
+            dnd : {
+                onDragStart : (dtnode) =>
+                    return true
+                onDragEnter : (dst_node, src_node) =>
+                    console.log dst_node.data.key
+                    if dst_node.data.key.match(/^group__/)
+                        console.log "t"
+                        return true
+                    else
+                        return false
+                onDrop: (dst_node, src_node, hit_mode, ui, draggable) =>
+                    console.log hit_mode
+                    $.ajax
+                        url     : "{% url 'user:move_user' %}"
+                        data    : {
+                            "src_id" : src_node.data.key
+                            "dst_id" : dst_node.data.key
+                            "mode"   : hit_mode
+                        }
+                        success : (xml) =>
+                            if parse_xml_response(xml)
+                                src_db_node = @UGX.find("users user[key='#{src_node.data.key}']")
+                                src_db_node.attr("parent", @UGX.find("groups group[key='#{dst_node.data.key}']").attr("pk"))
+                                src_node.move(dst_node, "over")
+                }
+        @root_node = @top_div.dynatree("getRoot")
+        console.log @UGX[0]
+        @build_group_node(@root_node)
+    build_group_node: (dt_node, db_node) =>
+        if db_node is undefined
+            title_str = "TOP"
+            expand_flag = true
+            key         = 0
+            folder      = true
+            next_list = @UGX.find("groups group[parent_group='0']")
+        else
+            title_str   = db_node.attr("groupname") + " (gid " + db_node.attr("gid") + ")"
+            expand_flag = true
+            key         = db_node.attr("key")
+            folder      = true
+            next_list = @UGX.find("groups group[parent_group='" + db_node.attr("pk") + "']")
+        new_node = dt_node.addChild(
+            title    : title_str
+            expand   : expand_flag
+            key      : key
+            isFolder : folder
+        )
+        next_list.each (idx, sub_el) =>
+            @build_group_node(new_node, $(sub_el))
+        if key
+            @UGX.find("users user[group='" + db_node.attr("pk") + "']").each (u_idx, user_el) =>
+                @build_user_node(new_node, $(user_el))
+    build_user_node: (dt_node, db_node) =>
+        new_node = dt_node.addChild(
+            title    : db_node.attr("login") + " (uid " + db_node.attr("uid") + ")"
+            expand   : false
+            key      : db_node.attr("key")
+        )
+    show_details: (key) =>
+        if key.match(/^(user|group)__/)
+            $.ajax
+                url     : "{% url 'user:ug_detail_form' %}"
+                data     : {
+                    "key" : key
+                }
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        @active_node = key
+                        @detail_div.children().remove()
+                        @detail_div.append($(xml).find("value[name='form']").text())
+                        @detail_div.find("input").on("change", @my_submitter.submit)
+                        cur_dtn = @UGX.find("*[key='#{key}']")
+                        #@detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
+        console.log "details", key
+
+$(document).ready(
+    my_ugt = new user_tree($("div#ug_tables"), $("div#ug_detail"))
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}
