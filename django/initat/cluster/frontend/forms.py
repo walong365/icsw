@@ -7,7 +7,8 @@ from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoic
 from django.contrib.auth import authenticate
 from django.utils.translation import ugettext_lazy as _
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fieldset, Div, HTML
+from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fieldset, Div, HTML, \
+     Row, Column
 from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
@@ -250,20 +251,41 @@ class user_detail_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "form"
     helper.layout = Layout(
-        Fieldset(
-            "Basic data",
-            Field("login"),
-            Field("uid"),
-            Field("first_name"),
-            Field("last_name"),
-            Field("shell"),
-            ButtonHolder(
-                Field("active"),
+        Row(
+            Column(
+                Fieldset(
+                    "Basic data",
+                    Field("login"),
+                    Field("uid"),
+                    Field("first_name"),
+                    Field("last_name"),
+                    Field("shell"),
+                    ButtonHolder(
+                        Field("active"),
+                        ),
+                    css_class="inlineLabels",
                 ),
-            css_class="inlineLabels",
-        )
+                css_class="inlineLabels col first",
+            ),
+            Column(
+                Fieldset(
+                    "Additional data",
+                    Field("title"),
+                    Field("email"),
+                    Field("pager"),
+                    Field("tel"),
+                    Field("comment"),
+                    css_class="inlineLabels",
+                    ),
+                css_class="inlineLabels col last",
+            ),
+        ),
+        Field("allowed_device_groups"),
+        Field("secondary_groups"),
     )
     class Meta:
         model = user
-        fields = ["login", "uid", "shell", "first_name", "last_name", "active",]
+        fields = ["login", "uid", "shell", "first_name", "last_name", "active",
+                  "title", "email", "pager", "tel", "comment",
+                  "allowed_device_groups", "secondary_groups"]
     

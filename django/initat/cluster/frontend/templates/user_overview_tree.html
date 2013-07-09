@@ -11,7 +11,7 @@
 
 <div id="ug_tables" class="leftfloat">
 </div>
-<div id="ug_detail" class="leftfloat" style="width:400px; margin-left:auto; margin-right:auto;">
+<div id="ug_detail" class="leftfloat" style="width:800px; margin-left:auto; margin-right:auto;">
 </div>
 
 
@@ -132,7 +132,7 @@ class user_tree
                         @active_node = key
                         @detail_div.children().remove()
                         @detail_div.append($(xml).find("value[name='form']").text())
-                        @detail_div.find("input").on("change", @my_submitter.submit)
+                        @detail_div.find("input, select").on("change", @my_submitter.submit)
                         cur_dtn = @UGX.find("*[key='#{key}']")
                         #@detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
         console.log "details", key
