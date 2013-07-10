@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2010,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2010,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -19,10 +19,14 @@
 #
 
 import sys
-from lxml import etree
+import time
+import os
+import pprint
 import logging_tools
 import process_tools
-import time
+
+from lxml import etree
+
 try:
     import libvirt
 except:
@@ -50,27 +54,36 @@ class disk_info(object):
         self.__xml_object = xml_object
         self.__first_run = True
         self._clear_stats()
-        self.src_file = self.__xml_object.xpath(".//source")[0].attrib["file"]
+        src_obj = self.__xml_object.find("source")
+        if src_obj is not None:
+            self.src_type, self.src_ref = ("???", "???")
+            for src_type in ["file", "dev"]:
+                if src_type in src_obj.attrib:
+                    self.src_type, self.src_ref = (src_type, src_obj.attrib[src_type])
         self.dev = self.__xml_object.xpath(".//target")[0].attrib["dev"]
         self.bus = self.__xml_object.xpath(".//target")[0].attrib["bus"]
     def get_info(self):
-        return "device '%s' on bus '%s', source_name is %s" % (self.dev,
-                                                               self.bus,
-                                                               self.src_file)
+        return "device '%s' on bus '%s', source is %s (%s)" % (
+            self.dev,
+            self.bus,
+            self.src_ref,
+            self.src_type)
     def _clear_stats(self):
         self.stats = dict([(key, dict([(s_key, 0) for s_key in ["reqs", "bytes"]])) for key in ["read", "write"]])
     def feed(self, *args):
         act_time = time.time()
-        cpu_used = args[4]
         if self.__first_run:
             self.__first_run = False
         else:
             diff_time = max(abs(act_time - self.__feed_time), 1)
             try:
-                for key, offset in [("read" , 0),
-                                    ("write", 2)]:
+                for key, offset in [
+                    ("read" , 0),
+                    ("write", 2)]:
                     for rel_offset, rel_key in enumerate(["reqs", "bytes"]):
-                        self.stats[key][rel_key] = (args[offset + rel_offset] - self.__prev_args[offset + rel_offset]) / diff_time
+                        self.stats[key][rel_key] = (
+                            args[offset + rel_offset] - self.__prev_args[offset + rel_offset]
+                            ) / diff_time
             except:
                 self._clear_stats()
         self.__prev_args, self.__feed_time = (args, act_time)
@@ -85,22 +98,23 @@ class net_info(object):
         self.source = self.__xml_object.xpath(".//source")[0].attrib["bridge"]
         self.mac_address = self.__xml_object.xpath(".//mac")[0].attrib["address"]
     def get_info(self):
-        return "device %s (model %s) on %s, MAC is %s" % (self.dev,
-                                                          self.model,
-                                                          self.source,
-                                                          self.mac_address)
+        return "device %s (model %s) on %s, MAC is %s" % (
+            self.dev,
+            self.model,
+            self.source,
+            self.mac_address)
     def _clear_stats(self):
         self.stats = dict([(key, dict([(s_key, 0) for s_key in ["bytes", "packets", "errs", "drops"]])) for key in ["read", "write"]])
     def feed(self, *args):
         act_time = time.time()
-        cpu_used = args[4]
         if self.__first_run:
             self.__first_run = False
         else:
             diff_time = max(abs(act_time - self.__feed_time), 1)
             try:
-                for key, offset in [("read" , 0),
-                                    ("write", 4)]:
+                for key, offset in [
+                    ("read" , 0),
+                    ("write", 4)]:
                     for rel_offset, rel_key in enumerate(["bytes", "packets", "errs", "drops"]):
                         self.stats[key][rel_key] = (args[offset + rel_offset] - self.__prev_args[offset + rel_offset]) / diff_time
             except:
@@ -147,13 +161,13 @@ class virt_instance(object):
     def update(self):
         #print dir(self.dom_handle)
         self.base_info.feed(*self.dom_handle.info())
-        print "+", self.name, self.disk_dict.keys(), "%.2f" % (self.base_info.cpu_used)
+        #print "+", self.name, self.disk_dict.keys(), "%.2f" % (self.base_info.cpu_used)
         for act_disk in self.disk_dict:
             self.disk_dict[act_disk].feed(*self.dom_handle.blockStats(act_disk))
-            print "    ", act_disk, self.disk_dict[act_disk].stats
+            #print "    ", act_disk, self.disk_dict[act_disk].stats
         for act_net in self.net_dict:
             self.net_dict[act_net].feed(*self.dom_handle.interfaceStats(act_net))
-            print "    ", act_net, self.net_dict[act_net].stats
+            #print "    ", act_net, self.net_dict[act_net].stats
         
 class libvirt_connection(object):
     def __init__(self, read_only=True, **kwargs):
@@ -184,27 +198,38 @@ class libvirt_connection(object):
                 self.__conn = None
                 self.log("error in openReadOnly(None): %s" % (process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_CRITICAL)
+            else:
+                if os.getuid():
+                    self.log("not running as root (%d != 0)" % (os.getuid()),
+                             logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("no libvirt defined", logging_tools.LOG_LEVEL_ERROR)
             self.__conn = None
+    def keys(self):
+        return self.__inst_dict.keys()
     def __getitem__(self, key):
         return self.__inst_dict[key]
     def update(self):
         if self.__conn:
             id_list = self.__conn.listDomainsID()
-            new_ids = [d_id for d_id in id_list if d_id not in self.__inst_dict]
-            old_ids = [d_id for d_id in self.__inst_dict if d_id not in id_list]
+            cur_ids, present_ids = (set(id_list), set(self.__inst_dict.keys()))
+            new_ids = cur_ids - present_ids
+            old_ids = present_ids - cur_ids
             if new_ids:
-                self.log("%s found: %s" % (logging_tools.get_plural("ID", len(new_ids)),
-                                           ", ".join(["%d" % (cur_id) for cur_id in sorted(new_ids)])))
+                self.log(
+                    "%s found: %s" % (
+                        logging_tools.get_plural("ID", len(new_ids)),
+                        ", ".join(["%d" % (cur_id) for cur_id in sorted(new_ids)])))
                 for new_id in new_ids:
                     self.add_domain(virt_instance(new_id, self.log, self.__conn))
             if old_ids:
-                self.log("%s lost: %s" % (logging_tools.get_plural("ID", len(old_ids)),
-                                          ", ".join(["%d" % (cur_id) for cur_id in sorted(old_ids)])))
+                self.log(
+                    "%s lost: %s" % (
+                        logging_tools.get_plural("ID", len(old_ids)),
+                        ", ".join(["%d" % (cur_id) for cur_id in sorted(old_ids)])))
                 for old_id in old_ids:
                     self.remove_domain(old_id)
-            for same_id in [key for key in self.__inst_dict.keys() if type(key) == type(0)]:
+            for same_id in cur_ids & present_ids:
                 self[same_id].update()
     def add_domain(self, new_inst):
         self.__inst_dict[new_inst.inst_id] = new_inst
@@ -214,18 +239,20 @@ class libvirt_connection(object):
     def get_status(self):
         conn = self.__conn
         if conn:
-            ret_dict = {"info"         : conn.getInfo(),
-                        "type"         : conn.getType(),
-                        "version"      : conn.getVersion(),
-                        "capabilities" : conn.getCapabilities()}
+            ret_dict = {
+                "info"         : conn.getInfo(),
+                "type"         : conn.getType(),
+                "version"      : conn.getVersion(),
+                "capabilities" : conn.getCapabilities()}
         else:
             ret_dict = {}
         return ret_dict
     def domain_overview(self):
         conn = self.__conn
         if conn:
-            dom_dict = {"running" : {},
-                        "defined" : {}}
+            dom_dict = {
+                "running" : {},
+                "defined" : {}}
             domain_ids = conn.listDomainsID()
             for act_id in domain_ids:
                 act_dom = conn.lookupByID(act_id)
@@ -259,7 +286,7 @@ def _monitor_test():
     cur_con = libvirt_connection(log_com="stdout")
     while True:
         cur_con.update()
-        time.sleep(1)
+        time.sleep(30)
         
 if __name__ == "__main__":
     if len(sys.argv) > 1:
