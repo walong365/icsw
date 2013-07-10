@@ -2,9 +2,11 @@
 
 """ simple formulars for django / clustersoftware """
 
-from django.forms.widgets import TextInput, PasswordInput
-from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField
+from django.forms.widgets import TextInput, PasswordInput, SelectMultiple
+from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, ModelMultipleChoiceField
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import Permission
+from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fieldset, Div, HTML, \
@@ -12,7 +14,7 @@ from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fie
 from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
-     domain_name_tree, user, group
+     domain_name_tree, user, group, device_group
 #import PAM
 
 class authentication_form(Form):
@@ -230,24 +232,63 @@ class moncc_template_flags_form(ModelForm):
         fields = ["mon_service_templ", "enable_perfdata", "volatile",]
 
 class group_detail_form(ModelForm):
+    permissions = ModelMultipleChoiceField(
+        queryset=Permission.objects.exclude(Q(codename__startswith="add") | Q(codename__startswith="change") | Q(codename__startswith="delete") | Q(codename__startswith="wf_")).select_related("content_type").order_by("codename"),
+        widget=SelectMultiple(attrs={"size" : "8"}),
+    )
+    allowed_device_groups = ModelMultipleChoiceField(
+        queryset=device_group.objects.exclude(Q(cluster_device_group=True)),
+    )
     helper = FormHelper()
     helper.form_id = "form"
     helper.layout = Layout(
-        Fieldset(
-            "Basic data",
-            Field("groupname"),
-            Field("gid"),
-            ButtonHolder(
-                Field("active"),
-                ),
-            css_class="inlineLabels",
-        )
+        Row(
+            Column(
+                Fieldset(
+                    "Basic data",
+                    Field("groupname"),
+                    Field("gid"),
+                    ButtonHolder(
+                        Field("active"),
+                        ),
+                    css_class="inlineLabels",
+                    ),
+                css_class="inlineLabels col first",
+            ),
+            Column(
+                Fieldset(
+                    "Additional data",
+                    Field("title"),
+                    Field("email"),
+                    Field("pager"),
+                    Field("tel"),
+                    Field("comment"),
+                    css_class="inlineLabels",
+                    ),
+                css_class="inlineLabels col last",
+            ),
+        ),
+        Field("allowed_device_groups"),
+        Field("permissions"),
     )
+    def __init__(self, *args, **kwargs):
+        super(group_detail_form, self).__init__(*args, **kwargs)
+        if "instance" in kwargs:
+            self.fields["permissions"].initial = Permission.objects.filter(Q(group__name=kwargs["instance"].groupname))
     class Meta:
         model = group
-        fields = ["groupname", "gid", "active",]
+        fields = ["groupname", "gid", "active",
+                  "title", "email", "pager", "tel", "comment",
+                  "allowed_device_groups", "permissions"]
     
 class user_detail_form(ModelForm):
+    permissions = ModelMultipleChoiceField(
+        queryset=Permission.objects.exclude(Q(codename__startswith="add") | Q(codename__startswith="change") | Q(codename__startswith="delete") | Q(codename__startswith="wf_")).select_related("content_type").order_by("codename"),
+        widget=SelectMultiple(attrs={"size" : "8"}),
+    )
+    allowed_device_groups = ModelMultipleChoiceField(
+        queryset=device_group.objects.exclude(Q(cluster_device_group=True)),
+    )
     helper = FormHelper()
     helper.form_id = "form"
     helper.layout = Layout(
@@ -264,7 +305,7 @@ class user_detail_form(ModelForm):
                         Field("active"),
                         ),
                     css_class="inlineLabels",
-                ),
+                    ),
                 css_class="inlineLabels col first",
             ),
             Column(
@@ -282,10 +323,15 @@ class user_detail_form(ModelForm):
         ),
         Field("allowed_device_groups"),
         Field("secondary_groups"),
+        Field("permissions"),
     )
+    def __init__(self, *args, **kwargs):
+        super(user_detail_form, self).__init__(*args, **kwargs)
+        if "instance" in kwargs:
+            self.fields["permissions"].initial = Permission.objects.filter(Q(user__username=kwargs["instance"].login))
     class Meta:
         model = user
         fields = ["login", "uid", "shell", "first_name", "last_name", "active",
                   "title", "email", "pager", "tel", "comment",
-                  "allowed_device_groups", "secondary_groups"]
+                  "allowed_device_groups", "secondary_groups", "permissions"]
     
