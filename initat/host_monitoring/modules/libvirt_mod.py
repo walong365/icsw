@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2010,2012 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2010,2012,2013 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -34,19 +34,91 @@ except:
     libvirt_tools = None
 
 class _general(hm_classes.hm_module):
+    def init_module(self):
+        if libvirt_tools:
+            self.connection = libvirt_tools.libvirt_connection(log_com=self.log)
+            self.log("libvirt connection established")
+            self.mv_regs, self.doms_reg = (set(), set())
+        else:
+            self.log("no libvirt_tools found", logging_tools.LOG_LEVEL_WARN)
+            self.connection = None
     def _exec_command(self, com, logger):
         stat, out = commands.getstatusoutput(com)
         if stat:
             logger.warning("cannot execute %s (%d): %s" % (com, stat, out))
             out = ""
         return out.split("\n")
+    def update_machine_vector(self, mv):
+        if self.connection:
+            _c = self.connection
+            _c.update()
+            doms_found = set()
+            for cur_dom in _c.keys():
+                _d = _c[cur_dom]
+                sane_name = _d.name.replace(".", "_")
+                doms_found.add(sane_name)
+                if sane_name not in self.doms_reg:
+                    self.doms_reg.add(sane_name)
+                    self.log("registering domain '%s' (%s)" % (_d.name, sane_name))
+                base_name = "virt.%s" % (sane_name)
+                # CPU
+                cpu_name = "%s.cpu" % (base_name)
+                if cpu_name not in self.mv_regs:
+                    mv.register_entry(cpu_name, 0., "cpu usage", "%")
+                    self.mv_regs.add(cpu_name)
+                mv[cpu_name] = _d.base_info.cpu_used
+                # Disk
+                disk_base = "%s.disk" % (base_name)
+                for act_disk in _d.disk_dict:
+                    disk_name_r, disk_name_w = (
+                        "%s.%s.read" % (
+                            disk_base,
+                            act_disk,
+                        ),
+                        "%s.%s.write" % (
+                            disk_base,
+                            act_disk,
+                        )
+                    )
+                    if disk_name_r not in self.mv_regs:
+                        self.mv_regs.add(disk_name_r)
+                        self.mv_regs.add(disk_name_w)
+                        mv.register_entry(disk_name_r, 0., "byte read from $4", "B/s", 1024)
+                        mv.register_entry(disk_name_w, 0., "byte written to $4", "B/s", 1024)
+                    mv[disk_name_r] = _d.disk_dict[act_disk].stats["read"]["bytes"]
+                    mv[disk_name_w] = _d.disk_dict[act_disk].stats["write"]["bytes"]
+                # Network
+                net_base = "%s.net" % (base_name)
+                for act_net in _d.net_dict:
+                    net_name_r, net_name_w = (
+                        "%s.%s.read" % (
+                            net_base,
+                            act_net,
+                        ),
+                        "%s.%s.write" % (
+                            net_base,
+                            act_net,
+                        )
+                    )
+                    if net_name_r not in self.mv_regs:
+                        self.mv_regs.add(net_name_r)
+                        self.mv_regs.add(net_name_w)
+                        mv.register_entry(net_name_r, 0., "byte read from $4", "B/s", 1024)
+                        mv.register_entry(net_name_w, 0., "byte written to $4", "B/s", 1024)
+                    mv[net_name_r] = _d.net_dict[act_net].stats["read"]["bytes"]
+                    mv[net_name_w] = _d.net_dict[act_net].stats["write"]["bytes"]
+            rem_doms = self.doms_reg - doms_found
+            if rem_doms:
+                self.doms_reg -= rem_doms
+                for dom_del in rem_doms:
+                    self.log("unregistering domain %s" % (dom_del))
+                    mv.unregister_tree("virt.%s" % (dom_del))
+                    self.mv_regs = set([value for value in self.mv_regs if not value.startswith("virt.%s." % (dom_del))])
                     
 class libvirt_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        if libvirt_tools:
-            cur_lvc = libvirt_tools.libvirt_connection(log_com=self.log)
-            ret_dict = cur_lvc.get_status()
-            cur_lvc.close()
+        if self.module.connection:
+            ret_dict = self.module.connection.get_status()
         else:
             ret_dict = {}
         srv_com["libvirt"] = ret_dict
@@ -71,16 +143,13 @@ class libvirt_status_command(hm_classes.hm_command):
 
 class domain_overview_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        if libvirt_tools:
-            cur_lvc = libvirt_tools.libvirt_connection(log_com=self.log)
-            ret_dict = cur_lvc.domain_overview()
-            cur_lvc.close()
+        if self.module.connection:
+            ret_dict = self.module.connection.domain_overview()
         else:
             ret_dict = {}
         srv_com["domain_overview"] = ret_dict
     def interpret(self, srv_com, cur_ns):
-        r_dict = srv_com["domain_overview"]
-        return self._interpret(r_dict, cur_ns)
+        return self._interpret(srv_com["domain_overview"], cur_ns)
     def interpret_old(self, result, parsed_coms):
         r_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(r_dict, parsed_coms)
@@ -114,23 +183,22 @@ class domain_status_command(hm_classes.hm_command):
             srv_com["result"].attrib.update({"reply"  : "missing argument",
                                               "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
-            if libvirt_tools:
-                cur_lvc = libvirt_tools.libvirt_connection(log_com=self.log)
-                ret_dict = cur_lvc.domain_status(srv_com["arguments:arg0"].text)
-                cur_lvc.close()
+            if self.module.connection:
+                ret_dict = self.module.connection.domain_status(srv_com["arguments:arg0"].text)
             else:
                 ret_dict = {}
             srv_com["domain_status"] = ret_dict
     def interpret(self, srv_com, cur_ns):
-        r_dict = srv_com["domain_status"]
-        return self._interpret(r_dict, cur_ns)
+        return self._interpret(srv_com["domain_status"], cur_ns)
     def interpret_old(self, result, parsed_coms):
         r_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(r_dict, parsed_coms)
     def _interpret(self, dom_dict, cur_ns):
         ret_state, out_f = (limits.nag_STATE_OK, [])
+        pprint.pprint(dom_dict)
         if dom_dict["desc"]:
             xml_doc = etree.fromstring(dom_dict["desc"])
+            print etree.tostring(xml_doc, pretty_print=True)
             out_f.append("%s, memory %s, %s, %s, VNC port is %d" % (
                 xml_doc.find(".//name").text,
                 logging_tools.get_size_str(int(xml_doc.find(".//memory").text) * 1024),

@@ -372,8 +372,8 @@ class mvect_entry(object):
         return True if (self.valid_until and cur_time > self.valid_until) else False
     def get_form_entry(self, idx):
         act_line = []
-        sub_keys = (self.name.split(".") + ["", "", ""])[0:4]
-        for key_idx, sub_key in zip(xrange(4), sub_keys):
+        sub_keys = (self.name.split(".") + ["", "", "", "", ""])[0:6]
+        for key_idx, sub_key in zip(xrange(6), sub_keys):
             act_line.append(logging_tools.form_entry("%s%s" % ("" if (key_idx == 0 or sub_key == "") else ".", sub_key), header="key%d" % (key_idx)))
         # check for unknow
         if self.value is None:
