@@ -135,22 +135,6 @@ class architecture(models.Model):
     def __unicode__(self):
         return self.architecture
 
-#class ccl_dgroup_con(models.Model):
-    #idx = models.AutoField(db_column="ccl_dgroup_con_idx", primary_key=True)
-    #ccl_event = models.ForeignKey("ccl_event")
-    #device_group = models.ForeignKey("device_group")
-    #date = models.DateTimeField(auto_now_add=True)
-    #class Meta:
-        #db_table = u'ccl_dgroup_con'
-
-#class ccl_dloc_con(models.Model):
-    #idx = models.AutoField(db_column="ccl_dloc_con_idx", primary_key=True)
-    #ccl_event = models.ForeignKey("ccl_event")
-    #device_location = models.ForeignKey("device_location")
-    #date = models.DateTimeField(auto_now_add=True)
-    #class Meta:
-        #db_table = u'ccl_dloc_con'
-
 #class ccl_event(models.Model):
     #idx = models.AutoField(db_column="ccl_event_idx", primary_key=True)
     #device = models.ForeignKey("device")
@@ -4170,8 +4154,9 @@ def _migrate_mon_type(cat_tree):
 
 def _migrate_location_type(cat_tree):
     # read all monitoring_config_types
-    all_loc_ct = dict([(pk, "%s/%s" % (TOP_LOCATION_CATEGORY,
-                                       cur_name)) for pk, cur_name in device_location.objects.all().values_list("pk", "location")])
+    all_loc_ct = dict([(pk, "%s/%s" % (
+        TOP_LOCATION_CATEGORY,
+        cur_name)) for pk, cur_name in device_location.objects.all().values_list("pk", "location")])
     mig_dict = dict([(key, cat_tree.add_category(value)) for key, value in all_loc_ct.iteritems()])
     for cur_dev in device.objects.all():
         if cur_dev.device_location_id:
@@ -4283,6 +4268,9 @@ class category(models.Model):
     immutable = models.BooleanField(default=False)
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
+    # location field for location nodes
+    #loc_latitude = models.FloatField(default=0.0)
+    #loc_longitude = models.FloatField(default=0.0)
     def get_sorted_pks(self):
         return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
