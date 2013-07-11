@@ -110,6 +110,8 @@ class device_tree
         line_prefix = cur_dg.attr("key")
         if cur_dg.attr("is_cdg") == "1"
             new_tr.append $("<th>").attr("colspan" : 2)
+            new_tr.append $("<th>").text("name")
+            new_tr.append $("<th>").text("description")
         else
             new_tr.append(
                 $("<td>").append(
@@ -287,10 +289,26 @@ class device_tree
     create_device_group: (devg_xml) =>
         @xml.find("response").append(devg_xml)
         @top_div.find("tr[id='device_group__new']").before(@build_group(devg_xml))
-        @top_div.find("select[id$='__device_group']").each (index, sel_el) =>
-            $(sel_el).append($("<option>").attr({
-                "value" : devg_xml.attr("pk")
-            }).text(devg_xml.attr("name")))
+        if @xml.find("device_group").length == 2
+            # first real device_group added, create selection list
+            @top_div.find("select[id$='__device_type']").each (index, devt_el) =>
+                devg_td = $(devt_el).parents("th:first").next()
+                devg_td.children().remove().end().text("")
+                devg_td.append(
+                    create_input_el(
+                        undefined, "device_group", "dev__new", {
+                            select_source           : "device_group[is_cdg='0']"
+                            select_source_attribute : "name"
+                            master_xml              : @xml
+                        }
+                    )
+                )
+        else
+            # add device_groups
+            @top_div.find("select[id$='__device_group']").each (index, sel_el) =>
+                $(sel_el).append($("<option>").attr({
+                    "value" : devg_xml.attr("pk")
+                }).text(devg_xml.attr("name")))
         @num_devgs++
         if @num_devgs == 1
             @top_div.find("table").append(@build_new_device)
@@ -331,6 +349,7 @@ class device_tree
                     data    : create_dict(new_devg_line, "device_group__new")
                     success : (xml) =>
                         if parse_xml_response(xml)
+                            new_devg_line.find("input[id$='__new__name']").val("")
                             @create_device_group($(xml).find("value[name='new_entry'] device_group"))
             )
         ))

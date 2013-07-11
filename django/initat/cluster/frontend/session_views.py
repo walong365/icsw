@@ -17,7 +17,7 @@ from django.views.generic import View
 from initat.core.render import render_me
 from initat.cluster.frontend.helper_functions import update_session_object
 from initat.cluster.frontend.forms import authentication_form
-from initat.cluster.backbone.models import user, user_variable
+from initat.cluster.backbone.models import user, user_variable, group
 
 logger = logging.getLogger("cluster.setup")
 
@@ -63,6 +63,20 @@ class sess_login(View):
             except user.DoesNotExist:
                 db_user = None
                 logger.warning("no db_user defined")
+                if not user.objects.all().count() and not group.objects.all().count():
+                    logger.warning("creating default user")
+                    # create standard user
+                    new_group = group.objects.create(
+                        groupname="%sgrp" % (django_user.username),
+                        gid=666,
+                    )
+                    new_user = user.objects.create(
+                        login=django_user.username,
+                        group=new_group,
+                        uid=666,
+                        password=login_form.cleaned_data.get("password"),
+                    )
+                    db_user = new_user
             else:
                 pass
             login(request, django_user)

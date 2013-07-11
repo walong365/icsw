@@ -188,7 +188,7 @@ rrd_patterns = patterns(
     url(r"^graph_rrd$", rrd_views.graph_rrds.as_view() , name="graph_rrds"),
 )
 
-if settings.CLUSTER_LICENSE["rest"]:
+if settings.CLUSTER_LICENSE.get("rest", False):
     rpl = []
     for obj_name in ["user", "group", "device_group"]:
         rpl.extend([
@@ -234,7 +234,7 @@ my_url_patterns = patterns(
     url(r"^doc/"      , include(doc_patterns       , namespace="doc"     )),
 )
 
-if settings.CLUSTER_LICENSE["rest"]:
+if settings.CLUSTER_LICENSE.get("rest", False):
     my_url_patterns += patterns(
         "",
         url(r"^rest/"     , include(rest_patterns      , namespace="rest"    )),
