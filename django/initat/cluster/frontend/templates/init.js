@@ -622,6 +622,7 @@ root.show_device_info = (event, dev_key, callback) ->
 class device_info
     constructor: (@event, @dev_key, @callback) ->
     show: () =>
+        replace_div = {% if index_view %}true{% else %}false{% endif %}
         $.ajax
             url     : "{% url 'device:device_info' %}"
             data    :
@@ -630,20 +631,23 @@ class device_info
                 if parse_xml_response(xml)
                     @resp_xml = $(xml).find("response")
                     @build_div()
-                    @dev_div.modal
-                        opacity      : 50
-                        position     : [@event.pageY, @event.pageX]
-                        autoResize   : true
-                        autoPosition : true
-                        minWidth     : "640px"
-                        onShow: (dialog) -> 
-                            dialog.container.draggable()
-                            $("#simplemodal-container").css("height", "auto")
-                            $("#simplemodal-container").css("width", "auto")
-                        onClose: =>
-                            $.modal.close()
-                            if @callback
-                                @callback(@dev_key)
+                    if replace_div
+                        $("div#center_content").children().remove().end().append(@dev_div)
+                    else
+                        @dev_div.modal
+                            opacity      : 50
+                            position     : [@event.pageY, @event.pageX]
+                            autoResize   : true
+                            autoPosition : true
+                            minWidth     : "640px"
+                            onShow: (dialog) -> 
+                                dialog.container.draggable()
+                                $("#simplemodal-container").css("height", "auto")
+                                $("#simplemodal-container").css("width", "auto")
+                            onClose: =>
+                                $.modal.close()
+                                if @callback
+                                    @callback(@dev_key)
     fqdn_compound: (in_dict) =>
         dev_key = in_dict["id"].split("__")[0..1].join("__")
         el_name = in_dict["id"].split("__")[2]
