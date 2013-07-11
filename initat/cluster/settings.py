@@ -315,7 +315,7 @@ CLUSTER_LICENSE["device_count"] = license.get_device_count()
 del license
 
 # add rest if enabled
-if CLUSTER_LICENSE["rest"]:
+if CLUSTER_LICENSE.get("rest", False):
     INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
 
     rest_renderers = (["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []) + [

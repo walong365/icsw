@@ -3661,8 +3661,7 @@ def user_post_save(sender, **kwargs):
             salt = os.urandom(4)
             new_sh.update(salt)
             #print base64.b64encode(new_sh.digest() +  salt)
-            cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() +  salt))
-            #cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() + salt))
+            cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() + salt))
             cur_inst.save()
         django_user.save()
 
@@ -4078,7 +4077,7 @@ class domain_tree_node(models.Model):
     # create entry for clusternodes even when network not in list
     always_create_ip = models.BooleanField(default=False)
     # use for nameserver config
-    write_nameserver_config = models.BooleanField(default=False)
+    write_nameserver_config = models.BooleanField(default=False)	
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
     def get_sorted_pks(self):
