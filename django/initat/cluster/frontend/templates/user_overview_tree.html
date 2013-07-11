@@ -52,7 +52,7 @@ class user_tree
     change_cb: (cur_el) =>
         c_type = cur_el.attr("id").split("__")[2]
         node_key = cur_el.attr("id").split("__")[1]
-        console.log c_type, node_key
+        #console.log c_type, node_key
     build_tree: () =>
         @top_div.dynatree
             autoFocus  : false
@@ -66,14 +66,11 @@ class user_tree
                 onDragStart : (dtnode) =>
                     return true
                 onDragEnter : (dst_node, src_node) =>
-                    console.log dst_node.data.key
                     if dst_node.data.key.match(/^group__/)
-                        console.log "t"
                         return true
                     else
                         return false
                 onDrop: (dst_node, src_node, hit_mode, ui, draggable) =>
-                    console.log hit_mode
                     $.ajax
                         url     : "{% url 'user:move_user' %}"
                         data    : {
@@ -88,7 +85,6 @@ class user_tree
                                 src_node.move(dst_node, "over")
                 }
         @root_node = @top_div.dynatree("getRoot")
-        console.log @UGX[0]
         @build_group_node(@root_node)
     build_group_node: (dt_node, db_node) =>
         if db_node is undefined
@@ -135,7 +131,6 @@ class user_tree
                         @detail_div.find("input, select").on("change", @my_submitter.submit)
                         cur_dtn = @UGX.find("*[key='#{key}']")
                         #@detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
-        console.log "details", key
 
 $(document).ready(
     my_ugt = new user_tree($("div#ug_tables"), $("div#ug_detail"))
