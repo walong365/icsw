@@ -176,7 +176,7 @@ class libvirt_connection(object):
         if self.log_com == "stdout":
             self.log_com = self.stdout_log
         self.log_lines = []
-        self._get_connection()
+        self.__conn = None
         self.__inst_dict = {}
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_lines.append((log_level, what))
@@ -185,33 +185,55 @@ class libvirt_connection(object):
     def stdout_log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print "[%-5s] %s" % (logging_tools.get_log_level_str(log_level), what)
     def close(self, **kwargs):
+        self._close_con()
+        if kwargs.get("keep_log_lines", False):
+            self.log_lines = []
+    def _close_con(self):
         if self.__conn:
             self.__conn.close()
             del self.__conn
-        if kwargs.get("keep_log_lines", False):
-            self.log_lines = []
-    def _get_connection(self):
-        if libvirt:
-            try:
-                self.__conn = libvirt.openReadOnly(None)
-            except:
-                self.__conn = None
-                self.log("error in openReadOnly(None): %s" % (process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_CRITICAL)
-            else:
-                if os.getuid():
-                    self.log("not running as root (%d != 0)" % (os.getuid()),
-                             logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("no libvirt defined", logging_tools.LOG_LEVEL_ERROR)
             self.__conn = None
+    @property
+    def connection(self):
+        if not self.__conn:
+            if libvirt:
+                try:
+                    self.__conn = libvirt.openReadOnly(None)
+                except:
+                    self.__conn = None
+                    self.log("error in openReadOnly(None): %s" % (process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_CRITICAL)
+                else:
+                    if os.getuid():
+                        self.log("not running as root (%d != 0)" % (os.getuid()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("no libvirt defined", logging_tools.LOG_LEVEL_ERROR)
+                self.__conn = None
+        return self.__conn
     def keys(self):
         return self.__inst_dict.keys()
     def __getitem__(self, key):
         return self.__inst_dict[key]
+    def conn_call(self, conn, call_name, *args, **kwargs):
+        for retry in [0, 1]:
+            try:
+                res = getattr(conn, call_name)(*args, **kwargs)
+            except:
+                self.log("error calling %s: %s" % (call_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self._close_con()
+                if retry:
+                    raise
+                else:
+                    res = None
+                conn = self.connection
+            else:
+                break
+        return res
     def update(self):
-        if self.__conn:
-            id_list = self.__conn.listDomainsID()
+        conn = self.connection
+        if conn is not None:
+            id_list = self.conn_call(conn, "listDomainsID")
             cur_ids, present_ids = (set(id_list), set(self.__inst_dict.keys()))
             new_ids = cur_ids - present_ids
             old_ids = present_ids - cur_ids
@@ -221,7 +243,7 @@ class libvirt_connection(object):
                         logging_tools.get_plural("ID", len(new_ids)),
                         ", ".join(["%d" % (cur_id) for cur_id in sorted(new_ids)])))
                 for new_id in new_ids:
-                    self.add_domain(virt_instance(new_id, self.log, self.__conn))
+                    self.add_domain(virt_instance(new_id, self.log, conn))
             if old_ids:
                 self.log(
                     "%s lost: %s" % (
@@ -237,44 +259,46 @@ class libvirt_connection(object):
         self.__inst_dict[inst_id].close()
         del self.__inst_dict[inst_id]
     def get_status(self):
-        conn = self.__conn
+        conn = self.connection
         if conn:
             ret_dict = {
-                "info"         : conn.getInfo(),
-                "type"         : conn.getType(),
-                "version"      : conn.getVersion(),
-                "capabilities" : conn.getCapabilities()}
+                "info"         : self.conn_call(conn, "getInfo"),
+                "type"         : self.conn_call(conn, "getType"),
+                "version"      : self.conn_call(conn, "getVersion"),
+                "capabilities" : self.conn_call(conn, "getCapabilities"),
+            }
         else:
             ret_dict = {}
         return ret_dict
     def domain_overview(self):
-        conn = self.__conn
+        conn = self.connection
         if conn:
             dom_dict = {
                 "running" : {},
                 "defined" : {}}
-            domain_ids = conn.listDomainsID()
+            domain_ids = self.conn_call(conn, "listDomainsID")
             for act_id in domain_ids:
-                act_dom = conn.lookupByID(act_id)
+                act_dom = self.conn_call(conn, "lookupByID", act_id)
                 dom_dict["running"][act_id] = {"name" : act_dom.name(),
                                                "info" : act_dom.info()}
                 del act_dom
-            domain_names = conn.listDefinedDomains()
+            domain_names = self.conn_call(conn, "listDefinedDomains")
             for act_name in domain_names:
-                act_dom = conn.lookupByName(act_name)
+                act_dom = self.conn_call(conn, "lookupByName", act_name)
                 dom_dict["defined"][act_name] = act_dom.info()
                 del act_dom
         else:
+            # better return an error ?
             dom_dict = {}
         return dom_dict
     def domain_status(self, cm):
-        conn = self.__conn
+        conn = self.connection
         if conn:
             r_dict = {"cm"   : cm,
                       "desc" : None}
-            domain_ids = conn.listDomainsID()
+            domain_ids = self.conn_call(conn, "listDomainsID")
             for act_id in domain_ids:
-                act_dom = conn.lookupByID(act_id)
+                act_dom = self.conn_call(conn, "lookupByID", act_id)
                 if cm and act_dom.name() == cm:
                     r_dict["desc"] = act_dom.XMLDesc(0)
                 del act_dom
