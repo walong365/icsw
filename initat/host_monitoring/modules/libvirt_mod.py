@@ -36,12 +36,15 @@ except:
 class _general(hm_classes.hm_module):
     def init_module(self):
         if libvirt_tools:
-            self.connection = libvirt_tools.libvirt_connection(log_com=self.log)
-            self.log("libvirt connection established")
-            self.mv_regs, self.doms_reg = (set(), set())
+            self.connection = None
         else:
             self.log("no libvirt_tools found", logging_tools.LOG_LEVEL_WARN)
             self.connection = None
+    def establish_connection(self):
+        if self.connection is None and libvirt_tools:
+            self.connection = libvirt_tools.libvirt_connection(log_com=self.log)
+            self.log("libvirt connection established")
+            self.mv_regs, self.doms_reg = (set(), set())
     def _exec_command(self, com, logger):
         stat, out = commands.getstatusoutput(com)
         if stat:
@@ -54,6 +57,7 @@ class _general(hm_classes.hm_module):
             self.mv_regs.add(key)
         mv[key] = value
     def update_machine_vector(self, mv):
+        self.establish_connection()
         if self.connection:
             _c = self.connection
             _c.update()
@@ -156,6 +160,7 @@ class _general(hm_classes.hm_module):
                     
 class libvirt_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
+        self.module.establish_connection()
         if self.module.connection:
             ret_dict = self.module.connection.get_status()
         else:
@@ -182,6 +187,7 @@ class libvirt_status_command(hm_classes.hm_command):
 
 class domain_overview_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
+        self.module.establish_connection()
         if self.module.connection:
             ret_dict = self.module.connection.domain_overview()
         else:
@@ -198,8 +204,9 @@ class domain_overview_command(hm_classes.hm_command):
             pass
         else:
             # reorder old-style retunr
-            dom_dict = {"running" : dom_dict,
-                        "defined" : {}}
+            dom_dict = {
+                "running" : dom_dict,
+                "defined" : {}}
         r_dict = dom_dict["running"]
         d_dict = dom_dict["defined"]
         # generate name lookup
@@ -209,8 +216,9 @@ class domain_overview_command(hm_classes.hm_command):
             n_dict = r_dict[name_lut[act_name]]
             out_f.append("%s [#%d, %s]" % (act_name, name_lut[act_name],
                                            logging_tools.get_plural("CPU", n_dict["info"][3])))
-        out_f.append("%s: %s" % (logging_tools.get_plural("defined", len(d_dict)),
-                                 ", ".join(sorted(d_dict.keys())) or "none"))
+        out_f.append("%d defined: %s" % (
+            len(d_dict),
+            ", ".join(sorted(d_dict.keys())) or "none"))
         return ret_state, "running: %s; %s" % (logging_tools.get_plural("domain", len(all_names)),
                                                ", ".join(out_f))
 
@@ -219,9 +227,12 @@ class domain_status_command(hm_classes.hm_command):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
-            srv_com["result"].attrib.update({"reply"  : "missing argument",
-                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com["result"].attrib.update(
+                {
+                    "reply"  : "missing argument",
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
         else:
+            self.module.establish_connection()
             if self.module.connection:
                 ret_dict = self.module.connection.domain_status(srv_com["arguments:arg0"].text)
             else:
@@ -234,24 +245,27 @@ class domain_status_command(hm_classes.hm_command):
         return self._interpret(r_dict, parsed_coms)
     def _interpret(self, dom_dict, cur_ns):
         ret_state, out_f = (limits.nag_STATE_OK, [])
-        pprint.pprint(dom_dict)
-        if dom_dict["desc"]:
-            xml_doc = etree.fromstring(dom_dict["desc"])
-            print etree.tostring(xml_doc, pretty_print=True)
-            out_f.append("%s, memory %s, %s, %s, VNC port is %d" % (
-                xml_doc.find(".//name").text,
-                logging_tools.get_size_str(int(xml_doc.find(".//memory").text) * 1024),
-                logging_tools.get_plural("disk", len(xml_doc.findall(".//disk"))),
-                logging_tools.get_plural("iface", len(xml_doc.findall(".//interface"))),
-                int(xml_doc.find(".//graphics").attrib["port"]) - 5900
-            ))
-        else:
-            if dom_dict["cm"]:
-                ret_state = limits.nag_STATE_CRITICAL
-                out_f.append("domain '%s' not running" % (dom_dict["cm"]))
+        if cur_ns and cur_ns.arguments:
+            if "desc" in dom_dict and dom_dict["desc"]:
+                xml_doc = etree.fromstring(dom_dict["desc"])
+                #print etree.tostring(xml_doc, pretty_print=True)
+                out_f.append("%s, memory %s, %s, %s, VNC port is %d" % (
+                    xml_doc.find(".//name").text,
+                    logging_tools.get_size_str(int(xml_doc.find(".//memory").text) * 1024),
+                    logging_tools.get_plural("disk", len(xml_doc.findall(".//disk"))),
+                    logging_tools.get_plural("iface", len(xml_doc.findall(".//interface"))),
+                    int(xml_doc.find(".//graphics").attrib["port"]) - 5900
+                ))
             else:
-                ret_state = limits.nag_STATE_WARNING
-                out_f.append("no domain-name give")
+                if "cm" in dom_dict and dom_dict["cm"]:
+                    ret_state = limits.nag_STATE_CRITICAL
+                    out_f.append("domain '%s' not running" % (dom_dict["cm"]))
+                else:
+                    ret_state = limits.nag_STATE_WARNING
+                    out_f.append("no domain-info in result (domain %s not running)" % (", ".join(cur_ns.arguments)))
+        else:
+            ret_state = limits.nag_STATE_WARNING
+            out_f.append("no domain-name give")
         return ret_state, ", ".join(out_f)
         
 if __name__ == "__main__":
