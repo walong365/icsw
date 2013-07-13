@@ -7,6 +7,7 @@
 # chkconfig: 2345 79 21
 # description: rrd-grapher
 #
+
 ### BEGIN INIT INFO
 # Provides:      rrd-grapher
 # Required-Start: $network logging-server meta-server
