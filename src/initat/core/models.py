@@ -3,6 +3,7 @@
 import base64
 import datetime
 import marshal
+from django.conf import settings
 from django.db import models
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
@@ -35,7 +36,7 @@ class user_variable(models.Model):
     Stores arbitrary name value combinations per user.
     """
     idx = models.AutoField(primary_key=True)
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="core_variable")
     name = models.CharField(max_length=64)
     value_0 = models.TextField(null=False, default="")
 
