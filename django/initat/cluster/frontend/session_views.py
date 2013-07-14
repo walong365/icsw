@@ -57,34 +57,9 @@ class sess_login(View):
         _post = request.POST
         login_form = authentication_form(data=_post)
         if login_form.is_valid():
-            django_user = login_form.get_user()
-            try:
-                db_user = user.objects.get(Q(login=django_user.username))
-            except user.DoesNotExist:
-                db_user = None
-                logger.warning("no db_user defined")
-                if not user.objects.all().count() and not group.objects.all().count():
-                    logger.warning("creating default user")
-                    # create standard user
-                    new_group = group.objects.create(
-                        groupname="%sgrp" % (django_user.username),
-                        gid=666,
-                    )
-                    new_user = user.objects.create(
-                        login=django_user.username,
-                        group=new_group,
-                        uid=666,
-                        password=login_form.cleaned_data.get("password"),
-                    )
-                    db_user = new_user
-            else:
-                pass
-            login(request, django_user)
-            request.session["db_user"] = db_user
-            if db_user:
-                request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in db_user.user_variable_set.all()])
-            else:
-                request.session["user_vars"] = {}
+            db_user = login_form.get_user()
+            login(request, db_user)
+            request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in db_user.user_variable_set.all()])
             update_session_object(request)
             return HttpResponseRedirect(reverse("main:index"))
         return render_me(request, "login.html", {

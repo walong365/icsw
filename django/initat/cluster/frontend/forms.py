@@ -271,10 +271,6 @@ class group_detail_form(ModelForm):
         Field("allowed_device_groups"),
         Field("permissions"),
     )
-    def __init__(self, *args, **kwargs):
-        super(group_detail_form, self).__init__(*args, **kwargs)
-        if "instance" in kwargs:
-            self.fields["permissions"].initial = Permission.objects.filter(Q(group__name=kwargs["instance"].groupname))
     class Meta:
         model = group
         fields = ["groupname", "gid", "active",
@@ -303,6 +299,7 @@ class user_detail_form(ModelForm):
                     Field("shell"),
                     ButtonHolder(
                         Field("active"),
+                        Field("is_superuser"),
                         ),
                     css_class="inlineLabels",
                     ),
@@ -325,13 +322,9 @@ class user_detail_form(ModelForm):
         Field("secondary_groups"),
         Field("permissions"),
     )
-    def __init__(self, *args, **kwargs):
-        super(user_detail_form, self).__init__(*args, **kwargs)
-        if "instance" in kwargs:
-            self.fields["permissions"].initial = Permission.objects.filter(Q(user__username=kwargs["instance"].login))
     class Meta:
         model = user
         fields = ["login", "uid", "shell", "first_name", "last_name", "active",
-                  "title", "email", "pager", "tel", "comment",
+                  "title", "email", "pager", "tel", "comment", "is_superuser",
                   "allowed_device_groups", "secondary_groups", "permissions"]
     

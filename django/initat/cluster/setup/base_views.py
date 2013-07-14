@@ -95,12 +95,6 @@ class change_xml_entry(View):
                             "device_variable" : [
                                 "value"
                                 ],
-                            "user"            : [
-                                "permissions"
-                                ],
-                            "group"            : [
-                                "permissions"
-                                ],
                             "netdevice"       : [
                                 "ethtool_autoneg",
                                 "ethtool_duplex",
@@ -218,9 +212,8 @@ class create_object(View):
         logger.info("key_prefix is '%s'" % (key_pf))
         no_check_fields = {
             "device_variable" : ["value"]}.get(obj_name, [])
-        proxy_fields = {
-            "user"  : ["permissions"],
-            "group" : ["permissions"]}.get(obj_name, [])
+        # was used for permissions, not needed right now
+        proxy_fields = {}
         xml_create_args = {
             "user"  : {"with_permissions" : True},
             "group" : {"with_permissions" : True},
@@ -242,6 +235,7 @@ class create_object(View):
                         int_type = "???"
                     if s_key in proxy_fields:
                         # proxy field, for instance permissions (related to django group/user not csw group/user)
+                        # see above, not in use right now
                         if s_key == "permissions":
                             d_value = value
                         else:
@@ -308,9 +302,6 @@ class create_object(View):
                 request.xml_response.error("error creating: %s" % (process_tools.get_except_info()), logger)
             else:
                 created_ok.append(new_obj)
-                if obj_name in ["user", "group"]:
-                    if "permissions" in set_dict:
-                        new_obj.permissions = set_dict["permissions"]
                 # add m2m entries
                 for key, value in m2m_dict.iteritems():
                     logger.info("added %s for %s" % (logging_tools.get_plural("m2m entry", len(value)), key))

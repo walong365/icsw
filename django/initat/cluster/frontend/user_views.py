@@ -90,12 +90,12 @@ class overview(View):
                 perm_list.append(E.permission(entry.name, pk="%d" % (entry.pk)))
         # chaching for faster m2m lookup
         group_perm_dict, user_perm_dict = ({}, {})
-        for group_perm in Permission.objects.all().prefetch_related("group_set"):
-            for cur_group in group_perm.group_set.all():
-                group_perm_dict.setdefault(cur_group.name, []).append(group_perm)
-        for user_perm in Permission.objects.all().prefetch_related("user_set"):
-            for cur_user in user_perm.user_set.all():
-                user_perm_dict.setdefault(cur_user.username, []).append(user_perm)
+        for group_perm in Permission.objects.all().prefetch_related("db_group_permissions"):
+            for cur_group in group_perm.db_group_permissions.all():
+                group_perm_dict.setdefault(cur_group.groupname, []).append(group_perm)
+        for user_perm in Permission.objects.all().prefetch_related("db_user_permissions"):
+            for cur_user in user_perm.db_user_permissions.all():
+                user_perm_dict.setdefault(cur_user.login, []).append(user_perm)
         group_device_group_dict, user_device_group_dict = ({}, {})
         for cur_user in user.objects.all().prefetch_related("allowed_device_groups"):
             user_device_group_dict[cur_user.login] = list([dg.pk for dg in cur_user.allowed_device_groups.all()])
@@ -174,7 +174,7 @@ class save_layout_state(View):
                         user_vars[key].save()
                 else:
                     user_vars[key] = user_variable.objects.create(
-                        user=request.session["db_user"],
+                        user=request.user,
                         name=key,
                         value=value)
         update_session_object(request)
@@ -193,7 +193,7 @@ class set_user_var(View):
                 user_vars[key].save()
         else:
             user_vars[key] = user_variable.objects.create(
-                user=request.session["db_user"],
+                user=request.user,
                 name=key,
                 value=value)
         update_session_object(request)

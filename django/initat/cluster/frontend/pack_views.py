@@ -69,7 +69,7 @@ class create_search(View):
         logger.info("creating package_search with search_string '%s'" % (in_dict["search_string"]))
         new_search = package_search(
             search_string=in_dict["search_string"],
-            user=request.session["db_user"],
+            user=request.user,
         )
         try:
             new_search.save()

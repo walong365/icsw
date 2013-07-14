@@ -122,7 +122,7 @@ class add_selection(View):
                         cur_list.remove(toggle_dev)
                     else:
                         cur_list.append(toggle_dev)
-        pprint.pprint(cur_list)
+        #pprint.pprint(cur_list)
         request.session["sel_list"] = cur_list
         request.session.save()
         logger.info("%s in list" % (logging_tools.get_plural("selection", len(cur_list))))
@@ -154,7 +154,7 @@ def _get_group_tree(request, sel_list, **kwargs):
         if not all_devs:
             # ignore meta-device
             ignore_cdg = True
-            all_dgs = all_dgs.filter(Q(pk__in= request.session["db_user"].allowed_device_groups.all()))
+            all_dgs = all_dgs.filter(Q(pk__in=request.user.allowed_device_groups.all()))
     if ignore_cdg:
         all_dgs = all_dgs.exclude(Q(cluster_device_group=True))
     all_dgs = all_dgs.filter(Q(enabled=True)).prefetch_related(
@@ -284,7 +284,7 @@ class create_connection(View):
         new_cd = cd_connection(
             parent=target_dev if t_type == "master" else drag_dev,
             child=drag_dev if t_type=="master" else target_dev,
-            created_by=request.session["db_user"],
+            created_by=request.user,
             connection_info="webfrontend")
         try:
             new_cd.save()
@@ -352,7 +352,7 @@ class manual_connection(View):
             new_cd = cd_connection(
                 parent=match_dict["target" if t_type == "slave" else "drag"][m_key][1],
                 child=match_dict["drag" if t_type == "slave" else "target"][m_key][1],
-                created_by=request.session["db_user"],
+                created_by=request.user,
                 connection_info="manual")
             try:
                 new_cd.save()
