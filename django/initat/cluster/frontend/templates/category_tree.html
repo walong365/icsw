@@ -172,7 +172,8 @@ class category_tree
                         cur_dtn = @DNT.find("category[pk='#{key}']")
                         detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
                         if db_node.attr("full_name").match("/location/")
-                            $("input[name='latitude'], input[name='longitude']").on("change", ->
+                            ll_fields = $("input[name='latitude'], input[name='longitude']")
+                            ll_fields.on("change", ->
                                 cur_ll = new google.maps.LatLng(parseFloat($("input[name='latitude']").val()), parseFloat($("input[name='longitude']").val()))
                                 my_marker.setPosition(cur_ll)
                                 if not my_map.getBounds().contains(my_marker.getPosition())
@@ -195,8 +196,8 @@ class category_tree
                             # add other markers
                             google.maps.event.addListener(my_map, "click", (event) ->
                                 my_marker.setPosition(event.latLng)
+                                $("input[name='longitude']").val(event.latLng.lng())
                                 $("input[name='latitude']").val(event.latLng.lat()).trigger("change")
-                                $("input[name='longitude']").val(event.latLng.lng()).trigger("change")
                             )
                             # add other markers
                             @DNT.find("category[full_name^='/location/']").each (idx, other_loc) =>
@@ -245,6 +246,9 @@ class category_tree
                 dt_node.data.addClass = "ip_ok"
             dt_node.render()
             #console.log @DNT.find("category[pk='#{dt_node.data.key}']").attr("intermediate")
+        if c_type == "latitude"
+            # send longitude after latitude
+            $("input[name='longitude']").trigger("change")
 
 $(document).ready(
     my_ct = new category_tree($("div#ct_div"))

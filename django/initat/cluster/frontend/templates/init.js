@@ -1594,8 +1594,7 @@ class submitter
                     else
                         $(cur_el).attr("value", get_xml_value(xml, "original_value"))
                 if lock_list
-                    unlock_elements(lock_list)
-        
+                    unlock_elements(lock_list)        
 
 submit_change = (cur_el, callback, modify_data_dict, modify_data_dict_opts, master_xml) ->
     is_textarea = false
