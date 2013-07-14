@@ -15,7 +15,6 @@ logger = logging.getLogger("cluster.auth")
 
 class db_backend(object):
     def authenticate(self, username=None, password=None):
-        print "a", username, password
         try:
             cur_user = user.objects.get(Q(login=username))
         except user.DoesNotExist:

@@ -3498,6 +3498,19 @@ class sys_partition(models.Model):
     class Meta:
         db_table = u'sys_partition'
 
+def check_permissions(obj, perm):
+    if perm.count(".") == 1:
+        app_label, codename = perm.split(".")
+        try:
+            obj.permissions.get(Q(codename=codename) & Q(content_type__app_label=app_label))
+        except Permission.DoesNotExist:
+            return False
+        else:
+            return True
+    else:
+        print "Unknown permission format '%s'" % (perm)
+        return False
+    
 class user(models.Model):
     USERNAME_FIELD = "login"
     REQUIRED_FIELDS = ["uid",]
@@ -3531,18 +3544,22 @@ class user(models.Model):
     secondary_groups = models.ManyToManyField("group", related_name="secondary")
     last_login = models.DateTimeField(null=True)
     permissions = models.ManyToManyField(Permission, related_name="db_user_permissions")
+    is_superuser = models.BooleanField(default=False)
     def is_authenticated(self):
         return True
     def has_perm(self, perm, obj=None):
         if obj is not None:
-            
-            pass
+            c_obj = obj
         else:
-            print self.permissions.all()
+            c_obj = self
+        if not (c_obj.active and c_obj.group.active):
             return False
-            print perm in self.permissions
-        print perm, obj
-        return False
+        elif c_obj.is_superuser:
+            return True
+        res = check_permissions(c_obj, perm)
+        if not res:
+            res = check_permissions(c_obj.group, perm)
+        return res
     def get_is_active(self):
         return self.active
     is_active = property(get_is_active)
@@ -3566,6 +3583,7 @@ class user(models.Model):
             pager=self.pager or "",
             tel=self.tel or "",
             comment=self.comment or "",
+            is_superuser="1" if self.is_superuser else "0",
             secondary_groups="::".join(["%d" % (sec_group.pk) for sec_group in self.secondary_groups.all()]),
         )
         if with_allowed_device_groups:
@@ -3669,6 +3687,18 @@ class group(models.Model):
     # parent group
     parent_group = models.ForeignKey("self", null=True)
     permissions = models.ManyToManyField(Permission, related_name="db_group_permissions")
+    def has_perm(self, perm, obj=None):
+        if obj is not None:
+            c_obj = obj
+        else:
+            c_obj = self
+        if not c_obj.active:
+            return False
+        else:
+            return check_permissions(c_obj, perm)
+    def get_is_active(self):
+        return self.active
+    is_active = property(get_is_active)
     def get_xml(self, with_permissions=False, group_perm_dict=None, with_allowed_device_groups=False,
                 allowed_device_group_dict=None):
         group_xml = E.group(
