@@ -1,7 +1,7 @@
 #!/usr/bin/python-init
 
 from django.db import models
-from django.contrib.auth.models import User, Group, Permission
+from django.contrib.auth.models import Permission
 import datetime
 from django.db.models import Q, signals
 from django.dispatch import receiver
@@ -3499,6 +3499,8 @@ class sys_partition(models.Model):
         db_table = u'sys_partition'
 
 class user(models.Model):
+    USERNAME_FIELD = "login"
+    REQUIRED_FIELDS = ["uid",]
     idx = models.AutoField(db_column="user_idx", primary_key=True)
     active = models.BooleanField(default=True)
     login = models.CharField(unique=True, max_length=255)
@@ -3527,21 +3529,23 @@ class user(models.Model):
     allowed_device_groups = models.ManyToManyField(device_group)
     home_dir_created = models.BooleanField(default=False)
     secondary_groups = models.ManyToManyField("group", related_name="secondary")
-    def get_permissions(self):
-        return ", ".join([cur_perm.name for cur_perm in Permission.objects.filter(Q(user__username=self.login))]) or "nothing"
-    def set_permissions(self, new_perms):
-        try:
-            dj_user = User.objects.get(Q(username=self.login))
-        except User.DoesNotExist:
+    last_login = models.DateTimeField(null=True)
+    permissions = models.ManyToManyField(Permission, related_name="db_user_permissions")
+    def is_authenticated(self):
+        return True
+    def has_perm(self, perm, obj=None):
+        if obj is not None:
+            
             pass
         else:
-            cur_perms = set([cur_entry.pk for cur_entry in dj_user.user_permissions.all()])
-            new_perms = set([entry for entry in new_perms.split("::") if entry.strip()])
-            for del_perm in cur_perms - new_perms:
-                dj_user.user_permissions.remove(Permission.objects.get(Q(pk=del_perm)))
-            for add_perm in new_perms - cur_perms:
-                dj_user.user_permissions.add(Permission.objects.get(Q(pk=add_perm)))
-    permissions = property(get_permissions, set_permissions)
+            print self.permissions.all()
+            return False
+            print perm in self.permissions
+        print perm, obj
+        return False
+    def get_is_active(self):
+        return self.active
+    is_active = property(get_is_active)
     def get_xml(self, with_permissions=False, with_allowed_device_groups=True, user_perm_dict=None,
                 allowed_device_group_dict=None):
         user_xml = E.user(
@@ -3570,10 +3574,11 @@ class user(models.Model):
             else:
                 user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
         if with_permissions:
+            print "*up", user_perm_dict
             if user_perm_dict:
                 user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in user_perm_dict.get(self.login, [])])
             else:
-                user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(user__username=self.login))])
+                user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(db_user_permissions=self))])
         else:
             # empty field
             user_xml.attrib["permissions"] = ""
@@ -3620,17 +3625,6 @@ def user_pre_save(sender, **kwargs):
 def user_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        try:
-            django_user = User.objects.get(Q(username=cur_inst.login))
-        except User.DoesNotExist:
-            django_user = User(
-                username=cur_inst.login
-            )
-            django_user.save()
-        django_user.is_active = cur_inst.active
-        django_user.first_name = cur_inst.first_name
-        django_user.last_name = cur_inst.last_name
-        django_user.email = cur_inst.email
         pw_gen_1 = "SHA1"
         if cur_inst.password.startswith(pw_gen_1):
             pass
@@ -3647,16 +3641,12 @@ def user_post_save(sender, **kwargs):
             #print base64.b64encode(new_sh.digest() +  salt)
             cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() + salt))
             cur_inst.save()
-        django_user.save()
+        #django_user.save()
 
 @receiver(signals.post_delete, sender=user)
 def user_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        try:
-            User.objects.get(Q(username=cur_inst.login)).delete()
-        except User.DoesNotExist:
-            pass
 
 class group(models.Model):
     idx = models.AutoField(db_column="ggroup_idx", primary_key=True)
@@ -3678,21 +3668,7 @@ class group(models.Model):
     allowed_device_groups = models.ManyToManyField(device_group)
     # parent group
     parent_group = models.ForeignKey("self", null=True)
-    def get_permissions(self):
-        return ", ".join([cur_perm.name for cur_perm in Permission.objects.filter(Q(group__name=self.groupname))]) or "nothing"
-    def set_permissions(self, new_perms):
-        try:
-            dj_group = Group.objects.get(Q(name=self.groupname))
-        except Group.DoesNotExist:
-            pass
-        else:
-            cur_perms = set([cur_entry.pk for cur_entry in dj_group.permissions.all()])
-            new_perms = set([entry for entry in new_perms.split("::") if entry.strip()])
-            for del_perm in cur_perms - new_perms:
-                dj_group.permissions.remove(Permission.objects.get(Q(pk=del_perm)))
-            for add_perm in new_perms - cur_perms:
-                dj_group.permissions.add(Permission.objects.get(Q(pk=add_perm)))
-    permissions = property(get_permissions, set_permissions)
+    permissions = models.ManyToManyField(Permission, related_name="db_group_permissions")
     def get_xml(self, with_permissions=False, group_perm_dict=None, with_allowed_device_groups=False,
                 allowed_device_group_dict=None):
         group_xml = E.group(
@@ -3715,10 +3691,11 @@ class group(models.Model):
             else:
                 group_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
         if with_permissions:
+            print "*gp", group_perm_dict
             if group_perm_dict is not None:
                 group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in group_perm_dict.get(self.groupname, [])])
             else:
-                group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(group__name=self.groupname))])
+                group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(db_group_permissions=self))])
         else:
             # empty field
             group_xml.attrib["permissions"] = ""
@@ -3766,20 +3743,11 @@ def group_pre_save(sender, **kwargs):
 def group_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        try:
-            django_group = Group.objects.get(Q(name=cur_inst.groupname))
-        except Group.DoesNotExist:
-            django_group = Group(name=cur_inst.groupname)
-            django_group.save()
         
 @receiver(signals.post_delete, sender=group)
 def group_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        try:
-            Group.objects.get(Q(name=cur_inst.groupname)).delete()
-        except:
-            pass
         
 class user_device_login(models.Model):
     idx = models.AutoField(db_column="user_device_login_idx", primary_key=True)
@@ -4268,9 +4236,9 @@ class category(models.Model):
     immutable = models.BooleanField(default=False)
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
-    # location field for location nodes
-    #loc_latitude = models.FloatField(default=0.0)
-    #loc_longitude = models.FloatField(default=0.0)
+    # location field for location nodes, defaults to Vienna
+    #loc_latitude = models.FloatField(default=48.1)
+    #loc_longitude = models.FloatField(default=16.3)
     def get_sorted_pks(self):
         return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
