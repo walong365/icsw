@@ -97,6 +97,14 @@ def _check_integer(inst, attr_name, **kwargs):
                         max_val))
         setattr(inst, attr_name, cur_val)
         return cur_val
+
+def _check_float(inst, attr_name):
+    cur_val = getattr(inst, attr_name)
+    try:
+        cur_val = float(cur_val)
+    except:
+        raise ValidationError("%s is not a float" % (attr_name))
+    setattr(inst, attr_name, cur_val)
     
 def _check_empty_string(inst, attr_name):
     cur_val = getattr(inst, attr_name)
@@ -4266,7 +4274,7 @@ class category_tree(object):
         return E.categories(
             *[self.__node_dict[pk].get_xml() for pk in pk_list]
         )
-
+    
 # category
 class category(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -4282,11 +4290,11 @@ class category(models.Model):
     created = models.DateTimeField(auto_now_add=True, auto_now=True)
     # immutable
     immutable = models.BooleanField(default=False)
+    # location field for location nodes, defaults to Vienna
+    latitude = models.FloatField(default=48.1)
+    longitude = models.FloatField(default=16.3)
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
-    # location field for location nodes, defaults to Vienna
-    #loc_latitude = models.FloatField(default=48.1)
-    #loc_longitude = models.FloatField(default=16.3)
     def get_sorted_pks(self):
         return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
@@ -4302,6 +4310,8 @@ class category(models.Model):
             depth="%d" % (self.depth),
             comment="%s" % (self.comment or ""),
             immutable="1" if self.immutable else "0",
+            latitude="%.6f" % (self.latitude),
+            longitude="%.6f" % (self.longitude),
         )
 
 @receiver(signals.pre_save, sender=category)
@@ -4309,6 +4319,8 @@ def category_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         cur_inst.name = cur_inst.name.strip()
+        _check_float(cur_inst, "latitude")
+        _check_float(cur_inst, "longitude")
         if cur_inst.name:
             if  cur_inst.name.count("/"):
                 raise ValidationError("slash '/' not allowed in name part")
@@ -4339,8 +4351,6 @@ def category_post_save(sender, **kwargs):
         if getattr(cur_inst, "full_name_changed", False):
             for sub_node in category.objects.filter(Q(parent=cur_inst)):
                 sub_node.save()
-
-# mapping key prefix -> model class
 
 KPMC_MAP = {
     "devg"         : device_group,
