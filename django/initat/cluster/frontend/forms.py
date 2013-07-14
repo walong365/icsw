@@ -194,6 +194,26 @@ class category_detail_form(ModelForm):
         model = category
         fields = ["name", "comment"]
 
+class location_detail_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "id_cat_detail_form"
+    helper.layout = Layout(
+        Fieldset(
+            "Category details",
+            Field("name"),
+            Field("comment"),
+            ButtonHolder(
+                Button("delete", "Delete", css_class="primaryAction"),
+            ),
+            Field("latitude"),
+            Field("longitude"),
+            css_class="inlineLabels",
+        )
+    )
+    class Meta:
+        model = category
+        fields = ["name", "comment", "latitude", "longitude"]
+
 class category_new_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"

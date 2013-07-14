@@ -13,6 +13,9 @@
     <input type="button" value="prune tree" id="prune_tree"/>
 </div>
 <div id="ct_detail" class="leftfloat" style="width:400px; margin-left:auto; margin-right:auto;"></div>
+<div id="ct_map" style="width:640px; height:640px;"></div>
+
+<script src="http://maps.google.com/maps/api/js?sensor=false"></script>
 
 <script type="text/javascript">
 
@@ -159,12 +162,40 @@ class category_tree
                 success : (xml) =>
                     if parse_xml_response(xml)
                         @active_node = key
+                        $("div#ct_map").children().remove()
                         detail_div = $("div#ct_detail")
                         detail_div.children().remove()
                         detail_div.append($(xml).find("value[name='form']").text())
                         detail_div.find("input").on("change", @my_submitter.submit)
                         cur_dtn = @DNT.find("category[pk='#{key}']")
                         detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
+                        if db_node.attr("full_name").match("/location/")
+                            $("input[name='latitude'], input[name='longitude']").on("change", ->
+                                cur_ll = new google.maps.LatLng(parseFloat($("input[name='latitude']").val()), parseFloat($("input[name='longitude']").val()))
+                                my_marker.setPosition(cur_ll)
+                                if not my_map.getBounds().contains(my_marker.getPosition())
+                                    my_map.setCenter(my_marker.getPosition())
+                            )
+                            loc_latlng = new google.maps.LatLng(parseFloat(db_node.attr("latitude")), parseFloat(db_node.attr("longitude")))
+                            my_map = new google.maps.Map($("div#ct_map")[0], {
+                                zoom              : 10,
+                                center            : loc_latlng
+                                mapTypeId         : google.maps.MapTypeId.ROADMAP
+                                streetViewControl : false
+                            })
+                            google.maps.event.addListener(my_map, "zoom_changed", ->
+                                console.log my_map.getZoom()
+                            )
+                            my_marker = new google.maps.Marker(
+                                position : loc_latlng,
+                                map      : my_map,
+                                title    : db_node.attr("full_name")
+                            )
+                            google.maps.event.addListener(my_map, "click", (event) ->
+                                my_marker.setPosition(event.latLng)
+                                $("input[name='latitude']").val(event.latLng.lat()).trigger("change")
+                                $("input[name='longitude']").val(event.latLng.lng()).trigger("change")
+                            )
         else
             detail_div = $("div#ct_detail")
             detail_div.children().remove()

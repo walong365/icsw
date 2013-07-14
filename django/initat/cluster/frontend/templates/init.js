@@ -1215,8 +1215,9 @@ class draw_setup
     create_delete_element: (event) =>
         cur_el = $(event.target)
         el_id  = cur_el.attr("id")
+        # console.log cur_el, el_id
         lock_list = if @lock_div then lock_elements($("div#" + @lock_div)) else undefined
-        if el_id.match(///new$///)
+        if el_id.match(/new$/)
             send_data = create_dict(@table_div, el_id)
             if @parent_class
                 send_data["#{el_id}__#{@parent_class}"] = @parent_el.attr("pk")

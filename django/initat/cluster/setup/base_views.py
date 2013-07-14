@@ -23,7 +23,8 @@ from django.views.generic import View
 
 import initat.cluster.backbone.models
 from initat.core.render import render_me, render_string
-from initat.cluster.frontend.forms import category_detail_form, category_new_form
+from initat.cluster.frontend.forms import category_detail_form, category_new_form, \
+     location_detail_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.models import device_group, device, \
      get_related_models, KPMC_MAP, device_variable, category, \
@@ -404,11 +405,15 @@ class category_detail(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         cur_cat = category.objects.get(Q(pk=request.POST["key"]))
+        if cur_cat.full_name.startswith("/location"):
+            cur_form = location_detail_form
+        else:
+            cur_form = category_detail_form
         request.xml_response["form"] = render_string(
             request,
             "crispy_form.html",
             {
-                "form" : category_detail_form(
+                "form" : cur_form(
                     auto_id="cat__%d__%%s" % (cur_cat.pk),
                     instance=cur_cat,
                 )
