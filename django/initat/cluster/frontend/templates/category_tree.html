@@ -151,6 +151,8 @@ class category_tree
         )
         @DNT.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
             @build_node(new_node, $(sub_db_node))
+    _get_latlong: (db_node) =>
+        return new google.maps.LatLng(parseFloat(db_node.attr("latitude")), parseFloat(db_node.attr("longitude")))
     show_details: (key) =>
         db_node = @DNT.find("category[pk='#{key}']")
         if parseInt(db_node.attr("immutable")) == 0
@@ -176,7 +178,7 @@ class category_tree
                                 if not my_map.getBounds().contains(my_marker.getPosition())
                                     my_map.setCenter(my_marker.getPosition())
                             )
-                            loc_latlng = new google.maps.LatLng(parseFloat(db_node.attr("latitude")), parseFloat(db_node.attr("longitude")))
+                            loc_latlng = @_get_latlong(db_node)
                             my_map = new google.maps.Map($("div#ct_map")[0], {
                                 zoom              : 10,
                                 center            : loc_latlng
@@ -184,18 +186,29 @@ class category_tree
                                 streetViewControl : false
                             })
                             google.maps.event.addListener(my_map, "zoom_changed", ->
-                                console.log my_map.getZoom()
                             )
                             my_marker = new google.maps.Marker(
                                 position : loc_latlng,
                                 map      : my_map,
                                 title    : db_node.attr("full_name")
                             )
+                            # add other markers
                             google.maps.event.addListener(my_map, "click", (event) ->
                                 my_marker.setPosition(event.latLng)
                                 $("input[name='latitude']").val(event.latLng.lat()).trigger("change")
                                 $("input[name='longitude']").val(event.latLng.lng()).trigger("change")
                             )
+                            # add other markers
+                            @DNT.find("category[full_name^='/location/']").each (idx, other_loc) =>
+                                other_loc = $(other_loc)
+                                if other_loc.attr("pk") != db_node.attr("pk")
+                                    new google.maps.Marker(
+                                        position : @_get_latlong(other_loc)
+                                        map      : my_map,
+                                        icon     : 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
+                                        title    : other_loc.attr("full_name")
+                                    )
+                                    
         else
             detail_div = $("div#ct_detail")
             detail_div.children().remove()
