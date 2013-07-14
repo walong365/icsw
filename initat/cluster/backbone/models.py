@@ -1,13 +1,6 @@
 #!/usr/bin/python-init
 
-from django.db import models
-from django.contrib.auth.models import Permission
 import datetime
-from django.db.models import Q, signals
-from django.dispatch import receiver
-from django.core.exceptions import ValidationError
-from lxml import etree
-from lxml.builder import E
 import uuid
 import re
 import time
@@ -20,8 +13,16 @@ import hashlib
 import base64
 import logging
 import os
-from django.conf import settings
+from lxml import etree
+from lxml.builder import E
 from rest_framework import serializers
+
+from django.conf import settings
+from django.contrib.auth.models import Permission
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.db.models import Q, signals
+from django.dispatch import receiver
 from django.utils.functional import memoize
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
@@ -3511,9 +3512,30 @@ def check_permissions(obj, perm):
         print "Unknown permission format '%s'" % (perm)
         return False
     
+class user_manager(models.Manager):
+    def get_by_natural_key(self, login):
+        return super(user_manager, self).get(Q(login=login))
+    def create_superuser(self, login, email, password):
+        # create group
+        user_group = group.objects.create(
+            groupname="%sgrp" % (login),
+            gid=max(list(group.objects.all().values_list("gid", flat=True)) + [665]) + 1,
+            group_comment="auto create group for admin %s" % (login),
+        )
+        new_admin = self.create(
+            login=login,
+            email=email,
+            uid=max(list(user.objects.all().values_list("uid", flat=True)) + [665]) + 1,
+            group=user_group,
+            comment="admin create by createsuperuser",
+            password=password,
+            is_superuser=True)
+        return new_admin
+
 class user(models.Model):
+    objects = user_manager()
     USERNAME_FIELD = "login"
-    REQUIRED_FIELDS = ["uid",]
+    REQUIRED_FIELDS = ["email",]
     idx = models.AutoField(db_column="user_idx", primary_key=True)
     active = models.BooleanField(default=True)
     login = models.CharField(unique=True, max_length=255)
@@ -3592,7 +3614,6 @@ class user(models.Model):
             else:
                 user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
         if with_permissions:
-            print "*up", user_perm_dict
             if user_perm_dict:
                 user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in user_perm_dict.get(self.login, [])])
             else:
@@ -3651,7 +3672,6 @@ def user_post_save(sender, **kwargs):
             new_sh = hashlib.new(pw_gen_1)
             new_sh.update(passwd)
             cur_pw = "%s:%s" % (pw_gen_1, base64.b64encode(new_sh.digest()))
-            django_user.set_password(passwd)
             cur_inst.password = cur_pw
             # ssha1
             salt = os.urandom(4)
@@ -3659,7 +3679,6 @@ def user_post_save(sender, **kwargs):
             #print base64.b64encode(new_sh.digest() +  salt)
             cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() + salt))
             cur_inst.save()
-        #django_user.save()
 
 @receiver(signals.post_delete, sender=user)
 def user_post_delete(sender, **kwargs):
@@ -3721,7 +3740,6 @@ class group(models.Model):
             else:
                 group_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
         if with_permissions:
-            print "*gp", group_perm_dict
             if group_perm_dict is not None:
                 group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in group_perm_dict.get(self.groupname, [])])
             else:
