@@ -50,7 +50,6 @@
 /* internal buffer sizes */
 #define ERRSTR_SIZE 512
 #define HOSTB_SIZE 256
-#define SENDBUFF_SIZE 16384
 #define IOBUFF_SIZE 16384
 
 #include "parse_uuid.c"
@@ -81,14 +80,16 @@ void mysigh(int dummy) {
 }
 
 int main (int argc, char** argv) {
-    int ret, num, inlen, file, i/*, time*/, port, rchar, verbose, quiet, retcode, write_file, timeout;
+    int ret, num, inlen, file, i/*, time*/, port, rchar, verbose, quiet, retcode, timeout, file_size;
     struct in_addr sia;
     struct hostent *h;
-    char *iobuff, *sendbuff, *filebuff, *host_b, *act_pos, *act_source, *act_bp, *dest_host, *src_ip, *uuid_buffer;
+    struct stat st;
+    char *iobuff, *sendbuff, *filebuff, *host_b, *act_pos, *act_source, *act_bp, *dest_host, *uuid_buffer;
     struct itimerval mytimer;
     struct sigaction *alrmsigact;
     struct utsname myuts;
     int colons_passed = 0;
+    int sendbuff_size = 1024;
 
     retcode = STATE_CRITICAL;
 
@@ -96,18 +97,15 @@ int main (int argc, char** argv) {
     port = 8002;
     verbose = 0;
     quiet = 0;
-    write_file = 1;
     h = NULL;
     host_b = (char*)malloc(HOSTB_SIZE);
     dest_host = (char*)malloc(HOSTB_SIZE);
-    src_ip = (char*)malloc(HOSTB_SIZE);
     dest_host[0] = 0;
-    src_ip[0] = 0;
     // get uts struct
     uname(&myuts);
     sprintf(dest_host, "localhost");
     while (1) {
-        rchar = getopt(argc, argv, "+vm:p:ht:wqi:");
+        rchar = getopt(argc, argv, "+vm:p:ht:q");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
             case 'p':
@@ -124,18 +122,12 @@ int main (int argc, char** argv) {
             case 'v':
                 verbose = 1;
                 break;
-            case 'i':
-                sprintf(src_ip, optarg);
-                break;
             case 'q':
                 quiet = 1;
                 break;
-            case 'w':
-                write_file = 0;
-                break;
             case 'h':
             case '?':
-                printf("Usage: %s [-t TIMEOUT] [-m HOST] [-i SRC_IP] [-p PORT] [-h] [-v] [-w] [-q] command\n", basename(argv[0]));
+                printf("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-q] filename\n", basename(argv[0]));
                 printf("  defaults: port=%d, timeout=%d, dest_host=%s\n", port, timeout, dest_host);
                 free(host_b);
                 exit(STATE_CRITICAL);
@@ -147,33 +139,30 @@ int main (int argc, char** argv) {
     sprintf(host_b, "tcp://%s:%d", dest_host, port);
 /*  errno = 0;*/
     //if (!h) err_exit("Wrong host or no host given!\n");
-    sendbuff = (char*)malloc(SENDBUFF_SIZE);
-    filebuff = (char*)malloc(SENDBUFF_SIZE);
+    // get file size
+    stat(argv[optind], &st);
+    file_size = st.st_size;   
+    sendbuff_size = file_size + 1024;
+    sendbuff = (char*)malloc(sendbuff_size);
+    filebuff = (char*)malloc(sendbuff_size);
     if (!sendbuff) {
         free(host_b);
         exit(ENOMEM);
     }
     // mimic XML
-    sprintf(filebuff, "");
-    for (i = optind; i < argc; i++) {
-        // skip first space
-        if (i > optind) sprintf(filebuff, "%s ", filebuff);
-        sprintf(filebuff, "%s%s", filebuff, argv[i]);
-//        if (act_pos != sendbuff) *act_pos++=' ';
-//        act_source = argv[i];
-//        while (*act_source) *act_pos++=*act_source++;
-//        *act_pos = 0;
-    }
+    file = open(argv[optind], 0);
+    read(file, filebuff, file_size);
+    close(file);
     struct sysinfo s_info;
     sysinfo(&s_info);
     int cur_uptime = s_info.uptime;
-    sprintf(sendbuff, "<?xml version='1.0'?><ics_batch><nodeinfo>%s</nodeinfo><uptime>%d</uptime></ics_batch>", filebuff, cur_uptime);
-    sendbuff[SENDBUFF_SIZE] = '\0';/* terminate optarg for secure use of strlen() */
+    sprintf(sendbuff, "<?xml version='1.0'?><perf_data>%s</perf_data>", filebuff);
+    sendbuff[sendbuff_size] = '\0';/* terminate optarg for secure use of strlen() */
     if (!strlen(sendbuff)) err_exit("Nothing to send!\n");
     //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));
     void *context = zmq_init(1);
     void *requester = zmq_socket(context, ZMQ_PUSH);
-    char* identity_str = parse_uuid(src_ip);
+    char* identity_str = parse_uuid();
     int64_t tcp_keepalive, tcp_keepalive_idle;
     tcp_keepalive = 1;
     tcp_keepalive_idle = 300;
@@ -194,6 +183,7 @@ int main (int argc, char** argv) {
         if (verbose) {
             printf("send buffer has %d bytes, nodename is '%s', servicename is '%s', identity_string is '%s', pid is %d\n", strlen(sendbuff), myuts.nodename, SERVICE_NAME, identity_str, getpid());
             printf("target is '%s'\n", host_b);
+            // printf("send_str: '%s'\n", sendbuff);
         };
         getitimer(ITIMER_REAL, &mytimer);
         mytimer.it_value.tv_sec = timeout;
@@ -215,6 +205,5 @@ int main (int argc, char** argv) {
     free(filebuff);
     free(host_b);
     free(dest_host);
-    free(src_ip);
     exit(retcode);
 }

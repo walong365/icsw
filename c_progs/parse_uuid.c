@@ -1,6 +1,6 @@
 #define UUID_NAME "/etc/sysconfig/cluster/.cluster_device_uuid"
 
-char* parse_uuid(src_ip) {
+char* parse_uuid() {
     char* identity_str = malloc(1000);
     identity_str[0] = 0;
     char* uuid_buffer = malloc(1000);
@@ -17,7 +17,7 @@ char* parse_uuid(src_ip) {
             if (uuid_buffer[i] == ':') colons_passed++;
         };
         close(uuid_file);
-        sprintf(identity_str, "%s:%s:%s", identity_str, SERVICE_NAME, src_ip);
+        sprintf(identity_str, "%s:%s", identity_str, SERVICE_NAME);
     } else {
         sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
     };
