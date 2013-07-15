@@ -49,7 +49,6 @@ try:
 except ImportError:
     VERSION_STRING = "?.?"
 from django.db.models import Q
-from django.contrib.auth.models import User
 from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_service, mon_ext_host, mon_check_command, mon_period, mon_contact, \
@@ -206,6 +205,9 @@ class main_config(object):
     @property
     def slave_name(self):
         return self.__slave_name
+    @property
+    def var_dir(self):
+        return self.__r_dir_dict["var"]
     def is_valid(self):
         ht_conf_names = [key for key, value in self.__dict.iteritems() if isinstance(value, host_type_config)]
         invalid = sorted([key for key in ht_conf_names if not self[key].is_valid()])
@@ -658,6 +660,7 @@ class main_config(object):
         settings_dir = "%s/df_settings" % (self.__w_dir_dict["etc"])
         if not os.path.isdir(settings_dir):
             os.mkdir(settings_dir)
+        enable_perf = global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]
         main_values = [
             ("log_file"                         , "%s/%s.log" % (
                 self.__r_dir_dict["var"],
@@ -695,7 +698,7 @@ class main_config(object):
             ("accept_passive_service_checks"    , 1),
             ("enable_notifications"             , 1 if self.master else 0),
             ("enable_event_handlers"            , 1),
-            ("process_performance_data"         , (1 if global_config["ENABLE_PNP"] else 0) if self.master else 0),
+            ("process_performance_data"         , (1 if enable_perf else 0) if self.master else 0),
             ("obsess_over_services"             , 1 if not self.master else 0),
             ("obsess_over_hosts"                , 1 if not self.master else 0),
             ("check_for_orphaned_services"      , 0),
@@ -726,21 +729,30 @@ class main_config(object):
                         self.__r_dir_dict[lib_dir_name],
                         self.__r_dir_dict["var"]))
                 ])
-            if global_config["ENABLE_PNP"]:
+            if enable_perf:
+                if global_config["ENABLE_COLLECTD"]:
+                    main_values.extend([
+                        ("service_perfdata_file"         , os.path.join(self.__r_dir_dict["var"], "service-perfdata")),
+                        ("host_perfdata_file"            , os.path.join(self.__r_dir_dict["var"], "host-perfdata")),
+                        ("service_perfdata_file_template", "<rec type='service' time='$TIMET$' host='$HOSTNAME$' sdesc='$SERVICEDESC$' perfdata='$SERVICEPERFDATA$' com='$SERVICECHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$' ss='$SERVICESTATE$' sstype='$SERVICESTATETYPE$'/>"),
+                        ("host_perfdata_file_template"   , "<rec type='host' time='$TIMET$' host='$HOSTNAME$' perfdata='$HOSTPERFDATA$' com='$HOSTCHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$'/>"),
+                    ])
+                else:
+                    main_values.extend([
+                        ("service_perfdata_file"         , os.path.join(global_config["PNP_DIR"], "var/service-perfdata")),
+                        ("host_perfdata_file"            , os.path.join(global_config["PNP_DIR"], "var/host-perfdata")),
+                        ("service_perfdata_file_template", "DATATYPE::SERVICEPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tSERVICEDESC::$SERVICEDESC$\tSERVICEPERFDATA::$SERVICEPERFDATA$\tSERVICECHECKCOMMAND::$SERVICECHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$\tSERVICESTATE::$SERVICESTATE$\tSERVICESTATETYPE::$SERVICESTATETYPE$"),
+                        ("host_perfdata_file_template"   , "DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$"),
+                    ])
                 main_values.extend([
                     #("host_perfdata_command"   , "process-host-perfdata"),
                     #("service_perfdata_command", "process-service-perfdata"),
-                    ("service_perfdata_file", os.path.join(global_config["PNP_DIR"], "var/service-perfdata")),
-                    ("service_perfdata_file_template", "DATATYPE::SERVICEPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tSERVICEDESC::$SERVICEDESC$\tSERVICEPERFDATA::$SERVICEPERFDATA$\tSERVICECHECKCOMMAND::$SERVICECHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$\tSERVICESTATE::$SERVICESTATE$\tSERVICESTATETYPE::$SERVICESTATETYPE$"),
-                    ("service_perfdata_file_mode", "a"),
+                    ("service_perfdata_file_mode"               , "a"),
                     ("service_perfdata_file_processing_interval", "15"),
-                    ("service_perfdata_file_processing_command", "process-service-perfdata-file"),
-
-                    ("host_perfdata_file", os.path.join(global_config["PNP_DIR"], "var/host-perfdata")),
-                    ("host_perfdata_file_template", "DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$"),
-                    ("host_perfdata_file_mode", "a"),
-                    ("host_perfdata_file_processing_interval", "15"),
-                    ("host_perfdata_file_processing_command" , "process-host-perfdata-file"),
+                    ("service_perfdata_file_processing_command" , "process-service-perfdata-file"),
+                    ("host_perfdata_file_mode"                  , "a"),
+                    ("host_perfdata_file_processing_interval"   , "15"),
+                    ("host_perfdata_file_processing_command"    , "process-host-perfdata-file"),
                 ])
             if global_config["ENABLE_NDO"]:
                 if global_config["MD_TYPE"] == "nagios":
@@ -874,7 +886,7 @@ class main_config(object):
             file(htp_file, "w").write("\n".join(
                 ["%s:{SSHA}%s" % (
                     cur_u.login,
-                    cur_u.password_ssha.split(":", 1)[1]) for cur_u in user.objects.filter(Q(active=True))] + [""]))
+                    cur_u.password_ssha.split(":", 1)[1]) for cur_u in user.objects.filter(Q(active=True)) if cur_u.password_ssha.count(":")] + [""]))
             if global_config["ENABLE_NAGVIS"]:
                 # modify auth.db
                 auth_db = os.path.join(global_config["NAGVIS_DIR"], "etc", "auth.db")
@@ -915,7 +927,7 @@ class main_config(object):
                         devg_lut.setdefault(cur_dev.device_group.pk, []).append(cur_dev.full_name)
                     for cur_u in user.objects.filter(Q(active=True) & Q(mon_contact__pk__gt=0)).prefetch_related("allowed_device_groups"):
                         # check for admin
-                        if User.objects.get(Q(username=cur_u.login)).has_perm("backbone.all_devices"):
+                        if cur_u.has_perm("backbone.all_devices"):
                             target_role = "admins"
                         else:
                             # create special role
@@ -1295,24 +1307,44 @@ class all_commands(host_type_config):
         check_coms = list(mon_check_command.objects.all()
                           .prefetch_related("categories")
                           .select_related("mon_service_templ", "config"))
-        if global_config["ENABLE_PNP"] and gen_conf.master:
-            check_coms += [
-                mon_check_command(
-                    name="process-service-perfdata-file",
-                    command_line="/usr/bin/perl %s/lib/process_perfdata.pl --bulk=%s/var/service-perfdata" % (
-                        global_config["PNP_DIR"],
-                        global_config["PNP_DIR"]
+        enable_perfd = global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]
+        if enable_perfd and gen_conf.master:
+            if global_config["ENABLE_COLLECTD"]:
+                check_coms += [
+                    mon_check_command(
+                        name="process-service-perfdata-file",
+                        command_line="/opt/cluster/sbin/send_collectd_zmq %s/service-perfdata" % (
+                            gen_conf.var_dir
+                            ),
+                        description="Process service performance data",
                         ),
-                    description="Process service performance data",
-                    ),
-                mon_check_command(
-                    name="process-host-perfdata-file",
-                    command_line="/usr/bin/perl %s/lib/process_perfdata.pl  --bulk=%s/var/host-perfdata" % (
-                        global_config["PNP_DIR"],
-                        global_config["PNP_DIR"]),
-                    description="Process host performance data",
-                    ),
-            ]
+                    mon_check_command(
+                        name="process-host-perfdata-file",
+                        command_line="/opt/cluster/sbin/send_collectd_zmq %s/host-perfdata" % (
+                            gen_conf.var_dir
+                            ),
+                        description="Process host performance data",
+                        ),
+                ]
+            else:
+                check_coms += [
+                    mon_check_command(
+                        name="process-service-perfdata-file",
+                        command_line="/usr/bin/perl %s/lib/process_perfdata.pl --bulk=%s/var/service-perfdata" % (
+                            global_config["PNP_DIR"],
+                            global_config["PNP_DIR"]
+                            ),
+                        description="Process service performance data",
+                        ),
+                    mon_check_command(
+                        name="process-host-perfdata-file",
+                        command_line="/usr/bin/perl %s/lib/process_perfdata.pl  --bulk=%s/var/host-perfdata" % (
+                            global_config["PNP_DIR"],
+                            global_config["PNP_DIR"]
+                            ),
+                        description="Process host performance data",
+                        ),
+                ]
         command_names = set()
         for ngc in check_coms + [
             mon_check_command(
@@ -1321,7 +1353,7 @@ class all_commands(host_type_config):
                     global_config["CHECK_HOST_ALIVE_PINGS"],
                     global_config["CHECK_HOST_ALIVE_TIMEOUT"]),
                 description="Check-host-alive command via ping",
-                enable_perfdata=global_config["ENABLE_PNP"],
+                enable_perfdata=enable_perfd,
                 ),
             mon_check_command(
                 name="check-host-ok",
@@ -1339,16 +1371,16 @@ class all_commands(host_type_config):
                 name="check-host-alive-2",
                 command_line="$USER2$ -m $HOSTADDRESS$ version",
                 description="Check-host-alive command via collserver",
-                enable_perfdata=global_config["ENABLE_PNP"],
+                enable_perfdata=enable_perfd,
                 ),
             mon_check_command(
                 name="ochp-command",
-                command_line="$USER2$ -m DIRECT -s ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"%s\"" % ("$HOSTOUTPUT$|$HOSTPERFDATA$" if global_config["ENABLE_PNP"] else "$HOSTOUTPUT$"),
+                command_line="$USER2$ -m DIRECT -s ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"%s\"" % ("$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"),
                 description="OCHP Command"
                 ),
             mon_check_command(
                 name="ocsp-command",
-                command_line="$USER2$ -m DIRECT -s ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"%s\" " % ("$SERVICEOUTPUT$|$SERVICEPERFDATA$" if global_config["ENABLE_PNP"] else "$SERVICEOUTPUT$"),
+                command_line="$USER2$ -m DIRECT -s ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"%s\" " % ("$SERVICEOUTPUT$|$SERVICEPERFDATA$" if enable_perfd else "$SERVICEOUTPUT$"),
                 description="OCSP Command"
                 ),
             mon_check_command(
@@ -2526,7 +2558,7 @@ class build_process(threading_tools.process_obj):
                     act_host["host_name"] = host.full_name
                     act_host["display_name"] = host.full_name
                     # action url
-                    if global_config["ENABLE_PNP"]:
+                    if global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]:
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
                         if host.enable_perfdata:
                             act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (global_config["PNP_URL"])
@@ -2832,7 +2864,7 @@ class build_process(threading_tools.process_obj):
         """
         start_time = time.time()
         # get contacts with access to all devices
-        all_access = list(user.objects.filter(Q(login__in=[cur_u.username for cur_u in User.objects.filter(is_active=True) if cur_u.has_perm("backbone.all_devices")])).values_list("login", flat=True))
+        all_access = list([cur_u.login for cur_u in user.objects.filter(Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)) if cur_u.has_perm("backbone.all_devices")])
         self.log("users with access to all devices: %s" % (", ".join(sorted(all_access))))
         server_idxs = [cur_gc.monitor_server.pk]
         # get netip-idxs of own host
@@ -3086,7 +3118,7 @@ class build_process(threading_tools.process_obj):
             if checks_are_active and not cur_gc.master:
                 # trace
                 act_serv["obsess_over_service"] = 1
-            if global_config["ENABLE_PNP"]:
+            if global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]:
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
                 if host.enable_perfdata and s_check.enable_perfdata:
                     act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (global_config["PNP_URL"])
@@ -3658,6 +3690,7 @@ def main():
         ("CHECK_HOST_ALIVE_PINGS"      , configfile.int_c_var(3)),
         ("CHECK_HOST_ALIVE_TIMEOUT"    , configfile.float_c_var(5.0)),
         ("ENABLE_PNP"                  , configfile.bool_c_var(False)),
+        ("ENABLE_COLLECTD"             , configfile.bool_c_var(False)),
         ("ENABLE_LIVESTATUS"           , configfile.bool_c_var(True)),
         ("ENABLE_NDO"                  , configfile.bool_c_var(False)),
         ("ENABLE_NAGVIS"               , configfile.bool_c_var(False)),
