@@ -3,14 +3,13 @@
 
 """ config views """
 
-import logging_tools
-import process_tools
 import datetime
-import tempfile
 import logging
+import logging_tools
 import pprint
-import net_tools
+import process_tools
 import server_command
+import tempfile
 from lxml import etree
 from lxml.builder import E
 
@@ -158,7 +157,7 @@ class delete_var(View):
                    "int"  : config_int,
                    "bool" : config_bool,
                    "blob" : config_blob}[var_type[3:]]
-        request.log("remove config_%s with pk %s" % (var_type[3:], var_pk))
+        logger.warn("remove config_%s with pk %s" % (var_type[3:], var_pk))
         del_obj = del_obj.objects.get(Q(pk=var_pk))
         delete_object(request, del_obj)
 
@@ -398,7 +397,6 @@ class generate_config(View):
             "devices",
             *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
         result = contact_server(request, "tcp://localhost:8005", srv_com, timeout=30, log_result=False)
-        #result = net_tools.zmq_connection("config_webfrontend", timeout=30).add_connection("tcp://localhost:8005", srv_com, log_result=False)
         if result:
             request.xml_response["result"] = E.devices()
             for dev_node in result.xpath(None, ".//ns:device"):
