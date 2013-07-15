@@ -86,7 +86,7 @@ class get_selection(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         request.xml_response["sel_list"] = E.selection(
-            *[E.sel(cur_key) for cur_key in request.session["sel_list"]]
+            *[E.sel(cur_key) for cur_key in request.session.get("sel_list", [])]
         )
         
 class add_selection(View):

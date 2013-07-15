@@ -164,7 +164,7 @@ class category_tree
                 success : (xml) =>
                     if parse_xml_response(xml)
                         @active_node = key
-                        $("div#ct_map").children().remove()
+                        $("div#ct_map").hide().children().remove()
                         detail_div = $("div#ct_detail")
                         detail_div.children().remove()
                         detail_div.append($(xml).find("value[name='form']").text())
@@ -172,6 +172,7 @@ class category_tree
                         cur_dtn = @DNT.find("category[pk='#{key}']")
                         detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
                         if db_node.attr("full_name").match("/location/")
+                            $("div#ct_map").show()
                             ll_fields = $("input[name='latitude'], input[name='longitude']")
                             ll_fields.on("change", ->
                                 cur_ll = new google.maps.LatLng(parseFloat($("input[name='latitude']").val()), parseFloat($("input[name='longitude']").val()))
