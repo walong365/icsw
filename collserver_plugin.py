@@ -169,6 +169,7 @@ class net_receiver(multiprocessing.Process):
         except:
             collectd.error("cannot parse tree: %s" % (process_tools.get_except_info()))
         else:
+            print etree.tostring(_xml, pretty_print=True)
             simple, host_name, host_uuid, recv_time = (
                 _xml.attrib["simple"] == "1",
                 _xml.attrib["name"],
