@@ -1,20 +1,44 @@
 #!/usr/bin/python-init -Otu
 
-import time
-import signal
-import zmq
-import threading
-import multiprocessing
 import collectd
-import uuid_tools
 import logging_tools
+import multiprocessing
 import process_tools
+import re
 import server_command
+import signal
+import threading
+import time
+import uuid_tools
+import zmq
 from lxml import etree
+from lxml.builder import E
 
 IPC_SOCK = "ipc:///var/log/cluster/sockets/collect"
 RECV_PORT = 8002
 GRAPHER_PORT = 8003
+
+class perfdata_object(object):
+    def __init__(self):
+        pass
+    
+class load_pdata(perfdata_object):
+    PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
+    def build_values(self, _xml, in_dict):
+        r_list = []
+        for key in ["load1", "load5", "load15"]:
+            r_list.append((_xml.get("host"), int(_xml.get("time")), "loadx.%s" % (key), float(in_dict[key])))
+        return r_list
+
+class ping_pdata_1(perfdata_object):
+    PD_RE = re.compile("^rta=(?P<rta>\S+)s loss=(?P<loss>\d+)$")
+    def build_values(self, _xml, in_dict):
+        _host, _time = (
+            _xml.get("host"),
+            int(_xml.get("time"))
+        )
+        return ((_host, _time, "net.ping.rta", float(in_dict["rta"])),
+                (_host, _time, "net.ping.loss", int(in_dict["loss"])))
 
 class value(object):
     def __init__(self, name):
@@ -79,9 +103,19 @@ class net_receiver(multiprocessing.Process):
         self.zmq_id = "%s:collserver_plugin" % (process_tools.get_machine_name())
         self.grapher_id = "%s:rrd_grapher" % (uuid_tools.get_uuid().get_urn())
     def _init(self):
+        self._init_perfdata()
         self._init_vars()
         self._init_hosts()
         self._init_sockets()
+    def _init_perfdata(self):
+        re_list = []
+        for key in globals().keys():
+            obj = globals()[key]
+            if type(obj) == type and obj != perfdata_object:
+                if issubclass(obj, perfdata_object):
+                    obj = obj()
+                    re_list.append((obj.PD_RE, obj))
+        self.__pd_re_list = re_list
     def _init_sockets(self):
         self.context = zmq.Context()
         self.receiver = self.context.socket(zmq.PULL)
@@ -147,9 +181,7 @@ class net_receiver(multiprocessing.Process):
             in_data = self.receiver.recv()
             self.__trees_read += 1
             self.__total_size += len(in_data)
-            p_data = self._process_tree(in_data)
-            if p_data is not None:
-                self.sender.send_pyobj(p_data)
+            self._process_tree(in_data)
             if abs(time.time() - self.__start_time) > 300:
                 # periodic log stats
                 self._log_stats()
@@ -169,28 +201,60 @@ class net_receiver(multiprocessing.Process):
         except:
             collectd.error("cannot parse tree: %s" % (process_tools.get_except_info()))
         else:
-            if _xml.tag == "machine_vector":
-                simple, host_name, host_uuid, recv_time = (
-                    _xml.attrib["simple"] == "1",
-                    _xml.attrib["name"],
-                    # if uuid is not set use name as uuid (will not be sent to the grapher)
-                    _xml.attrib.get("uuid", _xml.attrib.get("name")),
-                    float(_xml.attrib["time"]),
-                )
-                self.__distinct_hosts.add(host_uuid)
-                if simple and host_uuid not in self.__hosts:
-                    collectd.warning("no full info for host %s (%s) received, discarding data" % (
-                        host_name,
-                        host_uuid,
-                    ))
-                else:
-                    if not simple:
-                        self._feed_host_info(host_uuid, host_name, _xml)
-                    values = self.__hosts[host_uuid].get_values(_xml, simple)
-                    r_data = (host_name, recv_time, values)
-            else:
-                collectd.warning("got xml tree with tag %s (%d)" % (_xml.tag, len(_xml)))
+            try:
+                for p_data in getattr(self, "_handle_%s" % (_xml.tag))(_xml):
+                    self.sender.send_pyobj(p_data)
+            except:
+                collectd.error(process_tools.get_except_info())
+                r_data = None
         return r_data
+    def _handle_machine_vector(self, _xml):
+        simple, host_name, host_uuid, recv_time = (
+            _xml.attrib["simple"] == "1",
+            _xml.attrib["name"],
+            # if uuid is not set use name as uuid (will not be sent to the grapher)
+            _xml.attrib.get("uuid", _xml.attrib.get("name")),
+            float(_xml.attrib["time"]),
+        )
+        self.__distinct_hosts.add(host_uuid)
+        if simple and host_uuid not in self.__hosts:
+            collectd.warning(
+                "no full info for host %s (%s) received, discarding data" % (
+                    host_name,
+                    host_uuid,
+                )
+            )
+            raise StopIteration
+        else:
+            if not simple:
+                self._feed_host_info(host_uuid, host_name, _xml)
+            values = self.__hosts[host_uuid].get_values(_xml, simple)
+            r_data = (host_name, recv_time, values)
+            yield r_data
+    def _handle_perf_data(self, _xml):
+        for p_data in _xml:
+            perf_value = p_data.get("perfdata", "").strip()
+            if perf_value:
+                mach_values = self._find_matching_pd_handler(p_data, perf_value)
+                if len(mach_values):
+                    yield ("pdata", mach_values)
+                    #print etree.tostring(mach_vect, pretty_print=True)
+                    #yield mach_vect
+        raise StopIteration
+    def _find_matching_pd_handler(self, p_data, perf_value):
+        values = []
+        for cur_re, re_obj in self.__pd_re_list:
+            cur_m = cur_re.match(perf_value)
+            if cur_m:
+                values.extend(re_obj.build_values(p_data, cur_m.groupdict()))
+        if not values:
+            collectd.warning(
+                "unparsed perfdata '%s' from %s" % (
+                    perf_value,
+                    p_data.get("host")
+                )
+            )
+        return values
     
 class receiver(object):
     def __init__(self):
@@ -222,15 +286,21 @@ class receiver(object):
                         self.recv_sock = None
                         break
                     else:
-                        self._handle_tree(data)
+                        if len(data) == 3:
+                            self._handle_tree(data)
+                        else:
+                            self._handle_perfdata(data)
         self.lock.release()
+    def _handle_perfdata(self, data):
+        header, v_list = data
+        for host_name, time_recv, name, value in v_list:
+            collectd.Values(plugin="perfdata", host=host_name, time=time_recv, type="pdval", type_instance=name, interval=5*60).dispatch(values=[value])
     def _handle_tree(self, data):
         host_name, time_recv, values = data
         for name, value in values:
             # name can be none for values with transform problems
             if name:
-                vl = collectd.Values(plugin="collserver", host=host_name, time=time_recv, type="icval", type_instance=name)
-                vl.dispatch(values=[value])
+                collectd.Values(plugin="collserver", host=host_name, time=time_recv, type="icval", type_instance=name).dispatch(values=[value])
         
 #== Our Own Functions go here: ==#
 def configer(ObjConfiguration):
