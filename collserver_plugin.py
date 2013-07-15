@@ -169,25 +169,27 @@ class net_receiver(multiprocessing.Process):
         except:
             collectd.error("cannot parse tree: %s" % (process_tools.get_except_info()))
         else:
-            print etree.tostring(_xml, pretty_print=True)
-            simple, host_name, host_uuid, recv_time = (
-                _xml.attrib["simple"] == "1",
-                _xml.attrib["name"],
-                # if uuid is not set use name as uuid (will not be sent to the grapher)
-                _xml.attrib.get("uuid", _xml.attrib.get("name")),
-                float(_xml.attrib["time"]),
-            )
-            self.__distinct_hosts.add(host_uuid)
-            if simple and host_uuid not in self.__hosts:
-                collectd.warning("no full info for host %s (%s) received, discarding data" % (
-                    host_name,
-                    host_uuid,
-                ))
+            if _xml.tag == "machine_vector":
+                simple, host_name, host_uuid, recv_time = (
+                    _xml.attrib["simple"] == "1",
+                    _xml.attrib["name"],
+                    # if uuid is not set use name as uuid (will not be sent to the grapher)
+                    _xml.attrib.get("uuid", _xml.attrib.get("name")),
+                    float(_xml.attrib["time"]),
+                )
+                self.__distinct_hosts.add(host_uuid)
+                if simple and host_uuid not in self.__hosts:
+                    collectd.warning("no full info for host %s (%s) received, discarding data" % (
+                        host_name,
+                        host_uuid,
+                    ))
+                else:
+                    if not simple:
+                        self._feed_host_info(host_uuid, host_name, _xml)
+                    values = self.__hosts[host_uuid].get_values(_xml, simple)
+                    r_data = (host_name, recv_time, values)
             else:
-                if not simple:
-                    self._feed_host_info(host_uuid, host_name, _xml)
-                values = self.__hosts[host_uuid].get_values(_xml, simple)
-                r_data = (host_name, recv_time, values)
+                collectd.warning("got xml tree with tag %s (%d)" % (_xml.tag, len(_xml)))
         return r_data
     
 class receiver(object):

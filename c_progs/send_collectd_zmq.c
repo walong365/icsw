@@ -149,13 +149,14 @@ int main (int argc, char** argv) {
         free(host_b);
         exit(ENOMEM);
     }
-    // mimic XML
+    // read data from file
     file = open(argv[optind], 0);
     read(file, filebuff, file_size);
     close(file);
-    struct sysinfo s_info;
-    sysinfo(&s_info);
-    int cur_uptime = s_info.uptime;
+    // no empty it
+    open(argv[optind], O_NOFOLLOW|O_WRONLY|O_CREAT|O_TRUNC, S_IREAD|S_IWRITE|S_IRGRP|S_IROTH);
+    close(file);
+    // mimic XML
     sprintf(sendbuff, "<?xml version='1.0'?><perf_data>%s</perf_data>", filebuff);
     sendbuff[sendbuff_size] = '\0';/* terminate optarg for secure use of strlen() */
     if (!strlen(sendbuff)) err_exit("Nothing to send!\n");
