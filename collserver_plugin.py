@@ -18,6 +18,15 @@ IPC_SOCK = "ipc:///var/log/cluster/sockets/collect"
 RECV_PORT = 8002
 GRAPHER_PORT = 8003
 
+class perfdata_value(object):
+    def __init__(self, name, info, unit="1", v_type="f"):
+        self.name = name
+        self.info = info
+        self.unit = unit
+        self.v_type = v_type
+    def get_xml(self):
+        return E.value(name=self.name, unit=self.unit, info=self.info, v_type=self.v_type)
+    
 class perfdata_object(object):
     def _wrap(self, _xml, v_list):
         # add name, host and timestamp valus
@@ -31,6 +40,11 @@ class perfdata_object(object):
 class load_pdata(perfdata_object):
     PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
     PD_NAME = "load"
+    PD_XML_INFO = E.perfdata_info(
+        perfdata_value("load1", "mean load of the last minute").get_xml(),
+        perfdata_value("load5", "mean load of the 5 minutes").get_xml(),
+        perfdata_value("load15", "mean load of the 15 minutes").get_xml(),
+    )
     def build_values(self, _xml, in_dict):
         return self._wrap(
             _xml,
@@ -39,7 +53,7 @@ class load_pdata(perfdata_object):
             ]
         )
 
-class ping_pdata_1(perfdata_object):
+class ping_pdata_simple(perfdata_object):
     PD_RE = re.compile("^rta=(?P<rta>\S+)s loss=(?P<loss>\d+)$")
     PD_NAME = "ping"
     def build_values(self, _xml, in_dict):
@@ -48,9 +62,16 @@ class ping_pdata_1(perfdata_object):
             [3, int(in_dict["loss"]), float(in_dict["rta"]), 0., 0.]
         )
 
-class ping_pdata_2(perfdata_object):
+class ping_pdata(perfdata_object):
     PD_RE = re.compile("^rta=(?P<rta>\S+) min=(?P<min>\S+) max=(?P<max>\S+) sent=(?P<sent>\d+) loss=(?P<loss>\d+)$")
     PD_NAME = "ping"
+    PD_XML_INFO = E.perfdata_info(
+        perfdata_value("sent", "packets sent", v_type="i").get_xml(),
+        perfdata_value("loss", "packets lost", v_type="i").get_xml(),
+        perfdata_value("rta", "mean package runtime", v_type="f", unit="s").get_xml(),
+        perfdata_value("min", "minimum package runtime", v_type="f", unit="s").get_xml(),
+        perfdata_value("max", "maximum package runtime", v_type="f", unit="s").get_xml(),
+    )
     def build_values(self, _xml, in_dict):
         return self._wrap(
             _xml,
@@ -151,7 +172,9 @@ class net_receiver(multiprocessing.Process):
         self.grapher.connect("tcp://localhost:%d" % (GRAPHER_PORT))
         collectd.notice("listening on port %d" % (RECV_PORT))
     def _init_hosts(self):
+        # init host and perfdata structs
         self.__hosts = {}
+        self.__perfdatas = {}
     def _init_vars(self):
         self.__start_time = time.time()
         self.__trees_read = 0
@@ -225,6 +248,20 @@ class net_receiver(multiprocessing.Process):
                 collectd.error(process_tools.get_except_info())
                 r_data = None
         return r_data
+    def _check_for_ext_perfdata(self, mach_values):
+        # unique tuple
+        pd_tuple = (mach_values[0], mach_values[1])
+        if pd_tuple not in self.__perfdatas:
+            self.__perfdatas[pd_tuple] = 1
+        self.__perfdatas[pd_tuple] -= 1
+        if not self.__perfdatas[pd_tuple]:
+            self.__perfdatas[pd_tuple] = 1#0
+            pd_obj = globals()["%s_pdata" % (mach_values[0])]()
+            new_com = server_command.srv_command(command="perfdata_info")
+            new_com["hostname"] = mach_values[1]
+            new_com["pd_type"] = pd_obj.PD_NAME
+            new_com["info"] = pd_obj.PD_XML_INFO
+            self._send(new_com)
     def _handle_machine_vector(self, _xml):
         simple, host_name, host_uuid, recv_time = (
             _xml.attrib["simple"] == "1",
@@ -249,11 +286,13 @@ class net_receiver(multiprocessing.Process):
             r_data = (host_name, recv_time, values)
             yield r_data
     def _handle_perf_data(self, _xml):
+        # iterate over lines
         for p_data in _xml:
             perf_value = p_data.get("perfdata", "").strip()
             if perf_value:
                 mach_values = self._find_matching_pd_handler(p_data, perf_value)
                 if len(mach_values):
+                    self._check_for_ext_perfdata(mach_values)
                     yield ("pdata", mach_values)
                     #print etree.tostring(mach_vect, pretty_print=True)
                     #yield mach_vect
@@ -264,6 +303,8 @@ class net_receiver(multiprocessing.Process):
             cur_m = cur_re.match(perf_value)
             if cur_m:
                 values.extend(re_obj.build_values(p_data, cur_m.groupdict()))
+                # stop loop
+                break
         if not values:
             collectd.warning(
                 "unparsed perfdata '%s' from %s" % (
