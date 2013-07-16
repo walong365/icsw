@@ -460,6 +460,11 @@ class graph_var(object):
         return key in self.entry.attrib
     def get(self, key, default):
         return self.entry.attrib.get(key, default)
+    @staticmethod
+    def init(def_ct):
+        graph_var.var_idx = 0
+        graph_var.color_idx = 0
+        graph_var.colortable = [color.attrib["rgb"] for color in def_ct]
     @property
     def info(self):
         info = self["info"]
@@ -470,9 +475,12 @@ class graph_var(object):
     @property
     def color(self):
         if "colour" in self:
-            return Color(self["colour"]).hex
+            return self["colour"]
         else:
-            return Color("blue").hex
+            graph_var.color_idx += 1
+            if graph_var.color_idx >= len(graph_var.colortable):
+                graph_var.color_idx = 0
+            return "#%s" % (graph_var.colortable[graph_var.color_idx])
     @property
     def config(self):
         if self.entry.tag == "value":
@@ -586,26 +594,26 @@ class graph_process(threading_tools.process_obj):
         color_xml = etree.fromstring("""
         <colourizing>
             <entry key="load" iterate="1" integer_subkeys="1">
-                <range start_color='green' end_color='DarkGreen'/>
+                <range colortable='dark23'/>
             </entry>
             <entry key="net" iterate="1" ignore_next_level="1">
-                <range start_color='red' end_color='yellow' second_scale="luminance" second_start="0.2" second_end="0.6"/>
+                <range colortable='bupu9'/>
                 <modify key_match=".*tx.*" attribute="invert" value="1"/>
                 <modify key_match=".*err.*" attribute="draw_type" value="LINE2"/>
             </entry>
             <entry key="vms" iterate="1" ignore_next_level="1">
-                <range start_color='black' end_color='#888888' second_scale="green"/>
+                <range colortable='paired12'/>
                 <!--<modify key_match=".*" attribute="draw_type" value="STACK"/>
                 <modify key_match=".*idle.*" attribute="draw_type" value="LINE"/>-->
             </entry>
             <entry key="df" iterate="1" ignore_next_level="1">
-                <range start_color='blue' end_color='#aaaaaa' second_scale="red"/>
+                <range colortable='set19'/>
             </entry>
             <entry key="io" iterate="1" ignore_next_level="1">
-                <range start_color='#aa0066' end_color='#0000aa' second_scale="green"/>
+                <range colortable='prgn11'/>
             </entry>
             <entry key="mem" iterate="1" ignore_next_level="1">
-                <range start_color='#66ff00' end_color='#ff0000' second_scale="blue"/>
+                <range colortable='rdgy11'/>
                 <modify key_match=".*bc$" attribute="draw_type" value="LINE2"/>
             </entry>
             <entry key="num" iterate="1">
@@ -663,32 +671,31 @@ class graph_process(threading_tools.process_obj):
             next_level_keys = {"" : sub_keys}
         modify_list = xml_col.findall("modify")
         if range_xml != None:
-            start_color, end_color = (
-                Color(range_xml.attrib["start_color"]),
-                Color(range_xml.attrib["end_color"]),
-            )
-            #print start_color, start_color.hue, start_color.luminance
-            second_scale = "second_scale" in range_xml.attrib
-            if "second_start" in range_xml.attrib:
-                second_start, second_end = (
-                    float(range_xml.attrib["second_start"]),
-                    float(range_xml.attrib["second_end"]),
+            if "start_color" in range_xml.attrib:
+                start_color, end_color = (
+                    Color(range_xml.attrib["start_color"]),
+                    Color(range_xml.attrib["end_color"]),
                 )
+                color_table = None
             else:
-                second_start, second_end = (0, 1.0)
+                color_table = self.colortables.find("colortable[@name='%s']" % (range_xml.attrib["colortable"]))
+            #print start_color, start_color.hue, start_color.luminance
             second_len = len(next_level_keys)
             for next_idx, next_key in enumerate(sorted(next_level_keys.keys())):
-                if second_scale:
-                    second_attr = range_xml.attrib["second_scale"]
-                    cur_value = second_start + (second_end - second_start) / max(1, (second_len - 1)) * next_idx
-                    #print "*", next_idx, second_len, next_key, second_attr, cur_value
-                    setattr(start_color, second_attr, cur_value)
-                    setattr(end_color, second_attr, cur_value)
                 next_keys = next_level_keys[next_key]
-                if len(next_keys) > 1:
-                    color_list = list(start_color.range_to(end_color, len(next_keys)))
+                if color_table is not None:
+                    color_list = []
+                    for color in color_table:
+                        color_list.append(color.get("rgb"))
+                    while len(color_list) < len(next_keys):
+                        color_list = color_list + color_list
+                    color_list = ["#%s" % (entry) for entry in color_list[:len(next_keys)]]
                 else:
-                    color_list = [start_color]
+                    if len(next_keys) > 1:
+                        color_list = list(start_color.range_to(end_color, len(next_keys)))
+                    else:
+                        color_list = [start_color]
+                    color_list = [entry.hex for entry in color_list]
                 for sub_key, sub_color in zip(next_keys, color_list):
                     ref_key = main_key
                     if next_key:
@@ -698,7 +705,7 @@ class graph_process(threading_tools.process_obj):
                     #print sub_key, sub_color
                     sub_xml = xml_ent.find(".//mve[@name='%s']" % (ref_key))
                     if "colour" not in sub_xml.attrib:
-                        sub_xml.attrib["colour"] = sub_color.hex
+                        sub_xml.attrib["colour"] = sub_color
                     for modify_xml in modify_list:
                         if re.match(modify_xml.attrib["key_match"], ref_key):
                             sub_xml.attrib[modify_xml.attrib["attribute"]] = modify_xml.attrib["value"]
@@ -746,7 +753,7 @@ class graph_process(threading_tools.process_obj):
                 "end-%d" % (para_dict["timeframe"]),
                 graph_var(None).header_line,
         ]
-        graph_var.var_idx = 0
+        graph_var.init(self.colortables.find("colortable[@name='dark28']"))
         for graph_key in sorted(graph_keys):
             graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
             if graph_mve is not None:
