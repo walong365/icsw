@@ -19,46 +19,42 @@ RECV_PORT = 8002
 GRAPHER_PORT = 8003
 
 class perfdata_object(object):
-    def wrap(self, _xml, v_list):
-        # add host and timestamp values
-        _host, _time = (
+    def _wrap(self, _xml, v_list):
+        # add name, host and timestamp valus
+        return [
+            self.PD_NAME,
             _xml.get("host"),
-            int(_xml.get("time"))
-        )
-        return [(_host, _time, v0, v1) for v0, v1 in v_list]
+            int(_xml.get("time")),
+            v_list
+        ]
     
 class load_pdata(perfdata_object):
     PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
+    PD_NAME = "load"
     def build_values(self, _xml, in_dict):
         return self._wrap(
             _xml,
             [
-                ("loadx.%s" % (key), float(in_dict[key])) for key in ["load1", "load5", "load15"]
+                float(in_dict[key]) for key in ["load1", "load5", "load15"]
             ]
         )
 
 class ping_pdata_1(perfdata_object):
     PD_RE = re.compile("^rta=(?P<rta>\S+)s loss=(?P<loss>\d+)$")
+    PD_NAME = "ping"
     def build_values(self, _xml, in_dict):
         return self._wrap(
             _xml,
-            [
-                (_host, _time, "net.ping.rta", float(in_dict["rta"])),
-                (_host, _time, "net.ping.loss", int(in_dict["loss"]))
-            ]
+            [int(in_dict["loss"]), float(in_dict["rta"]), 0., 0.]
         )
 
 class ping_pdata_2(perfdata_object):
-    PD_RE = re.compile("^rta=(?P<rta>\S+) min=(?P<min>\S+) max=(?P<max>\S+) loss=(?P<loss>\d+)$")
+    PD_RE = re.compile("^rta=(?P<rta>\S+) min=(?P<min>\S+) max=(?P<max>\S+) sent=(?P<sent>\d+) loss=(?P<loss>\d+)$")
+    PD_NAME = "ping"
     def build_values(self, _xml, in_dict):
         return self._wrap(
             _xml,
-            [
-                (_host, _time, "net.ping.rta", float(in_dict["rta"])),
-                (_host, _time, "net.ping.min", float(in_dict["min"])),
-                (_host, _time, "net.ping.min", float(in_dict["max"])),
-                (_host, _time, "net.ping.loss", int(in_dict["loss"]))
-            ]
+            [int(in_dict["sent"]), int(in_dict["loss"]), float(in_dict["rta"]), float(in_dict["min"]), float(in_dict["max"])]
         )
 
 class value(object):
@@ -313,9 +309,8 @@ class receiver(object):
                             self._handle_perfdata(data)
         self.lock.release()
     def _handle_perfdata(self, data):
-        header, v_list = data
-        for host_name, time_recv, name, value in v_list:
-            collectd.Values(plugin="perfdata", host=host_name, time=time_recv, type="pdval", type_instance=name, interval=5*60).dispatch(values=[value])
+        _type, host_name, time_recv, v_list = data[1]
+        collectd.Values(plugin="perfdata", host=host_name, time=time_recv, type="ipd_%s" % (_type), interval=5*60).dispatch(values=v_list)
     def _handle_tree(self, data):
         host_name, time_recv, values = data
         for name, value in values:
