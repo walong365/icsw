@@ -45,7 +45,7 @@ class ping_pdata_1(perfdata_object):
     def build_values(self, _xml, in_dict):
         return self._wrap(
             _xml,
-            [int(in_dict["loss"]), float(in_dict["rta"]), 0., 0.]
+            [3, int(in_dict["loss"]), float(in_dict["rta"]), 0., 0.]
         )
 
 class ping_pdata_2(perfdata_object):
