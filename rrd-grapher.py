@@ -770,7 +770,8 @@ class data_store(object):
             self.log("cannot interpret XML: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             self.xml_vector = E.machine_vector()
         else:
-            self.store_name = self.xml_vector.attrib["store_name"]
+            # for pure-pde vectors no store name is set
+            self.store_name = self.xml_vector.attrib.get("store_name", "")
         # send a copy to the grapher
         self.sync_to_grapher()
     def feed(self, in_vector):
@@ -797,16 +798,61 @@ class data_store(object):
         new_keys = set(self.xml_vector.xpath(".//mve/@name"))
         c_keys = old_keys ^ new_keys
         if c_keys:
-            self.log("%d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
+            self.log("mve: %d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
         else:
-            self.log("%d keys total" % (len(new_keys)))
+            self.log("mve: %d keys total" % (len(new_keys)))
         self.store_info()
+    def feed_pd(self, host_name, pd_type, pd_info):
+        # we ignore the global store name for perfdata stores
+        old_keys = set(self.xml_vector.xpath(".//pde/@name"))
+        rrd_dir = global_config["RRD_DIR"]
+        # only one entry
+        cur_entry = self.xml_vector.find("pde[@name='%s']" % (pd_type))
+        if not cur_entry:
+            # create new entry
+            cur_entry = E.pde(
+                name=pd_type,
+                host=host_name,
+                init_time="%d" % (time.time()),
+            )
+            for cur_idx, entry in enumerate(pd_info):
+                cur_entry.append(
+                    E.value(
+                        name=entry.get("name"),
+                    )
+                )
+            self.xml_vector.append(cur_entry)
+        self._update_pd_entry(cur_entry, pd_info, rrd_dir)
+        new_keys = set(self.xml_vector.xpath(".//pde/@name"))
+        c_keys = old_keys ^ new_keys
+        if c_keys:
+            self.log("pde: %d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
+        else:
+            self.log("pde: %d keys total" % (len(new_keys)))
+        self.store_info()
+    def _update_pd_entry(self, entry, src_entry, rrd_dir):
+        entry.attrib["last_update"] = "%d" % (time.time())
+        entry.attrib["file_name"] = os.path.join(
+            rrd_dir,
+            entry.get("host"),
+            "perfdata",
+            "ipd_%s.rrd" % (entry.get("name"))
+        )
+        if len(entry) == len(src_entry):
+            for v_idx, (cur_value, src_value) in enumerate(zip(entry, src_entry)):
+                for key, def_value in [
+                    ("info", "performance_data"),
+                    ("v_type", "f"),
+                    ("unit"  , "1"),
+                    ("name", None),
+                    ("index", "%d" % (v_idx))]:
+                    cur_value.attrib[key] = src_value.get(key, def_value)
     def _update_entry(self, entry, src_entry, rrd_dir):
         for key, def_value in [
-            ("info", None),
+            ("info"  , None),
             ("v_type", None),
-            ("unit", "1"),
-            ("base", "1"),
+            ("unit"  , "1"),
+            ("base"  , "1"),
             ("factor", "1")]:
             entry.attrib[key] = src_entry.get(key, def_value)
         # last update time
@@ -890,6 +936,39 @@ class data_store(object):
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         data_store.process.log("[ds] %s" % (what), log_level)
+    @staticmethod
+    def feed_perfdata(name, pd_type, pd_info):
+        match_dev = None
+        if name.count("."):
+            full_name, short_name, dom_name = (name, name.split(".")[0], name.split(".", 1)[1])
+        else:
+            full_name, short_name, dom_name = (None, name, None)
+        if full_name:
+            # try according to full_name
+            try:
+                match_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node__full_name=dom_name))
+            except device.DoesNotExist:
+                pass
+            else:
+                match_mode = "fqdn"
+        if match_dev is None:
+            try:
+                match_dev = device.objects.get(Q(name=short_name))
+            except device.DoesNotExist:
+                pass
+            except device.MultipleObjectsReturned:
+                pass
+            else:
+                match_mode = "name"
+        if match_dev:
+            data_store.g_log("found device %s (%s) for pd_type=%s" % (unicode(match_dev), match_mode, pd_type))
+            if match_dev.pk not in data_store.__devices:
+                data_store.__devices[match_dev.pk] = data_store(match_dev)
+            data_store.__devices[match_dev.pk].feed_pd(name, pd_type, pd_info)
+        else:
+            data_store.g_log(
+                "no device found (name=%s, pd_type=%s)" % (name, pd_type),
+                logging_tools.LOG_LEVEL_ERROR)
     @staticmethod
     def feed_vector(in_vector):
         #print in_vector, type(in_vector), etree.tostring(in_vector, pretty_print=True)
@@ -1056,6 +1135,8 @@ class server_process(threading_tools.process_pool):
             self.com_socket = client
     def _interpret_mv_info(self, in_vector):
         data_store.feed_vector(in_vector[0])
+    def _interpret_perfdata_info(self, host_name, pd_type, pd_info):
+        data_store.feed_perfdata(host_name, pd_type, pd_info)
     def _get_node_rrd(self, srv_com):
         node_results = E.node_results()
         for cur_dev in srv_com["device_list"][0]:
@@ -1093,6 +1174,9 @@ class server_process(threading_tools.process_pool):
                 send_return = True
                 if cur_com in ["mv_info"]:
                     self._interpret_mv_info(srv_com["vector"])
+                    send_return = False
+                elif cur_com in ["perfdata_info"]:
+                    self._interpret_perfdata_info(srv_com["hostname"].text, srv_com["pd_type"].text, srv_com["info"][0])
                     send_return = False
                 elif cur_com == "get_node_rrd":
                     self._get_node_rrd(srv_com)
