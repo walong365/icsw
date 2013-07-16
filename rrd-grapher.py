@@ -450,16 +450,16 @@ class report_thread(threading_tools.thread_obj):
 
 class graph_var(object):
     var_idx = 0
-    def __init__(self, mve):
-        self.mve = mve
+    def __init__(self, entry):
+        self.entry = entry
         graph_var.var_idx += 1
         self.name = "v%d" % (graph_var.var_idx)
     def __getitem__(self, key):
-        return self.mve.attrib[key]
+        return self.entry.attrib[key]
     def __contains__(self, key):
-        return key in self.mve.attrib
+        return key in self.entry.attrib
     def get(self, key, default):
-        return self.mve.attrib.get(key, default)
+        return self.entry.attrib.get(key, default)
     @property
     def info(self):
         info = self["info"]
@@ -475,9 +475,15 @@ class graph_var(object):
             return Color("blue").hex
     @property
     def config(self):
-        c_lines = [
-            "DEF:%s=%s:v:AVERAGE" % (self.name, self["file_name"]),
-        ]
+        if self.entry.tag == "value":
+            # pde entry
+            c_lines = [
+                "DEF:%s=%s:%s:AVERAGE" % (self.name, self.entry.getparent().get("file_name"), self["name"]),
+            ]
+        else:
+            c_lines = [
+                "DEF:%s=%s:v:AVERAGE" % (self.name, self["file_name"]),
+            ]
         if int(self.get("invert", "0")):
             c_lines.append(
                 "CDEF:%sinv=%s,-1,*" % (self.name, self.name),
@@ -561,6 +567,16 @@ class graph_process(threading_tools.process_obj):
             cur_p = ent.getparent()
             if cur_p.tag == "entry":
                 ent.attrib["full"] = "%s.%s" % (cur_p.attrib["full"], ent.attrib["full"])
+        # add pde entries
+        pde_keys = set(cur_xml.xpath(".//pde/@name"))
+        for key in sorted(pde_keys):
+            cur_el = cur_xml.find(".//pde[@name='%s']" % (key))
+            new_el = E.entry(name=key, part=key, file_name=cur_el.get("file_name"))
+            xml_vect.append(new_el)
+            for sub_val in cur_el:
+                new_val = copy.deepcopy(sub_val)
+                new_val.attrib["full"] = "%s.%s" % (new_el.get("name"), new_val.get("name"))
+                new_el.append(new_val)
         return xml_vect
     def _set_colours(self, xml_vect):
         color_xml = etree.fromstring("""
@@ -731,6 +747,9 @@ class graph_process(threading_tools.process_obj):
             graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
             if graph_mve is not None:
                 rrd_args.extend(graph_var(graph_mve).config)
+            graph_pde = dev_vector.find(".//value[@full='%s']" % (graph_key))
+            if graph_pde is not None:
+                rrd_args.extend(graph_var(graph_pde).config)
         if graph_var.var_idx:
             rrd_args.extend([
                 "--title",
@@ -895,6 +914,15 @@ class data_store(object):
             parent.append(struct_ent[0])
             parent.remove(struct_ent)
         #print etree.tostring(xml_vect, pretty_print=True)
+         # add pde entries
+        pde_keys = set(cur_xml.xpath(".//pde/@name"))
+        for key in sorted(pde_keys):
+            new_el = E.entry(name=key, part=key)
+            xml_vect.append(new_el)
+            for sub_val in cur_xml.find(".//pde[@name='%s']" % (key)):
+                new_val = copy.deepcopy(sub_val)
+                new_val.attrib["name"] = "%s.%s" % (new_el.get("name"), new_val.get("name"))
+                new_el.append(new_val)
         return xml_vect
     def _expand_info(self, entry):
         info = entry.attrib["info"]
