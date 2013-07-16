@@ -529,6 +529,7 @@ class graph_process(threading_tools.process_obj):
         self.raw_vector_dict, self.vector_dict = ({}, {})
         self.graph_root = global_config["GRAPH_ROOT"]
         self.log("graphs go into %s" % (self.graph_root))
+        self._read_colortables()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
@@ -536,6 +537,9 @@ class graph_process(threading_tools.process_obj):
         self.__log_template.close()
     def _close(self):
         pass
+    def _read_colortables(self):
+        self.colortables = etree.fromstring(file(global_config["COLORTABLE_FILE"], "r").read())
+        self.log("read colortables from %s" % (global_config["COLORTABLE_FILE"]))
     def _xml_info(self, *args, **kwargs):
         dev_id, xml_str = (args[0], etree.fromstring(args[1]))
         # needed ?
@@ -1264,6 +1268,7 @@ def main():
         ("COM_PORT"            , configfile.int_c_var(SERVER_COM_PORT)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("RRD_DIR"             , configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc")),
+        ("COLORTABLE_FILE"     , configfile.str_c_var("/opt/cluster/share/colortables.xml", help_string="name of colortable file")),
     ])
     global_config.parse_file()
     options = global_config.handle_commandline(
