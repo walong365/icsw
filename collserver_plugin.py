@@ -177,9 +177,10 @@ class net_receiver(multiprocessing.Process):
         self.__perfdatas = {}
     def _init_vars(self):
         self.__start_time = time.time()
-        self.__trees_read = 0
-        self.__total_size = 0
-        self.__distinct_hosts = set()
+        self.__trees_read, self.__pds_read = (0, 0)
+        self.__total_size_trees, self.__total_size_pds = (0, 0)
+        self.__distinct_hosts_mv = set()
+        self.__distinct_hosts_pd = set()
     def _close(self):
         self._log_stats()
         self._close_sockets()
@@ -202,15 +203,23 @@ class net_receiver(multiprocessing.Process):
         self._close()
     def _log_stats(self):
         self.__end_time = time.time()
-        b_rate = self.__trees_read / max(1, abs(self.__end_time - self.__start_time))
-        s_rate = self.__total_size / max(1, abs(self.__end_time - self.__start_time))
-        collectd.notice("read %s (%s) from %s in %s (rate [%.2f, %s] / sec)" % (
+        diff_time = max(1, abs(self.__end_time - self.__start_time))
+        bt_rate = self.__trees_read / diff_time
+        st_rate = self.__total_size_trees / diff_time
+        bp_rate = self.__pds_read / diff_time
+        sp_rate = self.__total_size_pds / diff_time
+        collectd.notice("read %s (%s) from %s (rate [%.2f, %s] / sec), %s (%s) from %s (rate [%.2f, %s] / sec) in %s" % (
             logging_tools.get_plural("tree", self.__trees_read),
-            logging_tools.get_size_str(self.__total_size),
-            logging_tools.get_plural("host", len(self.__distinct_hosts)),
+            logging_tools.get_size_str(self.__total_size_trees),
+            logging_tools.get_plural("host", len(self.__distinct_hosts_mv)),
+            bt_rate,
+            logging_tools.get_size_str(st_rate),
+            logging_tools.get_plural("perfdata", self.__pds_read),
+            logging_tools.get_size_str(self.__total_size_pds),
+            logging_tools.get_plural("host", len(self.__distinct_hosts_pd)),
+            bp_rate,
+            logging_tools.get_size_str(sp_rate),
             logging_tools.get_diff_time_str(self.__end_time - self.__start_time),
-            b_rate,
-            logging_tools.get_size_str(s_rate),
         ))
         self._init_vars()
     def _send(self, send_xml):
@@ -219,9 +228,7 @@ class net_receiver(multiprocessing.Process):
     def _loop(self):
         while True:
             in_data = self.receiver.recv()
-            self.__trees_read += 1
-            self.__total_size += len(in_data)
-            self._process_tree(in_data)
+            self._process_data(in_data)
             if abs(time.time() - self.__start_time) > 300:
                 # periodic log stats
                 self._log_stats()
@@ -233,7 +240,7 @@ class net_receiver(multiprocessing.Process):
             new_com = server_command.srv_command(command="mv_info")
             new_com["vector"] = _xml
             self._send(new_com)
-    def _process_tree(self, in_tree):
+    def _process_data(self, in_tree):
         r_data = None
         # adopt tree format for faster handling in collectd loop
         try:
@@ -242,7 +249,7 @@ class net_receiver(multiprocessing.Process):
             collectd.error("cannot parse tree: %s" % (process_tools.get_except_info()))
         else:
             try:
-                for p_data in getattr(self, "_handle_%s" % (_xml.tag))(_xml):
+                for p_data in getattr(self, "_handle_%s" % (_xml.tag))(_xml, len(in_tree)):
                     self.sender.send_pyobj(p_data)
             except:
                 collectd.error(process_tools.get_except_info())
@@ -262,7 +269,9 @@ class net_receiver(multiprocessing.Process):
             new_com["pd_type"] = pd_obj.PD_NAME
             new_com["info"] = pd_obj.PD_XML_INFO
             self._send(new_com)
-    def _handle_machine_vector(self, _xml):
+    def _handle_machine_vector(self, _xml, data_len):
+        self.__trees_read += 1
+        self.__total_size_trees += data_len
         simple, host_name, host_uuid, recv_time = (
             _xml.attrib["simple"] == "1",
             _xml.attrib["name"],
@@ -270,7 +279,7 @@ class net_receiver(multiprocessing.Process):
             _xml.attrib.get("uuid", _xml.attrib.get("name")),
             float(_xml.attrib["time"]),
         )
-        self.__distinct_hosts.add(host_uuid)
+        self.__distinct_hosts_mv.add(host_uuid)
         if simple and host_uuid not in self.__hosts:
             collectd.warning(
                 "no full info for host %s (%s) received, discarding data" % (
@@ -285,11 +294,14 @@ class net_receiver(multiprocessing.Process):
             values = self.__hosts[host_uuid].get_values(_xml, simple)
             r_data = (host_name, recv_time, values)
             yield r_data
-    def _handle_perf_data(self, _xml):
+    def _handle_perf_data(self, _xml, data_len):
+        self.__total_size_pds += data_len
         # iterate over lines
         for p_data in _xml:
+            self.__pds_read += 1
             perf_value = p_data.get("perfdata", "").strip()
             if perf_value:
+                self.__distinct_hosts_pd.add(p_data.attrib["host"])
                 mach_values = self._find_matching_pd_handler(p_data, perf_value)
                 if len(mach_values):
                     self._check_for_ext_perfdata(mach_values)
