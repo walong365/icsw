@@ -700,9 +700,10 @@ class ping_command(hm_classes.hm_command):
             else:
                 ret_state = limits.nag_STATE_WARNING
             if num_received == 0:
-                return ret_state, "%s: no reply (%s sent) | rta=0.00s min=0.00s max=0.00s loss=%d" % (
+                return ret_state, "%s: no reply (%s sent) | rta=0.0 min=0.0 max=0.0 sent=%d loss=%d" % (
                     target,
                     logging_tools.get_plural("packet", num_sent),
+                    num_sent,
                     num_sent,
                 )
             else:
