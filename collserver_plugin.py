@@ -19,36 +19,57 @@ RECV_PORT = 8002
 GRAPHER_PORT = 8003
 
 class perfdata_object(object):
-    def __init__(self):
-        pass
-    
-class load_pdata(perfdata_object):
-    PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
-    def build_values(self, _xml, in_dict):
-        r_list = []
-        for key in ["load1", "load5", "load15"]:
-            r_list.append((_xml.get("host"), int(_xml.get("time")), "loadx.%s" % (key), float(in_dict[key])))
-        return r_list
-
-class ping_pdata_1(perfdata_object):
-    PD_RE = re.compile("^rta=(?P<rta>\S+)s loss=(?P<loss>\d+)$")
-    def build_values(self, _xml, in_dict):
+    def wrap(self, _xml, v_list):
+        # add host and timestamp values
         _host, _time = (
             _xml.get("host"),
             int(_xml.get("time"))
         )
-        return ((_host, _time, "net.ping.rta", float(in_dict["rta"])),
-                (_host, _time, "net.ping.loss", int(in_dict["loss"])))
+        return [(_host, _time, v0, v1) for v0, v1 in v_list]
+    
+class load_pdata(perfdata_object):
+    PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
+    def build_values(self, _xml, in_dict):
+        return self._wrap(
+            _xml,
+            [
+                ("loadx.%s" % (key), float(in_dict[key])) for key in ["load1", "load5", "load15"]
+            ]
+        )
+
+class ping_pdata_1(perfdata_object):
+    PD_RE = re.compile("^rta=(?P<rta>\S+)s loss=(?P<loss>\d+)$")
+    def build_values(self, _xml, in_dict):
+        return self._wrap(
+            _xml,
+            [
+                (_host, _time, "net.ping.rta", float(in_dict["rta"])),
+                (_host, _time, "net.ping.loss", int(in_dict["loss"]))
+            ]
+        )
+
+class ping_pdata_2(perfdata_object):
+    PD_RE = re.compile("^rta=(?P<rta>\S+) min=(?P<min>\S+) max=(?P<max>\S+) loss=(?P<loss>\d+)$")
+    def build_values(self, _xml, in_dict):
+        return self._wrap(
+            _xml,
+            [
+                (_host, _time, "net.ping.rta", float(in_dict["rta"])),
+                (_host, _time, "net.ping.min", float(in_dict["min"])),
+                (_host, _time, "net.ping.min", float(in_dict["max"])),
+                (_host, _time, "net.ping.loss", int(in_dict["loss"]))
+            ]
+        )
 
 class value(object):
     def __init__(self, name):
         self.name = name
         self.sane_name = self.name.replace("/", "_sl_")
     def update(self, entry):
-        self.info = entry.attrib["info"]
+        self.info   = entry.attrib["info"]
         self.v_type = entry.attrib["v_type"]
-        self.unit = entry.get("unit", "1")
-        self.base = int(entry.get("base", "1"))
+        self.unit   = entry.get("unit", "1")
+        self.base   = int(entry.get("base", "1"))
         self.factor = int(entry.get("factor", "1"))
     def transform(self, value):
         return value * self.factor
