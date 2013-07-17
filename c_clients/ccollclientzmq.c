@@ -201,8 +201,8 @@ int main(int argc, char **argv)
         /* PUSH sender socket */
         void *requester = zmq_socket(context, ZMQ_PUSH);
 
-            /* SUB receiver socket */
-            void *receiver = zmq_socket(context, ZMQ_SUB);
+        /* SUB receiver socket */
+        void *receiver = zmq_socket(context, ZMQ_SUB);
         // send
         zmq_connect(requester,
                     "ipc:///var/log/cluster/sockets/collrelay/receiver");
@@ -256,7 +256,7 @@ int main(int argc, char **argv)
         } else {
             retcode = 0, printf("sent\n");
         }
-            zmq_close(receiver);
+        zmq_close(receiver);
         zmq_close(requester);
         zmq_term(context);
     }

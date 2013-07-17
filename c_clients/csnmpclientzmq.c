@@ -55,10 +55,10 @@ int err_message(char *str)
     if (!errstr)
         return -ENOMEM;
     if (errno) {
-        sprintf(errstr, "An error occured : %s (%d) %s\n", str, errno,
-                strerror(errno));
+        sprintf(errstr, "An error occured (%d) : %s (%d) %s\n",
+                getpid(), str, errno, strerror(errno));
     } else {
-        sprintf(errstr, "An error occured : %s\n", str);
+        sprintf(errstr, "An error occured (%d): %s\n", getpid(), str);
     }
     syslog(LOG_DAEMON | LOG_ERR, errstr);
     fprintf(stderr, errstr);
@@ -184,9 +184,7 @@ int main(int argc, char **argv)
     int res_code = 0;
 
     int retry_iter = 0;
-
     char recv_buffer[1024];
-
     alrmsigact = (struct sigaction *)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
         free(host_b);
@@ -246,7 +244,7 @@ int main(int argc, char **argv)
         };
         int64_t more = 0;
         size_t more_size = sizeof(more);
-    
+
         zmq_getsockopt(receiver, ZMQ_RCVMORE, &more, &more_size);
         zmq_msg_close(&request);
         if (verbose) {
