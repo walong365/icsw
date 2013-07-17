@@ -1178,22 +1178,40 @@ class relay_process(threading_tools.process_pool):
                 src_id = parts.pop(0)
                 # parse new format
                 if parts[2].endswith(";"):
-                    com_part = parts[2][:-1].split(";")
+                    com_part = parts[2][:-1]
                 else:
-                    com_part = parts[2].split(";")
-                if all([com_part[idx].isdigit() and (len(com_part[idx + 1]) == int(com_part[idx])) for idx in xrange(0, len(com_part), 2)]):
-                    # decode to utf-8 after parsing, otherwise the string lengths encoded in the data string would differ
-                    arg_list = [com_part[idx + 1].decode("utf-8") for idx in xrange(0, len(com_part), 2)]
-                    cur_com = arg_list.pop(0) if arg_list else ""
-                    srv_com = server_command.srv_command(command=cur_com, identity=src_id)
-                    srv_com["host"] = parts[0]
-                    srv_com["port"] = parts[1]
-                    for arg_index, arg in enumerate(arg_list):
-                        srv_com["arguments:arg%d" % (arg_index)] = arg
-                    srv_com["arg_list"] = " ".join(arg_list)
-                else:
+                    com_part = parts[2]
+                # iterative parser
+                try:
+                    arg_list = []
+                    while com_part.count(";"):
+                        cur_size, cur_str = com_part.split(";", 1)
+                        cur_size = int(cur_size)
+                        com_part = cur_str[cur_size + 1:]
+                        arg_list.append(cur_str[:cur_size].decode("utf-8"))
+                    if com_part:
+                        raise ValueError, "not fully parsed (%s)" % (com_part)
+                    else:
+                        cur_com = arg_list.pop(0) if arg_list else ""
+                        srv_com = server_command.srv_command(command=cur_com, identity=src_id)
+                        srv_com["host"] = parts[0]
+                        srv_com["port"] = parts[1]
+                        for arg_index, arg in enumerate(arg_list):
+                            srv_com["arguments:arg%d" % (arg_index)] = arg
+                        srv_com["arg_list"] = " ".join(arg_list)
+                except:
                     self.log("error parsing %s" % (data), logging_tools.LOG_LEVEL_ERROR)
                     srv_com = None
+                #if all([com_part[idx].isdigit() and (len(com_part[idx + 1]) == int(com_part[idx])) for idx in xrange(0, len(com_part), 2)]):
+                    ## decode to utf-8 after parsing, otherwise the string lengths encoded in the data string would differ
+                    #arg_list = [com_part[idx + 1].decode("utf-8") for idx in xrange(0, len(com_part), 2)]
+                    #cur_com = arg_list.pop(0) if arg_list else ""
+                    #srv_com = server_command.srv_command(command=cur_com, identity=src_id)
+                    #srv_com["host"] = parts[0]
+                    #srv_com["port"] = parts[1]
+                    #for arg_index, arg in enumerate(arg_list):
+                        #srv_com["arguments:arg%d" % (arg_index)] = arg
+                    #srv_com["arg_list"] = " ".join(arg_list)
         if srv_com is not None:
             if self.__verbose:
                 self.log("got command '%s' for '%s' (XML: %s)" % (
